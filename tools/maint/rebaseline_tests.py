@@ -124,6 +124,10 @@ def main():
     run(['./emcc', '--clear-cache'])
 
   if not args.skip_tests:
+    if not args.check_only and run(['git', 'status', '-uno', '--porcelain']).strip():
+      print('tree is not clean')
+      return 1
+
     installed_sha = get_installed_emsdk_sha()
     emsdk_version_file = os.path.join(root_dir, 'test', 'emsdk_version.txt')
     current_sha = utils.read_file(emsdk_version_file).strip()
@@ -136,10 +140,6 @@ def main():
       utils.write_file(emsdk_version_file, installed_sha + '\n')
     elif installed_sha and installed_sha != current_sha:
       utils.exit_with_error(f'installed emsdk version ({installed_sha}) does not match test/emsdk_version.txt ({current_sha}). Pass --bump-emsdk to update it.')
-
-    if not args.check_only and run(['git', 'status', '-uno', '--porcelain']).strip():
-      print('tree is not clean')
-      return 1
 
     subprocess.check_call([utils.exe_path_from_root('test/runner'), '--rebaseline', 'codesize'], cwd=root_dir)
 
