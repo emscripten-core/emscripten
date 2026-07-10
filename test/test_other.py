@@ -3059,6 +3059,7 @@ More info: https://emscripten.org
     'emitDCEGraph-prefixing': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-scopes': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-esm': (['emitDCEGraph', '--no-print', '--export-es6'],),
+    'emitDCEGraph-sourcePhaseImports': (['emitDCEGraph', '--no-print', '--export-es6'],),
     'minimal-runtime-applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
     'applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
     'applyDCEGraphRemovals-esm': (['applyDCEGraphRemovals', '--export-es6'],),

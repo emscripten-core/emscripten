@@ -444,6 +444,10 @@ function getWasmImportsValue(node) {
 function isImportFromWasm(node) {
   return (
     node.type === 'ImportDeclaration' &&
+    // Skip source/defer phase imports (e.g. `import source foo from './a.wasm'`
+    // under SOURCE_PHASE_IMPORTS), whose default specifier binds the module
+    // itself rather than wasm exports. Value-phase imports leave `phase` unset.
+    !node.phase &&
     isLiteralString(node.source) &&
     node.source.value.endsWith('.wasm')
   );
