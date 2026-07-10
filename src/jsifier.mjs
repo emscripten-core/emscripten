@@ -247,6 +247,7 @@ function addImplicitDeps(snippet, deps) {
     'runtimeKeepalivePush',
     'runtimeKeepalivePop',
     'UTF8ToString',
+    // TODO: Consider removing getValue and setValue if they are rarely used implicitly.
     'getValue',
     'setValue',
   ];
@@ -255,9 +256,10 @@ function addImplicitDeps(snippet, deps) {
       deps.push('$' + dep);
     }
   }
-  // If the snippet contains eval(), it may dynamically evaluate strings that reference any
-  // heap view (e.g., eval('HEAP8[0]')). Since static string matching cannot detect which
-  // heap views are used inside dynamically evaluated code, we must include all of them.
+  // If the snippet contains eval(), it may dynamically evaluate code loaded from memory at runtime
+  // (for example, in emscripten_run_script where the snippet is eval(UTF8ToString(ptr))).
+  // Because static string matching cannot inspect what strings are stored in memory or evaluated
+  // at runtime, we must conservatively include all heap views whenever a snippet uses eval().
   if (snippet.includes('eval(')) {
     deps.push('$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16', '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64');
     if (WASM_BIGINT || MEMORY64) {
