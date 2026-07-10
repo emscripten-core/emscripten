@@ -129,22 +129,6 @@ weak int __syscall_setdomainname(const char *name, size_t len) {
   return -EPERM;
 }
 
-weak uid_t __syscall_getuid32(void) {
-  return 0;
-}
-
-weak gid_t __syscall_getgid32(void) {
-  return 0;
-}
-
-weak uid_t __syscall_geteuid32(void) {
-  return 0;
-}
-
-weak gid_t __syscall_getegid32(void) {
-  return 0;
-}
-
 weak int __syscall_getresuid32(uid_t *ruid, uid_t *euid, uid_t *suid) {
   *ruid = 0;
   *euid = 0;

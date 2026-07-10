@@ -1084,6 +1084,23 @@ var SyscallsLibrary = {
     }
     return 0;
   },
+  __syscall_getuid32__nothrow: true,
+  __syscall_geteuid32__nothrow: true,
+  __syscall_getgid32__nothrow: true,
+  __syscall_getegid32__nothrow: true,
+#if NODERAWFS
+  // NODERAWFS reports the real host process credentials (0 on Windows, which
+  // has no uid/gid concept).
+  __syscall_getuid32: () => process.getuid?.() ?? 0,
+  __syscall_geteuid32: () => process.geteuid?.() ?? 0,
+  __syscall_getgid32: () => process.getgid?.() ?? 0,
+  __syscall_getegid32: () => process.getegid?.() ?? 0,
+#else
+  __syscall_getuid32: () => 0,
+  __syscall_geteuid32: () => 0,
+  __syscall_getgid32: () => 0,
+  __syscall_getegid32: () => 0,
+#endif
   __syscall_dup3: (fd, newfd, flags) => {
     if (fd === newfd) return -{{{ cDefs.EINVAL }}};
     if (flags & ~{{{ cDefs.O_CLOEXEC }}}) return -{{{ cDefs.EINVAL }}};
