@@ -64,7 +64,9 @@ commands:
     steps:
       - run:
           name: pip install
-          command: << parameters.python >> -m pip install -r requirements-dev.txt
+          # The --only-binary :all: flag tells python not to ever build any
+          # extensio code locally, and instead only download pre-built wheels.
+          command: "<< parameters.python >> -m pip install --only-binary :all: -r requirements-dev.txt"
   install-rust:
     steps:
       - run:
