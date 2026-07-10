@@ -189,7 +189,11 @@ addToLibrary({
         if (attr.mode != null && attr.dontFollow) {
           throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
         }
-        NODEFS.setattr(path, node, attr, fs.chmodSync, fs.utimesSync, fs.truncateSync, fs.lstatSync);
+        // `dontFollow` (AT_SYMLINK_NOFOLLOW): use lutimes so the symlink's own
+        // timestamps are set without the host resolving it, which would
+        // otherwise escape the NODEFS mount root.
+        var utimes = attr.dontFollow ? fs.lutimesSync : fs.utimesSync;
+        NODEFS.setattr(path, node, attr, fs.chmodSync, utimes, fs.truncateSync, fs.lstatSync);
       },
       lookup(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
