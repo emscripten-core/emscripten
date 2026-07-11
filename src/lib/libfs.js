@@ -855,6 +855,25 @@ FS.staticInit();`;
 #endif
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
+    link(oldpath, newpath, flags) {
+      var lookup = FS.lookupPath(newpath, { parent: true });
+      var parent = lookup.node;
+      if (!parent) {
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+      }
+      var newname = PATH.basename(newpath);
+      var errCode = FS.mayCreate(parent, newname);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
+      }
+      // Hardlinks are only supported by filesystem backends that provide a
+      // `link` node op (e.g. NODERAWFS backed by the host). NODEFS omits it:
+      // a host hardlink cannot be confined to the mount root.
+      if (!parent.node_ops.link) {
+        throw new FS.ErrnoError({{{ cDefs.EMLINK }}});
+      }
+      return parent.node_ops.link(parent, newname, oldpath, flags);
+    },
     rename(old_path, new_path) {
       var old_dirname = PATH.dirname(old_path);
       var new_dirname = PATH.dirname(new_path);
@@ -1119,13 +1138,12 @@ FS.staticInit();`;
       }
       FS.doTruncate(stream, stream.node, len);
     },
-    utime(path, atime, mtime) {
-      var lookup = FS.lookupPath(path, { follow: true });
-      var node = lookup.node;
-      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
-      setattr(node, {
+    utime(path, atime, mtime, dontFollow) {
+      var lookup = FS.lookupPath(path, { follow: !dontFollow });
+      FS.doSetAttr(null, lookup.node, {
         atime: atime,
-        mtime: mtime
+        mtime: mtime,
+        dontFollow
       });
     },
     open(path, flags, mode = 0o666) {

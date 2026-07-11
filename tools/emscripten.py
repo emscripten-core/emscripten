@@ -606,7 +606,7 @@ def finalize_wasm(infile, outfile, js_syms):
   # EMSCRIPTEN_KEEPALIVE (llvm.used).
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
-  unexpected_exports = [e for e in metadata.all_exports if shared.is_user_export(e)]
+  unexpected_exports = [e for e in metadata.all_exports if not shared.is_internal_symbol(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 

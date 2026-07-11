@@ -697,14 +697,17 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
       },
-      recvmsg(sock, length) {
+      recvmsg(sock, length, flags) {
         // http://pubs.opengroup.org/onlinepubs/7908799/xns/recvmsg.html
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && sock.server) {
           // tcp servers should not be recv()'ing on the listen socket
           throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
         }
 
-        var queued = sock.recv_queue.shift();
+        // MSG_PEEK returns the head of the queue without consuming it, so a
+        // later recv sees the same bytes and poll still reports it readable.
+        var peek = flags & {{{ cDefs.MSG_PEEK }}};
+        var queued = sock.recv_queue[0];
         if (!queued) {
           if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
             var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
@@ -738,6 +741,9 @@ addToLibrary({
 #if SOCKET_DEBUG
         dbg(`websocket: read (${bytesRead} bytes): ${res.buffer}`);
 #endif
+
+        if (peek) return res;
+        sock.recv_queue.shift();
 
         // push back any unread data for TCP connections
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && bytesRead < queuedLength) {

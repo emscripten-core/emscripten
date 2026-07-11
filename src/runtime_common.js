@@ -4,12 +4,23 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "runtime_stack_check.js"
 #include "runtime_exceptions.js"
 #include "runtime_debug.js"
 
+#if STACK_OVERFLOW_CHECK
+#include "runtime_stack_check.js"
+#endif
+
 #if SAFE_HEAP
 #include "runtime_safe_heap.js"
+#endif
+
+#if USE_ASAN
+#include "runtime_asan.js"
+#endif
+
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#include "binaryDecode.js"
 #endif
 
 #if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS != 2
@@ -21,14 +32,6 @@ function growMemViews() {
     updateMemoryViews();
   }
 }
-#endif
-
-#if USE_ASAN
-#include "runtime_asan.js"
-#endif
-
-#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
-#include "binaryDecode.js"
 #endif
 
 #if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
