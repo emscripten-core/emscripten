@@ -1127,7 +1127,7 @@ var LibrarySDL = {
         audio.paused = false;
         if (!webAudio.decodedBuffer) {
           if (webAudio.onDecodeComplete === undefined) {
-            abort("Cannot play back audio object that was not loaded");
+            abort('Cannot play back audio object that was not loaded');
           }
           webAudio.onDecodeComplete.push(() => { if (!audio.paused) SDL.playWebAudio(audio); });
           return;
@@ -1141,7 +1141,7 @@ var LibrarySDL = {
         // avoid Chrome bug
         // If posz = 0, the sound will come from only the right.
         // By posz = -0.5 (slightly ahead), the sound will come from right and left correctly.
-        audio.webAudioPannerNode["setPosition"](0, 0, -.5);
+        audio.webAudioPannerNode['setPosition'](0, 0, -.5);
         audio.webAudioPannerNode['panningModel'] = 'equalpower';
 
         // Add an intermediate gain node to control volume.
@@ -1354,15 +1354,15 @@ var LibrarySDL = {
     // capture all key events. we just keep down and up, but also capture press to prevent default actions
     if (!{{{ makeModuleReceiveExpr('doNotCaptureKeyboard', 'false') }}}) {
       var keyboardListeningElement = {{{ makeModuleReceiveExpr('keyboardListeningElement', 'document') }}};
-      keyboardListeningElement.addEventListener("keydown", SDL.receiveEvent);
-      keyboardListeningElement.addEventListener("keyup", SDL.receiveEvent);
-      keyboardListeningElement.addEventListener("keypress", SDL.receiveEvent);
-      window.addEventListener("focus", SDL.receiveEvent);
-      window.addEventListener("blur", SDL.receiveEvent);
-      document.addEventListener("visibilitychange", SDL.receiveEvent);
+      keyboardListeningElement.addEventListener('keydown', SDL.receiveEvent);
+      keyboardListeningElement.addEventListener('keyup', SDL.receiveEvent);
+      keyboardListeningElement.addEventListener('keypress', SDL.receiveEvent);
+      window.addEventListener('focus', SDL.receiveEvent);
+      window.addEventListener('blur', SDL.receiveEvent);
+      document.addEventListener('visibilitychange', SDL.receiveEvent);
     }
 
-    window.addEventListener("unload", SDL.receiveEvent);
+    window.addEventListener('unload', SDL.receiveEvent);
     SDL.keyboardState = _calloc(0x10000, 1); // Our SDL needs 512, but 64K is safe for older SDLs
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown']    = {{{ cDefs.SDL_KEYDOWN }}};
@@ -1814,7 +1814,7 @@ var LibrarySDL = {
   SDL_GetError__proxy: 'sync',
   SDL_GetError__deps: ['$stringToNewUTF8'],
   SDL_GetError: () => {
-    SDL.errorMessage ||= stringToNewUTF8("unknown SDL-emscripten error");
+    SDL.errorMessage ||= stringToNewUTF8('unknown SDL-emscripten error');
     return SDL.errorMessage;
   },
 
@@ -1863,7 +1863,7 @@ var LibrarySDL = {
     var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags, false, 'copy:' + oldData.source);
     var newData = SDL.surfaces[ret];
 
-    newData.ctx.globalCompositeOperation = "copy";
+    newData.ctx.globalCompositeOperation = 'copy';
     newData.ctx.drawImage(oldData.canvas, 0, 0);
     newData.ctx.globalCompositeOperation = oldData.ctx.globalCompositeOperation;
     return ret;
@@ -2303,7 +2303,7 @@ var LibrarySDL = {
         }
         surfData.ctx.putImageData(imageData, 0, 0);
       }
-      surfData.ctx.globalCompositeOperation = "source-over";
+      surfData.ctx.globalCompositeOperation = 'source-over';
       // XXX SDL does not specify that loaded images must have available pixel data, in fact
       //     there are cases where you just want to blit them, so you just need the hardware
       //     accelerated version. However, code everywhere seems to assume that the pixels

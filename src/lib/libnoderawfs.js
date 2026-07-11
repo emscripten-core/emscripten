@@ -8,7 +8,7 @@ addToLibrary({
   $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags', '$NODERAWFS_stream_funcs'],
   $NODERAWFS__postset: `
     if (!ENVIRONMENT_IS_NODE) {
-      throw new Error("NODERAWFS is currently only supported on Node.js environment.")
+      throw new Error('NODERAWFS is currently only supported on Node.js environment.')
     }
     var nodeTTY = require('node:tty');
     function _wrapNodeError(func) {

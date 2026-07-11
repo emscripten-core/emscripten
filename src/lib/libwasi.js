@@ -276,8 +276,8 @@ var WasiLibrary = {
 #if hasExportedSymbol('fflush')
     _fflush(0);
 #endif
-    if (printCharBuffers[1].length) printChar(1, {{{ charCode("\n") }}});
-    if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});
+    if (printCharBuffers[1].length) printChar(1, {{{ charCode('\n') }}});
+    if (printCharBuffers[2].length) printChar(2, {{{ charCode('\n') }}});
   },
   fd_write__deps: ['$flush_NO_FILESYSTEM', '$printChar'],
   fd_write__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
@@ -427,7 +427,7 @@ var WasiLibrary = {
   // preopen maps open file descriptors to pathname.
   // In emscripten we already have a VFS layer so (for now) we expose the entire
   // VFS to the wasi API.
-  $preopens: "{3: '/'}",
+  $preopens: {3: '/'},
 
   path_open__sig: 'iiiiiiiiii',
   path_open__deps: ['$wasiRightsToMuslOFlags', '$wasiOFlagsToMuslOFlags', '$preopens'],

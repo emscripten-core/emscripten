@@ -13,9 +13,9 @@ addToLibrary({
   // so we cannot try to unconditionally initialize it in that build mode.
 #if TEXTDECODER == 2 && !AUDIO_WORKLET
   // TextDecoder constructor defaults to UTF-8
-  $UTF8Decoder: "new TextDecoder()",
+  $UTF8Decoder: 'new TextDecoder()',
 #else
-  $UTF8Decoder: "globalThis.TextDecoder && new TextDecoder()",
+  $UTF8Decoder: 'globalThis.TextDecoder && new TextDecoder()',
 #endif
 
   $findStringEnd__docs: `
