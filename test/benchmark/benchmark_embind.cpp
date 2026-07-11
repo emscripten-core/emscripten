@@ -505,4 +505,5 @@ int main() {
     call_through_interface2();
     returns_val_benchmark();
     numeric_val_array_benchmark();
+    printf("done\n");
 }

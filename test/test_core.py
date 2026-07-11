@@ -2657,6 +2657,16 @@ The current type of b is: 9
     self.do_runf_out_file('pthread/test_pthread_attr_getstack.c')
 
   @requires_pthreads
+  def test_pthread_guardsize(self):
+    self.do_runf_out_file('pthread/test_pthread_guardsize.c')
+
+  @requires_pthreads
+  def test_pthread_guardsize_overflow(self):
+    self.set_setting('STACK_OVERFLOW_CHECK', 1)
+    expected = r'Aborted\(Stack overflow! Stack cookie has been overwritten at 0x[0-9a-f]+, expected hex dwords 0x89bacdfe and 0x02135467, but received 0xaaaaaaaa 0xaaaaaaaa\)'
+    self.do_runf('pthread/test_pthread_guardsize_overflow.c', expected, regex=True, assert_returncode=NON_ZERO)
+
+  @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26199')
   @flaky('flaky specifically in esm_integration suite. https://github.com/emscripten-core/emscripten/issues/25151')
   def test_pthread_abort(self):
@@ -5616,6 +5626,8 @@ got: 10
 
   @no_wasm64('https://github.com/emscripten-core/emscripten/issues/27221')
   @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
+  # We don't use the `requires_pthreads` decorator because we want to test that pthreads is
+  # automatically enabled when OpenMP is used.
   def test_openmp_max_threads(self):
     src = r"""
       #include <omp.h>
@@ -5625,7 +5637,9 @@ got: 10
         return 0;
       }
     """
-    self.do_run(src, "", cflags=["-fopenmp=libomp"])
+    # We need to explicitly add the `-Wno-pthreads-mem-growth` flag because
+    # ASAN uses `-sALLOW_MEMORY_GROWTH`.
+    self.do_run(src, "", cflags=['-fopenmp=libomp', '-Wno-pthreads-mem-growth'])
 
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
@@ -5959,6 +5973,20 @@ got: 10
   def test_fs_emptyPath(self):
     self.do_runf_out_file('fs/test_emptyPath.c')
 
+  @no_windows('no symlink support on windows')
+  @also_with_nodefs_both
+  def test_fs_link(self):
+    self.do_runf('fs/test_link.c', 'done\n')
+
+  @no_windows('no symlink support on windows')
+  @also_with_nodefs_both
+  def test_fs_utimensat_nofollow(self):
+    self.do_runf('fs/test_utimensat_nofollow.c', 'done\n')
+
+  @also_with_nodefs_both
+  def test_fs_fadvise_fallocate(self):
+    self.do_runf('fs/test_fadvise_fallocate.c', 'done\n')
+
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
   @also_with_nodefs_both
@@ -6036,6 +6064,12 @@ Module.onRuntimeInitialized = () => {
   @also_with_noderawfs
   def test_fs_writev(self):
     self.do_runf('fs/test_writev.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
+
+  def test_fs_readv_eagain(self):
+    self.do_runf('fs/test_readv_eagain.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
+
+  def test_fs_writev_gather(self):
+    self.do_runf('fs/test_writev_gather.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
   def test_fs_64bit(self):
     if self.get_setting('WASMFS'):
@@ -9724,6 +9758,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if args:
       self.require_pthreads()
     self.do_runf('core/test_pipe_select.c', cflags=args)
+
+  def test_pipe_pollhup(self):
+    self.do_runf('core/test_pipe_pollhup.c', 'done\n')
 
   @also_without_bigint
   def test_jslib_i64_params(self):

@@ -2304,13 +2304,13 @@ class libstubs(DebugLibrary):
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
 
-class libllvmopenmp(Library):
-  name = 'libllvmopenmp'
+class libopenmp(Library):
+  name = 'libopenmp'
   includes = [
-    'system/lib/llvm-openmp/src',
-    'system/lib/llvm-openmp/src/i18n',
-    'system/lib/llvm-openmp/src/thirdparty/ittnotify',
-    'system/lib/llvm-openmp/prebuilt',
+    'system/lib/openmp/src',
+    'system/lib/openmp/src/i18n',
+    'system/lib/openmp/src/thirdparty/ittnotify',
+    'system/lib/openmp/prebuilt',
   ]
   # This needs to come from the flags. If it does not, llvm won't add proper magic symbols
   never_force = True
@@ -2326,7 +2326,7 @@ class libllvmopenmp(Library):
     '-Wno-int-to-void-pointer-cast', '-Wno-#warnings', '-Wno-unused-function',
     '-Wno-sign-compare', '-Wno-comment', '-Wno-unused-variable', '-Wno-unused-but-set-global',
   ]
-  src_dir = 'system/lib/llvm-openmp/src'
+  src_dir = 'system/lib/openmp/src'
   src_files = [
     'kmp_alloc.cpp', 'kmp_atomic.cpp', 'kmp_csupport.cpp', 'kmp_debug.cpp',
     'kmp_itt.cpp', 'kmp_environment.cpp', 'kmp_error.cpp', 'kmp_global.cpp',
@@ -2449,7 +2449,7 @@ def get_libs_to_link(options):
     add_library('libjsmath')
 
   if options.openmp:
-    add_library("libllvmopenmp")
+    add_library('libopenmp')
 
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
@@ -2567,7 +2567,7 @@ def install_system_headers(stamp):
     'system/lib/libcxxabi/include': 'c++/v1',
     'system/lib/mimalloc/include': '',
     # Install openmp headers
-    'system/lib/llvm-openmp/include': '',
+    'system/lib/openmp/include': '',
     'system/lib/libcxx/modules/prebuilt/lib/emscripten': cache.get_lib_dir(absolute=True),
     'system/lib/libcxx/modules/prebuilt/share': cache.get_sysroot_dir('share'),
     'system/lib/libcxx/modules/std': cache.get_sysroot_dir('share/libc++/v1/std'),

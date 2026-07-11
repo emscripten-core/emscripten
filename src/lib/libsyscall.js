@@ -961,6 +961,14 @@ var SyscallsLibrary = {
     FS.symlink(target, linkpath);
     return 0;
   },
+  __syscall_linkat: (olddirfd, oldpath, newdirfd, newpath, flags) => {
+    oldpath = SYSCALLS.getStr(oldpath);
+    newpath = SYSCALLS.getStr(newpath);
+    oldpath = SYSCALLS.calculateAt(olddirfd, oldpath);
+    newpath = SYSCALLS.calculateAt(newdirfd, newpath);
+    FS.link(oldpath, newpath, flags);
+    return 0;
+  },
   __syscall_readlinkat__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_readlinkat: (dirfd, path, buf, bufsize) => {
     path = SYSCALLS.getStr(path);
@@ -1009,10 +1017,8 @@ var SyscallsLibrary = {
   },
   __syscall_utimensat__deps: ['$readI53FromI64'],
   __syscall_utimensat: (dirfd, path, times, flags) => {
+    var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
     path = SYSCALLS.getStr(path);
-#if ASSERTIONS
-    assert(!flags);
-#endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
     var now = Date.now(), atime, mtime;
     if (!times) {
@@ -1042,7 +1048,7 @@ var SyscallsLibrary = {
     // null here means UTIME_OMIT was passed. If both were set to UTIME_OMIT then
     // we can skip the call completely.
     if ((mtime ?? atime) !== null) {
-      FS.utime(path, atime, mtime);
+      FS.utime(path, atime, mtime, nofollow);
     }
     return 0;
   },
@@ -1055,12 +1061,26 @@ var SyscallsLibrary = {
     if (offset < 0 || len < 0) {
       return -{{{ cDefs.EINVAL }}}
     }
+    // fallocate is only meaningful on regular files; a pipe/socket is a seek
+    // error (ESPIPE), matching Linux.
+    if (!SYSCALLS.getStreamFromFD(fd).seekable) {
+      return -{{{ cDefs.ESPIPE }}};
+    }
     // We only support mode == 0, which means we can implement fallocate
     // in terms of ftruncate.
     var oldSize = FS.fstat(fd).size;
     var newSize = offset + len;
     if (newSize > oldSize) {
       FS.ftruncate(fd, newSize);
+    }
+    return 0;
+  },
+  __syscall_fadvise64__i53abi: true,
+  __syscall_fadvise64: (fd, offset, len, advice) => {
+    // Advisory only, so a no-op, but a pipe/socket fd is still a seek error
+    // (ESPIPE), matching Linux.
+    if (!SYSCALLS.getStreamFromFD(fd).seekable) {
+      return -{{{ cDefs.ESPIPE }}};
     }
     return 0;
   },

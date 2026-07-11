@@ -231,16 +231,25 @@ var NodeSockFSLibrary = {
       var h = sock.udp;
       var o = sock.opts;
       if (!h || !o || !sock.udpReceiving) return;
+      // libuv's multicast TTL/loopback setters apply to whichever family the
+      // socket is, so IP_MULTICAST_TTL/IPV6_MULTICAST_HOPS and the two
+      // *_MULTICAST_LOOP options funnel through the same handle methods.
+      var mcastTtl = o.multicastTtl ?? o.multicastHops;
+      var mcastLoop = o.multicastLoop6 ?? o.multicastLoop;
       if (sock.udpPublic) {
         if (o.ttl !== undefined) { try { h.setTTL(o.ttl); } catch (e) {} }
         if (o.broadcast !== undefined) { try { h.setBroadcast(!!o.broadcast); } catch (e) {} }
         if (o.recvBuf !== undefined) { try { h.setRecvBufferSize(o.recvBuf); } catch (e) {} }
         if (o.sendBuf !== undefined) { try { h.setSendBufferSize(o.sendBuf); } catch (e) {} }
+        if (mcastTtl !== undefined) { try { h.setMulticastTTL(mcastTtl); } catch (e) {} }
+        if (mcastLoop !== undefined) { try { h.setMulticastLoopback(!!mcastLoop); } catch (e) {} }
       } else {
         if (o.ttl !== undefined) { try { h.setTTL(o.ttl); } catch (e) {} }
         if (o.broadcast !== undefined) { try { h.setBroadcast(o.broadcast ? 1 : 0); } catch (e) {} }
         if (o.recvBuf !== undefined) { try { h.bufferSize(o.recvBuf, true, {}); } catch (e) {} }
         if (o.sendBuf !== undefined) { try { h.bufferSize(o.sendBuf, false, {}); } catch (e) {} }
+        if (mcastTtl !== undefined) { try { h.setMulticastTTL(mcastTtl); } catch (e) {} }
+        if (mcastLoop !== undefined) { try { h.setMulticastLoopback(mcastLoop ? 1 : 0); } catch (e) {} }
       }
     },
     // The live OS buffer size from a bound UDP socket, or undefined.
@@ -336,8 +345,10 @@ var NodeSockFSLibrary = {
         mask |= ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
       }
       if (sock.error) {
-        // Mark writable on error so SO_ERROR can be read.
-        mask |= {{{ cDefs.POLLOUT }}};
+        // A pending socket error (e.g. a refused connect) is Linux's
+        // POLLERR|POLLHUP, plus writable so SO_ERROR can be read. POLLOUT|POLLERR
+        // also satisfies epoll's is_write_closed() mapping.
+        mask |= {{{ cDefs.POLLOUT }}} | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
       } else if (sock.connection && sock.state === {{{ SOCK_STATE_CONNECTED }}} && !sock.writeBlocked) {
         mask |= {{{ cDefs.POLLOUT }}};
       }
@@ -681,19 +692,37 @@ var NodeSockFSLibrary = {
             return 0;
         }
       } else if (level === {{{ cDefs.IPPROTO_IP }}}) {
-        if (optname === 2 /* IP_TTL */) {
-          sock.opts.ttl = val;
-          nodeSockHelpers.applyUdpOptions(sock);
-          return 0;
+        switch (optname) {
+          case 2: // IP_TTL
+            sock.opts.ttl = val;
+            nodeSockHelpers.applyUdpOptions(sock);
+            return 0;
+          case 33: // IP_MULTICAST_TTL
+            sock.opts.multicastTtl = val;
+            nodeSockHelpers.applyUdpOptions(sock);
+            return 0;
+          case 34: // IP_MULTICAST_LOOP
+            sock.opts.multicastLoop = !!val;
+            nodeSockHelpers.applyUdpOptions(sock);
+            return 0;
         }
       } else if (level === {{{ cDefs.IPPROTO_IPV6 }}}) {
-        if (optname === {{{ cDefs.IPV6_V6ONLY }}}) {
-          // Bind-time only: IPV6_V6ONLY cannot change once the socket is bound,
-          // so reject a late change (POSIX returns EINVAL). Before any
-          // bind/connect/listen we cache it for the BoundSocket constructor.
-          if (sock.state) return -{{{ cDefs.EINVAL }}};
-          sock.opts.ipv6Only = !!val;
-          return 0;
+        switch (optname) {
+          case {{{ cDefs.IPV6_V6ONLY }}}:
+            // Bind-time only: IPV6_V6ONLY cannot change once the socket is bound,
+            // so reject a late change (POSIX returns EINVAL). Before any
+            // bind/connect/listen we cache it for the BoundSocket constructor.
+            if (sock.state) return -{{{ cDefs.EINVAL }}};
+            sock.opts.ipv6Only = !!val;
+            return 0;
+          case 18: // IPV6_MULTICAST_HOPS
+            sock.opts.multicastHops = val;
+            nodeSockHelpers.applyUdpOptions(sock);
+            return 0;
+          case 19: // IPV6_MULTICAST_LOOP
+            sock.opts.multicastLoop6 = !!val;
+            nodeSockHelpers.applyUdpOptions(sock);
+            return 0;
         }
       } else if (level === {{{ cDefs.IPPROTO_TCP }}}) {
         switch (optname) {
@@ -739,11 +768,19 @@ var NodeSockFSLibrary = {
           default: return -{{{ cDefs.ENOPROTOOPT }}};
         }
       } else if (level === {{{ cDefs.IPPROTO_IP }}}) {
-        if (optname !== 2 /* IP_TTL */) return -{{{ cDefs.ENOPROTOOPT }}};
-        val = sock.opts.ttl || 64;
+        switch (optname) {
+          case 2: val = sock.opts.ttl || 64; break; // IP_TTL
+          case 33: val = sock.opts.multicastTtl ?? 1; break; // IP_MULTICAST_TTL
+          case 34: val = sock.opts.multicastLoop === undefined ? 1 : (sock.opts.multicastLoop ? 1 : 0); break; // IP_MULTICAST_LOOP
+          default: return -{{{ cDefs.ENOPROTOOPT }}};
+        }
       } else if (level === {{{ cDefs.IPPROTO_IPV6 }}}) {
-        if (optname !== {{{ cDefs.IPV6_V6ONLY }}}) return -{{{ cDefs.ENOPROTOOPT }}};
-        val = sock.opts.ipv6Only ? 1 : 0;
+        switch (optname) {
+          case {{{ cDefs.IPV6_V6ONLY }}}: val = sock.opts.ipv6Only ? 1 : 0; break;
+          case 18: val = sock.opts.multicastHops ?? 1; break; // IPV6_MULTICAST_HOPS
+          case 19: val = sock.opts.multicastLoop6 === undefined ? 1 : (sock.opts.multicastLoop6 ? 1 : 0); break; // IPV6_MULTICAST_LOOP
+          default: return -{{{ cDefs.ENOPROTOOPT }}};
+        }
       } else if (level === {{{ cDefs.IPPROTO_TCP }}}) {
         switch (optname) {
           case 1: val = sock.opts.noDelay ? 1 : 0; break;    // TCP_NODELAY

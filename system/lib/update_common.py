@@ -68,11 +68,9 @@ def get_llvm_version(upstream_dir):
 
 
 def update_readme(local_dir, llvm_dir):
-  readme_path = os.path.join(local_dir, 'readme.txt')
+  readme_path = os.path.join(local_dir, 'README.md')
   if not os.path.exists(readme_path):
-    readme_path = os.path.join(local_dir, 'README.txt')
-    if not os.path.exists(readme_path):
-      return
+    return
 
   with open(readme_path, 'r') as f:
     content = f.read()

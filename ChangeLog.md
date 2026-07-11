@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.3 (in development)
 ----------------------
+- Fixed `UTF8ToString` with `GROWABLE_ARRAYBUFFERS` set. String decoding now
+  copies the data when the heap buffer is resizable, just like it does in
+  the shared memory case. (#27242)
 - Added support for compiling FMA intrinsics. All 32 FMA intrinsics are
   supported, with 256-bit variants emulated via two 128-bit operations. Pass
   ``-msimd128 -mfma`` to enable. With ``-mrelaxed-simd -mfma``, Wasm relaxed
