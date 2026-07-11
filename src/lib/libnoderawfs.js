@@ -83,6 +83,14 @@ addToLibrary({
     },
     mkdir(...args) { fs.mkdirSync(...args); },
     symlink(...args) { fs.symlinkSync(...args); },
+    link(oldpath, newpath, flags) {
+      // AT_SYMLINK_FOLLOW (0x400): dereference oldpath if it is a symlink,
+      // since node's link(2) links to the symlink itself by default.
+      if (flags & 0x400) {
+        oldpath = fs.realpathSync(oldpath);
+      }
+      fs.linkSync(oldpath, newpath);
+    },
     rename(...args) { fs.renameSync(...args); },
     rmdir(...args) { fs.rmdirSync(...args); },
     readdir(...args) { return ['.', '..'].concat(fs.readdirSync(...args)); },
@@ -99,6 +107,12 @@ addToLibrary({
     },
     fstat(fd) {
       var stream = FS.getStreamChecked(fd);
+      // Virtual streams (pipes, sockets) have no backing node fd; defer to their
+      // own getattr rather than node's fs.fstatSync.
+      var getattr = stream.stream_ops?.getattr ?? stream.node.node_ops?.getattr;
+      if (getattr) {
+        return getattr(stream.stream_ops?.getattr ? stream : stream.node);
+      }
       return fs.fstatSync(stream.nfd);
     },
     statfs(path) {
@@ -152,16 +166,20 @@ addToLibrary({
       var stream = FS.getStreamChecked(fd);
       fs.ftruncateSync(stream.nfd, len);
     },
-    utime(path, atime, mtime) {
+    utime(path, atime, mtime, dontFollow) {
       // null here for atime or mtime means UTIME_OMIT was passed.  Since node
       // doesn't support this concept we need to first find the existing
       // timestamps in order to preserve them.
       if ((atime === null) || (mtime === null)) {
-        var st = fs.statSync(path);
+        var st = dontFollow ? fs.lstatSync(path) : fs.statSync(path);
         atime ||= st.atimeMs;
         mtime ||= st.mtimeMs;
       }
-      fs.utimesSync(path, atime/1000, mtime/1000);
+      if (dontFollow) {
+        fs.lutimesSync(path, atime/1000, mtime/1000);
+      } else {
+        fs.utimesSync(path, atime/1000, mtime/1000);
+      }
     },
     open(path, flags, mode) {
       flags = FS_modeStringToFlags(flags);

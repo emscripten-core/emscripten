@@ -5973,6 +5973,20 @@ got: 10
   def test_fs_emptyPath(self):
     self.do_runf_out_file('fs/test_emptyPath.c')
 
+  @no_windows('no symlink support on windows')
+  @also_with_nodefs_both
+  def test_fs_link(self):
+    self.do_runf('fs/test_link.c', 'done\n')
+
+  @no_windows('no symlink support on windows')
+  @also_with_nodefs_both
+  def test_fs_utimensat_nofollow(self):
+    self.do_runf('fs/test_utimensat_nofollow.c', 'done\n')
+
+  @also_with_nodefs_both
+  def test_fs_fadvise_fallocate(self):
+    self.do_runf('fs/test_fadvise_fallocate.c', 'done\n')
+
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
   @also_with_nodefs_both
