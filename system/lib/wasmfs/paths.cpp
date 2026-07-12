@@ -69,11 +69,10 @@ ParsedParent doParseParent(std::string_view path,
     return -ENOENT;
   }
 
-  // For backends that do not require path resolution, WasmFS must not
-  // interpret or traverse the path (e.g. via getChild). Once such a
-  // backend is reached, the remaining path is forwarded as a whole,
-  // and the backend is responsible for resolving it.
-  if (!curr->getBackend()->requiresPathResolution()) {
+  // If the current directory implementation does not require path resolution,
+  // stop traversing. WasmFS forwards the remaining path unchanged and the
+  // backend is responsible for parsing and resolving it.
+  if (!curr->requiresPathResolution()) {
     return {std::make_pair(std::move(curr), path)};
   }
 

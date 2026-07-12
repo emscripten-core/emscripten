@@ -23,14 +23,6 @@ public:
 
   virtual void populateRoot(Directory::Handle& lockedRoot) {}
 
-  // Indicates whether this backend relies on WasmFS to resolve paths and
-  // traverse the directory hierarchy.
-  // - true (default): WasmFS performs path parsing, symlink resolution,
-  //   and intermediate directory traversal for this backend.
-  // - false: the backend handles full paths itself (e.g. NODERAWFS), so
-  //   WasmFS should pass paths as-is without interpreting them.
-  virtual bool requiresPathResolution() { return true; }
-
   virtual ~Backend() = default;
 };
 

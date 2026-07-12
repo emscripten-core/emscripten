@@ -3,7 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include "emscripten/wasmfs.h"
+#include <emscripten/wasmfs.h>
 
 backend_t wasmfs_create_root_dir(void) {
   // Use an empty string as the backend "mountPath" to indicate that paths are

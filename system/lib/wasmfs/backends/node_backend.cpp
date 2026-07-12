@@ -285,6 +285,12 @@ private:
     }
     return {entries};
   }
+
+  bool requiresPathResolution() override {
+    // If state.path is empty (e.g. NODERAWFS), the backend handles full paths
+    // itself and WasmFS should pass paths through as-is.
+    return !state.path.empty();
+  }
 };
 
 class NodeBackend : public Backend {
@@ -304,13 +310,6 @@ public:
 
   std::shared_ptr<Symlink> createSymlink(std::string target) override {
     WASMFS_UNREACHABLE("TODO: implement NodeBackend::createSymlink");
-  }
-
-  bool requiresPathResolution() override {
-    // This backend requires WasmFS to resolve paths only if it has a non-empty
-    // mountPath. If mountPath is empty (e.g. NODERAWFS), the backend handles
-    // full paths itself and WasmFS should pass paths through as-is.
-    return !mountPath.empty();
   }
 };
 
