@@ -883,6 +883,8 @@ File system API
   - ``onReadFile`` — Indicates file is being read and number of bytes read.
   - ``onSeekFile`` — Indicates seeking within a file, position, and whence.
   - ``onCloseFile`` — Indicates a file being closed.
+  - ``onMakeDirectory`` — Indicates a directory being created.
+  - ``onMakeSymlink`` — Indicates a symlink (symbolic link) being created.
 
   :callback name: The name of the callback that indicates the filesystem event
 
