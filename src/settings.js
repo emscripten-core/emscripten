@@ -2200,7 +2200,7 @@ var ALLOW_UNIMPLEMENTED_SYSCALLS = true;
 // Allow calls to Worker(...) and importScripts(...) to be Trusted Types
 // compatible. Trusted Types is a Web Platform feature designed to mitigate DOM
 // XSS by restricting the usage of DOM sink APIs.
-// See https://w3c.github.io/webappsec-trusted-types/.
+// See https://www.w3.org/TR/trusted-types/.
 // [link]
 var TRUSTED_TYPES = false;
 
