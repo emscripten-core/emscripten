@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.3 (in development)
+6.0.4 (in development)
 ----------------------
+
+6.0.3 - 07/13/26
+----------------
 - Fixed `UTF8ToString` with `GROWABLE_ARRAYBUFFERS` set. String decoding now
   copies the data when the heap buffer is resizable, just like it does in
   the shared memory case. (#27242)
