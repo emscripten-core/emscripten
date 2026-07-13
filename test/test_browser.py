@@ -3954,6 +3954,12 @@ Module["preRun"] = () => {
   def test_pthread_run_on_main_thread(self):
     self.btest_exit('pthread/test_pthread_run_on_main_thread.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
+  # Test that proxying operations work when Atomics.waitAsync is disabled,
+  # forcing the waitAsyncPolyfilled/postMessage fallback path.
+  def test_pthread_no_waitasync(self):
+    create_file('pre.js', 'delete Atomics.waitAsync;\n')
+    self.btest_exit('pthread/test_pthread_proxy_to_pthread.c', cflags=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS', '--pre-js=pre.js'])
+
   # Test how a lot of back-to-back called proxying operations behave.
   def test_pthread_run_on_main_thread_flood(self):
     self.btest_exit('pthread/test_pthread_run_on_main_thread_flood.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
