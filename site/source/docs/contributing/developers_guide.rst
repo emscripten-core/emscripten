@@ -44,7 +44,9 @@ you can install the ``tot`` target:
 
 If you do want to contribute to LLVM or Binaryen, or to test modifications
 to them, you can
-:ref:`build them from source <installing-from-source>`.
+:ref:`build them from source <installing-from-source>`.  If you choose this
+option you can use the ``tools/maint/sync_deps.py`` script to help keep your
+sources in sync with ``test/emsdk_version.txt``.
 
 Repositories and branches of interest
 =====================================
