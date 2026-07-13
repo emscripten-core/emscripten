@@ -3,8 +3,18 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 var LibraryEmbindShared = {
-  $InternalError: "= class InternalError extends Error { constructor(message) { super(message); this.name = 'InternalError'; }}",
-  $BindingError: "= class BindingError extends Error { constructor(message) { super(message); this.name = 'BindingError'; }}",
+  $InternalError: class extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'InternalError';
+    }
+  },
+  $BindingError: class extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'BindingError';
+    }
+  },
 
   $throwInternalError__deps: ['$InternalError'],
   $throwInternalError: (message) => { throw new InternalError(message); },
