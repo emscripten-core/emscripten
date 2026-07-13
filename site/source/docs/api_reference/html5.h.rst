@@ -516,7 +516,7 @@ Struct
 
 .. c:type:: EmscriptenMouseEvent
 
-  The event structure passed in `mouse events <https://w3c.github.io/pointerevents/#mouseevent>`_: `click <https://w3c.github.io/pointerevents/#click>`_, `mousedown <https://w3c.github.io/pointerevents/#mousedown>`_, `mouseup <https://w3c.github.io/pointerevents/#mouseup>`_, `dblclick <https://w3c.github.io/pointerevents/#dblclick>`_, `mousemove <https://w3c.github.io/pointerevents/#mousemove>`_, `mouseenter <https://w3c.github.io/pointerevents/#mouseenter>`_, `mouseleave <https://w3c.github.io/pointerevents/#mouseleave>`_ and `contextmenu <https://w3c.github.io/pointerevents/#contextmenu>`_.
+  The event structure passed in `mouse events <https://www.w3.org/TR/pointerevents4/#mouse-events>`_: `click <https://www.w3.org/TR/pointerevents4/#click>`_, `mousedown <https://www.w3.org/TR/pointerevents4/#mousedown>`_, `mouseup <https://www.w3.org/TR/pointerevents4/#mouseup>`_, `dblclick <https://www.w3.org/TR/pointerevents4/#dblclick>`_, `mousemove <https://www.w3.org/TR/pointerevents4/#mousemove>`_, `mouseenter <https://www.w3.org/TR/pointerevents4/#mouseenter>`_, `mouseleave <https://www.w3.org/TR/pointerevents4/#mouseleave>`_ and `contextmenu <https://www.w3.org/TR/pointerevents4/#contextmenu>`_.
 
 
   .. c:member:: double timestamp
@@ -1502,7 +1502,7 @@ Functions
 
   Registers a callback function for receiving the `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
-  Pointer lock hides the mouse cursor and exclusively gives the target element relative mouse movement events via the `mousemove <https://w3c.github.io/pointerevents/#mousemove>`_ event.
+  Pointer lock hides the mouse cursor and exclusively gives the target element relative mouse movement events via the `mousemove <https://www.w3.org/TR/pointerevents4/#mousemove>`_ event.
 
   :param target: |target-parameter-doc|
   :type target: const char*
