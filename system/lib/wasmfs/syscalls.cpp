@@ -1855,6 +1855,15 @@ int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
   return 0;
 }
 
+int __syscall_linkat(int olddirfd,
+                     const char* oldpath,
+                     int newdirfd,
+                     const char* newpath,
+                     int flags) {
+  // Hardlinks are not supported in WASMFS.
+  return -EMLINK;
+}
+
 // epoll is implemented in the legacy (non-WASMFS) JS syscall layer only.
 int __syscall_epoll_create1(int flags) { return -ENOSYS; }
 

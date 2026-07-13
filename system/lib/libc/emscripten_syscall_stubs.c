@@ -96,10 +96,6 @@ weak pid_t __syscall_getppid() {
   return g_ppid;
 }
 
-weak int __syscall_linkat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath, int flags) {
-  return -EMLINK; // no hardlinks for us
-}
-
 weak int __syscall_getgroups32(int count, gid_t list[]) {
   if (count < 1) {
     return -EINVAL;
@@ -167,11 +163,6 @@ weak int __syscall_getresgid32(gid_t *rgid, gid_t *egid, gid_t *sgid) {
 weak int __syscall_madvise(void *addr, size_t length, int advice) {
   REPORT(madvise);
   // advice is welcome, but ignored
-  return 0;
-}
-
-weak int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
-  // this is purely advisory, so we don't warn
   return 0;
 }
 

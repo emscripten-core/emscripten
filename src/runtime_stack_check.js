@@ -4,7 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if STACK_OVERFLOW_CHECK
+#if !STACK_OVERFLOW_CHECK
+#error "should only be included in STACK_OVERFLOW_CHECK mode"
+#endif
 
 const stackCookie1 = 0x02135467;
 const stackCookie2 = 0x89BACDFE;
@@ -63,5 +65,3 @@ function checkStackCookie() {
   }
 #endif
 }
-
-#endif
