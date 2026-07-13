@@ -43,7 +43,6 @@ The site sources are stored on `GitHub <https://github.com/emscripten-core/emscr
 
 The site is published to the **emscripten-core/emscripten-site** *gh-pages* branch (GitHub pages).
 
-.. note:: Remember to update the :ref:`about-build-versions` for *public* builds.
 
 Installing Sphinx
 -----------------
@@ -63,41 +62,6 @@ The site can be built from source on Ubuntu and Windows by navigating to the */e
 
   make clean
   make html
-
-
-.. _about-sdk-builds:
-
-SDK Builds
-----------
-
-SDK builds are virtually identical to :ref:`about-site-builds`. The main difference is that on SDK builds the :ref:`home page <home-page>` has a clear notification that it is an SDK build.
-
-SDK builds are enabled by enabling the ``sdkbuild`` tag. This is done through the ``SPHINXOPTS`` environment variable: ::
-
-  # Set the sdkbuild tag.
-  set SPHINXOPTS=-t sdkbuild
-  make html
-
-  # Unset SPHINXOPTS
-  set SPHINXOPTS=
-
-.. _about-build-versions:
-
-Build version
--------------
-
-The documentation version should match the Emscripten version for the current build. For a general site build this will be the latest tagged release as defined in `Emscripten version <https://github.com/emscripten-core/emscripten/blob/main/emscripten-version.txt>`_. For an SDK build it will be the Emscripten version for the SDK.
-
-The version and release information is used in a few places in the documentation, for example :ref:`emscripten-authors`.
-
-The version information is defined in **conf.py** — see variables ``version`` and ``release``. These variables can be overridden by setting new values in the ``SPHINXOPTS`` environment variable. For example, to update the ``release`` variable through the command line on Windows: ::
-
-  # Set SPHINXOPTS
-  set SPHINXOPTS=-D release=6.40
-  make html
-
-  # Unset SPHINXOPTS
-  set SPHINXOPTS=
 
 
 .. _writing-and-updating-articles:
