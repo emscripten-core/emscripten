@@ -1094,7 +1094,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'promiseMap',
   'Browser',
   'requestFullscreen',
-  'requestFullScreen',
   'setCanvasSize',
   'getUserMedia',
   'createContext',
