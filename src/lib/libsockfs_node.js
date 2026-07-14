@@ -390,21 +390,19 @@ var NodeSockFSLibrary = {
       if (sock.connection) {
         var conn = sock.connection;
         var linger = sock.opts?.linger;
-        try {
-          if (linger?.onoff && linger.linger === 0 && conn.resetAndDestroy) {
-            // SO_LINGER with a zero timeout: abortive close - send RST and
-            // discard any unsent data.
-            conn.resetAndDestroy();
-          } else if (linger?.onoff && linger.linger > 0) {
-            // Positive timeout: flush gracefully, but node has no blocking
-            // close, so force the connection down once the interval elapses.
-            conn.end();
-            var timer = setTimeout(() => { try { conn.destroy(); } catch (e) {} }, linger.linger * 1000);
-            timer.unref?.();
-          } else {
-            conn.destroy();
-          }
-        } catch (e) {}
+        if (linger?.onoff && linger.linger === 0 && conn.resetAndDestroy) {
+          // SO_LINGER with a zero timeout: abortive close - send RST and
+          // discard any unsent data.
+          conn.resetAndDestroy();
+        } else if (linger?.onoff && linger.linger > 0) {
+          // Positive timeout: flush gracefully, but node has no blocking
+          // close, so force the connection down once the interval elapses.
+          conn.end();
+          var timer = setTimeout(() => conn.destroy(), linger.linger * 1000);
+          timer.unref?.();
+        } else {
+          conn.destroy();
+        }
         sock.connection = null;
       }
       // A bound handle that was never adopted by listen()/connect() is ours to
