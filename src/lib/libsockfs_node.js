@@ -226,31 +226,49 @@ var NodeSockFSLibrary = {
       // options that were set earlier.
       nodeSockHelpers.applyUdpOptions(sock);
     },
-    // Apply the buffered datagram options to a bound UDP socket.
+    // Apply the buffered datagram options to a bound UDP socket, returning the
+    // errno of the first rejected value (0 on success) so setsockopt can report
+    // an out-of-range option instead of silently dropping it. An unbound socket
+    // has no live handle yet, so options are just cached and validated later
+    // when this runs at bind. libuv's multicast TTL/loopback setters are
+    // family-agnostic, so the v4 and v6 optnames share one cached value each
+    // (multicastTtl for IP_MULTICAST_TTL/IPV6_MULTICAST_HOPS, multicastLoop for
+    // the two *_MULTICAST_LOOP options).
     applyUdpOptions(sock) {
       var h = sock.udp;
       var o = sock.opts;
-      if (!h || !o || !sock.udpReceiving) return;
-      // libuv's multicast TTL/loopback setters apply to whichever family the
-      // socket is, so IP_MULTICAST_TTL/IPV6_MULTICAST_HOPS and the two
-      // *_MULTICAST_LOOP options funnel through the same handle methods.
-      var mcastTtl = o.multicastTtl ?? o.multicastHops;
-      var mcastLoop = o.multicastLoop6 ?? o.multicastLoop;
+      if (!h || !o || !sock.udpReceiving) return 0;
+      var err = 0;
+      // The public dgram setters throw on a bad value; the udp_wrap handle
+      // setters instead return a negative libuv code. Capture both, and drop a
+      // rejected value so it neither takes effect nor re-fails a later replay.
+      var set = (fn, ...keys) => {
+        var bad = false;
+        try {
+          var r = fn();
+          if (typeof r === 'number' && r < 0) { bad = true; err ||= nodeSockHelpers.codeToErrno(r); }
+        } catch (e) {
+          bad = true;
+          err ||= nodeSockHelpers.nodeErrToErrno(e);
+        }
+        if (bad) for (var k of keys) delete o[k];
+      };
       if (sock.udpPublic) {
-        if (o.ttl !== undefined) { try { h.setTTL(o.ttl); } catch (e) {} }
-        if (o.broadcast !== undefined) { try { h.setBroadcast(!!o.broadcast); } catch (e) {} }
-        if (o.recvBuf !== undefined) { try { h.setRecvBufferSize(o.recvBuf); } catch (e) {} }
-        if (o.sendBuf !== undefined) { try { h.setSendBufferSize(o.sendBuf); } catch (e) {} }
-        if (mcastTtl !== undefined) { try { h.setMulticastTTL(mcastTtl); } catch (e) {} }
-        if (mcastLoop !== undefined) { try { h.setMulticastLoopback(!!mcastLoop); } catch (e) {} }
+        if (o.ttl !== undefined) set(() => h.setTTL(o.ttl), 'ttl');
+        if (o.broadcast !== undefined) set(() => h.setBroadcast(!!o.broadcast), 'broadcast');
+        if (o.recvBuf !== undefined) set(() => h.setRecvBufferSize(o.recvBuf), 'recvBuf');
+        if (o.sendBuf !== undefined) set(() => h.setSendBufferSize(o.sendBuf), 'sendBuf');
+        if (o.multicastTtl !== undefined) set(() => h.setMulticastTTL(o.multicastTtl), 'multicastTtl');
+        if (o.multicastLoop !== undefined) set(() => h.setMulticastLoopback(!!o.multicastLoop), 'multicastLoop');
       } else {
-        if (o.ttl !== undefined) { try { h.setTTL(o.ttl); } catch (e) {} }
-        if (o.broadcast !== undefined) { try { h.setBroadcast(o.broadcast ? 1 : 0); } catch (e) {} }
-        if (o.recvBuf !== undefined) { try { h.bufferSize(o.recvBuf, true, {}); } catch (e) {} }
-        if (o.sendBuf !== undefined) { try { h.bufferSize(o.sendBuf, false, {}); } catch (e) {} }
-        if (mcastTtl !== undefined) { try { h.setMulticastTTL(mcastTtl); } catch (e) {} }
-        if (mcastLoop !== undefined) { try { h.setMulticastLoopback(mcastLoop ? 1 : 0); } catch (e) {} }
+        if (o.ttl !== undefined) set(() => h.setTTL(o.ttl), 'ttl');
+        if (o.broadcast !== undefined) set(() => h.setBroadcast(o.broadcast ? 1 : 0), 'broadcast');
+        if (o.recvBuf !== undefined) set(() => h.bufferSize(o.recvBuf, true, {}), 'recvBuf');
+        if (o.sendBuf !== undefined) set(() => h.bufferSize(o.sendBuf, false, {}), 'sendBuf');
+        if (o.multicastTtl !== undefined) set(() => h.setMulticastTTL(o.multicastTtl), 'multicastTtl');
+        if (o.multicastLoop !== undefined) set(() => h.setMulticastLoopback(o.multicastLoop ? 1 : 0), 'multicastLoop');
       }
+      return err;
     },
     // The live OS buffer size from a bound UDP socket, or undefined.
     udpBufferSize(sock, recv) {
@@ -265,9 +283,7 @@ var NodeSockFSLibrary = {
       var conn = sock.connection;
       var o = sock.opts;
       if (!conn || !o) return;
-      if (o.noDelay !== undefined) {
-        try { conn.setNoDelay(!!o.noDelay); } catch (e) {}
-      }
+      if (o.noDelay !== undefined) conn.setNoDelay(!!o.noDelay);
       nodeSockHelpers.applyKeepAlive(sock);
     },
     // The keepalive tunables arrive from C in seconds, but node wants
@@ -277,13 +293,11 @@ var NodeSockFSLibrary = {
       var conn = sock.connection;
       var o = sock.opts;
       if (!conn || !o || o.keepAlive === undefined) return;
-      try {
-        conn.setKeepAlive(
-          !!o.keepAlive,
-          (o.keepAliveIdle || 0) * 1000,
-          (o.keepAliveIntvl || 0) * 1000,
-          o.keepAliveCnt || 0);
-      } catch (e) {}
+      conn.setKeepAlive(
+        !!o.keepAlive,
+        (o.keepAliveIdle || 0) * 1000,
+        (o.keepAliveIntvl || 0) * 1000,
+        o.keepAliveCnt || 0);
     },
     // Forward a connected node socket's events onto sock.
     wireConnection(sock, conn) {
@@ -295,7 +309,7 @@ var NodeSockFSLibrary = {
         sock.recv_bytes = (sock.recv_bytes || 0) + data.length;
         // If the peer outruns the reader, pause node and resume in recvmsg.
         if (sock.recv_bytes >= 262144 /* 256 KiB */) {
-          try { conn.pause(); } catch (e) {}
+          conn.pause();
           sock.paused = true;
         }
         SOCKFS.emit('message', sock.stream.fd);
@@ -386,8 +400,8 @@ var NodeSockFSLibrary = {
         } catch (e) {}
         sock.udp = null;
       }
-      if (sock.server) { try { sock.server.close(); } catch (e) {} sock.server = null; }
-      if (sock.connection) { try { sock.connection.destroy(); } catch (e) {} sock.connection = null; }
+      if (sock.server) { sock.server.close(); sock.server = null; }
+      if (sock.connection) { sock.connection.destroy(); sock.connection = null; }
       // A bound handle that was never adopted by listen()/connect() is ours to
       // release; once adopted the server/connection owns it.
       if (sock.bound && !sock.server && !sock.connection) {
@@ -406,7 +420,7 @@ var NodeSockFSLibrary = {
       if (how === 1 || how === 2) {
         // Half-close the write side (sends FIN); later sends fail with EPIPE.
         sock.writeShutdown = true;
-        try { sock.connection.end(); } catch (e) {}
+        sock.connection.end();
       }
       SOCKFS.emit('message', sock.stream.fd);
       return 0;
@@ -454,7 +468,7 @@ var NodeSockFSLibrary = {
           // async errors (e.g. ICMP ECONNREFUSED) on the socket. connectSync
           // binds first if needed and throws synchronously; a re-connect just
           // replaces the peer.
-          if (sock.udpConnected) { try { udp.disconnect(); } catch (e) {} }
+          if (sock.udpConnected) udp.disconnect();
           try { udp.connectSync(port, addr); }
           catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
           sock.udpConnected = true;
@@ -493,7 +507,7 @@ var NodeSockFSLibrary = {
         sock.sport = conn.localPort;
         sock.daddr = conn.remoteAddress || addr;
         sock.dport = conn.remotePort || port;
-        try { conn.resume(); } catch (e) {}
+        conn.resume();
         nodeSockHelpers.applyOptions(sock);
         SOCKFS.emit('open', sock.stream.fd);
       });
@@ -522,7 +536,7 @@ var NodeSockFSLibrary = {
         newsock.daddr = conn.remoteAddress;
         newsock.dport = conn.remotePort;
         nodeSockHelpers.wireConnection(newsock, conn);
-        try { conn.resume(); } catch (e) {} // paused by pauseOnConnect
+        conn.resume(); // paused by pauseOnConnect
         sock.pending.push(newsock);
         SOCKFS.emit('connection', newsock.stream.fd);
         // A queued client makes the listening socket readable (POLLIN).
@@ -657,7 +671,7 @@ var NodeSockFSLibrary = {
       sock.recv_bytes = Math.max(0, (sock.recv_bytes || 0) - bytesRead);
       if (sock.paused && sock.recv_bytes < 262144 && sock.connection) {
         sock.paused = false;
-        try { sock.connection.resume(); } catch (e) {}
+        sock.connection.resume();
       }
       return res;
     },
@@ -672,16 +686,13 @@ var NodeSockFSLibrary = {
             return 0;
           case 8: // SO_RCVBUF. Applied to the udp_wrap handle; Node TCP cannot.
             sock.opts.recvBuf = val;
-            nodeSockHelpers.applyUdpOptions(sock);
-            return 0;
+            return -nodeSockHelpers.applyUdpOptions(sock);
           case 7: // SO_SNDBUF. Applied to the udp_wrap handle; Node TCP cannot.
             sock.opts.sendBuf = val;
-            nodeSockHelpers.applyUdpOptions(sock);
-            return 0;
+            return -nodeSockHelpers.applyUdpOptions(sock);
           case 6: // SO_BROADCAST (datagram sockets)
             sock.opts.broadcast = !!val;
-            nodeSockHelpers.applyUdpOptions(sock);
-            return 0;
+            return -nodeSockHelpers.applyUdpOptions(sock);
           case 2: // SO_REUSEADDR. libuv forces SO_REUSEADDR on at bind, so this
             // is effectively always enabled; accept and ignore (getsockopt
             // reports 1). It cannot be turned off.
@@ -695,16 +706,13 @@ var NodeSockFSLibrary = {
         switch (optname) {
           case 2: // IP_TTL
             sock.opts.ttl = val;
-            nodeSockHelpers.applyUdpOptions(sock);
-            return 0;
+            return -nodeSockHelpers.applyUdpOptions(sock);
           case 33: // IP_MULTICAST_TTL
             sock.opts.multicastTtl = val;
-            nodeSockHelpers.applyUdpOptions(sock);
-            return 0;
+            return -nodeSockHelpers.applyUdpOptions(sock);
           case 34: // IP_MULTICAST_LOOP
             sock.opts.multicastLoop = !!val;
-            nodeSockHelpers.applyUdpOptions(sock);
-            return 0;
+            return -nodeSockHelpers.applyUdpOptions(sock);
         }
       } else if (level === {{{ cDefs.IPPROTO_IPV6 }}}) {
         switch (optname) {
@@ -715,20 +723,18 @@ var NodeSockFSLibrary = {
             if (sock.state) return -{{{ cDefs.EINVAL }}};
             sock.opts.ipv6Only = !!val;
             return 0;
-          case 18: // IPV6_MULTICAST_HOPS
-            sock.opts.multicastHops = val;
-            nodeSockHelpers.applyUdpOptions(sock);
-            return 0;
-          case 19: // IPV6_MULTICAST_LOOP
-            sock.opts.multicastLoop6 = !!val;
-            nodeSockHelpers.applyUdpOptions(sock);
-            return 0;
+          case 18: // IPV6_MULTICAST_HOPS (same libuv setting as IP_MULTICAST_TTL)
+            sock.opts.multicastTtl = val;
+            return -nodeSockHelpers.applyUdpOptions(sock);
+          case 19: // IPV6_MULTICAST_LOOP (same libuv setting as IP_MULTICAST_LOOP)
+            sock.opts.multicastLoop = !!val;
+            return -nodeSockHelpers.applyUdpOptions(sock);
         }
       } else if (level === {{{ cDefs.IPPROTO_TCP }}}) {
         switch (optname) {
           case 1: // TCP_NODELAY
             sock.opts.noDelay = !!val;
-            if (sock.connection) { try { sock.connection.setNoDelay(!!val); } catch (e) {} }
+            if (sock.connection) sock.connection.setNoDelay(!!val);
             return 0;
           case 4: // TCP_KEEPIDLE (seconds)
             sock.opts.keepAliveIdle = val;
@@ -777,8 +783,8 @@ var NodeSockFSLibrary = {
       } else if (level === {{{ cDefs.IPPROTO_IPV6 }}}) {
         switch (optname) {
           case {{{ cDefs.IPV6_V6ONLY }}}: val = sock.opts.ipv6Only ? 1 : 0; break;
-          case 18: val = sock.opts.multicastHops ?? 1; break; // IPV6_MULTICAST_HOPS
-          case 19: val = sock.opts.multicastLoop6 === undefined ? 1 : (sock.opts.multicastLoop6 ? 1 : 0); break; // IPV6_MULTICAST_LOOP
+          case 18: val = sock.opts.multicastTtl ?? 1; break; // IPV6_MULTICAST_HOPS
+          case 19: val = sock.opts.multicastLoop === undefined ? 1 : (sock.opts.multicastLoop ? 1 : 0); break; // IPV6_MULTICAST_LOOP
           default: return -{{{ cDefs.ENOPROTOOPT }}};
         }
       } else if (level === {{{ cDefs.IPPROTO_TCP }}}) {
