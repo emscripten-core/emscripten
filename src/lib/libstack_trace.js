@@ -71,7 +71,7 @@ var LibraryStackTrace = {
 
       if ((flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}})) {
         if (flags & {{{ cDefs.EM_LOG_NO_PATHS }}}) {
-          file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
+          file = file.substring(file.replace(/\\/g, '/').lastIndexOf('/')+1);
         }
         callstack += `    at ${symbolName} (${file}:${lineno}:${column})\n`;
       }

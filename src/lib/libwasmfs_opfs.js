@@ -6,13 +6,13 @@
 
 addToLibrary({
   $wasmfsOPFSDirectoryHandles__deps: ['$HandleAllocator'],
-  $wasmfsOPFSDirectoryHandles: "new HandleAllocator()",
+  $wasmfsOPFSDirectoryHandles: 'new HandleAllocator()',
   $wasmfsOPFSFileHandles__deps: ['$HandleAllocator'],
-  $wasmfsOPFSFileHandles: "new HandleAllocator()",
+  $wasmfsOPFSFileHandles: 'new HandleAllocator()',
   $wasmfsOPFSAccessHandles__deps: ['$HandleAllocator'],
-  $wasmfsOPFSAccessHandles: "new HandleAllocator()",
-  $wasmfsOPFSBlobs__deps: ["$HandleAllocator"],
-  $wasmfsOPFSBlobs: "new HandleAllocator()",
+  $wasmfsOPFSAccessHandles: 'new HandleAllocator()',
+  $wasmfsOPFSBlobs__deps: ['$HandleAllocator'],
+  $wasmfsOPFSBlobs: 'new HandleAllocator()',
 
 #if !PTHREADS
   // OPFS will only be used on modern browsers that supports JS classes.
@@ -95,10 +95,10 @@ addToLibrary({
     try {
       fileHandle = await parentHandle.getFileHandle(name, {create: create});
     } catch (e) {
-      if (e.name === "NotFoundError") {
+      if (e.name === 'NotFoundError') {
         return -{{{ cDefs.EEXIST }}};
       }
-      if (e.name === "TypeMismatchError") {
+      if (e.name === 'TypeMismatchError') {
         return -{{{ cDefs.EISDIR }}};
       }
 #if ASSERTIONS
@@ -120,10 +120,10 @@ addToLibrary({
       childHandle =
           await parentHandle.getDirectoryHandle(name, {create: create});
     } catch (e) {
-      if (e.name === "NotFoundError") {
+      if (e.name === 'NotFoundError') {
         return -{{{ cDefs.EEXIST }}};
       }
-      if (e.name === "TypeMismatchError") {
+      if (e.name === 'TypeMismatchError') {
         return -{{{ cDefs.ENOTDIR }}};
       }
 #if ASSERTIONS
@@ -167,7 +167,7 @@ addToLibrary({
         let [name, child] = entry.value;
         let sp = stackSave();
         let namePtr = stringToUTF8OnStack(name);
-        let type = child.kind == "file" ?
+        let type = child.kind == 'file' ?
             {{{ cDefs['File::DataFileKind'] }}} :
             {{{ cDefs['File::DirectoryKind'] }}};
           __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
@@ -261,7 +261,7 @@ addToLibrary({
         accessHandle = await fileHandle.createSyncAccessHandle();
       } else {
         accessHandle = await fileHandle.createSyncAccessHandle(
-            {mode: "in-place"});
+            {mode: 'in-place'});
       }
 #else
       accessHandle = await wasmfsOPFSCreateAsyncAccessHandle(fileHandle);
@@ -269,8 +269,8 @@ addToLibrary({
       accessID = wasmfsOPFSAccessHandles.allocate(accessHandle);
     } catch (e) {
       // TODO: Presumably only one of these will appear in the final API?
-      if (e.name === "InvalidStateError" ||
-          e.name === "NoModificationAllowedError") {
+      if (e.name === 'InvalidStateError' ||
+          e.name === 'NoModificationAllowedError') {
         accessID = -{{{ cDefs.EACCES }}};
       } else {
 #if ASSERTIONS
@@ -293,7 +293,7 @@ addToLibrary({
       let blob = await fileHandle.getFile();
       blobID = wasmfsOPFSBlobs.allocate(blob);
     } catch (e) {
-      if (e.name === "NotAllowedError") {
+      if (e.name === 'NotAllowedError') {
         blobID = -{{{ cDefs.EACCES }}};
       } else {
 #if ASSERTIONS
@@ -334,7 +334,7 @@ addToLibrary({
     try {
       return {{{ awaitIf(!PTHREADS) }}}accessHandle.read(data, {at: pos});
     } catch (e) {
-      if (e.name == "TypeError") {
+      if (e.name == 'TypeError') {
         return -{{{ cDefs.EINVAL }}};
       }
 #if ASSERTIONS
@@ -384,7 +384,7 @@ addToLibrary({
     try {
       return {{{ awaitIf(!PTHREADS) }}}accessHandle.write(data, {at: pos});
     } catch (e) {
-      if (e.name == "TypeError") {
+      if (e.name == 'TypeError') {
         return -{{{ cDefs.EINVAL }}};
       }
 #if ASSERTIONS

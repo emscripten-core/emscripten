@@ -69,7 +69,7 @@ LibraryJSEventLoop = {
           ++__setImmediate_id_counter;
         }
       }
-      addEventListener("message", __setImmediate_cb, true);
+      addEventListener('message', __setImmediate_cb, true);
       emSetImmediate = (func) => {
 #if PTHREADS
         if (ENVIRONMENT_IS_WORKER) {
@@ -370,7 +370,7 @@ LibraryJSEventLoop = {
               setImmediates.shift()();
             }
           };
-          addEventListener("message", MainLoop_setImmediate_messageHandler, true);
+          addEventListener('message', MainLoop_setImmediate_messageHandler, true);
           MainLoop.setImmediate = /** @type{function(function(): ?, ...?): number} */((func) => {
             setImmediates.push(func);
             if (ENVIRONMENT_IS_WORKER) {
@@ -455,7 +455,7 @@ LibraryJSEventLoop = {
           }
         }
 #if RUNTIME_DEBUG
-        dbg(`main loop blocker "${blocker.name}" took '${Date.now() - start} ms`); //, left: ' + MainLoop.remainingBlockers);
+        dbg(`main loop blocker '${blocker.name}' took ${Date.now() - start} ms`); //, left: ' + MainLoop.remainingBlockers);
 #endif
         MainLoop.updateStatus();
 

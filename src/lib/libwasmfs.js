@@ -251,19 +251,19 @@ addToLibrary({
     statBufToObject(statBuf) {
       // i53/u53 are enough for times and ino in practice.
       return {
-          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
-          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32") }}},
+          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, 'u32') }}},
+          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, 'u32') }}},
           nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, SIZE_TYPE) }}},
-          uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32") }}},
-          gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32") }}},
-          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32") }}},
-          size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53") }}},
-          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "i32") }}},
-          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "i32") }}},
-          atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, "i53") }}},
-          mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, "i53") }}},
-          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, "i53") }}},
-          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
+          uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, 'u32') }}},
+          gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, 'u32') }}},
+          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, 'u32') }}},
+          size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, 'i53') }}},
+          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, 'i32') }}},
+          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, 'i32') }}},
+          atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, 'i53') }}},
+          mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, 'i53') }}},
+          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, 'i53') }}},
+          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, 'u53') }}}
       }
     },
     stat(path) {
@@ -322,7 +322,7 @@ addToLibrary({
       var state = __wasmfs_readdir_start(pathBuffer);
       if (!state) {
         // TODO: The old FS threw an ErrnoError here.
-        throw new Error("No such directory");
+        throw new Error('No such directory');
       }
       var entry;
       while (entry = __wasmfs_readdir_get(state)) {
@@ -391,7 +391,7 @@ addToLibrary({
     createDevice(parent, name, input, output) {
       if (typeof parent != 'string') {
         // The old API allowed parents to be objects, which do not exist in WasmFS.
-        throw new Error("Only string paths are accepted");
+        throw new Error('Only string paths are accepted');
       }
       var path = PATH.join2(parent, name);
       var mode = FS_getMode(!!input, !!output);
@@ -440,7 +440,7 @@ addToLibrary({
 
       var deviceBackend = wasmFSDevices[dev];
       if (!deviceBackend) {
-        throw new Error("Invalid device ID.");
+        throw new Error('Invalid device ID.');
       }
 
       return FS.handleError(withStackSave(() => (

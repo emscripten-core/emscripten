@@ -22,7 +22,7 @@ addToLibrary({
   },
 
   // Finds the index of closing parens from the opening parens at arr[i].
-  // Used polymorphically for strings ("foo") and token arrays (['(', 'foo', ')']) as input.
+  // Used polymorphically for strings ('foo') and token arrays (['(', 'foo', ')']) as input.
   $find_closing_parens_index: (arr, i, opening='(', closing=')') => {
     for (var nesting = 0; i < arr.length; ++i) {
       if (arr[i] == opening) ++nesting;
@@ -65,7 +65,7 @@ addToLibrary({
     function classifyChar(str, idx) {
       var cc = str.charCodeAt(idx);
   #if ASSERTIONS
-      assert(!(cc > 127), "only 7-bit ASCII can be used in preprocessor #if/#ifdef/#define statements");
+      assert(!(cc > 127), 'only 7-bit ASCII can be used in preprocessor #if/#ifdef/#define statements');
   #endif
       if (cc > 32) {
         if (cc < 48) return 1; // an operator symbol, any of !"#$%&'()*+,-./

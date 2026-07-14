@@ -471,7 +471,7 @@ var LibraryGLEmulation = {
         {{{ fromPtr('length') }}}
         var source = GL.getSource(shader, count, string, length);
 #if GL_DEBUG
-        dbg("glShaderSource: Input: \n" + source);
+        dbg('glShaderSource: Input: \n' + source);
         GL.shaderOriginalSources[shader] = source;
 #endif
         // XXX We add attributes and uniforms to shaders. The program can ask for the # of them, and see the
@@ -575,7 +575,7 @@ var LibraryGLEmulation = {
         }
 #if GL_DEBUG
         GL.shaderSources[shader] = source;
-        dbg("glShaderSource: Output: \n" + source);
+        dbg('glShaderSource: Output: \n' + source);
 #endif
         GLctx.shaderSource(GL.shaders[shader], source);
       };
@@ -756,7 +756,7 @@ var LibraryGLEmulation = {
       switch (cap) {
         case 0xDE1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
 #if ASSERTIONS
-          abort("GL_TEXTURE_2D is not a spec-defined capability for gl{Enable,Disable}ClientState.");
+          abort('GL_TEXTURE_2D is not a spec-defined capability for gl{Enable,Disable}ClientState.');
 #endif
           // Fall through:
         case 0x8078: // GL_TEXTURE_COORD_ARRAY
@@ -1058,12 +1058,12 @@ var LibraryGLEmulation = {
       var GL_RGBA = 0x1908;
 
       // Our defs:
-      var TEXENVJIT_NAMESPACE_PREFIX = "tej_";
+      var TEXENVJIT_NAMESPACE_PREFIX = 'tej_';
       // Not actually constant, as they can be changed between JIT passes:
-      var TEX_UNIT_UNIFORM_PREFIX = "uTexUnit";
-      var TEX_COORD_VARYING_PREFIX = "vTexCoord";
-      var PRIM_COLOR_VARYING = "vPrimColor";
-      var TEX_MATRIX_UNIFORM_PREFIX = "uTexMatrix";
+      var TEX_UNIT_UNIFORM_PREFIX = 'uTexUnit';
+      var TEX_COORD_VARYING_PREFIX = 'vTexCoord';
+      var PRIM_COLOR_VARYING = 'vPrimColor';
+      var TEX_MATRIX_UNIFORM_PREFIX = 'uTexMatrix';
 
       // Static vars:
       var s_texUnits = null; //[];
@@ -1073,11 +1073,11 @@ var LibraryGLEmulation = {
 
       // Static funcs:
       function abort_noSupport(info) {
-        abort("[TexEnvJIT] ABORT: No support: " + info);
+        abort('[TexEnvJIT] ABORT: No support: ' + info);
       }
 
       function abort_sanity(info) {
-        abort("[TexEnvJIT] ABORT: Sanity failure: " + info);
+        abort('[TexEnvJIT] ABORT: Sanity failure: ' + info);
       }
 
       function genTexUnitSampleExpr(texUnitID) {
@@ -1087,15 +1087,15 @@ var LibraryGLEmulation = {
         var func = null;
         switch (texType) {
           case GL_TEXTURE_1D:
-            func = "texture2D";
+            func = 'texture2D';
             break;
           case GL_TEXTURE_2D:
-            func = "texture2D";
+            func = 'texture2D';
             break;
           case GL_TEXTURE_3D:
-            return abort_noSupport("No support for 3D textures.");
+            return abort_noSupport('No support for 3D textures.');
           case GL_TEXTURE_CUBE_MAP:
-            func = "textureCube";
+            func = 'textureCube';
             break;
           default:
             return abort_sanity(`Unknown texType: ${ptrToString(texType)}`);
@@ -1112,13 +1112,13 @@ var LibraryGLEmulation = {
         switch (op) {
           case GL_SRC_COLOR:
           case GL_ONE_MINUS_SRC_COLOR:
-            return "vec3";
+            return 'vec3';
           case GL_SRC_ALPHA:
           case GL_ONE_MINUS_SRC_ALPHA:
-            return "float";
+            return 'float';
         }
 
-        return abort_noSupport("Unsupported combiner op: " + ptrToString(op));
+        return abort_noSupport('Unsupported combiner op: ' + ptrToString(op));
       }
 
       function getCurTexUnit() {
@@ -1143,25 +1143,25 @@ var LibraryGLEmulation = {
             srcExpr = previousVar;
             break;
           default:
-              return abort_noSupport("Unsupported combiner src: " + ptrToString(src));
+              return abort_noSupport('Unsupported combiner src: ' + ptrToString(src));
         }
 
         var expr = null;
         switch (op) {
           case GL_SRC_COLOR:
-            expr = srcExpr + ".rgb";
+            expr = srcExpr + '.rgb';
             break;
           case GL_ONE_MINUS_SRC_COLOR:
-            expr = "(vec3(1.0) - " + srcExpr + ".rgb)";
+            expr = `(vec3(1.0) - ${srcExpr}.rgb)`;
             break;
           case GL_SRC_ALPHA:
-            expr = srcExpr + ".a";
+            expr = srcExpr + '.a';
             break;
           case GL_ONE_MINUS_SRC_ALPHA:
-            expr = "(1.0 - " + srcExpr + ".a)";
+            expr = `(1.0 - ${srcExpr}.a)`;
             break;
           default:
-            return abort_noSupport("Unsupported combiner op: " + ptrToString(op));
+            return abort_noSupport('Unsupported combiner op: ' + ptrToString(op));
         }
 
         return expr;
@@ -1309,7 +1309,7 @@ var LibraryGLEmulation = {
 
       CTexUnit.prototype.genPassLines = function CTexUnit_genPassLines(passOutputVar, passInputVar, texUnitID) {
         if (!this.enabled()) {
-          return ["vec4 " + passOutputVar + " = " + passInputVar + ";"];
+          return [`vec4 ${passOutputVar} = ${passInputVar};`];
         }
         var lines = this.env.genPassLines(passOutputVar, passInputVar, texUnitID).join('\n');
 
@@ -1324,9 +1324,9 @@ var LibraryGLEmulation = {
           var secondOccurrence = lines.slice(load.index+1).indexOf(texLoadExpr);
           if (secondOccurrence != -1) { // And also has a second occurrence of same load expression..
             // Create new var to store the common load.
-            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
-            var texLoadVar = prefix + 'texload' + loadCounter++;
-            var texLoadLine = 'vec4 ' + texLoadVar + ' = ' + texLoadExpr + ';\n';
+            var prefix = `${TEXENVJIT_NAMESPACE_PREFIX}env${texUnitID}_`;
+            var texLoadVar = `${prefix}texload${loadCounter++}`;
+            var texLoadLine = `vec4 ${texLoadVar} = ${texLoadExpr};\n`;
             texLoadLines += texLoadLine + '\n'; // Store the generated texture load statements in a temp string to not confuse regex search in progress.
             lines = lines.split(texLoadExpr).join(texLoadVar);
             // Reset regex search, since we modified the string.
@@ -1363,7 +1363,7 @@ var LibraryGLEmulation = {
              * Av = As
              */
             return [
-              "vec4 " + passOutputVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
+              `vec4 ${passOutputVar} = ${genTexUnitSampleExpr(texUnitID)};`,
             ];
           }
           case GL_ADD: {
@@ -1371,16 +1371,16 @@ var LibraryGLEmulation = {
              * Cv = Cp + Cs
              * Av = ApAs
              */
-            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
-            var texVar = prefix + "tex";
-            var colorVar = prefix + "color";
-            var alphaVar = prefix + "alpha";
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + '_';
+            var texVar = prefix + 'tex';
+            var colorVar = prefix + 'color';
+            var alphaVar = prefix + 'alpha';
 
             return [
-              "vec4 " + texVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
-              "vec3 " + colorVar + " = " + passInputVar + ".rgb + " + texVar + ".rgb;",
-              "float " + alphaVar + " = " + passInputVar + ".a * " + texVar + ".a;",
-              "vec4 " + passOutputVar + " = vec4(" + colorVar + ", " + alphaVar + ");",
+              'vec4 ' + texVar + ' = ' + genTexUnitSampleExpr(texUnitID) + ';',
+              'vec3 ' + colorVar + ' = ' + passInputVar + '.rgb + ' + texVar + '.rgb;',
+              'float ' + alphaVar + ' = ' + passInputVar + '.a * ' + texVar + '.a;',
+              'vec4 ' + passOutputVar + ' = vec4(' + colorVar + ', ' + alphaVar + ');',
             ];
           }
           case GL_MODULATE: {
@@ -1389,36 +1389,36 @@ var LibraryGLEmulation = {
              * Av = ApAs
              */
             var line = [
-              "vec4 " + passOutputVar,
-              " = ",
+              'vec4 ' + passOutputVar,
+              ' = ',
                 passInputVar,
-                " * ",
+                ' * ',
                 genTexUnitSampleExpr(texUnitID),
-              ";",
+              ';',
             ];
-            return [line.join("")];
+            return [line.join('')];
           }
           case GL_DECAL: {
             /* RGBA:
              * Cv = Cp(1 - As) + CsAs
              * Av = Ap
              */
-            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
-            var texVar = prefix + "tex";
-            var colorVar = prefix + "color";
-            var alphaVar = prefix + "alpha";
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + '_';
+            var texVar = prefix + 'tex';
+            var colorVar = prefix + 'color';
+            var alphaVar = prefix + 'alpha';
 
             return [
-              "vec4 " + texVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
+              'vec4 ' + texVar + ' = ' + genTexUnitSampleExpr(texUnitID) + ';',
               [
-                "vec3 " + colorVar + " = ",
-                  passInputVar + ".rgb * (1.0 - " + texVar + ".a)",
-                    " + ",
-                  texVar + ".rgb * " + texVar + ".a",
-                ";"
-              ].join(""),
-              "float " + alphaVar + " = " + passInputVar + ".a;",
-              "vec4 " + passOutputVar + " = vec4(" + colorVar + ", " + alphaVar + ");",
+                'vec3 ' + colorVar + ' = ',
+                  passInputVar + '.rgb * (1.0 - ' + texVar + '.a)',
+                    ' + ',
+                  texVar + '.rgb * ' + texVar + '.a',
+                ';'
+              ].join(''),
+              'float ' + alphaVar + ' = ' + passInputVar + '.a;',
+              'vec4 ' + passOutputVar + ' = vec4(' + colorVar + ', ' + alphaVar + ');',
             ];
           }
           case GL_BLEND: {
@@ -1426,28 +1426,28 @@ var LibraryGLEmulation = {
              * Cv = Cp(1 - Cs) + CcCs
              * Av = As
              */
-            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
-            var texVar = prefix + "tex";
-            var colorVar = prefix + "color";
-            var alphaVar = prefix + "alpha";
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + '_';
+            var texVar = prefix + 'tex';
+            var colorVar = prefix + 'color';
+            var alphaVar = prefix + 'alpha';
 
             return [
-              "vec4 " + texVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
+              'vec4 ' + texVar + ' = ' + genTexUnitSampleExpr(texUnitID) + ';',
               [
-                "vec3 " + colorVar + " = ",
-                  passInputVar + ".rgb * (1.0 - " + texVar + ".rgb)",
-                    " + ",
-                  PRIM_COLOR_VARYING + ".rgb * " + texVar + ".rgb",
-                ";"
-              ].join(""),
-              "float " + alphaVar + " = " + texVar + ".a;",
-              "vec4 " + passOutputVar + " = vec4(" + colorVar + ", " + alphaVar + ");",
+                'vec3 ' + colorVar + ' = ',
+                  passInputVar + '.rgb * (1.0 - ' + texVar + '.rgb)',
+                    ' + ',
+                  PRIM_COLOR_VARYING + '.rgb * ' + texVar + '.rgb',
+                ';'
+              ].join(''),
+              'float ' + alphaVar + ' = ' + texVar + '.a;',
+              'vec4 ' + passOutputVar + ' = vec4(' + colorVar + ', ' + alphaVar + ');',
             ];
           }
           case GL_COMBINE: {
-            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
-            var colorVar = prefix + "color";
-            var alphaVar = prefix + "alpha";
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + '_';
+            var colorVar = prefix + 'color';
+            var alphaVar = prefix + 'alpha';
             var colorLines = this.genCombinerLines(true, colorVar,
                                                    passInputVar, texUnitID,
                                                    this.colorCombiner, this.colorSrc, this.colorOp);
@@ -1456,24 +1456,24 @@ var LibraryGLEmulation = {
                                                    this.alphaCombiner, this.alphaSrc, this.alphaOp);
 
             // Generate scale, but avoid generating an identity op that multiplies by one.
-            var scaledColor = (this.colorScale == 1) ? colorVar : (colorVar + " * " + valToFloatLiteral(this.colorScale));
-            var scaledAlpha = (this.alphaScale == 1) ? alphaVar : (alphaVar + " * " + valToFloatLiteral(this.alphaScale));
+            var scaledColor = (this.colorScale == 1) ? colorVar : (colorVar + ' * ' + valToFloatLiteral(this.colorScale));
+            var scaledAlpha = (this.alphaScale == 1) ? alphaVar : (alphaVar + ' * ' + valToFloatLiteral(this.alphaScale));
 
             var line = [
-              "vec4 " + passOutputVar,
-              " = ",
-                "vec4(",
+              'vec4 ' + passOutputVar,
+              ' = ',
+                'vec4(',
                     scaledColor,
-                    ", ",
+                    ', ',
                     scaledAlpha,
-                ")",
-              ";",
-            ].join("");
+                ')',
+              ';',
+            ].join('');
             return [].concat(colorLines, alphaLines, [line]);
           }
         }
 
-        return abort_noSupport("Unsupported TexEnv mode: " + ptrToString(this.mode));
+        return abort_noSupport('Unsupported TexEnv mode: ' + ptrToString(this.mode));
       }
 
       CTexEnv.prototype.genCombinerLines = function CTexEnv_getCombinerLines(isColor, outputVar,
@@ -1497,20 +1497,20 @@ var LibraryGLEmulation = {
             break;
 
           default:
-            return abort_noSupport("Unsupported combiner: " + ptrToString(combiner));
+            return abort_noSupport('Unsupported combiner: ' + ptrToString(combiner));
         }
 
         var constantExpr = [
-          "vec4(",
+          'vec4(',
             valToFloatLiteral(this.envColor[0]),
-            ", ",
+            ', ',
             valToFloatLiteral(this.envColor[1]),
-            ", ",
+            ', ',
             valToFloatLiteral(this.envColor[2]),
-            ", ",
+            ', ',
             valToFloatLiteral(this.envColor[3]),
-          ")",
-        ].join("");
+          ')',
+        ].join('');
         var src0Expr = (argsNeeded >= 1) ? genCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[0], opArr[0])
                                          : null;
         var src1Expr = (argsNeeded >= 2) ? genCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[1], opArr[1])
@@ -1518,7 +1518,7 @@ var LibraryGLEmulation = {
         var src2Expr = (argsNeeded >= 3) ? genCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[2], opArr[2])
                                          : null;
 
-        var outputType = isColor ? "vec3" : "float";
+        var outputType = isColor ? 'vec3' : 'float';
         var lines = null;
         switch (combiner) {
           case GL_REPLACE: {
@@ -1550,7 +1550,7 @@ var LibraryGLEmulation = {
           }
 
           default:
-            return abort_sanity("Unmatched TexEnv.colorCombiner?");
+            return abort_sanity('Unmatched TexEnv.colorCombiner?');
         }
 
         return lines;
@@ -1590,20 +1590,20 @@ var LibraryGLEmulation = {
 
             s_requiredTexUnitsForPass.push(i);
 
-            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + i + "_";
-            var passOutputVar = prefix + "result";
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + i + '_';
+            var passOutputVar = prefix + 'result';
 
             var newLines = s_texUnits[i].genPassLines(passOutputVar, lastPassVar, i);
-            lines = lines.concat(newLines, [""]);
+            lines = lines.concat(newLines, ['']);
 
             lastPassVar = passOutputVar;
           }
-          lines.push(resultDest + " = " + lastPassVar + ";");
+          lines.push(resultDest + ' = ' + lastPassVar + ';');
 
-          var indent = "";
-          for (var i = 0; i < indentSize; i++) indent += " ";
+          var indent = '';
+          for (var i = 0; i < indentSize; i++) indent += ' ';
 
-          var output = indent + lines.join("\n" + indent);
+          var output = indent + lines.join('\n' + indent);
 
           return output;
         },
@@ -2044,7 +2044,7 @@ var LibraryGLEmulation = {
         GLImmediate.rendererComponents[name] = 1;
 #if ASSERTIONS
         if (GLImmediate.enabledClientAttributes[name]) {
-          warnOnce("Warning: glTexCoord used after EnableClientState for TEXTURE_COORD_ARRAY for TEXTURE0. Disabling TEXTURE_COORD_ARRAY...");
+          warnOnce('Warning: glTexCoord used after EnableClientState for TEXTURE_COORD_ARRAY for TEXTURE0. Disabling TEXTURE_COORD_ARRAY...');
         }
 #endif
         GLImmediate.enabledClientAttributes[name] = true;
@@ -2161,7 +2161,7 @@ var LibraryGLEmulation = {
 #if ASSERTIONS
         if (!useCurrProgram) {
           if (GLImmediate.TexEnvJIT.getTexUnitType(i) == 0) {
-             warnOnce("GL_TEXTURE" + i + " coords are supplied, but that texture unit is disabled in the fixed-function pipeline.");
+             warnOnce('GL_TEXTURE' + i + ' coords are supplied, but that texture unit is disabled in the fixed-function pipeline.');
           }
         }
 #endif
@@ -2341,7 +2341,7 @@ var LibraryGLEmulation = {
                 '  return fog;                 ',
                 '}',
                 '',
-              ].join("\n");
+              ].join('\n');
             }
 
             var fogPass = null;
@@ -2397,7 +2397,7 @@ var LibraryGLEmulation = {
               fsAlphaTestPass,
               '}',
               ''
-            ].join("\n").replace(/\n\n+/g, '\n');
+            ].join('\n').replace(/\n\n+/g, '\n');
 
             this.fragmentShader = GLctx.createShader(GLctx.FRAGMENT_SHADER);
             GLctx.shaderSource(this.fragmentShader, fsSource);
@@ -3024,7 +3024,7 @@ var LibraryGLEmulation = {
       var numVertices = 4 * GLImmediate.vertexCounter / GLImmediate.stride;
       if (!numVertices) return;
 #if ASSERTIONS
-      assert(numVertices % 1 == 0, "`numVertices` must be an integer.");
+      assert(numVertices % 1 == 0, '`numVertices` must be an integer.');
 #endif
       var emulatedElementArrayBuffer = false;
       var numIndexes = 0;

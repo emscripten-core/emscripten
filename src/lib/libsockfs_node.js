@@ -326,7 +326,7 @@ var NodeSockFSLibrary = {
   $nodeSockOps__deps: ['$nodeSockHelpers', '$SOCKFS', '$ERRNO_CODES'],
   $nodeSockOps__postset: `
     if (!ENVIRONMENT_IS_NODE) {
-      throw new Error("NODERAWSOCKETS is currently only supported on Node.js environment.")
+      throw new Error('NODERAWSOCKETS is currently only supported on Node.js environment.')
     }`,
   $nodeSockOps: {
     poll(sock) {

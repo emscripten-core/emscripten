@@ -43,13 +43,13 @@ addToLibrary({
         return parts[parts.length-1];
       }
       // We also accept FileList here
-      for (var file of (mount.opts["files"] || [])) {
+      for (var file of (mount.opts['files'] || [])) {
         WORKERFS.createNode(ensureParent(file.name), base(file.name), WORKERFS.FILE_MODE, 0, file, file.lastModifiedDate);
       }
-      for (var obj of (mount.opts["blobs"] || [])) {
-        WORKERFS.createNode(ensureParent(obj["name"]), base(obj["name"]), WORKERFS.FILE_MODE, 0, obj["data"]);
+      for (var obj of (mount.opts['blobs'] || [])) {
+        WORKERFS.createNode(ensureParent(obj['name']), base(obj['name']), WORKERFS.FILE_MODE, 0, obj['data']);
       }
-      for (var pack of (mount.opts["packages"] || [])) {
+      for (var pack of (mount.opts['packages'] || [])) {
         for (var file of pack['metadata'].files) {
           var name = file.filename.slice(1); // remove initial slash
           WORKERFS.createNode(ensureParent(name), base(name), WORKERFS.FILE_MODE, 0, pack['blob'].slice(file.start, file.end));
@@ -95,7 +95,7 @@ addToLibrary({
         };
       },
       setattr(node, attr) {
-        for (const key of ["mode", "atime", "mtime", "ctime"]) {
+        for (const key of ['mode', 'atime', 'mtime', 'ctime']) {
           if (attr[key] != null) {
             node[key] = attr[key];
           }
@@ -157,5 +157,5 @@ addToLibrary({
 });
 
 if (WASMFS) {
-  error("using -lworkerfs is not currently supported in WasmFS.");
+  error('using -lworkerfs is not currently supported in WasmFS.');
 }

@@ -26,7 +26,7 @@
   // In pthread builds this gets defined in libpthread.js
   const CMD_UNCAUGHT_EXN = 8;
 #endif
-  const workerSupportsFutexWait = () => AUDIO_WORKLET ? "!ENVIRONMENT_IS_AUDIO_WORKLET" : '1';
+  const workerSupportsFutexWait = () => AUDIO_WORKLET ? '!ENVIRONMENT_IS_AUDIO_WORKLET' : '1';
   const wasmWorkerJs = `
 #if MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
@@ -108,7 +108,7 @@ addToLibrary({
     assert(wwParams.stackSize % {{{ STACK_ALIGN }}} == 0);
 #endif
 #if RUNTIME_DEBUG
-    dbg("wasmWorkerInitializeRuntime wwID:", wwParams.wwID);
+    dbg('wasmWorkerInitializeRuntime wwID:', wwParams.wwID);
 #endif
 
 #if !MINIMAL_RUNTIME && isSymbolNeeded('$noExitRuntime')
@@ -185,7 +185,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #endif
   ) {
   _wasmWorkers[0] = globalThis;
-  addEventListener("message", _wasmWorkerAppendToQueue);
+  addEventListener('message', _wasmWorkerAppendToQueue);
 }`,
   _emscripten_create_wasm_worker: (wwID, stackLowestAddress, stackSize, pthreadPtr) => {
 #if ASSERTIONS
@@ -234,7 +234,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     }
 #endif
 #if RUNTIME_DEBUG
-    dbg("done _emscripten_create_wasm_worker", wwID)
+    dbg('done _emscripten_create_wasm_worker', wwID)
 #endif
     return true;
   },

@@ -158,20 +158,20 @@ var LibraryPThread = {
 #if PTHREADS_PROFILING
     getThreadName(pthreadPtr) {
       var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, '*') }}};
-      if (!profilerBlock) return "";
+      if (!profilerBlock) return '';
       return UTF8ToString(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}});
     },
 
     threadStatusToString(threadStatus) {
       switch (threadStatus) {
-        case 0: return "not yet started";
-        case 1: return "running";
-        case 2: return "sleeping";
-        case 3: return "waiting for a futex";
-        case 4: return "waiting for a mutex";
-        case 5: return "waiting for a proxied operation";
-        case 6: return "finished execution";
-        default: return "unknown (corrupt?!)";
+        case 0: return 'not yet started';
+        case 1: return 'running';
+        case 2: return 'sleeping';
+        case 3: return 'waiting for a futex';
+        case 4: return 'waiting for a mutex';
+        case 5: return 'waiting for a proxied operation';
+        case 6: return 'finished execution';
+        default: return 'unknown (corrupt?!)';
       }
     },
 
@@ -790,7 +790,7 @@ var LibraryPThread = {
       return {{{ cDefs.EAGAIN }}};
     }
 #if PTHREADS_DEBUG
-    dbg("createThread: " + ptrToString(pthread_ptr));
+    dbg('createThread: ' + ptrToString(pthread_ptr));
 #endif
 
     // List of JS objects that will transfer ownership to the Worker hosting the thread
@@ -1087,7 +1087,7 @@ var LibraryPThread = {
 #if MEMORY64
     // In memory64 mode some proxied functions return bigint/pointer but
     // our return type is i53/double.
-    if (typeof rtn == "bigint") {
+    if (typeof rtn == 'bigint') {
       rtn = bigintToI53Checked(rtn);
     }
 #endif
@@ -1095,7 +1095,7 @@ var LibraryPThread = {
     // Proxied functions can return any type except bigint.  All other types
     // coerce to f64/double (the return type of this function in C) but not
     // bigint.
-    assert(typeof rtn != "bigint");
+    assert(typeof rtn != 'bigint');
 #endif
     return rtn;
   },
@@ -1225,7 +1225,7 @@ var LibraryPThread = {
   $dlsyncThreadsAsync: async () => {
     const caller = PThread.currentProxiedOperationCallerThread;
 #if PTHREADS_DEBUG
-    dbg("dlsyncThreadsAsync caller=" + ptrToString(caller));
+    dbg('dlsyncThreadsAsync caller=' + ptrToString(caller));
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'dlsyncThreadsAsync() should only be called from the main thread');

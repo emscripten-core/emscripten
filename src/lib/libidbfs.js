@@ -147,7 +147,7 @@ addToLibrary({
         return callback(e);
       }
       if (!req) {
-        return callback("Unable to connect to IndexedDB");
+        return callback('Unable to connect to IndexedDB');
       }
       req.onupgradeneeded = (e) => {
         var db = /** @type {IDBDatabase} */ (e.target.result);
@@ -406,5 +406,5 @@ addToLibrary({
 });
 
 if (WASMFS) {
-  error("using -lidbfs is not currently supported in WasmFS.");
+  error('using -lidbfs is not currently supported in WasmFS.');
 }

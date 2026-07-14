@@ -113,22 +113,22 @@ var LibraryEmbindShared = {
   $getFunctionName__deps: [],
   $getFunctionName: (signature) => {
     signature = signature.trim();
-    const argsIndex = signature.indexOf("(");
+    const argsIndex = signature.indexOf('(');
     if (argsIndex === -1) return signature;
 #if ASSERTIONS
-    assert(signature.endsWith(")"), "Parentheses for argument names should match.");
+    assert(signature.endsWith(')'), 'Parentheses for argument names should match.');
 #endif
     return signature.slice(0, argsIndex);
   },
   $getFunctionArgsName__deps: [],
   $getFunctionArgsName: (signature) => {
     signature = signature.trim();
-    const argsIndex = signature.indexOf("(");
+    const argsIndex = signature.indexOf('(');
     if (argsIndex == -1) return; // Return undefined to mean we don't have any argument names
 #if ASSERTIONS
-    assert(signature.endsWith(")"), "Parentheses for argument names should match.");
+    assert(signature.endsWith(')'), 'Parentheses for argument names should match.');
 #endif
-    return signature.slice(argsIndex + 1, -1).replaceAll(" ", "").split(",").filter(n => n.length);
+    return signature.slice(argsIndex + 1, -1).replaceAll(' ', '').split(',').filter(n => n.length);
   },
   $heap32VectorToArray: (count, firstElement) => {
     var array = [];
@@ -232,7 +232,7 @@ var LibraryEmbindShared = {
     var invokerFnBody = `return function (${argsList}) {\n`;
 
 #if ASSERTIONS
-    invokerFnBody += "checkArgCount(arguments.length, minArgs, maxArgs, humanName, throwBindingError);\n";
+    invokerFnBody += 'checkArgCount(arguments.length, minArgs, maxArgs, humanName, throwBindingError);\n';
 #endif
 
 #if EMSCRIPTEN_TRACING
@@ -240,14 +240,14 @@ var LibraryEmbindShared = {
 #endif
 
     if (needsDestructorStack) {
-      invokerFnBody += "var destructors = [];\n";
+      invokerFnBody += 'var destructors = [];\n';
     }
 
-    var dtorStack = needsDestructorStack ? "destructors" : "null";
-    var args1 = ["humanName", "throwBindingError", "invoker", "fn", "runDestructors", "fromRetWire", "toClassParamWire"];
+    var dtorStack = needsDestructorStack ? 'destructors' : 'null';
+    var args1 = ['humanName', 'throwBindingError', 'invoker', 'fn', 'runDestructors', 'fromRetWire', 'toClassParamWire'];
 
 #if EMSCRIPTEN_TRACING
-    args1.push("Module");
+    args1.push('Module');
 #endif
 
     if (isClassMethodFunc) {
@@ -260,21 +260,21 @@ var LibraryEmbindShared = {
       args1.push(argName);
     }
 
-    invokerFnBody += (returns || isAsync ? "var rv = ":"") + `invoker(${argsListWired});\n`;
+    invokerFnBody += (returns || isAsync ? 'var rv = ' : '') + `invoker(${argsListWired});\n`;
 
-    var returnVal = returns ? "rv" : "";
+    var returnVal = returns ? 'rv' : '';
 #if ASYNCIFY == 1
-    args1.push("Asyncify");
+    args1.push('Asyncify');
 #endif
 #if ASYNCIFY
     invokerFnBody += `function onDone(${returnVal}) {\n`;
 #endif
 
     if (needsDestructorStack) {
-      invokerFnBody += "runDestructors(destructors);\n";
+      invokerFnBody += 'runDestructors(destructors);\n';
     } else {
       for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
-        var paramName = (i === 1 ? "thisWired" : ("arg"+(i - 2)+"Wired"));
+        var paramName = (i === 1 ? 'thisWired' : `arg${i - 2}Wired`);
         if (argTypes[i].destructorFunction !== null) {
           invokerFnBody += `${paramName}_dtor(${paramName});\n`;
           args1.push(`${paramName}_dtor`);
@@ -283,26 +283,26 @@ var LibraryEmbindShared = {
     }
 
     if (returns) {
-      invokerFnBody += "var ret = fromRetWire(rv);\n" +
+      invokerFnBody += 'var ret = fromRetWire(rv);\n' +
 #if EMSCRIPTEN_TRACING
-                       "Module.emscripten_trace_exit_context();\n" +
+                       'Module.emscripten_trace_exit_context();\n' +
 #endif
-                       "return ret;\n";
+                       'return ret;\n';
     } else {
 #if EMSCRIPTEN_TRACING
-      invokerFnBody += "Module.emscripten_trace_exit_context();\n";
+      invokerFnBody += 'Module.emscripten_trace_exit_context();\n';
 #endif
     }
 
 #if ASYNCIFY == 1
-    invokerFnBody += "}\n";
+    invokerFnBody += '}\n';
     invokerFnBody += `return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(${returnVal});\n`
 #elif ASYNCIFY == 2
-    invokerFnBody += "}\n";
-    invokerFnBody += "return " + (isAsync ? "rv.then(onDone)" : `onDone(${returnVal})`) + ";";
+    invokerFnBody += '}\n';
+    invokerFnBody += 'return ' + (isAsync ? 'rv.then(onDone)' : `onDone(${returnVal})`) + ';';
 #endif
 
-    invokerFnBody += "}\n";
+    invokerFnBody += '}\n';
 
 #if ASSERTIONS
     args1.push('checkArgCount', 'minArgs', 'maxArgs');

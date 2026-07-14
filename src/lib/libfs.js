@@ -1147,7 +1147,7 @@ FS.staticInit();`;
       });
     },
     open(path, flags, mode = 0o666) {
-      if (path === "") {
+      if (path === '') {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
       flags = FS_modeStringToFlags(flags);
@@ -1161,7 +1161,7 @@ FS.staticInit();`;
       if (typeof path == 'object') {
         node = path;
       } else {
-        isDirPath = path.endsWith("/");
+        isDirPath = path.endsWith('/');
         // noent_okay makes it so that if the final component of the path
         // doesn't exist, lookupPath returns `node: undefined`. `path` will be
         // updated to point to the target of all symlinks.
@@ -1770,7 +1770,7 @@ FS.staticInit();`;
       dbg(`forceLoadFile: ${obj.url}`)
  #endif
       if (globalThis.XMLHttpRequest) {
-        abort("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
+        abort('Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.');
       } else { // Command-line.
         try {
           obj.contents = readBinary(obj.url);
@@ -1813,11 +1813,11 @@ FS.staticInit();`;
           var xhr = new XMLHttpRequest();
           xhr.open('HEAD', url, false);
           xhr.send(null);
-          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
-          var datalength = Number(xhr.getResponseHeader("Content-length"));
+          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort(`Couldn't load ${url}. Status: ${xhr.status}`);
+          var datalength = Number(xhr.getResponseHeader('Content-length'));
           var header;
-          var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
-          var usesGzip = (header = xhr.getResponseHeader("Content-Encoding")) && header === "gzip";
+          var hasByteServing = (header = xhr.getResponseHeader('Accept-Ranges')) && header === 'bytes';
+          var usesGzip = (header = xhr.getResponseHeader('Content-Encoding')) && header === 'gzip';
 
   #if SMALL_XHR_CHUNKS
           var chunkSize = 1024; // Chunk size in bytes
@@ -1835,7 +1835,7 @@ FS.staticInit();`;
             // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
             var xhr = new XMLHttpRequest();
             xhr.open('GET', url, false);
-            if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
+            if (datalength !== chunkSize) xhr.setRequestHeader('Range', `bytes=${from}-${to}`);
 
             // Some hints to the browser that we want binary data.
             xhr.responseType = 'arraybuffer';
@@ -1844,7 +1844,7 @@ FS.staticInit();`;
             }
 
             xhr.send(null);
-            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
+            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort(`Couldn't load ${url}. Status: ${xhr.status}`);
             if (xhr.response !== undefined) {
               return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
             }
@@ -1867,7 +1867,7 @@ FS.staticInit();`;
             chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
             datalength = this.getter(0).length;
             chunkSize = datalength;
-            out("LazyFiles on gzip forces download of the whole file when length is accessed");
+            out('LazyFiles on gzip forces download of the whole file when length is accessed');
           }
 
           this._length = datalength;

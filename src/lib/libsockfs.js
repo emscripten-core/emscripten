@@ -220,13 +220,13 @@ addToLibrary({
 
             if (url === 'ws://' || url === 'wss://') { // Is the supplied URL config just a prefix, if so complete it.
               var parts = addr.split('/');
-              url = url + parts[0] + ":" + port + "/" + parts.slice(1).join('/');
+              url = url + parts[0] + ':' + port + '/' + parts.slice(1).join('/');
             }
 
             if (subProtocols !== 'null') {
               // The regex trims the string (removes spaces at the beginning and end), then splits the string by
               // <any space>,<any space> into an Array. Whitespace removal is important for Websockify and ws.
-              subProtocols = subProtocols.replace(/^ +| +$/g,"").split(/ *, */);
+              subProtocols = subProtocols.replace(/^ +| +$/g,'').split(/ *, */);
 
               opts = subProtocols;
             }
