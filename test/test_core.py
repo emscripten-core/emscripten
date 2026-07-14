@@ -5987,6 +5987,13 @@ got: 10
   def test_fs_fadvise_fallocate(self):
     self.do_runf('fs/test_fadvise_fallocate.c', 'done\n')
 
+  @no_windows('no uid/gid concept on windows')
+  def test_fs_getuid_noderawfs(self):
+    # The default backends report 0 and are covered by unistd/misc.c. This test
+    # verifies NODERAWFS reports the real host process credentials.
+    self.setup_noderawfs_test()
+    self.do_runf('fs/test_getuid_noderawfs.c', 'done\n')
+
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
   @also_with_nodefs_both

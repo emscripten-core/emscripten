@@ -1864,6 +1864,13 @@ int __syscall_linkat(int olddirfd,
   return -EMLINK;
 }
 
+// NODERAWFS credential reporting is implemented in the legacy JS syscall layer
+// only.
+uid_t __syscall_getuid32(void) { return 0; }
+uid_t __syscall_geteuid32(void) { return 0; }
+gid_t __syscall_getgid32(void) { return 0; }
+gid_t __syscall_getegid32(void) { return 0; }
+
 // epoll is implemented in the legacy (non-WASMFS) JS syscall layer only.
 int __syscall_epoll_create1(int flags) { return -ENOSYS; }
 
