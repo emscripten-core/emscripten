@@ -410,7 +410,7 @@ class sockets(BrowserCore):
   def test_noderawsockets_echo(self):
     # With -sNODERAWSOCKETS the client does a non-blocking connect, send and
     # recv over a real OS socket against a loopback echo server we run here.
-    self._run_against_echo_server('sockets/test_tcp_echo.c', 'TCP ECHO PASS')
+    self._run_against_echo_server('sockets/test_tcp_echo.c', 'done\n')
 
   def test_noderawsockets_client_bind(self):
     # A client that bind()s an explicit source port has it honored by connect(),
@@ -427,7 +427,7 @@ class sockets(BrowserCore):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-      self.do_runf('sockets/test_tcp_client_bind.c', 'CLIENT BIND PASS',
+      self.do_runf('sockets/test_tcp_client_bind.c', 'done\n',
                    cflags=['-sNODERAWSOCKETS'], args=[str(port), str(src_port)])
     finally:
       server.shutdown()
@@ -437,11 +437,11 @@ class sockets(BrowserCore):
   def test_noderawsockets_client_semantics(self):
     # EISCONN on a second connect, shutdown(SHUT_WR) leaving reads working,
     # EPIPE on a write after that, and POLLHUP after a full shutdown(SHUT_RDWR).
-    self._run_against_echo_server('sockets/test_tcp_client_semantics.c', 'CLIENT SEMANTICS PASS')
+    self._run_against_echo_server('sockets/test_tcp_client_semantics.c', 'done\n')
 
   def test_noderawsockets_refused(self):
     # A connect to a loopback port with nothing listening reports ECONNREFUSED.
-    self.do_runf('sockets/test_tcp_refused.c', 'REFUSED PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_tcp_refused.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   def test_noderawsockets_backpressure(self):
     # A sink server that accepts but never reads, so the client's writes fill
@@ -457,7 +457,7 @@ class sockets(BrowserCore):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-      self.do_runf('sockets/test_tcp_backpressure.c', 'BACKPRESSURE PASS',
+      self.do_runf('sockets/test_tcp_backpressure.c', 'done\n',
                    cflags=['-sNODERAWSOCKETS'], args=[str(port)])
     finally:
       done.set()
@@ -470,7 +470,7 @@ class sockets(BrowserCore):
     # Self-contained loopback accept+echo, exercising bind(:0)+getsockname
     # (synchronous ephemeral port), listen, accept, non-blocking connect, send
     # and recv over real OS sockets via the tcp_wrap server path.
-    self.do_runf('sockets/test_tcp_server.c', 'TCP SERVER PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_tcp_server.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_peek(self):
@@ -481,7 +481,7 @@ class sockets(BrowserCore):
   def test_noderawsockets_server_autobind(self):
     # listen() without a prior bind() must auto-bind an ephemeral port and
     # getsockname() must report it (POSIX), then accept+echo as usual.
-    self.do_runf('sockets/test_tcp_server.c', 'TCP SERVER PASS',
+    self.do_runf('sockets/test_tcp_server.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-DNO_EXPLICIT_BIND'])
 
   def test_noderawsockets_tcp_ipv6(self):
@@ -489,25 +489,85 @@ class sockets(BrowserCore):
     # listen, accept, non-blocking connect, send/recv on AF_INET6 sockets.
     if not HAS_IPV6_LOOPBACK:
       self.skipTest('no IPv6 loopback available')
-    self.do_runf('sockets/test_tcp_ipv6.c', 'TCP IPV6 PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_tcp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   def test_noderawsockets_udp_ipv6(self):
     # Self-contained IPv6 UDP loopback echo over ::1 on AF_INET6 sockets.
     if not HAS_IPV6_LOOPBACK:
       self.skipTest('no IPv6 loopback available')
-    self.do_runf('sockets/test_udp_ipv6.c', 'UDP IPV6 PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_udp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
+  def test_noderawsockets_epoll_socket_blocking(self):
+    # A blocking epoll_wait() on a socket is woken by an incoming datagram
+    # through the unified readiness wait-queue (the SOCKFS.emit bridge), with
+    # main() proxied to a worker so the wait can suspend.
+    self.do_runf('sockets/test_epoll_socket_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_tcp_blocking(self):
+    # Blocking accept() + recv() via the _emscripten_fd_wait primitive: the
+    # client connects from another thread after a delay so both would-block
+    # first and can only complete by being woken. This is a pthreads-only
+    # facility (the retry loops compile only into the -mt libc), so it runs
+    # under PROXY_TO_PTHREAD, where each blocking call parks its proxied worker.
+    self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_tcp_accept_nonblock(self):
+    # accept4(SOCK_NONBLOCK) off a blocking listener yields a non-blocking fd
+    # (the flag is applied on top of the inherited listener flags). Single
+    # threaded, poll()-driven, so no fd_wait blocking is involved.
+    self.do_runf('sockets/test_tcp_accept_nonblock.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  def setup_jspi_node(self):
+    # These tests run on node via do_runf even though the class is a
+    # BrowserCore, so require_jspi()'s is_browser_test() early-return skips the
+    # node handling. The new JSPI API requires node >= 24, so skip below that.
+    if not common.check_node_version(24):
+      self.skipTest('JSPI requires node >= 24')
+    if not common.check_node_version(26):
+      self.node_args += ['--experimental-wasm-stack-switching']
+    self.cflags += ['-Wno-experimental']
+    self.set_setting('JSPI')
+
+  def test_noderawsockets_epoll_socket_blocking_jspi(self):
+    # Same, but the blocking epoll_wait() suspends the wasm stack under JSPI.
+    self.setup_jspi_node()
+    self.do_runf('sockets/test_epoll_socket_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_epoll_rdhup(self):
+    # A blocking epoll_wait reports EPOLLRDHUP when the TCP peer half-closes its
+    # write side (FIN), distinct from a full EPOLLHUP, and only when requested.
+    self.do_runf('sockets/test_epoll_rdhup.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_epoll_rdhup_jspi(self):
+    # Same, but the blocking calls suspend the wasm stack under JSPI.
+    self.setup_jspi_node()
+    self.do_runf('sockets/test_epoll_rdhup.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp(self):
     # Self-contained loopback UDP echo: the server binds(:0)+getsockname for its
     # ephemeral port, the client sends a datagram, the server echoes it back.
-    self.do_runf('sockets/test_udp_echo.c', 'UDP ECHO PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_udp_echo.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_epoll_callback(self):
+    # emscripten_epoll_set_callback woken repeatedly by arriving datagrams on a
+    # real socket via the SOCKFS -> wait-queue bridge, with no ASYNCIFY/JSPI.
+    # Under PROXY_TO_PTHREAD the readiness is tracked on the FS-owning main thread
+    # but each delivery is back-proxied to the registering pthread.
+    self.do_runf('sockets/test_epoll_callback.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp_connect(self):
     # Connected UDP: sendto() with an address gives EISCONN, send() reaches the
     # peer, and datagrams from a non-peer socket are filtered out.
-    self.do_runf('sockets/test_udp_connect.c', 'UDP CONNECT PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_udp_connect.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp_sockopts(self):

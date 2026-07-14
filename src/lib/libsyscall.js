@@ -403,6 +403,13 @@ var SyscallsLibrary = {
       assert(!errno);
 #endif
     }
+    // Honor SOCK_NONBLOCK on the accepted fd (SOCK_CLOEXEC is a no-op for a
+    // single process, matching F_SETFD). Without this the new fd only inherits
+    // the listener's flags, so a SOCK_NONBLOCK accept off a blocking listener
+    // would wrongly yield a blocking socket.
+    if (flags & {{{ cDefs.SOCK_NONBLOCK }}}) {
+      newsock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
+    }
     return newsock.stream.fd;
   },
   __syscall_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
@@ -589,9 +596,7 @@ var SyscallsLibrary = {
     if (!stream) return {{{ cDefs.POLLNVAL }}};
     // Streams without a poll handler (regular files, incl. NODERAWFS/NODEFS
     // which leave stream_ops unset) are treated as always readable+writable.
-    var flags = stream.stream_ops?.poll
-      ? stream.stream_ops.poll(stream)
-      : {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
+    var flags = stream.stream_ops?.poll?.(stream) ?? {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
     return flags & (events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLNVAL }}});
   },
   __syscall_poll__proxy: 'sync',
@@ -697,13 +702,79 @@ var SyscallsLibrary = {
   __syscall_poll_nonblocking: (fds, nfds) => {
     return doPollSync(fds, nfds);
   },
-  // epoll is not yet implemented in the legacy (non-WASMFS) JS syscall layer.
-  __syscall_epoll_create1__nothrow: true,
-  __syscall_epoll_create1: (flags) => -{{{ cDefs.ENOSYS }}},
-  __syscall_epoll_ctl__nothrow: true,
-  __syscall_epoll_ctl: (epfd, op, fd, ev) => -{{{ cDefs.ENOSYS }}},
-  __syscall_epoll_pwait__nothrow: true,
-  __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => -{{{ cDefs.ENOSYS }}},
+  // The single wait primitive behind blocking socket data ops. The data
+  // syscalls themselves are strictly synchronous (single attempt, -EAGAIN when
+  // they would block); libc's blocking wrappers (compiled only into the -mt
+  // libc) call this on EAGAIN with a blocking fd and then retry. It blocks only
+  // on a proxied pthread worker: the sync-proxy completes - ending the worker's
+  // futex wait - when the returned promise resolves. In every other context
+  // (including the event-loop thread, which cannot block) it fails with
+  // -EAGAIN. Resolves 0 once `fd` reports one of `events` (POLL* flags;
+  // error/hangup/close always wake). Single-threaded builds use epoll instead.
+#if !PTHREADS
+  // Without pthreads the body is just `return -EAGAIN`, which cannot throw;
+  // skip the syscall try/catch wrapper so closure doesn't flag it as dead.
+  _emscripten_fd_wait__nothrow: true,
+#endif
+  _emscripten_fd_wait__proxy: 'sync',
+  _emscripten_fd_wait__async: 'auto',
+  _emscripten_fd_wait__deps: ['$FS', '$pollOne'],
+  _emscripten_fd_wait: (fd, events) => {
+#if PTHREADS
+    if (PThread.currentProxiedOperationCallerThread) {
+      // Must resolve through a Promise: the caller's sync-proxy awaits a
+      // thenable (PROXY_SYNC_ASYNC), even when already ready.
+      return new Promise((resolve) => {
+        if (pollOne(fd, events)) return resolve(0);
+        var stream = FS.getStream(fd);
+        if (!stream) return resolve(0); // closed: let the retry surface EBADF
+        var reg = stream.node.addListener(() => {
+          if (pollOne(fd, events)) {
+            reg.listeners.delete(reg.entry);
+            resolve(0);
+          }
+        });
+      });
+    }
+#endif
+    return -{{{ cDefs.EAGAIN }}};
+  },
+  // epoll: the entry points live here (like every other syscall); the heavy
+  // lifting is in libepoll.js, which they call after resolving the epoll stream.
+  __syscall_epoll_create1__deps: ['$newEpollInstance'],
+  __syscall_epoll_create1__proxy: 'sync',
+  __syscall_epoll_create1: (flags) => {
+    return newEpollInstance().fd;
+  },
+  __syscall_epoll_ctl__deps: ['$FS', '$epollCtl'],
+  __syscall_epoll_ctl__proxy: 'sync',
+  __syscall_epoll_ctl: (epfd, op, fd, ev) => {
+    var ep = FS.getStream(epfd);
+    if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
+    return epollCtl(ep.shared, op, fd, ev);
+  },
+  __syscall_epoll_pwait__proxy: 'sync',
+  __syscall_epoll_pwait__async: 'auto',
+  __syscall_epoll_pwait__deps: ['$FS', '$epollPwait'],
+  __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => {
+    var ep = FS.getStream(epfd);
+    if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
+    if (maxevents <= 0) return -{{{ cDefs.EINVAL }}};
+    return epollPwait(ep.shared, ev, maxevents, timeout);
+  },
+  // libc routes zero-timeout epoll_wait()/epoll_pwait() calls here: a plain
+  // import that never suspends, so probes stay callable from any context (under
+  // JSPI, __syscall_epoll_pwait is a suspending import and traps when called
+  // from a stack that wasn't entered through a promising export). Mirrors
+  // __syscall_poll_nonblocking.
+  __syscall_epoll_pwait_nonblocking__proxy: 'sync',
+  __syscall_epoll_pwait_nonblocking__deps: ['$FS', '$doEpollWait'],
+  __syscall_epoll_pwait_nonblocking: (epfd, ev, maxevents) => {
+    var ep = FS.getStream(epfd);
+    if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
+    if (maxevents <= 0) return -{{{ cDefs.EINVAL }}};
+    return doEpollWait(ep.shared, ev, maxevents);
+  },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
     if (size === 0) return -{{{ cDefs.EINVAL }}};
