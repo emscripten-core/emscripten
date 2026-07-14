@@ -252,10 +252,10 @@ var LibraryHTML5 = {
 
     fullscreenEnabled() {
       return document.fullscreenEnabled
-#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+#if MIN_SAFARI_VERSION < 160400
       // Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitFullscreenEnabled.
       // TODO: If Safari at some point ships with unprefixed version, update the version check above.
-      || document.webkitFullscreenEnabled
+      ?? document.webkitFullscreenEnabled
 #endif
        ;
     },
@@ -264,8 +264,8 @@ var LibraryHTML5 = {
   $getFullscreenElement__internal: true,
   $getFullscreenElement() {
     return document.fullscreenElement
-#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-           || document.webkitFullscreenElement
+#if MIN_SAFARI_VERSION < 160400
+           ?? document.webkitFullscreenElement
 #endif
            ;
   },
@@ -1078,8 +1078,7 @@ var LibraryHTML5 = {
 #endif
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 
-#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-    // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
+#if MIN_SAFARI_VERSION < 160400
     // TODO: When this block is removed, also change test/test_html5_remove_event_listener.c test expectation on emscripten_set_fullscreenchange_callback().
     registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FULLSCREENCHANGE }}}, 'webkitfullscreenchange', targetThread);
 #endif
@@ -1117,8 +1116,10 @@ var LibraryHTML5 = {
 
     if (target.requestFullscreen) {
       target.requestFullscreen();
-#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+#if MIN_SAFARI_VERSION < 160400
     } else if (target.webkitRequestFullscreen) {
+      // Safari didn't Element.requestFullscreen support until 16.4
+      // See: https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen
       target.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
 #endif
     } else {
@@ -1215,8 +1216,7 @@ var LibraryHTML5 = {
       if (!getFullscreenElement()) {
         document.removeEventListener('fullscreenchange', restoreOldStyle);
 
-#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-        // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
+#if MIN_SAFARI_VERSION < 160400
         document.removeEventListener('webkitfullscreenchange', restoreOldStyle);
 #endif
 
@@ -1248,8 +1248,7 @@ var LibraryHTML5 = {
       }
     }
     document.addEventListener('fullscreenchange', restoreOldStyle);
-#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-    // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
+#if MIN_SAFARI_VERSION < 160400
     document.addEventListener('webkitfullscreenchange', restoreOldStyle);
 #endif
     return restoreOldStyle;
@@ -1359,7 +1358,9 @@ var LibraryHTML5 = {
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 
     if (!target.requestFullscreen
-#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+#if MIN_SAFARI_VERSION < 160400
+      // Safari didn't Element.requestFullscreen support until 16.4
+      // See: https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen
       && !target.webkitRequestFullscreen
 #endif
       ) {
@@ -1490,7 +1491,7 @@ var LibraryHTML5 = {
     var d = specialHTMLTargets[{{{ cDefs.EMSCRIPTEN_EVENT_TARGET_DOCUMENT }}}];
     if (d.exitFullscreen) {
       d.fullscreenElement && d.exitFullscreen();
-#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
+#if MIN_SAFARI_VERSION < 160400 // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
     } else if (d.webkitExitFullscreen) {
       d.webkitFullscreenElement && d.webkitExitFullscreen();
 #endif

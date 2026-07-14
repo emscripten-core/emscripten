@@ -268,10 +268,14 @@ var LibraryBrowser = {
       canvasContainer.appendChild(canvas);
 
       // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
-      canvasContainer.requestFullscreen = canvasContainer.requestFullscreen ||
-                                         (canvasContainer.webkitRequestFullscreen ? () => canvasContainer.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT) : null) ||
-                                         (canvasContainer.webkitRequestFullScreen ? () => canvasContainer.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT) : null);
+#if MIN_SAFARI_VERSION < 160400
+      // Safari didn't support Element.requestFullscreen until 16.4
+      // See: https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen
+      /** @suppress {checkTypes} */
+      canvasContainer.requestFullscreen ??= (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element.ALLOW_KEYBOARD_INPUT) : null) ??
+                                            (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element.ALLOW_KEYBOARD_INPUT) : null);
 
+#endif
       canvasContainer.requestFullscreen();
     },
 
@@ -289,11 +293,12 @@ var LibraryBrowser = {
         return false;
       }
 
-      var CFS = document.exitFullscreen ||
-                document.webkitExitFullscreen ||
-                document.webkitCancelFullScreen ||
-          (() => {});
+#if MIN_SAFARI_VERSION < 160400
+      var CFS = document.exitFullscreen ?? document['webkitCancelFullScreen'];
       CFS.apply(document, []);
+#else
+      document.exitFullscreen();
+#endif
       return true;
     },
 
