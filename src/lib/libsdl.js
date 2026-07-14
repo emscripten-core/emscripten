@@ -2802,7 +2802,6 @@ var LibrarySDL = {
       var url = URL.createObjectURL(blob);
       audio = new Audio();
       audio.src = url;
-      audio.mozAudioChannelType = 'content'; // bugzilla 910340
     }
 
     var id = SDL.audios.length;
@@ -2839,7 +2838,6 @@ var LibrarySDL = {
       webAudio = { decodedBuffer: buffer };
     } else {
       audio = new Audio();
-      audio.mozAudioChannelType = 'content'; // bugzilla 910340
       // Record the number of channels and frequency for later usage
       audio.numChannels = SDL.mixerNumChannels;
       audio.frequency = SDL.mixerFrequency;
