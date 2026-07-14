@@ -52,6 +52,6 @@ jobs:
                exit 1
             fi
           fi
-          git push origin roll_emsdk
+          git push origin update_emsdk
           gh pr create --fill --base "$REF_NAME" --reviewer sbc100,kripken
           gh pr merge --squash --auto
