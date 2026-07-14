@@ -22,7 +22,7 @@ api_reference_directory = './docs/api_reference/'
 # if you change here, change everywhere.
 api_item_filename = 'api_items.py'
 
-api_reference_items = {}
+api_reference_items: dict[str, str] = {}
 
 
 def parseFiles():

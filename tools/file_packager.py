@@ -91,10 +91,6 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 # chrome limit is 2MB under 2Gi
 PRELOAD_DATA_FILE_LIMIT = int(os.environ.get('EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB', '2046')) * 1024 * 1024
 
-excluded_patterns: list[str] = []
-new_data_files = []
-walked = []
-
 
 class Options:
   def __init__(self):
@@ -133,6 +129,9 @@ class DataFile:
 
 
 options = Options()
+excluded_patterns: list[str] = []
+new_data_files: list[DataFile] = []
+walked: list[str] = []
 
 
 def err(*args):
@@ -323,13 +322,13 @@ def generate_object_file(data_files):
       # The `.dc.a` directive gives us a pointer (address) sized entry.
       # See https://sourceware.org/binutils/docs/as/Dc.html
       out.write(dedent(f'''\
-        .p2align %s
+        .p2align {align}
         .dc.a {f.c_symbol_name}_name
-        .p2align %s
+        .p2align {align}
         .int32 {os.path.getsize(f.srcpath)}
-        .p2align %s
+        .p2align {align}
         .dc.a {f.c_symbol_name}
-        ''' % (align, align, align)))
+        '''))
 
     ptr_size = 4
     elem_size = (2 * ptr_size) + 4

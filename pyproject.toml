@@ -76,6 +76,7 @@ lint.ignore = [
   "PLR6301",
   "PLW0602",
   "PLW0603",
+  "PLW0717", # https://docs.astral.sh/ruff/rules/too-many-statements-in-try-clause
   "PLW1510",
   "PLW2901",
   "RUF012", # https://docs.astral.sh/ruff/rules/mutable-class-default/

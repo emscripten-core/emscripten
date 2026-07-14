@@ -4,10 +4,10 @@
 # the codebase and generate docs using Sphinx, not for users of emscripten.
 # Install with `pip3 install -r requirements-dev.txt`
 
-coverage[toml]==6.5
-mypy==1.14
+coverage[toml]==7.15.0
+mypy==2.3.0
 psutil==7.0.0
-ruff==0.15.7
+ruff==0.15.21
 types-requests==2.32.0.20241016
 unittest-xml-reporting==3.2.0
 deadcode==2.3.1

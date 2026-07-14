@@ -44,8 +44,8 @@ class Feature(IntEnum):
   GROWABLE_ARRAYBUFFERS = auto()
 
 
-disable_override_features = set()
-enable_override_features = set()
+disable_override_features: set[Feature] = set()
+enable_override_features: set[Feature] = set()
 
 min_browser_versions = {
   # https://caniuse.com/wasm-nontrapping-fptoint

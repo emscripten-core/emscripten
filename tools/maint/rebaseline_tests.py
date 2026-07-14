@@ -29,7 +29,7 @@ def run(cmd, **args):
   return subprocess.check_output(cmd, text=True, cwd=root_dir, **args)
 
 
-all_deltas = []
+all_deltas: list[int] = []
 
 
 def read_size_from_json(content):

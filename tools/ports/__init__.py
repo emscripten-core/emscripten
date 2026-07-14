@@ -19,15 +19,15 @@ from tools import cache, config, shared, system_libs, utils
 from tools.settings import settings
 from tools.toolchain_profiler import ToolchainProfiler
 
-ports = []
+ports: list[dict] = []
 
 ports_by_name: dict[str, object] = {}
 
-ports_needed = set()
+ports_needed: set[str] = set()
 
 # Variant builds that we want to support for certain ports
 # {variant_name: (port_name, extra_settings)}
-port_variants = {}
+port_variants: dict[str, tuple] = {}
 
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
