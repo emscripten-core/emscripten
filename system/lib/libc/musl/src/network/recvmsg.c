@@ -4,6 +4,9 @@
 #include <sys/time.h>
 #include <string.h>
 #include "syscall.h"
+#ifdef __EMSCRIPTEN_PTHREADS__
+#include "emscripten_fd_wait.h"
+#endif
 
 hidden void __convert_scm_timestamps(struct msghdr *, socklen_t);
 
@@ -59,7 +62,18 @@ ssize_t recvmsg(int fd, struct msghdr *msg, int flags)
 		msg = &h;
 	}
 #endif
+#ifdef __EMSCRIPTEN_PTHREADS__
+	for (;;) {
+		long rr = __socketcall_cp(recvmsg, fd, msg, flags, 0, 0, 0);
+		if (rr != -EAGAIN || !__emscripten_sock_can_wait(fd, flags & MSG_DONTWAIT)
+		    || _emscripten_fd_wait(fd, POLLIN)) {
+			r = __syscall_ret(rr);
+			break;
+		}
+	}
+#else
 	r = socketcall_cp(recvmsg, fd, msg, flags, 0, 0, 0);
+#endif
 	if (r >= 0) __convert_scm_timestamps(msg, orig_controllen);
 #if LONG_MAX > INT_MAX && !defined(__EMSCRIPTEN__)
 	if (orig) *orig = h;
