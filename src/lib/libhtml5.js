@@ -896,10 +896,7 @@ var LibraryHTML5 = {
   _emscripten_get_last_devicemotion_event__deps: ['$JSEvents'],
   _emscripten_get_last_devicemotion_event: () => JSEvents.deviceMotionEvent,
 
-  $screenOrientation: () => {
-    if (!window.screen) return undefined;
-    return screen.orientation || screen['mozOrientation'] || screen['webkitOrientation'];
-  },
+  $screenOrientation: () => window.screen?.orientation,
 
   $fillOrientationChangeEventData__deps: ['$screenOrientation'],
   $fillOrientationChangeEventData: (eventStruct) => {
@@ -911,7 +908,7 @@ var LibraryHTML5 = {
     var orientationIndex = {{{ cDefs.EMSCRIPTEN_ORIENTATION_UNSUPPORTED }}};
     var orientationAngle = 0;
     var screenOrientObj  = screenOrientation();
-    if (typeof screenOrientObj === 'object') {
+    if (screenOrientObj) {
       orientationIndex = orientationsType1.indexOf(screenOrientObj.type);
       if (orientationIndex < 0) {
         orientationIndex = orientationsType2.indexOf(screenOrientObj.type);
@@ -974,8 +971,9 @@ var LibraryHTML5 = {
   emscripten_get_orientation_status__proxy: 'sync',
   emscripten_get_orientation_status__deps: ['$fillOrientationChangeEventData', '$screenOrientation'],
   emscripten_get_orientation_status: (orientationChangeEvent) => {
-    // screenOrientation() resolving standard, window.orientation being the deprecated mobile-only
-    if (!screenOrientation() && typeof orientation == 'undefined') return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (!screenOrientation()) {
+      return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    }
     fillOrientationChangeEventData(orientationChangeEvent);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
