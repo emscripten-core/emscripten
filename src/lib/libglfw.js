@@ -733,7 +733,7 @@ var LibraryGLFW = {
     refreshJoysticks: () => {
       // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
       if (MainLoop.currentFrameNumber !== GLFW.lastGamepadStateFrame || !MainLoop.currentFrameNumber) {
-        GLFW.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads || []);
+        GLFW.lastGamepadState = navigator.getGamepads?.() ?? [];
         GLFW.lastGamepadStateFrame = MainLoop.currentFrameNumber;
 
         for (var joy = 0; joy < GLFW.lastGamepadState.length; ++joy) {

@@ -1268,7 +1268,7 @@ var LibrarySDL = {
       // Standardize button state.
       var buttons = [];
       for (var button of state.buttons) {
-        buttons.push(SDL.getJoystickButtonState(button));
+        buttons.push(button.pressed);
       }
 
       SDL.lastJoystickState[joystick] = {
@@ -1278,19 +1278,6 @@ var LibrarySDL = {
         index: state.index,
         id: state.id
       };
-    },
-    // Retrieves the button state of the given gamepad button.
-    // Abstracts away implementation differences.
-    // Returns 'true' if pressed, 'false' otherwise.
-    getJoystickButtonState(button) {
-      if (typeof button == 'object') {
-        // Current gamepad API editor's draft (Firefox Nightly)
-        // https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-GamepadButton
-        return button['pressed'];
-      }
-      // Current gamepad API working draft (Firefox / Chrome Stable)
-      // http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
-      return button > 0;
     },
     // Queries for and inserts controller events into the SDL queue.
     queryJoysticks() {
@@ -1307,7 +1294,7 @@ var LibrarySDL = {
         if (typeof state.timestamp != 'number' || state.timestamp != prevState.timestamp || !state.timestamp) {
           var i;
           for (i = 0; i < state.buttons.length; i++) {
-            var buttonState = SDL.getJoystickButtonState(state.buttons[i]);
+            var buttonState = state.buttons[i].pressed;
             // NOTE: The previous state already has a boolean representation of
             //       its button, so no need to standardize its button state here.
             if (buttonState !== prevState.buttons[i]) {
@@ -1347,10 +1334,7 @@ var LibrarySDL = {
     },
 
     getGamepads() {
-      if (!navigator.getGamepads) {
-        return [];
-      }
-      return navigator.getGamepads();
+      return navigator.getGamepads?.() ?? [];
     },
 
     // Helper function: Returns the gamepad if available, or null if not.
@@ -3554,7 +3538,7 @@ var LibrarySDL = {
   SDL_JoystickGetButton: (joystick, button) => {
     var gamepad = SDL.getGamepad(joystick - 1);
     if (gamepad?.buttons.length > button) {
-      return SDL.getJoystickButtonState(gamepad.buttons[button]) ? 1 : 0;
+      return gamepad.buttons[button].pressed ? 1 : 0;
     }
     return 0;
   },
