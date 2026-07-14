@@ -67,12 +67,7 @@ THE SOFTWARE.
 
   var getUserMedia;
   if(!navigator.getUserMedia) {
-    if(navigator.mozGetUserMedia)
-      getUserMedia = navigator.mozGetUserMedia.bind(navigator);
-    else if(navigator.webkitGetUserMedia)
-      getUserMedia = navigator.webkitGetUserMedia.bind(navigator);
-    else
-      webrtcSupported = false;
+    webrtcSupported = false;
   } else {
     getUserMedia = navigator.getUserMedia.bind(navigator);
   }

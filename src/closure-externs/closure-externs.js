@@ -188,6 +188,8 @@ var id;
  * https://github.com/google/closure-compiler/commit/f83322c1b.
  * Perhaps we should remove it too?
  *
+ * TODO(sbc): Remove this once SDL2 is updated not to depend on it.
+ *
  * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
  * @param {function(!MediaStream)} successCallback
  *     A NavigatorUserMediaSuccessCallback function.

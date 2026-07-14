@@ -259,9 +259,7 @@ var LibraryBrowser = {
       if (!Browser.fullscreenHandlersInstalled) {
         Browser.fullscreenHandlersInstalled = true;
         document.addEventListener('fullscreenchange', fullscreenChange);
-        document.addEventListener('mozfullscreenchange', fullscreenChange);
         document.addEventListener('webkitfullscreenchange', fullscreenChange);
-        document.addEventListener('MSFullscreenChange', fullscreenChange);
       }
 
       // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
@@ -270,12 +268,14 @@ var LibraryBrowser = {
       canvasContainer.appendChild(canvas);
 
       // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
-      canvasContainer.requestFullscreen = canvasContainer['requestFullscreen'] ||
-                                          canvasContainer['mozRequestFullScreen'] ||
-                                          canvasContainer['msRequestFullscreen'] ||
-                                         (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) : null) ||
-                                         (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) : null);
+#if MIN_SAFARI_VERSION < 160400
+      // Safari didn't support Element.requestFullscreen until 16.4
+      // See: https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen
+      /** @suppress {checkTypes} */
+      canvasContainer.requestFullscreen ??= (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element.ALLOW_KEYBOARD_INPUT) : null) ??
+                                            (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element.ALLOW_KEYBOARD_INPUT) : null);
 
+#endif
       canvasContainer.requestFullscreen();
     },
 
@@ -287,13 +287,12 @@ var LibraryBrowser = {
         return false;
       }
 
-      var CFS = document['exitFullscreen'] ||
-                document['cancelFullScreen'] ||
-                document['mozCancelFullScreen'] ||
-                document['msExitFullscreen'] ||
-                document['webkitCancelFullScreen'] ||
-          (() => {});
+#if MIN_SAFARI_VERSION < 160400
+      var CFS = document.exitFullscreen ?? document['webkitCancelFullScreen'];
       CFS.apply(document, []);
+#else
+      document.exitFullscreen();
+#endif
       return true;
     },
 
@@ -319,9 +318,7 @@ var LibraryBrowser = {
     },
 
     getUserMedia(func) {
-      window.getUserMedia ||= navigator['getUserMedia'] ||
-                              navigator['mozGetUserMedia'];
-      window.getUserMedia(func);
+      return navigator.mediaDevices.getUserMedia(func);
     },
 
     // Browsers specify wheel direction according to the page CSS pixel Y direction:
