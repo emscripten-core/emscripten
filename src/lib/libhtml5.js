@@ -263,9 +263,11 @@ var LibraryHTML5 = {
 
   $getFullscreenElement__internal: true,
   $getFullscreenElement() {
-    return document.fullscreenElement || document.mozFullScreenElement ||
-           document.webkitFullscreenElement || document.webkitCurrentFullScreenElement ||
-           document.msFullscreenElement;
+    return document.fullscreenElement
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+           || document.webkitFullscreenElement
+#endif
+           ;
   },
 
   $registerKeyEventCallback__noleakcheck: true,
@@ -986,10 +988,6 @@ var LibraryHTML5 = {
     var succeeded;
     if (screen.lockOrientation) {
       succeeded = screen.lockOrientation(orientations);
-    } else if (screen.mozLockOrientation) {
-      succeeded = screen.mozLockOrientation(orientations);
-    } else if (screen.webkitLockOrientation) {
-      succeeded = screen.webkitLockOrientation(orientations);
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
@@ -1003,10 +1001,6 @@ var LibraryHTML5 = {
   emscripten_unlock_orientation: () => {
     if (screen.unlockOrientation) {
       screen.unlockOrientation();
-    } else if (screen.mozUnlockOrientation) {
-      screen.mozUnlockOrientation();
-    } else if (screen.webkitUnlockOrientation) {
-      screen.webkitUnlockOrientation();
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }

@@ -1252,9 +1252,7 @@ var LibraryGLFW = {
       if (!Browser.fullscreenHandlersInstalled) {
         Browser.fullscreenHandlersInstalled = true;
         document.addEventListener('fullscreenchange', fullscreenChange);
-        document.addEventListener('mozfullscreenchange', fullscreenChange);
         document.addEventListener('webkitfullscreenchange', fullscreenChange);
-        document.addEventListener('MSFullscreenChange', fullscreenChange);
       }
 
       // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
@@ -1263,11 +1261,9 @@ var LibraryGLFW = {
       canvasContainer.appendChild(canvas);
 
       // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
-      canvasContainer.requestFullscreen = canvasContainer['requestFullscreen'] ||
-        canvasContainer['mozRequestFullScreen'] ||
-        canvasContainer['msRequestFullscreen'] ||
-        (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) : null) ||
-        (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) : null);
+      canvasContainer.requestFullscreen = canvasContainer.requestFullscreen ||
+        (canvasContainer.webkitRequestFullscreen ? () => canvasContainer.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT) : null) ||
+        (canvasContainer.webkitRequestFullScreen ? () => canvasContainer.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT) : null);
 
       canvasContainer.requestFullscreen();
     },
