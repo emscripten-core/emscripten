@@ -3023,7 +3023,7 @@ v1.39.5: 12/20/2019
 v1.39.4: 12/03/2019
 -------------------
 - Remove deprecated `requestFullScreen` method from `library_browser.js`, please
-  use `requestFullscreen` (without the capital S).
+  use `requestFullscreen` (without the capital S). (#9861)
 - Remove deprecated `requestFullScreen` and `cancelFullScreen` from `library_glut.js`
 - Remove deprecated `requestFullScreen` and `cancelFullScreen` from `library_glfw.js`
 - Fix SDL2_mixer support for ogg vorbis. See #9849

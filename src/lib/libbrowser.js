@@ -279,12 +279,6 @@ var LibraryBrowser = {
       canvasContainer.requestFullscreen();
     },
 
-#if ASSERTIONS
-    requestFullScreen() {
-      abort('Module.requestFullScreen has been replaced by Module.requestFullscreen (without a capital S)');
-    },
-#endif
-
     exitFullscreen() {
       // This is workaround for chrome. Trying to exit from fullscreen
       // not in fullscreen state will cause 'TypeError: Document not active'
@@ -531,9 +525,6 @@ var LibraryBrowser = {
   },
 
   $requestFullscreen: 'Browser.requestFullscreen',
-#if ASSERTIONS
-  $requestFullScreen: 'Browser.requestFullScreen',
-#endif
   $setCanvasSize: 'Browser.setCanvasSize',
   $getUserMedia: 'Browser.getUserMedia',
   $createContext: 'Browser.createContext',
