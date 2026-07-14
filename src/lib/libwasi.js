@@ -202,7 +202,18 @@ var WasiLibrary = {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr = FS.read(stream, HEAP8, ptr, len, offset);
+      try {
+        var curr = FS.read(stream, HEAP8, ptr, len, offset);
+      } catch (e) {
+        // On a non-blocking stream a subsequent read may would-block after we
+        // already gathered data. POSIX readv is a single gather-read: return
+        // what we have rather than failing the whole call.
+        if (ret > 0 && e instanceof FS.ErrnoError &&
+            (e.errno == {{{ cDefs.EAGAIN }}} || e.errno == {{{ cDefs.EWOULDBLOCK }}})) {
+          break;
+        }
+        throw e;
+      }
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
@@ -214,23 +225,27 @@ var WasiLibrary = {
   },
   $doWritev__docs: '/** @param {number=} offset */',
   $doWritev: (stream, iov, iovcnt, offset) => {
-    var ret = 0;
-    for (var i = 0; i < iovcnt; i++) {
+    // Gather all iovecs into one contiguous buffer and issue a single
+    // FS.write, matching POSIX writev's single gather-write semantics (as
+    // __syscall_sendmsg already does). Per-iovec writes fragment a stream
+    // socket send into multiple segments, breaking stream byte semantics.
+    if (iovcnt == 1) {
+      // Single iovec: write directly from HEAP8, no gather buffer needed.
+      return FS.write(stream, HEAP8, {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}}, {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}}, offset);
+    }
+    var total = 0;
+    for (var i = 0, p = iov; i < iovcnt; i++, p += {{{ C_STRUCTS.iovec.__size__ }}}) {
+      total += {{{ makeGetValue('p', C_STRUCTS.iovec.iov_len, '*') }}};
+    }
+    var view = new Uint8Array(total);
+    var voff = 0;
+    for (var i = 0; i < iovcnt; i++, iov += {{{ C_STRUCTS.iovec.__size__ }}}) {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
-      iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr = FS.write(stream, HEAP8, ptr, len, offset);
-      if (curr < 0) return -1;
-      ret += curr;
-      if (curr < len) {
-        // No more space to write.
-        break;
-      }
-      if (typeof offset != 'undefined') {
-        offset += curr;
-      }
+      view.set(HEAPU8.subarray(ptr, ptr + len), voff);
+      voff += len;
     }
-    return ret;
+    return FS.write(stream, view, 0, total, offset);
   },
 #else
   // MEMFS filesystem disabled lite handling of stdout and stderr:
@@ -261,8 +276,8 @@ var WasiLibrary = {
 #if hasExportedSymbol('fflush')
     _fflush(0);
 #endif
-    if (printCharBuffers[1].length) printChar(1, {{{ charCode("\n") }}});
-    if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});
+    if (printCharBuffers[1].length) printChar(1, {{{ charCode('\n') }}});
+    if (printCharBuffers[2].length) printChar(2, {{{ charCode('\n') }}});
   },
   fd_write__deps: ['$flush_NO_FILESYSTEM', '$printChar'],
   fd_write__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
@@ -412,7 +427,7 @@ var WasiLibrary = {
   // preopen maps open file descriptors to pathname.
   // In emscripten we already have a VFS layer so (for now) we expose the entire
   // VFS to the wasi API.
-  $preopens: "{3: '/'}",
+  $preopens: {3: '/'},
 
   path_open__sig: 'iiiiiiiiii',
   path_open__deps: ['$wasiRightsToMuslOFlags', '$wasiOFlagsToMuslOFlags', '$preopens'],

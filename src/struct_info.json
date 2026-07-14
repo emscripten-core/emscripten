@@ -293,6 +293,7 @@
             "SOCK_STREAM",
             "SOCK_CLOEXEC",
             "SOCK_NONBLOCK",
+             "MSG_PEEK",
              "AF_INET",
              "AF_UNSPEC",
              "AF_INET6",

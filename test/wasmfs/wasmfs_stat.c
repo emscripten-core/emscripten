@@ -201,5 +201,6 @@ int main() {
 
   close(fd);
 
+  puts("done");
   return 0;
 }

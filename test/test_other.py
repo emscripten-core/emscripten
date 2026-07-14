@@ -440,6 +440,17 @@ class other(RunnerCore):
     self.assertContained('import source wasmModule from', read_file('hello_world.mjs'))
     self.assertContained('Hello, world!', self.run_js('hello_world.mjs'))
 
+  @requires_node_25
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],),
+  })
+  def test_esm_source_phase_imports_instance(self, args):
+    self.set_setting('SOURCE_PHASE_IMPORTS')
+    self.set_setting('MODULARIZE', 'instance')
+    self.do_runf_out_file('hello_world.c', cflags=['-Wno-experimental'] + args)
+    self.assertContained('import source wasmModule from', read_file(self.output_name('hello_world')))
+
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
@@ -2259,7 +2270,7 @@ Module['postRun'] = () => {
   @requires_pthreads
   def test_dylink_pthread_em_asm(self):
     self.set_setting('MAIN_MODULE', 2)
-    self.do_runf('hello_world_em_asm.c', 'Hello, world!', cflags=['-Wno-experimental', '-pthread'])
+    self.do_runf('hello_world_em_asm.c', 'Hello, world!\n', cflags=['-Wno-experimental', '-pthread'])
 
   @requires_pthreads
   def test_dylink_pthread_em_js(self):
@@ -5212,7 +5223,7 @@ int main() {
     delete_file('a.out.js')
 
     # Test that -sDYNAMIC_EXECUTION=0 and -sMAIN_MODULE are allowed together.
-    self.do_runf('hello_world.c', cflags=['-O1', '-sDYNAMIC_EXECUTION=0', '-sMAIN_MODULE=2'])
+    self.do_runf_out_file('hello_world.c', cflags=['-O1', '-sDYNAMIC_EXECUTION=0', '-sMAIN_MODULE=2'])
 
     create_file('test.c', r'''
       #include <emscripten/emscripten.h>
@@ -5532,7 +5543,7 @@ int main() {
     self.set_setting('MAIN_MODULE', '1')
     self.set_setting('ALLOW_MEMORY_GROWTH', '1')
     self.set_setting('MAXIMUM_MEMORY', '4GB')
-    self.do_runf('hello_world.c')
+    self.do_runf_out_file('hello_world.c')
 
   def test_dashS(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-S'])
@@ -5668,7 +5679,7 @@ int main()
 
   @with_env_modify({'EMCC_FORCE_STDLIBS': '1'})
   def test_force_stdlibs(self):
-    self.do_runf('hello_world.c')
+    self.do_runf_out_file('hello_world.c')
 
   @also_with_standalone_wasm(impure=True)
   def test_time(self):
@@ -6318,9 +6329,10 @@ int main(void) {
   @crossplatform
   @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/19683')
-  # The flakiness of this test is very high on macOS so just disable it
-  # completely.
+  # The flakiness of this test is very high on macOS, and deno so just disable it
+  # completely in these cases.
   @no_mac('https://github.com/emscripten-core/emscripten/issues/19683')
+  @no_deno('https://github.com/emscripten-core/emscripten/issues/19683')
   def test_pthread_print_override_modularize(self):
     self.set_setting('EXPORT_NAME', 'Test')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -6431,7 +6443,7 @@ Descriptor desc;
     self.assertExists('a.out.js')
 
   def test_modularize_legacy(self):
-    self.do_runf('hello_world.c', cflags=['-sMODULARIZE', '-sLEGACY_VM_SUPPORT'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sMODULARIZE', '-sLEGACY_VM_SUPPORT', '--extern-post-js', test_file('modularize_post_js.js')])
 
   def test_emmake_emconfigure(self):
     def check(what, args, fail=True, expect=''):
@@ -7895,8 +7907,7 @@ int main() {
 
   def test_EM_ASM_i64_nobigint(self):
     self.set_setting('WASM_BIGINT', 0)
-    expected = 'Invalid character 106("j") in readEmAsmArgs!'
-    self.do_runf('other/test_em_asm_i64.cpp', expected_output=expected, assert_returncode=NON_ZERO)
+    self.do_runf('other/test_em_asm_i64.cpp', 'Invalid character 106("j") in readEmAsmArgs!', assert_returncode=NON_ZERO)
 
   def test_eval_ctor_ordering(self):
     # ensure order of execution remains correct, even with a bad ctor
@@ -8336,7 +8347,7 @@ int main() {
     self.assertContained(expected, out)
     self.assertNotContained('Hello, world!', out)
     # and with memory growth, all should be good
-    self.do_runf('hello_world.c', 'Hello, world!', cflags=['-sINITIAL_MEMORY=16mb', '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sIMPORTED_MEMORY'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sINITIAL_MEMORY=16mb', '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sIMPORTED_MEMORY'])
 
   @parameterized({
     '': ([], 16 * 1024 * 1024), # Default behavior: 16MB initial heap
@@ -9209,15 +9220,15 @@ int main() {
 
   @requires_v8
   def test_single_file_shell(self):
-    self.do_runf('hello_world.c', cflags=['-sSINGLE_FILE'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSINGLE_FILE'])
 
   @requires_v8
   def test_single_file_shell_sync_compile(self):
-    self.do_runf('hello_world.c', cflags=['-sSINGLE_FILE', '-sWASM_ASYNC_COMPILATION=0'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSINGLE_FILE', '-sWASM_ASYNC_COMPILATION=0'])
 
   def test_single_file_no_clobber_wasm(self):
     create_file('hello_world.wasm', 'not wasm')
-    self.do_runf('hello_world.c', cflags=['-sSINGLE_FILE'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSINGLE_FILE'])
     self.assertExists('hello_world.js')
     self.assertFileContents('hello_world.wasm', 'not wasm')
 
@@ -9228,7 +9239,7 @@ int main() {
 
   def test_wasm2js_no_clobber_wasm(self):
     create_file('hello_world.wasm', 'not wasm')
-    self.do_runf('hello_world.c', cflags=['-sWASM=0'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sWASM=0'])
     self.assertExists('hello_world.js')
     self.assertFileContents('hello_world.wasm', 'not wasm')
 
@@ -10620,7 +10631,7 @@ _d
       proc = self.run_process([EMCC, test_file('hello_world.c'), '-sASYNCIFY', f'-sASYNCIFY_ONLY=@{file}'], stdout=PIPE, stderr=PIPE)
       # we should parse the response file properly, and then issue a proper warning for the missing function
       self.assertContained(
-          'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
+          "Asyncify onlylist contained a non-matching pattern: 'DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)'",
           proc.stderr)
 
   def test_asyncify_advise(self):
@@ -11073,12 +11084,12 @@ int main () {
   def test_strict_mode_hello_world(self):
     # Verify that strict mode can be used for simple hello world program both
     # via the environment EMCC_STRICT=1 and from the command line `-sSTRICT`
-    self.do_runf('hello_world.c', cflags=['-sSTRICT'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSTRICT'])
     with env_modify({'EMCC_STRICT': '1'}):
       self.do_runf_out_file('hello_world.c')
 
   def test_strict_mode_full_library(self):
-    self.do_runf('hello_world.c', cflags=['-sSTRICT', '-sINCLUDE_FULL_LIBRARY'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSTRICT', '-sINCLUDE_FULL_LIBRARY'])
 
   def test_legacy_settings(self):
     cmd = [EMCC, test_file('hello_world.c'), '-sSPLIT_MEMORY=0']
@@ -11476,7 +11487,7 @@ int main(void) {
   @all_engines
   def test_INCOMING_MODULE_JS_API(self):
     def test(args):
-      self.do_runf('hello_world.c', 'Hello, world!', cflags=['-O3', '--closure=1', '-sENVIRONMENT=node,shell', '--output-eol=linux'] + args)
+      self.do_runf_out_file('hello_world.c', cflags=['-O3', '--closure=1', '-sENVIRONMENT=node,shell', '--output-eol=linux'] + args)
       return os.path.getsize('hello_world.js')
     normal = test([])
     changed = test(['-sINCOMING_MODULE_JS_API=[]'])
@@ -11880,7 +11891,7 @@ int main(void) {
   def test_non_wasm_without_wasm_in_vm(self):
     create_file('pre.js', 'var WebAssembly = null;\n')
     # Test that our non-wasm output does not depend on wasm support in the vm.
-    self.do_runf('hello_world.c', cflags=['-sWASM=0', '-sENVIRONMENT=node,shell', '--extern-pre-js=pre.js'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sWASM=0', '-sENVIRONMENT=node,shell', '--extern-pre-js=pre.js'])
 
   def test_empty_output_extension(self):
     # Default to JS output when no extension is present
@@ -12462,7 +12473,7 @@ exec "$@"
   @requires_tool('ccache')
   @with_env_modify({'EM_COMPILER_WRAPPER': 'ccache'})
   def test_compiler_wrapper_ccache(self):
-    self.do_runf('hello_world.c', 'Hello, world!')
+    self.do_runf_out_file('hello_world.c')
 
   def test_llvm_option_dash_o(self):
     # emcc used to interpret -mllvm's option value as the output file if it
@@ -12980,7 +12991,7 @@ exec "$@"
 
   def test_main_module_no_undefined(self):
     # Test that ERROR_ON_UNDEFINED_SYMBOLS works with MAIN_MODULE.
-    self.do_runf('hello_world.c', cflags=['-sMAIN_MODULE', '-sERROR_ON_UNDEFINED_SYMBOLS'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sMAIN_MODULE', '-sERROR_ON_UNDEFINED_SYMBOLS'])
 
   def test_reverse_deps_allow_undefined(self):
     # Check that reverse deps are still included even when -sERROR_ON_UNDEFINED_SYMBOLS=0.
@@ -13181,20 +13192,22 @@ void foo() {}
     self.assert_fail(cmd, 'undefined symbol: dlopen')
 
   def test_unimplemented_syscalls_dladdr(self):
-    create_file('main.c', '''
+    create_file('main.c', r'''
     #include <assert.h>
+    #include <stdio.h>
     #include <dlfcn.h>
 
     int main() {
       Dl_info info;
       int rtn = dladdr(&main, &info);
       assert(rtn == 0);
+      puts("done\n");
       return 0;
     }
     ''')
 
-    self.do_runf('main.c')
-    self.do_runf('main.c', cflags=['-sMAIN_MODULE=2'])
+    self.do_runf('main.c', 'done\n')
+    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2'])
 
   @requires_v8
   def test_missing_shell_support(self):
@@ -13531,7 +13544,7 @@ Module.postRun = () => {{
 
   @also_with_wasmfs
   def test_unistd_stat(self):
-    self.do_runf('wasmfs/wasmfs_stat.c')
+    self.do_runf_out_file('wasmfs/wasmfs_stat.c')
 
   @also_with_wasmfs
   def test_unistd_create(self):
@@ -13823,7 +13836,7 @@ int main() {
   # system libraries in different ways.
   @also_with_wasmfs
   def test_dylink_proxy_posix_sockets_oz(self):
-    self.do_runf('hello_world.cpp', cflags=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS', '-Oz'])
+    self.do_runf_out_file('hello_world.cpp', cflags=['-lwebsocket.js', '-sMAIN_MODULE=1', '-sPROXY_POSIX_SOCKETS', '-Oz'])
 
   def test_in_tree_header_usage(self):
     # Using headers directly from where they live in the source tree does not work.
@@ -14033,7 +14046,7 @@ int main() {
     self.do_other_test('test_std_filesystem_tempdir.cpp', cflags=['-g'])
 
   def test_strict_js_closure(self):
-    self.do_runf('hello_world.c', cflags=['-sSTRICT_JS', '-Werror=closure', '--closure=1', '-O3'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSTRICT_JS', '-Werror=closure', '--closure=1', '-O3'])
 
   def test_em_js_deps(self):
     # Check that EM_JS_DEPS works. Specifically, multiple different instances in different
@@ -14088,6 +14101,27 @@ int main() {
                  'Stack overflow detected.  You can try increasing -sSTACK_SIZE',
                  cflags=['-O1', '--profiling-funcs'],
                  assert_returncode=NON_ZERO)
+
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'no_stack_first': (['-Wl,--no-stack-first'],),
+  })
+  def test_stack_cookie_curruption(self, args):
+    create_file('test.c', r'''
+      #include <emscripten/stack.h>
+      #include <stdint.h>
+
+      int main() {
+        uint32_t *stack_end = (uint32_t *)emscripten_stack_get_end();
+        if (stack_end == 0) stack_end++;
+        stack_end[0] = 0xfffffff0;
+        stack_end[1] = 0xaaaaaaa0;
+        return 0;
+      }
+    ''')
+    expected = 'Stack overflow! Stack cookie has been overwritten at 0x[a-f0-9]*, expected hex dwords 0x89bacdfe and 0x02135467, but received 0xaaaaaaa0 0xfffffff0'
+    self.do_runf('test.c', expected, regex=True, cflags=args + ['-sSTACK_OVERFLOW_CHECK=1'], assert_returncode=NON_ZERO)
 
   @crossplatform
   def test_reproduce(self):
@@ -14581,7 +14615,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @requires_pthreads
   def test_standalone_whole_archive(self):
-    self.do_runf('hello_world.c', cflags=['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lstandalonewasm', '-Wl,--no-whole-archive'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lstandalonewasm', '-Wl,--no-whole-archive'])
 
   @also_with_standalone_wasm(impure=True)
   def test_console_out(self):
@@ -14749,20 +14783,20 @@ addToLibrary({
     self.cflags += ['-g', '-O2']
 
     # First, verify that `-g` produces a debug section
-    self.do_runf('hello_world.c')
+    self.do_runf_out_file('hello_world.c')
     self.assertTrue(has_debug_section('hello_world.wasm'))
 
     # Test `-Wl,--strip-all` will strip the debug section, but that the
     # the target features section is preserved so that later phases
     # (e.g. wasm-opt) can read it.
-    self.do_runf('hello_world.c', cflags=['-Wl,--strip-all', '-pthread'])
+    self.do_runf_out_file('hello_world.c', cflags=['-Wl,--strip-all', '-pthread'])
     self.assertFalse(has_debug_section('hello_world.wasm'))
 
     # Verify that `-Wl,-s` and `-s` also both have the same effect
-    self.do_runf('hello_world.c', cflags=['-Wl,-s', '-pthread'])
+    self.do_runf_out_file('hello_world.c', cflags=['-Wl,-s', '-pthread'])
     self.assertFalse(has_debug_section('hello_world.wasm'))
 
-    self.do_runf('hello_world.c', cflags=['-s', '-pthread'])
+    self.do_runf_out_file('hello_world.c', cflags=['-s', '-pthread'])
     self.assertFalse(has_debug_section('hello_world.wasm'))
 
   def test_embind_no_duplicate_symbols(self):
@@ -14785,7 +14819,7 @@ addToLibrary({
     self.do_runf('embind/test_optional_val_main.cpp', 'done\n', cflags=['-lembind', test_file('embind/test_optional_val_lib.cpp')])
 
   def test_no_pthread(self):
-    self.do_runf('hello_world.c', cflags=['-pthread', '-no-pthread'])
+    self.do_runf_out_file('hello_world.c', cflags=['-pthread', '-no-pthread'])
     self.assertExists('hello_world.js')
     self.assertNotContained('new Worker(', read_file('hello_world.js'))
 
@@ -14975,7 +15009,7 @@ addToLibrary({
     huge_js += '}\n'
     create_file('huge.js', huge_js)
     assert len(huge_js) > (1024 * 1024)
-    self.do_runf('hello_world.c', 'Hello, world!\n', cflags=['--pre-js=huge.js'])
+    self.do_runf_out_file('hello_world.c', cflags=['--pre-js=huge.js'])
     self.assertContained('function hugeFunc', read_file('hello_world.js'))
 
   @with_both_compilers
@@ -15300,7 +15334,7 @@ addToLibrary({
         return scriptDirectory + fileName;
       };
       ''')
-    self.do_runf('hello_world.c', 'Hello, world!', cflags=['--pre-js', 'pre.js'] + args)
+    self.do_runf_out_file('hello_world.c', cflags=['--pre-js', 'pre.js'] + args)
 
   @parameterized({
     '': ([],),
@@ -15314,10 +15348,10 @@ addToLibrary({
         return scriptDirectory + fileName;
       };
       ''')
-    self.do_runf('hello_world.c', 'Hello, world!',
-                 output_suffix='.mjs',
-                 cflags=['--pre-js', 'pre.js',
-                            '--extern-post-js', test_file('modularize_post_js.js')] + args)
+    self.do_runf_out_file('hello_world.c',
+                          output_suffix='.mjs',
+                          cflags=['--pre-js', 'pre.js',
+                                  '--extern-post-js', test_file('modularize_post_js.js')] + args)
 
   @requires_node_25
   def test_js_base64_api(self):
@@ -15325,8 +15359,8 @@ addToLibrary({
     # JS_BASE64_API only has an effect when base64 is being used so we need to
     # disable SINGLE_FILE_BINARY_ENCODE for this test.
     self.cflags += ['-sSINGLE_FILE', '-sSINGLE_FILE_BINARY_ENCODE=0']
-    self.do_runf('hello_world.c', 'Hello, world!', output_basename='baseline')
-    self.do_runf('hello_world.c', 'Hello, world!', cflags=['-sJS_BASE64_API', '-Wno-experimental'])
+    self.do_runf_out_file('hello_world.c', output_basename='baseline')
+    self.do_runf_out_file('hello_world.c', cflags=['-sJS_BASE64_API', '-Wno-experimental'])
     # We expect the resulting JS file to be smaller because it doesn't contain the
     # base64 decoding code
     baseline_size = os.path.getsize('baseline.js')
@@ -15484,11 +15518,11 @@ addToLibrary({
     'closure': (['--closure=1'],),
   })
   def test_TextDecoder(self, args):
-    self.do_runf('hello_world.c', cflags=args)
+    self.do_runf_out_file('hello_world.c', cflags=args)
     td_with_fallback = os.path.getsize('hello_world.js')
     print('td_with_fallback:\t%s' % td_with_fallback)
 
-    self.do_runf('hello_world.c', cflags=args + ['-sTEXTDECODER=2'])
+    self.do_runf_out_file('hello_world.c', cflags=args + ['-sTEXTDECODER=2'])
     td_without_fallback = os.path.getsize('hello_world.js')
     print('td_without_fallback:\t%s' % td_without_fallback)
 
@@ -15501,6 +15535,40 @@ addToLibrary({
 
     expected = '#error "TEXTDECODER must be either 1 or 2"'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sTEXTDECODER=3'], expected)
+
+  # Verify that strings can be decoded when the heap is backed by a resizable
+  # ArrayBuffer (ALLOW_MEMORY_GROWTH + GROWABLE_ARRAYBUFFERS).
+  # TextDecoder.decode() rejects views of resizable ArrayBuffers, so we must
+  # pass it a copy of the data instead.  Node's TextDecoder happens to accept
+  # such views, so emulate the browser behaviour in a --pre-js.
+  # See https://github.com/emscripten-core/emscripten/issues/27241
+  @requires_node_26
+  @parameterized({
+    '': ([],),
+    'textdecoder_2': (['-sTEXTDECODER=2'],),
+  })
+  def test_TextDecoder_resizable_buffer(self, args):
+    create_file('pre.js', '''
+      var realDecode = TextDecoder.prototype.decode;
+      TextDecoder.prototype.decode = function(data) {
+        if (data && data.buffer && (data.buffer.resizable || data.buffer.growable)) {
+          throw new TypeError('The provided ArrayBuffer value must not be resizable');
+        }
+        return realDecode.call(this, data);
+      };
+    ''')
+    create_file('main.c', r'''
+      #include <emscripten/console.h>
+
+      int main() {
+        // Long enough (> 16 bytes) that UTF8ToString on the string takes the
+        // TextDecoder path.
+        emscripten_out("the quick brown fox jumps over the lazy dog");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', 'the quick brown fox jumps over the lazy dog',
+                 cflags=['--pre-js=pre.js', '-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS=1'] + args)
 
   def test_reallocarray(self):
     self.do_other_test('test_reallocarray.c')
@@ -15559,22 +15627,23 @@ addToLibrary({
     # paths. When one path contains another, the inner path should take its
     # functions first, and the rest is split with the outer path.
     def has_defined_function(file, func):
+      func = ''.join('\\' + c if c in {'(', ')'} else c for c in func)
       self.run_process([common.WASM_DIS, file, '-o', 'test.wast'])
-      pattern = re.compile(r'^\s*\(\s*func\s+\$' + func + r'[\s\(\)]', flags=re.MULTILINE)
+      pattern = re.compile(r'^\s*\(\s*func\s+\$("?)' + func + r'\1[\s\(\)]', flags=re.MULTILINE)
       return pattern.search(utils.read_file('test.wast')) is not None
 
     # main.cpp
     self.assertTrue(has_defined_function('test_myapp.wasm', '__original_main'))
     # foo.cpp
-    self.assertTrue(has_defined_function('test_myapp.wasm', r'foo\\28\\29'))
+    self.assertTrue(has_defined_function('test_myapp.wasm', 'foo()'))
     # /emsdk/emscripten/system
     self.assertTrue(has_defined_function('test_lib1.wasm', '__abort_message'))
     self.assertTrue(has_defined_function('test_lib1.wasm', 'pthread_cond_wait'))
     # /emsdk/emscripten/system/lib/libc/musl
     self.assertTrue(has_defined_function('test_lib2.wasm', 'strcmp'))
     # /emsdk/emscripten/system/lib/libcxx
-    self.assertTrue(has_defined_function('test_lib2.wasm', r'std::__2::ios_base::getloc\\28\\29\\20const'))
-    self.assertTrue(has_defined_function('test_lib2.wasm', r'std::uncaught_exceptions\\28\\29'))
+    self.assertTrue(has_defined_function('test_lib2.wasm', 'std::__2::ios_base::getloc() const'))
+    self.assertTrue(has_defined_function('test_lib2.wasm', 'std::uncaught_exceptions()'))
 
     # When --preserve-manifest is NOT given, the files should be deleted
     match = re.search(r'wasm-split(?:\.exe)?\s+.*--manifest\s+(\S+)', out)

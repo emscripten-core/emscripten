@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-assert(!STANDALONE_WASM, "library_time.js should not be included in standalone mode");
+assert(!STANDALONE_WASM, 'library_time.js should not be included in standalone mode');
 
 addToLibrary({
   _mktime_js__i53abi: true,
@@ -139,15 +139,15 @@ addToLibrary({
       tm_year: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}},
       tm_wday: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'i32') }}}
     };
-    var days = [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ];
-    var months = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
+    var days = [ 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat' ];
+    var months = [ 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ];
     var s = days[date.tm_wday] + ' ' + months[date.tm_mon] +
         (date.tm_mday < 10 ? '  ' : ' ') + date.tm_mday +
         (date.tm_hour < 10 ? ' 0' : ' ') + date.tm_hour +
         (date.tm_min < 10 ? ':0' : ':') + date.tm_min +
         (date.tm_sec < 10 ? ':0' : ':') + date.tm_sec +
-        ' ' + (1900 + date.tm_year) + "\n";
+        ' ' + (1900 + date.tm_year) + '\n';
 
     // asctime_r is specced to behave in an undefined manner if the algorithm would attempt
     // to write out more than 26 bytes (including the null terminator).
@@ -191,11 +191,11 @@ addToLibrary({
     var extractZone = (timezoneOffset) => {
       // Why inverse sign?
       // Read here https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/getTimezoneOffset
-      var sign = timezoneOffset >= 0 ? "-" : "+";
+      var sign = timezoneOffset >= 0 ? '-' : '+';
 
       var absOffset = Math.abs(timezoneOffset)
-      var hours = String(Math.floor(absOffset / 60)).padStart(2, "0");
-      var minutes = String(absOffset % 60).padStart(2, "0");
+      var hours = String(Math.floor(absOffset / 60)).padStart(2, '0');
+      var minutes = String(absOffset % 60).padStart(2, '0');
 
       return `UTC${sign}${hours}${minutes}`;
     }
@@ -343,7 +343,7 @@ addToLibrary({
         /\s+/g,'\\s*'
       );
 
-    var matches = new RegExp('^'+pattern_out, "i").exec(UTF8ToString(buf))
+    var matches = new RegExp('^'+pattern_out, 'i').exec(UTF8ToString(buf))
 
     function initDate() {
       function fixup(value, min, max) {

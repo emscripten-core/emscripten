@@ -353,9 +353,6 @@ var SyscallsLibrary = {
   __syscall_socket__deps: ['$SOCKFS'],
   __syscall_socket: (domain, type, protocol, u1, u2, u3) => {
     var sock = SOCKFS.createSocket(domain, type, protocol);
-#if ASSERTIONS
-    assert(sock.stream.fd < 64); // XXX ? select() assumes socket fd values are in 0..63
-#endif
     return sock.stream.fd;
   },
   __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
@@ -424,7 +421,7 @@ var SyscallsLibrary = {
   __syscall_recvfrom__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
   __syscall_recvfrom: (fd, buf, len, flags, addr, alen) => {
     var sock = getSocketFromFD(fd);
-    var msg = sock.sock_ops.recvmsg(sock, len);
+    var msg = sock.sock_ops.recvmsg(sock, len, flags);
     if (!msg) return 0; // socket is closed
     if (addr) {
       var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, alen);
@@ -520,15 +517,13 @@ var SyscallsLibrary = {
     for (var i = 0; i < num; i++) {
       total += {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
     }
-    // try to read total data
-    var msg = sock.sock_ops.recvmsg(sock, total);
+    // try to read total data (MSG_PEEK, when set, leaves it buffered)
+    var msg = sock.sock_ops.recvmsg(sock, total, flags);
     if (!msg) return 0; // socket is closed
 
     // TODO honor flags:
     // MSG_OOB
     // Requests out-of-band data. The significance and semantics of out-of-band data are protocol-specific.
-    // MSG_PEEK
-    // Peeks at the incoming message.
     // MSG_WAITALL
     // Requests that the function block until the full amount of data requested can be returned. The function may return a smaller amount of data if a signal is caught, if the connection is terminated, if MSG_PEEK was specified, or if an error is pending for the socket.
 
@@ -966,6 +961,14 @@ var SyscallsLibrary = {
     FS.symlink(target, linkpath);
     return 0;
   },
+  __syscall_linkat: (olddirfd, oldpath, newdirfd, newpath, flags) => {
+    oldpath = SYSCALLS.getStr(oldpath);
+    newpath = SYSCALLS.getStr(newpath);
+    oldpath = SYSCALLS.calculateAt(olddirfd, oldpath);
+    newpath = SYSCALLS.calculateAt(newdirfd, newpath);
+    FS.link(oldpath, newpath, flags);
+    return 0;
+  },
   __syscall_readlinkat__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_readlinkat: (dirfd, path, buf, bufsize) => {
     path = SYSCALLS.getStr(path);
@@ -1014,10 +1017,8 @@ var SyscallsLibrary = {
   },
   __syscall_utimensat__deps: ['$readI53FromI64'],
   __syscall_utimensat: (dirfd, path, times, flags) => {
+    var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
     path = SYSCALLS.getStr(path);
-#if ASSERTIONS
-    assert(!flags);
-#endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
     var now = Date.now(), atime, mtime;
     if (!times) {
@@ -1047,7 +1048,7 @@ var SyscallsLibrary = {
     // null here means UTIME_OMIT was passed. If both were set to UTIME_OMIT then
     // we can skip the call completely.
     if ((mtime ?? atime) !== null) {
-      FS.utime(path, atime, mtime);
+      FS.utime(path, atime, mtime, nofollow);
     }
     return 0;
   },
@@ -1060,6 +1061,11 @@ var SyscallsLibrary = {
     if (offset < 0 || len < 0) {
       return -{{{ cDefs.EINVAL }}}
     }
+    // fallocate is only meaningful on regular files; a pipe/socket is a seek
+    // error (ESPIPE), matching Linux.
+    if (!SYSCALLS.getStreamFromFD(fd).seekable) {
+      return -{{{ cDefs.ESPIPE }}};
+    }
     // We only support mode == 0, which means we can implement fallocate
     // in terms of ftruncate.
     var oldSize = FS.fstat(fd).size;
@@ -1069,6 +1075,32 @@ var SyscallsLibrary = {
     }
     return 0;
   },
+  __syscall_fadvise64__i53abi: true,
+  __syscall_fadvise64: (fd, offset, len, advice) => {
+    // Advisory only, so a no-op, but a pipe/socket fd is still a seek error
+    // (ESPIPE), matching Linux.
+    if (!SYSCALLS.getStreamFromFD(fd).seekable) {
+      return -{{{ cDefs.ESPIPE }}};
+    }
+    return 0;
+  },
+  __syscall_getuid32__nothrow: true,
+  __syscall_geteuid32__nothrow: true,
+  __syscall_getgid32__nothrow: true,
+  __syscall_getegid32__nothrow: true,
+#if NODERAWFS
+  // NODERAWFS reports the real host process credentials (0 on Windows, which
+  // has no uid/gid concept).
+  __syscall_getuid32: () => process.getuid?.() ?? 0,
+  __syscall_geteuid32: () => process.geteuid?.() ?? 0,
+  __syscall_getgid32: () => process.getgid?.() ?? 0,
+  __syscall_getegid32: () => process.getegid?.() ?? 0,
+#else
+  __syscall_getuid32: () => 0,
+  __syscall_geteuid32: () => 0,
+  __syscall_getgid32: () => 0,
+  __syscall_getegid32: () => 0,
+#endif
   __syscall_dup3: (fd, newfd, flags) => {
     if (fd === newfd) return -{{{ cDefs.EINVAL }}};
     if (flags & ~{{{ cDefs.O_CLOEXEC }}}) return -{{{ cDefs.EINVAL }}};

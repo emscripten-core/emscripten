@@ -901,21 +901,21 @@ var LibraryWebGL2 = {
   glProgramParameteri: (program, pname, value) => {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-    err("GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 
   glGetProgramBinary: (program, bufSize, length, binaryFormat, binary) => {
     GL.recordError(0x502/*GL_INVALID_OPERATION*/);
 #if GL_ASSERTIONS
-    err("GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 
   glProgramBinary: (program, binaryFormat, binary, length) => {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-    err("GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 

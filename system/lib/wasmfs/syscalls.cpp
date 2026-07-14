@@ -111,6 +111,12 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_ISDIR;
   }
 
+  // A file opened for reading only (O_RDONLY) cannot be written. POSIX write(2)
+  // returns EBADF when the file descriptor is not open for writing.
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_RDONLY) {
+    return __WASI_ERRNO_BADF;
+  }
+
   auto lockedFile = file->locked();
 
   if (setOffset == OffsetHandling::OpenFileState) {
@@ -126,8 +132,6 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
       offset = lockedOpenFile.getPosition();
     }
   }
-
-  // TODO: Check open file access mode for write permissions.
 
   size_t bytesWritten = 0;
   for (size_t i = 0; i < iovs_len; i++) {
@@ -197,13 +201,17 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  // TODO: Check open file access mode for read permissions.
-
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
+  }
+
+  // A file opened for writing only (O_WRONLY) cannot be read. POSIX read(2)
+  // returns EBADF when the file descriptor is not open for reading.
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
+    return __WASI_ERRNO_BADF;
   }
 
   auto lockedFile = file->locked();
@@ -569,7 +577,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 int wasmfs_create_file(const char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
-  return doOpen(path::parseParent(pathname), O_CREAT | O_EXCL, mode, backend);
+  return doOpen(
+    path::parseParent(pathname), O_CREAT | O_EXCL | O_RDWR, mode, backend);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -1845,6 +1854,22 @@ int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
   // Advice is currently ignored. TODO some backends might use it
   return 0;
 }
+
+int __syscall_linkat(int olddirfd,
+                     const char* oldpath,
+                     int newdirfd,
+                     const char* newpath,
+                     int flags) {
+  // Hardlinks are not supported in WASMFS.
+  return -EMLINK;
+}
+
+// NODERAWFS credential reporting is implemented in the legacy JS syscall layer
+// only.
+uid_t __syscall_getuid32(void) { return 0; }
+uid_t __syscall_geteuid32(void) { return 0; }
+gid_t __syscall_getgid32(void) { return 0; }
+gid_t __syscall_getegid32(void) { return 0; }
 
 // epoll is implemented in the legacy (non-WASMFS) JS syscall layer only.
 int __syscall_epoll_create1(int flags) { return -ENOSYS; }

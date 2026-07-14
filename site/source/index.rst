@@ -4,12 +4,6 @@
 
 .. _home-page:
 
-.. only:: sdkbuild
-
-  .. admonition:: Welcome to Emscripten SDK |release|
-
-    This documentation contains everything you need to :ref:`start developing <Tutorial>` with the Emscripten SDK.
-
 .. image:: _static/emscripten_logo_full.svg
   :alt: Emscripten logo
   :align: center

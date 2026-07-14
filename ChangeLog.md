@@ -18,8 +18,14 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.3 (in development)
+6.0.4 (in development)
 ----------------------
+
+6.0.3 - 07/13/26
+----------------
+- Fixed `UTF8ToString` with `GROWABLE_ARRAYBUFFERS` set. String decoding now
+  copies the data when the heap buffer is resizable, just like it does in
+  the shared memory case. (#27242)
 - Added support for compiling FMA intrinsics. All 32 FMA intrinsics are
   supported, with 256-bit variants emulated via two 128-bit operations. Pass
   ``-msimd128 -mfma`` to enable. With ``-mrelaxed-simd -mfma``, Wasm relaxed
@@ -35,6 +41,11 @@ See docs/process.md for more on how version tagging works.
   `poll(stream)` returning the current readiness mask; out-of-tree custom FS
   backends with a `poll` handler must update. (#27226)
 - compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245, #27246)
+- `-fcoverage-mapping` is currently broken due to a mismatch between the version
+  of LLVM used and the imported version of compiler-rt.  We hope to fix this
+  in the next release. (#27261)
+- The default value for `GROWABLE_ARRAYBUFFERS` was reverted to `0` since we
+  found issues with Web API compatibility. (#27260)
 
 6.0.2 - 07/01/26
 ----------------

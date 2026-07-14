@@ -41,7 +41,12 @@ if (!globalThis.WebAssembly) {
 
 // Wasm globals
 
-#if SHARED_MEMORY
+#if SOURCE_PHASE_IMPORTS && MODULARIZE == 'instance'
+// In MODULARIZE=instance mode the output is itself an ES module (it is not
+// wrapped by modularize.js), so the source phase import is emitted here at
+// module scope, next to where wasmModule is used.
+import source wasmModule from './{{{ WASM_BINARY_FILE }}}';
+#elif SHARED_MEMORY
 // For sending to workers.
 var wasmModule;
 #endif // SHARED_MEMORY

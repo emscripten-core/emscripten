@@ -670,20 +670,6 @@ var LibrarySDL = {
               }
             });
           }
-          if (Browser.pointerLock) {
-            // workaround for firefox bug 750111
-            if ('mozMovementX' in event) {
-              event['movementX'] = event['mozMovementX'];
-              event['movementY'] = event['mozMovementY'];
-            }
-            // workaround for Firefox bug 782777
-            if (event['movementX'] == 0 && event['movementY'] == 0) {
-              // ignore a mousemove event if it doesn't contain any movement info
-              // (without pointer lock, we infer movement from pageX/pageY, so this check is unnecessary)
-              event.preventDefault();
-              return;
-            }
-          }
           // fall through
         case 'keydown':
         case 'keyup':
@@ -1141,7 +1127,7 @@ var LibrarySDL = {
         audio.paused = false;
         if (!webAudio.decodedBuffer) {
           if (webAudio.onDecodeComplete === undefined) {
-            abort("Cannot play back audio object that was not loaded");
+            abort('Cannot play back audio object that was not loaded');
           }
           webAudio.onDecodeComplete.push(() => { if (!audio.paused) SDL.playWebAudio(audio); });
           return;
@@ -1155,7 +1141,7 @@ var LibrarySDL = {
         // avoid Chrome bug
         // If posz = 0, the sound will come from only the right.
         // By posz = -0.5 (slightly ahead), the sound will come from right and left correctly.
-        audio.webAudioPannerNode["setPosition"](0, 0, -.5);
+        audio.webAudioPannerNode['setPosition'](0, 0, -.5);
         audio.webAudioPannerNode['panningModel'] = 'equalpower';
 
         // Add an intermediate gain node to control volume.
@@ -1268,7 +1254,7 @@ var LibrarySDL = {
       // Standardize button state.
       var buttons = [];
       for (var button of state.buttons) {
-        buttons.push(SDL.getJoystickButtonState(button));
+        buttons.push(button.pressed);
       }
 
       SDL.lastJoystickState[joystick] = {
@@ -1278,19 +1264,6 @@ var LibrarySDL = {
         index: state.index,
         id: state.id
       };
-    },
-    // Retrieves the button state of the given gamepad button.
-    // Abstracts away implementation differences.
-    // Returns 'true' if pressed, 'false' otherwise.
-    getJoystickButtonState(button) {
-      if (typeof button == 'object') {
-        // Current gamepad API editor's draft (Firefox Nightly)
-        // https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-GamepadButton
-        return button['pressed'];
-      }
-      // Current gamepad API working draft (Firefox / Chrome Stable)
-      // http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
-      return button > 0;
     },
     // Queries for and inserts controller events into the SDL queue.
     queryJoysticks() {
@@ -1307,7 +1280,7 @@ var LibrarySDL = {
         if (typeof state.timestamp != 'number' || state.timestamp != prevState.timestamp || !state.timestamp) {
           var i;
           for (i = 0; i < state.buttons.length; i++) {
-            var buttonState = SDL.getJoystickButtonState(state.buttons[i]);
+            var buttonState = state.buttons[i].pressed;
             // NOTE: The previous state already has a boolean representation of
             //       its button, so no need to standardize its button state here.
             if (buttonState !== prevState.buttons[i]) {
@@ -1347,10 +1320,7 @@ var LibrarySDL = {
     },
 
     getGamepads() {
-      if (!navigator.getGamepads) {
-        return [];
-      }
-      return navigator.getGamepads();
+      return navigator.getGamepads?.() ?? [];
     },
 
     // Helper function: Returns the gamepad if available, or null if not.
@@ -1384,15 +1354,15 @@ var LibrarySDL = {
     // capture all key events. we just keep down and up, but also capture press to prevent default actions
     if (!{{{ makeModuleReceiveExpr('doNotCaptureKeyboard', 'false') }}}) {
       var keyboardListeningElement = {{{ makeModuleReceiveExpr('keyboardListeningElement', 'document') }}};
-      keyboardListeningElement.addEventListener("keydown", SDL.receiveEvent);
-      keyboardListeningElement.addEventListener("keyup", SDL.receiveEvent);
-      keyboardListeningElement.addEventListener("keypress", SDL.receiveEvent);
-      window.addEventListener("focus", SDL.receiveEvent);
-      window.addEventListener("blur", SDL.receiveEvent);
-      document.addEventListener("visibilitychange", SDL.receiveEvent);
+      keyboardListeningElement.addEventListener('keydown', SDL.receiveEvent);
+      keyboardListeningElement.addEventListener('keyup', SDL.receiveEvent);
+      keyboardListeningElement.addEventListener('keypress', SDL.receiveEvent);
+      window.addEventListener('focus', SDL.receiveEvent);
+      window.addEventListener('blur', SDL.receiveEvent);
+      document.addEventListener('visibilitychange', SDL.receiveEvent);
     }
 
-    window.addEventListener("unload", SDL.receiveEvent);
+    window.addEventListener('unload', SDL.receiveEvent);
     SDL.keyboardState = _calloc(0x10000, 1); // Our SDL needs 512, but 64K is safe for older SDLs
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown']    = {{{ cDefs.SDL_KEYDOWN }}};
@@ -1844,7 +1814,7 @@ var LibrarySDL = {
   SDL_GetError__proxy: 'sync',
   SDL_GetError__deps: ['$stringToNewUTF8'],
   SDL_GetError: () => {
-    SDL.errorMessage ||= stringToNewUTF8("unknown SDL-emscripten error");
+    SDL.errorMessage ||= stringToNewUTF8('unknown SDL-emscripten error');
     return SDL.errorMessage;
   },
 
@@ -1893,7 +1863,7 @@ var LibrarySDL = {
     var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags, false, 'copy:' + oldData.source);
     var newData = SDL.surfaces[ret];
 
-    newData.ctx.globalCompositeOperation = "copy";
+    newData.ctx.globalCompositeOperation = 'copy';
     newData.ctx.drawImage(oldData.canvas, 0, 0);
     newData.ctx.globalCompositeOperation = oldData.ctx.globalCompositeOperation;
     return ret;
@@ -2333,7 +2303,7 @@ var LibrarySDL = {
         }
         surfData.ctx.putImageData(imageData, 0, 0);
       }
-      surfData.ctx.globalCompositeOperation = "source-over";
+      surfData.ctx.globalCompositeOperation = 'source-over';
       // XXX SDL does not specify that loaded images must have available pixel data, in fact
       //     there are cases where you just want to blit them, so you just need the hardware
       //     accelerated version. However, code everywhere seems to assume that the pixels
@@ -2818,7 +2788,6 @@ var LibrarySDL = {
       var url = URL.createObjectURL(blob);
       audio = new Audio();
       audio.src = url;
-      audio.mozAudioChannelType = 'content'; // bugzilla 910340
     }
 
     var id = SDL.audios.length;
@@ -2855,7 +2824,6 @@ var LibrarySDL = {
       webAudio = { decodedBuffer: buffer };
     } else {
       audio = new Audio();
-      audio.mozAudioChannelType = 'content'; // bugzilla 910340
       // Record the number of channels and frequency for later usage
       audio.numChannels = SDL.mixerNumChannels;
       audio.frequency = SDL.mixerFrequency;
@@ -3554,7 +3522,7 @@ var LibrarySDL = {
   SDL_JoystickGetButton: (joystick, button) => {
     var gamepad = SDL.getGamepad(joystick - 1);
     if (gamepad?.buttons.length > button) {
-      return SDL.getJoystickButtonState(gamepad.buttons[button]) ? 1 : 0;
+      return gamepad.buttons[button].pressed ? 1 : 0;
     }
     return 0;
   },

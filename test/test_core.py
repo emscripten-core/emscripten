@@ -60,6 +60,7 @@ from decorators import (
   no_bun,
   no_deno,
   no_highmem,
+  no_wasm64,
   no_windows,
   parameterize,
   parameterized,
@@ -2654,6 +2655,16 @@ The current type of b is: 9
     if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
       self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
     self.do_runf_out_file('pthread/test_pthread_attr_getstack.c')
+
+  @requires_pthreads
+  def test_pthread_guardsize(self):
+    self.do_runf_out_file('pthread/test_pthread_guardsize.c')
+
+  @requires_pthreads
+  def test_pthread_guardsize_overflow(self):
+    self.set_setting('STACK_OVERFLOW_CHECK', 1)
+    expected = r'Aborted\(Stack overflow! Stack cookie has been overwritten at 0x[0-9a-f]+, expected hex dwords 0x89bacdfe and 0x02135467, but received 0xaaaaaaaa 0xaaaaaaaa\)'
+    self.do_runf('pthread/test_pthread_guardsize_overflow.c', expected, regex=True, assert_returncode=NON_ZERO)
 
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26199')
@@ -5613,6 +5624,23 @@ got: 10
     self.cflags += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
+  @no_wasm64('https://github.com/emscripten-core/emscripten/issues/27221')
+  @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
+  # We don't use the `requires_pthreads` decorator because we want to test that pthreads is
+  # automatically enabled when OpenMP is used.
+  def test_openmp_max_threads(self):
+    src = r"""
+      #include <omp.h>
+      #include <assert.h>
+      int main(void) {
+        assert(omp_get_max_threads() > 0);
+        return 0;
+      }
+    """
+    # We need to explicitly add the `-Wno-pthreads-mem-growth` flag because
+    # ASAN uses `-sALLOW_MEMORY_GROWTH`.
+    self.do_run(src, "", cflags=['-fopenmp=libomp', '-Wno-pthreads-mem-growth'])
+
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
     src = r'''
@@ -5933,9 +5961,38 @@ got: 10
       self.set_setting("FORCE_FILESYSTEM")
     self.do_runf_out_file('fs/test_fs_write.c')
 
+  @with_all_fs
+  def test_fs_access_mode(self):
+    # Writing to an O_RDONLY fd and reading from an O_WRONLY fd must fail with
+    # EBADF, consistently across all filesystems.
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf('fs/test_access_mode.c', 'done\n')
+
   @also_with_noderawfs
   def test_fs_emptyPath(self):
     self.do_runf_out_file('fs/test_emptyPath.c')
+
+  @no_windows('no symlink support on windows')
+  @also_with_nodefs_both
+  def test_fs_link(self):
+    self.do_runf('fs/test_link.c', 'done\n')
+
+  @no_windows('no symlink support on windows')
+  @also_with_nodefs_both
+  def test_fs_utimensat_nofollow(self):
+    self.do_runf('fs/test_utimensat_nofollow.c', 'done\n')
+
+  @also_with_nodefs_both
+  def test_fs_fadvise_fallocate(self):
+    self.do_runf('fs/test_fadvise_fallocate.c', 'done\n')
+
+  @no_windows('no uid/gid concept on windows')
+  def test_fs_getuid_noderawfs(self):
+    # The default backends report 0 and are covered by unistd/misc.c. This test
+    # verifies NODERAWFS reports the real host process credentials.
+    self.setup_noderawfs_test()
+    self.do_runf('fs/test_getuid_noderawfs.c', 'done\n')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
@@ -6014,6 +6071,12 @@ Module.onRuntimeInitialized = () => {
   @also_with_noderawfs
   def test_fs_writev(self):
     self.do_runf('fs/test_writev.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
+
+  def test_fs_readv_eagain(self):
+    self.do_runf('fs/test_readv_eagain.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
+
+  def test_fs_writev_gather(self):
+    self.do_runf('fs/test_writev_gather.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
   def test_fs_64bit(self):
     if self.get_setting('WASMFS'):
@@ -7639,7 +7702,6 @@ void* operator new(size_t size) {
     self.do_runf_out_file('embind/test_negative_constants.cpp', cflags=['-lembind'])
 
   @also_without_bigint
-  @no_esm_integration('embind is not compatible with WASM_ESM_INTEGRATION')
   def test_embind_unsigned(self):
     self.do_runf_out_file('embind/test_unsigned.cpp', cflags=['-lembind'])
 
@@ -9704,6 +9766,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.require_pthreads()
     self.do_runf('core/test_pipe_select.c', cflags=args)
 
+  def test_pipe_pollhup(self):
+    self.do_runf('core/test_pipe_pollhup.c', 'done\n')
+
   @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
@@ -9800,7 +9865,7 @@ int main() {
   })
   @esm_integration
   def test_esm_integration_main(self, args):
-    self.do_runf('hello_world.c', 'Hello, world!', cflags=args)
+    self.do_runf_out_file('hello_world.c', cflags=args)
 
   @esm_integration
   def test_esm_integration(self):
@@ -9880,6 +9945,7 @@ int main() {
 
     self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
 
+  @disabled('https://github.com/emscripten-core/emscripten/issues/27223')
   @no_esm_integration('fcoverage is not compatible with WASM_ESM_INTEGRATION')
   @no_wasm2js('wasm binary required to produce code coverage results with llvm-cov')
   def test_fcoverage_mapping(self):

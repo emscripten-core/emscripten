@@ -186,7 +186,7 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
-                            "MARK", message]);
+                            'MARK', message]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
       window['wtf'].trace.mark(message);
@@ -197,7 +197,7 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
-                            "MARK", UTF8ToString(message)]);
+                            'MARK', UTF8ToString(message)]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
       window['wtf'].trace.mark(UTF8ToString(message));

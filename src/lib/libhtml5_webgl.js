@@ -433,7 +433,7 @@ var LibraryHtml5WebGL = {
 
     var webGlEventHandlerFunc = (e) => {
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, 0, userData);
       else
 #endif
       if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, 0, userData)) e.preventDefault();
@@ -454,14 +454,14 @@ var LibraryHtml5WebGL = {
   emscripten_set_webglcontextlost_callback_on_thread__proxy: 'sync',
   emscripten_set_webglcontextlost_callback_on_thread__deps: ['$registerWebGlEventCallback'],
   emscripten_set_webglcontextlost_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST }}}, "webglcontextlost", targetThread);
+    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST }}}, 'webglcontextlost', targetThread);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
   emscripten_set_webglcontextrestored_callback_on_thread__proxy: 'sync',
   emscripten_set_webglcontextrestored_callback_on_thread__deps: ['$registerWebGlEventCallback'],
   emscripten_set_webglcontextrestored_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED }}}, "webglcontextrestored", targetThread);
+    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED }}}, 'webglcontextrestored', targetThread);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 

@@ -153,7 +153,7 @@ var LibraryBrowser = {
 
 #if expectToReceiveOnModule('elementPointerLock')
         if (Module['elementPointerLock']) {
-          canvas.addEventListener("click", (ev) => {
+          canvas.addEventListener('click', (ev) => {
             if (!Browser.pointerLock && Browser.getCanvas().requestPointerLock) {
               Browser.getCanvas().requestPointerLock();
               ev.preventDefault();
@@ -265,7 +265,7 @@ var LibraryBrowser = {
       }
 
       // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
-      var canvasContainer = document.createElement("div");
+      var canvasContainer = document.createElement('div');
       canvas.parentNode.insertBefore(canvasContainer, canvas);
       canvasContainer.appendChild(canvas);
 
@@ -287,7 +287,7 @@ var LibraryBrowser = {
 
     exitFullscreen() {
       // This is workaround for chrome. Trying to exit from fullscreen
-      // not in fullscreen state will cause "TypeError: Document not active"
+      // not in fullscreen state will cause 'TypeError: Document not active'
       // in chrome. See https://github.com/emscripten-core/emscripten/pull/8236
       if (!Browser.isFullscreen) {
         return false;
@@ -328,21 +328,6 @@ var LibraryBrowser = {
       window.getUserMedia ||= navigator['getUserMedia'] ||
                               navigator['mozGetUserMedia'];
       window.getUserMedia(func);
-    },
-
-
-    getMovementX(event) {
-      return event['movementX'] ||
-             event['mozMovementX'] ||
-             event['webkitMovementX'] ||
-             0;
-    },
-
-    getMovementY(event) {
-      return event['movementY'] ||
-             event['mozMovementY'] ||
-             event['webkitMovementY'] ||
-             0;
     },
 
     // Browsers specify wheel direction according to the page CSS pixel Y direction:
@@ -425,19 +410,13 @@ var LibraryBrowser = {
       Browser.mouseY = y;
     },
 
-    // Unpack a "mouse" event, handling SDL touch paths and pointerlock compatibility stuff.
+    // Unpack a 'mouse' event, handling SDL touch paths and pointerlock compatibility stuff.
     calculateMouseEvent(event) { // event should be mousemove, mousedown or mouseup
       if (Browser.pointerLock) {
         // When the pointer is locked, calculate the coordinates
         // based on the movement of the mouse.
-        // Workaround for Firefox bug 764498
-        if (event.type != 'mousemove' &&
-            ('mozMovementX' in event)) {
-          Browser.mouseMovementX = Browser.mouseMovementY = 0;
-        } else {
-          Browser.mouseMovementX = Browser.getMovementX(event);
-          Browser.mouseMovementY = Browser.getMovementY(event);
-        }
+        Browser.mouseMovementX = event.movementX;
+        Browser.mouseMovementY = event.movementY;
 
         // add the mouse delta to the current absolute mouse position
         Browser.mouseX += Browser.mouseMovementX;
@@ -446,7 +425,7 @@ var LibraryBrowser = {
         if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
           var touch = event.touch;
           if (touch === undefined) {
-            return; // the "touch" property is only defined in SDL
+            return; // the 'touch' property is only defined in SDL
 
           }
           var coords = Browser.calculateMouseCoords(touch.pageX, touch.pageY);
@@ -484,7 +463,7 @@ var LibraryBrowser = {
     windowedHeight: 0,
     setFullscreenCanvasSize() {
       // check if SDL is available
-      if (typeof SDL != "undefined") {
+      if (typeof SDL != 'undefined') {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
         flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
@@ -495,7 +474,7 @@ var LibraryBrowser = {
 
     setWindowedCanvasSize() {
       // check if SDL is available
-      if (typeof SDL != "undefined") {
+      if (typeof SDL != 'undefined') {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
         flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
@@ -532,19 +511,19 @@ var LibraryBrowser = {
         if (canvas.width  != w) canvas.width  = w;
         if (canvas.height != h) canvas.height = h;
         if (typeof canvas.style != 'undefined') {
-          canvas.style.removeProperty( "width");
-          canvas.style.removeProperty("height");
+          canvas.style.removeProperty( 'width');
+          canvas.style.removeProperty('height');
         }
       } else {
         if (canvas.width  != wNative) canvas.width  = wNative;
         if (canvas.height != hNative) canvas.height = hNative;
         if (typeof canvas.style != 'undefined') {
           if (w != wNative || h != hNative) {
-            canvas.style.setProperty( "width", w + "px", "important");
-            canvas.style.setProperty("height", h + "px", "important");
+            canvas.style.setProperty( 'width', w + 'px', 'important');
+            canvas.style.setProperty('height', h + 'px', 'important');
           } else {
-            canvas.style.removeProperty( "width");
-            canvas.style.removeProperty("height");
+            canvas.style.removeProperty( 'width');
+            canvas.style.removeProperty('height');
           }
         }
       }
@@ -851,7 +830,7 @@ var LibraryBrowser = {
     var canvas = /** @type {HTMLCanvasElement} */(Browser.preloadedImages[path]);
     if (!canvas) return 0;
 
-    var ctx = canvas.getContext("2d");
+    var ctx = canvas.getContext('2d');
     var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
     var buf = _malloc(canvas.width * canvas.height * 4);
 

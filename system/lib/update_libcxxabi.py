@@ -19,7 +19,7 @@ preserve_files = ('cxa_exception_js_utils.cpp', '__cpp_exception.S')
 
 
 def main():
-  llvm_dir = get_llvm_dir()
+  llvm_dir = parse_args(default_llvm_dir, 'llvm_dir')
   upstream_root = os.path.join(llvm_dir, 'libcxxabi')
   upstream_src = os.path.join(upstream_root, 'src')
   upstream_inc = os.path.join(upstream_root, 'include')
@@ -34,6 +34,7 @@ def main():
   copy_tree(upstream_inc, local_inc, excludes)
   shutil.copy2(os.path.join(upstream_root, 'CREDITS.TXT'), local_root)
   shutil.copy2(os.path.join(upstream_root, 'LICENSE.TXT'), local_root)
+  update_readme(local_root, llvm_dir)
 
 
 if __name__ == '__main__':

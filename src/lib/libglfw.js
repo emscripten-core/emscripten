@@ -733,7 +733,7 @@ var LibraryGLFW = {
     refreshJoysticks: () => {
       // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
       if (MainLoop.currentFrameNumber !== GLFW.lastGamepadStateFrame || !MainLoop.currentFrameNumber) {
-        GLFW.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads || []);
+        GLFW.lastGamepadState = navigator.getGamepads?.() ?? [];
         GLFW.lastGamepadStateFrame = MainLoop.currentFrameNumber;
 
         for (var joy = 0; joy < GLFW.lastGamepadState.length; ++joy) {
@@ -842,7 +842,7 @@ var LibraryGLFW = {
       var filenames = _malloc(event.dataTransfer.files.length * {{{ POINTER_SIZE }}});
       var filenamesArray = [];
       for (var i = 0; i < event.dataTransfer.files.length; ++i) {
-        var path = `/${drop_dir}/${event.dataTransfer.files[i].name.replace(/\//g, "_")}`;
+        var path = `/${drop_dir}/${event.dataTransfer.files[i].name.replace(/\//g, '_')}`;
         var filename = stringToNewUTF8(path);
         filenamesArray.push(filename);
         {{{ makeSetValue('filenames', `i*${POINTER_SIZE}` , 'filename', '*') }}};
@@ -907,7 +907,7 @@ var LibraryGLFW = {
             entry.file((f) => { filesQ.push({ file: f, path: pp }); markDone(fp, false); })
           } else if (entry.isDirectory) {
             if (entriesTree.hasOwnProperty(pp)) entriesTree[pp].subpaths.push(fp);
-            FS.createPath("/" + drop_dir + pp, entry.name);
+            FS.createPath('/' + drop_dir + pp, entry.name);
             var reader = entry.createReader();
             var rRead = function (dirEntries) {
               if (dirEntries.length == 0) {
@@ -926,7 +926,7 @@ var LibraryGLFW = {
       } else {
         // fallback for browsers that does not support webkitGetAsEntry
         for (const file of event.dataTransfer.files) {
-          filesQ.push({ file: file, path: "" });
+          filesQ.push({ file: file, path: '' });
         }
         finalize();
       }
@@ -1126,7 +1126,7 @@ var LibraryGLFW = {
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++) {
         // no-op
       }
-      if (i > 0) abort("glfwCreateWindow only supports one window at time currently");
+      if (i > 0) abort('glfwCreateWindow only supports one window at time currently');
 
       // id for window
       id = i + 1;
@@ -1258,7 +1258,7 @@ var LibraryGLFW = {
       }
 
       // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
-      var canvasContainer = document.createElement("div");
+      var canvasContainer = document.createElement('div');
       canvas.parentNode.insertBefore(canvasContainer, canvas);
       canvasContainer.appendChild(canvas);
 
@@ -1309,11 +1309,11 @@ var LibraryGLFW = {
       if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
       if (typeof canvas.style != 'undefined') {
         if (!GLFW.isCSSScalingEnabled()) {
-          canvas.style.setProperty( "width", wNative + "px", "important");
-          canvas.style.setProperty("height", hNative + "px", "important");
+          canvas.style.setProperty( 'width', wNative + 'px', 'important');
+          canvas.style.setProperty('height', hNative + 'px', 'important');
         } else {
-          canvas.style.removeProperty( "width");
-          canvas.style.removeProperty("height");
+          canvas.style.removeProperty( 'width');
+          canvas.style.removeProperty('height');
         }
       }
     },
@@ -1451,7 +1451,7 @@ var LibraryGLFW = {
     canvas.addEventListener('touchend', GLFW.onMouseButtonUp, true);
     canvas.addEventListener('mousemove', GLFW.onMousemove, true);
     canvas.addEventListener('mousedown', GLFW.onMouseButtonDown, true);
-    canvas.addEventListener("mouseup", GLFW.onMouseButtonUp, true);
+    canvas.addEventListener('mouseup', GLFW.onMouseButtonUp, true);
     canvas.addEventListener('wheel', GLFW.onMouseWheel, true);
     canvas.addEventListener('mousewheel', GLFW.onMouseWheel, true);
     canvas.addEventListener('mouseenter', GLFW.onMouseenter, true);
@@ -1538,7 +1538,7 @@ var LibraryGLFW = {
 
     // extensions from GLEmulations do not come unprefixed
     // so, try with prefix
-    return (GLFW.extensions.includes("GL_" + extension));
+    return (GLFW.extensions.includes('GL_' + extension));
   },
 
   glfwSwapInterval__deps: ['emscripten_set_main_loop_timing'],
@@ -1550,7 +1550,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
   glfwGetVersionString: () => {
-    GLFW.versionString ||= stringToNewUTF8("3.2.1 JS WebGL Emscripten");
+    GLFW.versionString ||= stringToNewUTF8('3.2.1 JS WebGL Emscripten');
     return GLFW.versionString;
   },
 
@@ -1604,7 +1604,7 @@ var LibraryGLFW = {
   },
 
   glfwGetMonitorName: (mon) => {
-    GLFW.monitorString ||= stringToNewUTF8("HTML5 WebGL Canvas");
+    GLFW.monitorString ||= stringToNewUTF8('HTML5 WebGL Canvas');
     return GLFW.monitorString;
   },
 
@@ -1626,9 +1626,9 @@ var LibraryGLFW = {
   // TODO: implement
   glfwSetGamma: (monitor, gamma) => 0,
 
-  glfwGetGammaRamp: (monitor) => abort("glfwGetGammaRamp not implemented."),
+  glfwGetGammaRamp: (monitor) => abort('glfwGetGammaRamp not implemented.'),
 
-  glfwSetGammaRamp: (monitor, ramp) => abort("glfwSetGammaRamp not implemented."),
+  glfwSetGammaRamp: (monitor, ramp) => abort('glfwSetGammaRamp not implemented.'),
 
   glfwDefaultWindowHints: () => GLFW.defaultWindowHints(),
 
@@ -1784,7 +1784,7 @@ var LibraryGLFW = {
 
   glfwSetWindowAspectRatio: (winid, numer, denom) => 0,
 
-  glfwGetWindowFrameSize: (winid, left, top, right, bottom) => abort("glfwGetWindowFrameSize not implemented."),
+  glfwGetWindowFrameSize: (winid, left, top, right, bottom) => abort('glfwGetWindowFrameSize not implemented.'),
 
   glfwMaximizeWindow: (winid) => 0,
 
@@ -1792,7 +1792,7 @@ var LibraryGLFW = {
 
   glfwRequestWindowAttention: (winid) => 0, // maybe do window.focus()?
 
-  glfwSetWindowMonitor: (winid, monitor, xpos, ypos, width, height, refreshRate) => abort("glfwSetWindowMonitor not implemented."),
+  glfwSetWindowMonitor: (winid, monitor, xpos, ypos, width, height, refreshRate) => abort('glfwSetWindowMonitor not implemented.'),
 
   glfwCreateCursor: (image, xhot, yhot) => 0,
 
@@ -1843,9 +1843,9 @@ var LibraryGLFW = {
 
   glfwGetKey: (winid, key) => GLFW.getKey(winid, key),
 
-  glfwGetKeyName: (key, scancode) => abort("glfwGetKeyName not implemented."),
+  glfwGetKeyName: (key, scancode) => abort('glfwGetKeyName not implemented.'),
 
-  glfwGetKeyScancode: (key) => abort("glfwGetKeyScancode not implemented."),
+  glfwGetKeyScancode: (key) => abort('glfwGetKeyScancode not implemented.'),
 
   glfwGetMouseButton: (winid, button) => GLFW.getMouseButton(winid, button),
 
@@ -1858,7 +1858,7 @@ var LibraryGLFW = {
 
   glfwSetCharCallback: (winid, cbfun) => GLFW.setCharCallback(winid, cbfun),
 
-  glfwSetCharModsCallback: (winid, cbfun) => abort("glfwSetCharModsCallback not implemented."),
+  glfwSetCharModsCallback: (winid, cbfun) => abort('glfwSetCharModsCallback not implemented.'),
 
   glfwSetMouseButtonCallback: (winid, cbfun) => GLFW.setMouseButtonCallback(winid, cbfun),
 
@@ -1878,11 +1878,11 @@ var LibraryGLFW = {
 
   glfwSetDropCallback: (winid, cbfun) => GLFW.setDropCallback(winid, cbfun),
 
-  glfwGetTimerValue: () => abort("glfwGetTimerValue is not implemented."),
+  glfwGetTimerValue: () => abort('glfwGetTimerValue is not implemented.'),
 
-  glfwGetTimerFrequency: () => abort("glfwGetTimerFrequency is not implemented."),
+  glfwGetTimerFrequency: () => abort('glfwGetTimerFrequency is not implemented.'),
 
-  glfwGetRequiredInstanceExtensions: (count) => abort("glfwGetRequiredInstanceExtensions is not implemented."),
+  glfwGetRequiredInstanceExtensions: (count) => abort('glfwGetRequiredInstanceExtensions is not implemented.'),
 
   glfwJoystickPresent: (joy) => {
     GLFW.refreshJoysticks();
@@ -1916,7 +1916,7 @@ var LibraryGLFW = {
     return state.buttons;
   },
 
-  glfwGetJoystickHats: (joy, count) => abort("glfwGetJoystickHats is not implemented"),
+  glfwGetJoystickHats: (joy, count) => abort('glfwGetJoystickHats is not implemented'),
 
   glfwGetJoystickName: (joy) => {
     if (GLFW.joys[joy]) {
@@ -1925,13 +1925,13 @@ var LibraryGLFW = {
     return 0;
   },
 
-  glfwGetJoystickGUID: (jid) => abort("glfwGetJoystickGUID not implemented"),
+  glfwGetJoystickGUID: (jid) => abort('glfwGetJoystickGUID not implemented'),
 
-  glfwSetJoystickUserPointer: (jid, ptr) => abort("glfwSetJoystickUserPointer not implemented"),
+  glfwSetJoystickUserPointer: (jid, ptr) => abort('glfwSetJoystickUserPointer not implemented'),
 
-  glfwGetJoystickUserPointer: (jid) => abort("glfwGetJoystickUserPointer not implemented"),
+  glfwGetJoystickUserPointer: (jid) => abort('glfwGetJoystickUserPointer not implemented'),
 
-  glfwJoystickIsGamepad: (jid) => abort("glfwJoystickIsGamepad not implemented"),
+  glfwJoystickIsGamepad: (jid) => abort('glfwJoystickIsGamepad not implemented'),
 
   glfwSetJoystickCallback: (cbfun) => GLFW.setJoystickCallback(cbfun),
 
@@ -1953,7 +1953,7 @@ var LibraryGLFW = {
     GLFW.hints[0x00021004] = alphabits;   // GLFW_ALPHA_BITS
     GLFW.hints[0x00021005] = depthbits;   // GLFW_DEPTH_BITS
     GLFW.hints[0x00021006] = stencilbits; // GLFW_STENCIL_BITS
-    GLFW.createWindow(width, height, "GLFW2 Window", 0, 0);
+    GLFW.createWindow(width, height, 'GLFW2 Window', 0, 0);
     return 1; // GL_TRUE
   },
 
@@ -2037,7 +2037,7 @@ var LibraryGLFW = {
     GLFW.setScrollCallback(GLFW.active.id, cbfun);
   },
 
-  glfwGetDesktopMode: (mode) => abort("glfwGetDesktopMode is not implemented."),
+  glfwGetDesktopMode: (mode) => abort('glfwGetDesktopMode is not implemented.'),
 
   glfwSleep__deps: ['sleep'],
   glfwSleep: (time) => _sleep(time),
@@ -2071,37 +2071,37 @@ var LibraryGLFW = {
   // One single thread
   glfwGetThreadID: () => 0,
 
-  glfwCreateMutex: () => abort("glfwCreateMutex is not implemented."),
+  glfwCreateMutex: () => abort('glfwCreateMutex is not implemented.'),
 
-  glfwDestroyMutex: (mutex) => abort("glfwDestroyMutex is not implemented."),
+  glfwDestroyMutex: (mutex) => abort('glfwDestroyMutex is not implemented.'),
 
-  glfwLockMutex: (mutex) => abort("glfwLockMutex is not implemented."),
+  glfwLockMutex: (mutex) => abort('glfwLockMutex is not implemented.'),
 
-  glfwUnlockMutex: (mutex) => abort("glfwUnlockMutex is not implemented."),
+  glfwUnlockMutex: (mutex) => abort('glfwUnlockMutex is not implemented.'),
 
-  glfwCreateCond: () => abort("glfwCreateCond is not implemented."),
+  glfwCreateCond: () => abort('glfwCreateCond is not implemented.'),
 
-  glfwDestroyCond: (cond) => abort("glfwDestroyCond is not implemented."),
+  glfwDestroyCond: (cond) => abort('glfwDestroyCond is not implemented.'),
 
-  glfwWaitCond: (cond, mutex, timeout) => abort("glfwWaitCond is not implemented."),
+  glfwWaitCond: (cond, mutex, timeout) => abort('glfwWaitCond is not implemented.'),
 
-  glfwSignalCond: (cond) => abort("glfwSignalCond is not implemented."),
+  glfwSignalCond: (cond) => abort('glfwSignalCond is not implemented.'),
 
-  glfwBroadcastCond: (cond) => abort("glfwBroadcastCond is not implemented."),
+  glfwBroadcastCond: (cond) => abort('glfwBroadcastCond is not implemented.'),
 
   glfwGetNumberOfProcessors: () => 1, // Threads are disabled anyway…
 
-  glfwReadImage: (name, img, flags) => abort("glfwReadImage is not implemented."),
+  glfwReadImage: (name, img, flags) => abort('glfwReadImage is not implemented.'),
 
-  glfwReadMemoryImage: (data, size, img, flags) => abort("glfwReadMemoryImage is not implemented."),
+  glfwReadMemoryImage: (data, size, img, flags) => abort('glfwReadMemoryImage is not implemented.'),
 
-  glfwFreeImage: (img) => abort("glfwFreeImage is not implemented."),
+  glfwFreeImage: (img) => abort('glfwFreeImage is not implemented.'),
 
-  glfwLoadTexture2D: (name, flags) => abort("glfwLoadTexture2D is not implemented."),
+  glfwLoadTexture2D: (name, flags) => abort('glfwLoadTexture2D is not implemented.'),
 
-  glfwLoadMemoryTexture2D: (data, size, flags) => abort("glfwLoadMemoryTexture2D is not implemented."),
+  glfwLoadMemoryTexture2D: (data, size, flags) => abort('glfwLoadMemoryTexture2D is not implemented.'),
 
-  glfwLoadTextureImage2D: (img, flags) => abort("glfwLoadTextureImage2D is not implemented."),
+  glfwLoadTextureImage2D: (img, flags) => abort('glfwLoadTextureImage2D is not implemented.'),
 #endif // GLFW2
 };
 
