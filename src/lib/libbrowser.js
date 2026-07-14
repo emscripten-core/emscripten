@@ -330,21 +330,6 @@ var LibraryBrowser = {
       window.getUserMedia(func);
     },
 
-
-    getMovementX(event) {
-      return event['movementX'] ||
-             event['mozMovementX'] ||
-             event['webkitMovementX'] ||
-             0;
-    },
-
-    getMovementY(event) {
-      return event['movementY'] ||
-             event['mozMovementY'] ||
-             event['webkitMovementY'] ||
-             0;
-    },
-
     // Browsers specify wheel direction according to the page CSS pixel Y direction:
     // Scrolling mouse wheel down (==towards user/away from screen) on Windows/Linux (and macOS without 'natural scroll' enabled)
     // is the positive wheel direction. Scrolling mouse wheel up (towards the screen) is the negative wheel direction.
@@ -430,14 +415,8 @@ var LibraryBrowser = {
       if (Browser.pointerLock) {
         // When the pointer is locked, calculate the coordinates
         // based on the movement of the mouse.
-        // Workaround for Firefox bug 764498
-        if (event.type != 'mousemove' &&
-            ('mozMovementX' in event)) {
-          Browser.mouseMovementX = Browser.mouseMovementY = 0;
-        } else {
-          Browser.mouseMovementX = Browser.getMovementX(event);
-          Browser.mouseMovementY = Browser.getMovementY(event);
-        }
+        Browser.mouseMovementX = event.movementX;
+        Browser.mouseMovementY = event.movementY;
 
         // add the mouse delta to the current absolute mouse position
         Browser.mouseX += Browser.mouseMovementX;

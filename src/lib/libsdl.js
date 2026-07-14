@@ -670,20 +670,6 @@ var LibrarySDL = {
               }
             });
           }
-          if (Browser.pointerLock) {
-            // workaround for firefox bug 750111
-            if ('mozMovementX' in event) {
-              event['movementX'] = event['mozMovementX'];
-              event['movementY'] = event['mozMovementY'];
-            }
-            // workaround for Firefox bug 782777
-            if (event['movementX'] == 0 && event['movementY'] == 0) {
-              // ignore a mousemove event if it doesn't contain any movement info
-              // (without pointer lock, we infer movement from pageX/pageY, so this check is unnecessary)
-              event.preventDefault();
-              return;
-            }
-          }
           // fall through
         case 'keydown':
         case 'keyup':
