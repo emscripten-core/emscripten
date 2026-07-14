@@ -26,7 +26,7 @@ from common import (
 )
 from decorators import no_windows, parameterized, with_env_modify
 
-from tools import cache, ports, response_file, shared, utils
+from tools import building, cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
 from tools.shared import EMCC, config
 from tools.utils import delete_dir, delete_file
@@ -284,6 +284,7 @@ class sanity(RunnerCore):
         make_fake_tool(self.in_dir('fake', 'llvm-ar'), '%s.%s' % (expected_x, expected_y))
         make_fake_tool(self.in_dir('fake', 'llvm-nm'), '%s.%s' % (expected_x, expected_y))
         expect_warning = inc_x != 0
+        # We have a special exception for the emscripten-release buildbot where we also allow EXPECTED_LLVM_VERSION + 1
         if 'BUILDBOT_BUILDNUMBER' in os.environ and inc_x == 1:
           expect_warning = False
         if expect_warning:
@@ -816,6 +817,18 @@ fi
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
     self.check_working([EMCC, test_file('hello_world.c'), '-O2'], 'unexpected binaryen version: 70 (expected ')
+
+    make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), str(building.EXPECTED_BINARYEN_VERSION))
+    output = self.do([EMCC, test_file('hello_world.c'), '-O2'])
+    self.assertNotContained('unexpected binaryen version', output)
+
+    # We have a special exception for the emscripten-release buildbot where we also allow EXPECTED_BINARYEN_VERSION + 1
+    make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), str(building.EXPECTED_BINARYEN_VERSION + 1))
+    if 'BUILDBOT_BUILDNUMBER' in os.environ:
+      output = self.do([EMCC, test_file('hello_world.c'), '-O2'])
+      self.assertNotContained('unexpected binaryen version', output)
+    else:
+      self.check_working([EMCC, test_file('hello_world.c'), '-O2'], 'unexpected binaryen version')
 
   def test_bootstrap(self):
     restore_and_set_up()
