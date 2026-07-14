@@ -403,6 +403,13 @@ var SyscallsLibrary = {
       assert(!errno);
 #endif
     }
+    // Honor SOCK_NONBLOCK on the accepted fd (SOCK_CLOEXEC is a no-op for a
+    // single process, matching F_SETFD). Without this the new fd only inherits
+    // the listener's flags, so a SOCK_NONBLOCK accept off a blocking listener
+    // would wrongly yield a blocking socket.
+    if (flags & {{{ cDefs.SOCK_NONBLOCK }}}) {
+      newsock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
+    }
     return newsock.stream.fd;
   },
   __syscall_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
@@ -694,6 +701,43 @@ var SyscallsLibrary = {
   __syscall_poll_nonblocking__deps: ['$doPollSync'],
   __syscall_poll_nonblocking: (fds, nfds) => {
     return doPollSync(fds, nfds);
+  },
+  // The single wait primitive behind blocking socket data ops. The data
+  // syscalls themselves are strictly synchronous (single attempt, -EAGAIN when
+  // they would block); libc's blocking wrappers (compiled only into the -mt
+  // libc) call this on EAGAIN with a blocking fd and then retry. It blocks only
+  // on a proxied pthread worker: the sync-proxy completes - ending the worker's
+  // futex wait - when the returned promise resolves. In every other context
+  // (including the event-loop thread, which cannot block) it fails with
+  // -EAGAIN. Resolves 0 once `fd` reports one of `events` (POLL* flags;
+  // error/hangup/close always wake). Single-threaded builds use epoll instead.
+#if !PTHREADS
+  // Without pthreads the body is just `return -EAGAIN`, which cannot throw;
+  // skip the syscall try/catch wrapper so closure doesn't flag it as dead.
+  _emscripten_fd_wait__nothrow: true,
+#endif
+  _emscripten_fd_wait__proxy: 'sync',
+  _emscripten_fd_wait__async: 'auto',
+  _emscripten_fd_wait__deps: ['$FS', '$pollOne'],
+  _emscripten_fd_wait: (fd, events) => {
+#if PTHREADS
+    if (PThread.currentProxiedOperationCallerThread) {
+      // Must resolve through a Promise: the caller's sync-proxy awaits a
+      // thenable (PROXY_SYNC_ASYNC), even when already ready.
+      return new Promise((resolve) => {
+        if (pollOne(fd, events)) return resolve(0);
+        var stream = FS.getStream(fd);
+        if (!stream) return resolve(0); // closed: let the retry surface EBADF
+        var reg = stream.node.addListener(() => {
+          if (pollOne(fd, events)) {
+            reg.listeners.delete(reg.entry);
+            resolve(0);
+          }
+        });
+      });
+    }
+#endif
+    return -{{{ cDefs.EAGAIN }}};
   },
   // epoll: the entry points live here (like every other syscall); the heavy
   // lifting is in libepoll.js, which they call after resolving the epoll stream.

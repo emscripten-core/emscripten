@@ -49,6 +49,13 @@ See docs/process.md for more on how version tagging works.
   that signals an epoll set's readiness to a callback (which collects the
   events itself via a zero-timeout `epoll_wait`) with no `ASYNCIFY`/`JSPI`.
   (#27207)
+- Blocking `accept`, `recv`, `recvfrom` and `recvmsg` on sockets are now
+  supported under `-pthread` with `PROXY_TO_PTHREAD`: a blocking call whose
+  socket would-block suspends the proxied worker on the inode readiness queue
+  and retries when woken, instead of returning `EAGAIN`. (`send`/`write` never
+  block, as the Node.js backend buffers.) This covers the socket calls only,
+  not a blocking `read()`/`write()` on a socket fd; single-threaded
+  `ASYNCIFY`/`JSPI` builds should use `epoll` for readiness instead. (#27277)
 - compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245, #27246)
 - `-fcoverage-mapping` is currently broken due to a mismatch between the version
   of LLVM used and the imported version of compiler-rt.  We hope to fix this
