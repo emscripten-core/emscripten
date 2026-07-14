@@ -12,6 +12,7 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -57,6 +58,25 @@ int main(void) {
   assert(get_int(v6, IPPROTO_IPV6, IPV6_MULTICAST_LOOP) == 0);
   set_int(v6, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, 1);
   assert(get_int(v6, IPPROTO_IPV6, IPV6_MULTICAST_LOOP) == 1);
+
+  // An out-of-range value is rejected with EINVAL rather than silently
+  // ignored. Bind first: the range is validated when the option is applied to
+  // the live socket.
+  int b4 = socket(AF_INET, SOCK_DGRAM, 0);
+  assert(b4 >= 0);
+  struct sockaddr_in addr = {0};
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  assert(bind(b4, (struct sockaddr*)&addr, sizeof(addr)) == 0);
+
+  int bad = 300;
+  errno = 0;
+  assert(setsockopt(b4, IPPROTO_IP, IP_MULTICAST_TTL, &bad, sizeof(bad)) == -1);
+  assert(errno == EINVAL);
+  // The rejected value is dropped, so a later valid set still succeeds.
+  set_int(b4, IPPROTO_IP, IP_MULTICAST_LOOP, 0);
+  assert(get_int(b4, IPPROTO_IP, IP_MULTICAST_LOOP) == 0);
+  close(b4);
 
   close(v4);
   close(v6);
