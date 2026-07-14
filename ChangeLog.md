@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 6.0.4 (in development)
 ----------------------
+- Legacy support for ancient vendor-prefixed DOM APIs was removed (#27341,
+  #27339, #27338, #27340, #27347)
 
 6.0.3 - 07/13/26
 ----------------
