@@ -30,7 +30,6 @@ from tools import (
   extract_metadata,
   filelock,
   js_manipulation,
-  link,
   shared,
   utils,
   webassembly,
@@ -148,6 +147,15 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     # callMain depends on this library function
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stringToUTF8OnStack']
 
+  # Add heap views required by callMain/MAIN_READS_PARAMS
+  if settings.HAS_MAIN and settings.MAIN_READS_PARAMS:
+    heaps = ['$HEAP32', '$HEAPU32']
+    if settings.WASM_BIGINT or settings.MEMORY64:
+      heaps += ['$HEAP64', '$HEAPU64']
+    for h in heaps:
+      if h not in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
+        settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append(h)
+
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
     # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
     # exported.  In theory it should always be present since its defined in compiler-rt.
@@ -155,8 +163,6 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
   for deps in metadata.js_deps:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(deps.split(','))
-
-  link.add_required_heap_symbols()
 
 
 def apply_static_code_hooks(forwarded_json, code):

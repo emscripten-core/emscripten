@@ -825,11 +825,8 @@ def add_required_heap_symbols():
       heaps += ['$HEAP64', '$HEAPU64']
   else:
     # STACK_OVERFLOW_CHECK accesses HEAP32/HEAPU32 in runtime_stack_check.js.
-    # MAIN_READS_PARAMS populates argv pointers in linear memory in postamble.js (callMain).
-    if settings.STACK_OVERFLOW_CHECK or (settings.HAS_MAIN and settings.MAIN_READS_PARAMS):
+    if settings.STACK_OVERFLOW_CHECK:
       heaps += ['$HEAP32', '$HEAPU32']
-      if (settings.HAS_MAIN and settings.MAIN_READS_PARAMS) and (settings.WASM_BIGINT or settings.MEMORY64):
-        heaps += ['$HEAP64', '$HEAPU64']
     # MEMORYPROFILER accesses HEAP8 in memoryprofiler.js.
     if settings.MEMORYPROFILER:
       heaps.append('$HEAP8')
