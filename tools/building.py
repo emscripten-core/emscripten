@@ -1223,10 +1223,16 @@ def check_binaryen(bindir):
   except (IndexError, ValueError):
     exit_with_error(f'error parsing binaryen version ({output}). Please check your binaryen installation')
 
-  # Allow the expected version or the following one in order avoid needing to update both
-  # emscripten and binaryen in lock step in emscripten-releases.
-  if version not in {EXPECTED_BINARYEN_VERSION, EXPECTED_BINARYEN_VERSION + 1}:
-    diagnostics.warning('version-check', 'unexpected binaryen version: %s (expected %s)', version, EXPECTED_BINARYEN_VERSION)
+  if version == EXPECTED_BINARYEN_VERSION:
+    return True
+  # When running in CI environment we also silently allow the next major
+  # version of binaryen here so that new versions of binaryen can be rolled in
+  # without disruption.
+  if 'BUILDBOT_BUILDNUMBER' in os.environ:
+    if version == EXPECTED_BINARYEN_VERSION + 1:
+      return True
+  diagnostics.warning('version-check', 'unexpected binaryen version: %s (expected %s)', version, EXPECTED_BINARYEN_VERSION)
+  return False
 
 
 def get_binaryen_bin():
