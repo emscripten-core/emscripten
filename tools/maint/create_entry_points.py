@@ -13,6 +13,7 @@ launcher but don't have symlink support.
 """
 
 import os
+import platform
 import shutil
 import stat
 import sys
@@ -61,6 +62,8 @@ entry_remap = {
 
 
 windows_exe = os.path.join(__rootdir__, 'tools/pylauncher/pylauncher.exe')
+if platform.machine().lower() in {'arm64', 'aarch64'}:
+  windows_exe = os.path.join(__rootdir__, 'tools/pylauncher/pylauncher-arm64.exe')
 
 
 def make_executable(filename):
