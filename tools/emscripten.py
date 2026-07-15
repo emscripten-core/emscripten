@@ -149,12 +149,7 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
   # Add heap views required by callMain/MAIN_READS_PARAMS
   if settings.HAS_MAIN and settings.MAIN_READS_PARAMS:
-    heaps = ['$HEAP32', '$HEAPU32']
-    if settings.WASM_BIGINT or settings.MEMORY64:
-      heaps += ['$HEAP64', '$HEAPU64']
-    for h in heaps:
-      if h not in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
-        settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append(h)
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$HEAPU64' if settings.MEMORY64 else '$HEAPU32')
 
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
     # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
