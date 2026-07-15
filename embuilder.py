@@ -166,10 +166,11 @@ def get_port_variant(name):
   else:
     old_settings = None
 
-  yield name
-
-  if old_settings:
-    settings.dict().update(old_settings)
+  try:
+    yield name
+  finally:
+    if old_settings:
+      settings.dict().update(old_settings)
 
 
 def clear_port(port_name):
