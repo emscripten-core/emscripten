@@ -886,7 +886,11 @@ def metadce(js_file, wasm_file, debug_info, last):
         # Internal/system exports (e.g. memory, __asyncify_data, dynCall_*, etc.)
         # do not have standard JS receiving assignments (_name = wasmExports['name']),
         # so including them in unused_exports would fail applyDCEGraphRemovals's assertion.
-        if not shared.is_internal_symbol(native_name):
+        # However, under WASM_ESM_INTEGRATION the JS receives every wasm export
+        # as an ES import, so any export binaryen drops (including internal ones)
+        # must also be dropped from the JS import to keep the two module
+        # interfaces in sync.
+        if not shared.is_internal_symbol(native_name) or settings.WASM_ESM_INTEGRATION:
           unused_exports.append(native_name)
   if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove
