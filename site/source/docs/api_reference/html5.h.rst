@@ -19,20 +19,20 @@ The HTML5 specifications for APIs that are mapped by **html5.h** include:
 
   - `DOM Level 3 Events: Keyboard, Mouse, Mouse Wheel, Resize, Scroll, Focus
     <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html>`_.
-  - `Device Orientation Events for gyro and accelerometer <http://www.w3.org/TR/orientation-event/>`_.
+  - `Device Orientation Events for gyro and accelerometer <https://www.w3.org/TR/orientation-event/>`_.
   - `Screen Orientation Events for portrait/landscape handling
-    <https://dvcs.w3.org/hg/screen-orientation/raw-file/tip/Overview.html>`_.
+    <https://www.w3.org/TR/screen-orientation/>`_.
   - `Fullscreen Events for browser canvas fullscreen modes transitioning
-    <https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html>`_.
-  - `Pointer Lock Events for relative-mode mouse motion control <http://www.w3.org/TR/pointerlock/>`_.
+    <https://fullscreen.spec.whatwg.org/>`_.
+  - `Pointer Lock Events for relative-mode mouse motion control <https://www.w3.org/TR/pointerlock/>`_.
   - `Vibration API for mobile device haptic vibration feedback control
-    <http://dev.w3.org/2009/dap/vibration/>`_.
-  - `Page Visibility Events for power management control <http://www.w3.org/TR/page-visibility/>`_.
-  - `Touch Events <http://www.w3.org/TR/touch-events/>`_.
-  - `Gamepad API <http://www.w3.org/TR/gamepad/>`_.
+    <https://www.w3.org/TR/vibration/>`_.
+  - `Page Visibility Events for power management control <https://www.w3.org/TR/page-visibility/>`_.
+  - `Touch Events <https://www.w3.org/TR/touch-events/>`_.
+  - `Gamepad API <https://www.w3.org/TR/gamepad/>`_.
   - `Beforeunload event
-    <http://www.whatwg.org/specs/web-apps/current-work/multipage/history.html#beforeunloadevent>`_.
-  - `WebGL context events <http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2>`_.
+    <https://html.spec.whatwg.org/multipage/nav-history-apis.html#beforeunloadevent>`_.
+  - `WebGL context events <https://registry.khronos.org/webgl/specs/latest/1.0/#5.15.2>`_.
   - `Animation and timing <https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame>`_.
   - `Console <https://developer.mozilla.org/en-US/docs/Web/API/console>`_.
   - `Throw <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/throw>`_.
@@ -121,7 +121,7 @@ The ``useCapture`` parameter  maps to ``useCapture`` in
 It indicates whether or not to initiate *capture*: if ``true`` the callback will
 be invoked only for the DOM capture and target phases; if ``false`` the callback
 will be triggered during the target and bubbling phases. See `DOM Level 3 Events
-<http://www.w3.org/TR/2003/NOTE-DOM-Level-3-Events-20031107/events.html#Events-phases>`_
+<https://www.w3.org/TR/2003/NOTE-DOM-Level-3-Events-20031107/events.html#Events-phases>`_
 for a more detailed explanation.
 
 Most functions return the result using the type :c:data:`EMSCRIPTEN_RESULT`.
@@ -918,7 +918,7 @@ Struct
 
 .. c:type:: EmscriptenDeviceOrientationEvent
 
-  The event structure passed in the `deviceorientation <http://dev.w3.org/geo/api/spec-source-orientation.html#deviceorientation>`_ event.
+  The event structure passed in the `deviceorientation <https://www.w3.org/TR/orientation-event/#deviceorientation>`_ event.
 
 
   .. c:member:: double alpha
@@ -968,7 +968,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_deviceorientation_callback(void *userData, bool useCapture, em_deviceorientation_callback_func callback)
 
-  Registers a callback function for receiving the `deviceorientation <http://dev.w3.org/geo/api/spec-source-orientation.html#deviceorientation>`_ event.
+  Registers a callback function for receiving the `deviceorientation <https://www.w3.org/TR/orientation-event/#deviceorientation>`_ event.
 
   :param void* userData: |userData-parameter-doc|
   :param bool useCapture: |useCapture-parameter-doc|
@@ -998,7 +998,7 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_EVENT_DEVICEMOTION
 
-    Emscripten `devicemotion <http://w3c.github.io/deviceorientation/spec-source-orientation.html#devicemotion>`_ event.
+    Emscripten `devicemotion <https://www.w3.org/TR/orientation-event/#devicemotion>`_ event.
 
 
 Struct
@@ -1006,7 +1006,7 @@ Struct
 
 .. c:type:: EmscriptenDeviceMotionEvent
 
-  The event structure passed in the `devicemotion <http://w3c.github.io/deviceorientation/spec-source-orientation.html#devicemotion>`_ event.
+  The event structure passed in the `devicemotion <https://www.w3.org/TR/orientation-event/#devicemotion>`_ event.
 
   .. c:member:: double accelerationX
     double accelerationY
@@ -1060,7 +1060,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_devicemotion_callback(void *userData, bool useCapture, em_devicemotion_callback_func callback)
 
-  Registers a callback function for receiving the `devicemotion <http://w3c.github.io/deviceorientation/spec-source-orientation.html#devicemotion>`_ event.
+  Registers a callback function for receiving the `devicemotion <https://www.w3.org/TR/orientation-event/#devicemotion>`_ event.
 
   :param void* userData: |userData-parameter-doc|
   :param bool useCapture: |useCapture-parameter-doc|
@@ -1071,7 +1071,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_get_devicemotion_status(EmscriptenDeviceMotionEvent *motionState)
 
-  Returns the most recently received `devicemotion <http://w3c.github.io/deviceorientation/spec-source-orientation.html#devicemotion>`_ event state.
+  Returns the most recently received `devicemotion <https://www.w3.org/TR/orientation-event/#devicemotion>`_ event state.
 
   Note that for this function call to succeed, :c:func:`emscripten_set_devicemotion_callback` must have first been called with a non-zero callback function pointer to enable the ``devicemotion`` state capture.
 
@@ -1090,7 +1090,7 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_EVENT_ORIENTATIONCHANGE
 
-    Emscripten `orientationchange <https://w3c.github.io/screen-orientation/>`_ event.
+    Emscripten `orientationchange <https://www.w3.org/TR/screen-orientation/>`_ event.
 
 
 .. c:macro:: EMSCRIPTEN_ORIENTATION_UNKNOWN
@@ -1119,7 +1119,7 @@ Struct
 
 .. c:type:: EmscriptenOrientationChangeEvent
 
-  The event structure passed in the `orientationchange <https://w3c.github.io/screen-orientation/>`_ event.
+  The event structure passed in the `orientationchange <https://www.w3.org/TR/screen-orientation/>`_ event.
 
 
   .. c:member:: int orientationIndex
@@ -1157,7 +1157,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_orientationchange_callback(void *userData, bool useCapture, em_orientationchange_callback_func callback)
 
-  Registers a callback function for receiving the `orientationchange <https://w3c.github.io/screen-orientation/>`_ event.
+  Registers a callback function for receiving the `orientationchange <https://www.w3.org/TR/screen-orientation/>`_ event.
 
   :param void* userData: |userData-parameter-doc|
   :param bool useCapture: |useCapture-parameter-doc|
@@ -1202,7 +1202,7 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_EVENT_FULLSCREENCHANGE
 
-    Emscripten `fullscreenchange <https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html>`_ event.
+    Emscripten `fullscreenchange <https://fullscreen.spec.whatwg.org/>`_ event.
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_SCALE
 
@@ -1269,7 +1269,7 @@ Struct
 
 .. c:type:: EmscriptenFullscreenChangeEvent
 
-  The event structure passed in the `fullscreenchange <https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html>`_ event.
+  The event structure passed in the `fullscreenchange <https://fullscreen.spec.whatwg.org/>`_ event.
 
   .. c:member:: bool isFullscreen
 
@@ -1358,7 +1358,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_fullscreenchange_callback(const char *target, void *userData, bool useCapture, em_fullscreenchange_callback_func callback)
 
-  Registers a callback function for receiving the `fullscreenchange <https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html>`_ event.
+  Registers a callback function for receiving the `fullscreenchange <https://fullscreen.spec.whatwg.org/>`_ event.
 
   :param target: |target-parameter-doc|
   :type target: const char*
@@ -1371,7 +1371,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_get_fullscreen_status(EmscriptenFullscreenChangeEvent *fullscreenStatus)
 
-  Returns the current page `fullscreen <https://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html>`_ state.
+  Returns the current page `fullscreen <https://fullscreen.spec.whatwg.org/>`_ state.
 
   :param fullscreenStatus: The most recently received fullscreen state.
   :type fullscreenStatus: EmscriptenFullscreenChangeEvent*
@@ -1430,18 +1430,18 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_EVENT_POINTERLOCKCHANGE
 
-    Emscripten `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
+    Emscripten `pointerlockchange <https://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
 .. c:macro:: EMSCRIPTEN_EVENT_POINTERLOCKERROR
 
-    Emscripten `pointerlockerror <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
+    Emscripten `pointerlockerror <https://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
 Struct
 ------
 
 .. c:type:: EmscriptenPointerlockChangeEvent
 
-  The event structure passed in the `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
+  The event structure passed in the `pointerlockchange <https://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
 
   .. c:member:: bool isActive
@@ -1500,7 +1500,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback(const char *target, void *userData, bool useCapture, em_pointerlockchange_callback_func callback)
 
-  Registers a callback function for receiving the `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
+  Registers a callback function for receiving the `pointerlockchange <https://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
   Pointer lock hides the mouse cursor and exclusively gives the target element relative mouse movement events via the `mousemove <https://www.w3.org/TR/pointerevents4/#mousemove>`_ event.
 
@@ -1516,7 +1516,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_pointerlockerror_callback(const char *target, void *userData, bool useCapture, em_pointerlockerror_callback_func callback)
 
-  Registers a callback function for receiving the `pointerlockerror <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
+  Registers a callback function for receiving the `pointerlockerror <https://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
   :param target: |target-parameter-doc|
   :type target: const char*
@@ -1568,23 +1568,23 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_EVENT_VISIBILITYCHANGE
 
-  Emscripten `visibilitychange <http://www.w3.org/TR/page-visibility>`__ event.
+  Emscripten `visibilitychange <https://www.w3.org/TR/page-visibility>`__ event.
 
 .. c:macro:: EMSCRIPTEN_VISIBILITY_HIDDEN
 
-  The document is `hidden <http://www.w3.org/TR/page-visibility/#pv-page-hidden>`_ (not visible).
+  The document is `hidden <https://www.w3.org/TR/page-visibility/#pv-page-hidden>`_ (not visible).
 
 .. c:macro:: EMSCRIPTEN_VISIBILITY_VISIBLE
 
-  The document is at least partially `visible <http://www.w3.org/TR/page-visibility/#pv-page-visible>`_.
+  The document is at least partially `visible <https://www.w3.org/TR/page-visibility/#pv-page-visible>`_.
 
 .. c:macro:: EMSCRIPTEN_VISIBILITY_PRERENDER
 
-  The document is loaded off screen and not visible (`prerender <http://www.w3.org/TR/page-visibility/#pv-prerender>`_).
+  The document is loaded off screen and not visible (`prerender <https://www.w3.org/TR/page-visibility/#pv-prerender>`_).
 
 .. c:macro:: EMSCRIPTEN_VISIBILITY_UNLOADED
 
-  The document is to be `unloaded <http://www.w3.org/TR/page-visibility/#pv-unloaded>`_.
+  The document is to be `unloaded <https://www.w3.org/TR/page-visibility/#pv-unloaded>`_.
 
 
 Struct
@@ -1592,7 +1592,7 @@ Struct
 
 .. c:type:: EmscriptenVisibilityChangeEvent
 
-  The event structure passed in the `visibilitychange <http://www.w3.org/TR/page-visibility/>`__ event.
+  The event structure passed in the `visibilitychange <https://www.w3.org/TR/page-visibility/>`__ event.
 
   .. c:member:: bool hidden
 
@@ -1628,7 +1628,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_visibilitychange_callback(void *userData, bool useCapture, em_visibilitychange_callback_func callback)
 
-  Registers a callback function for receiving the `visibilitychange <http://www.w3.org/TR/page-visibility/>`_ event.
+  Registers a callback function for receiving the `visibilitychange <https://www.w3.org/TR/page-visibility/>`_ event.
 
   :param void* userData: |userData-parameter-doc|
   :param bool useCapture: |useCapture-parameter-doc|
@@ -1666,7 +1666,7 @@ Struct
 
 .. c:type:: EmscriptenTouchPoint
 
-  Specifies the status of a single `touch point <http://www.w3.org/TR/touch-events/#touch-interface>`_ on the page.
+  Specifies the status of a single `touch point <https://www.w3.org/TR/touch-events/#touch-interface>`_ on the page.
 
   .. c:member:: int identifier
 
@@ -1709,7 +1709,7 @@ Struct
 
 .. c:type:: EmscriptenTouchEvent
 
-  Specifies the data of a single `touchevent <http://www.w3.org/TR/touch-events/#touchevent-interface>`_.
+  Specifies the data of a single `touchevent <https://www.w3.org/TR/touch-events/#touchevent-interface>`_.
 
   .. c:member:: double timestamp
 
@@ -1762,7 +1762,7 @@ Functions
   EMSCRIPTEN_RESULT emscripten_set_touchmove_callback(const char *target, void *userData, bool useCapture, em_touch_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_touchcancel_callback(const char *target, void *userData, bool useCapture, em_touch_callback_func callback)
 
-  Registers a callback function for receiving `touch events <http://www.w3.org/TR/touch-events/)>`__ : `touchstart <http://www.w3.org/TR/touch-events/#the-touchstart-event>`_, `touchend <http://www.w3.org/TR/touch-events/#dfn-touchend>`_, `touchmove <http://www.w3.org/TR/touch-events/#dfn-touchmove>`_ and `touchcancel <http://www.w3.org/TR/touch-events/#dfn-touchcancel>`_.
+  Registers a callback function for receiving `touch events <https://www.w3.org/TR/touch-events/>`__ : `touchstart <https://www.w3.org/TR/touch-events/#the-touchstart-event>`_, `touchend <https://www.w3.org/TR/touch-events/#dfn-touchend>`_, `touchmove <https://www.w3.org/TR/touch-events/#dfn-touchmove>`_ and `touchcancel <https://www.w3.org/TR/touch-events/#dfn-touchcancel>`_.
 
   :param target: |target-parameter-doc|
   :type target: const char*
@@ -1868,7 +1868,7 @@ Functions
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_gamepadconnected_callback(void *userData, bool useCapture, em_gamepad_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback(void *userData, bool useCapture, em_gamepad_callback_func callback)
 
-  Registers a callback function for receiving the gamepad_ events: `gamepadconnected <http://www.w3.org/TR/gamepad/#the-gamepadconnected-event>`_ and `gamepaddisconnected <http://www.w3.org/TR/gamepad/#the-gamepaddisconnected-event>`_.
+  Registers a callback function for receiving the gamepad_ events: `gamepadconnected <https://www.w3.org/TR/gamepad/#the-gamepadconnected-event>`_ and `gamepaddisconnected <https://www.w3.org/TR/gamepad/#the-gamepaddisconnected-event>`_.
 
   :param void* userData: |userData-parameter-doc|
   :param bool useCapture: |useCapture-parameter-doc|
@@ -1936,7 +1936,7 @@ Defines
 .. c:macro:: EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE
   EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE
 
-    Emscripten `BatteryManager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events.
+    Emscripten `BatteryManager <https://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events.
 
 
 Struct
@@ -1944,7 +1944,7 @@ Struct
 
 .. c:type:: EmscriptenBatteryEvent
 
-  The event structure passed in the `BatteryManager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
+  The event structure passed in the `BatteryManager <https://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
 
 
   .. c:member:: double chargingTime
@@ -1990,7 +1990,7 @@ Functions
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_batterychargingchange_callback(void *userData, em_battery_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_batterylevelchange_callback(void *userData, em_battery_callback_func callback)
 
-  Registers a callback function for receiving the `BatteryManager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
+  Registers a callback function for receiving the `BatteryManager <https://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
 
   :param void* userData: |userData-parameter-doc|
   :param em_battery_callback_func callback: |callback-function-parameter-doc|
@@ -2018,7 +2018,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_vibrate(int msecs)
 
-  Produces a `vibration <http://dev.w3.org/2009/dap/vibration/>`_ for the specified time, in milliseconds.
+  Produces a `vibration <https://www.w3.org/TR/vibration/>`_ for the specified time, in milliseconds.
 
   :param int msecs: The amount of time for which the vibration is required (milliseconds).
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
@@ -2043,7 +2043,7 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_EVENT_BEFOREUNLOAD
 
-    Emscripten `beforeunload <http://www.whatwg.org/specs/web-apps/current-work/multipage/history.html#beforeunloadevent>`_ event.
+    Emscripten `beforeunload <https://html.spec.whatwg.org/multipage/nav-history-apis.html#beforeunloadevent>`_ event.
 
 
 Callback functions
@@ -2072,7 +2072,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_beforeunload_callback(void *userData, em_beforeunload_callback callback)
 
-  Registers a callback function for receiving the page `beforeunload <http://www.whatwg.org/specs/web-apps/current-work/multipage/history.html#beforeunloadevent>`_ event.
+  Registers a callback function for receiving the page `beforeunload <https://html.spec.whatwg.org/multipage/nav-history-apis.html#beforeunloadevent>`_ event.
 
   Hook into this event to perform actions immediately prior to page close (for example, to display a notification to ask if the user really wants to leave the page).
 
@@ -2402,7 +2402,7 @@ Functions
 .. |callback-handler-return-value-doc| replace:: ``true`` (non zero) to indicate that the event was consumed by the :ref:`callback handler <callback-handler-return-em_bool-html5-api>`.
 .. |callback-function-parameter-doc| replace:: A callback function. The function is called with the type of event, information about the event, and user data passed from this registration function. The callback should return ``true`` if the event is consumed.
 
-.. _gamepad: http://www.w3.org/TR/gamepad/#gamepad-interface
+.. _gamepad: https://www.w3.org/TR/gamepad/#gamepad-interface
 
 Animation and Timing
 ====================
