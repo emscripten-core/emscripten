@@ -52,7 +52,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 130
+EXPECTED_BINARYEN_VERSION = 131
 
 _is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
