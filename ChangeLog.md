@@ -20,9 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.7 (in development)
 ----------------------
-
 - JavaScript library symbols can now use the `__force` and `__export`
   decorators to control inclusion and export visibility. (#27436)
+- The `SOCKET_WEBRTC` setting was removed (#27367)
 
 6.0.6 - 08/05/26
 ----------------
@@ -55,6 +55,7 @@ See docs/process.md for more on how version tagging works.
 - Backport fix for musl's qsort (CVE-2026-40200) (#27029)
 - `recvmmsg` and `sendmmsg` are now implemented in terms of `recvmsg` and
   `sendmsg`. (#27395)
+- The `SOCKET_WEBRTC` marked as deprecated (#27371)
 
 6.0.3 - 07/13/26
 ----------------
