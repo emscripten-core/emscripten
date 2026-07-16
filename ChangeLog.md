@@ -32,6 +32,7 @@ See docs/process.md for more on how version tagging works.
   Wasm bounary is still used when `WASM_BIGINT` is disabled.  However
   disabling of `WASM_BIGINT` itself should only be needed under `-sWASM=0`
   (where it is automatically disabled). (#27568)
+- The `SOCKET_WEBRTC` setting was removed (#27367)
 
 6.0.7 - 08/17/26
 ----------------
@@ -83,6 +84,7 @@ See docs/process.md for more on how version tagging works.
 - Backport fix for musl's qsort (CVE-2026-40200) (#27029)
 - `recvmmsg` and `sendmmsg` are now implemented in terms of `recvmsg` and
   `sendmsg`. (#27395)
+- The `SOCKET_WEBRTC` marked as deprecated (#27371)
 
 6.0.3 - 07/13/26
 ----------------
