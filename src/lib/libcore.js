@@ -1255,12 +1255,6 @@ addToLibrary({
   // sockets. Note that the implementation assumes all sockets are always
   // nonblocking
   // ==========================================================================
-#if SOCKET_WEBRTC
-  $Sockets__deps: [
-    () => 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n',
-    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'
-  ],
-#endif
   $Sockets: {
     BUFFER_SIZE: 10*1024, // initial size
     MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer

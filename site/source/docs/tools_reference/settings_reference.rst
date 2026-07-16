@@ -549,22 +549,6 @@ Register file system callbacks using trackingDelegate in library_fs.js
 
 Default value: false
 
-.. _socket_webrtc:
-
-SOCKET_WEBRTC
-=============
-
-As well as being configurable at compile time via the "-s" option the
-WEBSOCKET_URL and WEBSOCKET_SUBPROTOCOL
-settings may be configured at run time via the Module object e.g.
-Module['websocket'] = {subprotocol: 'base64, binary, text'};
-Module['websocket'] = {url: 'wss://', subprotocol: 'base64'};
-You can set 'subprotocol' to null, if you don't want to specify it.
-Run time configuration may be useful as it lets an application select
-multiple different services.
-
-Default value: false
-
 .. _websocket_url:
 
 WEBSOCKET_URL
@@ -608,7 +592,7 @@ Node.js.
 It is event-driven. Socket readiness comes through the same
 ``emscripten_set_socket_*_callback`` hooks the WebSocket backend uses, so it
 works with existing readiness reactors. It cannot be combined with the
-WebSocket emulation, :ref:`PROXY_POSIX_SOCKETS` or :ref:`SOCKET_WEBRTC`.
+WebSocket emulation or :ref:`PROXY_POSIX_SOCKETS`.
 
 It works under -pthread with :ref:`PROXY_TO_PTHREAD`, where main() and every socket
 syscall run on a single worker alongside the node handles and their event
@@ -3634,3 +3618,4 @@ for backwards compatibility with older versions:
  - ``RELOCATABLE``: No longer supported (Valid values: [0])
  - ``WASM_JS_TYPES``: No longer supported (Valid values: [0])
  - ``DETERMINISTIC``: No longer supported (Valid values: [0])
+ - ``SOCKET_WEBRTC``: No longer supported (Valid values: [0])
