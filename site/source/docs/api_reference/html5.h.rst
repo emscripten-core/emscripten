@@ -17,8 +17,8 @@ The C++ APIs in `html5.h <https://github.com/emscripten-core/emscripten/blob/mai
 
 The HTML5 specifications for APIs that are mapped by **html5.h** include:
 
-  - `DOM Level 3 Events: Keyboard, Mouse, Mouse Wheel, Resize, Scroll, Focus
-    <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html>`_.
+  - `UI Events: Keyboard, Mouse, Mouse Wheel, Resize, Scroll, Focus
+    <https://www.w3.org/TR/uievents/>`_.
   - `Device Orientation Events for gyro and accelerometer <https://www.w3.org/TR/orientation-event/>`_.
   - `Screen Orientation Events for portrait/landscape handling
     <https://www.w3.org/TR/screen-orientation/>`_.
@@ -120,9 +120,8 @@ The ``useCapture`` parameter  maps to ``useCapture`` in
 <https://developer.mozilla.org/en-US/docs/Web/API/EventTarget.addEventListener>`_.
 It indicates whether or not to initiate *capture*: if ``true`` the callback will
 be invoked only for the DOM capture and target phases; if ``false`` the callback
-will be triggered during the target and bubbling phases. See `DOM Level 3 Events
-<https://www.w3.org/TR/2003/NOTE-DOM-Level-3-Events-20031107/events.html#Events-phases>`_
-for a more detailed explanation.
+will be triggered during the target and bubbling phases. See `DOM Standard
+<https://dom.spec.whatwg.org/#events>`_ for a more detailed explanation.
 
 Most functions return the result using the type :c:data:`EMSCRIPTEN_RESULT`.
 Zero and positive values denote success. Negative values signal failure. None of
@@ -356,14 +355,14 @@ Struct
 .. c:type:: EmscriptenKeyboardEvent
 
   The event structure passed in `keyboard events
-  <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys>`_:
-  ``keypress``, ``keydown`` and ``keyup``.
+  <https://www.w3.org/TR/uievents/#interface-keyboardevent>`_: ``keypress``,
+  ``keydown`` and ``keyup``.
 
-  Note that since the `DOM Level 3 Events spec
-  <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys>`_
-  is very recent at the time of writing (2014-03), uniform support for the
-  different fields in the spec is still in flux. Be sure to check the results in
-  multiple browsers. See the `unmerged pull request #2222
+  Note that since the `UI Events spec
+  <https://www.w3.org/TR/uievents/#keys-keyvalues>`_ is very recent at the time
+  of writing (2014-03), uniform support for the different fields in the spec is
+  still in flux. Be sure to check the results in multiple browsers. See the
+  `unmerged pull request #2222
   <https://github.com/emscripten-core/emscripten/pull/2222>`_ for an example of
   how to interpret the legacy key events.
 
@@ -660,18 +659,18 @@ Defines
 
 .. c:macro:: DOM_DELTA_PIXEL
 
-  The units of measurement for the delta must be pixels (from `spec <http://www.w3.org/TR/DOM-Level-3-Events/#constants-1)>`_).
+  The units of measurement for the delta must be pixels (from `spec <https://www.w3.org/TR/pointerevents4/#dom-wheelevent-dom_delta_pixel>`__).
 
 .. c:macro:: DOM_DELTA_LINE
 
   The units of measurement for the delta must be individual lines of text (from
-  `spec <http://www.w3.org/TR/DOM-Level-3-Events/#constants-1)>`_).
+  `spec <https://www.w3.org/TR/pointerevents4/#dom-wheelevent-dom_delta_line>`__).
 
 .. c:macro:: DOM_DELTA_PAGE
 
   The units of measurement for the delta must be pages, either defined as a
   single screen or as a demarcated page (from `spec
-  <http://www.w3.org/TR/DOM-Level-3-Events/#constants-1)>`_).
+  <https://www.w3.org/TR/pointerevents4/#dom-wheelevent-dom_delta_page>`__).
 
 
 Struct
@@ -679,7 +678,7 @@ Struct
 
 .. c:type:: EmscriptenWheelEvent
 
-  The event structure passed in `mousewheel events <http://www.w3.org/TR/DOM-Level-3-Events/#event-type-wheel>`_.
+  The event structure passed in `wheel events <https://www.w3.org/TR/pointerevents4/#wheel>`_.
 
   .. c:member:: EmscriptenMouseEvent mouse
 
@@ -728,7 +727,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_wheel_callback(const char *target, void *userData, bool useCapture, em_wheel_callback_func callback)
 
-  Registers a callback function for receiving browser-generated `mousewheel events <http://www.w3.org/TR/DOM-Level-3-Events/#event-type-wheel>`_.
+  Registers a callback function for receiving browser-generated `mousewheel events <https://www.w3.org/TR/pointerevents4/#wheel>`_.
 
   :param target: |target-parameter-doc|
   :type target: const char*
@@ -757,7 +756,7 @@ Struct
 
 .. c:type:: EmscriptenUiEvent
 
-  The event structure passed in DOM element `UIEvent <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-UIEvent>`_ events: `resize <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-resize>`_ and `scroll <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-scroll>`_.
+  The event structure passed in DOM element `UIEvent <https://www.w3.org/TR/uievents/#interface-uievent>`_ events: `resize <https://www.w3.org/TR/cssom-view-1/#eventdef-window-resize>`_ and `scroll <https://www.w3.org/TR/cssom-view-1/#eventdef-document-scroll>`_.
 
 
   .. c:member:: int detail
@@ -810,12 +809,12 @@ Functions
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_resize_callback(const char *target, void *userData, bool useCapture, em_ui_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *userData, bool useCapture, em_ui_callback_func callback)
 
-  Registers a callback function for receiving DOM element `resize <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-resize>`_ and `scroll <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-scroll>`_ events.
+  Registers a callback function for receiving DOM element `resize <https://www.w3.org/TR/cssom-view-1/#eventdef-window-resize>`_ and `scroll <https://www.w3.org/TR/cssom-view-1/#eventdef-document-scroll>`_ events.
 
   .. note::
 
     - For the ``resize`` callback, pass in target = ``EMSCRIPTEN_EVENT_TARGET_WINDOW`` to get ``resize`` events from the ``Window`` object.
-    - The DOM3 Events specification only requires that the ``Window`` object sends resize events. It is valid to register a ``resize`` callback on other DOM elements, but the browser is not required to fire ``resize`` events for these.
+    - The UI Events specification only requires that the ``Window`` object sends resize events. It is valid to register a ``resize`` callback on other DOM elements, but the browser is not required to fire ``resize`` events for these.
 
   :param target: |target-parameter-doc|
   :type target: const char*
@@ -847,7 +846,7 @@ Struct
 
 .. c:type:: EmscriptenFocusEvent
 
-  The event structure passed in DOM element `blur <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-blur>`_, `focus <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-focus>`_, `focusin <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-focusin>`_ and `focusout <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-focusout>`_ events.
+  The event structure passed in DOM element `blur <https://www.w3.org/TR/uievents/#event-type-blur>`_, `focus <https://www.w3.org/TR/uievents/#event-type-focus>`_, `focusin <https://www.w3.org/TR/uievents/#event-type-focusin>`_ and `focusout <https://www.w3.org/TR/uievents/#event-type-focusout>`_ events.
 
   .. c:member:: EM_UTF8 nodeName
 
@@ -891,7 +890,7 @@ Functions
   EMSCRIPTEN_RESULT emscripten_set_focusin_callback(const char *target, void *userData, bool useCapture, em_focus_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_focusout_callback(const char *target, void *userData, bool useCapture, em_focus_callback_func callback)
 
-  Registers a callback function for receiving DOM element `blur <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-blur>`_, `focus <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-focus>`_, `focusin <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-focusin>`_ and `focusout <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-focusout>`_ events.
+  Registers a callback function for receiving DOM element `blur <https://www.w3.org/TR/uievents/#event-type-blur>`_, `focus <https://www.w3.org/TR/uievents/#event-type-focus>`_, `focusin <https://www.w3.org/TR/uievents/#event-type-focusin>`_ and `focusout <https://www.w3.org/TR/uievents/#event-type-focusout>`_ events.
 
   :param target: |target-parameter-doc|
   :type target: const char*
@@ -1202,7 +1201,7 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_EVENT_FULLSCREENCHANGE
 
-    Emscripten `fullscreenchange <https://fullscreen.spec.whatwg.org/>`_ event.
+    Emscripten `fullscreenchange <https://fullscreen.spec.whatwg.org/#eventdef-document-fullscreenchange>`_ event.
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_SCALE
 
@@ -1269,7 +1268,7 @@ Struct
 
 .. c:type:: EmscriptenFullscreenChangeEvent
 
-  The event structure passed in the `fullscreenchange <https://fullscreen.spec.whatwg.org/>`_ event.
+  The event structure passed in the `fullscreenchange <https://fullscreen.spec.whatwg.org/#eventdef-document-fullscreenchange>`_ event.
 
   .. c:member:: bool isFullscreen
 
@@ -1358,7 +1357,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_fullscreenchange_callback(const char *target, void *userData, bool useCapture, em_fullscreenchange_callback_func callback)
 
-  Registers a callback function for receiving the `fullscreenchange <https://fullscreen.spec.whatwg.org/>`_ event.
+  Registers a callback function for receiving the `fullscreenchange <https://fullscreen.spec.whatwg.org/#eventdef-document-fullscreenchange>`_ event.
 
   :param target: |target-parameter-doc|
   :type target: const char*
