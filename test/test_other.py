@@ -15146,6 +15146,26 @@ addToLibrary({
     self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
     self.do_runf('empty.c', '42', cflags=[lib, '-sWASM_BINDGEN', '--post-js=post.js', '-lexports.js'])
 
+  @requires_rust
+  @requires_dev_dependency('typescript')
+  def test_wasm_bindgen_tsd_multi_return(self):
+    copytree(test_file('rust/bindgen_integration'), '.')
+    create_file('src/lib.rs', '''
+      use wasm_bindgen::prelude::*;
+      #[wasm_bindgen]
+      pub fn multi_value_return() -> Result<i32, JsValue> {
+          Ok(42)
+      }
+    ''')
+    self.run_process(['cargo', 'add', 'wasm-bindgen'])
+    self.run_process(['cargo', 'build'])
+    lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
+    create_file('empty.c', '')
+    self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
+    self.run_process([EMCC, 'empty.c', '--emit-tsd', 'test_multi.d.ts', '-sWASM_BINDGEN', '-o', 'test_multi.js'] + [lib] + self.get_cflags())
+    actual = read_file('test_multi.d.ts')
+    self.assertContained("multi_value_return(): [number, number, number];", actual)
+
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):
       self.assert_fail([EMCC, '-c', test_file('hello_world.c')], 'emcc: error: environment variable EM_CACHE must be an absolute path: foo')
