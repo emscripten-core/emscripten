@@ -563,6 +563,8 @@ You can set 'subprotocol' to null, if you don't want to specify it.
 Run time configuration may be useful as it lets an application select
 multiple different services.
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _websocket_url:
@@ -3542,6 +3544,7 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``DETERMINISTIC``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)
  - ``USE_PTHREADS``: prefer the standard -pthread flag
  - ``MEMORY64``: prefer the standard -m64 or --target=wasm64 flags
+ - ``SOCKET_WEBRTC``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27366)
 
 .. _legacy-settings:
 

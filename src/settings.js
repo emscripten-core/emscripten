@@ -404,6 +404,7 @@ var FS_DEBUG = false;
 // Run time configuration may be useful as it lets an application select
 // multiple different services.
 // [link]
+// [deprecated]
 var SOCKET_WEBRTC = false;
 
 // A string containing either a WebSocket URL prefix (ws:// or wss://) or a
