@@ -1026,6 +1026,9 @@ jobs:
           # kept functional. Must be run separately from above because we cannot
           # run non-parallel tests in the same run as parallel tests.
           test_targets: "benchmark.test_primes"
+      - run:
+          name: Test size benchmarker
+          command: EMTEST_BENCHMARKERS=size ./test/runner benchmark.test_primes
   test-browser-chrome:
     executor: ubuntu-lts
     environment:
