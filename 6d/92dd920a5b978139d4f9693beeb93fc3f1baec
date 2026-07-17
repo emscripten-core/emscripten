@@ -1,0 +1,19 @@
+test/test_sockets.py
+  s_ca3f7a3c18f165::t_42023e45d43bcd 400,430,443,459,471,477,482,489,495,501,507,516
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6d92dd920a5b978139d4f9693beeb93fc3f1baec",
+  "prompts": {},
+  "sessions": {
+    "s_ca3f7a3c18f165": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_08dd5eca3ffep4wpxnKmApQOVd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
