@@ -36,7 +36,7 @@ bool connected = false;
 bool ping_sent = false;
 
 void test_success(void) {
-  printf("TCP ECHO PASS\n");
+  printf("done\n");
   if (client_fd >= 0) close(client_fd);
 #ifdef __EMSCRIPTEN__
   // The socket is closed and the main loop cancelled, so node's event loop

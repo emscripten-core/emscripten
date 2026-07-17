@@ -40,7 +40,7 @@ void set_nonblocking(int fd) {
 }
 
 void test_success(void) {
-  printf("UDP CONNECT PASS\n");
+  printf("done\n");
   if (server_fd >= 0) close(server_fd);
   if (client_fd >= 0) close(client_fd);
   if (other_fd >= 0) close(other_fd);
