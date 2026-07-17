@@ -32,7 +32,7 @@ addToLibrary({
     'malloc', 'free',
 #elif ASYNCIFY == 2
     // Needed by makeAsyncFunction
-    'emscripten_stack_get_current',
+    '__stack_pointer',
 #endif
   ],
 
@@ -486,7 +486,10 @@ addToLibrary({
 #endif
       var promising = WebAssembly.promising(original);
       return (...args) => {
-        Asyncify.lastPromisingStackTop = _emscripten_stack_get_current();
+        // Read the stack pointer global directly rather than calling into
+        // Wasm, which is not possible outside of a promising context under
+        // SPLIT_MODULE where exports can be lazy-loading JSPI trampolines.
+        Asyncify.lastPromisingStackTop = {{{ from64Expr('___stack_pointer.value') }}};
         return promising(...args);
       };
     },
