@@ -22,6 +22,7 @@ See docs/process.md for more on how version tagging works.
 ----------------------
 - Legacy support for ancient vendor-prefixed DOM APIs was removed (#27341,
   #27339, #27338, #27340, #27347)
+- llvm-libc was updated to LLVM 22.1.8. (#27374)
 
 6.0.3 - 07/13/26
 ----------------
