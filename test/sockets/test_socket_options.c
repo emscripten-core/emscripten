@@ -61,6 +61,6 @@ int main(void) {
 
   close(tcp);
   close(udp);
-  printf("SOCKET OPTIONS PASS\n");
+  printf("done\n");
   return 0;
 }
