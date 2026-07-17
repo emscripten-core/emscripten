@@ -427,8 +427,7 @@ class sockets(BrowserCore):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-      self.do_runf('sockets/test_tcp_client_bind.c', 'done',
-                   cflags=['-sNODERAWSOCKETS'], args=[str(port), str(src_port)])
+      self.do_runf('sockets/test_tcp_client_bind.c', 'done', cflags=['-sNODERAWSOCKETS'], args=[str(port), str(src_port)])
     finally:
       server.shutdown()
       server.server_close()
@@ -457,8 +456,7 @@ class sockets(BrowserCore):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-      self.do_runf('sockets/test_tcp_backpressure.c', 'done',
-                   cflags=['-sNODERAWSOCKETS'], args=[str(port)])
+      self.do_runf('sockets/test_tcp_backpressure.c', 'done', cflags=['-sNODERAWSOCKETS'], args=[str(port)])
     finally:
       done.set()
       server.shutdown()
@@ -481,8 +479,7 @@ class sockets(BrowserCore):
   def test_noderawsockets_server_autobind(self):
     # listen() without a prior bind() must auto-bind an ephemeral port and
     # getsockname() must report it (POSIX), then accept+echo as usual.
-    self.do_runf('sockets/test_tcp_server.c', 'done',
-                 cflags=['-sNODERAWSOCKETS', '-DNO_EXPLICIT_BIND'])
+    self.do_runf('sockets/test_tcp_server.c', 'done', cflags=['-sNODERAWSOCKETS', '-DNO_EXPLICIT_BIND'])
 
   def test_noderawsockets_tcp_ipv6(self):
     # Self-contained IPv6 TCP loopback accept+echo over ::1: bind(:0)+getsockname,
@@ -516,8 +513,7 @@ class sockets(BrowserCore):
     # readable before any set. EXIT_RUNTIME so the plain synchronous main()
     # tears down the proxy worker on return (otherwise noExitRuntime keeps the
     # worker, and thus node, alive under PROXY_TO_PTHREAD).
-    self.do_runf('sockets/test_udp_sockopts.c', 'done',
-                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+    self.do_runf('sockets/test_udp_sockopts.c', 'done', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @requires_native_clang
   @requires_python_dev_packages
