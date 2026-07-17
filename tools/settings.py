@@ -155,7 +155,6 @@ INCOMPATIBLE_SETTINGS = [
     ('CROSS_ORIGIN_STORAGE', 'SIDE_MODULE', 'no JS glue is emitted to carry the hash or perform the COS lookup'),
     ('NODERAWSOCKETS', 'WASMFS', 'the node:net backend is not wired into WASMFS sockets'),
     ('NODERAWSOCKETS', 'PROXY_POSIX_SOCKETS', 'they are alternative socket backends'),
-    ('NODERAWSOCKETS', 'SOCKET_WEBRTC', 'they are alternative socket backends'),
 ]
 
 EXPERIMENTAL_SETTINGS = {
@@ -263,6 +262,7 @@ LEGACY_SETTINGS = [
     ['RELOCATABLE', [0], 'No longer supported'],
     ['WASM_JS_TYPES', [0], 'No longer supported'],
     ['DETERMINISTIC', [0], 'No longer supported'],
+    ['SOCKET_WEBRTC', [0], 'No longer supported'],
 ]
 
 user_settings: dict[str, str] = {}

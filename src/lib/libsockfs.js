@@ -88,8 +88,7 @@ addToLibrary({
         peers: {},
         pending: [],
         recv_queue: [],
-#if SOCKET_WEBRTC
-#elif NODERAWSOCKETS
+#if NODERAWSOCKETS
         sock_ops: nodeSockOps
 #else
         sock_ops: SOCKFS.websocket_sock_ops
