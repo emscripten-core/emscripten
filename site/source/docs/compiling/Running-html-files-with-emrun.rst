@@ -27,13 +27,13 @@ Using *emrun* is simple:
 
 #. Rebuild your Emscripten application and add the ``--emrun`` :ref:`linker flag <emcc-emrun>`.
 
-  This flag injects code into the generated :ref:`Module` to enable capture of ``stdout``, ``stderr`` and ``exit()``.
+   This flag injects code into the generated :ref:`Module` to enable capture of ``stdout``, ``stderr`` and ``exit()``.
 
-  .. note:: If you skip this step, you can still run any **.html** file with *emrun*, but the capture will not work.
+   .. note:: If you skip this step, you can still run any **.html** file with *emrun*, but the capture will not work.
 
 #. Open a terminal, navigate to the build output directory, and call ``emrun page.html``.
 
-  This will spawn a new web server to host the page and launch your default system browser to visit that page. *emrun* will block until the page calls ``exit(returncode)``, after which it will quit back to shell with the given process exit code.
+   This will spawn a new web server to host the page and launch your default system browser to visit that page. *emrun* will block until the page calls ``exit(returncode)``, after which it will quit back to shell with the given process exit code.
 
 
 Choosing the browser to run

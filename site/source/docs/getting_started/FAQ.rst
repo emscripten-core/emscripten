@@ -38,16 +38,16 @@ I tried something: why doesn’t it work?
 
 Some general steps that might help figure things out:
 
- * See if the problem happens without optimizations (`-O0`, or not specifying
-   any optimization level). Without optimizations, emscripten enables many
-   assertions at compile and runtime, which may catch a problem and display an
-   error message with a suggestion for how to fix it.
- * Search the documentation on this site.
- * Check if there is a test for the failing functionality in the
-   :ref:`Emscripten test suite <emscripten-test-suite>` (run ``grep -r`` in
-   **test/**). They should all pass (with only rare exceptions), so they
-   provide concrete "known-good" examples of how various options and code are
-   used.
+* See if the problem happens without optimizations (`-O0`, or not specifying
+  any optimization level). Without optimizations, emscripten enables many
+  assertions at compile and runtime, which may catch a problem and display an
+  error message with a suggestion for how to fix it.
+* Search the documentation on this site.
+* Check if there is a test for the failing functionality in the
+  :ref:`Emscripten test suite <emscripten-test-suite>` (run ``grep -r`` in
+  **test/**). They should all pass (with only rare exceptions), so they
+  provide concrete "known-good" examples of how various options and code are
+  used.
 
 
 Do I need to change my build system to use Emscripten?
@@ -97,7 +97,8 @@ Make sure you optimize code by building with ``-O2`` (even more :ref:`aggressive
 optimization <emcc-O3>` is available, at the cost of significantly increased
 compilation time).
 
-.. note: This is necessary both when compiling each source file, and at link
+.. note::
+   This is necessary both when compiling each source file, and at link
    time, which is when Emscripten applies many of its optimizations.  For more
    information see :ref:`Building-Projects` and :ref:`Optimizing-Code`.
 
@@ -519,13 +520,13 @@ there, you should add it to ``EXPORTED_FUNCTIONS`` for compiled code, or
 ``EXPORTED_RUNTIME_METHODS`` for a runtime method (like ``getValue``). For
 example,
 
- ::
+::
 
   emcc -sEXPORTED_FUNCTIONS=_main,_my_func ...
 
 would export a C method ``my_func`` (in addition to ``main``, in this example). And
 
- ::
+::
 
   emcc -sEXPORTED_RUNTIME_METHODS=ccall ...
 
@@ -556,15 +557,11 @@ generated code more efficient and compact, but requires minor changes if you
 used ``Runtime.*`` APIs. You just need to remove the ``Runtime.`` prefix, as
 those functions are now simple functions in the top scope (an error message in
 ``-O0`` or builds with assertions enabled with suggest this). In other words,
-replace
-
- ::
+replace::
 
   x = Runtime.stackAlloc(10);
 
-with
-
- ::
+with::
 
   x = stackAlloc(10);
 
@@ -582,15 +579,11 @@ This can occur if you have non-trivial strings in ``-s`` argument and are having
 trouble getting the shell quoting / escaping correct.
 
 Using the simpler list form (without quotes, spaces or square brackets) can
-sometimes help:
-
-::
+sometimes help::
 
   emcc a.c -sEXPORTED_RUNTIME_METHODS=foo,bar
 
-It is also possible to use a **response file**, that is,
-
-::
+It is also possible to use a **response file**, that is,::
 
   emcc a.c -sEXPORTED_RUNTIME_METHODS=@extra.txt
 
@@ -600,18 +593,14 @@ separate lines.
 How do I specify ``-s`` options in a CMake project?
 ===================================================
 
-Simple things like this should just work in a ``CMakeLists.txt`` file:
-
-::
+Simple things like this should just work in a ``CMakeLists.txt`` file::
 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")
 
 However, some ``-s`` options may require quoting, or the space between ``-s``
 and the next argument may confuse CMake, when using things like
 ``target_link_options``. To avoid those problems, you can use ``-sX=Y``
-notation, that is, without spaces and without square brackets or quotes:
-
-::
+notation, that is, without spaces and without square brackets or quotes::
 
   # same as before but no space after -s
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sUSE_SDL=2")

@@ -63,8 +63,8 @@ The following IDL file can be used to describe them:
 
 The mapping between the IDL definition and the C++ is fairly obvious. The main things to notice are:
 
-  - The IDL class definitions include a function returning ``void`` that has the same name as the interface. This constructor allows you to create the object from JavaScript, and must be defined in IDL even if the C++ uses the default constructor (see ``Foo`` above).
-  - The type names in WebIDL are not identical to those in C++ (for example, ``int`` maps to ``long`` above). For more information about the mappings see :ref:`webidl-binder-type-name`.
+- The IDL class definitions include a function returning ``void`` that has the same name as the interface. This constructor allows you to create the object from JavaScript, and must be defined in IDL even if the C++ uses the default constructor (see ``Foo`` above).
+- The type names in WebIDL are not identical to those in C++ (for example, ``int`` maps to ``long`` above). For more information about the mappings see :ref:`webidl-binder-type-name`.
 
 .. note:: ``structs`` are defined in the same way as the classes above — using the ``interface`` keyword.
 
@@ -89,12 +89,12 @@ To use the glue code files (``glue.cpp`` and ``glue.js``) in a project:
 #. Add ``--post-js glue.js`` in your final *emcc* command. The :ref:`post-js <emcc-post-js>` option adds the glue code at the end of the compiled output.
 #. Create a file called something like **my_glue_wrapper.cpp** to ``#include`` the headers of the classes you are binding and *glue.cpp*. This might have the following content:
 
-  .. code-block:: cpp
+   .. code-block:: cpp
 
-    #include <...> // Where "..." represents the headers for the classes we are binding.
-    #include <glue.cpp>
+      #include <...> // Where "..." represents the headers for the classes we are binding.
+      #include <glue.cpp>
 
-  .. note:: The C++ glue code emitted by the *bindings generator* does not include the headers for the classes it binds because they are not present in the Web IDL file. The step above makes these available to the glue code. Another alternative would be to include the headers at the top of **glue.cpp**, but then they would be overwritten every time the IDL file is recompiled.
+   .. note:: The C++ glue code emitted by the *bindings generator* does not include the headers for the classes it binds because they are not present in the Web IDL file. The step above makes these available to the glue code. Another alternative would be to include the headers at the top of **glue.cpp**, but then they would be overwritten every time the IDL file is recompiled.
 
 #. Add **my_glue_wrapper.cpp** to the final *emcc* command.
 
@@ -103,7 +103,7 @@ The final *emcc* command includes both the C++ and JavaScript glue code, which a
 
 .. code-block:: bash
 
-  emcc my_classes.cpp my_glue_wrapper.cpp --post-js glue.js -o output.js
+    emcc my_classes.cpp my_glue_wrapper.cpp --post-js glue.js -o output.js
 
 The output now contains everything needed to use the C++ classes through JavaScript.
 
@@ -172,7 +172,7 @@ Attributes
 Object attributes are defined in IDL using the ``attribute`` keyword. These can then be accessed in JavaScript using either ``get_foo()``/``set_foo()`` accessor methods, or directly as a property of the object.
 
 .. code-block:: cpp
-	
+
 	// C++
 	int attr;
 
@@ -210,7 +210,7 @@ Undecorated argument and return values of a custom type in the IDL are assumed t
 
   // WebIDL
   MyClass process(MyClass input);
-  
+
 This assumption isn't true for base types like void,int,bool,DOMString,etc.
 
 References should be decorated using ``[Ref]``:

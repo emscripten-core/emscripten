@@ -209,7 +209,7 @@ option. For example:
 
 Some important settings are:
 
-  -
+-
     .. _debugging-ASSERTIONS:
 
     ``ASSERTIONS=1`` is used to enable runtime checks for many types of common
@@ -218,7 +218,7 @@ Some important settings are:
     ``ASSERTIONS=1`` is enabled by default at ``-O0`` and disabled at higher
     optimization levels, but can be overridden.
 
-  -
+-
     .. _debugging-SAFE-HEAP:
 
     ``SAFE_HEAP=1`` adds additional memory access checks with a Binaryen pass,
@@ -229,7 +229,7 @@ Some important settings are:
     unless :ref:`alignment issues<debugging-emscripten-specific-issues>` are
     important for your platform.
 
-  -
+-
     .. _debugging-STACK_OVERFLOW_CHECK:
 
     ``STACK_OVERFLOW_CHECK=1`` adds a runtime magic token value at the end of

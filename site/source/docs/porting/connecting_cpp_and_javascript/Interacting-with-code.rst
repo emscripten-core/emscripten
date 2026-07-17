@@ -228,18 +228,18 @@ function, but with a leading ``_``.
 
 The parameters you pass to and receive from functions need to be primitive values:
 
-  - Integer and floating point numbers can be passed as-is.
-  - Pointers can be passed as-is also, as they are simply integers in the generated code.
-  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = stringToNewUTF8(someString)``.
+- Integer and floating point numbers can be passed as-is.
+- Pointers can be passed as-is also, as they are simply integers in the generated code.
+- JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = stringToNewUTF8(someString)``.
 
-    .. note:: The conversion to a pointer allocates memory, which needs to be
-      freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side) -
-  - ``char *`` received from C/C++ can be converted to a JavaScript string using :js:func:`UTF8ToString`.
+  .. note:: The conversion to a pointer allocates memory, which needs to be
+    freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side) -
+- ``char *`` received from C/C++ can be converted to a JavaScript string using :js:func:`UTF8ToString`.
 
-    There are other convenience functions for converting strings and encodings
-    in :ref:`preamble-js`.
-  - Other values can be passed via :cpp:class:`emscripten::val`. Check out examples
-    on :ref:`as_handle and take_ownership methods <val_as_handle>`.
+  There are other convenience functions for converting strings and encodings
+  in :ref:`preamble-js`.
+- Other values can be passed via :cpp:class:`emscripten::val`. Check out examples
+  on :ref:`as_handle and take_ownership methods <val_as_handle>`.
 
 .. _interacting-with-code-call-javascript-from-native:
 
@@ -308,9 +308,9 @@ amount of overhead.)
 You can also send values from C into JavaScript inside :c:macro:`EM_ASM`,
 for example::
 
-   EM_ASM({
-     console.log('I received: ' + $0);
-   }, 100);
+    EM_ASM({
+      console.log('I received: ' + $0);
+    }, 100);
 
 This will show ``I received: 100``.
 
@@ -360,7 +360,7 @@ used in many of Emscripten's libraries, like SDL1 and OpenGL.
 You can use it to write your own APIs to call from C/C++. To do this you define
 the interface, decorating with ``extern`` to mark the methods in the API as
 external symbols. You can then implement the symbols in JavaScript by simply
-adding their definition to one of the `core JS library`_ files.  Undefined 
+adding their definition to one of the `core JS library`_ files.  Undefined
 native symbols will be resolved by looking for them in JavaScript library files.
 
 The `core JS library`_ files are where you will find Emscripten internals. For
@@ -630,12 +630,12 @@ The LLVM Wasm backend requires a Wasm function signature string when using
 string represents a type. The first character represents the return type of a
 function, and remaining characters are for parameter types.
 
-   - ``'v'``: void type
-   - ``'i'``: 32-bit integer type
-   - ``'j'``: 64-bit integer type (see note below)
-   - ``'f'``: 32-bit float type
-   - ``'d'``: 64-bit float type
-   - ``'p'``: 32-bit or 64-bit pointer (MEMORY64)
+- ``'v'``: void type
+- ``'i'``: 32-bit integer type
+- ``'j'``: 64-bit integer type (see note below)
+- ``'f'``: 32-bit float type
+- ``'d'``: 64-bit float type
+- ``'p'``: 32-bit or 64-bit pointer (MEMORY64)
 
 For example, if you add a function that takes an integer and does not return
 anything, the signature is ``'vi'``.
@@ -656,10 +656,10 @@ a 53 bit (double) and returns an integer error code:
 
 .. code-block:: javascript
 
-  _set_file_size__i53abi: true,  // Handle 64-bit 
+  _set_file_size__i53abi: true,  // Handle 64-bit
   _set_file_size__sig: 'iij',    // Function signature
   _set_file_size: function(handle, size) { ... return error; }
-    
+
 Using ``-sWASM_BIGINT`` when linking is an alternative method of handling
 64-bit types in libraries.  ```Number()``` may be needed on the JavaScript
 side to convert it to a usable value.  See `settings reference <https://emscripten.org/docs/tools_reference/settings_reference.html?highlight=environment#wasm-bigint>`_.

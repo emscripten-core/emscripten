@@ -51,12 +51,12 @@ test suites, that run tests in more special manner (in particular, in those test
 it is not possible to say "run the test with a different optimization flag" -
 that is what the core tests are for).  The non-core test suites include
 
- * `other`: Non-core tests running in the shell.
- * `browser`: Tests that run in a browser.
- * `sockets`: Networking tests that run in a browser.
- * `interactive`: Browser tests that are not fully automated, and require user interaction (these should be automated eventually).
- * `sanity`: Tests for emscripten setting itself up. This modifies your `.emscripten` file temporarily.
- * `benchmark`: Runs benchmarks, measuring speed and code size.
+* `other`: Non-core tests running in the shell.
+* `browser`: Tests that run in a browser.
+* `sockets`: Networking tests that run in a browser.
+* `interactive`: Browser tests that are not fully automated, and require user interaction (these should be automated eventually).
+* `sanity`: Tests for emscripten setting itself up. This modifies your `.emscripten` file temporarily.
+* `benchmark`: Runs benchmarks, measuring speed and code size.
 
 The wildcards we mentioned above work for non-core test modes too, for example:
 
@@ -216,7 +216,7 @@ runs them.
 
 For even more debugging info, you can set :ref:`debugging-EMCC_DEBUG` which will
 cause the emscripten compiler itself to output a lot of debug info.  This will
-also tell the compiler to leave all its temporary files behind after it runs 
+also tell the compiler to leave all its temporary files behind after it runs
 (the files go in ``/tmp/emscripten_temp/``):
 
 .. code-block:: bash

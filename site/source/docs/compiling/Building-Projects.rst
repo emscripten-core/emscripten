@@ -283,8 +283,8 @@ Adding more ports
 The simplest way to add a new port is to put it under the ``contrib`` directory.
 Basically, the steps are:
 
- * Make sure the port is open source and has a suitable license.
- * Read the ``README.md`` file under ``tools/ports/contrib`` which contains more information.
+* Make sure the port is open source and has a suitable license.
+* Read the ``README.md`` file under ``tools/ports/contrib`` which contains more information.
 
 External ports
 --------------
@@ -378,18 +378,18 @@ Detecting Emscripten in Preprocessor
 
 Emscripten provides the following preprocessor macros that can be used to identify the compiler version and platform:
 
- * The preprocessor define ``__EMSCRIPTEN__`` is always defined when compiling programs with Emscripten.
- * The preprocessor variables ``__EMSCRIPTEN_MAJOR__``, ``__EMSCRIPTEN_MINOR__``
-   and ``__EMSCRIPTEN_TINY__`` are defined in ``emscripten/version.h`` and
-   specify, as integers, the currently used Emscripten compiler version.
- * Emscripten behaves like a variant of Unix, so the preprocessor defines ``unix``, ``__unix`` and ``__unix__`` are always present when compiling code with Emscripten.
- * Emscripten uses Clang/LLVM as its underlying codegen compiler, so the preprocessor defines ``__llvm__`` and ``__clang__`` are defined, and the preprocessor defines ``__clang_major__``, ``__clang_minor__`` and ``__clang_patchlevel__`` indicate the version of Clang that is used.
- * Clang/LLVM is GCC-compatible, so the preprocessor defines ``__GNUC__``, ``__GNUC_MINOR__`` and ``__GNUC_PATCHLEVEL__`` are also defined to represent the level of GCC compatibility that Clang/LLVM provides.
- * The preprocessor string ``__VERSION__`` indicates the GCC compatible version, which is expanded to also show Emscripten version information.
- * Likewise, ``__clang_version__`` is present and indicates both Emscripten and LLVM version information.
- * Emscripten is a 32-bit platform, so ``size_t`` is a 32-bit unsigned integer, ``__POINTER_WIDTH__=32``, ``__SIZEOF_LONG__=4`` and ``__LONG_MAX__`` equals ``2147483647L``.
- * When targeting SSEx SIMD APIs using one of the command line compiler flags ``-msse``, ``-msse2``, ``-msse3``, ``-mssse3``, or ``-msse4.1``, one or more of the preprocessor flags ``__SSE__``, ``__SSE2__``, ``__SSE3__``, ``__SSSE3__``, ``__SSE4_1__`` will be present to indicate available support for these instruction sets.
- * If targeting the pthreads multithreading support with the compiler & linker flag ``-pthread``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
+* The preprocessor define ``__EMSCRIPTEN__`` is always defined when compiling programs with Emscripten.
+* The preprocessor variables ``__EMSCRIPTEN_MAJOR__``, ``__EMSCRIPTEN_MINOR__``
+  and ``__EMSCRIPTEN_TINY__`` are defined in ``emscripten/version.h`` and
+  specify, as integers, the currently used Emscripten compiler version.
+* Emscripten behaves like a variant of Unix, so the preprocessor defines ``unix``, ``__unix`` and ``__unix__`` are always present when compiling code with Emscripten.
+* Emscripten uses Clang/LLVM as its underlying codegen compiler, so the preprocessor defines ``__llvm__`` and ``__clang__`` are defined, and the preprocessor defines ``__clang_major__``, ``__clang_minor__`` and ``__clang_patchlevel__`` indicate the version of Clang that is used.
+* Clang/LLVM is GCC-compatible, so the preprocessor defines ``__GNUC__``, ``__GNUC_MINOR__`` and ``__GNUC_PATCHLEVEL__`` are also defined to represent the level of GCC compatibility that Clang/LLVM provides.
+* The preprocessor string ``__VERSION__`` indicates the GCC compatible version, which is expanded to also show Emscripten version information.
+* Likewise, ``__clang_version__`` is present and indicates both Emscripten and LLVM version information.
+* Emscripten is a 32-bit platform, so ``size_t`` is a 32-bit unsigned integer, ``__POINTER_WIDTH__=32``, ``__SIZEOF_LONG__=4`` and ``__LONG_MAX__`` equals ``2147483647L``.
+* When targeting SSEx SIMD APIs using one of the command line compiler flags ``-msse``, ``-msse2``, ``-msse3``, ``-mssse3``, or ``-msse4.1``, one or more of the preprocessor flags ``__SSE__``, ``__SSE2__``, ``__SSE3__``, ``__SSSE3__``, ``__SSE4_1__`` will be present to indicate available support for these instruction sets.
+* If targeting the pthreads multithreading support with the compiler & linker flag ``-pthread``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
 
 
 Using a compiler wrapper
@@ -438,8 +438,7 @@ Troubleshooting
   ``emmake``/``emconfigure`` should avoid this by setting the env var RANLIB,
   but a build system might have it hardcoded, or require you to
   `pass an option <https://github.com/emscripten-core/emscripten/issues/9705#issuecomment-548199052>`_.
--
-  The compilation error ``multiply defined symbol`` indicates that the project has linked a particular static library multiple times. The project will need to be changed so that the problem library is linked only once.
+- The compilation error ``multiply defined symbol`` indicates that the project has linked a particular static library multiple times. The project will need to be changed so that the problem library is linked only once.
 
   .. note:: You can use ``llvm-nm`` to see which symbols are defined in each object file.
 

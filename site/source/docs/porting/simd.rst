@@ -47,24 +47,24 @@ WebAssembly SIMD Intrinsics
 
 LLVM maintains a WebAssembly SIMD Intrinsics header file that is provided with Emscripten, and adds type definitions for the different supported vector types.
 
-    .. code-block:: cpp
+.. code-block:: cpp
 
-       #include <wasm_simd128.h>
-       #include <stdio.h>
+    #include <wasm_simd128.h>
+    #include <stdio.h>
 
-       int main() {
-       #ifdef __wasm_simd128__
-         v128_t v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
-         v128_t v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
-         v128_t v3 = wasm_f32x4_add(v1, v2);
-         // Prints "v3: [3.3, 7.7, 12.1, 16.5]"
-         printf("v3: [%.1f, %.1f, %.1f, %.1f]\n",
-                wasm_f32x4_extract_lane(v3, 0),
-                wasm_f32x4_extract_lane(v3, 1),
-                wasm_f32x4_extract_lane(v3, 2),
-                wasm_f32x4_extract_lane(v3, 3));
-       #endif
-       }
+    int main() {
+    #ifdef __wasm_simd128__
+      v128_t v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
+      v128_t v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
+      v128_t v3 = wasm_f32x4_add(v1, v2);
+      // Prints "v3: [3.3, 7.7, 12.1, 16.5]"
+      printf("v3: [%.1f, %.1f, %.1f, %.1f]\n",
+            wasm_f32x4_extract_lane(v3, 0),
+            wasm_f32x4_extract_lane(v3, 1),
+            wasm_f32x4_extract_lane(v3, 2),
+            wasm_f32x4_extract_lane(v3, 3));
+    #endif
+    }
 
 The Wasm SIMD header can be browsed online at `wasm_simd128.h <https://github.com/llvm/llvm-project/blob/main/clang/lib/Headers/wasm_simd128.h>`_.
 
@@ -78,13 +78,13 @@ Limitations and behavioral differences
 
 When porting native SIMD code, it should be noted that because of portability concerns, the WebAssembly SIMD specification does not expose access to all of the native x86/ARM SIMD instructions. In particular the following changes exist:
 
- - Emscripten does not support x86 or any other native inline SIMD assembly or building .s assembly files, so all code should be written to use SIMD intrinsic functions or compiler vector extensions.
+- Emscripten does not support x86 or any other native inline SIMD assembly or building .s assembly files, so all code should be written to use SIMD intrinsic functions or compiler vector extensions.
 
- - WebAssembly SIMD does not have control over managing floating point rounding modes or handling denormals.
+- WebAssembly SIMD does not have control over managing floating point rounding modes or handling denormals.
 
- - Cache line prefetch instructions are not available, and calls to these functions will compile, but are treated as no-ops.
+- Cache line prefetch instructions are not available, and calls to these functions will compile, but are treated as no-ops.
 
- - Asymmetric memory fence operations are not available, but will be implemented as fully synchronous memory fences when SharedArrayBuffer is enabled (-pthread) or as no-ops when multithreading is not enabled (the default).
+- Asymmetric memory fence operations are not available, but will be implemented as fully synchronous memory fences when SharedArrayBuffer is enabled (-pthread) or as no-ops when multithreading is not enabled (the default).
 
 SIMD-related bug reports are tracked in the `Emscripten bug tracker with the label SIMD <https://github.com/emscripten-core/emscripten/issues?q=is%3Aopen+is%3Aissue+label%3ASIMD>`_.
 
@@ -110,7 +110,7 @@ When developing SIMD code to use WebAssembly SIMD, implementors should be aware 
    * - i8x16.[shl|shr_s|shr_u]
      - x86
      - Included for orthogonality, these instructions have no equivalent x86 instruction and are emulated with `5-11 x86 instructions in v8 <https://github.com/v8/v8/blob/c8672adeebb105c7636334b9931831bf1945f4ec/src/codegen/shared-ia32-x64/macro-assembler-shared-ia32-x64.cc#L427-L552>`_ (i.e. using 16x8 shifts).
-  
+
    * - i64x2.shr_s
      - x86
      - Included for orthogonality, this instruction has no equivalent x86 instruction and is emulated with `6-12 x86 instructions in v8 <https://github.com/v8/v8/blob/c8672adeebb105c7636334b9931831bf1945f4ec/src/codegen/shared-ia32-x64/macro-assembler-shared-ia32-x64.cc#L996-L1057>`_.
@@ -1401,7 +1401,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vclz
      - ❌ Will be emulated with slow instructions, or scalarized
-   * - vcombine 
+   * - vcombine
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vcreate
      - ❌ Will be emulated with slow instructions, or scalarized
@@ -1445,7 +1445,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ✅ native
    * - vminv
      - ❌ Will be emulated with slow instructions, or scalarized
-   * - vmla 
+   * - vmla
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmlal
      - ❌ Will be emulated with slow instructions, or scalarized
@@ -1471,9 +1471,9 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ✅ native
    * - vmulq
      - ✅ native for 32 & 64 bit floats & ints, otherwise ❌ Will be emulated with slow instructions, or scalarized
-   * - vmul_n 
+   * - vmul_n
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
-   * - vmull 
+   * - vmull
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull_n
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
@@ -1495,7 +1495,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vpadd
      - ❌ Will be emulated with slow instructions, or scalarized
-   * - vpaddl 
+   * - vpaddl
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vpmax
      - ❌ Will be emulated with slow instructions, or scalarized
@@ -1507,11 +1507,11 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqabsb
      - ❌ Will be emulated with slow instructions, or scalarized
-   * - vqadd 
+   * - vqadd
      - 💡 Depends on a smart enough compiler, but should be near native
    * - vqaddb
      - ❌ Will be emulated with slow instructions, or scalarized
-   * - vqdmulh  
+   * - vqdmulh
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqdmulh_lane
      - ❌ Will be emulated with slow instructions, or scalarized
