@@ -60,6 +60,6 @@ int main(void) {
 
   close(v4);
   close(v6);
-  printf("UDP SOCKOPTS PASS\n");
+  printf("done\n");
   return 0;
 }

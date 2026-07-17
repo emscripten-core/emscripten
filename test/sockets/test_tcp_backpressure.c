@@ -36,7 +36,7 @@ long long sent_total = 0;
 const long long CAP = 512LL * 1024 * 1024;
 
 void test_success(void) {
-  printf("BACKPRESSURE PASS\n");
+  printf("done\n");
   if (fd >= 0) close(fd);
 #ifdef __EMSCRIPTEN__
   emscripten_cancel_main_loop();
