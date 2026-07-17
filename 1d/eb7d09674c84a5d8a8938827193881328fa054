@@ -1,0 +1,41 @@
+test/sockets/test_tcp_backpressure.c
+  s_17bba2c9b54d1e::t_8df35dafffde01 39
+test/sockets/test_tcp_client_bind.c
+  s_17bba2c9b54d1e::t_8d4b640c1c5794 39
+test/sockets/test_tcp_client_semantics.c
+  s_17bba2c9b54d1e::t_20b075ab2f7fe7 42
+test/sockets/test_tcp_echo.c
+  s_17bba2c9b54d1e::t_3bd9ddb1ca85a5 39
+test/sockets/test_tcp_ipv6.c
+  s_17bba2c9b54d1e::t_b0737891a5a267 42
+test/sockets/test_tcp_peek.c
+  s_17bba2c9b54d1e::t_7cc22fe864b999 47
+test/sockets/test_tcp_refused.c
+  s_17bba2c9b54d1e::t_8c39e1e7e4b81b 32
+test/sockets/test_tcp_server.c
+  s_17bba2c9b54d1e::t_417d3a56c3c2dc 45
+test/sockets/test_udp_connect.c
+  s_17bba2c9b54d1e::t_ead35c05d89839 43
+test/sockets/test_udp_echo.c
+  s_17bba2c9b54d1e::t_8483746bf087f9 43
+test/sockets/test_udp_ipv6.c
+  s_17bba2c9b54d1e::t_5884ce22e61dce 40
+test/sockets/test_udp_sockopts.c
+  s_17bba2c9b54d1e::t_b0b8e629e3a017 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1deb7d09674c84a5d8a8938827193881328fa054",
+  "prompts": {},
+  "sessions": {
+    "s_17bba2c9b54d1e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_08dea22e8ffegrKkVska1tBAiJ",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
