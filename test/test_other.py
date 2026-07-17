@@ -3621,6 +3621,11 @@ More info: https://emscripten.org
     self.do_runf('other/test_jspi_add_function.c', 'done\n')
 
   @requires_jspi
+  def test_jspi_promising_top(self):
+    self.do_runf('other/test_jspi_promising_top.c', 'done\n',
+                 cflags=['-sJSPI', '-sJSPI_EXPORTS=nested'])
+
+  @requires_jspi
   def test_jspi_async_function(self):
     # Make sure async library functions are not automatically JSPI'd.
     create_file('lib.js', r'''

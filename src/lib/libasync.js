@@ -30,6 +30,9 @@ addToLibrary({
 #if ASYNCIFY == 1
     // Needed by allocateData and handleSleep respectively
     'malloc', 'free',
+#elif ASYNCIFY == 2
+    // Needed by makeAsyncFunction
+    'emscripten_stack_get_current',
 #endif
   ],
 
@@ -456,6 +459,15 @@ addToLibrary({
     // Stores all the exported raw Wasm functions that are wrapped with async
     // WebAssembly.Functions.
     asyncExports: null,
+    // The stack pointer recorded on entry to the last promising export call,
+    // marking the top of the stack range in use by that call. For use by
+    // libraries implementing shadow stack switching on top of JSPI. Note that
+    // this is only a marker set on promising entry: suspensions are not
+    // guarded, so such libraries must intercept suspending imports and
+    // promising call sites themselves to maintain accuracy across
+    // suspend/resume boundaries (on resume the stack is always empty, so the
+    // promising top is then the stack base).
+    lastPromisingStackTop: 0,
     isAsyncExport(func) {
       return Asyncify.asyncExports?.has(func);
     },
@@ -472,7 +484,11 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify: makeAsyncFunction for', original);
 #endif
-      return WebAssembly.promising(original);
+      var promising = WebAssembly.promising(original);
+      return (...args) => {
+        Asyncify.lastPromisingStackTop = _emscripten_stack_get_current();
+        return promising(...args);
+      };
     },
 #endif
   },
