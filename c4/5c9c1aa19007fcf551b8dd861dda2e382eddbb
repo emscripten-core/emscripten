@@ -1,0 +1,19 @@
+src/lib/libasync.js
+  s_00a035621c5435::t_9ce5aafcd29124 446-459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c45c9c1aa19007fcf551b8dd861dda2e382eddbb",
+  "prompts": {},
+  "sessions": {
+    "s_00a035621c5435": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_08e0a43a1ffeZMFUYIjrNnXha4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
