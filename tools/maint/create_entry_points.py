@@ -6,10 +6,10 @@
 
 """Tool for creating/maintaining the python launcher scripts for emscripten tools.
 
-This tool makes copies or `run_python.sh/.bat` and `run_python_compiler.sh/.bat`
-script for each entry point. On UNIX we previously used symbolic links for
-simplicity but this breaks MINGW users on windows who want to use the shell script
-launcher but don't have symlink support.
+This tool makes copies of `run_python.sh`, `run_python_compiler.sh` or `pylauncher.exe`
+for each entry point. On UNIX we previously used symbolic links for simplicity but this
+breaks MINGW users on windows who want to use the shell script launcher but don't
+have symlink support.
 """
 
 import os
@@ -83,48 +83,34 @@ def write_file(filename, content):
     f.write(content)
 
 
-def main(all_platforms, use_bat_file):
-  if 'EM_USE_BAT_FILES' in os.environ:
-    use_bat_file = True
+def main(all_platforms):
   is_windows = sys.platform.startswith('win')
   is_msys2 = 'MSYSTEM' in os.environ
   do_unix = all_platforms or not is_windows or is_msys2
   do_windows = all_platforms or is_windows
 
   def generate_entry_points(cmd, path):
-    sh_file = path + '.sh'
-    bat_file = path + '.bat'
-    ps1_file = path + '.ps1'
-    sh_file = read_file(sh_file)
-    bat_file = read_file(bat_file)
-    ps1_file = read_file(ps1_file)
+    sh_file = read_file(path + '.sh')
 
     for entry_point in cmd:
-      sh_data = sh_file
-      bat_data = bat_file
-      ps1_data = ps1_file
-      if entry_point in entry_remap:
-        sh_data = sh_data.replace('$0', '$(dirname $0)/' + entry_remap[entry_point])
-        bat_data = bat_data.replace('%~n0', entry_remap[entry_point].replace('/', '\\'))
-        ps1_data = ps1_data.replace(r"$MyInvocation.MyCommand.Path -replace '\.ps1$', '.py'", fr'"$PSScriptRoot/{entry_remap[entry_point]}.py"')
 
       launcher = os.path.join(__rootdir__, entry_point)
       if do_unix:
+        sh_data = sh_file
+        if entry_point in entry_remap:
+          sh_data = sh_data.replace('$0', '$(dirname $0)/' + entry_remap[entry_point])
         write_file(launcher, sh_data)
         make_executable(launcher)
 
       if do_windows:
+        maybe_remove(launcher + '.bat')
         maybe_remove(launcher + '.ps1')
         maybe_remove(launcher + '.exe')
-        if use_bat_file:
-          write_file(launcher + '.bat', bat_data)
-          write_file(launcher + '.ps1', ps1_data)
-        else:
-          shutil.copyfile(windows_exe, launcher + '.exe')
+        shutil.copyfile(windows_exe, launcher + '.exe')
 
   generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(__scriptdir__, 'run_python_compiler'))
 
 
 if __name__ == '__main__':
-  sys.exit(main('--all' in sys.argv, '--bat-files' in sys.argv))
+  sys.exit(main('--all' in sys.argv))
