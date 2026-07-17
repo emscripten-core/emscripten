@@ -9757,6 +9757,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_poll_blocking_asyncify.c', 'done\n')
 
+  @requires_pthreads
+  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/26736')
+  def test_poll_blocking_asyncify_pthread(self):
+    self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sASYNCIFY', '-sEXIT_RUNTIME=1'])
+
   @parameterized({
     '': ([],),
     'pthread': (['-pthread'],),
