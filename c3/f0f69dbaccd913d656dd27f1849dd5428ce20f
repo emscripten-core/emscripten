@@ -1,0 +1,29 @@
+ChangeLog.md
+  s_48aa50d4b43da5::t_e2fc6870298f28 23-25
+site/source/docs/api_reference/emscripten.h.rst
+  s_48aa50d4b43da5::t_8657e84ad3d151 1368-1379
+src/lib/libasync.js
+  s_48aa50d4b43da5::t_9d7217177fa69f 40-42,68-76,425,442,496-498,629
+src/lib/libsigs.js
+  s_48aa50d4b43da5::t_04818377fb2f51 829
+system/include/emscripten/emscripten.h
+  s_48aa50d4b43da5::t_93ba93e03c0687 147-150
+test/test_core.py
+  s_48aa50d4b43da5::t_9ad424fbfaa0d0 8378-8395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c3f0f69dbaccd913d656dd27f1849dd5428ce20f",
+  "prompts": {},
+  "sessions": {
+    "s_48aa50d4b43da5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_08cd91560ffeUmzyc7f6jahW5g",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
