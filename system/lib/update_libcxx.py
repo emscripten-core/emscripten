@@ -4,6 +4,14 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# Run this after updating llvm-libc to the same version. libcxx is dependent on
+# the following diretories from llvm-libc:
+# llvm-libc/hdr
+# llvm-libc/include/llvm-libc-macros
+# llvm-libc/include/llvm-libc-types
+# llvm-libc/shared
+# llvm-libc/config
+
 import os
 import re
 import shutil
@@ -29,14 +37,6 @@ local_modules = os.path.join(local_root, 'modules')
 preserve_files = ('readme.txt', '__assertion_handler', '__config_site')
 # ryu_long_double_constants.h from libc is unused (and very large)
 excludes = {'ryu_long_double_constants.h'}
-
-libc_copy_dirs = [
-    'hdr',
-    'include/llvm-libc-macros',
-    'include/llvm-libc-types',
-    'shared',
-    'config',
-]
 
 
 def generate_modules(cmake_version: str):
@@ -110,15 +110,6 @@ def main():
   libc_upstream_dir = os.path.join(llvm_dir, 'libc')
   assert os.path.exists(libc_upstream_dir)
   libc_local_dir = os.path.join(script_dir, 'llvm-libc')
-
-  for dirname in libc_copy_dirs:
-    local_dir = os.path.join(libc_local_dir, dirname)
-    clean_dir(local_dir, preserve_files)
-
-  for dirname in libc_copy_dirs:
-    upstream_dir = os.path.join(libc_upstream_dir, dirname)
-    local_dir = os.path.join(libc_local_dir, dirname)
-    copy_tree(upstream_dir, local_dir, excludes)
 
   shutil.copy2(os.path.join(libc_upstream_dir, 'LICENSE.TXT'), libc_local_dir)
   update_readme(local_root, llvm_dir)
