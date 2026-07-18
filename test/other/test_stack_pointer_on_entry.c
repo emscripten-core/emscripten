@@ -53,8 +53,8 @@ int main(void) {
   assert(get_entry_sp() == nested_base);
 #else
   emscripten_sleep(0);
-  // The rewind re-enters the outermost export with the stack pointer restored
-  // to its entry value, so the marker is stable across sleeps.
+  // The rewind re-entry does not re-record, so the marker is stable across
+  // sleeps.
   assert(get_entry_sp() == main_base);
 #endif
   printf("done\n");

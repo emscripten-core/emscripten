@@ -130,7 +130,11 @@ addToLibrary({
 #if ASYNCIFY_DEBUG >= 2
         dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} try ${original}`);
 #endif
-        if (!Asyncify.exportCallStack.length) {
+        // Record the outermost entry stack pointer, except while a suspension
+        // is in flight (covering runtime-internal exports called during the
+        // sleep and the rewind itself), where the original value still
+        // applies.
+        if (!Asyncify.exportCallStack.length && !Asyncify.currData) {
           Asyncify.stackPointerOnEntry = {{{ from64Expr('___stack_pointer.value') }}};
         }
         Asyncify.exportCallStack.push(original);
