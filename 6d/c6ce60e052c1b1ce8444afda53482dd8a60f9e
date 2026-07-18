@@ -1,0 +1,25 @@
+ChangeLog.md
+  s_e06fecf0331786::t_4047ef11c3a8ad 24
+src/lib/libasync.js
+  s_e06fecf0331786::t_30433bee3d8086 463-470,492
+test/other/test_jspi_promising_base.c
+  s_e06fecf0331786::t_af3d9984384a02 12-13,15-17,22-23,26,36,42-45,49
+test/test_other.py
+  s_e06fecf0331786::t_cabf87bb63a812 3624-3625
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6dc6ce60e052c1b1ce8444afda53482dd8a60f9e",
+  "prompts": {},
+  "sessions": {
+    "s_e06fecf0331786": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_08e370fb7ffe5DrGAlHh6O6Kc4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
