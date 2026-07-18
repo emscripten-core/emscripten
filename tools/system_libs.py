@@ -1039,6 +1039,13 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   ]
 
   def get_files(self):
+    # Overlay mode doesn't support mbstate_t which is used by these sources.
+    mbstate_t_excludes = {
+        'wcrtomb.cpp', 'mbrtowc.cpp', 'mbrlen.cpp', 'mbsinit.cpp',
+        'mbsnrtowcs.cpp', 'mbsrtowcs.cpp', 'wcsnrtombs.cpp', 'wcsrtombs.cpp',
+        'mblen.cpp', 'mbtowc.cpp', 'wctomb.cpp', 'mbstowcs.cpp', 'wcstombs.cpp'
+    }
+
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/complex', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp', excludes={'memset.cpp', 'memcpy.cpp'} if self.is_asan else set())
@@ -1046,8 +1053,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
-    # Overlay mode doesn't support mbstate_t which is used by these wchar sources.
-    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes={'wcrtomb.cpp', 'mbrtowc.cpp', 'wctomb.cpp', 'mbtowc.cpp'})
+    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes=mbstate_t_excludes)
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes={'at_quick_exit.cpp',
@@ -1055,7 +1061,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
                                                                                 'atexit.cpp',
                                                                                 'exit.cpp',
                                                                                 '_Exit.cpp',
-                                                                                'getenv.cpp'})
+                                                                                'getenv.cpp'} | mbstate_t_excludes)
     files += glob_in_path('system/lib/llvm-libc/src/math/generic', '**/*.cpp', excludes={'atan2l.cpp', 'exp_utils.cpp'})
     files += glob_in_path('system/lib/llvm-libc/src/__support/StringUtil', '**/*.cpp')
     return files
