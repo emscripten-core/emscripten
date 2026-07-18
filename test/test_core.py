@@ -9757,6 +9757,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_poll_blocking_asyncify.c', 'done\n')
 
+  # Include @requires_node_25 explictly here so that this test will be disabled
+  # by EMTEST_SKIP_NODE_25.  Without this, the `requires_pthreads` and `requires_jspi` can
+  # end with conflicting requirements because we often run with both v8 (which satisfies
+  # the `requires_jspi` part have node 22 (which satisfies the `requires_pthreads` part).
+  # FIXME: This should not be needed.
+  @requires_node_25
   @with_asyncify_and_jspi
   @requires_pthreads
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/26736')
