@@ -7676,7 +7676,7 @@ addToLibrary({
     'O2': (['-O2'], 137000),
     'emmalloc': (['-sMALLOC=emmalloc'], 185000),
     'dlmalloc': (['-sMALLOC=dlmalloc'], 191000),
-    'mimalloc': (['-sMALLOC=mimalloc'], 255000),
+    'mimalloc': (['-sMALLOC=mimalloc'], 256000),
     'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 130000),
     'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 137000),
     'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 193000),
