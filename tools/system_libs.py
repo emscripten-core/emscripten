@@ -1043,7 +1043,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     mbstate_t_excludes = {
         'wcrtomb.cpp', 'mbrtowc.cpp', 'mbrlen.cpp', 'mbsinit.cpp',
         'mbsnrtowcs.cpp', 'mbsrtowcs.cpp', 'wcsnrtombs.cpp', 'wcsrtombs.cpp',
-        'mblen.cpp', 'mbtowc.cpp', 'wctomb.cpp', 'mbstowcs.cpp', 'wcstombs.cpp'
+        'mblen.cpp', 'mbtowc.cpp', 'wctomb.cpp', 'mbstowcs.cpp', 'wcstombs.cpp',
     }
 
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
