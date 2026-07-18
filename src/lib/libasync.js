@@ -30,10 +30,9 @@ addToLibrary({
 #if ASYNCIFY == 1
     // Needed by allocateData and handleSleep respectively
     'malloc', 'free',
-#elif ASYNCIFY == 2
-    // Needed by makeAsyncFunction
-    '__stack_pointer',
 #endif
+    // Needed to record stackPointerOnEntry
+    '__stack_pointer',
   ],
 
   $Asyncify: {
@@ -43,6 +42,15 @@ addToLibrary({
 #if ASYNCIFY == 1 && MEMORY64
     rewindArguments: new Map(),
 #endif
+    // The stack pointer recorded on entry to the outermost export call (under
+    // JSPI, to each promising export call), marking the base of the stack
+    // range in use by that call (the stack grows down from it). For use by
+    // libraries implementing shadow stack switching. Note that this is only a
+    // marker set on entry: JSPI suspensions are not guarded, so such libraries
+    // must intercept suspending imports and promising call sites themselves to
+    // maintain accuracy across suspend/resume boundaries (on resume the stack
+    // is always empty, so the entry stack pointer is then the stack base).
+    stackPointerOnEntry: 0,
     instrumentWasmImports(imports) {
 #if EMBIND_GEN_MODE
       // Instrumenting is not needed when generating code.
@@ -122,6 +130,9 @@ addToLibrary({
 #if ASYNCIFY_DEBUG >= 2
         dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} try ${original}`);
 #endif
+        if (!Asyncify.exportCallStack.length) {
+          Asyncify.stackPointerOnEntry = {{{ from64Expr('___stack_pointer.value') }}};
+        }
         Asyncify.exportCallStack.push(original);
         try {
 #if MEMORY64
@@ -459,15 +470,6 @@ addToLibrary({
     // Stores all the exported raw Wasm functions that are wrapped with async
     // WebAssembly.Functions.
     asyncExports: null,
-    // The stack pointer recorded on entry to the last promising export call,
-    // marking the base of the stack range in use by that call (the stack
-    // grows down from it). For use by libraries implementing shadow stack
-    // switching on top of JSPI. Note that this is only a marker set on
-    // promising entry: suspensions are not guarded, so such libraries must
-    // intercept suspending imports and promising call sites themselves to
-    // maintain accuracy across suspend/resume boundaries (on resume the
-    // stack is always empty, so the promising base is then the stack base).
-    lastPromisingStackBase: 0,
     isAsyncExport(func) {
       return Asyncify.asyncExports?.has(func);
     },
@@ -487,9 +489,10 @@ addToLibrary({
       var promising = WebAssembly.promising(original);
       return (...args) => {
         // Read the stack pointer global directly rather than calling into
-        // Wasm, which is not possible outside of a promising context under
-        // SPLIT_MODULE where exports can be lazy-loading JSPI trampolines.
-        Asyncify.lastPromisingStackBase = {{{ from64Expr('___stack_pointer.value') }}};
+        // Wasm (e.g. stackSave), which is not possible outside of a promising
+        // context under SPLIT_MODULE where exports can be lazy-loading JSPI
+        // trampolines.
+        Asyncify.stackPointerOnEntry = {{{ from64Expr('___stack_pointer.value') }}};
         return promising(...args);
       };
     },

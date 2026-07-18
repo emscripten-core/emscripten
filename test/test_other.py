@@ -3621,9 +3621,13 @@ More info: https://emscripten.org
     self.do_runf('other/test_jspi_add_function.c', 'done\n')
 
   @requires_jspi
-  def test_jspi_promising_base(self):
-    self.do_runf('other/test_jspi_promising_base.c', 'done\n',
-                 cflags=['-sJSPI', '-sJSPI_EXPORTS=nested'])
+  def test_jspi_stack_pointer_on_entry(self):
+    self.do_runf('other/test_stack_pointer_on_entry.c', 'done\n',
+                 cflags=['-sJSPI', '-sJSPI_EXPORTS=nested', '-DTEST_JSPI'])
+
+  def test_asyncify_stack_pointer_on_entry(self):
+    self.do_runf('other/test_stack_pointer_on_entry.c', 'done\n',
+                 cflags=['-sASYNCIFY'])
 
   @requires_jspi
   def test_jspi_async_function(self):
