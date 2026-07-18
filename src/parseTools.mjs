@@ -764,7 +764,7 @@ Please update to new syntax.`);
 
   let getWasmTableEntry = `getWasmTableEntry(${funcPtr})`;
   if (promising) {
-    getWasmTableEntry = `WebAssembly.promising(${getWasmTableEntry})`;
+    getWasmTableEntry = `Asyncify.makeAsyncFunction(${getWasmTableEntry})`;
   }
 
   if (needArgConversion) {

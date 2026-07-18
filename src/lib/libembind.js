@@ -843,7 +843,7 @@ var LibraryEmbind = {
       var rtn = getWasmTableEntry(rawFunction);
 #if JSPI
       if (isAsync) {
-        rtn = WebAssembly.promising(rtn);
+        rtn = Asyncify.makeAsyncFunction(rtn);
       }
 #endif
       return rtn;

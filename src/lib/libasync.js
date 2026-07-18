@@ -37,6 +37,9 @@ addToLibrary({
     //
     // Asyncify code that is shared between mode 1 (original) and mode 2 (JSPI).
     //
+
+    // Number of async (promising) wasm invocations currently in flight.
+    promisingCount: 0,
 #if ASYNCIFY == 1 && MEMORY64
     rewindArguments: new Map(),
 #endif
@@ -381,6 +384,7 @@ addToLibrary({
           // Track whether the return value was handled by any promise handlers.
           var handled = false;
           if (!Asyncify.currData) {
+            Asyncify.promisingCount--;
             // All asynchronous execution has finished.
             // `asyncWasmReturnValue` now contains the final
             // return value of the exported async WASM function.
@@ -411,6 +415,9 @@ addToLibrary({
         if (!reachedCallback) {
           // A true async operation was begun; start a sleep.
           Asyncify.state = Asyncify.State.Unwinding;
+          // A nested sleep of an invocation that is already in flight (via
+          // doRewind) must not be recounted.
+          if (!Asyncify.promisingCount) Asyncify.promisingCount = 1;
           // TODO: reuse, don't alloc/free every sleep
           Asyncify.currData = Asyncify.allocateData();
 #if ASYNCIFY_DEBUG
@@ -472,13 +479,20 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify: makeAsyncFunction for', original);
 #endif
-      return WebAssembly.promising(original);
+      var promising = WebAssembly.promising(original);
+      return (...args) => {
+        Asyncify.promisingCount++;
+        return promising(...args).finally(() => Asyncify.promisingCount--);
+      };
     },
 #endif
   },
 
   emscripten_sleep__async: 'auto',
   emscripten_sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+
+  emscripten_promising_count__deps: ['$Asyncify'],
+  emscripten_promising_count: () => Asyncify.promisingCount,
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data__async: 'auto',
@@ -610,6 +624,7 @@ addToLibrary({
     }
   },
 #else // ASYNCIFY
+  emscripten_promising_count: () => 0,
   emscripten_sleep: () => {
     abort('Please compile your program with async support in order to use asynchronous operations like emscripten_sleep');
   },

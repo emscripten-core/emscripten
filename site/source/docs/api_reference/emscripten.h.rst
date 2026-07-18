@@ -1365,6 +1365,20 @@ Functions
   :returns: 1 if program was compiled with -sASYNCIFY, 0 otherwise.
 
 
+.. c:function:: int emscripten_promising_count()
+
+  Returns the number of async (promising) wasm invocations currently in
+  flight, i.e. entered but with their returned promise not yet settled.
+  Under ``-sJSPI`` a promising export counts for its entire invocation and
+  multiple invocations may be in flight simultaneously. Under ``-sASYNCIFY``
+  only a single async invocation can be in flight at a time, and it is only
+  counted from the point that it first suspends.
+
+  :rtype: int
+  :returns: The number of async wasm invocations in flight, always 0 when
+    compiled without ``-sASYNCIFY`` or ``-sJSPI``.
+
+
 .. c:function:: void emscripten_debugger()
 
   Emits ``debugger``.

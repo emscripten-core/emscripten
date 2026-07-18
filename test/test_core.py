@@ -8375,6 +8375,23 @@ int main() {
 
     self.do_runf('main.c', 'hello 0\nhello 1\nhello 2\nhello 3\nhello 4\n')
 
+  @with_asyncify_and_jspi
+  def test_promising_count(self):
+    create_file('main.c', r'''
+#include <stdio.h>
+#include <emscripten.h>
+int main() {
+  EM_ASM({
+    setTimeout(() => out('suspended: ' + _emscripten_promising_count()), 0);
+    setTimeout(() => out('done: ' + _emscripten_promising_count()), 20);
+  });
+  emscripten_sleep(10);
+  printf("after: %d\n", emscripten_promising_count());
+}
+''')
+
+    self.do_runf('main.c', 'suspended: 1\nafter: 1\ndone: 0\n')
+
   @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_bad(self):
     # check bad ccall use

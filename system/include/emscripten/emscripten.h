@@ -144,6 +144,10 @@ long emscripten_get_compiler_setting(const char *name);
 // Returns the value of -sASYNCIFY.  Can be 0, 1, or 2 (in the case of JSPI).
 int emscripten_has_asyncify(void);
 
+// Returns the number of async (promising) wasm invocations currently in
+// flight (via -sASYNCIFY or -sJSPI).  Always 0 without async support.
+int emscripten_promising_count(void);
+
 void emscripten_debugger(void);
 
 // Forward declare FILE from musl libc headers to avoid needing to #include <stdio.h> from emscripten.h

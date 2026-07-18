@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 6.0.4 (in development)
 ----------------------
+- New function `emscripten_promising_count()` that returns the number of async
+  (promising) wasm invocations currently in flight under ASYNCIFY or JSPI.
 - Legacy support for ancient vendor-prefixed DOM APIs was removed (#27341,
   #27339, #27338, #27340, #27347)
 
