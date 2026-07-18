@@ -32,6 +32,32 @@ EMSCRIPTEN_KEEPALIVE int work_big(int val, int ms) {
   return val;
 }
 
+// A promising entry made mid-stack: main -> foo -> bar -> JS -> work, with
+// live allocations in the outer frames occupying the initial stack space.
+// The suspended work call resumes on the empty stack after the outer frames
+// have been saved away, restoring its (self-contained) frame relocated.
+EM_JS(void, start_work_from_js, (), {
+  globalThis.workPromise = _work(70000, 15);
+});
+
+EM_ASYNC_JS(int, wait_work, (), {
+  return globalThis.workPromise;
+});
+
+__attribute__((noinline)) void bar(void) {
+  volatile int buf[128];
+  for (int i = 0; i < 128; i++) buf[i] = 2 * i;
+  start_work_from_js();
+  for (int i = 0; i < 128; i++) assert(buf[i] == 2 * i);
+}
+
+__attribute__((noinline)) void foo(void) {
+  volatile int buf[128];
+  for (int i = 0; i < 128; i++) buf[i] = 3 * i;
+  bar();
+  for (int i = 0; i < 128; i++) assert(buf[i] == 3 * i);
+}
+
 EM_ASYNC_JS(void, run_overlapping, (), {
   // Overlapping promising calls, each entered while the others are suspended.
   const results = await Promise.all([_work(100, 30), _work(2000, 20), _work(30000, 10)]);
@@ -54,6 +80,8 @@ int main() {
   // Suspension within a plain call chain under a promising export.
   assert(work(42, 10) == 42);
   run_overlapping();
+  foo();
+  assert(wait_work() == 70000);
   printf("done\n");
   return 0;
 }

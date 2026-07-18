@@ -31,6 +31,9 @@ addToLibrary({
     // Needed by allocateData/handleSleep and saveStack/restoreStack
     'malloc', 'free',
 #endif
+#if ASSERTIONS && ASYNCIFY_REENTRANT
+    'emscripten_stack_get_base',
+#endif
     // Needed to record stackPointerOnEntry
     '__stack_pointer',
   ],
@@ -499,8 +502,27 @@ addToLibrary({
         // Wasm (e.g. stackSave), which is not possible outside of a promising
         // context under SPLIT_MODULE where exports can be lazy-loading JSPI
         // trampolines.
-        Asyncify.stackPointerOnEntry = {{{ from64Expr('___stack_pointer.value') }}};
+        var sp = {{{ from64Expr('___stack_pointer.value') }}};
+#if ASYNCIFY_REENTRANT
+        // Maintain the outer promising base across the synchronous phase, for
+        // promising entries made below an existing promising call context.
+        var prev = Asyncify.stackPointerOnEntry;
+        Asyncify.stackPointerOnEntry = sp;
+        var rtn = promising(...args);
+        Asyncify.stackPointerOnEntry = prev;
+#if ASSERTIONS
+        // After the synchronous phase the call has either completed (its stack
+        // unwound) or suspended (its stack saved away), so the stack pointer
+        // must be back at the promising base.
+        assert({{{ from64Expr('___stack_pointer.value') }}} == sp, 'the stack pointer should be at the promising base after the synchronous phase of a promising call');
+        var checkExit = () => assert({{{ from64Expr('___stack_pointer.value') }}} == {{{ from64Expr('_emscripten_stack_get_base()') }}}, 'the stack should be empty when a promising call completes');
+        rtn.then(checkExit, checkExit);
+#endif
+        return rtn;
+#else
+        Asyncify.stackPointerOnEntry = sp;
         return promising(...args);
+#endif
       };
     },
 #if ASYNCIFY_REENTRANT
@@ -511,9 +533,15 @@ addToLibrary({
       var base = Asyncify.stackPointerOnEntry;
       var sp = {{{ from64Expr('___stack_pointer.value') }}};
       var size = base - sp;
+#if ASSERTIONS
+      assert(size >= 0, 'the stack pointer should not be above the promising base at suspension');
+#endif
       var ptr = 0;
       if (size) {
         ptr = _malloc(size);
+#if ASSERTIONS
+        assert(ptr, 'failed to allocate space for the suspended stack');
+#endif
         HEAPU8.copyWithin(ptr, sp, base);
         ___stack_pointer.value = {{{ to64('base') }}};
       }
@@ -521,13 +549,13 @@ addToLibrary({
     },
     // Restores a saved stack region below the stack pointer at the resume
     // point, which becomes the new promising base for the resumed call.
-    restoreStack({ ptr, size }) {
-      var base = {{{ from64Expr('___stack_pointer.value') }}};
-      Asyncify.stackPointerOnEntry = base;
-      if (size) {
-        HEAPU8.copyWithin(base - size, ptr, ptr + size);
-        ___stack_pointer.value = {{{ to64('base - size') }}};
-        _free(ptr);
+    restoreStack(saved) {
+      var sp = {{{ from64Expr('___stack_pointer.value') }}};
+      Asyncify.stackPointerOnEntry = sp;
+      if (saved.size) {
+        HEAPU8.copyWithin(sp - saved.size, saved.ptr, saved.ptr + saved.size);
+        ___stack_pointer.value = {{{ to64('sp - saved.size') }}};
+        _free(saved.ptr);
       }
     },
     // Wraps a suspending import to save the stack before suspending and
@@ -545,7 +573,12 @@ addToLibrary({
           throw e;
         }
         if (rtn instanceof Promise) {
-          return rtn.finally(() => Asyncify.restoreStack(saved));
+          return rtn.finally(() => {
+#if ASSERTIONS
+            assert({{{ from64Expr('___stack_pointer.value') }}} == {{{ from64Expr('_emscripten_stack_get_base()') }}}, 'the stack should be empty on resume');
+#endif
+            Asyncify.restoreStack(saved);
+          });
         }
         Asyncify.restoreStack(saved);
         return rtn;
