@@ -126,6 +126,24 @@ addToLibrary({
     },
     // node and stream ops are backend agnostic
     stream_ops: {
+      getattr(stream) {
+        var node = stream.node;
+        return {
+          dev: 1,
+          ino: node.id,
+          mode: {{{ cDefs.S_IFSOCK }}} | 0o777,
+          nlink: 1,
+          uid: 0,
+          gid: 0,
+          rdev: 0,
+          size: 0,
+          atime: new Date(0),
+          mtime: new Date(0),
+          ctime: new Date(0),
+          blksize: 4096,
+          blocks: 0,
+        };
+      },
       poll(stream) {
         var sock = stream.node.sock;
         return sock.sock_ops.poll(sock);

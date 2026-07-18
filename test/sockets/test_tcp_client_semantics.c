@@ -39,7 +39,7 @@ bool ping_sent = false;
 bool echoed = false;
 
 void test_success(void) {
-  printf("CLIENT SEMANTICS PASS\n");
+  printf("done\n");
   if (fd >= 0) close(fd);
 #ifdef __EMSCRIPTEN__
   emscripten_cancel_main_loop();

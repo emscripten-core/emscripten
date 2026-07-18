@@ -36,7 +36,7 @@ bool connected = false;
 bool ping_sent = false;
 
 void test_success(void) {
-  printf("CLIENT BIND PASS\n");
+  printf("done\n");
   if (client_fd >= 0) close(client_fd);
 #ifdef __EMSCRIPTEN__
   emscripten_cancel_main_loop();

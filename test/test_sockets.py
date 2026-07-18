@@ -389,7 +389,7 @@ class sockets(BrowserCore):
   def test_nodejs_sockets_connect_failure(self):
     self.do_runf('sockets/test_sockets_echo_client.c', r'connect failed: (Connection refused|Host is unreachable)', regex=True, cflags=['-DSOCKK=666'], assert_returncode=NON_ZERO)
 
-  def _run_against_echo_server(self, src, expected):
+  def _run_against_echo_server(self, src):
     # Start a loopback TCP echo server on an ephemeral port and run the test
     # against it, passing the port as argv[1].
     server = socketserver.TCPServer(('127.0.0.1', 0), EchoHandler)
@@ -397,7 +397,7 @@ class sockets(BrowserCore):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-      self.do_runf(src, expected, cflags=['-sNODERAWSOCKETS'], args=[str(port)])
+      self.do_runf(src, 'done\n', cflags=['-sNODERAWSOCKETS'], args=[str(port)])
     finally:
       server.shutdown()
       server.server_close()
@@ -410,7 +410,7 @@ class sockets(BrowserCore):
   def test_noderawsockets_echo(self):
     # With -sNODERAWSOCKETS the client does a non-blocking connect, send and
     # recv over a real OS socket against a loopback echo server we run here.
-    self._run_against_echo_server('sockets/test_tcp_echo.c', 'TCP ECHO PASS')
+    self._run_against_echo_server('sockets/test_tcp_echo.c')
 
   def test_noderawsockets_client_bind(self):
     # A client that bind()s an explicit source port has it honored by connect(),
@@ -427,8 +427,7 @@ class sockets(BrowserCore):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-      self.do_runf('sockets/test_tcp_client_bind.c', 'CLIENT BIND PASS',
-                   cflags=['-sNODERAWSOCKETS'], args=[str(port), str(src_port)])
+      self.do_runf('sockets/test_tcp_client_bind.c', 'done\n', cflags=['-sNODERAWSOCKETS'], args=[str(port), str(src_port)])
     finally:
       server.shutdown()
       server.server_close()
@@ -437,11 +436,11 @@ class sockets(BrowserCore):
   def test_noderawsockets_client_semantics(self):
     # EISCONN on a second connect, shutdown(SHUT_WR) leaving reads working,
     # EPIPE on a write after that, and POLLHUP after a full shutdown(SHUT_RDWR).
-    self._run_against_echo_server('sockets/test_tcp_client_semantics.c', 'CLIENT SEMANTICS PASS')
+    self._run_against_echo_server('sockets/test_tcp_client_semantics.c')
 
   def test_noderawsockets_refused(self):
     # A connect to a loopback port with nothing listening reports ECONNREFUSED.
-    self.do_runf('sockets/test_tcp_refused.c', 'REFUSED PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_tcp_refused.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   def test_noderawsockets_backpressure(self):
     # A sink server that accepts but never reads, so the client's writes fill
@@ -457,8 +456,7 @@ class sockets(BrowserCore):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-      self.do_runf('sockets/test_tcp_backpressure.c', 'BACKPRESSURE PASS',
-                   cflags=['-sNODERAWSOCKETS'], args=[str(port)])
+      self.do_runf('sockets/test_tcp_backpressure.c', 'done\n', cflags=['-sNODERAWSOCKETS'], args=[str(port)])
     finally:
       done.set()
       server.shutdown()
@@ -470,44 +468,43 @@ class sockets(BrowserCore):
     # Self-contained loopback accept+echo, exercising bind(:0)+getsockname
     # (synchronous ephemeral port), listen, accept, non-blocking connect, send
     # and recv over real OS sockets via the tcp_wrap server path.
-    self.do_runf('sockets/test_tcp_server.c', 'TCP SERVER PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_tcp_server.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_peek(self):
     # recv(MSG_PEEK) must leave the data buffered: a peek returns the bytes, the
     # socket stays readable, and the following plain recv returns them again.
-    self.do_runf('sockets/test_tcp_peek.c', 'TCP PEEK PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_tcp_peek.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   def test_noderawsockets_server_autobind(self):
     # listen() without a prior bind() must auto-bind an ephemeral port and
     # getsockname() must report it (POSIX), then accept+echo as usual.
-    self.do_runf('sockets/test_tcp_server.c', 'TCP SERVER PASS',
-                 cflags=['-sNODERAWSOCKETS', '-DNO_EXPLICIT_BIND'])
+    self.do_runf('sockets/test_tcp_server.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-DNO_EXPLICIT_BIND'])
 
   def test_noderawsockets_tcp_ipv6(self):
     # Self-contained IPv6 TCP loopback accept+echo over ::1: bind(:0)+getsockname,
     # listen, accept, non-blocking connect, send/recv on AF_INET6 sockets.
     if not HAS_IPV6_LOOPBACK:
       self.skipTest('no IPv6 loopback available')
-    self.do_runf('sockets/test_tcp_ipv6.c', 'TCP IPV6 PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_tcp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   def test_noderawsockets_udp_ipv6(self):
     # Self-contained IPv6 UDP loopback echo over ::1 on AF_INET6 sockets.
     if not HAS_IPV6_LOOPBACK:
       self.skipTest('no IPv6 loopback available')
-    self.do_runf('sockets/test_udp_ipv6.c', 'UDP IPV6 PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_udp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp(self):
     # Self-contained loopback UDP echo: the server binds(:0)+getsockname for its
     # ephemeral port, the client sends a datagram, the server echoes it back.
-    self.do_runf('sockets/test_udp_echo.c', 'UDP ECHO PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_udp_echo.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp_connect(self):
     # Connected UDP: sendto() with an address gives EISCONN, send() reaches the
     # peer, and datagrams from a non-peer socket are filtered out.
-    self.do_runf('sockets/test_udp_connect.c', 'UDP CONNECT PASS', cflags=['-sNODERAWSOCKETS'])
+    self.do_runf('sockets/test_udp_connect.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp_sockopts(self):
@@ -516,7 +513,13 @@ class sockets(BrowserCore):
     # readable before any set. EXIT_RUNTIME so the plain synchronous main()
     # tears down the proxy worker on return (otherwise noExitRuntime keeps the
     # worker, and thus node, alive under PROXY_TO_PTHREAD).
-    self.do_runf('sockets/test_udp_sockopts.c', 'UDP SOCKOPTS PASS',
+    self.do_runf('sockets/test_udp_sockopts.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_socket_options(self):
+    # Socket metadata/options on a fresh socket: fstat reports S_ISSOCK, SO_TYPE
+    # reports the socket type, and SO_LINGER round-trips a struct linger.
+    self.do_runf('sockets/test_socket_options.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @requires_native_clang
