@@ -13690,7 +13690,7 @@ int main() {
                  '`stringToNewUTF8` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
                  assert_returncode=NON_ZERO)
 
-    # When we enable `LEGACY_RUNTIME`, `allocate` should be available.
+    # When we enable `LEGACY_RUNTIME`, `stringToNewUTF8` should be available.
     self.do_runf('other/test_legacy_runtime.c', 'hello from js', cflags=['-sLEGACY_RUNTIME'])
 
     # Adding it to EXPORTED_RUNTIME_METHODS should also make it available.

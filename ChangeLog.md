@@ -22,6 +22,8 @@ See docs/process.md for more on how version tagging works.
 ----------------------
 - Legacy support for ancient vendor-prefixed DOM APIs was removed (#27341,
   #27339, #27338, #27340, #27347)
+- Removed legacy JS library symbols symbols: `$ALLOC_NORMAL`, `$ALLOC_STACK`,
+  and `$allocate`. (#27378)
 
 6.0.3 - 07/13/26
 ----------------

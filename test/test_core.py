@@ -7302,40 +7302,6 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['FS_createDataFile'])
     test(args=['-sFORCE_FILESYSTEM'])
 
-  @no_modularize_instance('uses Module object directly')
-  @no_strict('This test verifies legacy behavior that does not apply to -sSTRICT builds.')
-  def test_legacy_exported_runtime_numbers(self):
-    # these used to be exported, but no longer are by default
-    def test(expected, args=None, assert_returncode=0):
-      self.do_runf('core/legacy_exported_runtime_numbers.cpp', expected,
-                   assert_returncode=assert_returncode, cflags=args)
-
-    # Without assertion indirect usages (via Module) result in `undefined` and direct usage
-    # generates a builtin (not very helpful) JS error.
-    self.set_setting('ASSERTIONS', 0)
-    self.set_setting('LEGACY_RUNTIME', 0)
-    test('|undefined|')
-    test('ALLOC_STACK is not defined', args=['-DDIRECT'], assert_returncode=NON_ZERO)
-
-    # When assertions are enabled direct and indirect usage both abort with a useful error message.
-    not_exported = "'ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)"
-    not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$ALLOC_STACK')"
-    self.set_setting('ASSERTIONS')
-    test(not_exported, assert_returncode=NON_ZERO)
-    test(not_included, args=['-DDIRECT'])
-
-    # Adding the symbol to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE should allow direct usage, but
-    # Module usage should continue to fail.
-    self.cflags += ['-Wno-deprecated']
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ALLOC_STACK'])
-    test(not_exported, assert_returncode=NON_ZERO)
-    test('1', args=['-DDIRECT'])
-
-    # Adding the symbols to EXPORTED_RUNTIME_METHODS should make both usage patterns work.
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_STACK'])
-    test('|1|')
-    test('|1|', args=['-DDIRECT'])
-
   def test_linker_response_file(self):
     objfile = 'response_file.o'
     out_js = self.output_name('response_file')
