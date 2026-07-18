@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.4 (in development)
 ----------------------
+- Added `-sASYNCIFY_REENTRANT` for JSPI, which saves and restores the in-use
+  Wasm stack region around suspensions, making promising exports safely
+  re-enterable while other calls are suspended.
 - Under ASYNCIFY and JSPI, the runtime now records the stack pointer on entry
   to the outermost export call (under JSPI, to each promising export call) in
   `Asyncify.stackPointerOnEntry`, for use by libraries implementing shadow

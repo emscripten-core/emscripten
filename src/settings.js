@@ -928,6 +928,19 @@ var ASYNCIFY_ADVISE = false;
 // [link]
 var ASYNCIFY_DEBUG = 0;
 
+// Save and restore the in-use region of the Wasm shadow stack around JSPI
+// suspensions, making promising exports safely re-enterable while other calls
+// are suspended. On suspension the stack region in use by the current
+// promising call is copied into a heap allocation and the stack pointer is
+// reset to the promising entry base; on resume the region is restored below
+// the stack pointer at the resume point, which becomes the new promising
+// base. Note that async imports must not write results through pointers into
+// the suspended stack region, as the restore on resume would clobber them.
+// Only compatible with JSPI (-sASYNCIFY=2).
+//
+// [link]
+var ASYNCIFY_REENTRANT = false;
+
 // Deprecated, use JSPI_EXPORTS instead.
 // [deprecated]
 var ASYNCIFY_EXPORTS = [];

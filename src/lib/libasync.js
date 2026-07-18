@@ -27,8 +27,8 @@ addToLibrary({
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
-#if ASYNCIFY == 1
-    // Needed by allocateData and handleSleep respectively
+#if ASYNCIFY == 1 || ASYNCIFY_REENTRANT
+    // Needed by allocateData/handleSleep and saveStack/restoreStack
     'malloc', 'free',
 #endif
     // Needed to record stackPointerOnEntry
@@ -72,6 +72,9 @@ addToLibrary({
           if (isAsyncifyImport) {
 #if ASYNCIFY_DEBUG
             dbg('asyncify: suspendOnReturnedPromise for', x, original);
+#endif
+#if ASYNCIFY_REENTRANT
+            original = Asyncify.makeReentrant(original);
 #endif
             imports[x] = original = new WebAssembly.Suspending(original);
           }
@@ -500,6 +503,55 @@ addToLibrary({
         return promising(...args);
       };
     },
+#if ASYNCIFY_REENTRANT
+    // Saves the stack region in use by the current promising call into a heap
+    // allocation, resetting the stack pointer to the promising base so that
+    // the stack is empty while the call is suspended.
+    saveStack() {
+      var base = Asyncify.stackPointerOnEntry;
+      var sp = {{{ from64Expr('___stack_pointer.value') }}};
+      var size = base - sp;
+      var ptr = 0;
+      if (size) {
+        ptr = _malloc(size);
+        HEAPU8.copyWithin(ptr, sp, base);
+        ___stack_pointer.value = {{{ to64('base') }}};
+      }
+      return { ptr, size };
+    },
+    // Restores a saved stack region below the stack pointer at the resume
+    // point, which becomes the new promising base for the resumed call.
+    restoreStack({ ptr, size }) {
+      var base = {{{ from64Expr('___stack_pointer.value') }}};
+      Asyncify.stackPointerOnEntry = base;
+      if (size) {
+        HEAPU8.copyWithin(base - size, ptr, ptr + size);
+        ___stack_pointer.value = {{{ to64('base - size') }}};
+        _free(ptr);
+      }
+    },
+    // Wraps a suspending import to save the stack before suspending and
+    // restore it on resume. The save runs before the import body so that
+    // promising re-entries, both within the import body and while suspended,
+    // always see an empty stack.
+    makeReentrant(original) {
+      return (...args) => {
+        var saved = Asyncify.saveStack();
+        var rtn;
+        try {
+          rtn = original(...args);
+        } catch (e) {
+          Asyncify.restoreStack(saved);
+          throw e;
+        }
+        if (rtn instanceof Promise) {
+          return rtn.finally(() => Asyncify.restoreStack(saved));
+        }
+        Asyncify.restoreStack(saved);
+        return rtn;
+      };
+    },
+#endif
 #endif
   },
 

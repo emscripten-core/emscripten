@@ -3630,6 +3630,11 @@ More info: https://emscripten.org
                  cflags=['-sASYNCIFY'])
 
   @requires_jspi
+  def test_asyncify_reentrant(self):
+    self.do_runf('other/test_asyncify_reentrant.c', 'done\n',
+                 cflags=['-sJSPI', '-sASYNCIFY_REENTRANT', '-sJSPI_EXPORTS=work,work_big'])
+
+  @requires_jspi
   def test_jspi_async_function(self):
     # Make sure async library functions are not automatically JSPI'd.
     create_file('lib.js', r'''

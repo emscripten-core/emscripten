@@ -1755,6 +1755,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.ASYNCIFY == 2:
       diagnostics.warning('experimental', '-sJSPI (ASYNCIFY=2) is still experimental')
 
+  if settings.ASYNCIFY_REENTRANT and settings.ASYNCIFY != 2:
+    exit_with_error('ASYNCIFY_REENTRANT requires JSPI (-sJSPI)')
+
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
