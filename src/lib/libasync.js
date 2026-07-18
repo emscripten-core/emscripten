@@ -460,14 +460,14 @@ addToLibrary({
     // WebAssembly.Functions.
     asyncExports: null,
     // The stack pointer recorded on entry to the last promising export call,
-    // marking the top of the stack range in use by that call. For use by
-    // libraries implementing shadow stack switching on top of JSPI. Note that
-    // this is only a marker set on promising entry: suspensions are not
-    // guarded, so such libraries must intercept suspending imports and
-    // promising call sites themselves to maintain accuracy across
-    // suspend/resume boundaries (on resume the stack is always empty, so the
-    // promising top is then the stack base).
-    lastPromisingStackTop: 0,
+    // marking the base of the stack range in use by that call (the stack
+    // grows down from it). For use by libraries implementing shadow stack
+    // switching on top of JSPI. Note that this is only a marker set on
+    // promising entry: suspensions are not guarded, so such libraries must
+    // intercept suspending imports and promising call sites themselves to
+    // maintain accuracy across suspend/resume boundaries (on resume the
+    // stack is always empty, so the promising base is then the stack base).
+    lastPromisingStackBase: 0,
     isAsyncExport(func) {
       return Asyncify.asyncExports?.has(func);
     },
@@ -489,7 +489,7 @@ addToLibrary({
         // Read the stack pointer global directly rather than calling into
         // Wasm, which is not possible outside of a promising context under
         // SPLIT_MODULE where exports can be lazy-loading JSPI trampolines.
-        Asyncify.lastPromisingStackTop = {{{ from64Expr('___stack_pointer.value') }}};
+        Asyncify.lastPromisingStackBase = {{{ from64Expr('___stack_pointer.value') }}};
         return promising(...args);
       };
     },

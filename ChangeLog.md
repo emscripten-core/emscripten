@@ -21,7 +21,7 @@ See docs/process.md for more on how version tagging works.
 6.0.4 (in development)
 ----------------------
 - Under JSPI, the runtime now records the stack pointer on entry to each
-  promising export call in `Asyncify.lastPromisingStackTop`, for use by
+  promising export call in `Asyncify.lastPromisingStackBase`, for use by
   libraries implementing shadow stack switching on top of JSPI. (#27364)
 - Legacy support for ancient vendor-prefixed DOM APIs was removed (#27341,
   #27339, #27338, #27340, #27347)

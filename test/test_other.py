@@ -3621,8 +3621,8 @@ More info: https://emscripten.org
     self.do_runf('other/test_jspi_add_function.c', 'done\n')
 
   @requires_jspi
-  def test_jspi_promising_top(self):
-    self.do_runf('other/test_jspi_promising_top.c', 'done\n',
+  def test_jspi_promising_base(self):
+    self.do_runf('other/test_jspi_promising_base.c', 'done\n',
                  cflags=['-sJSPI', '-sJSPI_EXPORTS=nested'])
 
   @requires_jspi
