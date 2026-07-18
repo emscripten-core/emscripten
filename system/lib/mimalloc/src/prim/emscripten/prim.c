@@ -75,7 +75,7 @@ extern void* emmalloc_memalign(size_t alignment, size_t size);
 
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
 int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
-  MI_UNUSED(allow_large); MI_UNUSED(commit); MI_UNUSED(hint_addr);
+  MI_UNUSED(try_alignment); MI_UNUSED(allow_large); MI_UNUSED(commit); MI_UNUSED(hint_addr);
   *is_large = false;
   // TODO: Track the highest address ever seen; first uses of it are zeroes.
   //       That assumes no one else uses sbrk but us (they could go up,
@@ -86,8 +86,12 @@ int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool comm
   if (try_alignment < MIN_EMMALLOC_ALIGN) {
     try_alignment = MIN_EMMALLOC_ALIGN;
   }
-  *addr = emmalloc_memalign(try_alignment, size);
-  return (*addr != NULL ? 0 : ENOMEM);
+  void* p = emmalloc_memalign(try_alignment, size);
+  *addr = p;
+  if (p == 0) {
+    return ENOMEM;
+  }
+  return 0;
 }
 
 
@@ -173,7 +177,7 @@ void _mi_prim_process_info(mi_process_info_t* pinfo)
 #include <emscripten/console.h>
 
 void _mi_prim_out_stderr( const char* msg) {
-  emscripten_err(msg);
+  emscripten_console_error(msg);
 }
 
 
@@ -181,12 +185,12 @@ void _mi_prim_out_stderr( const char* msg) {
 // Environment
 //----------------------------------------------------------------
 
-bool _mi_prim_getenv(const char* name, char* result, size_t result_size) {
+int _mi_prim_getenv(const char* name, char* result, size_t result_size) {
   // For code size reasons, do not support environ customization for now.
   MI_UNUSED(name);
   MI_UNUSED(result);
   MI_UNUSED(result_size);
-  return false;
+  return 0; // not found
 }
 
 
