@@ -1,0 +1,29 @@
+ChangeLog.md
+  s_706b78391d8bb8::t_6b32b2496b19a7 23-25
+site/source/docs/tools_reference/settings_reference.rst
+  s_706b78391d8bb8::t_60fb72c72315cf 1360-1376
+src/lib/libasync.js
+  s_706b78391d8bb8::t_3edfa2efb73c3b 30-31,75-77,506-554
+src/settings.js
+  s_706b78391d8bb8::t_a883f9c00cd632 931-943
+test/test_other.py
+  s_706b78391d8bb8::t_82adc9984dfac9 3632-3636
+tools/link.py
+  s_706b78391d8bb8::t_e57141a7a08b7c 1758-1760
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1dcc0f84bf00dc2c26b8fa8f7cd92ba826998c60",
+  "prompts": {},
+  "sessions": {
+    "s_706b78391d8bb8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_08d45f888ffeICPI5J1qq7UR4n",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
