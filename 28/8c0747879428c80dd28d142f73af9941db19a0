@@ -1,0 +1,35 @@
+site/source/docs/api_reference/emscripten.h.rst
+  s_48aa50d4b43da5::t_8657e84ad3d151 1368-1381
+system/include/emscripten/emscripten.h
+  s_48aa50d4b43da5::t_93ba93e03c0687 147-150
+src/lib/libasync.js
+  s_48aa50d4b43da5::t_9d7217177fa69f 40-42,387,418-420,482-486,494-496,627
+ChangeLog.md
+  s_48aa50d4b43da5::t_e2fc6870298f28 23-24
+test/test_core.py
+  s_48aa50d4b43da5::t_9ad424fbfaa0d0 8378-8394
+src/lib/libcore.js
+  s_48aa50d4b43da5::t_3e62243a96d9b9 1821
+src/lib/libembind.js
+  s_48aa50d4b43da5::t_4d96dc6596d524 846
+src/lib/libsigs.js
+  s_48aa50d4b43da5::t_f41582a6019309 745
+src/parseTools.mjs
+  s_48aa50d4b43da5::t_582fadda6f7374 767
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "288c0747879428c80dd28d142f73af9941db19a0",
+  "prompts": {},
+  "sessions": {
+    "s_48aa50d4b43da5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_08cd91560ffeUmzyc7f6jahW5g",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
