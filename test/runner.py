@@ -130,6 +130,7 @@ misc_test_modes = [
   'browser64',
   'browser64_4gb',
   'browser_2gb',
+  'llvmlibc',
 ]
 
 default_tests = ['jslib', 'other', 'core0']
