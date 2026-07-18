@@ -41,7 +41,10 @@ libc_exclusion_patterns = [
     'src/math/generic/*f16*',
 
     'src/setjmp/**/*',  # setjmp in Emscripten is implemented by the clang backend.
-    'src/strings/str*casecmp_l*',  # locale_t is unsupported in Overlay Mode.
+    # locale_t is unsupported in Overlay Mode.
+    'src/strings/str*casecmp_l*',
+    'src/stdlib/str*_l.*',
+    'src/string/str*_l.*',
 ]
 
 
