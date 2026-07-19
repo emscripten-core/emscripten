@@ -40,15 +40,12 @@ from functools import cmp_to_key
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, __rootpath__)
 
-# Let config.py know to parse test config settings
-os.environ['_EM_TEST_RUNNER'] = '1'
-
 import browser_common
 import common
 import jsrun
 import parallel_testsuite
 from color_runner import ColorTextRunner
-from common import errlog
+from common import errlog, test_config
 from single_line_runner import SingleLineTestRunner
 
 from tools import building, colored_logger, config, shared, utils
@@ -137,7 +134,7 @@ default_tests = ['jslib', 'other', 'core0']
 
 
 def check_js_engines():
-  if not all(jsrun.check_engine(e) for e in config.JS_ENGINES):
+  if not all(jsrun.check_engine(e) for e in test_config.JS_ENGINES):
     errlog('Not all the JS engines in JS_ENGINES appear to work.')
     sys.exit(1)
 
@@ -619,7 +616,7 @@ def log_test_environment():
   node_js_version = utils.run_process(config.NODE_JS + ['--version'], stdout=subprocess.PIPE).stdout.strip()
   print(f'NODE_JS: {config.NODE_JS}. Version: {node_js_version}')
 
-  print(f'JS_ENGINES: {config.JS_ENGINES}')
+  print(f'JS_ENGINES: {test_config.JS_ENGINES}')
   print(f'BINARYEN_ROOT: {config.BINARYEN_ROOT}')
   wasm_opt_version = building.get_binaryen_version(building.get_binaryen_bin()).strip()
   print(f'wasm-opt version: {wasm_opt_version}')

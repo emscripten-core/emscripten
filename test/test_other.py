@@ -56,6 +56,7 @@ from common import (
   get_nodejs,
   make_executable,
   path_from_root,
+  test_config,
   test_file,
 )
 from decorators import (
@@ -5309,7 +5310,7 @@ int main(int argc, char **argv) {
       for call_exit in (0, 1):
         for async_compile in (0, 1):
           self.run_process([EMCC, 'src.c', '-sENVIRONMENT=node,shell', '-DCODE=%d' % code, '-sEXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-sWASM_ASYNC_COMPILATION=%d' % async_compile])
-          for engine in config.JS_ENGINES:
+          for engine in test_config.JS_ENGINES:
             print(code, call_exit, async_compile, engine)
             proc = self.run_process(engine + ['a.out.js'], stderr=PIPE, check=False)
             msg = 'but keepRuntimeAlive() is set (counter=0) due to an async operation, so halting execution but not exiting the runtime'
@@ -8122,7 +8123,7 @@ addToLibrary({
     self.run_process([EMCC, 'main.c', '-sENVIRONMENT=node,shell'])
     src = read_file('a.out.js')
     for env in ['web', 'worker', 'node', 'shell']:
-      for engine in config.JS_ENGINES:
+      for engine in test_config.JS_ENGINES:
         if engine_is_node(engine):
           actual = 'NODE'
         else:
@@ -8634,7 +8635,7 @@ int main() {
           self.assertContained('Hello, world!', self.run_js('out.js'))
         # verify a standalone wasm
         if standalone:
-          for engine in config.WASM_ENGINES:
+          for engine in test_config.WASM_ENGINES:
             print(engine)
             self.assertContained('Hello, world!', self.run_js('out.wasm', engine=engine))
 
@@ -12136,7 +12137,7 @@ int main(void) {
   def test_standalone_syscalls(self):
     self.run_process([EMXX, test_file('other/test_standalone_syscalls.cpp'), '-o', 'test.wasm'])
     expected = read_file(test_file('other/test_standalone_syscalls.out'))
-    for engine in config.WASM_ENGINES:
+    for engine in test_config.WASM_ENGINES:
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
   @flaky('https://github.com/emscripten-core/emscripten/issues/25343')
@@ -14190,7 +14191,7 @@ out.js
 
   def test_itimer_standalone(self):
     self.do_other_test('test_itimer_standalone.c', cflags=['-sSTANDALONE_WASM', '-sWASM_BIGINT'])
-    for engine in config.WASM_ENGINES:
+    for engine in test_config.WASM_ENGINES:
       print('wasm engine', engine)
       self.assertContained('done\n', self.run_js('test_itimer_standalone.wasm', engine))
 

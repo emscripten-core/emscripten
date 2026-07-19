@@ -41,6 +41,12 @@ from tools.utils import (
   write_binary,
 )
 
+test_config_file = path_from_root('test/config.py')
+if not os.path.isfile(test_config_file):
+  shutil.copyfile(path_from_root('test/config_template.py'), test_config_file)
+
+import config as test_config
+
 logger = logging.getLogger('common')
 
 # If we are drawing a parallel swimlane graph of test output, we need to use a temp
@@ -84,19 +90,18 @@ PYTHON = sys.executable
 def setup_test_config():
   assert config.NODE_JS # assert for mypy's benefit
   # By default we run the tests in the same version of node as emscripten itself used.
-  if not config.NODE_JS_TEST:
-    config.NODE_JS_TEST = config.NODE_JS
-  # The default set of JS_ENGINES contains just node.
-  if not config.JS_ENGINES:
-    config.JS_ENGINES = [config.NODE_JS_TEST]
-  if not config.WASM_ENGINES:
-    config.WASM_ENGINES = []
+  if not getattr(test_config, 'NODE_JS_TEST', None):
+    test_config.NODE_JS_TEST = config.NODE_JS
+  if not getattr(test_config, 'JS_ENGINES', None):
+    test_config.JS_ENGINES = [test_config.NODE_JS_TEST]
+  if not getattr(test_config, 'WASM_ENGINES', None):
+    test_config.WASM_ENGINES = []
 
-  config.SPIDERMONKEY_ENGINE = config.listify(config.SPIDERMONKEY_ENGINE)
-  config.NODE_JS_TEST = config.listify(config.NODE_JS_TEST)
-  config.V8_ENGINE = config.listify(config.V8_ENGINE)
-  config.JS_ENGINES = [config.listify(e) for e in config.JS_ENGINES]
-  config.WASM_ENGINES = [config.listify(e) for e in config.WASM_ENGINES]
+  test_config.SPIDERMONKEY_ENGINE = config.listify(getattr(test_config, 'SPIDERMONKEY_ENGINE', None))
+  test_config.NODE_JS_TEST = config.listify(getattr(test_config, 'NODE_JS_TEST', None))
+  test_config.V8_ENGINE = config.listify(getattr(test_config, 'V8_ENGINE', None))
+  test_config.JS_ENGINES = [config.listify(e) for e in test_config.JS_ENGINES]
+  test_config.WASM_ENGINES = [config.listify(e) for e in test_config.WASM_ENGINES]
 
 
 setup_test_config()
@@ -320,7 +325,7 @@ def engine_is_bun(engine):
 
 def get_engine(predicate):
   """Return engine that satifies predicate, if one is configured, otherwise None."""
-  for engine in config.JS_ENGINES:
+  for engine in test_config.JS_ENGINES:
     if predicate(engine):
       return engine
   return None
@@ -735,7 +740,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def setUp(self):
     super().setUp()
-    self.js_engines = config.JS_ENGINES.copy()
+    self.js_engines = test_config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.skip_exec = None
     self.flaky = False
@@ -770,7 +775,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.env = {}
     self.temp_files_before_run = []
     self.required_engine = None
-    self.wasm_engines = config.WASM_ENGINES.copy()
+    self.wasm_engines = test_config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
     engine = self.get_current_js_engine()
     if not engine_is_node(engine) and not engine_is_bun(engine) and not engine_is_deno(engine):

@@ -36,6 +36,7 @@ from common import (
   path_from_root,
   read_binary,
   read_file,
+  test_config,
   test_file,
 )
 from decorators import (
@@ -79,7 +80,7 @@ from decorators import (
   with_env_modify,
 )
 
-from tools import building, config, shared, utils, webassembly
+from tools import building, shared, utils, webassembly
 from tools.shared import EMAR, EMCC, EMXX, FILE_PACKAGER, LLVM_COV, LLVM_PROFDATA, PIPE
 from tools.utils import LINUX, MACOS, WINDOWS, delete_file, write_file
 
@@ -2943,7 +2944,7 @@ The current type of b is: 9
       }
       '''
 
-    if self.get_current_js_engine() == config.V8_ENGINE:
+    if self.get_current_js_engine() == test_config.V8_ENGINE:
       expected = "error: could not load dynamic lib: libfoo.so\nError: Error reading file"
     else:
       expected = "error: could not load dynamic lib: libfoo.so\nError: ENOENT: no such file or directory"
@@ -7432,8 +7433,8 @@ void* operator new(size_t size) {
     self.assertIsNotNone(full_aborter)
     self.assertIsNotNone(short_aborter)
     print('full:', full_aborter, 'short:', short_aborter)
-    if config.SPIDERMONKEY_ENGINE:
-      output = self.run_js('test_demangle_stacks.js', engine=config.SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
+    if test_config.SPIDERMONKEY_ENGINE:
+      output = self.run_js('test_demangle_stacks.js', engine=test_config.SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
       # we may see the full one, if -g, or the short one if not
       if ' ' + short_aborter + ' ' not in output and ' ' + full_aborter + ' ' not in output:
         # stack traces may also be ' name ' or 'name@' etc

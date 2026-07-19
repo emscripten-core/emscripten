@@ -96,10 +96,11 @@ commands:
               wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
             fi
             tar xf node-v${version}-linux-x64.tar.xz
-            echo "NODE_JS_TEST = '~/node-v${version}-linux-x64/bin/node'" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [NODE_JS_TEST]" >> ~/emsdk/.emscripten
-            echo "if os.path.exists(os.path.expanduser(V8_ENGINE)): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
-            cat ~/emsdk/.emscripten
+            cd -
+            echo "NODE_JS_TEST = '~/node-v${version}-linux-x64/bin/node'" >> test/config.py
+            echo "JS_ENGINES = [NODE_JS_TEST]" >> test/config.py
+            echo "if os.path.exists(V8_ENGINE): JS_ENGINES.append(V8_ENGINE)" >> test/config.py
+            cat test/config.py
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
   install-node-oldest:
     description: "install node 18.3.0 (oldest)"
@@ -155,21 +156,25 @@ commands:
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
             rm -Rf emscripten
-            echo "import os" >> .emscripten
             # We use an out-of-tree cache directory so it can be part of the
             # persisted workspace (see below).
-            echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
-            # Refer to commit 0bc3640 if we need to pin V8 version.
-            echo "V8_ENGINE = '~/.jsvu/bin/v8'" >> .emscripten
-            echo "JS_ENGINES = [NODE_JS]" >> .emscripten
-            echo "if os.path.exists(os.path.expanduser(V8_ENGINE)): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
-            echo "WASM_ENGINES = []" >> .emscripten
-            test -f ~/vms/wasmtime && echo "WASMTIME = '~/vms/wasmtime'; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
-            test -f ~/vms/wasmer && echo "WASMER = '~/vms/wasmer'; WASM_ENGINES.append(WASMER)" >> .emscripten || true
-            test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $(~/emsdk/upstream/bin/clang -print-resource-dir)
-            cd -
+            echo "CACHE = '~/cache'" >> .emscripten
+
             echo "final .emscripten:"
             cat ~/emsdk/.emscripten
+
+            # Refer to commit 0bc3640 if we need to pin V8 version.
+            cd -
+            echo "import os" >> test/config.py
+            echo "V8_ENGINE = '~/.jsvu/bin/v8'" >> test/config.py
+            echo "JS_ENGINES = [NODE_JS]" >> test/config.py
+            echo "if os.path.exists(V8_ENGINE): JS_ENGINES.append(V8_ENGINE)" >> test/config.py
+            echo "WASM_ENGINES = []" >> test/config.py
+            test -f ~/vms/wasmtime && echo "WASMTIME = '~/vms/wasmtime'; WASM_ENGINES.append(WASMTIME)" >> test/config.py || true
+            test -f ~/vms/wasmer && echo "WASMER = '~/vms/wasmer'; WASM_ENGINES.append(WASMER)" >> test/config.py || true
+            test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $(~/emsdk/upstream/bin/clang -print-resource-dir)
+            echo "final test/config.py:"
+            cat test/config.py
       - emsdk-env
       - bootstrap
   build-libs:
@@ -752,7 +757,7 @@ jobs:
       # tests).
       - run:
           name: configure node (newest)
-          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
+          command: echo "NODE_JS = '$(which node)'" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
           test_targets: "wasm64_4gb"
@@ -769,7 +774,7 @@ jobs:
       # tests).
       - run:
           name: configure node (newest)
-          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
+          command: echo "NODE_JS = '$(which node)'" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
           test_targets: "
@@ -799,8 +804,8 @@ jobs:
           name: install bun
           command: |
             curl -fsSL https://bun.com/install | bash
-            echo "BUN = '~/.bun/bin/bun'" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [BUN]" >> ~/emsdk/.emscripten
+            echo "BUN = '~/.bun/bin/bun'" >> test/config.py
+            echo "JS_ENGINES = [BUN]" >> test/config.py
       - run-tests:
           test_targets: "--crossplatform-only"
   test-deno:
@@ -815,8 +820,8 @@ jobs:
           name: install deno
           command: |
             curl -fsSL https://deno.land/install.sh | sh
-            echo "DENO = '~/.deno/bin/deno'" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [DENO]" >> ~/emsdk/.emscripten
+            echo "DENO = '~/.deno/bin/deno'" >> test/config.py
+            echo "JS_ENGINES = [DENO]" >> test/config.py
       - run-tests:
           test_targets: "--crossplatform-only"
   test-jsc:
@@ -834,8 +839,8 @@ jobs:
             export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             jsvu --os=default --engines=javascriptcore
-            echo "JSC_ENGINE = '~/.jsvu/bin/javascriptcore'" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
+            echo "JSC_ENGINE = '~/.jsvu/bin/javascriptcore'" >> test/config.py
+            echo "JS_ENGINES = [JSC_ENGINE]" >> test/config.py
       - run-tests:
           test_targets: "
             core0.test_hello_argc
@@ -856,8 +861,8 @@ jobs:
             export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             jsvu --os=default --engines=spidermonkey
-            echo "SPIDERMONKEY_ENGINE = '~/.jsvu/bin/spidermonkey'" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
+            echo "SPIDERMONKEY_ENGINE = '~/.jsvu/bin/spidermonkey'" >> test/config.py
+            echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> test/config.py
       - run-tests:
           test_targets: "
             other.test_prepost_jspi

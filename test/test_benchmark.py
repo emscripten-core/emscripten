@@ -24,7 +24,7 @@ if __name__ == '__main__':
 import clang_native
 import common
 import jsrun
-from common import copy_asset, read_binary, read_file, test_file
+from common import copy_asset, read_binary, read_file, test_config, test_file
 from decorators import needs_make, parameterized
 
 from tools import utils
@@ -385,7 +385,7 @@ benchmarkers: list[Benchmarker] = []
 # avoid the baseline compiler running, because it adds a lot of noise
 # (the nondeterministic time it takes to get to the full compiler ends up
 # mattering as much as the actual benchmark)
-aot_v8 = (config.V8_ENGINE if config.V8_ENGINE else []) + ['--no-liftoff']
+aot_v8 = (test_config.V8_ENGINE if test_config.V8_ENGINE else []) + ['--no-liftoff']
 
 named_benchmarkers = {
   'clang': NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
@@ -397,12 +397,12 @@ named_benchmarkers = {
   'v8-lto': EmscriptenBenchmarker('v8-lto', aot_v8, ['-flto']),
   'v8-ctors': EmscriptenBenchmarker('v8-ctors', aot_v8, ['-sEVAL_CTORS']),
   'v8-64': EmscriptenBenchmarker('v8-64', aot_v8, ['-m64']),
-  'node': EmscriptenBenchmarker('node', config.NODE_JS_TEST),
-  'node-64': EmscriptenBenchmarker('node-64', config.NODE_JS_TEST, ['-m64']),
+  'node': EmscriptenBenchmarker('node', test_config.NODE_JS_TEST),
+  'node-64': EmscriptenBenchmarker('node-64', test_config.NODE_JS_TEST, ['-m64']),
   'cherp-v8': CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
   # TODO: ensure no baseline compiler is used, see v8
-  'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
-  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE),
+  'sm': EmscriptenBenchmarker('sm', test_config.SPIDERMONKEY_ENGINE),
+  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', test_config.SPIDERMONKEY_ENGINE),
   'clang-build': ToolchainBenchmarker('clang', [CLANG_CC]),
   'emcc-build': ToolchainBenchmarker('emcc', [EMCC]),
 }
