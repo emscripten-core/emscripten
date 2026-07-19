@@ -2455,9 +2455,6 @@ function autoAddDeps(lib, name) {
 extraLibraryFuncs.push(
   '$addFunction',
   '$removeFunction',
-  '$allocate',
-  '$ALLOC_NORMAL',
-  '$ALLOC_STACK',
   '$AsciiToString',
   '$stringToAscii',
   '$UTF16ToString',
