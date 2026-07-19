@@ -23,6 +23,7 @@ from common import (
   exe_suffix,
   make_executable,
   path_from_root,
+  test_config,
   test_file,
 )
 from decorators import no_windows, parameterized, with_env_modify
@@ -231,7 +232,7 @@ class sanity(RunnerCore):
     self.assertNotContained('}}}', config_data)
     self.assertContained('{{{', template_data)
     self.assertContained('}}}', template_data)
-    for content in ('LLVM_ROOT', 'NODE_JS', 'JS_ENGINES'):
+    for content in ('LLVM_ROOT', 'NODE_JS'):
       self.assertContained(content, config_data)
 
     # The guessed config should be ok
@@ -241,7 +242,7 @@ class sanity(RunnerCore):
     # self.assertContained('Hello, world!', self.run_js('a.out.js'), output)
 
     # Second run, with bad EM_CONFIG
-    for settings in ('blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]'):
+    for settings in ('blah', 'LLVM_ROOT="blarg"; NODE_JS=[]'):
       try:
         utils.write_file(default_config, settings)
         output = self.do(EMCC)
@@ -252,6 +253,13 @@ class sanity(RunnerCore):
           self.assertContained('error: NODE_JS is set to empty value', output) # sanity check should fail
       finally:
         delete_file(default_config)
+
+  def test_test_config_in_em_config(self):
+    restore_and_set_up()
+    add_to_config('JS_ENGINES = []')
+    output = self.do(EMCC)
+    self.assertContained('error: test-only configuration setting "JS_ENGINES" found in config file', output)
+    self.assertContained('Please move test settings to the test configuration file (test/config.py)', output)
 
   @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_llvm(self):
@@ -642,7 +650,7 @@ WASMER = '~/wasmer'
     test_path = self.in_dir('fake', 'abcd8765')
     ensure_dir(test_path)
 
-    for engine in config.JS_ENGINES:
+    for engine in test_config.JS_ENGINES:
       delete_file(SANITY_FILE)
       engine = engine[0]
       filename = os.path.splitext(os.path.basename(engine))[0] + '_runner'

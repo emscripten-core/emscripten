@@ -100,6 +100,19 @@ def parse_config_file():
   except Exception as e:
     exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, e, config_text)
 
+  TEST_KEYS = (
+    'NODE_JS_TEST',
+    'V8_ENGINE',
+    'SPIDERMONKEY_ENGINE',
+    'JS_ENGINES',
+    'WASMER',
+    'WASMTIME',
+    'WASM_ENGINES',
+  )
+  for key in TEST_KEYS:
+    if key in config:
+      exit_with_error(f'test-only configuration setting "{key}" found in config file ({EM_CONFIG}). Please move test settings to the test configuration file (test/config.py)')
+
   CONFIG_KEYS = (
     'NODE_JS',
     'BINARYEN_ROOT',
@@ -113,21 +126,6 @@ def parse_config_file():
     'COMPILER_WRAPPER',
   )
 
-  if '_EM_TEST_RUNNER' in os.environ:
-    # TODO(sbc): Move this completely out of the core compiler and into the test framework.
-    TEST_KEYS = (
-      'NODE_JS_TEST',
-      'V8_ENGINE',
-      'SPIDERMONKEY_ENGINE',
-      'JS_ENGINES',
-      'WASMER',
-      'WASMTIME',
-      'WASM_ENGINES',
-    )
-    CONFIG_KEYS += TEST_KEYS
-    for key in TEST_KEYS:
-      globals()[key] = None
-
   # Only propagate certain settings from the config file.
   for key in CONFIG_KEYS:
     env_var = 'EM_' + key
@@ -135,9 +133,6 @@ def parse_config_file():
     if env_value is not None:
       if env_value in {'', '0'}:
         env_value = None
-      # Unlike the other keys these two should always be lists.
-      if env_var in {'EM_JS_ENGINES', 'EM_WASM_ENGINES'}:
-        env_value = env_value.split(',')
       if env_var in {'EM_CONFIG', 'EM_CACHE', 'EM_PORTS', 'EM_LLVM_ROOT', 'EM_BINARYEN_ROOT'}:
         if not os.path.isabs(env_value):
           exit_with_error(f'environment variable {env_var} must be an absolute path: {env_value}')
