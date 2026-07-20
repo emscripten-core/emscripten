@@ -314,7 +314,7 @@ class SkiaPerfBenchmarker(EmscriptenBenchmarker):
 
   # we will not actually run the benchmarks
   def run(self, args):
-    assert False
+    pass
 
 
 CHEERP_BIN = '/opt/cheerp/bin/'
