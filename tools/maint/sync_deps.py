@@ -79,6 +79,10 @@ def get_current_revision(repo_dir):
   ).strip()
 
 
+def is_dirty(repo_dir):
+  return bool(subprocess.check_output(['git', '-C', repo_dir, 'status', '--porcelain'], text=True).strip())
+
+
 def sync_repo(name, repo_dir, revision, url):
   if not os.path.isdir(repo_dir):
     utils.exit_with_error(
@@ -92,6 +96,9 @@ def sync_repo(name, repo_dir, revision, url):
   if cur_rev.startswith(revision) or revision.startswith(cur_rev):
     print('  already at the requested revision')
     return
+
+  if is_dirty(repo_dir):
+    utils.exit_with_error("Directory for {name} is dirty: '{repo_dir}'")
 
   if not has_revision(repo_dir, revision):
     print('  Fetching revision')
