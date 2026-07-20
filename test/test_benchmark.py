@@ -313,8 +313,7 @@ class SkiaPerfBenchmarker(EmscriptenBenchmarker):
     super().__init__(name, engine=None)
 
   # we will not actually run the benchmarks
-  def run(self, args):
-    pass
+  run = None  # type: ignore
 
 
 CHEERP_BIN = '/opt/cheerp/bin/'
