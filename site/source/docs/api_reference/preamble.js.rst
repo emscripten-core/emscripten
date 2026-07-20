@@ -425,17 +425,11 @@ types. The views for accessing different types of memory are listed below.
 
 
 .. COMMENT (not rendered) : The following methods are explicitly not part of the public API and not documented. Note that in some case referred to by function name, other cases by Module assignment.
-
-  function allocate(slab, types, allocator, ptr) — Internal and use is discouraged. Documentation can remain in source code but not here.
-    associated constants ALLOC_NORMAL, ALLOC_STACK
-
   function addOnPreRun
   function addOnInit
   function addOnPreMain
   function addOnExit
   function addOnPostRun
-  Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
-  Module['ALLOC_STACK'] = ALLOC_STACK;
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
   function demangle(func)
