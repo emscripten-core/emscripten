@@ -24,6 +24,7 @@ See docs/process.md for more on how version tagging works.
   #27339, #27338, #27340, #27347)
 - Removed legacy JS library symbols symbols: `$ALLOC_NORMAL`, `$ALLOC_STACK`,
   and `$allocate`. (#27378)
+- llvm-libc was updated to LLVM 22.1.8. (#27374)
 
 6.0.3 - 07/13/26
 ----------------
