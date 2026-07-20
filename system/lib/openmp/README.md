@@ -1,6 +1,9 @@
 llvm's OpenMP
 -------------
 
+Note: This version of openmp is actually based on 1823581ecb but
+we are in the process of updating it.
+
 These files are from the llvm-project based on release 21.1.8.
 
 We maintain a local fork of llvm-project that contains any Emscripten

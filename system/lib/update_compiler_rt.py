@@ -4,12 +4,16 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import glob
 import os
-import sys
 import shutil
 
-from update_common import *
+from update_common import (
+  clean_dir,
+  default_llvm_dir,
+  parse_args,
+  script_dir,
+  update_readme,
+)
 
 local_src = os.path.join(script_dir, 'compiler-rt')
 
@@ -44,9 +48,9 @@ def main():
     dest = os.path.join(local_src, *dirname)
     clean_dir(dest, preserve_files)
     for name in os.listdir(srcdir):
-      if name in ('.clang-format', 'CMakeLists.txt', 'README.txt', 'weak_symbols.txt'):
+      if name in {'.clang-format', 'CMakeLists.txt', 'README.txt', 'weak_symbols.txt'}:
         continue
-      if name.endswith('.syms.extra') or name.endswith('.S'):
+      if name.endswith(('.syms.extra', '.S')):
         continue
       if os.path.isfile(os.path.join(srcdir, name)):
         shutil.copy2(os.path.join(srcdir, name), dest)

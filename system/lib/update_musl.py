@@ -18,12 +18,10 @@ changes can then be copied back into emscripten using this script.
 """
 
 import os
-import sys
 import shutil
-
 from pathlib import Path
 
-from update_common import *
+from update_common import emscripten_root, parse_args, read_file, script_dir, write_file
 
 local_src = os.path.join(script_dir, 'libc', 'musl')
 default_musl_dir = os.path.join(os.path.dirname(emscripten_root), 'musl')
@@ -36,7 +34,7 @@ exclude_dirs = (
   'aarch64', 'arm', 'i386', 'loongarch64', 'm68k',
   'microblaze', 'mips', 'mips64', 'mipsn32', 'or1k',
   'powerpc', 'powerpc64', 'riscv32', 'riscv64', 's390x',
-  'sh', 'x32', 'x86_64'
+  'sh', 'x32', 'x86_64',
 )
 exclude_files = (
   'aio.h',
@@ -102,9 +100,8 @@ def main():
   shutil.copytree(musl_dir, local_src, ignore=make_ignore(musl_dir))
 
   # Create version.h
-  version = open(os.path.join(local_src, 'VERSION')).read().strip()
-  with open(os.path.join(local_src, 'src', 'internal', 'version.h'), 'w') as f:
-    f.write('#define VERSION "%s"\n' % version)
+  version = read_file(os.path.join(local_src, 'VERSION')).strip()
+  write_file(os.path.join(local_src, 'src', 'internal', 'version.h'), f'#define VERSION "{version}"\n')
 
 
 if __name__ == '__main__':
