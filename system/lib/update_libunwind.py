@@ -5,10 +5,16 @@
 # found in the LICENSE file.
 
 import os
-import sys
 import shutil
 
-from update_common import *
+from update_common import (
+  clean_dir,
+  copy_tree,
+  default_llvm_dir,
+  parse_args,
+  script_dir,
+  update_readme,
+)
 
 local_root = os.path.join(script_dir, 'libunwind')
 local_src = os.path.join(local_root, 'src')

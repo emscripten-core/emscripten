@@ -6,11 +6,20 @@
 
 import os
 import re
-import sys
 import shutil
 import subprocess
+import sys
 
-from update_common import *
+from update_common import (
+  clean_dir,
+  copy_tree,
+  default_llvm_dir,
+  emscripten_root,
+  parse_args,
+  script_dir,
+  update_readme,
+  write_file,
+)
 
 local_root = os.path.join(script_dir, 'libcxx')
 local_src = os.path.join(local_root, 'src')
@@ -41,12 +50,11 @@ def generate_modules(cmake_version: str):
 
   clean_dir(build_dir, preserve_files)
   os.makedirs(build_dir, exist_ok=True)
-  with open(f'{build_dir}/CMakeLists.txt', 'x', encoding='utf-8') as CMakeLists:
-    CMakeLists.write(f'''\
-      cmake_minimum_required(VERSION {cmake_version})
-      project(libcxx-modules)
-      add_subdirectory("{local_modules}" libcxx)
-    ''')
+  write_file(f'{build_dir}/CMakeLists.txt', f'''\
+    cmake_minimum_required(VERSION {cmake_version})
+    project(libcxx-modules)
+    add_subdirectory("{local_modules}" libcxx)
+  ''')
 
   vars = [
     ('LIBCXX_INSTALL_LIBRARY_DIR',  lib),
@@ -62,18 +70,18 @@ def generate_modules(cmake_version: str):
   subprocess.run(['cmake', '--build', binary_dir], stdout=subprocess.DEVNULL)
   shutil.copytree(dist, dst, dirs_exist_ok=True)
 
+
 def main():
   llvm_dir = parse_args(default_llvm_dir, 'llvm_dir')
   # Exit early if cmake is not found
   try:
-    output= subprocess.check_output(['cmake', '--version'], text=True)
+    output = subprocess.check_output(['cmake', '--version'], text=True)
   except OSError:
     print('CMake not found', file=sys.stderr)
     sys.exit(1)
 
   cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)', output).group(1)
 
-  llvm_dir = get_llvm_dir()
   libcxx_dir = os.path.join(llvm_dir, 'libcxx')
   upstream_src = os.path.join(libcxx_dir, 'src')
   upstream_inc = os.path.join(libcxx_dir, 'include')
@@ -114,6 +122,7 @@ def main():
 
   shutil.copy2(os.path.join(libc_upstream_dir, 'LICENSE.TXT'), libc_local_dir)
   update_readme(local_root, llvm_dir)
+
 
 if __name__ == '__main__':
   main()

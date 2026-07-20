@@ -8,10 +8,9 @@
 # This is the logical inverse of update_musl.py which copies changes
 # from the upstream musl tree into emscripten.
 
-import glob
 import os
-import sys
 import shutil
+import sys
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
 local_dir = os.path.join(script_dir, 'libc', 'musl')

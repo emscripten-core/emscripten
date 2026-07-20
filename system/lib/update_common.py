@@ -1,11 +1,15 @@
-import os
-import sys
-import shutil
-import re
 import argparse
+import os
+import re
+import shutil
+import sys
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
 emscripten_root = os.path.dirname(os.path.dirname(script_dir))
+sys.path.append(emscripten_root)
+
+from tools.utils import read_file, write_file
+
 default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
 
 
@@ -46,7 +50,7 @@ def copy_tree(upstream_dir, local_dir, excludes=()):
     elif f not in excludes:
       shutil.copy2(full, os.path.join(local_dir, f))
   if excludes:
-    for root, dirs, files in os.walk(local_dir):
+    for root, _dirs, files in os.walk(local_dir):
       for f in files:
         if f in excludes:
           full = os.path.join(root, f)
@@ -57,8 +61,7 @@ def get_llvm_version(upstream_dir):
   cmake_file = os.path.join(upstream_dir, 'cmake', 'Modules', 'LLVMVersion.cmake')
   if not os.path.exists(cmake_file):
     return None, None
-  with open(cmake_file, 'r') as f:
-    content = f.read()
+  content = read_file(cmake_file)
   major = re.search(r'set\(LLVM_VERSION_MAJOR\s+(\d+)\)', content)
   minor = re.search(r'set\(LLVM_VERSION_MINOR\s+(\d+)\)', content)
   patch = re.search(r'set\(LLVM_VERSION_PATCH\s+(\d+)\)', content)
@@ -72,8 +75,7 @@ def update_readme(local_dir, llvm_dir):
   if not os.path.exists(readme_path):
     return
 
-  with open(readme_path, 'r') as f:
-    content = f.read()
+  content = read_file(readme_path)
 
   major, full_version = get_llvm_version(llvm_dir)
   if major and full_version:
@@ -82,5 +84,4 @@ def update_readme(local_dir, llvm_dir):
     # Find 'emscripten-libs-NN' strings and update them with the major version
     content = re.sub(r'emscripten-libs-\d+', f'emscripten-libs-{major}', content)
 
-  with open(readme_path, 'w') as f:
-    f.write(content)
+  write_file(readme_path, content)
