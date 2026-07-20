@@ -38,6 +38,7 @@ from common import (
   EMBUILDER,
   EMCMAKE,
   EMCONFIGURE,
+  EMMAKE,
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
@@ -127,7 +128,6 @@ from tools.utils import (
   write_file,
 )
 
-emmake = exe_path_from_root('emmake')
 emconfig = exe_path_from_root('em-config')
 emsize = exe_path_from_root('emsize')
 empath_split = exe_path_from_root('empath-split')
@@ -1149,7 +1149,7 @@ f.close()
       ('sdl', '1.2.15'),
     ]
     for package, version in packages:
-      out = self.run_process([emmake, 'pkg-config', '--modversion', package], stdout=PIPE).stdout
+      out = self.run_process([EMMAKE, 'pkg-config', '--modversion', package], stdout=PIPE).stdout
       self.assertContained(version, out)
 
   @requires_pkg_config
@@ -1157,9 +1157,9 @@ f.close()
   def test_pkg_config_ports(self):
     # Use bullet here because it is part of the MINIMAL set of tasks in embuilder.
     self.run_process([EMBUILDER, 'build', 'bullet'])
-    out = self.run_process([emmake, 'pkg-config', '--list-all'], stdout=PIPE).stdout
+    out = self.run_process([EMMAKE, 'pkg-config', '--list-all'], stdout=PIPE).stdout
     self.assertContained('bullet', out)
-    out = self.run_process([emmake, 'pkg-config', '--cflags', 'bullet'], stdout=PIPE).stdout
+    out = self.run_process([EMMAKE, 'pkg-config', '--cflags', 'bullet'], stdout=PIPE).stdout
     self.assertContained('-sUSE_BULLET', out)
 
   @parameterized({
@@ -6457,11 +6457,11 @@ Descriptor desc;
       assert ('is a helper for' in output.stderr) == fail
       assert ('Typical usage' in output.stderr) == fail
       self.assertContained(expect, output.stdout)
-    check(emmake, [])
+    check(EMMAKE, [])
     check(EMCONFIGURE, [])
-    check(emmake, ['--version'])
+    check(EMMAKE, ['--version'])
     check(EMCONFIGURE, ['--version'])
-    check(emmake, ['make'], fail=False)
+    check(EMMAKE, ['make'], fail=False)
     check(EMCONFIGURE, ['configure'], fail=False)
     check(EMCONFIGURE, ['./configure'], fail=False)
     check(EMCMAKE, ['cmake'], fail=False)
@@ -6471,7 +6471,7 @@ import os
 print(os.environ.get('CROSS_COMPILE'))
 ''')
     check(EMCONFIGURE, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
-    check(emmake, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check(EMMAKE, [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
 
     create_file('test.py', '''
 import os
@@ -6488,7 +6488,7 @@ print(os.environ.get('NM'))
     # simulates a configure/make script that looks for things like CC, AR, etc., and which we should
     # not confuse by setting those vars to something containing `python X` as the script checks for
     # the existence of an executable.
-    self.run_process([emmake, PYTHON, test_file('emmake/make.py')])
+    self.run_process([EMMAKE, PYTHON, test_file('emmake/make.py')])
 
   @crossplatform
   @no_windows('sdl2-config is a shell script and cannot run on windows')
@@ -6504,7 +6504,7 @@ print(os.environ.get('NM'))
                              stdout=PIPE, stderr=PIPE).stdout
       self.assertContained(expected, out)
       print('via emmake')
-      out = self.run_process([emmake, 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
+      out = self.run_process([EMMAKE, 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
       self.assertContained(expected, out)
 
   def test_module_onexit(self):
