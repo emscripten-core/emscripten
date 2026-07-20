@@ -14,6 +14,7 @@ from update_common import (
   default_llvm_dir,
   emscripten_root,
   parse_args,
+  update_readme,
   script_dir,
 )
 
@@ -91,6 +92,8 @@ def main():
   built_files = ['kmp_config.h', 'kmp_i18n_id.inc', 'kmp_i18n_default.inc']
   for file in built_files:
     shutil.copy2(os.path.join(upstream_build_src, file), local_prebuilt)
+
+  update_readme(local_root, llvm_dir)
 
 
 if __name__ == '__main__':
