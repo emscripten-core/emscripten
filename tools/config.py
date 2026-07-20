@@ -139,28 +139,6 @@ def read_config():
   if os.path.isfile(EM_CONFIG):
     parse_config_file()
 
-  # In the past the default-generated .emscripten config file would read
-  # certain environment variables.
-  LEGACY_ENV_VARS = {
-    'LLVM': 'EM_LLVM_ROOT',
-    'BINARYEN': 'EM_BINARYEN_ROOT',
-    'NODE': 'EM_NODE_JS',
-    'LLVM_ADD_VERSION': 'EM_LLVM_ADD_VERSION',
-    'CLANG_ADD_VERSION': 'EM_CLANG_ADD_VERSION',
-  }
-
-  for key, new_key in LEGACY_ENV_VARS.items():
-    env_value = os.environ.get(key)
-    if env_value and new_key not in os.environ:
-      msg = f'legacy environment variable found: `{key}`.  Please switch to using `{new_key}` instead`'
-      # Use `debug` instead of `warning` for `NODE` specifically
-      # since there can be false positives:
-      # See https://github.com/emscripten-core/emsdk/issues/862
-      if key == 'NODE':
-        logger.debug(msg)
-      else:
-        logger.warning(msg)
-
   set_config_from_tool_location('LLVM_ROOT', 'clang', os.path.dirname)
   set_config_from_tool_location('NODE_JS', 'node', lambda x: x)
   set_config_from_tool_location('BINARYEN_ROOT', 'wasm-opt', lambda x: os.path.dirname(os.path.dirname(x)))
