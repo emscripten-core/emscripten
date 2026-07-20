@@ -64,6 +64,7 @@ EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors
 class Benchmarker(ABC):
   # Whether to record statistics. Set by SizeBenchmarker.
   record_stats = False
+  run_bench = True
 
   # called when we init the object, which is during startup, even if we are
   # not running benchmarks
@@ -307,6 +308,7 @@ class EmscriptenBenchmarker(Benchmarker):
 # monitoring dashboards, not because it benchmarks the Skia graphics library.
 class SkiaPerfBenchmarker(EmscriptenBenchmarker):
   record_stats = True
+  run_bench = False
 
   def __init__(self, name):
     # do not set an engine, as we will not run the code
@@ -501,20 +503,18 @@ class benchmark(common.RunnerCore):
     for b in benchmarkers:
       if skip_benchmarkers and b.name in skip_benchmarkers:
         continue
-      if not b.run:
-        # If we won't run the benchmark, we don't need repetitions.
-        reps = 0
+      curr_reps = reps if b.run_bench else 0
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
       t1 = time.time()
       b.build(self, filename, shared_args, emcc_args, native_args, native_exec, lib_builder)
       build_time = time.time() - t1
-      b.bench(args, reps, output_parser, expected_output)
+      b.bench(args, curr_reps, output_parser, expected_output)
       size_stats = b.display(baseline)
       if size_stats:
         self.add_stats(name, size_stats, units='bytes')
         self.add_stats(name, [{'value': 'compile_time', 'measurement': build_time}], units='s')
-      if not baseline:
-        # Use the first benchmarker as the baseline.  Other benchmarkers can then
+      if not baseline and b.times:
+        # Use the first benchmarker that ran as the baseline.  Other benchmarkers can then
         # report relative performance compared to this.
         baseline = b
 
