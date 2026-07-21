@@ -1,0 +1,21 @@
+src/struct_info_generated.json
+  s_4503e95566170f::t_73a50e608c5958 5,1034-1036
+src/struct_info_generated_wasm64.json
+  s_4503e95566170f::t_16997de44555f1 5,1034-1036
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2985545c382301cb57c0714c6d417301837ad002",
+  "prompts": {},
+  "sessions": {
+    "s_4503e95566170f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_07a24834fffeIGxtlSDz9pCzWe",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
