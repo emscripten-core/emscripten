@@ -95,18 +95,22 @@ def run_cmd(cmd):
   subprocess.run(cmd, check=True, text=True, encoding='utf-8', cwd=utils.path_from_root())
 
 
+def build_emcc_native():
+  build_dir = utils.path_from_root('out/build_emcc_native')
+  source_dir = utils.path_from_root('tools/emcc_native')
+  cmd = ['cmake', '-B', build_dir, source_dir, '-DCMAKE_BUILD_TYPE=Release']
+  if not utils.WINDOWS and shutil.which('ninja'):
+    cmd.extend(['-G', 'Ninja'])
+  run_cmd(cmd)
+  run_cmd(['cmake', '--build', build_dir, '--config', 'Release'])
+  run_cmd(['cmake', '--install', build_dir, '--config', 'Release'])
+
+
 actions = [
   ('npm packages', [
      'package.json',
      'package-lock.json',
    ], ['npm', 'ci']),
-  ('create entry points', [
-     'tools/maint/create_entry_points.py',
-     'tools/pylauncher/pylauncher.exe',
-     'tools/maint/run_python.bat',
-     'tools/maint/run_python.sh',
-     'tools/maint/run_python.ps1',
-   ], [sys.executable, 'tools/maint/create_entry_points.py']),
   ('git submodules', [
      'test/third_party/posixtestsuite/',
      'test/third_party/googletest',
@@ -117,6 +121,30 @@ actions = [
      'tools/maint/git-hooks/pre-push',
    ], maybe_install_hooks),
 ]
+
+if os.environ.get('EMCC_NATIVE') == '0':
+  actions.append(('legacy entry points', [
+     'tools/maint/create_entry_points.py',
+     'tools/maint/run_python.sh',
+     'tools/maint/run_python.bat',
+     'tools/maint/run_python.ps1',
+     'tools/maint/run_python_compiler.sh',
+     'tools/maint/run_python_compiler.bat',
+     'tools/maint/run_python_compiler.ps1',
+   ], [sys.executable, utils.path_from_root('tools/maint/create_entry_points.py')]))
+else:
+  actions.append(('build emcc_native', [
+     'tools/emcc_native/CMakeLists.txt',
+     'tools/emcc_native/main.cpp',
+     'tools/emcc_native/diagnostics.cpp',
+     'tools/emcc_native/diagnostics.h',
+     'tools/emcc_native/driver.cpp',
+     'tools/emcc_native/driver.h',
+     'tools/emcc_native/exec.cpp',
+     'tools/emcc_native/exec.h',
+     'tools/emcc_native/config.cpp',
+     'tools/emcc_native/config.h',
+   ], build_emcc_native))
 
 
 def main(args):

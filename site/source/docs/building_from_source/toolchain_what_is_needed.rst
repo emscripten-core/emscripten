@@ -39,7 +39,9 @@ In general a complete Emscripten environment requires the following tools. First
 Compiler toolchain
 ------------------
 
-When building LLVM and Binaryen from source code, whether "manually" or using the SDK, you will need a *compiler toolchain*:
+When building Emscripten from source (via ``bootstrap.py`` to build
+``emcc_native``), or when building LLVM and Binaryen from source, you will need
+a C++20 host *compiler toolchain* and CMake 3.20+:
 
 - Windows: You will need `Visual Studio <https://visualstudio.microsoft.com/>`_ (2019 or above) and `cmake <http://www.cmake.org/cmake/resources/software.html>`_ (3.20 or above).
 

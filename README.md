@@ -39,11 +39,11 @@ There are two primary ways to install Emscripten:
     The easiest way to get started is by using the Emscripten SDK. Follow the instructions on the [downloads page](https://emscripten.org/docs/getting_started/downloads.html) to install it.
 
 2.  **From a Git Checkout (Manual Installation)**
-    If you have cloned the repository from Git, you can install the dependencies manually and then run the bootstrap script:
+    If you have cloned the repository from Git, run `bootstrap.py` to build the native launcher (`emcc_native`) and set up dependencies:
     ```bash
     ./bootstrap.py
     ```
-    For more details, see the [developer guide](https://emscripten.org/docs/contributing/developers_guide.html).
+    Building `emcc_native` requires CMake 3.20+ and a C++20 host compiler toolchain. Alternatively, setting `EMCC_NATIVE=0` in your environment before running `./bootstrap.py` will generate legacy Python launcher scripts (e.g. `.bat` / `.ps1` files on Windows) via `./tools/maint/create_entry_points.py`. For more details, see the [developer guide](https://emscripten.org/docs/contributing/developers_guide.html).
 
 ## Using the compiler
 
