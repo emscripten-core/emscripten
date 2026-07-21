@@ -1,0 +1,23 @@
+system/lib/libc/musl/src/network/recvmmsg.c
+  s_0678485887d6db::t_10d70053aae631 15-31,55
+system/lib/libc/musl/src/network/sendmmsg.c
+  s_0678485887d6db::t_f7a2ec54f3fae8 9
+test/codesize/test_codesize_hello_dylink_all.json
+  s_0678485887d6db::t_fa7c65a7de5f12 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "346ec24b17cef92761450f0d25d170d04c701e36",
+  "prompts": {},
+  "sessions": {
+    "s_0678485887d6db": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_079743558ffe60WGAxQo8bFr2O",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
