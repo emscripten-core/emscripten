@@ -19,9 +19,7 @@ overhead:
 For incremental compilation of single translation units (`emcc -c file.cpp -o
 file.o`), the actual Clang compilation step may take only ~150ms, meaning Python
 wrapper startup consumes 80–90% of total build time on Windows and a noticeable
-percentage on Linux/macOS. Furthermore, CMake `try_compile` and configure-time
-feature checks invoke `emcc` hundreds of times sequentially, inflating
-configuration time from seconds to minutes.
+percentage on Linux/macOS.
 
 This document explores replacing or bypassing the Python wrapper for
 compilation steps (`-c`, `-S`, `-E`) using a native C++ launcher/frontend
