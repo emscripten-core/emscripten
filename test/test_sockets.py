@@ -500,6 +500,11 @@ class sockets(BrowserCore):
     # ephemeral port, the client sends a datagram, the server echoes it back.
     self.do_runf('sockets/test_udp_echo.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
+  def test_noderawsockets_udp_recvmsg(self):
+    # recvmsg scatters a datagram across multiple iovecs at the right offsets
+    # and updates msg_namelen/msg_controllen/msg_flags in the caller's msghdr.
+    self.do_runf('sockets/test_udp_recvmsg.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp_connect(self):
     # Connected UDP: sendto() with an address gives EISCONN, send() reaches the

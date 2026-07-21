@@ -530,7 +530,8 @@ var SyscallsLibrary = {
     // write the source address out
     var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
     if (name) {
-      var errno = writeSockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port);
+      var namelen = message + {{{ C_STRUCTS.msghdr.msg_namelen }}};
+      var errno = writeSockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port, namelen);
 #if ASSERTIONS
       assert(!errno);
 #endif
@@ -546,12 +547,15 @@ var SyscallsLibrary = {
       }
       var length = Math.min(iovlen, bytesRemaining);
       var buf = msg.buffer.subarray(bytesRead, bytesRead + length);
-      HEAPU8.set(buf, iovbase + bytesRead);
+      HEAPU8.set(buf, iovbase);
       bytesRead += length;
       bytesRemaining -= length;
     }
 
-    // TODO set msghdr.msg_flags
+    {{{ makeSetValue('message', C_STRUCTS.msghdr.msg_controllen, '0', 'i32') }}};
+    {{{ makeSetValue('message', C_STRUCTS.msghdr.msg_flags, '0', 'i32') }}};
+
+    // TODO report truncation in msghdr.msg_flags
     // MSG_EOR
     // End of record was received (if supported by the protocol).
     // MSG_OOB

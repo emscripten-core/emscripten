@@ -232,7 +232,10 @@
                 "msg_name",
                 "msg_namelen",
                 "msg_iov",
-                "msg_iovlen"
+                "msg_iovlen",
+                "msg_control",
+                "msg_controllen",
+                "msg_flags"
             ]
         }
     },
