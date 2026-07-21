@@ -5,6 +5,7 @@
 
 import logging
 import os
+import shlex
 import shutil
 import sys
 
@@ -34,9 +35,12 @@ EM_CONFIG = None
 
 
 def listify(x):
-  if x is None or type(x) is list:
+  if x is None:
     return x
-  return [x]
+  if type(x) is list:
+    logger.warning(f'Found list-style config entry ({x}).  Please use a single string with spaces between args.')
+    return x
+  return shlex.split(x)
 
 
 def normalize_config_settings():

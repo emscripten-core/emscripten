@@ -577,6 +577,29 @@ WASMER = '~/wasmer'
       self.assertEqual(get_em_config('WASMER'), os.path.expanduser('~/wasmer'))
       self.assertEqual(get_em_config('FROZEN_CACHE'), 'True')
 
+  def test_config_listify(self):
+    restore_and_set_up()
+    config_dir = self.in_dir('config_dir')
+    ensure_dir(config_dir)
+    cfg_file = os.path.join(config_dir, 'custom_config')
+
+    extra_config = '''
+NODE_JS = '/path/to/node --with-arg --option="hello world"'
+CLOSURE_COMPILER = ['/path/to/closure', '--legacy-flag']
+'''
+    create_file(cfg_file, get_basic_config() + extra_config, absolute=True)
+
+    with env_modify({'EM_CONFIG': cfg_file, 'EM_NODE_JS': None, 'EM_CLOSURE_COMPILER': None}):
+      def get_em_config(var_name):
+        return self.run_process([EMCONFIG, var_name], stdout=PIPE, stderr=PIPE)
+
+      proc = get_em_config('NODE_JS')
+      self.assertEqual(proc.stdout.strip(), "['/path/to/node', '--with-arg', '--option=hello world']")
+
+      proc = get_em_config('CLOSURE_COMPILER')
+      self.assertEqual(proc.stdout.strip(), "['/path/to/closure', '--legacy-flag']")
+      self.assertContained('Found list-style config entry', proc.stderr)
+
   def test_emcc_ports(self):
     restore_and_set_up()
 
