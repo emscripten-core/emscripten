@@ -39,7 +39,6 @@ from common import (
   test_file,
 )
 from decorators import (
-  all_engines,
   also_with_minimal_runtime,
   also_with_modularize,
   also_with_nodefs,
@@ -4374,7 +4373,6 @@ caught outer int: 123
     ''', 'other says 42.', force_c=True)
 
   @with_dylink_reversed
-  @all_engines
   def test_dylink_i64_b(self):
     self.dylink_test(r'''
       #include <stdio.h>

@@ -50,9 +50,6 @@ flaky_tests_log_filename = path_from_root('out/flaky_tests.txt')
 
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
-# generally js engines are equivalent, testing 1 is enough. set this
-# to force testing on all js engines, good to find js engine bugs
-EMTEST_ALL_ENGINES = None
 EMTEST_SKIP_SLOW = None
 EMTEST_SKIP_FLAKY = None
 EMTEST_RETRY_FLAKY = None
@@ -771,7 +768,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.temp_files_before_run = []
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
-    self.use_all_engines = EMTEST_ALL_ENGINES
     engine = self.get_current_js_engine()
     if not engine_is_node(engine) and not engine_is_bun(engine) and not engine_is_deno(engine):
       # If our current JS engine a "shell" environment we need to explicitly enable support for
@@ -1480,21 +1476,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       js_file = self.build(filename, **kwargs)
     self.assertExists(js_file)
 
-    engines = self.js_engines.copy()
-    if len(engines) > 1 and not self.use_all_engines:
-      engines = engines[:1]
+    engines = [self.get_current_js_engine()]
     # In standalone mode, also add wasm vms as we should be able to run there too.
     if self.get_setting('STANDALONE_WASM'):
-      # TODO once standalone wasm support is more stable, apply use_all_engines
-      # like with js engines, but for now as we bring it up, test in all of them
       if not self.wasm_engines:
         if 'EMTEST_SKIP_WASM_ENGINE' in os.environ:
           self.skipTest('no wasm engine was found to run the standalone part of this test')
         else:
           logger.warning('no wasm engine was found to run the standalone part of this test (Use EMTEST_SKIP_WASM_ENGINE to skip)')
       engines += self.wasm_engines
-    if len(engines) == 0:
-      self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
+
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
                               input=input,

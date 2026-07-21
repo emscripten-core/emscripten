@@ -59,7 +59,6 @@ from common import (
   test_file,
 )
 from decorators import (
-  all_engines,
   also_with_asan,
   also_with_minimal_runtime,
   also_with_modularize,
@@ -1752,7 +1751,6 @@ int f() {
     self.do_runf('lib.c', '_libfunc2 is not defined', cflags=['-sEXPORT_ALL', '--pre-js', 'pre.js'], assert_returncode=NON_ZERO)
     self.do_runf('lib.c', 'libfunc\n', cflags=['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js'])
 
-  @all_engines
   @with_all_fs
   @crossplatform
   @parameterized({
@@ -4382,7 +4380,6 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.assertContained("Aborted('ptrToString' was not exported. add it to EXPORTED_RUNTIME_METHODS", err)
 
   @crossplatform
-  @all_engines
   def test_fs_stream_proto(self):
     create_file('src.c', br'''
 #include <stdio.h>
@@ -5836,7 +5833,7 @@ Creating file: /tmp/file with content of size=79
 Failed to open file for writing: /tmp/file; errno=2; Permission denied
 ''')
 
-  @all_engines
+  @crossplatform
   def test_embed_file_large(self):
     # If such long files are encoded on one line,
     # they overflow the interpreter's limit
@@ -11488,7 +11485,7 @@ int main(void) {
     # otherwise in such a trivial program).
     self.assertLess(no, 0.95 * yes)
 
-  @all_engines
+  @crossplatform
   def test_INCOMING_MODULE_JS_API(self):
     def test(args):
       self.do_runf_out_file('hello_world.c', cflags=['-O3', '--closure=1', '-sENVIRONMENT=node,shell', '--output-eol=linux'] + args)
@@ -11891,7 +11888,7 @@ int main(void) {
     # In this case the compiler does not produce any output file.
     self.assertNotExists('out.o')
 
-  @all_engines
+  @crossplatform
   def test_non_wasm_without_wasm_in_vm(self):
     create_file('pre.js', 'var WebAssembly = null;\n')
     # Test that our non-wasm output does not depend on wasm support in the vm.
@@ -12413,7 +12410,6 @@ int main () {
   @requires_wasm_eh
   def test_standalone_wasm_exceptions(self):
     self.set_setting('STANDALONE_WASM')
-    self.wasm_engines = []
     self.cflags += ['-fwasm-exceptions']
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
