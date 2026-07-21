@@ -272,6 +272,15 @@ public:
   class Handle;
   Handle locked();
 
+  // Whether this directory implementation expects the VFS to resolve paths
+  // before invoking backend operations.
+  // - true (default): parse the path, resolve symlinks and traverse
+  //   intermediate directories before calling the backend.
+  // - false: the backend operates on the full path directly (e.g. NODERAWFS),
+  //   so the path is passed through without parsing, symlink resolution or
+  //   directory traversal.
+  virtual bool requiresPathResolution() { return true; }
+
 protected:
   // 4096 bytes is the size of a block in ext4.
   // This value was also copied from the JS file system.

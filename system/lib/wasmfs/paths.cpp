@@ -66,7 +66,14 @@ ParsedParent doParseParent(std::string_view path,
                            size_t& recursions) {
   // Empty paths never exist.
   if (path.empty()) {
-    return {-ENOENT};
+    return -ENOENT;
+  }
+
+  // If the current directory implementation does not require path resolution,
+  // stop traversing. WasmFS forwards the remaining path unchanged and the
+  // backend is responsible for parsing and resolving it.
+  if (!curr->requiresPathResolution()) {
+    return {std::make_pair(std::move(curr), path)};
   }
 
   // Handle absolute paths.
@@ -84,7 +91,7 @@ ParsedParent doParseParent(std::string_view path,
   // contain a child segment for us to return. The root is its own parent, so we
   // can handle this by returning (root, ".").
   if (path.empty()) {
-    return {std::make_pair(std::move(curr), std::string_view("."))};
+    return {std::make_pair(std::move(curr), ".")};
   }
 
   while (true) {

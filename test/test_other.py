@@ -5634,8 +5634,6 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
   def test_fs_dev_random(self):
     if WINDOWS and self.get_setting('NODERAWFS'):
       self.skipTest('Crashes on Windows and NodeFS')
-    if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
     self.do_runf('fs/test_fs_dev_random.c', 'done\n')
 
   @parameterized({
@@ -9571,12 +9569,19 @@ end
     self.assert_fail(base + ['--preload-file', 'somefile'], expected)
     self.assert_fail(base + ['--embed-file', 'somefile'], expected)
 
+  @crossplatform
+  @also_with_wasmfs
   def test_noderawfs_access_abspath(self):
     create_file('foo', 'bar')
     create_file('access.c', r'''
+      #include <stdio.h>
+      #include <assert.h>
       #include <unistd.h>
       int main(int argc, char** argv) {
-        return access(argv[1], F_OK);
+        printf("testing access to %s\n", argv[1]);
+        int rtn = access(argv[1], F_OK);
+        assert(rtn == 0);
+        return 0;
       }
     ''')
     self.do_runf('access.c', cflags=['-sNODERAWFS'], args=[os.path.abspath('foo')])
@@ -14038,15 +14043,13 @@ int main() {
   @crossplatform
   @with_all_fs
   def test_std_filesystem(self):
-    if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
+    if (WINDOWS or MACOS) and self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
+      self.skipTest('fails with ENOTEMPTY (Directory not empty) during fs::remove_all')
     self.do_other_test('test_std_filesystem.cpp')
 
   @crossplatform
   @with_all_fs
   def test_std_filesystem_tempdir(self):
-    if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
     self.do_other_test('test_std_filesystem_tempdir.cpp', cflags=['-g'])
 
   def test_strict_js_closure(self):

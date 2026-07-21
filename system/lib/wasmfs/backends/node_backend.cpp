@@ -23,6 +23,9 @@ class NodeState {
   int fd = -1;
 
 public:
+  // Base path in the host filesystem for this backend.
+  // An empty string means "no base path": paths are used as-is without
+  // prefixing.
   std::string path;
 
   NodeState(std::string path) : path(path) {}
@@ -180,6 +183,11 @@ public:
 
 private:
   std::string getChildPath(const std::string& name) {
+    // If state.path is empty, this backend represents the real root and paths
+    // should be passed through unchanged.
+    if (state.path.empty()) {
+      return name;
+    }
     return state.path + '/' + name;
   }
 
@@ -270,11 +278,18 @@ private:
 
   Directory::MaybeEntries getEntries() override {
     std::vector<Directory::Entry> entries;
-    int err = _wasmfs_node_readdir(state.path.c_str(), &entries);
+    auto currPath = state.path.empty() ? "." : state.path;
+    int err = _wasmfs_node_readdir(currPath.c_str(), &entries);
     if (err) {
       return {-err};
     }
     return {entries};
+  }
+
+  bool requiresPathResolution() override {
+    // If state.path is empty (e.g. NODERAWFS), the backend handles full paths
+    // itself and WasmFS should pass paths through as-is.
+    return !state.path.empty();
   }
 };
 
