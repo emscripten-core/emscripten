@@ -1,0 +1,23 @@
+test/sockets/test_udp_mmsg.c
+  s_4503e95566170f::t_506119b959c476 1-120
+src/struct_info_generated_wasm64.json
+  s_4503e95566170f::t_3d0f0d25443832 1033-1035
+src/struct_info_generated.json
+  s_4503e95566170f::t_bcf11b66b056cc 1033-1035
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "39ab55b54a4c360f8abfaa3d346fb67452b048a2",
+  "prompts": {},
+  "sessions": {
+    "s_4503e95566170f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_07a24834fffeIGxtlSDz9pCzWe",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
