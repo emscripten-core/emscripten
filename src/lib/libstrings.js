@@ -13,11 +13,19 @@ addToLibrary({
   // so we cannot try to unconditionally initialize it in that build mode.
 #if TEXTDECODER == 2 && !AUDIO_WORKLET
   // TextDecoder constructor defaults to UTF-8
-  $UTF8Decoder: "new TextDecoder()",
+  $UTF8Decoder: 'new TextDecoder()',
 #else
-  $UTF8Decoder: "globalThis.TextDecoder && new TextDecoder()",
+  $UTF8Decoder: 'globalThis.TextDecoder && new TextDecoder()',
 #endif
 
+  $findStringEnd__docs: `
+  /**
+   * heapOrArray is either a regular array, or a JavaScript typed array view.
+   * @param {number} idx
+   * @param {number=} maxBytesToRead
+   * @param {boolean=} ignoreNul
+   * @return {number}
+   */`,
   $findStringEnd: (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
     var maxIdx = idx + maxBytesToRead;
     if (ignoreNul) return maxIdx;
@@ -55,11 +63,11 @@ addToLibrary({
     var endPtr = findStringEnd(heapOrArray, idx, maxBytesToRead, ignoreNul);
 
 #if TEXTDECODER == 2
-    return UTF8Decoder.decode(heapOrArray.buffer ? {{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}} : new Uint8Array(heapOrArray.slice(idx, endPtr)));
+    return UTF8Decoder.decode(heapOrArray.buffer ? {{{ getHeapViewOrCopy('heapOrArray', 'idx', 'endPtr') }}} : new Uint8Array(heapOrArray.slice(idx, endPtr)));
 #else // TEXTDECODER == 2
     // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
     if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
-      return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}});
+      return UTF8Decoder.decode({{{ getHeapViewOrCopy('heapOrArray', 'idx', 'endPtr') }}});
     }
     var str = '';
     while (idx < endPtr) {
@@ -121,7 +129,7 @@ addToLibrary({
 #if TEXTDECODER == 2
     if (!ptr) return '';
     var end = findStringEnd(HEAPU8, ptr, maxBytesToRead, ignoreNul);
-    return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'end') }}});
+    return UTF8Decoder.decode({{{ getHeapViewOrCopy('HEAPU8', 'ptr', 'end') }}});
 #else
     return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : '';
 #endif
@@ -322,7 +330,7 @@ addToLibrary({
     // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
     if (endIdx - idx > 16 && UTF16Decoder)
 #endif // TEXTDECODER != 2
-      return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU16', 'idx', 'endIdx') }}});
+      return UTF16Decoder.decode({{{ getHeapViewOrCopy('HEAPU16', 'idx', 'endIdx') }}});
 
 #if TEXTDECODER != 2
     // Fallback: decode without UTF16Decoder
@@ -356,16 +364,16 @@ addToLibrary({
   //                    terminator will be written and nothing else.
   //                    maxBytesToWrite<2 does not write any bytes to the
   //                    output, not even the null terminator.
+  //                    Backwards compatibility: if maxBytesToWrite is not
+  //                    specified, assume an unsafe unbounded write is allowed.
   // Returns the number of bytes written, EXCLUDING the null terminator.
-  $stringToUTF16: (str, outPtr, maxBytesToWrite) => {
+  $stringToUTF16: (str, outPtr, maxBytesToWrite = 0x7FFFFFFF) => {
 #if ASSERTIONS
     assert(outPtr % 2 == 0, 'pointer passed to stringToUTF16 must be 2-byte aligned');
 #endif
 #if ASSERTIONS
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF16 requires a third parameter that specifies the length of the output buffer');
 #endif
-    // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
-    maxBytesToWrite ??= 0x7FFFFFFF;
     if (maxBytesToWrite < 2) return 0;
     maxBytesToWrite -= 2; // Null terminator.
     var startPtr = outPtr;
@@ -415,8 +423,10 @@ addToLibrary({
   //                    terminator will be written and nothing else.
   //                    maxBytesToWrite<4 does not write any bytes to the
   //                    output, not even the null terminator.
+  //                    Backwards compatibility: if maxBytesToWrite is not
+  //                    specified, assume an unsafe unbounded write is allowed.
   // Returns the number of bytes written, EXCLUDING the null terminator.
-  $stringToUTF32: (str, outPtr, maxBytesToWrite) => {
+  $stringToUTF32: (str, outPtr, maxBytesToWrite = 0x7FFFFFFF) => {
 #if CAN_ADDRESS_2GB
     outPtr >>>= 0;
 #endif
@@ -426,8 +436,6 @@ addToLibrary({
 #if ASSERTIONS
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF32 requires a third parameter that specifies the length of the output buffer');
 #endif
-    // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
-    maxBytesToWrite ??= 0x7FFFFFFF;
     if (maxBytesToWrite < 4) return 0;
     var startPtr = outPtr;
     var endPtr = startPtr + maxBytesToWrite - 4;

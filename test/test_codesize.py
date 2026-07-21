@@ -7,7 +7,6 @@ import json
 import math
 import os
 import re
-import shlex
 
 import common
 from common import (
@@ -120,7 +119,6 @@ class codesize(RunnerCore):
       outputs = ['a.html']
 
     args = [compiler_for(sources[0]), '-o', 'a.html'] + args + sources
-    print(shlex.join(args))
     self.run_process(args)
 
     # For certain tests, don't just check the output size but check
@@ -133,13 +131,13 @@ class codesize(RunnerCore):
     # Note that we do not compare the full wasm output since that is
     # even more fragile and can change with LLVM updates.
     if compare_js_output:
-      js_out = test_file('codesize', test_name + '.expected.js')
+      expected_js = test_file('codesize', test_name + '.expected.js')
       terser = shared.get_npm_cmd('terser')
       # N.b. this requires node in PATH, it does not run against NODE from
       # Emscripten config file. If you have this line fail, make sure 'node' is
       # visible in PATH.
       self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'], env=shared.env_with_node_in_path())
-      self.assertFileContents(js_out, read_file('pretty.js'))
+      self.assertFilesMatch(expected_js, 'pretty.js')
 
     self.check_output_sizes(*outputs)
 
@@ -228,39 +226,68 @@ class codesize(RunnerCore):
     filename = test_file('codesize', filename)
     expected_basename = test_file('codesize', self.id().split('.')[-1])
 
-    # Run once without closure and parse output to find wasmImports
-    build_cmd = [compiler_for(filename), filename, '--output-eol=linux', '--emit-minification-map=minify.map'] + cflags + self.get_cflags()
+    # Under WASM_ESM_INTEGRATION the wasm<->JS boundary uses native ES
+    # import/export syntax and the JS glue lives in a separate support module.
+    esm = any(a.startswith('-sWASM_ESM_INTEGRATION') for a in cflags)
+    outfile = 'a.out.mjs' if esm else 'a.out.js'
+    js_file = 'a.out.support.mjs' if esm else outfile
+
+    # Run once without closure and parse output to find the JS->wasm imports.
+    build_cmd = [compiler_for(filename), filename, '-o', outfile, '--output-eol=linux', '--emit-minification-map=minify.map'] + cflags + self.get_cflags()
     self.run_process(build_cmd + ['-g2'])
     # find the imports we send from JS
     # TODO(sbc): Find a way to do that that doesn't depend on internal details of
     # the generated code.
-    js = read_file('a.out.js')
+    js = read_file(js_file)
     if check_full_js:
       # Ignore absolute filenames in the generated code (they are likely /tmp files)
       js = re.sub(r'^// include: .*[/\\].*$', '// include: <FILENAME REPLACED>', js, flags=re.MULTILINE)
       js = re.sub(r'^// end include: .*[/\\].*$', '// end include: <FILENAME REPLACED>', js, flags=re.MULTILINE)
       self.assertFileContents(expected_basename + '.expected.js', js)
-    start = js.find('wasmImports = ')
-    self.assertNotEqual(start, -1)
-    end = js.find('}', start)
-    self.assertNotEqual(end, -1)
-    start = js.find('{', start)
-    self.assertNotEqual(start, -1)
-    relevant = js[start + 2:end - 1]
-    relevant = relevant.replace(' ', '').replace('"', '').replace("'", '')
-    relevant = relevant.replace('/**@export*/', '')
-    relevant = relevant.split(',')
-    sent = [x.split(':')[0].strip() for x in relevant]
-    sent = [x for x in sent if x]
+    if esm:
+      # The functions provided to wasm are emitted as `export { js as wasm }`
+      # specifiers under the "Export JS functions to the wasm module" comment.
+      # An empty set emits no export statement at all.
+      marker = js.find('Export JS functions to the wasm module')
+      self.assertNotEqual(marker, -1)
+      start = js.find('export', marker)
+      reexport = js.find('Re-export imported wasm functions', marker)
+      sent = []
+      if start != -1 and (reexport == -1 or start < reexport):
+        end = js.find('}', start)
+        self.assertNotEqual(end, -1)
+        start = js.find('{', start)
+        for specifier in js[start + 1:end].split(','):
+          specifier = specifier.strip()
+          if specifier:
+            # keep the wasm-facing (minified) name after `as`
+            sent.append(specifier.rsplit(' as ', 1)[-1].strip())
+    else:
+      start = js.find('wasmImports = ')
+      self.assertNotEqual(start, -1)
+      end = js.find('}', start)
+      self.assertNotEqual(end, -1)
+      start = js.find('{', start)
+      self.assertNotEqual(start, -1)
+      relevant = js[start + 2:end - 1]
+      relevant = relevant.replace(' ', '').replace('"', '').replace("'", '')
+      relevant = relevant.replace('/**@export*/', '')
+      relevant = relevant.split(',')
+      sent = [x.split(':')[0].strip() for x in relevant]
+      sent = [x for x in sent if x]
     # Deminify the sent list, if minification occurred
     if os.path.exists('minify.map'):
       sent = deminify_syms(sent, 'minify.map')
       os.remove('minify.map')
     sent.sort()
 
-    self.run_process(build_cmd + ['--profiling-funcs', '--closure=1'])
+    # closure is not yet compatible with the WASM_ESM_INTEGRATION module glue.
+    closure_args = [] if esm else ['--closure=1']
+    self.run_process(build_cmd + ['--profiling-funcs'] + closure_args)
 
-    outputs = ['a.out.js']
+    outputs = [outfile]
+    if esm:
+      outputs.append(js_file)
     info = {'sent': sent}
 
     if '-sSINGLE_FILE' not in cflags:
@@ -272,7 +299,9 @@ class codesize(RunnerCore):
       # Deminify the imports/export lists, if minification occurred
       if os.path.exists('minify.map'):
         exports = deminify_syms(exports, 'minify.map')
-        imports = [i.split('.', 1)[1] for i in imports]
+        # Under ESM integration the import module is the support module path
+        # (which itself contains dots), so take the field after the last dot.
+        imports = [i.rsplit('.', 1)[1] for i in imports]
         imports = deminify_syms(imports, 'minify.map')
 
       imports.sort()
@@ -313,6 +342,9 @@ class codesize(RunnerCore):
     # WasmFS should not be fully linked into a minimal program.
     'wasmfs': (['-Oz', '-sWASMFS'],),
     'esm': (['-Oz', '-sEXPORT_ES6'],),
+    # a program with no JS->wasm imports emits no `export {}` statement in the
+    # support module, exercising that metadce edge of the ES module boundary.
+    'esm_integration': (['-Oz', '-sWASM_ESM_INTEGRATION', '-Wno-experimental'],),
   })
   def test_codesize_minimal(self, args, check_full_js=False):
     self.set_setting('STRICT')
@@ -368,6 +400,9 @@ class codesize(RunnerCore):
     # WasmFS should not be fully linked into a hello world program.
     'wasmfs': (['-O3', '-sWASMFS'],),
     'single_file': (['-O3', '-sSINGLE_FILE'],),
+    # metadce must understand the native ES import/export module boundary and
+    # prune unused imports/exports from it. See #27217.
+    'esm_integration': (['-O3', '-sWASM_ESM_INTEGRATION', '-Wno-experimental'],),
   })
   def test_codesize_hello(self, args, kwargs={}): # noqa
     self.run_codesize_test('hello_world.c', args, **kwargs)
@@ -411,8 +446,7 @@ class codesize(RunnerCore):
     self.run_codesize_test('hello_world.c', cflags=['-sSTRICT', '-O3', '--preload-file=somefile.txt'], check_full_js=True)
 
   def test_small_js_flags(self):
-    self.emcc('browser_test_hello_world.c', ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
-    self.check_output_sizes('a.out.js')
+    self.run_codesize_test('hello_world.c',  ['-O3', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'], check_full_js=True)
 
   # This test verifies that gzipped binary-encoded a SINGLE_FILE build results in a smaller size
   # than gzipped base64-encoded version.

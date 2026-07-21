@@ -52,10 +52,8 @@ addToLibrary({
     if (val != value) return { async: false, value: 'not-equal' };
     if (maxWaitMilliseconds <= 0) return { async: false, value: 'timed-out' };
     maxWaitMilliseconds = performance.now() + (maxWaitMilliseconds || Infinity);
-    let promiseResolve;
-    let promise = new Promise((resolve) => { promiseResolve = resolve; });
     if (!__Atomics_waitAsyncAddresses[0]) setTimeout(__Atomics_pollWaitAsyncAddresses, 10);
-    __Atomics_waitAsyncAddresses.push([i32a, index, value, maxWaitMilliseconds, promiseResolve]);
+    let promise = new Promise((resolve) => __Atomics_waitAsyncAddresses.push([i32a, index, value, maxWaitMilliseconds, resolve]));
     return { async: true, value: promise };
   };
 }`,

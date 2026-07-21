@@ -13,7 +13,7 @@ e && (onmessage = a => {
 
 function h() {}
 
-e || (g = c.mem || new WebAssembly.Memory({
+e || (g = new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0

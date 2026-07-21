@@ -6,9 +6,8 @@
 
 #include "minimum_runtime_check.js"
 
-#if MODULARIZE
-var Module = moduleArg;
-#elif USE_CLOSURE_COMPILER
+#if !MODULARIZE
+#if USE_CLOSURE_COMPILER
 /** @type{Object} */
 var Module;
 // if (!Module) is crucial for Closure Compiler here as it will
@@ -30,6 +29,7 @@ var Module = globalThis.{{{ EXPORT_NAME }}} || {};
 #else
 var Module = {{{ EXPORT_NAME }}};
 #endif
+#endif // !MODULARIZE
 
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
@@ -119,9 +119,6 @@ var err = (...args) => console.error(...args);
 // compilation is ready. In that callback, call the function run() to start
 // the program.
 function ready() {
-#if MODULARIZE
-  readyPromiseResolve?.(Module);
-#endif // MODULARIZE
 #if INVOKE_RUN && HAS_MAIN
   {{{ runIfMainThread("run();") }}}
 #elif ASSERTIONS

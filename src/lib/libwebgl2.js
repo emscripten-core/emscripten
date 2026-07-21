@@ -164,7 +164,7 @@ var LibraryWebGL2 = {
 #if WEBGL_USE_GARBAGE_FREE_APIS
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, heap, toTypedArrayIndex(pixels, heap));
 #else
-      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels, internalFormat);
+      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels);
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixelData);
 #endif
     } else {
@@ -172,13 +172,22 @@ var LibraryWebGL2 = {
     }
   },
 
-  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex'],
+  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
+#if !WEBGL_USE_GARBAGE_FREE_APIS
+    '$emscriptenWebGLGetTexPixelData',
+#endif
+  ],
   glTexSubImage3D: (target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
+#if WEBGL_USE_GARBAGE_FREE_APIS
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, toTypedArrayIndex(pixels, heap));
+#else
+      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels);
+      GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixelData);
+#endif
     } else {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
@@ -892,21 +901,21 @@ var LibraryWebGL2 = {
   glProgramParameteri: (program, pname, value) => {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-    err("GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 
   glGetProgramBinary: (program, bufSize, length, binaryFormat, binary) => {
     GL.recordError(0x502/*GL_INVALID_OPERATION*/);
 #if GL_ASSERTIONS
-    err("GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 
   glProgramBinary: (program, binaryFormat, binary, length) => {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-    err("GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 

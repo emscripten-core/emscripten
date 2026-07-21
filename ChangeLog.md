@@ -18,8 +18,113 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.0 (in development)
+6.0.4 (in development)
 ----------------------
+- The emscripten config file parser can now handle strings that contain
+  environment variables (e.g. `$HOME`) and that use the `~/` prefix.  This means
+  that it should be possible, in most cases, to avoid the use of python's
+  `os.path` within the the config file itself. (#27215)
+- Legacy support for ancient vendor-prefixed DOM APIs was removed (#27341,
+  #27339, #27338, #27340, #27347)
+- Removed legacy JS library symbols symbols: `$ALLOC_NORMAL`, `$ALLOC_STACK`,
+  and `$allocate`. (#27378)
+- llvm-libc was updated to LLVM 22.1.8. (#27374)
+- Backport fix for musl's qsort (CVE-2026-40200) (#27029)
+
+6.0.3 - 07/13/26
+----------------
+- Fixed `UTF8ToString` with `GROWABLE_ARRAYBUFFERS` set. String decoding now
+  copies the data when the heap buffer is resizable, just like it does in
+  the shared memory case. (#27242)
+- Added support for compiling FMA intrinsics. All 32 FMA intrinsics are
+  supported, with 256-bit variants emulated via two 128-bit operations. Pass
+  ``-msimd128 -mfma`` to enable. With ``-mrelaxed-simd -mfma``, Wasm relaxed
+  SIMD FMA is used. (#27183)
+- New `AUTO_INIT` setting to opt an instance ES module (`MODULARIZE=instance` or
+  `WASM_ESM_INTEGRATION`) into self-initialization via top-level await on import,
+  rather than exporting a default `init` function. Since there is no
+  init/moduleArg, module-level configuration is unavailable:
+  `INCOMING_MODULE_JS_API` is disabled and passing a non-empty one is an error.
+- The async `poll()`/`select()` implementation was refactored onto a per-inode
+  readiness wait-queue. As part of this, the (undocumented) `stream_ops.poll`
+  FS-backend handler signature changed from `poll(stream, timeout)` to
+  `poll(stream)` returning the current readiness mask; out-of-tree custom FS
+  backends with a `poll` handler must update. (#27226)
+- compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245, #27246)
+- `-fcoverage-mapping` is currently broken due to a mismatch between the version
+  of LLVM used and the imported version of compiler-rt.  We hope to fix this
+  in the next release. (#27261)
+- The default value for `GROWABLE_ARRAYBUFFERS` was reverted to `0` since we
+  found issues with Web API compatibility. (#27260)
+- Fixed `-sWASM_ESM_INTEGRATION` builds at `-O2` and above, which previously
+  failed in the JS optimizer's metadce (dead code elimination) pass. metadce now
+  understands the native ES import/export wasm boundary that this mode emits.
+  (#27217)
+
+6.0.2 - 07/01/26
+----------------
+- The `GROWABLE_ARRAYBUFFERS` setting now supports both `=1` (auto-detect and
+  use the feature) and `=2` (unconditionally use the feature, avoiding the 
+  overhead in multi-threaded builds). It now defaults to `=1`, meaning the
+  feature will be used when available. Note that this only affects programs
+  that are built with `ALLOW_MEMORY_GROWTH`, which is not enabled by default.
+  (#27096, #27212)
+- New `-sNODERAWSOCKETS` setting that backs the POSIX sockets API with real TCP
+  (`node:net`) and UDP (`node:dgram`) sockets on Node.js, with no `ws`, proxy
+  process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
+  and `-pthread` with `PROXY_TO_PTHREAD`. Uses the public node APIs where
+  available, falling back to `tcp_wrap`/`udp_wrap` on older Node.js. (#27080)
+- The following symbols are no longer included in `INCOMING_MODULE_JS_API`
+  by default:
+  - GL_MAX_TEXTURE_IMAGE_UNITS
+  - SDL_canPlayWithWebAudio
+  - SDL_numSimultaneouslyQueuedBuffers
+  - freePreloadedMediaOnUse
+  - preinitializedWebGLContext
+  - keyboardListeningElement
+  - doNotCaptureKeyboard
+  - extraStackTrace
+  - preloadPlugins
+  - postMainLoop
+  - preMainLoop
+  - forcedAspectRatio
+  - mainScriptUrlOrBlob
+  - onFullScreen
+  - INITIAL_MEMORY
+  - wasmMemory
+  - wasmBinary
+  Anybody using these will see a clear error in their debug builds signaling
+  that they now need to be explicitly added to `-sINCOMING_MODULE_JS_API`.
+
+6.0.1 - 06/22/26
+----------------
+- The ability to redirect JS compiler stderr using `EMCC_STDERR_FILE` was
+  removed.  These days you can use `EMCC_DEBUG` and/or `EMCC_DEBUG_SAVE` to
+  preserve all the intermediate JS compiler files. (#27101)
+- The installed versions of the compiler-rt library now follow the upstream
+  naming convetion of `libclang_rt.<something>.a`. (#27089)
+- Dynamic linking now explicitly requires asynchronous Wasm compilation. The
+  process of loading side modules at startup currently depends on this. (#27086)
+- New experimental `-sCROSS_ORIGIN_STORAGE` linker flag integrating the
+  proposed [Cross-Origin Storage browser API](https://github.com/WICG/cross-origin-storage)
+  as a progressive enhancement for Wasm loading on the web target. See
+  `docs/compiling/CrossOriginStorage.rst` for details. (#27066)
+- The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
+  more standard `-pthread` and `-m64` (or `--target=wasm64`) flags. (#27025)
+- Adds wasm-bindgen support. When `-sWASM_BINDGEN` is set, Emscripten will call
+  out to `wasm-bindgen` in the users's path and integrate the wasm-bindgen JS
+  with the normal Emscripten JS. Some wasm-bindgen features may not yet be fully
+  supported. (#23493)
+- Fixed `getentropy`/`random_get` spuriously failing under Node.js and the
+  shell environment for small requests. (#27122)
+- The startup process for the generated program now makes use of `async` /
+  `await` under more circumstances (specifically when using `setStatus`, or
+  run dependencies). This means that errors during startup (or during the
+  `main()` function) will more often show up as unhandled promise rejections
+  (`onunhandledreject`) rather than synchronous errors (`onerror`). (#27121)
+
+6.0.0 - 06/04/26
+----------------
 - On Windows, Emscripten now ships `.exe` tool launchers, rather
   than `.bat` and/or `.ps1`.  This means that any scripts that explicitly
   reference, e.g. `emcc.bat`, will need to be updated to just `emcc` (or
@@ -42,8 +147,7 @@ See docs/process.md for more on how version tagging works.
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
 - musl libc updated from v1.2.5 to v1.2.6. (#26860)
-- Backport fix for musl's qsort (CVE-2026-40200) (#27029)
-- libpng port updated from 1.6.55 to 1.6.58. (#26592 and #26983)
+- libpng port updated from 1.6.55 to 1.6.58. (#26592, #26983)
 - The `-m64` compiler flag is now honored, and works as an alias for
   `-sMEMORY64` and/or `--target=wasm64`. (#26765)
 - The autopersistence feature in IDBFS mount now supports registering a global
@@ -64,6 +168,7 @@ See docs/process.md for more on how version tagging works.
 - The `PThread.runningWorkers` field was removed from the `PThread` object.
   If you have JS code that was depending on this you can transition to using the
   `PThread.pthreads` object. (#26998)
+- The POSIX `pause()` function will now return 0 rather than EINTR. (#27044)
 
 5.0.7 - 04/30/26
 ----------------
@@ -189,10 +294,9 @@ See docs/process.md for more on how version tagging works.
   inconsistent with JS and was not supported in browser devtools. We plan to
   provide this information using Scopes encoding later. (#26149)
 - compiler-rt, libcxx, libcxxabi, libunwind, and llvm-libc were updated to LLVM
-  21.1.8. (#26036, #26045, #26058, and #26151)
+  21.1.8. (#26036, #26045, #26058, #26151)
 - Calling pthread_create in a single-threaded build will now return ENOTSUP
   rather then EAGAIN.  (#26105)
-- compiler-rt and libunwind were updated to LLVM 21.1.8. (#26036 and #26045)
 - A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
   JavaScript and makes it executable.  This setting defaults to true when the
   output filename has no extension, or ends in `.out` (e.g. `a.out`) (#26085)
@@ -437,7 +541,7 @@ See docs/process.md for more on how version tagging works.
   example, when you run `pkg-config --list-all` or `pkg-config --cflags
   <portname>`. Bare in mind that the correct PKG_CONFIG_PATH needs to be set for
   this to work.  One way to do this is to run `emmake pkg-config`. (#24426)
-- libcxx, libcxxabi, and compiler-rt were updated to LLVM 20.1.4. (#24346 and
+- libcxx, libcxxabi, and compiler-rt were updated to LLVM 20.1.4. (#24346,
   #24357)
 - Emscripten will not longer generate trampoline functions for Wasm exports
   prior to the module being instantiated.  Storing a reference to a Wasm export
@@ -624,7 +728,7 @@ See docs/process.md for more on how version tagging works.
   new proposal by default yet. This option replaces the existing
   `-sWASM_EXNREF`, whose meaning was the opposite.
 - compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
-  (#22937, #22994, and #23294)
+  (#22937, #22994, #23294)
 - The default Safari version targeted by Emscripten has been raised from 14.1
   to 15.0 (the `MIN_SAFARI_VERSION` setting) (#23312). This has several effects:
   - The Wasm nontrapping-fptoint feature is enabled by default. Clang will
@@ -873,7 +977,7 @@ See docs/process.md for more on how version tagging works.
 3.1.57 - 04/10/24
 -----------------
 - libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 18.1.2.
-  (#21607, #21638, and #21663)
+  (#21607, #21638, #21663)
 - musl libc updated from v1.2.4 to v1.2.5. (#21598)
 - In `MODULARIZE` mode we no longer export the module ready promise as `ready`.
   This was previously exposed on the Module for historical reasons even though
@@ -954,8 +1058,7 @@ See docs/process.md for more on how version tagging works.
   community and supported on a "best effort" basis. See 
   `tools/ports/contrib/README.md` for details.A first contrib port is 
   available via `--use-port=contrib.glfw3`: an emscripten port of glfw written 
-  in C++ with many features like support for multiple windows. (#21244 and 
-  #21276)
+  in C++ with many features like support for multiple windows. (#21244, #21276)
 - Added concept of external ports which live outside emscripten and are
   loaded on demand using the syntax `--use-port=/path/to/my_port.py` (#21316)
 - `embuilder` can now build ports with options as well as external ports using
@@ -1063,7 +1166,7 @@ See docs/process.md for more on how version tagging works.
   For those that would rather perform transpilation separately outside of
   emscripten you can use the `-sPOLYFILL=0` setting. (#20700)
 - libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 17.0.4.
-  (#20705, #20707, and #20708)
+  (#20705, #20707, #20708)
 - Remove `BENCHMARK` setting. That has not been used by the benchmark suite for
   some time now (at least not by default), and is much less useful these days
   given lazy compilation in VMs (which makes it impossible to truly benchmark
@@ -1342,7 +1445,7 @@ See docs/process.md for more on how version tagging works.
 - Added new linker option `-sEXCEPTION_STACK_TRACES` which will display a stack
   trace when an uncaught exception occurs. This defaults to true when
   `ASSERTIONS` is enabled. This option is mainly for the users who want only
-  exceptions' stack traces without turning `ASSERTIONS` on. (#18642 and #18535)
+  exceptions' stack traces without turning `ASSERTIONS` on. (#18642, #18535)
 - `SUPPORT_LONGJMP`'s default value now depends on the exception mode. If Wasm
   EH (`-fwasm-exceptions`) is used, it defaults to `wasm`, and if Emscripten EH
   (`-sDISABLE_EXCEPTION_CATCHING=0`) is used or no exception support is used, it
@@ -1491,7 +1594,7 @@ See docs/process.md for more on how version tagging works.
 3.1.24 - 10/11/22
 -----------------
 - In Wasm exception mode (`-fwasm-exceptions`), when `ASSERTIONS` is enabled,
-  uncaught exceptions will display stack traces and what() message. (#17979 and
+  uncaught exceptions will display stack traces and what() message. (#17979,
   #18003)
 - It is now possible to specify indirect dependencies on JS library functions
   directly in C/C++ source code.  For example, in the case of a EM_JS or EM_ASM
@@ -1800,7 +1903,7 @@ See docs/process.md for more on how version tagging works.
   `-sDISABLE_EXCEPTION_CATCHING=0`). When using Wasm EH with Wasm SjLj, there is
   one restriction that you cannot directly call `setjmp` within a `catch`
   clause. (Calling another function that calls `setjmp` is fine.)
-  (#14976 and #16072)
+  (#14976, #16072)
 
 3.1.2 - 01/20/2022
 ------------------
@@ -2934,7 +3037,7 @@ v1.39.5: 12/20/2019
 v1.39.4: 12/03/2019
 -------------------
 - Remove deprecated `requestFullScreen` method from `library_browser.js`, please
-  use `requestFullscreen` (without the capital S).
+  use `requestFullscreen` (without the capital S). (#9861)
 - Remove deprecated `requestFullScreen` and `cancelFullScreen` from `library_glut.js`
 - Remove deprecated `requestFullScreen` and `cancelFullScreen` from `library_glfw.js`
 - Fix SDL2_mixer support for ogg vorbis. See #9849
@@ -3807,7 +3910,7 @@ v1.36.6: 8/8/2016
  - Fixed inconsistencies in fullscreen API signatures (#4310, #4318, #4379)
  - Changed the behavior of Emscripten WebGL createContext() to not forcibly set
    CSS style on created canvases, but let page customize the style themselves
-   (#3406, #4194 and #4350, #4355)
+   (#3406, #4194, #4350, #4355)
  - Adjusted the reported GL_VERSION field to adapt to the OpenGL ES
    specifications (#4345)
  - Added support for GLES3 GL_MAJOR/MINOR_VERSION fields. (#4368)

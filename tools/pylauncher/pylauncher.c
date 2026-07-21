@@ -159,11 +159,13 @@ static wchar_t* get_script_path() {
   return script_path_tools;
 }
 
-int main() {
+// This gets a name other than main() as a reminder that its return value is not sent anywhere
+// (because this file is compiled without a CRT).
+void launcher_main() {
   // Setting EMCC_LAUNCHER_DEBUG enabled debug output for the launcher itself.
   launcher_debug = GetEnvironmentVariableW(L"EMCC_LAUNCHER_DEBUG", NULL, 0);
 
-  dbg("pylauncher: main\n");
+  dbg("pylauncher: launcher_main\n");
 
   const wchar_t* ccache_prefix = L"";
   DWORD env_len = GetEnvironmentVariableW(L"_EMCC_CCACHE", NULL, 0);
@@ -175,9 +177,9 @@ int main() {
 
   const wchar_t* application_name = get_python_executable();
   wchar_t* script_path_w = get_script_path();
-  size_t command_line_len = wcslen(ccache_prefix) + wcslen(application_name) + wcslen(script_path_w) + 9;
+  size_t command_line_len = wcslen(ccache_prefix) + wcslen(application_name) + wcslen(script_path_w) + 17;
   wchar_t* command_line = malloc(sizeof(wchar_t) * command_line_len);
-  swprintf(command_line, command_line_len, L"%ls\"%ls\" -E \"%ls\"", ccache_prefix, application_name, script_path_w);
+  swprintf(command_line, command_line_len, L"%ls\"%ls\" -E -X utf8 \"%ls\"", ccache_prefix, application_name, script_path_w);
   free(script_path_w);
 
   // -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
@@ -224,5 +226,5 @@ int main() {
   CloseHandle(pi.hThread);
 
   dbg("pylauncher: done: %d\n", exit_code);
-  return exit_code;
+  ExitProcess(exit_code);
 }

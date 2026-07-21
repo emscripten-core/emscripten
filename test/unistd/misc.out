@@ -10,7 +10,7 @@ link: -1, errno: 34
 lockf(good): 0, errno: 0
 lockf(bad): -1, errno: 8
 nice: -1, errno: 63
-pause: -1, errno: 27
+pause: 0, errno: 0
 pipe(good): 0, errno: 0
 pipe(bad): -1, errno: 21
 pipe2(good): 0, errno: 0

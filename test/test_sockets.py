@@ -7,7 +7,9 @@ import multiprocessing
 import os
 import shutil
 import socket
+import socketserver
 import sys
+import threading
 import time
 from subprocess import Popen
 
@@ -19,6 +21,7 @@ import common
 from browser_common import BrowserCore
 from common import NON_ZERO, PYTHON, create_file, read_file
 from decorators import (
+  also_with_proxy_to_pthread,
   crossplatform,
   no_windows,
   parameterized,
@@ -47,6 +50,42 @@ def requires_python_dev_packages(func):
     return func(self, *args, **kwargs)
 
   return decorated
+
+
+class EchoHandler(socketserver.BaseRequestHandler):
+  def handle(self):
+    data = self.request.recv(64)
+    if data:
+      self.request.sendall(data)
+
+
+def _probe_ipv6_loopback():
+  # Some CI containers have no IPv6 loopback, so bind(::1) fails with
+  # EADDRNOTAVAIL. Probe once at startup so the IPv6 tests can skip there.
+  if not socket.has_ipv6:
+    return False
+  try:
+    with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as s:
+      s.bind(('::1', 0))
+    return True
+  except OSError:
+    return False
+
+
+HAS_IPV6_LOOPBACK = _probe_ipv6_loopback()
+
+
+def verify_tcp_connection(address, retries=10, timeout=1):
+  # Poll a listening TCP address until it accepts a connection, so a harness
+  # doesn't return before its server is ready and race the client.
+  for _ in range(retries):
+    try:
+      sock = socket.create_connection(address, timeout=timeout)
+      sock.close()
+      return True
+    except OSError:
+      time.sleep(1)
+  return False
 
 
 def clean_process(p):
@@ -99,19 +138,12 @@ class WebsockifyServerHarness:
     self.websockify.start()
     self.processes.append(self.websockify)
     # Make sure both the actual server and the websocket proxy are running
-    for _ in range(10):
-      try:
-        if self.do_server_check:
-            server_sock = socket.create_connection(('localhost', self.target_port), timeout=1)
-            server_sock.close()
-        proxy_sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
-        proxy_sock.close()
-        break
-      except OSError:
-        time.sleep(1)
-    else:
+    if self.do_server_check and not verify_tcp_connection(('localhost', self.target_port)):
       self.clean_processes()
-      raise Exception('[Websockify failed to start up in a timely manner]')
+      raise Exception('[Socket server failed to start up in a timely manner]')
+    if not verify_tcp_connection(('localhost', self.listen_port)):
+      self.clean_processes()
+      raise Exception('[Websockify proxy failed to start up in a timely manner]')
 
     print('[Websockify on process %s]' % str(self.processes[-2:]))
     return self
@@ -131,11 +163,12 @@ class WebsockifyServerHarness:
 
 
 class CompiledServerHarness:
-  def __init__(self, filename, args, listen_port):
+  def __init__(self, filename, args, listen_port, do_server_check=True):
     self.process = None
     self.filename = filename
     self.listen_port = listen_port
     self.args = args or []
+    self.do_server_check = do_server_check
 
   def __enter__(self):
     # assuming this is only used for WebSocket tests at the moment, validate that
@@ -152,6 +185,15 @@ class CompiledServerHarness:
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
     self.process = Popen([*config.NODE_JS, 'server' + suffix])
+
+    # Wait for the server to start listening before returning: the node ws
+    # server binds its port asynchronously after process startup, so a client
+    # that connects too early races the listen() and sees ECONNREFUSED. Skipped
+    # for tests whose server intentionally never listens (e.g. server-down).
+    if self.do_server_check and not verify_tcp_connection(('localhost', self.listen_port)):
+      clean_process(self.process)
+      raise Exception('[Compiled server failed to start up in a timely manner]')
+
     return self
 
   def __exit__(self, *args, **kwargs):
@@ -295,7 +337,7 @@ class sockets(BrowserCore):
   def test_sockets_select_server_down(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49190, do_server_check=False),
-      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191),
+      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191, do_server_check=False),
     ]:
       with harness:
         self.btest_exit('sockets/test_sockets_select_server_down_client.c', cflags=['-DSOCKK=%d' % harness.listen_port])
@@ -346,6 +388,139 @@ class sockets(BrowserCore):
 
   def test_nodejs_sockets_connect_failure(self):
     self.do_runf('sockets/test_sockets_echo_client.c', r'connect failed: (Connection refused|Host is unreachable)', regex=True, cflags=['-DSOCKK=666'], assert_returncode=NON_ZERO)
+
+  def _run_against_echo_server(self, src):
+    # Start a loopback TCP echo server on an ephemeral port and run the test
+    # against it, passing the port as argv[1].
+    server = socketserver.TCPServer(('127.0.0.1', 0), EchoHandler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+      self.do_runf(src, 'done\n', cflags=['-sNODERAWSOCKETS'], args=[str(port)])
+    finally:
+      server.shutdown()
+      server.server_close()
+      thread.join()
+
+  # The proxy_to_pthread variant proves the backend works when socket syscalls
+  # are proxied to the main thread: with PROXY_TO_PTHREAD, main() runs on a
+  # worker and every socket call funnels to the main thread where node:net lives.
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_echo(self):
+    # With -sNODERAWSOCKETS the client does a non-blocking connect, send and
+    # recv over a real OS socket against a loopback echo server we run here.
+    self._run_against_echo_server('sockets/test_tcp_echo.c')
+
+  def test_noderawsockets_client_bind(self):
+    # A client that bind()s an explicit source port has it honored by connect(),
+    # and the plain client path never realizes a private tcp_wrap handle. We
+    # allocate a free source port here and pass it alongside the echo server's.
+    # Reserve a free loopback port for the client's bound source port.
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('127.0.0.1', 0))
+    src_port = s.getsockname()[1]
+    s.close()
+
+    server = socketserver.TCPServer(('127.0.0.1', 0), EchoHandler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+      self.do_runf('sockets/test_tcp_client_bind.c', 'done\n', cflags=['-sNODERAWSOCKETS'], args=[str(port), str(src_port)])
+    finally:
+      server.shutdown()
+      server.server_close()
+      thread.join()
+
+  def test_noderawsockets_client_semantics(self):
+    # EISCONN on a second connect, shutdown(SHUT_WR) leaving reads working,
+    # EPIPE on a write after that, and POLLHUP after a full shutdown(SHUT_RDWR).
+    self._run_against_echo_server('sockets/test_tcp_client_semantics.c')
+
+  def test_noderawsockets_refused(self):
+    # A connect to a loopback port with nothing listening reports ECONNREFUSED.
+    self.do_runf('sockets/test_tcp_refused.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
+  def test_noderawsockets_backpressure(self):
+    # A sink server that accepts but never reads, so the client's writes fill
+    # the buffers and send() reports EAGAIN rather than buffering unboundedly.
+    done = threading.Event()
+
+    class SinkHandler(socketserver.BaseRequestHandler):
+      def handle(self):
+        done.wait(30) # hold the connection open without ever reading
+
+    server = socketserver.TCPServer(('127.0.0.1', 0), SinkHandler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+      self.do_runf('sockets/test_tcp_backpressure.c', 'done\n', cflags=['-sNODERAWSOCKETS'], args=[str(port)])
+    finally:
+      done.set()
+      server.shutdown()
+      server.server_close()
+      thread.join()
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_server(self):
+    # Self-contained loopback accept+echo, exercising bind(:0)+getsockname
+    # (synchronous ephemeral port), listen, accept, non-blocking connect, send
+    # and recv over real OS sockets via the tcp_wrap server path.
+    self.do_runf('sockets/test_tcp_server.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_peek(self):
+    # recv(MSG_PEEK) must leave the data buffered: a peek returns the bytes, the
+    # socket stays readable, and the following plain recv returns them again.
+    self.do_runf('sockets/test_tcp_peek.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
+  def test_noderawsockets_server_autobind(self):
+    # listen() without a prior bind() must auto-bind an ephemeral port and
+    # getsockname() must report it (POSIX), then accept+echo as usual.
+    self.do_runf('sockets/test_tcp_server.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-DNO_EXPLICIT_BIND'])
+
+  def test_noderawsockets_tcp_ipv6(self):
+    # Self-contained IPv6 TCP loopback accept+echo over ::1: bind(:0)+getsockname,
+    # listen, accept, non-blocking connect, send/recv on AF_INET6 sockets.
+    if not HAS_IPV6_LOOPBACK:
+      self.skipTest('no IPv6 loopback available')
+    self.do_runf('sockets/test_tcp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
+  def test_noderawsockets_udp_ipv6(self):
+    # Self-contained IPv6 UDP loopback echo over ::1 on AF_INET6 sockets.
+    if not HAS_IPV6_LOOPBACK:
+      self.skipTest('no IPv6 loopback available')
+    self.do_runf('sockets/test_udp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_udp(self):
+    # Self-contained loopback UDP echo: the server binds(:0)+getsockname for its
+    # ephemeral port, the client sends a datagram, the server echoes it back.
+    self.do_runf('sockets/test_udp_echo.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_udp_connect(self):
+    # Connected UDP: sendto() with an address gives EISCONN, send() reaches the
+    # peer, and datagrams from a non-peer socket are filtered out.
+    self.do_runf('sockets/test_udp_connect.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_udp_sockopts(self):
+    # UDP multicast socket options: IP_MULTICAST_TTL/LOOP and their IPv6
+    # counterparts round-trip through set/getsockopt, with POSIX defaults
+    # readable before any set. EXIT_RUNTIME so the plain synchronous main()
+    # tears down the proxy worker on return (otherwise noExitRuntime keeps the
+    # worker, and thus node, alive under PROXY_TO_PTHREAD).
+    self.do_runf('sockets/test_udp_sockopts.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_socket_options(self):
+    # Socket metadata/options on a fresh socket: fstat reports S_ISSOCK, SO_TYPE
+    # reports the socket type, and SO_LINGER round-trips a struct linger.
+    self.do_runf('sockets/test_socket_options.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @requires_native_clang
   @requires_python_dev_packages

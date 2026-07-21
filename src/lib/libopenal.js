@@ -1642,15 +1642,7 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    navigator.getUserMedia = navigator.getUserMedia
-      || navigator.webkitGetUserMedia
-      || navigator.mozGetUserMedia
-      || navigator.msGetUserMedia;
-    var has_getUserMedia = navigator.getUserMedia
-      || (navigator.mediaDevices
-      &&  navigator.mediaDevices.getUserMedia);
-
-    if (!has_getUserMedia) {
+    if (!navigator.mediaDevices?.getUserMedia) {
 #if OPENAL_DEBUG
       dbg('alcCaptureOpenDevice() cannot capture audio, because your browser lacks a `getUserMedia()` implementation');
 #endif
@@ -1767,7 +1759,7 @@ var LibraryOpenAL = {
     var onError = (mediaStreamError) => {
       newCapture.mediaStreamError = mediaStreamError;
 #if OPENAL_DEBUG
-      dbg(`navigator.getUserMedia() errored with: ${mediaStreamError}`);
+      dbg(`getUserMedia() errored with: ${mediaStreamError}`);
 #endif
     };
     var onSuccess = (mediaStream) => {
@@ -1886,15 +1878,7 @@ var LibraryOpenAL = {
       };
     };
 
-    // The latest way to call getUserMedia()
-    if (navigator.mediaDevices?.getUserMedia) {
-      navigator.mediaDevices
-           .getUserMedia({audio: true})
-           .then(onSuccess)
-           .catch(onError);
-    } else { // The usual (now deprecated) way
-      navigator.getUserMedia({audio: true}, onSuccess, onError);
-    }
+    navigator.mediaDevices.getUserMedia({audio: true}).then(onSuccess).catch(onError);
 
     var id = AL.newId();
     AL.captures[id] = newCapture;

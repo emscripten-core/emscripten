@@ -33,7 +33,7 @@ static void* thread_main(void* arg) {
   assert(func_addr() == 43);
 
   printf("thread %d: thread_main done\n", id);
-  return 0;
+  return NULL;
 }
 
 int main() {

@@ -220,6 +220,36 @@ var MAYBE_CLOSURE_COMPILER = false;
 // in ports using settings.CLOSURE_ARGS
 var CLOSURE_ARGS = [];
 
+var EXTRA_INCOMING_JS_API = [
+  'fetchSettings',
+  'logReadFiles',
+  'loadSplitModule',
+  'onMalloc',
+  'onRealloc',
+  'onFree',
+  'onSbrkGrow',
+  'onCOSCacheHit',
+  'onCOSCacheMiss',
+  'onCOSStore',
+  'GL_MAX_TEXTURE_IMAGE_UNITS',
+  'SDL_canPlayWithWebAudio',
+  'SDL_numSimultaneouslyQueuedBuffers',
+  'freePreloadedMediaOnUse',
+  'preinitializedWebGLContext',
+  'keyboardListeningElement',
+  'doNotCaptureKeyboard',
+  'extraStackTrace',
+  'preloadPlugins',
+  'preMainLoop',
+  'postMainLoop',
+  'forcedAspectRatio',
+  'mainScriptUrlOrBlob',
+  'onFullScreen',
+  'INITIAL_MEMORY',
+  'wasmMemory',
+  'wasmBinary'
+];
+
 // A copy of the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
 var ALL_INCOMING_MODULE_JS_API = [];

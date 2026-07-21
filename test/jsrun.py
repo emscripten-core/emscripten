@@ -14,7 +14,7 @@ import common
 
 from tools import utils
 
-WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
+WORKING_ENGINES: dict[str, bool] = {} # Holds all configured engines and whether they work: maps path -> True/False
 DEFAULT_TIMEOUT = int(os.environ.get('EMTEST_TIMEOUT', str(5 * 60)))
 
 

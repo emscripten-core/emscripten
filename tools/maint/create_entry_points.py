@@ -13,6 +13,7 @@ launcher but don't have symlink support.
 """
 
 import os
+import platform
 import shutil
 import stat
 import sys
@@ -26,7 +27,6 @@ em++
 '''.split()
 
 entry_points = '''
-bootstrap
 emar
 embuilder
 emcmake
@@ -62,6 +62,8 @@ entry_remap = {
 
 
 windows_exe = os.path.join(__rootdir__, 'tools/pylauncher/pylauncher.exe')
+if platform.machine().lower() in {'arm64', 'aarch64'}:
+  windows_exe = os.path.join(__rootdir__, 'tools/pylauncher/pylauncher-arm64.exe')
 
 
 def make_executable(filename):
@@ -115,7 +117,6 @@ def main(all_platforms, use_bat_file):
         make_executable(launcher)
 
       if do_windows:
-        maybe_remove(launcher + '.bat')
         maybe_remove(launcher + '.ps1')
         maybe_remove(launcher + '.exe')
         if use_bat_file:

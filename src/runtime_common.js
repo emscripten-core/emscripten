@@ -4,23 +4,15 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "runtime_stack_check.js"
 #include "runtime_exceptions.js"
 #include "runtime_debug.js"
 
-#if SAFE_HEAP
-#include "runtime_safe_heap.js"
+#if STACK_OVERFLOW_CHECK
+#include "runtime_stack_check.js"
 #endif
 
-#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && !GROWABLE_ARRAYBUFFERS
-// Support for growable heap + pthreads, where the buffer may change, so JS views
-// must be updated.
-function growMemViews() {
-  // `updateMemoryViews` updates all the views simultaneously, so it's enough to check any of them.
-  if (wasmMemory.buffer != HEAP8.buffer) {
-    updateMemoryViews();
-  }
-}
+#if SAFE_HEAP
+#include "runtime_safe_heap.js"
 #endif
 
 #if USE_ASAN
@@ -31,8 +23,15 @@ function growMemViews() {
 #include "binaryDecode.js"
 #endif
 
-#if MODULARIZE
-var readyPromiseResolve, readyPromiseReject;
+#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS != 2
+// Support for growable heap + pthreads, where the buffer may change, so JS views
+// must be updated.
+function growMemViews() {
+  // `updateMemoryViews` updates all the views simultaneously, so it's enough to check any of them.
+  if (wasmMemory.buffer != HEAP8.buffer) {
+    updateMemoryViews();
+  }
+}
 #endif
 
 #if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
@@ -84,7 +83,7 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 var HEAP_DATA_VIEW;
 #endif
 
-#if !MINIMAL_RUNTIME || ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE
+#if !MINIMAL_RUNTIME || ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE || PTHREADS
 var runtimeInitialized = false;
 #endif
 
@@ -112,10 +111,57 @@ var runtimeExited = false;
   };
 }}}
 
-function updateMemoryViews() {
-#if GROWABLE_ARRAYBUFFERS
-  var b = wasmMemory.toResizableBuffer();
+
+#if ALLOW_MEMORY_GROWTH
+// When ALLOW_MEMORY_GROWTH is enabled, the conversion from Wasm
+// memory to ArrayBuffer requires some additional logic.
+function getMemoryBuffer() {
+#if GROWABLE_ARRAYBUFFERS == 2
+  return wasmMemory.toResizableBuffer();
 #else
+#if GROWABLE_ARRAYBUFFERS == 1
+#if SHARED_MEMORY && (MIN_FIREFOX_VERSION < 154)
+  // Deserializing a growable SharedArrayBuffer was broken until Firefox 154
+  // See: https://bugzilla.mozilla.org/show_bug.cgi?id=2021136
+  var firefoxMatch = globalThis.navigator?.userAgent?.match(/Firefox\/(\d+)/);
+  if (!firefoxMatch || Number(firefoxMatch[1]) >= 154) {
+#endif
+  try {
+    // This method may be missing or could fail with `Memory must have a maximum`
+    var b = wasmMemory.toResizableBuffer();
+#if SHARED_MEMORY
+    growMemViews = () => {};
+#endif
+    return b;
+    
+  } catch {}
+#if SHARED_MEMORY && (MIN_FIREFOX_VERSION < 154)
+  }
+#endif
+#endif // GROWABLE_ARRAYBUFFERS == 1
+  return wasmMemory.buffer;
+#endif // GROWABLE_ARRAYBUFFERS == 2
+}
+#endif // ALLOW_MEMORY_GROWTH
+
+function updateMemoryViews() {
+#if RUNTIME_DEBUG
+  dbg(`updateMemoryViews: first=${!HEAP8} size=${wasmMemory.buffer.byteLength}`);
+#endif
+#if ALLOW_MEMORY_GROWTH
+  // If we already have a heap that is resizeable/growable buffer we don't
+  // need to do anything in updateMemoryViews.
+#if SHARED_MEMORY
+  if (HEAP8?.buffer?.growable) return;
+#else
+  if (HEAP8?.buffer?.resizable) return;
+#endif
+  var b = getMemoryBuffer();
+#else
+#if ASSERTIONS
+  // When memory growth is disabled this function should be called exactly once.
+  assert(!HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
+#endif
   var b = wasmMemory.buffer;
 #endif
   {{{ maybeExportHeap('HEAP8')   }}}HEAP8 = new Int8Array(b);

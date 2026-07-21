@@ -1,7 +1,6 @@
 #define SYS_chdir		 __syscall_chdir
 #define SYS_chmod		 __syscall_chmod
 #define SYS_getpid		 __syscall_getpid
-#define SYS_pause		 __syscall_pause
 #define SYS_sync		 __syscall_sync
 #define SYS_rmdir		 __syscall_rmdir
 #define SYS_dup		 __syscall_dup
@@ -87,3 +86,6 @@
 #define SYS_recvfrom		__syscall_recvfrom
 #define SYS_recvmsg		__syscall_recvmsg
 #define SYS_shutdown		__syscall_shutdown
+#define SYS_epoll_create1	__syscall_epoll_create1
+#define SYS_epoll_ctl		__syscall_epoll_ctl
+#define SYS_epoll_pwait		__syscall_epoll_pwait

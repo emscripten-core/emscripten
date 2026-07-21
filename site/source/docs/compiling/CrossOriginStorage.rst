@@ -1,0 +1,384 @@
+.. _CrossOriginStorage:
+
+==========================
+Cross-Origin Storage (COS)
+==========================
+
+.. note::
+   This feature is **experimental**. The underlying `Cross-Origin Storage
+   browser API <https://github.com/WICG/cross-origin-storage>`_ is a WICG
+   proposal that has not yet shipped in any browser. Emscripten's support is
+   provided as a progressive enhancement — the runtime falls back to the
+   standard ``fetch()`` path automatically when the browser does not expose
+   the API.
+
+Overview
+========
+
+The **Cross-Origin Storage (COS)** API is a proposed browser standard that
+allows web applications on different origins to share large cached files,
+identified by their cryptographic hashes. A file stored in COS by one site
+can be retrieved by any other site using the same hash, eliminating redundant
+downloads.
+
+Emscripten's :ref:`CROSS_ORIGIN_STORAGE` flag integrates this into the
+standard Wasm loading path. At build time, Emscripten computes the SHA-256
+hash of the final ``.wasm`` binary. At runtime, the generated JavaScript
+tries to retrieve the compiled Wasm module from COS before falling back to
+a normal network fetch. If the module is not yet in COS it is stored there
+after download, making it available to other origins immediately.
+
+When to use this flag
+---------------------
+
+COS only delivers a benefit when the ``.wasm`` binary is **byte-identical
+across many different origins** — that is, a popular library whose compiled
+binary is loaded by many independent sites. If every visitor to every site
+downloads the exact same bytes, COS means they only download it once, ever.
+
+Good candidates are libraries or toolkits that are:
+
+- popular enough that many independent sites load the same binary,
+- distributed as a stable, version-pinned ``.wasm`` file, and
+- a **single primary** ``.wasm`` file (COS only covers the binary that
+  Emscripten compiles; any additional Wasm files loaded at runtime are not
+  covered).
+
+**Do not** enable this flag for application-specific Wasm code built for
+your own site. That binary is unique to you; no other origin will ever have
+the same hash, so it will never get a COS cache hit. The normal HTTP cache
+already handles per-origin caching efficiently.
+
+The exception is a Wasm binary that you deploy across **multiple origins you
+own** — for example, the same library shared between ``https://app.example.com``
+and ``https://api.example.com``. In that case COS can eliminate the redundant
+download between your own origins. Use :ref:`CROSS_ORIGIN_STORAGE_ORIGINS` to
+restrict access to only those origins rather than opening the cache entry to
+the world.
+
+Usage
+=====
+
+Pass :ref:`CROSS_ORIGIN_STORAGE` at link time::
+
+  emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE
+
+Controlling which origins can read the cached file
+--------------------------------------------------
+
+The :ref:`CROSS_ORIGIN_STORAGE_ORIGINS` setting controls the ``origins`` field
+passed to ``requestFileHandle()`` on the write (cache-miss) path.  It has no
+effect on the read (cache-hit) path.  Three modes are available:
+
+**Globally available** (default, no explicit setting needed) — any origin
+can retrieve the file.  This is applied automatically when
+:ref:`CROSS_ORIGIN_STORAGE` is used without specifying
+:ref:`CROSS_ORIGIN_STORAGE_ORIGINS`:
+
+.. code-block:: bash
+
+   emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE
+
+Use this for popular binaries loaded by many independent origins.  This is
+the recommended mode for resources where global COS cache hits are expected.
+
+**Restricted to a specific set of origins** — only the listed origins can
+retrieve the file:
+
+.. code-block:: bash
+
+   emcc hello.cpp -o hello.js \
+       -sCROSS_ORIGIN_STORAGE \
+       -sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com
+
+Use this for proprietary resources shared across a controlled set of related
+sites.  Each entry must be a valid serialized HTTPS origin (scheme + host +
+optional port, no path).  Mixing ``'*'`` with explicit origins is a
+**link-time error**.
+
+**Same-site only** — pass an explicit empty list to omit the ``origins``
+field, making the file available only to same-site origins:
+
+.. code-block:: bash
+
+   emcc hello.cpp -o hello.js \
+       -sCROSS_ORIGIN_STORAGE \
+       -sCROSS_ORIGIN_STORAGE_ORIGINS=[]
+
+Use this for resources that should be shared across subdomains of a single
+site but not beyond.
+
+.. note::
+   The COS spec defines a **visibility upgrade** rule: a resource's
+   availability can be widened but never narrowed.  If a resource is already
+   stored as globally available (``'*'``), any subsequent attempt to store it
+   with a more restrictive ``origins`` list is ignored by the browser.
+
+   This rule also has a security implication: because storing always requires
+   writing the actual bytes of the resource, no third party can probe the
+   cache to determine whether a restricted-origin entry was previously stored
+   by another origin.  A cache hit is only possible after an explicit write
+   that provided the content, so COS cannot be used as a timing oracle to
+   detect the presence of a resource that the probing origin cannot access.
+
+Requirements and restrictions
+------------------------------
+
+- The flag emits a **warning** when the target environment does not include
+  the web (``-sENVIRONMENT=node``, ``-sENVIRONMENT=shell``):
+  ``navigator.crossOriginStorage`` is a browser API and is never available
+  in those environments.
+- It produces a **hard link-time error** in **SINGLE_FILE** mode
+  (``-sSINGLE_FILE``): the Wasm binary is embedded directly into the JS
+  output and has no standalone ``.wasm`` file or fetchable URL to key the
+  hash on.
+- It produces a **hard link-time error** with ``-sWASM_ASYNC_COMPILATION=0``:
+  the synchronous instantiation path bypasses ``instantiateAsync()`` entirely,
+  so the COS code can never be reached.
+- It covers **only the primary ``.wasm`` file**. Secondary files produced by
+  ``-sSPLIT_MODULE`` (``.deferred.wasm``) and side modules loaded at runtime
+  via ``dlopen`` in ``-sMAIN_MODULE`` builds are fetched through the normal
+  network path and are not stored in or retrieved from COS. A warning is
+  emitted for both of these combinations.
+- The COS API is a progressive enhancement. Browsers without the API
+  continue to load the Wasm module via the normal ``fetch()`` and
+  ``WebAssembly.instantiateStreaming()`` path without any error.
+
+How it works
+============
+
+Build time
+----------
+
+After all optimizations — including any ``wasm-opt`` passes run by Binaryen
+— Emscripten reads the final ``.wasm`` binary and hashes it. The hash
+object is embedded in the generated JavaScript glue as a build-time
+constant (currently SHA-256)::
+
+  Module['wasmHash'] = { algorithm: 'SHA-256', value: 'a3f2...c9d1' };
+
+No extra files are produced; the hash is part of the regular ``.js`` output.
+
+.. warning::
+   The hash is computed over the ``.wasm`` binary **as emcc produces it**,
+   after emcc's own internal Binaryen/``wasm-opt`` pass.  If your build
+   pipeline runs additional wasm post-processing tools *after* emcc exits —
+   for example, an external ``wasm-strip`` or ``wasm-opt`` invocation in a
+   Makefile or CI script — those tools change the binary and **invalidate the
+   embedded hash**.
+
+   In that case you must recompute the hash of the final ``.wasm`` and
+   patch the value string in the generated ``.js`` yourself before shipping.
+   A minimal shell snippet for doing so (SHA-256):
+
+   .. code-block:: bash
+
+      # After all post-processing is complete:
+      final_hash=$(sha256sum hello.wasm | awk '{print $1}')
+      sed -i "s/'[0-9a-f]\{64\}'/'${final_hash}'/g" hello.js
+
+   On macOS, use ``shasum -a 256`` in place of ``sha256sum``, and install
+   GNU sed (``brew install gnu-sed``) or adapt the ``sed`` command for BSD
+   sed syntax.
+
+Runtime (web only)
+------------------
+
+When the page loads, the generated JavaScript follows this logic:
+
+1. **Feature detection** — check ``'crossOriginStorage' in navigator``.
+   If the API is absent, skip to the normal fetch path immediately.
+
+2. **Cache hit** — call
+   ``navigator.crossOriginStorage.requestFileHandle(cosHash)``.
+   If the handle is returned (the module is already in COS), read it with
+   ``handle.getFile()`` → ``.arrayBuffer()`` and pass the bytes to
+   ``WebAssembly.instantiate()``.
+   Then invoke ``Module['onCOSCacheHit'](hash)`` if defined.
+
+3. **Cache miss** — if a ``NotFoundError`` is thrown, fetch the ``.wasm``
+   over the network as usual, invoke ``Module['onCOSCacheMiss'](hash, url)`` if
+   defined, call ``WebAssembly.instantiate()`` immediately so the page loads
+   without delay, and then write the bytes into COS in the background
+   (fire-and-forget) using the ``origins`` value controlled by
+   :ref:`CROSS_ORIGIN_STORAGE_ORIGINS` (``'*'`` by default).
+   Once the write completes, invoke ``Module['onCOSStore'](hash)`` if defined.
+
+4. **Fallback** — any unexpected error (``NotAllowedError`` from the browser,
+   network failure during the miss path, etc.) is logged with ``err()`` and
+   the runtime falls through to the standard streaming-instantiation path
+   below. The page always loads.
+
+Instrumentation callbacks
+-------------------------
+
+Three optional ``Module`` properties let you observe COS events at runtime.
+They are **opt-in**: to include the callback code in the output, list them in
+``INCOMING_MODULE_JS_API`` at link time::
+
+  emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE \
+      -sINCOMING_MODULE_JS_API=onCOSCacheHit,onCOSCacheMiss,onCOSStore
+
+.. code-block:: javascript
+
+   var Module = {
+     // Called when the Wasm binary was served from the cross-origin cache.
+     onCOSCacheHit: (hash) => {
+       console.log('Cache hit, SHA-256:', hash);
+     },
+
+     // Called when the Wasm binary was not in COS and was fetched over the
+     // network.  |hash| is the hash that missed; |url| is the fallback URL.
+     onCOSCacheMiss: (hash, url) => {
+       console.log('Cache miss, SHA-256:', hash, 'fetched from:', url);
+     },
+
+     // Called after the Wasm binary has been successfully written to COS.
+     onCOSStore: (hash) => {
+       console.log('Stored in COS, SHA-256:', hash);
+     },
+   };
+
+Testing with the extension polyfill
+====================================
+
+Because no browser ships the COS API natively yet, you can experiment using
+the `Cross-Origin Storage extension
+<https://chromewebstore.google.com/detail/cross-origin-storage/denpnpcgjgikjpoglpjefakmdcbmlgih>`_,
+which injects a ``navigator.crossOriginStorage`` polyfill on every page.
+
+Manual testing
+--------------
+
+1. Install the extension in Chrome.
+2. Build your project with ``-sCROSS_ORIGIN_STORAGE -sENVIRONMENT=web``.
+3. Serve the output over HTTP (e.g. with ``emrun`` or ``python3 -m http.server``).
+4. Open the page — on the first load the Wasm binary is fetched and stored in
+   COS. Open the same page in a second tab or from a different origin: the
+   module is loaded from COS without a network request.
+
+Automated browser testing
+--------------------------
+
+The Emscripten browser test suite includes COS tests that run against the
+polyfill extension.  The extension must be available as an **unpacked**
+directory (containing ``manifest.json``).  A helper script downloads and
+unpacks it automatically::
+
+  python3 test/setup_cos_extension.py
+
+Then run the tests, passing the printed path as ``EMTEST_COS_EXTENSION_PATH``::
+
+  EMTEST_COS_EXTENSION_PATH=$(python3 test/setup_cos_extension.py --quiet) \
+    python3 test/runner.py \
+        browser.test_cross_origin_storage_fallback \
+        browser.test_cross_origin_storage_miss_then_hit
+
+``test_cross_origin_storage_fallback`` does not require the extension and
+verifies that a ``-sCROSS_ORIGIN_STORAGE`` build loads correctly on browsers
+where the COS API is absent.  ``test_cross_origin_storage_miss_then_hit``
+requires the extension and exercises both the cache-miss store and cache-hit
+paths in sequence.
+
+Verifying the embedded hash
+============================
+
+You can confirm that the hash embedded in the ``.js`` output matches the
+actual ``.wasm`` file using standard tools:
+
+.. code-block:: bash
+
+   # SHA-256 of the wasm file
+   sha256sum hello.wasm
+
+   # Extract the hash embedded in the JS
+   grep -oP "value: '\K[0-9a-f]{64}" hello.js
+
+Both values must be identical. The Emscripten test suite checks this
+automatically via ``test_cross_origin_storage_js_output`` in
+``test/test_other.py``.
+
+Custom ``Module['instantiateWasm']`` implementations
+=====================================================
+
+The COS fetch logic described above lives inside ``instantiateAsync()``, which
+is the standard Emscripten wasm loading path.  When a program provides its own
+``Module['instantiateWasm']`` callback, Emscripten calls that callback directly
+and **skips** ``instantiateAsync()`` entirely, so the built-in COS code is never
+reached.
+
+To support COS in a custom loader, Emscripten exposes the build-time SHA-256
+hash as a named Module property:
+
+.. code-block:: javascript
+
+   Module['wasmHash']  // { algorithm: 'SHA-256', value: '<64 hex chars>' }
+
+This property is set by the generated JavaScript before
+``Module['instantiateWasm']`` is called, so it is always available inside the
+callback.  ``Module`` in this context is the config object passed to the module
+factory — whatever variable you use when calling ``new Module(config)`` or the
+equivalent factory function.  A custom loader can read ``Module['wasmHash']``
+via a reference to that config object:
+
+.. code-block:: javascript
+
+   var Module = {
+     instantiateWasm(imports, onSuccess) {
+       // `this` inside the callback is Emscripten's internal Module object;
+       // read the hash via the outer Module reference instead.
+       const cosHash = Module['wasmHash'];
+       if (cosHash?.value && globalThis.navigator?.crossOriginStorage) {
+         navigator.crossOriginStorage.requestFileHandles(cosHash)
+           .then(handle => handle.getFile())
+           .then(f => f.arrayBuffer())
+           .then(bytes => WebAssembly.instantiate(bytes, imports))
+           .then(({instance, module}) => onSuccess(instance, module))
+           .catch(err => {
+             if (err.name !== 'NotFoundError') throw err;
+             // cache miss — fetch normally and store in the background
+             fetch('hello.wasm')
+               .then(r => r.arrayBuffer())
+               .then(bytes => {
+                 WebAssembly.instantiate(bytes, imports)
+                   .then(({instance, module}) => onSuccess(instance, module));
+                 // fire-and-forget store
+                 navigator.crossOriginStorage
+                   .requestFileHandle(cosHash, { create: true, origins: '*' })
+                   .then(wh => wh.createWritable())
+                   .then(w => w.write(new Blob([bytes], {type:'application/wasm'}))
+                               .then(() => w.close()));
+               });
+           });
+         return;  // async; onSuccess called above
+       }
+       // fallback — normal streaming instantiation
+       WebAssembly.instantiateStreaming(fetch('hello.wasm'), imports)
+         .then(({instance, module}) => onSuccess(instance, module));
+     },
+   };
+
+``Module['wasmHash']`` is only present in builds compiled with
+:ref:`CROSS_ORIGIN_STORAGE`.  Always guard on its truthiness before using it,
+as shown above, so the same loader code works in builds compiled without the
+flag.
+
+Relationship to other caching mechanisms
+==========================================
+
+COS is a complement to, not a replacement for, existing browser caches:
+
+- **HTTP cache / Service Worker cache** — still used for per-origin caching.
+  COS adds cross-origin sharing on top.
+- **``NODE_CODE_CACHING``** — a Node.js-specific V8 bytecode cache; unrelated
+  to COS.
+- **IndexedDB / OPFS** — per-origin storage; COS shares across origins.
+
+See also
+========
+
+- `WICG Cross-Origin Storage explainer <https://github.com/WICG/cross-origin-storage>`_
+- `COS browser extension (Chrome Web Store) <https://chromewebstore.google.com/detail/cross-origin-storage/denpnpcgjgikjpoglpjefakmdcbmlgih>`_
+- `COS browser extension (source code) <https://github.com/web-ai-community/cross-origin-storage-extension>`_
+- :ref:`settings-reference` — ``CROSS_ORIGIN_STORAGE`` entry
+- :ref:`WebAssembly` — general guide to building Wasm with Emscripten

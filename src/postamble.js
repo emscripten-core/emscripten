@@ -114,27 +114,14 @@ function stackCheckInit() {
 }
 #endif
 
-#if MAIN_READS_PARAMS
-function run(args = programArgs) {
-#else
-function run() {
-#endif
-
-#if '$runDependencies' in addedLibraryItems
-  if (runDependencies > 0) {
-#if RUNTIME_DEBUG
-    dbg('run() called, but dependencies remain, so not running');
-#endif
-    dependenciesFulfilled = run;
-    return;
-  }
+{{{ asyncIf(MODULARIZE || ASYNCIFY == 2 || expectToReceiveOnModule('setStatus') || '$runDependencies' in addedLibraryItems) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
+#if ASSERTIONS
+  assert(!calledRun);
+  calledRun = true;
 #endif
 
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
-#if MODULARIZE
-    readyPromiseResolve?.(Module);
-#endif
     initRuntime();
     return;
   }
@@ -147,74 +134,52 @@ function run() {
   preRun();
 
 #if '$runDependencies' in addedLibraryItems
-  // a preRun added a dependency, run will be called later
-  if (runDependencies > 0) {
+  if (runDependencies) {
 #if RUNTIME_DEBUG
-    dbg('run() called, but dependencies remain, so not running');
+    dbg('run: waiting on runDependencies');
 #endif
-    dependenciesFulfilled = run;
-    return;
+    await resolveRunDependencies();
   }
 #endif
-
-  {{{ asyncIf(ASYNCIFY == 2) }}}function doRun() {
-    // run may have just been called through dependencies being fulfilled just in this very frame,
-    // or while the async setStatus time below was happening
-#if ASSERTIONS
-    assert(!calledRun);
-    calledRun = true;
-#endif
-    Module['calledRun'] = true;
-
-    if (ABORT) return;
-
-    initRuntime();
-
-#if HAS_MAIN
-    preMain();
-#endif
-
-#if MODULARIZE
-    readyPromiseResolve?.(Module);
-#endif
-#if expectToReceiveOnModule('onRuntimeInitialized')
-    Module['onRuntimeInitialized']?.();
-#if ASSERTIONS
-    consumedModuleProp('onRuntimeInitialized');
-#endif
-#endif
-
-#if HAS_MAIN
-    var noInitialRun = {{{ makeModuleReceiveExpr('noInitialRun', !INVOKE_RUN) }}};
-#if MAIN_READS_PARAMS
-    if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain(args);
-#else
-    if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain();
-#endif
-#else
-#if ASSERTIONS
-    assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
-#endif // ASSERTIONS
-#endif // HAS_MAIN
-
-    postRun();
-  }
 
 #if expectToReceiveOnModule('setStatus')
-  if (Module['setStatus']) {
-    Module['setStatus']('Running...');
-    setTimeout(() => {
-      setTimeout(() => Module['setStatus'](''), 1);
-      doRun();
-    }, 1);
-  } else
-#endif
-  {
-    doRun();
+  var setStatus = Module['setStatus'];
+  if (setStatus) {
+    setStatus('Running...');
+    // Yield to the event loop to allow the browser to paint "Running..."
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    // Then we want to clear the status text, but only after the rest of this function runs.
+    setTimeout(setStatus, 1, '');
   }
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
 #endif
+
+  if (ABORT) return;
+
+  initRuntime();
+
+#if HAS_MAIN
+  <<< ATMAINS >>>
+#endif
+
+#if expectToReceiveOnModule('onRuntimeInitialized')
+  Module['onRuntimeInitialized']?.();
+#if ASSERTIONS
+  consumedModuleProp('onRuntimeInitialized');
+#endif
+#endif
+
+#if HAS_MAIN
+  var noInitialRun = {{{ makeModuleReceiveExpr('noInitialRun', !INVOKE_RUN) }}};
+#if MAIN_READS_PARAMS
+  if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain(args);
+#else
+  if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain();
+#endif
+#elif ASSERTIONS
+  assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
+#endif // HAS_MAIN
+
+  postRun();
 }
 
 #if ASSERTIONS
@@ -284,27 +249,45 @@ var wasmRawExports;
 #if ASSERTIONS
 var initCalled = false;
 #endif
+#if AUTO_INIT && !WASM_ESM_INTEGRATION
+// In AUTO_INIT mode `init` is not exported; we self-initialize below.
+async function init() {
+#else
 export default async function init(moduleArg = {}) {
+#endif
 #if ASSERTIONS
   assert(!initCalled);
   initCalled = true;
 #endif
+#if !AUTO_INIT || WASM_ESM_INTEGRATION
   Object.assign(Module, moduleArg);
+#endif
   processModuleArgs();
 #if WASM_ESM_INTEGRATION
 #if PTHREADS
   registerTLSInit(__emscripten_tls_init);
 #endif
+#if !IMPORTED_MEMORY
   updateMemoryViews();
+#endif
 #if DYNCALLS && '$dynCalls' in addedLibraryItems
-
   assignDynCalls();
 #endif
 #else
   wasmExports = await createWasm();
 #endif
-  run();
+  await run();
 }
+
+#if AUTO_INIT && !WASM_ESM_INTEGRATION
+#if PTHREADS || WASM_WORKERS
+// Worker threads self-init on demand from the CMD_LOAD handler (see
+// runtime_pthread.js), so only the main thread inits here.
+if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}})
+#endif
+await init();
+
+#else
 
 #if ENVIRONMENT_MAY_BE_NODE
 // When run as the main script under node we run `init` immediately.
@@ -327,6 +310,8 @@ if (ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
+#endif
+
 #else // MODULARIZE == instance
 
 #if WASM_WORKERS || PTHREADS
@@ -335,23 +320,16 @@ if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
 // Worker threads call this once they receive the module via postMessage
 #endif
 
-#if WASM_ASYNC_COMPILATION
-
-#if MODULARIZE
-// In modularize mode the generated code is within a factory function so we
-// can use await here (since it's not top-level-await).
-wasmExports = await createWasm();
-#else
+#if !MODULARIZE && WASM_ASYNC_COMPILATION
 // With async instantation wasmExports is assigned asynchronously when the
 // instance is received.
-createWasm();
-#endif
-
+createWasm().then(() => run());
 #else
-wasmExports = createWasm();
+// In modularize mode the generated code is within a factory function so we
+// can use await here (since it's not top-level-await).
+wasmExports = {{{ awaitIf(MODULARIZE && WASM_ASYNC_COMPILATION) }}}createWasm();
+{{{ awaitIf(MODULARIZE) }}}run();
 #endif
-
-run();
 
 #if WASM_WORKERS || PTHREADS
 }

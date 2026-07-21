@@ -12,7 +12,7 @@ Emscripten supports the `WebAssembly SIMD <https://github.com/webassembly/simd/>
 1. Enable LLVM/Clang SIMD autovectorizer to automatically target WebAssembly SIMD, without requiring changes to C/C++ source code.
 2. Write SIMD code using the GCC/Clang SIMD Vector Extensions (``__attribute__((vector_size(16)))``)
 3. Write SIMD code using the WebAssembly SIMD intrinsics (``#include <wasm_simd128.h>``)
-4. Compile existing SIMD code that uses the x86 SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX or AVX2 intrinsics (``#include <*mmintrin.h>``)
+4. Compile existing SIMD code that uses the x86 SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, or FMA intrinsics (``#include <*mmintrin.h>``)
 5. Compile existing SIMD code that uses the ARM NEON intrinsics (``#include <arm_neon.h>``)
 
 These techniques can be freely combined in a single program.
@@ -154,8 +154,9 @@ Emscripten supports compiling existing codebases that use x86 SSE instructions b
 * **SSE4.2**: pass ``-msse4.2`` and ``#include <nmmintrin.h>``. Use ``#ifdef __SSE4_2__`` to gate code.
 * **AVX**: pass ``-mavx`` and ``#include <immintrin.h>``. Use ``#ifdef __AVX__`` to gate code.
 * **AVX2**: pass ``-mavx2`` and ``#include <immintrin.h>``. Use ``#ifdef __AVX2__`` to gate code.
+* **FMA**: pass ``-mfma`` and ``#include <immintrin.h>``. Use ``#ifdef __FMA__`` to gate code. Also pass ``-mrelaxed-simd`` to enable Wasm relaxed SIMD FMA.
 
-Currently only the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and AVX instruction sets are supported. Each of these instruction sets add on top of the previous ones, so e.g. when targeting SSE3, the instruction sets SSE1 and SSE2 are also available.
+Currently the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, AVX, AVX2, and FMA instruction sets are supported. Each of these instruction sets add on top of the previous ones, so e.g. when targeting SSE3, the instruction sets SSE1 and SSE2 are also available.
 
 The following tables highlight the availability and expected performance of different SSE* intrinsics. This can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
 
@@ -1230,6 +1231,57 @@ The following table highlights the availability and expected performance of diff
 All the 128-bit wide instructions from AVX2 instruction set are listed.
 Only a small part of the 256-bit AVX2 instruction set are listed, most of the
 256-bit wide AVX2 instructions are emulated by two 128-bit wide instructions.
+
+The following table highlights the availability and expected performance of different FMA intrinsics. Refer to `Intel Intrinsics Guide on FMA <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#avxnewtechs=FMA>`_.
+
+.. list-table:: x86 FMA intrinsics available via #include <immintrin.h> and -mfma
+   :widths: 20 30
+   :header-rows: 1
+
+   * - Intrinsic name
+     - WebAssembly SIMD support
+   * - _mm_fmadd_ps
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+add
+   * - _mm_fmadd_pd
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+add
+   * - _mm_fmadd_ss
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+add
+   * - _mm_fmadd_sd
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+add
+   * - _mm_fmsub_ps
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fmsub_pd
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fmsub_ss
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fmsub_sd
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fnmadd_ps
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fnmadd_pd
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fnmadd_ss
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fnmadd_sd
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fnmsub_ps
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fnmsub_pd
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fnmsub_ss
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fnmsub_sd
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+sub
+   * - _mm_fmaddsub_ps
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+add+blend
+   * - _mm_fmaddsub_pd
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+add+blend
+   * - _mm_fmsubadd_ps
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+add+blend
+   * - _mm_fmsubadd_pd
+     - ✅ wasm relaxed SIMD fma / 💡 emulated with mul+add+blend
+
+All 128-bit FMA intrinsics are listed above. The 256-bit FMA variants (``_mm256_fmadd_ps``, ``_mm256_fmadd_pd``, etc.) are emulated by applying the 128-bit operation to each half of the 256-bit vector. With ``-mrelaxed-simd``, the 128-bit operations use Wasm relaxed SIMD FMA; with ``-msimd128`` only, they use separate multiply and add/subtract.
 
 
 Compiling SIMD code targeting ARM NEON instruction set

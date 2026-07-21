@@ -304,7 +304,7 @@ var LibraryWebAudio = {
     }
 #elif ASSERTIONS
     var numAudioParams = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.numAudioParams, 'i32') }}};
-    assert(numAudioParams == 0 && "Rebuild with -sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS to utilize AudioParams");
+    assert(numAudioParams == 0 && 'Rebuild with -sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS to utilize AudioParams');
 #endif
 
 #if WEBAUDIO_DEBUG

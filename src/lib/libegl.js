@@ -422,10 +422,10 @@ var LibraryEGL = {
       // Existing Android implementation seems to do so at least.
       return 1;
     case 0x3057: // EGL_WIDTH
-      {{{ makeSetValue('value', '0', "Browser.getCanvas().width", 'i32') }}};
+      {{{ makeSetValue('value', '0', 'Browser.getCanvas().width', 'i32') }}};
       return 1;
     case 0x3056: // EGL_HEIGHT
-      {{{ makeSetValue('value', '0', "Browser.getCanvas().height", 'i32') }}};
+      {{{ makeSetValue('value', '0', 'Browser.getCanvas().height', 'i32') }}};
       return 1;
     case 0x3090: // EGL_HORIZONTAL_RESOLUTION
       {{{ makeSetValue('value', '0', '-1' /* EGL_UNKNOWN */, 'i32') }}};
@@ -521,10 +521,10 @@ var LibraryEGL = {
     if (EGL.stringCache[name]) return EGL.stringCache[name];
     var ret;
     switch (name) {
-      case 0x3053 /* EGL_VENDOR */: ret = stringToNewUTF8("Emscripten"); break;
-      case 0x3054 /* EGL_VERSION */: ret = stringToNewUTF8("1.4 Emscripten EGL"); break;
-      case 0x3055 /* EGL_EXTENSIONS */:  ret = stringToNewUTF8(""); break; // Currently not supporting any EGL extensions.
-      case 0x308D /* EGL_CLIENT_APIS */: ret = stringToNewUTF8("OpenGL_ES"); break;
+      case 0x3053 /* EGL_VENDOR */: ret = stringToNewUTF8('Emscripten'); break;
+      case 0x3054 /* EGL_VERSION */: ret = stringToNewUTF8('1.4 Emscripten EGL'); break;
+      case 0x3055 /* EGL_EXTENSIONS */:  ret = stringToNewUTF8(''); break; // Currently not supporting any EGL extensions.
+      case 0x308D /* EGL_CLIENT_APIS */: ret = stringToNewUTF8('OpenGL_ES'); break;
       default:
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;

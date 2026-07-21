@@ -34,6 +34,7 @@ from tools import (
   utils,
   webassembly,
 )
+from tools.native_sigs import native_sigs
 from tools.settings import settings, user_settings
 from tools.shared import DEBUG, asmjs_mangle, in_temp
 from tools.toolchain_profiler import ToolchainProfiler
@@ -209,12 +210,6 @@ def generate_js_compiler_input_hash(symbols_only=False):
 
 @ToolchainProfiler.profile()
 def compile_javascript(symbols_only=False):
-  stderr_file = os.environ.get('EMCC_STDERR_FILE')
-  if stderr_file:
-    stderr_file = os.path.abspath(stderr_file)
-    logger.info('logging stderr in js compiler phase into %s' % stderr_file)
-    stderr_file = open(stderr_file, 'w', encoding='utf-8')
-
   # Save settings to a file to work around v8 issue 1579
   settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
   building.write_intermediate(settings_json, 'settings.json')
@@ -224,7 +219,7 @@ def compile_javascript(symbols_only=False):
   if symbols_only:
     args += ['--symbols-only']
   return shared.run_js_tool(path_from_root('tools/compiler.mjs'),
-                            args, input=settings_json, stdout=subprocess.PIPE, stderr=stderr_file)
+                            args, input=settings_json, stdout=subprocess.PIPE)
 
 
 def set_memory(static_bump):
@@ -346,7 +341,8 @@ def compile_javascript_cached():
   # this step is performed while the cache is locked.
   # Sadly we have to skip the caching whenever we have user JS libraries.  This is because
   # these libraries can import arbitrary other JS files (either vis node's `import` or via #include)
-  if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE or settings.JS_LIBRARIES:
+  has_user_libs = any(not lib.startswith(utils.path_from_root('src/')) for lib in settings.JS_LIBRARIES)
+  if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE or has_user_libs:
     return compile_javascript()
 
   content_hash = generate_js_compiler_input_hash()
@@ -610,7 +606,7 @@ def finalize_wasm(infile, outfile, js_syms):
   # EMSCRIPTEN_KEEPALIVE (llvm.used).
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
-  unexpected_exports = [e for e in metadata.all_exports if shared.is_user_export(e)]
+  unexpected_exports = [e for e in metadata.all_exports if not shared.is_internal_symbol(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
@@ -680,7 +676,7 @@ def create_tsd_exported_runtime_methods(metadata):
   return utils.read_file(in_temp(f'{file}.d.ts'))
 
 
-def create_tsd(metadata, embind_tsd):
+def create_tsd(metadata, embind_tsd, bindgen_tsd):
   out = '// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.\n'
   if settings.EXPORTED_RUNTIME_METHODS:
     out += create_tsd_exported_runtime_methods(metadata)
@@ -695,11 +691,13 @@ def create_tsd(metadata, embind_tsd):
     for index, type in enumerate(functype.params):
       arguments.append(f"_{index}: {type_to_ts_type(type)}")
     out += f'  {mangled}({", ".join(arguments)}): '
-    assert len(functype.returns) <= 1, 'One return type only supported'
-    if functype.returns:
+    if not functype.returns:
+      ret_ts_type = 'void'
+    elif len(functype.returns) == 1:
       ret_ts_type = type_to_ts_type(functype.returns[0])
     else:
-      ret_ts_type = 'void'
+      tuple_types = [type_to_ts_type(t) for t in functype.returns]
+      ret_ts_type = f'[{", ".join(tuple_types)}]'
     if settings.ASYNCIFY == 2 and any(fnmatch.fnmatch(name, pat) for pat in settings.ASYNCIFY_EXPORTS):
       ret_ts_type = f'Promise<{ret_ts_type}>'
     out += f'{ret_ts_type};\n'
@@ -712,6 +710,10 @@ def create_tsd(metadata, embind_tsd):
   # Add in embind definitions.
   if embind_tsd:
     export_interfaces += ' & EmbindModule'
+  if settings.WASM_BINDGEN and bindgen_tsd:
+    for file_path in bindgen_tsd:
+      out += utils.read_file(file_path)
+    export_interfaces += ' & BindgenModule'
   out += f'export type MainModule = {export_interfaces};\n'
   if settings.MODULARIZE:
     return_type = 'MainModule'
@@ -891,11 +893,11 @@ def create_sending(metadata, library_symbols):
   sorted_items = sorted(send_items_map.items())
 
   if settings.WASM_ESM_INTEGRATION:
-    elems = []
-    for k, v in sorted_items:
-      elems.append(f'{v} as {k}')
-    elems = ',\n  '.join(elems)
     exports = '// Export JS functions to the wasm module with demangled names.\n'
+    if not sorted_items:
+      # With no JS->wasm imports emit no `export {}` at all rather than an empty one.
+      return exports
+    elems = ',\n  '.join(f'{v} as {k}' for k, v in sorted_items)
     exports += f"export {{\n  {elems}\n}};"
     return exports
 
@@ -928,12 +930,16 @@ def create_reexports(metadata):
         wasm_exports.append(exp)
       elif demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
         wasm_exports.append('_main')
-  exports += f"export {{ {', '.join(wasm_exports)} }};"
+  if wasm_exports:
+    # With nothing to re-export emit no `export {}` at all rather than an empty one.
+    exports += f"export {{ {', '.join(wasm_exports)} }};"
   return exports
 
 
 def install_debug_wrapper(sym):
   if settings.MINIMAL_RUNTIME or not settings.ASSERTIONS:
+    return False
+  if settings.EMBIND_GEN_MODE and sym.startswith('asyncify_'):
     return False
   # The emscripten stack functions are called very early (by writeStackCookie) before
   # the runtime is initialized so we can't create these wrappers that check for
@@ -1062,7 +1068,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
           assignment += f" = Module['{target}']"
     if is_function and install_debug_wrapper(sym):
       nargs = len(info.params)
-      receiving.append(f"  {assignment} = createExportWrapper('{sym}', {nargs});")
+      receiving.append(f"  {assignment} = createExportWrapper('{sym}', wasmExports['{sym}'], {nargs});")
     elif not is_function and info[0].kind == webassembly.ExternType.GLOBAL and not info[1].mutable:
       if settings.LEGACY_VM_SUPPORT:
         value = f"typeof wasmExports['{sym}'] == 'object' ? wasmExports['{sym}'].value : wasmExports['{sym}']"
@@ -1123,110 +1129,17 @@ def create_invoke_wrappers(metadata):
 
 
 def create_pointer_conversion_wrappers(metadata):
-  # TODO(sbc): Move this into somewhere less static.  Maybe it can become
-  # part of library.js file, even though this metadata relates specifically
-  # to native (non-JS) functions.
-  #
   # The signature format here is similar to the one used for JS libraries
   # but with the following as the only valid char:
   #  '_' - non-pointer argument (pass through unchanged)
   #  'p' - pointer/int53 argument (convert to/from BigInt)
   #  'P' - same as above but allow `undefined` too (requires extra check)
-  mapping = {
-    'sbrk': 'pP',
-    '_emscripten_stack_alloc': 'pp',
-    'emscripten_get_sbrk_ptr': 'p',
-    'emscripten_builtin_malloc': 'pp',
-    'emscripten_builtin_calloc': 'ppp',
-    'wasmfs_create_node_backend': 'pp',
-    'malloc': 'pp',
-    'realloc': 'ppp',
-    'calloc': 'ppp',
-    'webidl_malloc': 'pp',
-    'memalign': 'ppp',
-    'memcmp': '_ppp',
-    'memcpy': 'pppp',
-    '__getTypeName': 'pp',
-    'setThrew': '_p',
-    'free': '_p',
-    'webidl_free': '_p',
-    '_emscripten_stack_restore': '_p',
-    'fflush': '_p',
-    'emscripten_stack_get_end': 'p',
-    'emscripten_stack_get_base': 'p',
-    'pthread_self': 'p',
-    'emscripten_stack_get_current': 'p',
-    '__errno_location': 'p',
-    'emscripten_builtin_memalign': 'ppp',
-    'emscripten_builtin_free': 'vp',
-    'main': '__PP',
-    '__main_argc_argv': '__PP',
-    'emscripten_stack_set_limits': '_pp',
-    '__set_stack_limits': '_pp',
-    '__set_thread_state': '_p___',
-    '__cxa_can_catch': '_ppp',
-    '__cxa_increment_exception_refcount': '_p',
-    '__cxa_decrement_exception_refcount': '_p',
-    '__cxa_get_exception_ptr': 'pp',
-    '_wasmfs_write_file': '_ppp',
-    '_wasmfs_mknod': '_p__',
-    '_wasmfs_symlink': '_pp',
-    '_wasmfs_chmod': '_p_',
-    '_wasmfs_lchmod': '_p_',
-    '_wasmfs_get_cwd': 'p_',
-    '_wasmfs_identify': '_p',
-    '_wasmfs_read_file': '_ppp',
-    '_wasmfs_node_record_dirent': '_pp_',
-    '__dl_seterr': '_pp',
-    '_emscripten_run_js_on_main_thread': '__p_p_',
-    '_emscripten_run_js_on_main_thread_done': '_pp_',
-    '_emscripten_thread_exit': '_p',
-    '_emscripten_thread_init': '_p_____',
-    '_emscripten_thread_free_data': '_p',
-    '_emscripten_dlsync_self_async': '_p',
-    '_emscripten_proxy_dlsync': '_p',
-    '_emscripten_proxy_dlsync_async': '_pp',
-    '_emscripten_wasm_worker_initialize': '__p_',
-    '_emscripten_proxy_poll_finish': '_pp_',
-    '_wasmfs_rename': '_pp',
-    '_wasmfs_readlink': '_pp',
-    '_wasmfs_truncate': '_p_',
-    '_wasmfs_mmap': 'pp____',
-    '_wasmfs_munmap': '_pp',
-    '_wasmfs_msync': '_pp_',
-    '_wasmfs_read': '__pp',
-    '_wasmfs_pread': '__pp_',
-    '_wasmfs_utime': '_p__',
-    '_wasmfs_rmdir': '_p',
-    '_wasmfs_unlink': '_p',
-    '_wasmfs_mkdir': '_p_',
-    '_wasmfs_open': '_p__',
-    '_wasmfs_mount': '_pp',
-    '_wasmfs_chdir': '_p',
-    'asyncify_start_rewind': '_p',
-    'asyncify_start_unwind': '_p',
-    '__get_exception_message': '_ppp',
-    'stbi_image_free': 'vp',
-    'stbi_load': 'ppppp_',
-    'stbi_load_from_memory': 'pp_ppp_',
-    'strerror': 'p_',
-    'emscripten_proxy_finish': '_p',
-    'emscripten_proxy_execute_queue': '_p',
-    '_emval_coro_resume': '_pp',
-    '_emval_coro_reject': '_pp',
-    'emscripten_main_runtime_thread_id': 'p',
-    '_emscripten_set_offscreencanvas_size_on_thread': '_pp__',
-    'fileno': '_p',
-    '_emscripten_run_callback_on_thread': '_pp_ppp',
-    '_emscripten_find_dylib': 'ppppp',
-  }
-
   for function in settings.SIGNATURE_CONVERSIONS:
     sym, sig = function.split(':')
-    mapping[sym] = sig
+    native_sigs[sym] = sig
 
   for f in ASAN_C_HELPERS:
-    mapping[f] = '_pp'
+    native_sigs[f] = '_pp'
 
   wrappers = '''
 // Argument name here must shadow the `wasmExports` global so
@@ -1249,8 +1162,8 @@ function applySignatureConversions(wasmExports) {
       sig = ['p' if t == 'p' else '_' for t in sig]
       sig.insert(1, 'p')
       sig = ''.join(sig)
-      mapping[symbol] = sig
-    sig = mapping.get(symbol)
+      native_sigs[symbol] = sig
+    sig = native_sigs.get(symbol)
     if sig:
       if settings.MEMORY64:
         if sig not in sigs_seen:
@@ -1264,7 +1177,7 @@ function applySignatureConversions(wasmExports) {
         wrap_functions.append(symbol)
 
   for f in wrap_functions:
-    sig = mapping[f]
+    sig = native_sigs[f]
     wrappers += f"\n  wasmExports['{f}'] = makeWrapper_{sig}(wasmExports['{f}']);"
   wrappers += '\n  return wasmExports;\n}'
 

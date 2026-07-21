@@ -4,22 +4,22 @@
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
     "es-check": "^9.6.4",
-    "eslint": "^10.4.0",
+    "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.6.0",
-    "prettier": "^3.8.3",
-    "rollup": "^4.60.4",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4",
+    "rollup": "^4.62.2",
     "source-map": "0.7.6",
     "typescript": "^6.0.3",
-    "vite": "^8.0.14",
-    "webpack": "^5.107.1",
-    "webpack-cli": "^7.0.2",
-    "ws": "^8.20.1"
+    "vite": "^8.1.2",
+    "webpack": "^5.108.3",
+    "webpack-cli": "^7.1.0",
+    "ws": "^8.21.0"
   },
   "dependencies": {
-    "acorn": "^8.16.0",
+    "acorn": "^8.17.0",
     "acorn-import-phases": "^1.0.4",
-    "google-closure-compiler": "20260519.0.0",
+    "google-closure-compiler": "20260629.0.0",
     "html-minifier-terser": "7.2.0"
   },
   "scripts": {

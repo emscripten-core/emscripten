@@ -359,11 +359,18 @@ ${body};
   });
 }
 
-function handleAsyncFunction(snippet, sig) {
+function handleAsyncFunction(snippet, sig, proxied) {
   const return64 = sig && (MEMORY64 && sig.startsWith('p') || sig.startsWith('j'))
   let handleAsync = 'Asyncify.handleAsync(innerFunc)'
   if (return64 && ASYNCIFY == 1) {
     handleAsync = makeReturn64(handleAsync);
+  }
+  // When dispatching on behalf of a proxied caller (PROXY_SYNC_ASYNC), the
+  // caller awaits the returned promise, so return it directly rather than
+  // suspending the main thread.
+  let proxiedDispatch = '';
+  if (ASYNCIFY == 1 && PTHREADS && proxied) {
+    proxiedDispatch = 'if (PThread.currentProxiedOperationCallerThread) return innerFunc();\n  ';
   }
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     if (!oneliner) {
@@ -372,7 +379,7 @@ function handleAsyncFunction(snippet, sig) {
     return `\
 function(${args}) {
   let innerFunc = ${async_} () => ${body};
-  return ${handleAsync};
+  ${proxiedDispatch}return ${handleAsync};
 }\n`;
   });
 }
@@ -397,6 +404,12 @@ export async function runJSify(outputFile, symbolsOnly) {
   }
 
   async function writeOutput(str) {
+    // Unmangle previously mangled `import.meta` references.
+    // See also: `mangleUnsupportedSyntax` in parseTools.mjs.
+    if (EXPORT_ES6) {
+      str = str.replaceAll('EMSCRIPTEN$IMPORT$META', 'import.meta');
+    }
+
     await outputHandle.write(str + '\n');
   }
 
@@ -473,11 +486,12 @@ function(${args}) {
       compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
     }
 
+    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+
     if (ASYNCIFY && isAsyncFunction == 'auto') {
-      snippet = handleAsyncFunction(snippet, sig);
+      snippet = handleAsyncFunction(snippet, sig, proxyingMode == 'sync');
     }
 
-    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
     if (proxyingMode) {
       if (!['sync', 'async', 'none'].includes(proxyingMode)) {
         error(`JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`);

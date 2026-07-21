@@ -24,6 +24,7 @@ from urllib.request import urlopen
 import common
 from browser_common import (
   CHROMIUM_BASED_BROWSERS,
+  EMTEST_COS_EXTENSION_PATH,
   BrowserCore,
   HttpServerThread,
   Reporting,
@@ -50,6 +51,7 @@ from decorators import (
   also_with_asan,
   also_with_fetch_streaming,
   also_with_minimal_runtime,
+  also_with_proxy_to_pthread,
   also_with_pthreads,
   also_with_wasm2js,
   also_with_wasmfs,
@@ -59,7 +61,6 @@ from decorators import (
   no_4gb,
   no_highmem,
   no_wasm64,
-  parameterize,
   parameterized,
   requires_dev_dependency,
   requires_wasm2js,
@@ -183,21 +184,6 @@ requires_firefox_version = requires_version('firefox', get_firefox_version)
 
 def is_jspi(args):
   return '-sJSPI' in args
-
-
-def also_with_proxy_to_pthread(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, threads, *args, **kwargs):
-    if threads:
-      self.cflags += ['-pthread', '-sPROXY_TO_PTHREAD']
-    f(self, *args, **kwargs)
-
-  parameterize(decorated, {'': (False,),
-                           'proxy_to_pthread': (True,)})
-
-  return decorated
 
 
 def skipIfFeatureNotAvailable(skip_env_var, feature, message):
@@ -475,6 +461,7 @@ window.close = () => {
   @also_with_proxy_to_pthread
   def test_preload_file_with_manual_data_download(self):
     create_file('file.txt', 'Hello!')
+    self.set_setting('INCOMING_MODULE_JS_API', 'mainScriptUrlOrBlob,canvas,monitorRunDependencies,onAbort,onExit,postRun,print,printErr,setStatus')
 
     self.compile_btest('browser/test_manual_download_data.c', ['-sEXIT_RUNTIME', '-o', 'out.js', '--preload-file', 'file.txt@/file.txt'])
     copy_asset('browser/test_manual_download_data.html')
@@ -1062,41 +1049,9 @@ window.close = () => {
   def test_glut_resize(self):
     self.btest_exit('test_glut_resize.c')
 
-  def test_sdl_joystick_1(self):
-    # Generates events corresponding to the Working Draft of the HTML5 Gamepad API.
-    # http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
-    create_file('pre.js', '''
-      var gamepads = [];
-      // Spoof this function.
-      navigator['getGamepads'] = () => gamepads;
-      window['addNewGamepad'] = (id, numAxes, numButtons) => {
-        var index = gamepads.length;
-        gamepads.push({
-          axes: new Array(numAxes),
-          buttons: new Array(numButtons),
-          id: id,
-          index: index
-        });
-        var i;
-        for (i = 0; i < numAxes; i++) gamepads[index].axes[i] = 0;
-        for (i = 0; i < numButtons; i++) gamepads[index].buttons[i] = 0;
-      };
-      window['simulateGamepadButtonDown'] = (index, button) => {
-        gamepads[index].buttons[button] = 1;
-      };
-      window['simulateGamepadButtonUp'] = (index, button) => {
-        gamepads[index].buttons[button] = 0;
-      };
-      window['simulateAxisMotion'] = (index, axis, value) => {
-        gamepads[index].axes[axis] = value;
-      };
-    ''')
-
-    self.btest_exit('test_sdl_joystick.c', cflags=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
-
-  def test_sdl_joystick_2(self):
-    # Generates events corresponding to the Editor's Draft of the HTML5 Gamepad API.
-    # https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-Gamepad
+  def test_sdl_joystick(self):
+    # Generates events corresponding to the HTML5 Gamepad API.
+    # https://www.w3.org/TR/gamepad/#idl-def-Gamepad
     create_file('pre.js', '''
       var gamepads = [];
       // Spoof this function.
@@ -1132,8 +1087,8 @@ window.close = () => {
 
   @requires_graphics_hardware
   def test_glfw_joystick(self):
-    # Generates events corresponding to the Editor's Draft of the HTML5 Gamepad API.
-    # https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-Gamepad
+    # Generates events corresponding to the HTML5 Gamepad API.
+    # https://www.w3.org/TR/gamepad/#idl-def-Gamepad
     create_file('pre.js', '''
       var gamepads = [];
       // Spoof this function.
@@ -1263,6 +1218,10 @@ window.close = () => {
   @requires_webgl2
   def test_webgl2_ubo_layout_binding(self):
     self.btest_exit('webgl2_ubo_layout_binding.c', cflags=['-sGL_EXPLICIT_UNIFORM_BINDING', '-sMIN_WEBGL_VERSION=2'])
+
+  @requires_webgl2
+  def test_webgl2_texsubimage3d(self):
+    self.btest_exit('webgl2_texsubimage3d.c', cflags=['-sMIN_WEBGL_VERSION=2'])
 
   # Test that -sGL_PREINITIALIZED_CONTEXT works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
@@ -2416,31 +2375,25 @@ void *getBindBuffer() {
   def test_cwrap_early(self):
     self.btest('browser/test_cwrap_early.c', cflags=['-O2', '-sASSERTIONS', '--pre-js', test_file('browser/test_cwrap_early.js'), '-sEXPORTED_RUNTIME_METHODS=cwrap'], expected='0')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api(self):
-    self.compile_btest('worker_api_worker.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sEXPORTED_FUNCTIONS=_one'])
-    self.btest('worker_api_main.cpp', expected='566')
+    self.compile_btest('browser/test_worker_api_worker.c', ['-o', 'worker.js', '-sBUILD_AS_WORKER'])
+    self.btest('browser/test_worker_api.c', expected='566')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_2(self):
-    self.compile_btest('worker_api_2_worker.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-O2', '--minify=0', '-sEXPORTED_FUNCTIONS=_one,_two,_three,_four', '--closure=1'])
-    self.btest('worker_api_2_main.cpp', cflags=['-O2', '--minify=0'], expected='11')
+    self.compile_btest('browser/test_worker_api_2_worker.c', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-O2', '--minify=0', '--closure=1'])
+    self.btest('browser/test_worker_api_2.c', cflags=['-O2', '--minify=0'], expected='11')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_3(self):
-    self.compile_btest('worker_api_3_worker.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sEXPORTED_FUNCTIONS=_one'])
-    self.btest('worker_api_3_main.cpp', expected='5')
+    self.compile_btest('browser/test_worker_api_3_worker.c', ['-o', 'worker.js', '-sBUILD_AS_WORKER'])
+    self.btest('browser/test_worker_api_3.c', expected='5')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_sleep(self):
-    self.compile_btest('worker_api_worker_sleep.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sEXPORTED_FUNCTIONS=_one', '-sASYNCIFY'])
-    self.btest('worker_api_main.cpp', expected='566')
+    self.compile_btest('browser/test_worker_api_sleep_worker.c', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sASYNCIFY'])
+    self.btest('browser/test_worker_api.c', expected='566')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_with_pthread_compilation_fails(self):
-    self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
     expected = "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
-    self.assert_fail([EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1', '-pthread', '-sBUILD_AS_WORKER'], expected)
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-pthread', '-sBUILD_AS_WORKER'], expected)
 
   @also_with_wasmfs
   def test_wget(self):
@@ -2522,11 +2475,14 @@ void *getBindBuffer() {
     self.btest_exit('test_uuid.c', cflags=['-luuid'])
 
   @requires_graphics_hardware
-  def test_glew(self):
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW'], expected='1')
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-sLEGACY_GL_EMULATION'], expected='1')
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-DGLEW_MX'], expected='1')
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-sLEGACY_GL_EMULATION', '-DGLEW_MX'], expected='1')
+  @parameterized({
+    '': ([],),
+    'glemu': (['-sLEGACY_GL_EMULATION'],),
+    'mx': (['-DGLEW_MX'],),
+    'glemu_mx': (['-sLEGACY_GL_EMULATION', '-DGLEW_MX'],),
+  })
+  def test_glew(self, args):
+    self.btest_exit('test_glew.c', cflags=['-lGL', '-lSDL', '-lGLEW'] + args)
 
   def test_doublestart_bug(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
@@ -2537,7 +2493,7 @@ Module["preRun"] = () => {
 };
 ''')
 
-    self.btest('doublestart.c', cflags=['--pre-js', 'pre.js'], expected='1')
+    self.btest_exit('test_doublestart_bug.c', cflags=['--pre-js', 'pre.js'])
 
   @parameterized({
     '': ([],),
@@ -2628,6 +2584,10 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_destroy_context.c', cflags=args + ['--shell-file', test_file('browser/webgl_destroy_context_shell.html'), '-lGL'])
 
   @requires_graphics_hardware
+  def test_html5_webgl_context_lost_pthread(self):
+    self.btest_exit('webgl_context_lost_pthread.c', cflags=['-pthread', '-lGL', '-sASSERTIONS', '--shell-file', test_file('browser/webgl_destroy_context_shell.html')])
+
+  @requires_graphics_hardware
   def test_webgl_context_params(self):
     self.btest_exit('webgl_color_buffer_readpixels.c', cflags=['-lGL'])
 
@@ -2681,7 +2641,12 @@ Module["preRun"] = () => {
   def test_html5_webgl_api(self, args):
     if '-sOFFSCREENCANVAS_SUPPORT' in args and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
       return
-    self.btest_exit('html5_webgl.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'] + args)
+    cflags = ['-sMAX_WEBGL_VERSION=2', '-lGL'] + args
+    # Check the desynchronized round-trip only on a normal canvas; OffscreenCanvas
+    # doesn't honor it. Chrome supports it, other browsers report it back as false.
+    if not args:
+      cflags.append('-DEXPECT_DESYNCHRONIZED=' + ('1' if is_chrome() else '0'))
+    self.btest_exit('html5_webgl.c', cflags=cflags)
 
   @parameterized({
     'webgl1': (['-DWEBGL_VERSION=1'],),
@@ -3957,6 +3922,12 @@ Module["preRun"] = () => {
   def test_pthread_run_on_main_thread(self):
     self.btest_exit('pthread/test_pthread_run_on_main_thread.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
+  # Test that proxying operations work when Atomics.waitAsync is disabled,
+  # forcing the waitAsyncPolyfilled/postMessage fallback path.
+  def test_pthread_no_waitasync(self):
+    create_file('pre.js', 'delete Atomics.waitAsync;\n')
+    self.btest_exit('pthread/test_pthread_proxy_to_pthread.c', cflags=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS', '--pre-js=pre.js'])
+
   # Test how a lot of back-to-back called proxying operations behave.
   def test_pthread_run_on_main_thread_flood(self):
     self.btest_exit('pthread/test_pthread_run_on_main_thread_flood.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
@@ -4026,7 +3997,6 @@ Module["preRun"] = () => {
     # same stack size as the main thread normally would.
     self.btest('core/test_safe_stack.c', expected='abort:stack overflow', cflags=['-pthread', '-sPROXY_TO_PTHREAD', '-sSTACK_OVERFLOW_CHECK=2', '-sSTACK_SIZE=64KB'])
 
-  @no_wasm64('TODO: ASAN in memory64')
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak', []],
@@ -4036,7 +4006,6 @@ Module["preRun"] = () => {
   def test_pthread_lsan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', cflags=['-fsanitize=leak', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
-  @no_wasm64('TODO: ASAN in memory64')
   @no_highmem('ASAN + GLOBAL_BASE')
   @parameterized({
     # Reusing the LSan test files for ASan.
@@ -4047,12 +4016,10 @@ Module["preRun"] = () => {
   def test_pthread_asan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', cflags=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
-  @no_wasm64('TODO: ASAN in memory64')
   @no_highmem('ASAN + GLOBAL_BASE')
   def test_pthread_asan_use_after_free(self):
     self.btest('pthread/test_pthread_asan_use_after_free.cpp', expected='1', cflags=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free.js')])
 
-  @no_wasm64('TODO: ASAN in memory64')
   @no_highmem('ASAN + GLOBAL_BASE')
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/20006')
   @no_safari('TODO: Hangs') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
@@ -4531,6 +4498,7 @@ Module["preRun"] = () => {
     self.btest_exit('fetch/test_fetch_idb_delete.cpp', cflags=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
   @also_with_fetch_streaming
+  @also_with_proxy_to_pthread
   def test_fetch_post(self):
     self.btest_exit('fetch/test_fetch_post.c', cflags=['-sFETCH'])
 
@@ -4639,21 +4607,21 @@ Module["preRun"] = () => {
   # Tests memory growth in pthreads mode, but still on the main thread.
   @parameterized({
     '': ([], 1),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'], 1),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'], 1),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
   })
   @no_highmem('uses INITIAL_MEMORY')
   @requires_growable_arraybuffers
   def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
-    if '-sGROWABLE_ARRAYBUFFERS' not in cflags:
+    if '-sGROWABLE_ARRAYBUFFERS=2' not in cflags:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   # Tests memory growth in a pthread.
   @parameterized({
     '': ([],),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],),
     'assert': (['-sASSERTIONS'],),
     'proxy': (['-sPROXY_TO_PTHREAD'], 2),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
@@ -4662,7 +4630,7 @@ Module["preRun"] = () => {
   @requires_growable_arraybuffers
   def test_pthread_growth(self, cflags, pthread_pool_size=1):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
-    if '-sGROWABLE_ARRAYBUFFERS' not in cflags:
+    if '-sGROWABLE_ARRAYBUFFERS=2' not in cflags:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.btest_exit('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
@@ -4683,6 +4651,10 @@ Module["preRun"] = () => {
   @requires_es6_workers
   def test_mainScriptUrlOrBlob(self, es6, use_blob):
     self.set_setting('EXIT_RUNTIME')
+    needed_api = 'mainScriptUrlOrBlob,locateFile'
+    default_api = 'canvas,monitorRunDependencies,onAbort,onExit,postRun,print,printErr,setStatus'
+
+    self.set_setting('INCOMING_MODULE_JS_API', ','.join([needed_api, default_api]))
     js_name = 'hello_thread_with_loader.%s' % ('mjs' if es6 else 'js')
     if es6:
       self.cflags += ['-sEXPORT_ES6']
@@ -5246,7 +5218,7 @@ Module["preRun"] = () => {
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
     self.cflags += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']
-    self.do_run_in_out_file_test('browser/test_4gb.cpp')
+    self.do_runf_out_file('browser/test_4gb.cpp')
 
   # Tests that emmalloc supports up to 4GB Wasm heaps.
   @no_firefox('no 4GB support yet')
@@ -5286,7 +5258,6 @@ Module["preRun"] = () => {
       self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.btest_exit('alloc_3gb.c', cflags=['-sMALLOC=dlmalloc', '-sALLOW_MEMORY_GROWTH=1'])
 
-  @no_wasm64()
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait
@@ -5313,7 +5284,6 @@ Module["preRun"] = () => {
                             '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
-  @no_wasm64()
   @parameterized({
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'jspi': (['-Wno-experimental', '-sJSPI'],),
@@ -5384,7 +5354,7 @@ Module["preRun"] = () => {
     # test that growth doesn't go beyond 2GB without the max being set for that,
     # and that we can catch an allocation failure exception for that
     self.cflags += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2GB']
-    self.do_run_in_out_file_test('browser/test_2gb_fail.c')
+    self.do_runf_out_file('browser/test_2gb_fail.c')
 
   @no_firefox('no 4GB support yet')
   @no_highmem('uses MAXIMUM_MEMORY')
@@ -5399,7 +5369,7 @@ Module["preRun"] = () => {
     # 4GB.
     self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.cflags += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sABORTING_MALLOC=0', '-sASSERTIONS']
-    self.do_run_in_out_file_test('browser/test_4gb_fail.c')
+    self.do_runf_out_file('browser/test_4gb_fail.c')
 
   # Tests that Emscripten-compiled applications can be run when a slash in the URL query or fragment of the js file
   def test_browser_run_with_slash_in_query_and_hash(self):
@@ -5691,6 +5661,66 @@ fetch('report_result?0');
   })
   def test_shell_minimal(self, args):
     self.btest_exit('browser_test_hello_world.c', cflags=['--shell-file', path_from_root('html/shell_minimal.html')] + args)
+
+  @no_highmem('uses INITIAL_MEMORY')
+  def test_pthread_memgrowth_stale_views(self):
+    self.btest_exit('test_pthread_memgrowth_stale_views.c',
+                    cflags=['-pthread', '-sINITIAL_MEMORY=10mb', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'])
+
+  def test_cross_origin_storage_fallback(self):
+    if not is_chrome():
+      self.skipTest('cross-origin storage tests require a Chromium-based browser')
+    self.btest_exit('browser_test_hello_world.c',
+                    cflags=['-O2', '-sCROSS_ORIGIN_STORAGE', '-Wno-experimental'])
+
+  def test_cross_origin_storage_miss_then_hit(self):
+    if not is_chrome():
+      self.skipTest('cross-origin storage tests require a Chromium-based browser')
+    if not EMTEST_COS_EXTENSION_PATH:
+      self.skipTest(
+        'set EMTEST_COS_EXTENSION_PATH to the COS extension directory; '
+        'run test/setup_cos_extension.py to download it automatically. '
+        'Note: --load-extension requires Chromium or Chrome for Testing, '
+        'not the official Google Chrome release.',
+      )
+
+    # Restart the browser with a fresh user-data-dir so the extension starts
+    # with empty storage.  Without this, a wasm entry written by a previous
+    # test run (or a retry of this test) would cause the first page load below
+    # to be a cache-hit instead of the expected cache-miss.
+    self.browser_restart()
+
+    # A pre-js that reports via the callbacks instead of from C.
+    # onCOSStore fires after writable.close() completes, so the data is
+    # durably written before the window closes and the second load begins.
+    #
+    # -sINCOMING_MODULE_JS_API replaces the entire default list, so we must
+    # include onAbort and onExit (used by browser_reporting.js) alongside the
+    # COS callbacks; otherwise Emscripten aborts on the unknown Module props.
+    create_file('cos_pre.js', '''
+      var Module = {
+        onCOSStore: function(hash) {
+          console.log('[COS] stored, SHA-256:', hash);
+          reportResultToServer('stored');
+        },
+        onCOSCacheHit: function(hash) {
+          console.log('[COS] cache-hit, SHA-256:', hash);
+          reportResultToServer('cache-hit');
+        },
+      };
+    ''')
+    self.compile_btest('browser_test_hello_world.c', [
+      '-O2',
+      '-sCROSS_ORIGIN_STORAGE',
+      '-Wno-experimental',
+      '-sINCOMING_MODULE_JS_API=onAbort,onExit,onCOSStore,onCOSCacheHit',
+      '--pre-js', 'cos_pre.js',
+      '-o', 'page.html',
+    ], reporting=Reporting.JS_ONLY)
+    # First page load: wasm is fetched from network and written into COS.
+    self.run_browser('page.html', '/report_result?stored')
+    # Second page load: wasm is served from COS.
+    self.run_browser('page.html', '/report_result?cache-hit')
 
 
 class browser64(browser):

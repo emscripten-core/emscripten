@@ -19,23 +19,23 @@ addToLibrary({
     isWindows: false,
     staticInit() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
-      var flags = process.binding("constants")["fs"];
+      var flags = process.binding('constants')['fs'];
       NODEFS.flagsForNodeMap = {
-        "{{{ cDefs.O_APPEND }}}": flags["O_APPEND"],
-        "{{{ cDefs.O_CREAT }}}": flags["O_CREAT"],
-        "{{{ cDefs.O_EXCL }}}": flags["O_EXCL"],
-        "{{{ cDefs.O_NOCTTY }}}": flags["O_NOCTTY"],
-        "{{{ cDefs.O_RDONLY }}}": flags["O_RDONLY"],
-        "{{{ cDefs.O_RDWR }}}": flags["O_RDWR"],
-        "{{{ cDefs.O_DSYNC }}}": flags["O_SYNC"],
-        "{{{ cDefs.O_TRUNC }}}": flags["O_TRUNC"],
-        "{{{ cDefs.O_WRONLY }}}": flags["O_WRONLY"],
-        "{{{ cDefs.O_NOFOLLOW }}}": flags["O_NOFOLLOW"],
+        '{{{ cDefs.O_APPEND }}}': flags['O_APPEND'],
+        '{{{ cDefs.O_CREAT }}}': flags['O_CREAT'],
+        '{{{ cDefs.O_EXCL }}}': flags['O_EXCL'],
+        '{{{ cDefs.O_NOCTTY }}}': flags['O_NOCTTY'],
+        '{{{ cDefs.O_RDONLY }}}': flags['O_RDONLY'],
+        '{{{ cDefs.O_RDWR }}}': flags['O_RDWR'],
+        '{{{ cDefs.O_DSYNC }}}': flags['O_SYNC'],
+        '{{{ cDefs.O_TRUNC }}}': flags['O_TRUNC'],
+        '{{{ cDefs.O_WRONLY }}}': flags['O_WRONLY'],
+        '{{{ cDefs.O_NOFOLLOW }}}': flags['O_NOFOLLOW'],
       };
 #if ASSERTIONS
       // The 0 define must match on both sides, as otherwise we would not
       // know to add it.
-      assert(NODEFS.flagsForNodeMap["0"] === 0);
+      assert(NODEFS.flagsForNodeMap['0'] === 0);
 #endif
     },
     convertNodeCode(e) {
@@ -164,7 +164,7 @@ addToLibrary({
           // update the common node structure mode as well
           node.mode = attr.mode;
         }
-        if (typeof (attr.atime ?? attr.mtime) === "number") {
+        if (typeof (attr.atime ?? attr.mtime) === 'number') {
           // Unfortunately, we have to stat the current value if we don't want
           // to change it. On top of that, since the times don't round trip
           // this will only keep the value nearly unchanged not exactly
@@ -189,7 +189,11 @@ addToLibrary({
         if (attr.mode != null && attr.dontFollow) {
           throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
         }
-        NODEFS.setattr(path, node, attr, fs.chmodSync, fs.utimesSync, fs.truncateSync, fs.lstatSync);
+        // `dontFollow` (AT_SYMLINK_NOFOLLOW): use lutimes so the symlink's own
+        // timestamps are set without the host resolving it, which would
+        // otherwise escape the NODEFS mount root.
+        var utimes = attr.dontFollow ? fs.lutimesSync : fs.utimesSync;
+        NODEFS.setattr(path, node, attr, fs.chmodSync, utimes, fs.truncateSync, fs.lstatSync);
       },
       lookup(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);

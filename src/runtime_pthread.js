@@ -30,8 +30,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // When using postMessage to send an object, it is processed by the structured
   // clone algorithm.  The prototype, and hence methods, on that object is then
   // lost. This function adds back the lost prototype.  This does not work with
-  // nested objects that has prototypes, but it suffices for WasmSourceMap and
-  // WasmOffsetConverter.
+  // nested objects that has prototypes, but it suffices for WasmSourceMap.
   function resetPrototype(constructor, attrs) {
     var object = Object.create(constructor.prototype);
     return Object.assign(object, attrs);
@@ -42,7 +41,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // notified about them.
   self.onunhandledrejection = (e) => { throw e.reason || e; };
 
-  {{{ asyncIf(ASYNCIFY == 2) }}}function handleMessage(e) {
+  {{{ asyncIf(ASYNCIFY == 2 || MAIN_MODULE) }}}function handleMessage(e) {
     try {
       var msgData = e.data;
       //dbg('msgData: ' + Object.keys(msgData));
@@ -123,14 +122,18 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if MODULARIZE == 'instance'
         init();
 #else
-        createWasm();
+        {{{ awaitIf(MAIN_MODULE) }}}createWasm();
         run();
 #endif
 #endif // MINIMAL_RUNTIME
 #endif
+#if !MINIMAL_RUNTIME
+        startWorker();
+#endif
       } else if (cmd == {{{ CMD_RUN }}}) {
 #if ASSERTIONS
         assert(msgData.pthread_ptr);
+        assert(wasmMemory, "CMD_RUN received before CMD_LOAD");
 #endif
         // Call inside JS module to set up the stack frame for this pthread in JS module scope.
         // This needs to be the first thing that we do, as we cannot call to any C/C++ functions
@@ -190,7 +193,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
       err(`worker: onmessage() captured an uncaught exception: ${ex}`);
       if (ex?.stack) err(ex.stack);
 #endif
-      __emscripten_thread_crashed();
+      if (runtimeInitialized) __emscripten_thread_crashed();
       throw ex;
     }
   };

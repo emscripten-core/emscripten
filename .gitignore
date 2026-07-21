@@ -39,7 +39,7 @@ coverage.xml
 !/tools/run_python.ps1
 !/tools/run_python_compiler.ps1
 
-/tools/pylauncher/pylauncher.obj
+/tools/pylauncher/*.obj
 
 # Shell scripts (created by ./tools/maint/create_entry_points.py)
 em++
@@ -91,7 +91,6 @@ test/runner.bat
 tools/file_packager.bat
 tools/webidl_binder.bat
 
-bootstrap.exe
 em++.exe
 emcc.exe
 em-config.exe
