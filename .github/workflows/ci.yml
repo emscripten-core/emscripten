@@ -66,6 +66,9 @@ jobs:
             echo "Be sure that you have installed the current emsdk version.  See test/emsdk_version.txt ($(cat test/emsdk_version.txt))."
             exit 1
           fi
+      - name: Check emcc_native generated settings
+        run: |
+          ./tools/emcc_native/gen_settings.py --check
 
   clang-format-diff:
     # This job is disabled until we can make it more precise

@@ -1,6 +1,6 @@
 # Design Doc: Native Launcher / Clang Frontend
 
-- **Status**: Draft
+- **Status**: Phase 1 Completed
 - **Bug**: https://github.com/emscripten-core/emscripten/issues/26453
 
 ## Context

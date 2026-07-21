@@ -54,6 +54,7 @@ commands:
     description: "bootstrap"
     steps:
       - run: "$EMSDK_PYTHON ./bootstrap.py"
+      - build-emcc-native
   pip-install:
     description: "pip install"
     parameters:
@@ -131,6 +132,21 @@ commands:
             export PATH="`pwd`/node-v15.14.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             jsvu --os=default --engines=v8
+  build-emcc-native:
+    description: "Build emcc_native"
+    steps:
+      - run:
+          name: Install dependencies (Linux)
+          command: |
+            if command -v apt-get >/dev/null 2>&1; then
+              apt-get install -q -y cmake ninja-build
+            fi
+      - run:
+          name: Build emcc_native
+          command: |
+            cmake -B out/build_emcc_native -S tools/emcc_native -DCMAKE_BUILD_TYPE=Release
+            cmake --build out/build_emcc_native --config Release
+            cmake --install out/build_emcc_native --config Release
   install-emsdk:
     description: "Install emsdk"
     steps:
@@ -147,6 +163,8 @@ commands:
             cd ~/emsdk
             ./emsdk install ${EMSDK_VERSION}
             ./emsdk activate ${EMSDK_VERSION}
+            # Hack: Replace emsdk_path expressions with $CFGDIR so emcc_native can parse without fallback
+            python -c 's = open(".emscripten").read(); open(".emscripten", "w").write(s.replace("emsdk_path + " + chr(39), chr(39) + "$CFGDIR").replace("emsdk_path + " + chr(34), chr(34) + "$CFGDIR"))' 2>/dev/null || python3 -c 's = open(".emscripten").read(); open(".emscripten", "w").write(s.replace("emsdk_path + " + chr(39), chr(39) + "$CFGDIR").replace("emsdk_path + " + chr(34), chr(34) + "$CFGDIR"))'
             # Write the version of clang into a file for use in the ccache key
             ./upstream/bin/clang --version > clang_version.txt
             echo "clang version:"
@@ -1188,6 +1206,10 @@ jobs:
       shell: bash.exe -eo pipefail
     steps:
       - checkout
+      - run:
+          name: Install packages
+          command: |
+            choco install -y cmake.portable ninja
       - run:
           name: "build pylauncher"
           shell: cmd.exe

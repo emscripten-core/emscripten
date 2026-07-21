@@ -78,6 +78,12 @@ def path_from_root(*pathelems):
 
 
 def exe_path_from_root(*pathelems):
+  # First look for executables in ./bin, where the emcc-native
+  # binaries are stored.   If those are not found fall back to the
+  # normal top level entry points.
+  bin_path = find_exe(path_from_root('bin', *pathelems))
+  if os.path.exists(bin_path):
+    return bin_path
   return find_exe(path_from_root(*pathelems))
 
 
