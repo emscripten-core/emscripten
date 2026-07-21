@@ -165,11 +165,15 @@ var LibraryWebAudio = {
   },
 
 #if AUDIO_WORKLET
-  // _emscripten_create_audio_worklet() doesn't use stackAlloc,
+  // _emscripten_create_audio_worklet() doesn't use stackAlloc, HEAPs,
   // etc., but the created worklet does.
   _emscripten_create_audio_worklet__deps: [
     '$_emAudioDispatchProcessorCallback',
-    '$stackAlloc', '$stackRestore', '$stackSave'],
+    '$stackAlloc', '$stackRestore', '$stackSave', '$HEAP32', '$HEAPU32', '$HEAPF32',
+#if WASM_BIGINT || MEMORY64
+    '$HEAP64', '$HEAPU64',
+#endif
+  ],
   _emscripten_create_audio_worklet: (wwID, contextHandle, stackLowestAddress, stackSize, pthreadPtr, callback, userData) => {
 
 #if ASSERTIONS || WEBAUDIO_DEBUG

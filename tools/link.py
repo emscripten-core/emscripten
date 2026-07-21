@@ -830,11 +830,6 @@ def add_required_heap_symbols():
     # MEMORYPROFILER accesses HEAP8 in memoryprofiler.js.
     if settings.MEMORYPROFILER:
       heaps.append('$HEAP8')
-    # AUDIO_WORKLET accesses HEAP32, HEAPU32, and HEAPF32 in audio_worklet.js.
-    if settings.AUDIO_WORKLET:
-      heaps += ['$HEAP32', '$HEAPU32', '$HEAPF32']
-      if settings.WASM_BIGINT or settings.MEMORY64:
-        heaps += ['$HEAP64', '$HEAPU64']
     # runtime_common.js accesses HEAP8 under ALLOW_MEMORY_GROWTH (to check buffer resizability),
     # RUNTIME_DEBUG (to log initial setup), and ASSERTIONS (to guard against re-entrancy when
     # ALLOW_MEMORY_GROWTH is 0).

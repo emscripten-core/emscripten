@@ -173,16 +173,16 @@ function updateMemoryViews() {
 #endif
   var b = wasmMemory.buffer;
 #endif
-  {{{ updateHeap('HEAP8',   'Int8Array')    }}}
-  {{{ updateHeap('HEAP16',  'Int16Array')   }}}
-  {{{ updateHeap('HEAPU8',  'Uint8Array')   }}}
-  {{{ updateHeap('HEAPU16', 'Uint16Array')  }}}
-  {{{ updateHeap('HEAP32',  'Int32Array')   }}}
-  {{{ updateHeap('HEAPU32', 'Uint32Array')  }}}
-  {{{ updateHeap('HEAPF32', 'Float32Array') }}}
-  {{{ updateHeap('HEAPF64', 'Float64Array') }}}
+  {{{ updateHeap('HEAP8',   'Int8Array')      }}}
+  {{{ updateHeap('HEAP16',  'Int16Array')     }}}
+  {{{ updateHeap('HEAPU8',  'Uint8Array')     }}}
+  {{{ updateHeap('HEAPU16', 'Uint16Array')    }}}
+  {{{ updateHeap('HEAP32',  'Int32Array')     }}}
+  {{{ updateHeap('HEAPU32', 'Uint32Array')    }}}
+  {{{ updateHeap('HEAPF32', 'Float32Array')   }}}
+  {{{ updateHeap('HEAPF64', 'Float64Array')   }}}
 #if WASM_BIGINT
-  {{{ updateHeap('HEAP64',  'BigInt64Array') }}}
+  {{{ updateHeap('HEAP64',  'BigInt64Array')  }}}
   {{{ updateHeap('HEAPU64', 'BigUint64Array') }}}
 #endif
 #if SUPPORT_BIG_ENDIAN
