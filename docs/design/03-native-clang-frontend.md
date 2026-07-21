@@ -190,10 +190,9 @@ directly into the Clang compiler routines in-process.
 
 #### Cons
 - **High Build & Packaging Complexity**: Requires linking against LLVM/Clang C++
-  libraries. Significantly increases binary size and EMSDK build/packaging
-  requirements.
-- **Version Lock-in & Maintenance**: Closely tied to specific LLVM API versions;
-  breaking changes in LLVM/Clang internals require updates to `emcc`.
+  libraries.
+- **Version Lock-in & Maintenance**: Closely tied to specific LLVM/Clang API;
+  changes in LLVM/Clang internals could require updates to `emcc`.
 - **Process State Cleanup**: In-process Clang compilation must properly reset
   global LLVM signal handlers, memory allocators, and global state between runs
   if re-used.
