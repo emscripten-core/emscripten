@@ -30,9 +30,6 @@ See docs/process.md for more on how version tagging works.
   and `$allocate`. (#27378)
 - llvm-libc was updated to LLVM 22.1.8. (#27374)
 - Backport fix for musl's qsort (CVE-2026-40200) (#27029)
-- `recvmsg` now updates `msg_namelen`, `msg_controllen` and `msg_flags` in the
-  caller's `struct msghdr`, and no longer mis-offsets writes into multiple
-  iovecs.
 
 6.0.3 - 07/13/26
 ----------------
