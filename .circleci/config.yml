@@ -1150,7 +1150,7 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install -y cmake.portable ninja pkgconfiglite
+            choco install -y cmake.portable ninja
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
@@ -1229,6 +1229,7 @@ jobs:
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_25: "1"
+      EMTEST_SKIP_PKG_CONFIG: "1"
       EMTEST_BROWSER: "0"
     steps:
       - checkout
@@ -1239,7 +1240,7 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install -y cmake.portable ninja pkgconfiglite
+            choco install -y cmake.portable ninja
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - install-emsdk
