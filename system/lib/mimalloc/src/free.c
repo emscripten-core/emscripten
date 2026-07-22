@@ -89,7 +89,7 @@ static inline void mi_free_block_mt(mi_page_t* page, mi_block_t* block, bool was
 
 // Adjust a block that was allocated aligned, to the actual start of the block in the page.
 // note: this can be called from `mi_free_generic_mt` where a non-owning thread accesses the
-// `page_start` and `block_size` fields; however these are constant and the page won't be
+// `page_woffset` and `block_size` fields; however these are constant and the page won't be
 // deallocated (as the block we are freeing keeps it alive) and thus safe to read concurrently.
 mi_block_t* _mi_page_ptr_unalign(const mi_page_t* page, const void* p) {
   mi_assert_internal(page!=NULL && p!=NULL);
@@ -228,7 +228,7 @@ void mi_free_small(void* p) mi_attr_noexcept {
     #else
       mi_page_t* const page = (mi_page_t*)_mi_align_down_ptr(p,MI_SMALL_PAGE_SIZE);
       mi_assert(page == mi_validate_ptr_page(p,"mi_free_small"));
-      mi_assert((void*)page == _mi_align_down_ptr(page->page_start,MI_SMALL_PAGE_SIZE));
+      mi_assert((void*)page == _mi_align_down_ptr(mi_page_start(page),MI_SMALL_PAGE_SIZE));
       mi_assert(page->block_size <= MI_SMALL_SIZE_MAX);  // note: not `MI_SMALL_MAX_OBJ_SIZE` as we need to match `mi_(heap_)malloc_small`
       mi_free_ex(p, NULL, page);
     #endif
@@ -313,7 +313,7 @@ static mi_decl_noinline bool mi_abandoned_page_try_reclaim(mi_page_t* page, long
   mi_assert_internal(mi_page_is_owned(page));
   mi_assert_internal(mi_page_is_abandoned(page));
   mi_assert_internal(!mi_page_all_free(page));
-  mi_assert_internal(page->block_size <= MI_SMALL_SIZE_MAX);
+  mi_assert_internal(page->block_size <= MI_MEDIUM_MAX_OBJ_SIZE);
   mi_assert_internal(reclaim_on_free >= 0);
 
   // dont reclaim if we just have terminated this thread and we should
@@ -322,7 +322,7 @@ static mi_decl_noinline bool mi_abandoned_page_try_reclaim(mi_page_t* page, long
 
   // get our theap 
   mi_theap_t* const theap = _mi_page_associated_theap_peek(page);
-  if (theap==NULL || !theap->allow_page_reclaim) return false;
+  if (theap==NULL || theap->tld==NULL || !theap->allow_page_reclaim) return false;  // see issue #1289
   
   // todo: cache `is_in_threadpool` and `exclusive_arena` directly in the theap for performance?
   // set max_reclaim limit
@@ -380,7 +380,7 @@ static void mi_decl_noinline mi_free_try_collect_mt(mi_page_t* page, mi_block_t*
 
   // try to: 1. free it, 2. reclaim it, or 3. reabandon it to be mapped
   if (mi_abandoned_page_try_free(page)) return;
-  if (page->block_size <= MI_SMALL_SIZE_MAX && reclaim_on_free >= 0) {  // early test for better codegen
+  if (page->block_size <= MI_MEDIUM_MAX_OBJ_SIZE && reclaim_on_free >= 0) {  // early test for better codegen
     if (mi_abandoned_page_try_reclaim(page, reclaim_on_free)) return;
   }
   if (mi_abandoned_page_try_reabandon_to_mapped(page)) return;
@@ -522,7 +522,7 @@ static bool mi_page_decode_padding(const mi_page_t* page, const mi_block_t* bloc
 
 // Return the exact usable size of a block.
 static size_t mi_page_usable_size_of(const mi_page_t* page, const mi_block_t* block, bool is_guarded) {
-  if (is_guarded) {
+  if mi_unlikely(is_guarded) {
     const size_t bsize = mi_page_block_size(page);
     return (bsize - _mi_os_page_size());
   }
@@ -555,9 +555,15 @@ void _mi_padding_shrink(const mi_page_t* page, const mi_block_t* block, const si
   mi_track_mem_noaccess(padding,sizeof(mi_padding_t));
 }
 #else
-static size_t mi_page_usable_size_of(const mi_page_t* page, const mi_block_t* block, bool is_guarded) {
-  MI_UNUSED(is_guarded); MI_UNUSED(block);
-  return mi_page_usable_block_size(page);
+static inline size_t mi_page_usable_size_of(const mi_page_t* page, const mi_block_t* block, bool is_guarded) {
+  MI_UNUSED(block);
+  if mi_unlikely(is_guarded) {
+    const size_t bsize = mi_page_block_size(page);
+    return (bsize - _mi_os_page_size());
+  }
+  else {
+    return mi_page_usable_block_size(page);
+  }
 }
 
 void _mi_padding_shrink(const mi_page_t* page, const mi_block_t* block, const size_t min_size) {
@@ -654,5 +660,18 @@ static void mi_block_unguard(mi_page_t* page, mi_block_t* block, void* p) {
   void* gpage = (uint8_t*)block + bsize - psize;
   mi_assert_internal(_mi_is_aligned(gpage, psize));
   _mi_os_unprotect(gpage, psize);
+}
+
+// unguard a whole page (called from `mi_heap_destroy`)
+void _mi_page_unguard_all(mi_page_t* page) {      
+  if mi_likely(!mi_page_has_interior_pointers(page)) return;
+  uint8_t* const start = mi_page_start(page);
+  const size_t psize = mi_page_committed(page);
+  _mi_os_unprotect(start,psize);  // unprotect all at once as we cannot know which blocks are guarded
+}
+#else
+void _mi_page_unguard_all(mi_page_t* page) {
+  MI_UNUSED(page);
+  // nothing to do 
 }
 #endif

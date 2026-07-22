@@ -8,7 +8,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #ifndef MIMALLOC_H
 #define MIMALLOC_H
 
-#define MI_MALLOC_VERSION 30301   // major + 2 digits minor + 2 digits patch
+#define MI_MALLOC_VERSION 30401   // major + 2 digits minor + 2 digits patch
 
 // ------------------------------------------------------
 // Compiler specific attributes
@@ -95,7 +95,7 @@ terms of the MIT license. A copy of the license can be found in the file
 // Includes
 // ------------------------------------------------------
 
-#include <stddef.h>     // size_t
+#include <stddef.h>     // size_t, wchar_t
 #include <stdbool.h>    // bool
 
 #ifdef __cplusplus
@@ -347,7 +347,7 @@ mi_decl_nodiscard mi_decl_export mi_heap_t* mi_heap_new_in_arena(mi_arena_id_t a
 // Used for example for separate interpreters in one process.
 // ------------------------------------------------------
 
-typedef void* mi_subproc_id_t;                        
+typedef struct { void* _mi_subproc_id; } mi_subproc_id_t;  // abstract type
 mi_decl_export mi_subproc_id_t mi_subproc_main(void);
 mi_decl_export mi_subproc_id_t mi_subproc_current(void);
 mi_decl_export mi_subproc_id_t mi_subproc_new(void);
@@ -483,6 +483,7 @@ typedef enum mi_option_e {
   mi_option_allow_thp,                  // allow transparent huge pages? (=1) (on Android =0 by default). Set to 0 to disable THP for the process.
   mi_option_minimal_purge_size,         // set minimal purge size (in KiB) (=0). By default set to either 64 or 2048 if THP is enabled.
   mi_option_arena_max_object_size,      // set maximal object size that can be allocated in an arena (in KiB) (=2GiB on 64-bit). 
+  mi_option_arena_is_numa_local,        // experimental
   _mi_option_last,
   // legacy option names
   mi_option_large_os_pages = mi_option_allow_large_os_pages,
@@ -518,7 +519,7 @@ mi_decl_nodiscard mi_decl_export size_t mi_malloc_size(const void* p)        mi_
 mi_decl_nodiscard mi_decl_export size_t mi_malloc_good_size(size_t size)     mi_attr_noexcept;
 mi_decl_nodiscard mi_decl_export size_t mi_malloc_usable_size(const void *p) mi_attr_noexcept;
 
-mi_decl_export int mi_posix_memalign(void** p, size_t alignment, size_t size)   mi_attr_noexcept;
+mi_decl_export int mi_posix_memalign(void** p, size_t alignment, size_t size); // mi_attr_noexcept;
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_memalign(size_t alignment, size_t size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(2) mi_attr_alloc_align(1);
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_valloc(size_t size)  mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_pvalloc(size_t size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
@@ -535,7 +536,6 @@ mi_decl_export void mi_free_aligned(void* p, size_t alignment)                  
 mi_decl_export int  mi_dupenv_s(char** buf, size_t* size, const char* name)      mi_attr_noexcept;
 
 // wide characters
-#include <wchar.h>  // wchar_t
 mi_decl_export int mi_wdupenv_s(wchar_t** buf, size_t* size, const wchar_t* name)       mi_attr_noexcept;
 mi_decl_nodiscard mi_decl_export mi_decl_restrict wchar_t* mi_wcsdup(const wchar_t* s)  mi_attr_noexcept mi_attr_malloc;
 mi_decl_nodiscard mi_decl_export mi_decl_restrict unsigned char* mi_mbsdup(const unsigned char* s)  mi_attr_noexcept mi_attr_malloc;

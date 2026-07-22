@@ -87,7 +87,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #endif
 
 // Enable guard pages behind objects of a certain size (set by the MIMALLOC_GUARDED_MIN/MAX/SAMPLE_RATE options)
-#if !defined(MI_GUARDED) && MI_DEBUG && !defined(NDEBUG) && !MI_PAGE_META_ALIGNED_FREE_SMALL 
+#if !defined(MI_GUARDED) && MI_DEBUG && !defined(NDEBUG) && !MI_PAGE_META_ALIGNED_FREE_SMALL
 #define MI_GUARDED  1
 #endif
 
@@ -116,9 +116,9 @@ terms of the MIT license. A copy of the license can be found in the file
 #define MI_ENABLE_LARGE_PAGES  1
 #endif
 
-// Place page meta info at the start of the page area or keep it separate? 
-// Separate keeps the page info at the arena start (default) which is more secure 
-// and reduces wasted space due to alignment and block sizes. 
+// Place page meta info at the start of the page area or keep it separate?
+// Separate keeps the page info at the arena start (default) which is more secure
+// and reduces wasted space due to alignment and block sizes.
 // (but also reserves more memory up front (about 2MiB per GiB))
 #if !defined(MI_PAGE_META_IS_SEPARATED)
 #if MI_PAGE_MAP_FLAT
@@ -393,7 +393,8 @@ typedef struct mi_page_s {
   _Atomic(mi_thread_free_t) xthread_free;      // list of deferred free blocks freed by other threads (= `mi_block_t* | (1 if owned)`)
 
   size_t                    block_size;        // const: size available in each block (always `>0`)
-  uint8_t*                  page_start;        // const: start of the blocks
+  uint32_t                  page_woffset;      // const: offset relative to the page (in machine words) to the start of the blocks
+  uint32_t                  slice_committed;   // committed size relative to the first arena slice of the page data (or 0 if the page is fully committed already)
 
   #if (MI_ENCODE_FREELIST || MI_PADDING)
   uintptr_t                 keys[2];           // const: two random keys to encode the free lists (see `_mi_block_next`) or padding canary
@@ -404,7 +405,6 @@ typedef struct mi_page_s {
 
   struct mi_page_s*         next;              // next page owned by the theap with the same `block_size`
   struct mi_page_s*         prev;              // previous page owned by the theap with the same `block_size`
-  size_t                    slice_committed;   // committed size relative to the first arena slice of the page data (or 0 if the page is fully committed already)
   mi_memid_t                memid;             // const: provenance of the page memory
 } mi_page_t;
 
@@ -423,7 +423,7 @@ typedef struct mi_page_s {
 #define MI_SMALL_MAX_OBJ_SIZE             ((MI_SMALL_PAGE_SIZE-MI_PAGE_OSPAGE_BLOCK_ALIGN2)/6)   // = 10 KiB
 #if MI_ENABLE_LARGE_PAGES
 #define MI_MEDIUM_MAX_OBJ_SIZE            ((MI_MEDIUM_PAGE_SIZE-MI_PAGE_OSPAGE_BLOCK_ALIGN2)/6)  // ~ 84 KiB
-#define MI_LARGE_MAX_OBJ_SIZE             (MI_LARGE_PAGE_SIZE/8)    // <= 512 KiB // note: this must be a nice power of 2 or we get rounding issues with `_mi_bin`
+#define MI_LARGE_MAX_OBJ_SIZE             (MI_LARGE_PAGE_SIZE/8)    // <= 512 KiB. note: this must be a nice power of 2 or we get rounding issues with `_mi_bin`
 #else
 #define MI_MEDIUM_MAX_OBJ_SIZE            (MI_MEDIUM_PAGE_SIZE/8)   // <= 64 KiB
 #define MI_LARGE_MAX_OBJ_SIZE             MI_MEDIUM_MAX_OBJ_SIZE    // note: this must be a nice power of 2 or we get rounding issues with `_mi_bin`
@@ -434,6 +434,16 @@ typedef struct mi_page_s {
 #error "mimalloc internal: define more bins"
 #endif
 
+// static invariant: MI_MAX_SINGLETON_BIN >= _mi_bin(MI_LARGE_MAX_OBJ_SIZE) (See init.c for the size bins)
+#if (MI_LARGE_MAX_OBJ_WSIZE <= 8192)     // 64 KiB
+#define MI_MAX_SINGLETON_BIN   (48)
+#elif (MI_LARGE_MAX_OBJ_WSIZE <= 32768)  // 256KiB
+#define MI_MAX_SINGLETON_BIN   (56)
+#elif (MI_LARGE_MAX_OBJ_WSIZE <= 65536)  // 512KiB
+#define MI_MAX_SINGLETON_BIN   (60)
+#else
+#define MI_MAX_SINGLETON_BIN   MI_BIN_HUGE
+#endif
 
 // ------------------------------------------------------
 // Page kinds
@@ -505,6 +515,7 @@ struct mi_theap_s {
   mi_tld_t*             tld;                                 // thread-local data
   _Atomic(mi_heap_t*)   heap;                                // the heap this theap belongs to.
   _Atomic(size_t)       refcount;                            // reference count
+  _Atomic(size_t)       freed;                               // ensure atomic free-ing
   unsigned long long    heartbeat;                           // monotonic heartbeat count
   uintptr_t             cookie;                              // random cookie to verify pointers (see `_mi_ptr_cookie`)
   mi_random_ctx_t       random;                              // random number context used for secure allocation
@@ -516,12 +527,12 @@ struct mi_theap_s {
   long                  generic_collect_count;               // how often is `_mi_malloc_generic` called without collecting?
 
   mi_theap_t*           tnext;                               // list of theaps in this thread
-  mi_theap_t*           tprev;  
+  mi_theap_t*           tprev;
   mi_theap_t*           hnext;                               // list of theaps of the owning `heap`
   mi_theap_t*           hprev;
-  
+
   long                  page_full_retain;                    // how many full pages can be retained per queue (before abandoning them)
-  bool                  allow_page_reclaim;                  // `true` if this theap should not reclaim abandoned pages
+  bool                  allow_page_reclaim;                  // `true` if this theap can reclaim abandoned pages
   bool                  allow_page_abandon;                  // `true` if this theap can abandon pages to reduce memory footprint
   #if MI_GUARDED
   size_t                guarded_size_min;                    // minimal size for guarded objects
@@ -646,7 +657,7 @@ struct mi_tld_s {
   to reserve large arenas upfront and be able to reuse the memory more effectively.
 -----------------------------------------------------------------------------*/
 
-#define MI_ARENA_BIN_COUNT      (MI_BIN_COUNT)
+#define MI_ARENA_BIN_COUNT      (MI_MAX_SINGLETON_BIN+1)
 #define MI_ARENA_MIN_SIZE       (MI_BCHUNK_BITS * MI_ARENA_SLICE_SIZE)           // 32 MiB (or 8 MiB on 32-bit)
 #define MI_ARENA_MAX_SIZE       (MI_BITMAP_MAX_BIT_COUNT * MI_ARENA_SLICE_SIZE)
 
@@ -713,6 +724,10 @@ typedef struct mi_arena_s {
 #ifndef EOVERFLOW      // count*size overflow
 #define EOVERFLOW (75)
 #endif
+#ifndef ENOENT         // environment variable not found
+#define ENOENT (2)
+#endif
+
 
 /* -----------------------------------------------------------
   Debug constants
