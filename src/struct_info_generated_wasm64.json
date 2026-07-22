@@ -1030,6 +1030,9 @@
         },
         "msghdr": {
             "__size__": 56,
+            "msg_control": 32,
+            "msg_controllen": 40,
+            "msg_flags": 48,
             "msg_iov": 16,
             "msg_iovlen": 24,
             "msg_name": 0,

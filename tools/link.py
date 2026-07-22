@@ -806,6 +806,41 @@ def setup_cross_origin_storage():
       exit_with_error(f"CROSS_ORIGIN_STORAGE_ORIGINS: {o!r} is not a valid HTTPS origin (expected 'https://host' or 'https://host:port')")
 
 
+def add_required_heap_symbols():
+  """Auto-include heap views and helper symbols required by certain build modes or runtime.
+
+  Because addImplicitDeps only scans library functions and user code (pre-js/post-js/EM_JS),
+  runtime scaffolding files (e.g., postamble.js, runtime_stack_check.js, memoryprofiler.js)
+  that access linear memory directly must have their heap views explicitly declared here
+  so they are emitted in the final JS bundle.
+  """
+  heaps = []
+  if settings.MAIN_MODULE or settings.EXPORT_ALL or settings.SAFE_HEAP:
+    # Dynamic linking side modules, full symbol exports, or safe heap instrumentation
+    # require all standard heap views and value helpers to be available.
+    heaps += ['$getValue', '$setValue']
+    heaps += ['$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16',
+              '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64']
+    if settings.WASM_BIGINT or settings.MEMORY64:
+      heaps += ['$HEAP64', '$HEAPU64']
+  else:
+    # STACK_OVERFLOW_CHECK accesses HEAP32/HEAPU32 in runtime_stack_check.js.
+    if settings.STACK_OVERFLOW_CHECK:
+      heaps += ['$HEAP32', '$HEAPU32']
+    # MEMORYPROFILER accesses HEAP8 in memoryprofiler.js.
+    if settings.MEMORYPROFILER:
+      heaps.append('$HEAP8')
+    # runtime_common.js accesses HEAP8 under ALLOW_MEMORY_GROWTH (to check buffer resizability),
+    # RUNTIME_DEBUG (to log initial setup), and ASSERTIONS (to guard against re-entrancy when
+    # ALLOW_MEMORY_GROWTH is 0).
+    if settings.ALLOW_MEMORY_GROWTH or settings.RUNTIME_DEBUG or settings.ASSERTIONS:
+      heaps.append('$HEAP8')
+
+  for h in heaps:
+    if h not in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append(h)
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
@@ -1194,11 +1229,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if prop not in settings.ALL_INCOMING_MODULE_JS_API:
       diagnostics.warning('unused-command-line-argument', f'invalid entry in INCOMING_MODULE_JS_API: {prop}')
 
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-    '$wasmMemory',
-    '$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16',
-    '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64',
-  ]
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmMemory']
 
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
@@ -1272,8 +1303,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       if settings.ASSERTIONS:
         # "checkUnflushedContent()" and "missingLibrarySymbol()" depend on warnOnce
         settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
-
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
@@ -1573,9 +1602,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   feature_matrix.auto_enable_features()
 
-  if settings.WASM_BIGINT:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$HEAP64', '$HEAPU64']
-
   if settings.AUDIO_WORKLET:
     add_system_js_lib('libwebaudio.js')
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$getWasmTableEntry')
@@ -1860,6 +1886,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
     settings.MAYBE_CLOSURE_COMPILER = 1
 
+  add_required_heap_symbols()
   check_settings()
 
   return target, wasm_target

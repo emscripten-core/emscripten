@@ -295,5 +295,11 @@ var LOAD_SOURCE_MAP = false;
 
 var ALIASES = [];
 
+// Internal setting for passing EM_JS and EM_ASM function code snippets to JSifier so that
+// implicit heap dependencies (e.g. HEAP8, HEAP32) can be scanned and included automatically
+// without needing to search for them in Python.
+// This could be removed if/when we require explicit heap dependencies (via EM_JS_DEPS).
+var EM_JS_SNIPPETS = [];
+
 // List of public setting names (Used by RETAIN_COMPILER_SETTINGS)
 var PUBLIC_SETTINGS = [];

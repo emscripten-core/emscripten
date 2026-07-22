@@ -77,6 +77,14 @@ def set_config_from_tool_location(config_key, tool_binary, f):
     exit_with_error('%s is set to empty value in %s', config_key, EM_CONFIG)
 
 
+def expandvars(value):
+  if isinstance(value, str):
+    return os.path.expandvars(os.path.expanduser(value))
+  elif isinstance(value, list):
+    return [expandvars(v) for v in value]
+  return value
+
+
 def parse_config_file():
   """Parse the emscripten config file using python's exec.
 
@@ -84,6 +92,9 @@ def parse_config_file():
   """
   config = {'__file__': EM_CONFIG}
   config_text = utils.read_file(EM_CONFIG)
+  # Add $CFGDIR expansion similar to that used in llvm config files:
+  # https://clang.llvm.org/docs/UsersManual.html#configuration-files
+  os.environ['CFGDIR'] = os.path.dirname(EM_CONFIG)
   try:
     exec(config_text, config)
   except Exception as e:
@@ -132,34 +143,12 @@ def parse_config_file():
           exit_with_error(f'environment variable {env_var} must be an absolute path: {env_value}')
       globals()[key] = env_value
     elif key in config:
-      globals()[key] = config[key]
+      globals()[key] = expandvars(config[key])
 
 
 def read_config():
   if os.path.isfile(EM_CONFIG):
     parse_config_file()
-
-  # In the past the default-generated .emscripten config file would read
-  # certain environment variables.
-  LEGACY_ENV_VARS = {
-    'LLVM': 'EM_LLVM_ROOT',
-    'BINARYEN': 'EM_BINARYEN_ROOT',
-    'NODE': 'EM_NODE_JS',
-    'LLVM_ADD_VERSION': 'EM_LLVM_ADD_VERSION',
-    'CLANG_ADD_VERSION': 'EM_CLANG_ADD_VERSION',
-  }
-
-  for key, new_key in LEGACY_ENV_VARS.items():
-    env_value = os.environ.get(key)
-    if env_value and new_key not in os.environ:
-      msg = f'legacy environment variable found: `{key}`.  Please switch to using `{new_key}` instead`'
-      # Use `debug` instead of `warning` for `NODE` specifically
-      # since there can be false positives:
-      # See https://github.com/emscripten-core/emsdk/issues/862
-      if key == 'NODE':
-        logger.debug(msg)
-      else:
-        logger.warning(msg)
 
   set_config_from_tool_location('LLVM_ROOT', 'clang', os.path.dirname)
   set_config_from_tool_location('NODE_JS', 'node', lambda x: x)

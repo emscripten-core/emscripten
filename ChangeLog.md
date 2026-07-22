@@ -20,12 +20,17 @@ See docs/process.md for more on how version tagging works.
 
 6.0.4 (in development)
 ----------------------
+- The emscripten config file parser can now handle strings that contain
+  environment variables (e.g. `$HOME`) and that use the `~/` prefix.  This means
+  that it should be possible, in most cases, to avoid the use of python's
+  `os.path` within the the config file itself. (#27215)
 - Legacy support for ancient vendor-prefixed DOM APIs was removed (#27341,
   #27339, #27338, #27340, #27347)
 - Removed legacy JS library symbols symbols: `$ALLOC_NORMAL`, `$ALLOC_STACK`,
   and `$allocate`. (#27378)
 - llvm-libc was updated to LLVM 22.1.8. (#27374)
 - mimalloc was updated to 3.4.1. (#27380)
+- Backport fix for musl's qsort (CVE-2026-40200) (#27029)
 
 6.0.3 - 07/13/26
 ----------------
