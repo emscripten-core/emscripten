@@ -147,6 +147,10 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     # callMain depends on this library function
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stringToUTF8OnStack']
 
+  # Add heap views required by callMain/MAIN_READS_PARAMS
+  if settings.HAS_MAIN and settings.MAIN_READS_PARAMS:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$HEAPU64' if settings.MEMORY64 else '$HEAPU32')
+
   if settings.STACK_OVERFLOW_CHECK and not settings.SIDE_MODULE:
     # writeStackCookie and checkStackCookie both rely on emscripten_stack_get_end being
     # exported.  In theory it should always be present since its defined in compiler-rt.
@@ -390,6 +394,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
+  settings.EM_JS_SNIPPETS = em_js_funcs + [f[1] for f in asm_consts]
 
   if settings.SIDE_MODULE:
     # When building side modules, validate the EM_ASM and EM_JS string by running

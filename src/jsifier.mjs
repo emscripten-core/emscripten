@@ -247,10 +247,33 @@ function addImplicitDeps(snippet, deps) {
     'runtimeKeepalivePush',
     'runtimeKeepalivePop',
     'UTF8ToString',
+    // TODO: Consider removing getValue and setValue if they are rarely used implicitly.
+    'getValue',
+    'setValue',
   ];
   for (const dep of autoDeps) {
     if (snippet.includes(dep + '(')) {
       deps.push('$' + dep);
+    }
+  }
+  // If the snippet contains eval(), it may dynamically evaluate code loaded from memory at runtime
+  // (for example, in emscripten_run_script where the snippet is eval(UTF8ToString(ptr))).
+  // Because static string matching cannot inspect what strings are stored in memory or evaluated
+  // at runtime, we must conservatively include all heap views whenever a snippet uses eval().
+  if (snippet.includes('eval(')) {
+    deps.push('$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16', '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64');
+    if (WASM_BIGINT || MEMORY64) {
+      deps.push('$HEAP64', '$HEAPU64');
+    }
+  }
+  const heapDeps = [
+    'HEAP8', 'HEAP16', 'HEAPU8', 'HEAPU16',
+    'HEAP32', 'HEAPU32', 'HEAPF32', 'HEAPF64',
+    'HEAP64', 'HEAPU64',
+  ];
+  for (const heap of heapDeps) {
+    if (snippet.includes(heap)) {
+      deps.push('$' + heap);
     }
   }
 }
@@ -415,6 +438,14 @@ export async function runJSify(outputFile, symbolsOnly) {
 
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
   symbolsNeeded.push(...extraLibraryFuncs);
+
+  for (const fileName of [...PRE_JS_FILES, ...POST_JS_FILES]) {
+    const content = readFile(fileName);
+    addImplicitDeps(content, symbolsNeeded);
+  }
+  for (const snippet of EM_JS_SNIPPETS) {
+    addImplicitDeps(snippet, symbolsNeeded);
+  }
   for (const sym of EXPORTED_RUNTIME_METHODS) {
     if ('$' + sym in LibraryManager.library) {
       symbolsNeeded.push('$' + sym);

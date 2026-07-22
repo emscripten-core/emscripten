@@ -105,16 +105,8 @@ var runtimeInitialized = false;
 
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
-  HEAP8 = new Int8Array(b);
-  HEAP16 = new Int16Array(b);
   HEAPU8 = new Uint8Array(b);
-  HEAPU16 = new Uint16Array(b);
-  HEAP32 = new Int32Array(b);
   HEAPU32 = new Uint32Array(b);
-  HEAPF32 = new Float32Array(b);
-  HEAPF64 = new Float64Array(b);
-  HEAP64 = new BigInt64Array(b);
-  HEAPU64 = new BigUint64Array(b);
 }
 
 // include: memoryprofiler.js
@@ -260,26 +252,6 @@ class ExitStatus {
   }
 }
 
-/** @type {!Int16Array} */ var HEAP16;
-
-/** @type {!Int32Array} */ var HEAP32;
-
-/** not-@type {!BigInt64Array} */ var HEAP64;
-
-/** @type {!Int8Array} */ var HEAP8;
-
-/** @type {!Float32Array} */ var HEAPF32;
-
-/** @type {!Float64Array} */ var HEAPF64;
-
-/** @type {!Uint16Array} */ var HEAPU16;
-
-/** @type {!Uint32Array} */ var HEAPU32;
-
-/** not-@type {!BigUint64Array} */ var HEAPU64;
-
-/** @type {!Uint8Array} */ var HEAPU8;
-
 var printCharBuffers = [ null, [], [] ];
 
 var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
@@ -357,6 +329,10 @@ var printChar = (stream, curr) => {
     buffer.push(curr);
   }
 };
+
+/** @type {!Uint8Array} */ var HEAPU8;
+
+/** @type {!Uint32Array} */ var HEAPU32;
 
 var _fd_write = (fd, iov, iovcnt, pnum) => {
   // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0

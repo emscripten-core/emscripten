@@ -497,15 +497,15 @@ function updateMemoryViews() {
   assert(!HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
   var b = wasmMemory.buffer;
   HEAP8 = new Int8Array(b);
-  HEAP16 = new Int16Array(b);
-  HEAPU8 = new Uint8Array(b);
-  HEAPU16 = new Uint16Array(b);
+  
+  
+  
   HEAP32 = new Int32Array(b);
   HEAPU32 = new Uint32Array(b);
-  HEAPF32 = new Float32Array(b);
-  HEAPF64 = new Float64Array(b);
-  HEAP64 = new BigInt64Array(b);
-  HEAPU64 = new BigUint64Array(b);
+  
+  
+  
+  
 }
 
 // include: memoryprofiler.js
@@ -735,35 +735,14 @@ async function createWasm() {
       }
     }
 
-  /** @type {!Int16Array} */
-  var HEAP16;
-
   /** @type {!Int32Array} */
   var HEAP32;
-
-  /** not-@type {!BigInt64Array} */
-  var HEAP64;
 
   /** @type {!Int8Array} */
   var HEAP8;
 
-  /** @type {!Float32Array} */
-  var HEAPF32;
-
-  /** @type {!Float64Array} */
-  var HEAPF64;
-
-  /** @type {!Uint16Array} */
-  var HEAPU16;
-
   /** @type {!Uint32Array} */
   var HEAPU32;
-
-  /** not-@type {!BigUint64Array} */
-  var HEAPU64;
-
-  /** @type {!Uint8Array} */
-  var HEAPU8;
 
   var callRuntimeCallbacks = (callbacks) => {
       while (callbacks.length > 0) {
@@ -772,53 +751,12 @@ async function createWasm() {
       }
     };
 
-  
-    /**
-   * @param {number} ptr
-   * @param {string} type
-   */
-  function getValue(ptr, type = 'i8') {
-    if (type.endsWith('*')) type = '*';
-    switch (type) {
-      case 'i1': return HEAP8[ptr];
-      case 'i8': return HEAP8[ptr];
-      case 'i16': return HEAP16[((ptr)>>1)];
-      case 'i32': return HEAP32[((ptr)>>2)];
-      case 'i64': return HEAP64[((ptr)>>3)];
-      case 'float': return HEAPF32[((ptr)>>2)];
-      case 'double': return HEAPF64[((ptr)>>3)];
-      case '*': return HEAPU32[((ptr)>>2)];
-      default: abort(`invalid type for getValue: ${type}`);
-    }
-  }
-
   function ptrToString(ptr) {
       assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
       // Convert to 32-bit unsigned value
       ptr >>>= 0;
       return '0x' + ptr.toString(16).padStart(8, '0');
     }
-
-  
-    /**
-   * @param {number} ptr
-   * @param {number} value
-   * @param {string} type
-   */
-  function setValue(ptr, value, type = 'i8') {
-    if (type.endsWith('*')) type = '*';
-    switch (type) {
-      case 'i1': HEAP8[ptr] = value; break;
-      case 'i8': HEAP8[ptr] = value; break;
-      case 'i16': HEAP16[((ptr)>>1)] = value; break;
-      case 'i32': HEAP32[((ptr)>>2)] = value; break;
-      case 'i64': HEAP64[((ptr)>>3)] = BigInt(value); break;
-      case 'float': HEAPF32[((ptr)>>2)] = value; break;
-      case 'double': HEAPF64[((ptr)>>3)] = value; break;
-      case '*': HEAPU32[((ptr)>>2)] = value; break;
-      default: abort(`invalid type for setValue: ${type}`);
-    }
-  }
 
   var stackRestore = (val) => __emscripten_stack_restore(val);
 
@@ -940,6 +878,8 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'getFunctionAddress',
   'addFunction',
   'removeFunction',
+  'setValue',
+  'getValue',
   'UTF8ArrayToString',
   'UTF8ToString',
   'stringToUTF8Array',
@@ -1076,8 +1016,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'noExitRuntime',
   'freeTableIndexes',
   'functionsInTableMap',
-  'setValue',
-  'getValue',
   'PATH',
   'PATH_FS',
   'UTF8Decoder',
