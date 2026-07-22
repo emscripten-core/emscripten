@@ -1,0 +1,25 @@
+src/lib/libsyscall.js
+  s_0678485887d6db::t_68389f9c2b8bb3 533-534,550,555-558
+src/struct_info.json
+  s_0678485887d6db::t_cdb4ddeb011e10 235-238
+src/struct_info_generated.json
+  s_0678485887d6db::t_ac999b6be57951 1033-1035
+src/struct_info_generated_wasm64.json
+  s_0678485887d6db::t_0162024bd465eb 1033-1035
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "37f36c87ec551afbebecbfaadf1e58e427d143d7",
+  "prompts": {},
+  "sessions": {
+    "s_0678485887d6db": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_079743558ffe60WGAxQo8bFr2O",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
