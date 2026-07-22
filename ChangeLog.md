@@ -32,7 +32,7 @@ See docs/process.md for more on how version tagging works.
 - mimalloc was updated to 3.4.1. (#27380)
 - Backport fix for musl's qsort (CVE-2026-40200) (#27029)
 - `recvmmsg` and `sendmmsg` are now implemented in terms of `recvmsg` and
-  `sendmsg`.
+  `sendmsg`. (#27395)
 
 6.0.3 - 07/13/26
 ----------------
