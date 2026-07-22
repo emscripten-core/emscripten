@@ -505,6 +505,11 @@ class sockets(BrowserCore):
     # and updates msg_namelen/msg_controllen/msg_flags in the caller's msghdr.
     self.do_runf('sockets/test_udp_recvmsg.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
+  def test_noderawsockets_mmsg(self):
+    # sendmmsg batches two datagrams out, recvmmsg receives them back in one
+    # call, updating msg_len per message.
+    self.do_runf('sockets/test_udp_mmsg.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp_connect(self):
     # Connected UDP: sendto() with an address gives EISCONN, send() reaches the

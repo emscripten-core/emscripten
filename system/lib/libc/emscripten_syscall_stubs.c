@@ -213,6 +213,4 @@ weak pid_t __syscall_wait4(pid_t pid, int *wstatus, int options, struct rusage *
 
 UNIMPLEMENTED(acct, (const char *filename))
 UNIMPLEMENTED(mincore, (void *addr, size_t length, unsigned char *vec))
-UNIMPLEMENTED(recvmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags, struct timespec *timeout))
-UNIMPLEMENTED(sendmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags))
 UNIMPLEMENTED(socketpair, (int domain, int type, int protocol, int fd[2], int unused1, int unused2))

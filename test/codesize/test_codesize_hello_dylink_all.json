@@ -1,7 +1,7 @@
 {
   "a.out.js": 268229,
-  "a.out.nodebug.wasm": 588187,
-  "total": 856416,
+  "a.out.nodebug.wasm": 588309,
+  "total": 856538,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -2238,8 +2238,6 @@
     "__syscall_munlockall",
     "__syscall_munmap",
     "__syscall_prlimit64",
-    "__syscall_recvmmsg",
-    "__syscall_sendmmsg",
     "__syscall_setdomainname",
     "__syscall_setpgid",
     "__syscall_setpriority",
@@ -4109,8 +4107,6 @@
     "$__syscall_msync",
     "$__syscall_munmap",
     "$__syscall_prlimit64",
-    "$__syscall_recvmmsg",
-    "$__syscall_sendmmsg",
     "$__syscall_setdomainname",
     "$__syscall_setpgid",
     "$__syscall_setpriority",
