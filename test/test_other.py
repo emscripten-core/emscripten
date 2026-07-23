@@ -12450,14 +12450,6 @@ int main () {
   def test_getrusage(self):
     self.do_other_test('test_getrusage.c')
 
-  @with_env_modify({'EMMAKEN_COMPILER': shared.CLANG_CC})
-  def test_emmaken_compiler(self):
-    self.assert_fail([EMCC, '-c', test_file('core/test_hello_world.c')], 'emcc: error: `EMMAKEN_COMPILER` is no longer supported')
-
-  @with_env_modify({'EMMAKEN_CFLAGS': '-O2'})
-  def test_emmaken_cflags(self):
-    self.assert_fail([EMCC, '-c', test_file('core/test_hello_world.c')], 'emcc: error: `EMMAKEN_CFLAGS` is no longer supported')
-
   @no_windows('relies on a shell script')
   def test_compiler_wrapper(self):
     create_file('wrapper.sh', '''\
@@ -13043,10 +13035,6 @@ exec "$@"
     self.do_runf('test.c', expected,
                  cflags=['-sWARN_ON_UNDEFINED_SYMBOLS=0', '-sAUTO_JS_LIBRARIES=0'] + args,
                  assert_returncode=NON_ZERO)
-
-  @with_env_modify({'EMMAKEN_NO_SDK': '1'})
-  def test_EMMAKEN_NO_SDK(self):
-    self.assert_fail([EMCC, test_file('hello_world.c')], 'emcc: error: EMMAKEN_NO_SDK is no longer supported')
 
   @parameterized({
     'default': ('', '2147483648'),

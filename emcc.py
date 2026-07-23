@@ -306,16 +306,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(libname)
     return 0
 
-  if 'EMMAKEN_NO_SDK' in os.environ:
-    exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
-
-  if 'EMMAKEN_COMPILER' in os.environ:
-    exit_with_error('`EMMAKEN_COMPILER` is no longer supported.\n' +
-                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instead')
-
-  if 'EMMAKEN_CFLAGS' in os.environ:
-    exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
-
   if 'EMCC_REPRODUCE' in os.environ:
     options.reproduce = os.environ['EMCC_REPRODUCE']
 
