@@ -6273,6 +6273,34 @@ int main(void) {
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
+  def test_modularize_instance_reserved_export(self):
+    # Export names that are JS reserved words (and so not valid binding
+    # identifiers) are bound to a legal name internally and exported under their
+    # original name via an alias. With AUTO_INIT the `default` slot is free.
+    create_file('library.js', '''\
+    addToLibrary({
+      $default: () => { console.log('default-export'); return 42; },
+      $delete: () => console.log('delete-export'),
+    });''')
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-sMODULARIZE=instance', '-sAUTO_INIT',
+                      '-Wno-experimental',
+                      '-sEXPORTED_RUNTIME_METHODS=default',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,delete',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + self.get_cflags())
+
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import theDefault, { delete as del, _foo as foo } from "./modularize_instance.mjs";
+      assert(typeof theDefault === 'function');
+      assert(theDefault() === 42); // reserved-word export via EXPORTED_RUNTIME_METHODS
+      del(); // reserved-word export via EXPORTED_FUNCTIONS
+      foo();
+    ''')
+
+    self.assertContained('main1\nmain2\ndefault-export\ndelete-export\nfoo\n', self.run_js('runner.mjs'))
+
   @also_with_pthreads
   @requires_node_25
   def test_esm_integration_auto_init(self):
