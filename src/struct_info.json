@@ -1321,6 +1321,7 @@
     {
         "file": "GL/gl.h",
         "defines": [
+          "GL_PACK_ROW_LENGTH",
           "GL_UNPACK_ALIGNMENT",
           "GL_UNPACK_ROW_LENGTH"
         ]
