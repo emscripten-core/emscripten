@@ -236,21 +236,6 @@ def crossplatform(func):
   return func
 
 
-# without EMTEST_ALL_ENGINES set we only run tests in a single VM by
-# default. in some tests we know that cross-VM differences may happen and
-# so are worth testing, and they should be marked with this decorator
-def all_engines(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.use_all_engines = True
-    self.set_setting('ENVIRONMENT', 'web,node,shell')
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
 # Decorator version of env_modify
 def with_env_modify(updates):
   assert not callable(updates)

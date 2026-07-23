@@ -16,8 +16,6 @@ see
 http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
-# Use EMTEST_ALL_ENGINES=1 in the environment or pass --all-engines to test all engines!
-
 import argparse
 import atexit
 import datetime
@@ -140,9 +138,6 @@ def check_js_engines():
   if not all(jsrun.check_engine(e) for e in config.JS_ENGINES):
     errlog('Not all the JS engines in JS_ENGINES appear to work.')
     sys.exit(1)
-
-  if common.EMTEST_ALL_ENGINES:
-    errlog('(using ALL js engines)')
 
 
 def get_and_import_modules():
@@ -507,7 +502,6 @@ def parse_args():
                       help="Show test stdout and stderr, and don't use the single-line test reporting. "
                            'Specifying `-v` twice will enable test framework logging (i.e. EMTEST_VERBOSE)')
   parser.add_argument('--ansi', action=argparse.BooleanOptionalAction, default=None)
-  parser.add_argument('--all-engines', action='store_true')
   parser.add_argument('--detect-leaks', action='store_true')
   parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')
   parser.add_argument('--cores', '-j',
@@ -559,7 +553,6 @@ def configure():
   browser_common.EMTEST_BROWSER_AUTO_CONFIG = utils.get_env_bool('EMTEST_BROWSER_AUTO_CONFIG', '1')
   browser_common.EMTEST_HEADLESS = utils.get_env_bool('EMTEST_HEADLESS')
   common.EMTEST_DETECT_TEMPFILE_LEAKS = utils.get_env_bool('EMTEST_DETECT_TEMPFILE_LEAKS')
-  common.EMTEST_ALL_ENGINES = utils.get_env_bool('EMTEST_ALL_ENGINES')
   common.EMTEST_SKIP_SLOW = utils.get_env_bool('EMTEST_SKIP_SLOW')
   common.EMTEST_SKIP_FLAKY = utils.get_env_bool('EMTEST_SKIP_FLAKY')
   common.EMTEST_RETRY_FLAKY = utils.get_env_int('EMTEST_RETRY_FLAKY')
@@ -703,7 +696,6 @@ def main():
   if options.no_clean:
     common.EMTEST_SAVE_DIR = 2
   set_env('EMTEST_SKIP_SLOW', options.skip_slow)
-  set_env('EMTEST_ALL_ENGINES', options.all_engines)
   set_env('EMTEST_REBASELINE', options.rebaseline)
   set_env('EMTEST_VERBOSE', options.verbose > 1)
   set_env('EMTEST_CORES', options.cores)
