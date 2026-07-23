@@ -18,9 +18,8 @@ sys.path.insert(0, __rootpath__)
 sys.path.insert(0, __testdir__)
 
 import clang_native
-from common import EMRUN, test_file
+from common import EMRUN, test_config, test_file
 
-from tools import config
 from tools.shared import CLANG_CXX, EMCC
 from tools.utils import WINDOWS, run_process, write_file
 
@@ -56,7 +55,7 @@ def run_benchmark(benchmark_file, results_file, build_args):
     print(' '.join(cmd))
     run_process(cmd)
 
-    cmd = config.V8_ENGINE + [os.path.basename(out_file)]
+    cmd = test_config.V8_ENGINE + [os.path.basename(out_file)]
     print(' '.join(cmd))
     wasm_results = subprocess.check_output(cmd, cwd=out_dir, text=True)
 

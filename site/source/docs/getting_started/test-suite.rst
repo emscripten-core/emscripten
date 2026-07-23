@@ -20,6 +20,11 @@ To run the tests, you need an emscripten setup, as it will run ``emcc`` and othe
 commands. See the :ref:`developer's guide <developers-guide-setting-up>` for
 how best to do that.
 
+By default, the test suite uses Node.js to run JavaScript tests. If you want to
+run tests with additional JS engines (such as V8/d8 or SpiderMonkey) or Wasm
+engines (such as Wasmer or Wasmtime), you can customize ``test/config.py`` (which
+is automatically created from ``test/config_template.py`` on the first test run).
+
 Running tests
 =============
 
