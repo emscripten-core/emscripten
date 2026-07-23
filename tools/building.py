@@ -1301,7 +1301,7 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
 def run_wasm_bindgen(infile):
   bindgen_out_dir = os.path.join(get_emscripten_temp_dir(), 'bindgen_out')
 
-  wasm_bindgen_bin = shutil.which('wasm-bindgen')
+  wasm_bindgen_bin = shutil.which('wasm-bindgen') or shutil.which('wasm_bindgen')
   if not wasm_bindgen_bin:
     exit_with_error('wasm-bindgen executable not found in $PATH')
   cmd = [
