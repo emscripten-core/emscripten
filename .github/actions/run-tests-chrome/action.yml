@@ -1,0 +1,46 @@
+name: 'Run Tests Chrome'
+description: 'Common steps for running tests under Google Chrome'
+inputs:
+  test_targets:
+    description: 'Test targets to run'
+    required: true
+  title:
+    description: 'Title of the test run'
+    required: true
+  visualize:
+    description: 'Set EMTEST_VISUALIZE=1 and check profile'
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare for tests
+      uses: ./.github/actions/prepare-for-tests
+
+    - name: Install Chrome
+      uses: ./.github/actions/install-chrome
+
+    - name: Set environment variables
+      run: |
+        echo "EMTEST_DETECT_TEMPFILE_LEAKS=0" >> $GITHUB_ENV
+        echo "EMTEST_HEADLESS=1" >> $GITHUB_ENV
+        echo "EMTEST_BROWSER=/usr/bin/google-chrome" >> $GITHUB_ENV
+        echo "EMTEST_CORES=2" >> $GITHUB_ENV
+        echo "EM_FROZEN_CACHE=" >> $GITHUB_ENV
+        echo "EMTEST_LACKS_WEBGPU=1" >> $GITHUB_ENV
+        echo "EMTEST_LACKS_SOUND_HARDWARE=1" >> $GITHUB_ENV
+
+        if [ "${{ inputs.visualize }}" = "true" ]; then
+          echo "EMTEST_VISUALIZE=1" >> $GITHUB_ENV
+        fi
+      shell: bash
+
+    - name: Run browser tests
+      run: ./test/runner ${{ inputs.test_targets }}
+      shell: bash
+
+
+    - name: Check profile
+      if: inputs.visualize == 'true'
+      run: test -s out/graph.html
+      shell: bash
