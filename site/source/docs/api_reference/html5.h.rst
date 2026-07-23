@@ -358,14 +358,6 @@ Struct
   <https://www.w3.org/TR/uievents/#interface-keyboardevent>`_: ``keypress``,
   ``keydown`` and ``keyup``.
 
-  Note that since the `UI Events spec
-  <https://www.w3.org/TR/uievents/#keys-keyvalues>`_ is very recent at the time
-  of writing (2014-03), uniform support for the different fields in the spec is
-  still in flux. Be sure to check the results in multiple browsers. See the
-  `unmerged pull request #2222
-  <https://github.com/emscripten-core/emscripten/pull/2222>`_ for an example of
-  how to interpret the legacy key events.
-
 
   .. c:member:: double timestamp
 
