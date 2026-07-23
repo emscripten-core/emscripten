@@ -158,7 +158,7 @@ commands:
             echo "import os" >> .emscripten
             # We use an out-of-tree cache directory so it can be part of the
             # persisted workspace (see below).
-            echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
+            echo "CACHE = '~/cache'" >> .emscripten
             # Refer to commit 0bc3640 if we need to pin V8 version.
             echo "V8_ENGINE = '~/.jsvu/bin/v8'" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten

@@ -40,7 +40,13 @@ def listify(x):
   if type(x) is list:
     logger.warning(f'Found list-style config entry ({x}).  Please use a single string with spaces between args.')
     return x
-  return shlex.split(x)
+  # Use posix=True here so that quotes are handled as expected, but clear the
+  # `escape` list so that backslashes are not treated as escape chars (which
+  # would break windows pathnames that use backslashes).
+  lexer = shlex.shlex(x, posix=True)
+  lexer.escape = []
+  lexer.whitespace_split = True
+  return list(lexer)
 
 
 def normalize_config_settings():
