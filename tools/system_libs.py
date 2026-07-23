@@ -62,8 +62,8 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
   flags = ['-g', '-sSTRICT', '-Werror']
-  if settings.LTO and not force_object_files:
-    flags += ['-flto=' + settings.LTO]
+  if options.lto and not force_object_files:
+    flags += ['-flto=' + options.lto]
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
     # Explicitly include `-sMAIN_MODULE` when building system libraries.
     # `-fPIC` alone is not enough to configure trigger the building and

@@ -21,6 +21,7 @@ import time
 from contextlib import contextmanager
 
 from tools import cache, ports, shared, system_libs, utils
+from tools.cmdline import options
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
 
@@ -232,7 +233,7 @@ def main():
   shared.check_sanity()
 
   if args.lto:
-    settings.LTO = args.lto
+    options.lto = args.lto
 
   if args.verbose:
     shared.PRINT_SUBPROCS = True

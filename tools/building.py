@@ -16,6 +16,7 @@ from subprocess import PIPE
 
 from . import (
   cache,
+  cmdline,
   config,
   diagnostics,
   js_optimizer,
@@ -190,7 +191,7 @@ def lld_flags_for_executable(external_symbols):
       not settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
-  if settings.LTO and not settings.EXIT_RUNTIME:
+  if cmdline.options.lto and not settings.EXIT_RUNTIME:
     # The WebAssembly backend can generate new references to `__cxa_atexit` at
     # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
     # included at LTO time.  For other such symbols we exclude them from LTO

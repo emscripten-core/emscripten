@@ -3111,7 +3111,7 @@ def package_files(target):
 
 @ToolchainProfiler.profile_block('calculate linker inputs')
 def phase_calculate_linker_inputs(linker_args):
-  using_lld = not (options.oformat == OFormat.OBJECT and settings.LTO)
+  using_lld = not (options.oformat == OFormat.OBJECT and options.lto)
 
   linker_args = filter_link_flags(linker_args, using_lld)
 

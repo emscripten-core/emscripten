@@ -102,6 +102,7 @@ from decorators import (
 
 from tools import building, cache, response_file, shared, utils, webassembly
 from tools.building import get_building_env
+from tools.cmdline import options
 from tools.link import binary_encode
 from tools.settings import settings
 from tools.shared import (
@@ -753,7 +754,7 @@ f.close()
     libpath = output.split('libraries: =', 1)[1].strip()
     libpath = libpath.split(os.pathsep)
     libpath = [Path(p) for p in libpath]
-    settings.LTO = '-flto' in args
+    options.lto = 'full' if '-flto' in args else None
     settings.MEMORY64 = int('-m64' in args)
     expected = cache.get_lib_dir(absolute=True)
     self.assertIn(expected, libpath)
@@ -768,7 +769,7 @@ f.close()
     output = self.run_process([EMCC, '-print-libgcc-file-name'] + args, stdout=PIPE).stdout
     output2 = self.run_process([EMCC, '--print-libgcc-file-name'] + args, stdout=PIPE).stdout
     self.assertEqual(output, output2)
-    settings.LTO = '-flto' in args
+    options.lto = 'full' if '-flto' in args else None
     settings.MEMORY64 = int('-m64' in args)
     libdir = cache.get_lib_dir(absolute=True)
     expected = os.path.join(libdir, 'libclang_rt.builtins.a')
@@ -805,7 +806,7 @@ f.close()
     output2 = self.run_process([EMCC, '--print-file-name=libc.a'] + args, stdout=PIPE).stdout.rstrip()
     self.assertEqual(output, output2)
     filename = Path(output)
-    settings.LTO = '-flto' in args
+    options.lto = 'full' if '-flto' in args else None
     settings.MEMORY64 = int('-m64' in args)
     self.assertContained(cache.get_lib_name('libc.a'), str(filename))
 
@@ -11791,7 +11792,7 @@ int main(void) {
     self.do_runf('src.c', 'ok\ndone\n', cflags=['-sEMULATE_FUNCTION_POINTER_CASTS'])
 
   def test_no_lto(self):
-    # This used to fail because settings.LTO didn't reflect `-fno-lto`.
+    # This used to fail because options.lto didn't reflect `-fno-lto`.
     # See bug https://github.com/emscripten-core/emscripten/issues/20308
     create_file('src.c', r'''
       #include <stdio.h>
