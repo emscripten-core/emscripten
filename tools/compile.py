@@ -61,21 +61,8 @@ def get_clang_flags(user_args):
       # to be exported to other DSO's by default.
       flags.append('-fvisibility=default')
 
-  if settings.LTO:
-    if not any(a.startswith('-flto') for a in user_args):
-      flags.append('-flto=' + settings.LTO)
-    # setjmp/longjmp handling using Wasm EH
-    # For non-LTO, '-mllvm -wasm-enable-eh' added in
-    # building.llvm_backend_args() sets this feature in clang. But in LTO, the
-    # argument is added to wasm-ld instead, so clang needs to know that EH is
-    # enabled so that it can be added to the attributes in LLVM IR.
-    if settings.SUPPORT_LONGJMP == 'wasm':
-      flags.append('-mexception-handling')
-
-  else:
-    # In LTO mode these args get passed instead at link time when the backend runs.
-    for a in building.llvm_backend_args():
-      flags += ['-mllvm', a]
+  for a in building.llvm_backend_args():
+    flags += ['-mllvm', a]
 
   return flags
 
