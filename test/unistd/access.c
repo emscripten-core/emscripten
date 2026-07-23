@@ -76,6 +76,27 @@ void test_lchmod() {
 #endif
 }
 
+void test_symlink_nofollow() {
+#if defined(MEMFS)
+  FILE* f = fopen("target_file", "w");
+  fclose(f);
+  symlink("target_file", "test_symlink");
+  symlink("dangling_target", "dangling_symlink");
+
+  // With AT_SYMLINK_NOFOLLOW, faccessat checks the symlink itself, not the target
+  assert(faccessat(AT_FDCWD, "test_symlink", F_OK, AT_SYMLINK_NOFOLLOW) == 0);
+
+  // Dangling symlink should still be found with AT_SYMLINK_NOFOLLOW (symlink exists)
+  assert(faccessat(AT_FDCWD, "dangling_symlink", F_OK, AT_SYMLINK_NOFOLLOW) == 0);
+
+  // Without AT_SYMLINK_NOFOLLOW, dangling symlink should fail
+  assert(faccessat(AT_FDCWD, "dangling_symlink", F_OK, 0) != 0);
+
+  // Combined flags should work
+  assert(faccessat(AT_FDCWD, "test_symlink", F_OK, AT_EACCESS | AT_SYMLINK_NOFOLLOW) == 0);
+#endif
+}
+
 void test_chmod_errors() {
   EM_ASM(
     var ex;
@@ -119,6 +140,7 @@ int main() {
   test_rename();
   test_fchmod();
   test_lchmod();
+  test_symlink_nofollow();
   test_chmod_errors();
 
   return 0;

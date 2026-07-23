@@ -998,14 +998,15 @@ var SyscallsLibrary = {
   __syscall_faccessat: (dirfd, path, amode, flags) => {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
-    assert(!flags || flags == {{{ cDefs.AT_EACCESS }}});
+    assert(!(flags & ~({{{ cDefs.AT_EACCESS }}} | {{{ cDefs.AT_SYMLINK_NOFOLLOW }}})));
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
     if (amode & ~{{{ cDefs.S_IRWXO }}}) {
       // need a valid mode
       return -{{{ cDefs.EINVAL }}};
     }
-    var lookup = FS.lookupPath(path, { follow: true });
+    var nofollow = !!(flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}});
+    var lookup = FS.lookupPath(path, { follow: !nofollow });
     var node = lookup.node;
     if (!node) {
       return -{{{ cDefs.ENOENT }}};
