@@ -137,7 +137,7 @@ var STACK_SIZE = 64*1024;
 // the extra security checks it does (such as noticing metadata corruption in
 // its internal data structures, which emmalloc does not do).
 // [link]
-var MALLOC = "dlmalloc";
+var MALLOC = "mimalloc";
 
 // If 1, then when malloc would fail we abort(). This is nonstandard behavior,
 // but makes sense for the web since we have a fixed amount of memory that
@@ -173,7 +173,7 @@ var ABORTING_MALLOC = true;
 // for imported memories (e.g. when dynamic linking is used).
 //
 // [link]
-var INITIAL_HEAP = 16777216;
+var INITIAL_HEAP = 128 << 20;
 
 // The initial amount of memory to use. Using more memory than this will
 // cause us to expand the heap, which can be costly with typed arrays:
