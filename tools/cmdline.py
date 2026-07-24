@@ -195,7 +195,7 @@ def parse_s_args():
     user_settings[key] = value
 
 
-def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
+def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 117 vs 10 recommended.

@@ -912,7 +912,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       for i, arg in enumerate(args):
         if arg in {'--pre-js', '--post-js'}:
           args[i] = None
-          args[i + 1] = None # noqa: B909
+          args[i + 1] = None # ruff: ignore[loop-iterator-mutation]
       args = [arg for arg in args if arg is not None]
     return args
 
@@ -1199,7 +1199,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     ensure_dir(ret)
     return ret
 
-  def get_library(self, name, generated_libs, configure=['sh', './configure'],  # noqa
+  def get_library(self, name, generated_libs, configure=['sh', './configure'],  # ruff: ignore[mutable-argument-default]
                   configure_args=None, make=None, make_args=None,
                   env_init=None, cache_name_extra='', native=False,
                   force_rebuild=False):
@@ -1288,7 +1288,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       rtn.stderr = None
     return rtn
 
-  def emcc(self, filename, args=[], **kwargs):  # noqa
+  def emcc(self, filename, args=[], **kwargs):  # ruff: ignore[mutable-argument-default]
     filename = maybe_test_file(filename)
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
     cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args

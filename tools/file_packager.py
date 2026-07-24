@@ -347,7 +347,7 @@ def generate_object_file(data_files):
   shared.check_call(cmd)
 
 
-def main():  # noqa: C901, PLR0912, PLR0915
+def main():  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 60 vs 10 recommended.

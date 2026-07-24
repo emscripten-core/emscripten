@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# ruff:noqa: F841
+# ruff: file-ignore[unused-variable]
 
 import logging
 from dataclasses import dataclass
