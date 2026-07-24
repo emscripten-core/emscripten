@@ -1,0 +1,19 @@
+tools/link.py
+  s_30e389fc836710::t_694b8511ee9e5b 2126-2131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2e2d59b0db725add6b9d632ee3571dc221bdec3e",
+  "prompts": {},
+  "sessions": {
+    "s_30e389fc836710": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06d6eb979ffexGA8MnHiUVtp3T",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
