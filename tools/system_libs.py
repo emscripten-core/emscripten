@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# ruff: noqa: RUF005
+# ruff: file-ignore[collection-literal-concatenation]
 
 import itertools
 import logging
@@ -51,7 +51,7 @@ def files_in_path(path: str, filenames: list[str]):
   return [os.path.join(srcdir, f) for f in filenames]
 
 
-def glob_in_path(path: str, glob_pattern: str, excludes: set[str] = set()): # noqa: B006
+def glob_in_path(path: str, glob_pattern: str, excludes: set[str] = set()): # ruff: ignore[mutable-argument-default]
   srcdir = utils.path_from_root(path)
   files = iglob(os.path.join(srcdir, glob_pattern), recursive=True)
   return sorted(f for f in files if os.path.basename(f) not in excludes)

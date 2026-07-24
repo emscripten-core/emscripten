@@ -1289,7 +1289,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
   return ret
 
 
-def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
+def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # ruff: ignore[mutable-argument-default]
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
