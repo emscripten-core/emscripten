@@ -6273,6 +6273,25 @@ int main(void) {
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
+  def test_modularize_instance_auto_init_embind(self):
+    # Embind exports must be assigned when the module self-initializes on
+    # import.  See https://github.com/emscripten-core/emscripten/issues/27411
+    self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
+                      '-sMODULARIZE=instance', '-sAUTO_INIT',
+                      '-Wno-experimental',
+                      '-lembind', '-sEMBIND_AOT',
+                      '-o', 'modularize_instance_embind.mjs'] + self.get_cflags())
+
+    create_file('runner.mjs', '''
+      import { foo, Bar } from "./modularize_instance_embind.mjs";
+      foo();
+      const bar = new Bar();
+      bar.print();
+      bar.delete();
+    ''')
+
+    self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
+
   @also_with_pthreads
   @requires_node_25
   def test_esm_integration_auto_init(self):
