@@ -1,0 +1,59 @@
+site/source/docs/api_reference/emscripten.h.rst
+  s_f70e1f6a91e249::t_ec02d99c1aac6e 1609-1671
+src/lib/libcore.js
+  s_f70e1f6a91e249::t_94a033ccd0629d 950-961,964-965,969,971-973,975-978,980,982,984-1004,1074,1105,1114-1129,1138-1181
+src/lib/libsigs.js
+  s_f70e1f6a91e249::t_7b67eded49f649 647-648
+src/lib/libsockfs.js
+  s_f70e1f6a91e249::t_009ea138abd822 39-45,156-160,183-184,844-910
+src/lib/libsockfs_node.js
+  s_f70e1f6a91e249::t_b1e6f447aafa73 57,70-154
+src/struct_info.json
+  s_f70e1f6a91e249::t_869ae2558ec55e 209-210
+src/struct_info_generated.json
+  s_f70e1f6a91e249::t_9cb4f8c0302043 66
+src/struct_info_generated_wasm64.json
+  s_f70e1f6a91e249::t_4264e669b3b745 66
+system/include/emscripten/emscripten.h
+  s_f70e1f6a91e249::t_eaa7b4db3013ee 71-87
+system/lib/libc/musl/src/network/freeaddrinfo.c
+  s_f70e1f6a91e249::t_b07ff30ab7ccba 10-18
+test/codesize/test_codesize_hello_O0.json
+  s_f70e1f6a91e249::t_bd3a3e0840b0af 2-3,6-7
+test/codesize/test_codesize_hello_dylink_all.json
+  s_f70e1f6a91e249::t_0d2947bc519f43 2-4,458-459,1363-1369
+test/codesize/test_codesize_minimal_O0.expected.js
+  s_f70e1f6a91e249::t_bc98fdbcf8755c 843-844
+test/codesize/test_codesize_minimal_O0.json
+  s_f70e1f6a91e249::t_a78d9fa750cb3c 2-3,6-7
+test/codesize/test_unoptimized_code_size.json
+  s_f70e1f6a91e249::t_2adb373852eb5a 2-3,10-11,14-15
+test/sockets/test_dns_async.c
+  s_f70e1f6a91e249::t_51e3e0b76cbbfc 1-124
+test/sockets/test_dns_async_default.c
+  s_f70e1f6a91e249::t_ca9ffcce570174 1-62
+test/sockets/test_dns_async_net.c
+  s_f70e1f6a91e249::t_60a0211b98cd21 1-77
+test/sockets/test_dns_callback.c
+  s_f70e1f6a91e249::t_9eeb2e0bb13074 1-65
+test/sockets/test_dns_jspi.c
+  s_f70e1f6a91e249::t_9323fd91faa80e 1-38
+test/test_sockets.py
+  s_f70e1f6a91e249::t_2c298e15dfc10c 533-580
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b93b67bcba3a9c5dc90870e0dec26ef88800b7f7",
+  "prompts": {},
+  "sessions": {
+    "s_f70e1f6a91e249": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06d160a7dffe1KI9HN7qqEdqcA",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
