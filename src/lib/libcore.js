@@ -2402,7 +2402,12 @@ addToLibrary({
     ATPOSTCTORS.unshift('callRuntimeCallbacks(onPostCtors);');
   },
   $addOnPostCtor__deps: ['$onPostCtors'],
-  $addOnPostCtor: (cb) => onPostCtors.push(cb),
+  $addOnPostCtor: (cb) => {
+#if ASSERTIONS
+    assert(!runtimeInitialized, 'addOnPostCtor called too late: ctors have already run');
+#endif
+    onPostCtors.push(cb);
+  },
   // See ATMAINS in parseTools.mjs for more information.
   $onMains: [],
   $onMains__internal: true,

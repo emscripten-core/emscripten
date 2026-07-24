@@ -2126,7 +2126,7 @@ function assignEmbindExports() {{ {assigns} }};
 addOnPostCtor(assignEmbindExports);
 {decls}
 // end embind exports'''
-    src += exports
+    src = do_replace(src, '<<< EMBIND_AOT_EXPORTS >>>', exports)
   write_file(final_js, src)
   if settings.WASM_ESM_INTEGRATION:
     # With ESM integration the embind exports also need to be exported by the main file.
