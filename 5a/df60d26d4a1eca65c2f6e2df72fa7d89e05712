@@ -1,0 +1,83 @@
+ChangeLog.md
+  s_f70e1f6a91e249::t_91ef107c330c2b 78-89
+src/lib/libepoll.js
+  s_f70e1f6a91e249::t_2ae12d226e84d3 1-403
+src/lib/libsigs.js
+  s_f70e1f6a91e249::t_1f54f582d7d9fd 243,647
+src/lib/libsyscall.js
+  s_f70e1f6a91e249::t_bca64e3d5a9b2b 596,702-737
+src/modules.mjs
+  s_f70e1f6a91e249::t_be8caf4e0991a8 91
+src/struct_info.json
+  s_f70e1f6a91e249::t_de322ff784ac4e 144-167
+src/struct_info_generated.json
+  s_f70e1f6a91e249::t_cf7c156ca619a8 263-275,1035-1039
+src/struct_info_generated_wasm64.json
+  s_f70e1f6a91e249::t_152ac74d9885e0 263-275,1035-1039
+system/include/emscripten/epoll.h
+  s_f70e1f6a91e249::t_68be4b8732aa73 1-57
+system/include/emscripten/syscalls.h
+  s_f70e1f6a91e249::t_615f7c0160c9a4 125
+system/lib/libc/musl/src/linux/epoll.c
+  s_f70e1f6a91e249::t_1802a67fe4ac52 28-37
+system/lib/wasmfs/syscalls.cpp
+  s_f70e1f6a91e249::t_41f5a33fc5cb85 1890-1895
+test/core/test_epoll.c
+  s_f70e1f6a91e249::t_4d0633bcbdd0dd 1-98
+test/core/test_epoll_advanced.c
+  s_f70e1f6a91e249::t_1b8077633e0959 1-181
+test/core/test_epoll_blocking_asyncify.c
+  s_f70e1f6a91e249::t_d1303b3afa04b8 1-39
+test/core/test_epoll_callback.c
+  s_f70e1f6a91e249::t_2f9977779ff54f 1-74
+test/core/test_epoll_callback_close.c
+  s_f70e1f6a91e249::t_1a69e699996abf 1-46
+test/core/test_epoll_callback_edge.c
+  s_f70e1f6a91e249::t_09d8b298293fd4 1-62
+test/core/test_epoll_callback_level.c
+  s_f70e1f6a91e249::t_8cc7f5e3afafaf 1-42
+test/core/test_epoll_callback_nested.c
+  s_f70e1f6a91e249::t_98851a0f19c3ae 1-54
+test/core/test_epoll_callback_nested_close.c
+  s_f70e1f6a91e249::t_c5127e0a4a59bf 1-47
+test/core/test_epoll_callback_overflow.c
+  s_f70e1f6a91e249::t_cb7086add947a5 1-61
+test/core/test_epoll_callback_replace.c
+  s_f70e1f6a91e249::t_632166b692906e 1-56
+test/core/test_epoll_fairness.c
+  s_f70e1f6a91e249::t_1849d1e4a33c1e 1-41
+test/core/test_epoll_noderawfs.c
+  s_f70e1f6a91e249::t_40b9110537e204 1-59
+test/core/test_epoll_wait_and_callback.c
+  s_f70e1f6a91e249::t_1607a6d6f0664f 1-100
+test/sockets/test_epoll_callback.c
+  s_f70e1f6a91e249::t_f3acef93b5a182 1-75
+test/sockets/test_epoll_rdhup.c
+  s_f70e1f6a91e249::t_f9fe2c5bcc3c45 1-79
+test/sockets/test_epoll_socket_blocking.c
+  s_f70e1f6a91e249::t_e89e96e4cc90f1 1-84
+test/test_core.py
+  s_f70e1f6a91e249::t_0da0aadde1a163 403-415,5799-5867,9822-9837
+test/test_sockets.py
+  s_f70e1f6a91e249::t_98a4b11a9f720b 497-538,555-562
+tools/maint/gen_sig_info.py
+  s_f70e1f6a91e249::t_0a054213251898 36,110
+tools/native_sigs.py
+  s_f70e1f6a91e249::t_d184519510be83 424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5adf60d26d4a1eca65c2f6e2df72fa7d89e05712",
+  "prompts": {},
+  "sessions": {
+    "s_f70e1f6a91e249": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06d160a7dffe1KI9HN7qqEdqcA",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
