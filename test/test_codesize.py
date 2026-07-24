@@ -404,7 +404,7 @@ class codesize(RunnerCore):
     # prune unused imports/exports from it. See #27217.
     'esm_integration': (['-O3', '-sWASM_ESM_INTEGRATION', '-Wno-experimental'],),
   })
-  def test_codesize_hello(self, args, kwargs={}): # noqa
+  def test_codesize_hello(self, args, kwargs={}): # ruff: ignore[mutable-argument-default]
     self.run_codesize_test('hello_world.c', args, **kwargs)
 
   @parameterized({

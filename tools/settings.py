@@ -344,11 +344,11 @@ class SettingsManager:
   def dict(self):
     return self.attrs
 
-  def external_dict(self, skip_keys={}): # noqa
+  def external_dict(self, skip_keys={}): # ruff: ignore[mutable-argument-default]
     external_settings = {}
     for key, value in self.dict().items():
       if value != self.defaults.get(key) and key not in INTERNAL_SETTINGS and key not in skip_keys:
-        external_settings[key] = value # noqa: PERF403
+        external_settings[key] = value # ruff: ignore[manual-dict-comprehension]
     if not self.attrs['STRICT']:
       # When not running in strict mode we also externalize all legacy settings
       # (Since the external tools do process LEGACY_SETTINGS themselves)
@@ -419,9 +419,9 @@ class SettingsManager:
       return
     # Allow integers 1 and 0 for type `bool`
     if expected_type == bool:
-      if value in (1, 0):  # noqa: PLR6201
+      if value in {1, 0}:
         value = bool(value)
-      if value in ('True', 'False', 'true', 'false'):  # noqa: PLR6201
+      if value in {'True', 'False', 'true', 'false'}:
         exit_with_error(f'attempt to set `{name}` to `{value}`; use 1/0 to set boolean settings')
     if type(value) is not expected_type:
       exit_with_error(f'setting `{name}` expects `{expected_type.__name__}` but got `{type(value).__name__}`')

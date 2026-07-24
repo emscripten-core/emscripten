@@ -201,7 +201,7 @@ def exec_process(cmd):
   utils.exec(cmd)
 
 
-def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # ruff: ignore[mutable-argument-default]
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are
