@@ -6940,7 +6940,7 @@ void* operator new(size_t size) {
     zlib = self.get_zlib_library(use_cmake)
 
     # example.c uses K&R style function declarations
-    self.cflags += ['-Wno-deprecated-non-prototype']
+    self.cflags += ['-Wno-deprecated-non-prototype', '-Wno-unused-command-line-argument']
     self.do_core_test('test_zlib.c', libraries=zlib, includes=[test_file('third_party/zlib')])
 
   @needs_make('make')
