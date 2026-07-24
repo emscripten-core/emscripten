@@ -5,4 +5,5 @@ async function go() {
   module._fooVoid();
   let result = module._fooInt(7, 8);
   module.UTF8ArrayToString([], 99);
+  module.POINTER_SIZE;
 }
