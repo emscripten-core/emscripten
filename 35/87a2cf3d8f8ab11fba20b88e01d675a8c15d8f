@@ -1,0 +1,33 @@
+src/jsifier.mjs
+  s_f70e1f6a91e249::t_05dd3c608ef2b3 43-44,648-652,810,813,816,823,835,845,850-856,864,868,871
+src/modules.mjs
+  s_f70e1f6a91e249::t_b9eedf835c7657 26-27,469,473,475
+src/utility.mjs
+  s_f70e1f6a91e249::t_2cf0a868a03b5c 20-72
+test/js_optimizer/applyDCEGraphRemovals-esm-output.js
+  s_f70e1f6a91e249::t_e103cd30087e4b 16-19
+test/js_optimizer/applyDCEGraphRemovals-esm.js
+  s_f70e1f6a91e249::t_6e9eb8aa224083 34-38
+test/js_optimizer/emitDCEGraph-esm.js
+  s_f70e1f6a91e249::t_7494a0eaf12cdb 47-53
+test/test_other.py
+  s_f70e1f6a91e249::t_c2b0b4a8f8348c 6280-6307
+tools/acorn-optimizer.mjs
+  s_f70e1f6a91e249::t_25c7ce3c5d5811 730,735-737,740-742,1008-1009,1011
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3587a2cf3d8f8ab11fba20b88e01d675a8c15d8f",
+  "prompts": {},
+  "sessions": {
+    "s_f70e1f6a91e249": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06d160a7dffe1KI9HN7qqEdqcA",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
