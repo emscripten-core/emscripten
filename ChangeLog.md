@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.4 (in development)
+6.0.5 (in development)
 ----------------------
+
+6.0.4 - 07/24/26
+----------------
 - The emscripten config file parser can now handle strings that contain
   environment variables (e.g. `$HOME`) and that use the `~/` prefix.  This means
   that it should be possible, in most cases, to avoid the use of python's
