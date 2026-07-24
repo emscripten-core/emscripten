@@ -1,0 +1,19 @@
+test/codesize/test_codesize_hello_dylink_all.json
+  s_d518e3e460b3cf::t_95ef416abf90f6 2-4,271,1803
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8644542498175d54c6ea1fac2232335968c43bf2",
+  "prompts": {},
+  "sessions": {
+    "s_d518e3e460b3cf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06a36a2e5ffezBSceKiQnO8T4K",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
