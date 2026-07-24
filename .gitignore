@@ -30,6 +30,9 @@ coverage.xml
 # Test output
 /out/
 
+# Native emcc launcher lives here.
+/bin/
+
 # When updating the website we check it out here.
 /site/emscripten-site/
 

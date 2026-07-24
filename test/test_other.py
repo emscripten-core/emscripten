@@ -12277,9 +12277,9 @@ int main(void) {
     self.run_process([EMCC, '-c', '-o', 'out.o', '-Xclang', '-include', '-Xclang', 'foo.h', test_file('hello_world.c')])
 
   def test_emcc_size_parsing(self):
-    create_file('foo.h', ' ')
-    self.assert_fail([EMCC, '-sTOTAL_MEMORY=X', 'foo.h'], 'error: invalid byte size `X`.  Valid suffixes are: kb, mb, gb, tb')
-    self.assert_fail([EMCC, '-sTOTAL_MEMORY=11PB', 'foo.h'], 'error: invalid byte size `11PB`.  Valid suffixes are: kb, mb, gb, tb')
+    create_file('foo.c', ' ')
+    self.assert_fail([EMCC, '-sTOTAL_MEMORY=X', 'foo.c'], 'error: invalid byte size `X`.  Valid suffixes are: kb, mb, gb, tb')
+    self.assert_fail([EMCC, '-sTOTAL_MEMORY=11PB', 'foo.c'], 'error: invalid byte size `11PB`.  Valid suffixes are: kb, mb, gb, tb')
 
   def test_native_call_before_init(self):
     self.set_setting('ASSERTIONS')
@@ -13105,6 +13105,10 @@ kill -9 $$
   def test_link_only_flag_warning(self):
     err = self.run_process([EMCC, '--embed-file', 'file', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained("warning: linker flag ignored during compilation: '--embed-file' [-Wunused-command-line-argument]", err)
+
+    # Also test for the format that includes an =arg suffix
+    err = self.run_process([EMCC, '--embed-file=file', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained("warning: linker flag ignored during compilation: '--embed-file=file' [-Wunused-command-line-argument]", err)
 
   def test_no_deprecated(self):
     # Test that -Wno-deprecated is passed on to clang driver
