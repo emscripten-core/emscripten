@@ -1,0 +1,41 @@
+ChangeLog.md
+  s_f70e1f6a91e249::t_3f6423db1ce180 68-74
+src/lib/libsigs.js
+  s_f70e1f6a91e249::t_217ee480d6379b 335
+src/lib/libsyscall.js
+  s_f70e1f6a91e249::t_bd89c9181243a7 406-412,709-745
+system/lib/libc/musl/src/internal/emscripten_fd_wait.h
+  s_f70e1f6a91e249::t_83bde27c1f6d98 1-27
+system/lib/libc/musl/src/network/accept.c
+  s_f70e1f6a91e249::t_da870ccb5abbc7 3-5,9-16,18
+system/lib/libc/musl/src/network/accept4.c
+  s_f70e1f6a91e249::t_c4aec16a190374 6-8,13-23,25
+system/lib/libc/musl/src/network/recvfrom.c
+  s_f70e1f6a91e249::t_2142fe99e21393 3-5,9-16,18
+system/lib/libc/musl/src/network/recvmsg.c
+  s_f70e1f6a91e249::t_5fd2d393853ac7 7-9,65-74,76
+test/codesize/test_codesize_hello_dylink_all.json
+  s_f70e1f6a91e249::t_8fe32e83a575be 2,4,230,248,280,1365-1366,1370
+test/sockets/test_tcp_accept_nonblock.c
+  s_f70e1f6a91e249::t_07de6fff756a41 1-98
+test/sockets/test_tcp_blocking.c
+  s_f70e1f6a91e249::t_143ca842b6a879 1-73
+test/test_sockets.py
+  s_f70e1f6a91e249::t_f757424dcb6542 504-519
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0855a1de1ece87b22daef787b00992dc866bb23e",
+  "prompts": {},
+  "sessions": {
+    "s_f70e1f6a91e249": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06d160a7dffe1KI9HN7qqEdqcA",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
