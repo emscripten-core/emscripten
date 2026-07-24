@@ -1,0 +1,39 @@
+src/lib/libcore.js
+  s_f70e1f6a91e249::t_e7507129e8be17 825-829,837-856,883-887,890-915
+src/lib/libsockfs.js
+  s_f70e1f6a91e249::t_0448dc4693af6e 67-74,84-89,91-97
+src/lib/libsockfs_node.js
+  s_f70e1f6a91e249::t_1432b11a7ac1b0 159-204,481-487,518-540,600-608,618-628
+src/lib/libsyscall.js
+  s_f70e1f6a91e249::t_3b55fe24da18a3 347-350,365-372,383-393,424-430,432,434,457-463,465,467,571-577,579,581
+src/struct_info.json
+  s_f70e1f6a91e249::t_8302930837cbf3 303,309-317
+src/struct_info_generated.json
+  s_f70e1f6a91e249::t_14d6491678d95b 5,1088-1092
+src/struct_info_generated_wasm64.json
+  s_f70e1f6a91e249::t_dab8b1d684e2f3 5,1088-1092
+test/sockets/test_unix_bind_inuse.c
+  s_f70e1f6a91e249::t_d96ea48abe347a 1-45
+test/sockets/test_unix_refused.c
+  s_f70e1f6a91e249::t_2c885aca6c076a 1-87
+test/sockets/test_unix_server.c
+  s_f70e1f6a91e249::t_b08c3505cf19d8 1-185
+test/test_sockets.py
+  s_f70e1f6a91e249::t_998ba5c6182d04 479-496
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "88ff1b58a4c44d23ca295537dd2414b162158e1a",
+  "prompts": {},
+  "sessions": {
+    "s_f70e1f6a91e249": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06d160a7dffe1KI9HN7qqEdqcA",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
