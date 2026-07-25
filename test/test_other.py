@@ -2740,6 +2740,12 @@ F1 -> ''
     self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['-Wno-experimental', '--use-port=sdl3', '--use-port=sdl3_ttf'])
 
   @requires_network
+  def test_sdl3_mixer(self):
+    self.emcc('browser/test_sdl3_mixer.c', ['-Wno-experimental', '-DSOUND_PATH="sound.wav"', '-sUSE_SDL=3', '-sUSE_SDL_MIXER=3', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl3_mixer.c', ['-Wno-experimental', '-DSOUND_PATH="sound.wav"', '--use-port=sdl3_mixer', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl3_mixer.c', ['-Wno-experimental', '-DSOUND_PATH="sound.wav"', '--use-port=sdl3_mixer:formats=ogg', '-o', 'a.out.js'])
+
+  @requires_network
   def test_contrib_ports(self):
     # Verify that contrib ports can be used (using the only contrib port available ATM, but can be replaced
     # with a different contrib port when there is another one
