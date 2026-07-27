@@ -1,0 +1,31 @@
+src/lib/libsigs.js
+  s_d518e3e460b3cf::t_e4a85e49607227 286
+src/struct_info.json
+  s_d518e3e460b3cf::t_60d39f1fb2b650 303,309-317
+src/struct_info_generated.json
+  s_d518e3e460b3cf::t_d31da6f0b8586a 5,1088-1092
+src/struct_info_generated_wasm64.json
+  s_d518e3e460b3cf::t_2819bbc8f69628 5,1088-1092
+system/lib/wasmfs/syscalls.cpp
+  s_d518e3e460b3cf::t_583f3cdcbbedb8 1767-1771
+test/codesize/test_codesize_hello_dylink_all.json
+  s_d518e3e460b3cf::t_75f98837213a4e 2-4,271,1803
+test/sockets/test_unix_pair.c
+  s_d518e3e460b3cf::t_0209ca148a6513 1-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "018b53887b8db09c1e971a52ad4f77d1d273fb31",
+  "prompts": {},
+  "sessions": {
+    "s_d518e3e460b3cf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06a36a2e5ffezBSceKiQnO8T4K",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
