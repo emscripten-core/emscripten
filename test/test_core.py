@@ -900,7 +900,7 @@ class TestCoreBase(RunnerCore):
     self.do_runf_out_file('math/fmodf.c')
 
   def test_rounding(self):
-    self.do_core_test('test_rounding.c')
+    self.do_core_test('test_rounding.c', cflags=['-Wno-fenv-access', '-Wno-unknown-warning-option'])
 
   def test_stack(self):
     self.set_setting('INLINING_LIMIT')
