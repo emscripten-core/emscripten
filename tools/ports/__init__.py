@@ -223,7 +223,7 @@ class Ports:
       maybe_copy(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # ruff: ignore[mutable-argument-default]
     mangled_name = str(Path(output_path).relative_to(Path(cache.get_sysroot(True)) / 'lib'))
     mangled_name = mangled_name.replace(os.sep, '_').replace('.a', '').replace('-emscripten', '')
     build_dir = os.path.join(Ports.get_build_dir(), port_name, mangled_name)

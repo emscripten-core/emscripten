@@ -1596,7 +1596,7 @@ def parse_args(args):
   return parser.parse_args(args)
 
 
-def run(args):  # noqa: C901, PLR0912, PLR0915
+def run(args):  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 74 vs 10 recommended.

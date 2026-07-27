@@ -842,7 +842,7 @@ def add_required_heap_symbols():
 
 
 @ToolchainProfiler.profile_block('linker_setup')
-def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
+def phase_linker_setup(options, linker_args):  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 244 vs 10 recommended.
