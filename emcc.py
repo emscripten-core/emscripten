@@ -427,7 +427,7 @@ def phase_setup(state):
             'unused-command-line-argument',
             "linker setting ignored during compilation: '%s'" % key)
     for arg in state.orig_args:
-      if arg in LINK_ONLY_FLAGS:
+      if arg.split('=')[0] in LINK_ONLY_FLAGS:
         diagnostics.warning(
             'unused-command-line-argument',
             "linker flag ignored during compilation: '%s'" % arg)

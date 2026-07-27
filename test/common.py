@@ -899,7 +899,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     def is_ldflag(f):
       return f.startswith(('-l', '-sEXPORT_ES6', '-sGL_TESTING', '-sPROXY_TO_PTHREAD',
                            '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE=',
-                           '--profiling-funcs'))
+                           '--profiling-funcs', '--closure'))
 
     args = self.serialize_settings(compile_only or asm_only) + self.cflags
     if asm_only:
