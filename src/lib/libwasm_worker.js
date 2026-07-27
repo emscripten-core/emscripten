@@ -173,6 +173,9 @@ addToLibrary({
   _emscripten_create_wasm_worker__deps: [
     '$_wasmWorkers',
     '$_wasmWorkerAppendToQueue', '$_wasmWorkerRunPostMessage',
+#if TRUSTED_TYPES
+    '$_emscriptenWasmWorkerPolicy',
+#endif
 #if ASSERTIONS
     'emscripten_has_threading_support',
 #endif
