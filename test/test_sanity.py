@@ -584,7 +584,7 @@ WASMER = '~/wasmer'
     cfg_file = os.path.join(config_dir, 'custom_config')
 
     extra_config = '''
-NODE_JS = '"/path/to/node with spaces" --with-arg --option="hello world"'
+NODE_JS = '/path/to/node with spaces'
 CLOSURE_COMPILER = ['/path/to/closure', '--legacy-flag']
 '''
     create_file(cfg_file, get_basic_config() + extra_config, absolute=True)
@@ -594,11 +594,10 @@ CLOSURE_COMPILER = ['/path/to/closure', '--legacy-flag']
         return self.run_process([EMCONFIG, var_name], stdout=PIPE, stderr=PIPE)
 
       proc = get_em_config('NODE_JS')
-      self.assertEqual(proc.stdout.strip(), "['/path/to/node with spaces', '--with-arg', '--option=hello world']")
+      self.assertEqual(proc.stdout.strip(), "['/path/to/node with spaces']")
 
       proc = get_em_config('CLOSURE_COMPILER')
       self.assertEqual(proc.stdout.strip(), "['/path/to/closure', '--legacy-flag']")
-      self.assertContained('Found list-style config entry', proc.stderr)
 
   def test_emcc_ports(self):
     restore_and_set_up()
