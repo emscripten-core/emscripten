@@ -1453,9 +1453,9 @@ var LibraryOpenAL = {
         var srcLen = AL.sourceDuration(src);
         if (srcLen > 0.0) {
           var frequency;
-          for (var bufId in src.bufQueue) {
-            if (bufId) {
-              frequency = src.bufQueue[bufId].frequency;
+          for (var buf of src.bufQueue) {
+            if (buf.id !== 0) {
+              frequency = buf.frequency;
               break;
             }
           }
@@ -1475,9 +1475,8 @@ var LibraryOpenAL = {
         var srcLen = AL.sourceDuration(src);
         if (srcLen > 0.0) {
           var bytesPerSec;
-          for (var bufId in src.bufQueue) {
-            if (bufId) {
-              var buf = src.bufQueue[bufId];
+          for (var buf of src.bufQueue) {
+            if (buf.id !== 0) {
               bytesPerSec = buf.frequency * buf.bytesPerSample * buf.channels;
               break;
             }
