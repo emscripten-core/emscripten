@@ -2233,7 +2233,7 @@ if (isNode) {{
   mod = mod.replace('(import "wasi_snapshot_preview1"', f'(import "{support_url}"')
 
   wasm_as = os.path.join(building.get_binaryen_bin(), 'wasm-as')
-  cmd = [wasm_as, '--all-features', '-o', wasm_target, '-']
+  cmd = [wasm_as, *building.get_binaryen_feature_flags(), '-o', wasm_target, '-']
   if settings.EMIT_NAME_SECTION:
     cmd.append('-g')
   shared.check_call(cmd, input=mod)
