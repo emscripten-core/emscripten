@@ -52,6 +52,11 @@ jobs:
                exit 1
             fi
           fi
-          git push origin update_emsdk
-          gh pr create --fill --base "$REF_NAME" --reviewer sbc100,kripken
+          git push --force origin update_emsdk
+          if gh pr view update_emsdk --json state -q .state | grep -q "^OPEN$"; then
+            title=$(git log -1 --format=%s)
+            git log -1 --format=%b | gh pr edit update_emsdk --title "$title" --body-file -
+          else
+            gh pr create --fill --base "$REF_NAME" --reviewer sbc100,kripken
+          fi
           gh pr merge --squash --auto
