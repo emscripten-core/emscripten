@@ -113,7 +113,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 
 #if SHARED_WASMGC
-        _shared_root = getSharedRootGlobal(msgData.sharedRootVal);
+        __shared_heap_root = getSharedHeapRootGlobal(msgData.sharedHeapRootVal);
 #endif
 
 #if !WASM_ESM_INTEGRATION

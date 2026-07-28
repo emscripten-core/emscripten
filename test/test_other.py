@@ -13314,21 +13314,21 @@ void foo() {}
     create_file('shared_gc.wat', r'''
     (module
       (type $counter (shared (struct (field (mut i32)))))
-      (import "env" "shared_root" (global $shared_root (mut (ref null (shared any)))))
-      (export "shared_root" (global $shared_root))
+      (import "env" "_shared_heap_root" (global $_shared_heap_root (mut (ref null (shared any)))))
+      (export "_shared_heap_root" (global $_shared_heap_root))
       (import "app" "print_int" (func $print_int (param i32)))
 
       (func $init
-        (if (ref.is_null (global.get $shared_root))
+        (if (ref.is_null (global.get $_shared_heap_root))
           (then
-            (global.set $shared_root (struct.new $counter (i32.const 0)))
+            (global.set $_shared_heap_root (struct.new $counter (i32.const 0)))
           )
         )
       )
       (start $init)
 
       (func (export "shared_gc_main")
-        (call $print_int (ref.is_null (global.get $shared_root)))
+        (call $print_int (ref.is_null (global.get $_shared_heap_root)))
       )
     )
     ''')

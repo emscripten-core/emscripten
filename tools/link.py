@@ -518,7 +518,7 @@ def setup_pthreads():
   ]
 
   if settings.SHARED_WASMGC:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['shared_root']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_shared_heap_root']
 
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')

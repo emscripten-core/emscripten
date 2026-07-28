@@ -436,7 +436,7 @@ var LibraryPThread = {
         wasmSourceMap,
 #endif
 #if SHARED_WASMGC
-        sharedRootVal: wasmExports['shared_root'].value,
+        sharedHeapRootVal: wasmExports['_shared_heap_root'].value,
 #endif
 #if MAIN_MODULE
         dynamicLibraries,
@@ -1360,15 +1360,15 @@ var LibraryPThread = {
   },
 
 #if SHARED_WASMGC
-  shared_root__deps: ['$getSharedRootGlobal'],
-  shared_root: null,
-  shared_root__postset: "if (!ENVIRONMENT_IS_PTHREAD) { _shared_root = getSharedRootGlobal(null); }",
-  $getSharedRootGlobal: (val) => {
+  _shared_heap_root__deps: ['$getSharedHeapRootGlobal'],
+  _shared_heap_root: null,
+  _shared_heap_root__postset: "if (!ENVIRONMENT_IS_PTHREAD) { __shared_heap_root = getSharedHeapRootGlobal(null); }",
+  $getSharedHeapRootGlobal: (val) => {
 #if ASSERTIONS
     if (ENVIRONMENT_IS_PTHREAD) {
-      assert(val, "expected shared_root to be assigned on pthread");
+      assert(val, "expected _shared_heap_root to be assigned on pthread");
     } else {
-      assert(!val, "expected shared_root to be null on main thread");
+      assert(!val, "expected _shared_heap_root to be null on main thread");
     }
 #endif // ASSERTIONS
     // Wasm module for acquiring a shared anyref WebAssembly.Global:
