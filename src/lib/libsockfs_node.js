@@ -156,6 +156,54 @@ var NodeSockFSLibrary = {
       try { handle.close(); } catch (e) {}
       throw new FS.ErrnoError(nodeSockHelpers.codeToErrno(code));
     },
+    // AF_UNIX stream sockets bind through net.BoundSocket when node offers a
+    // path-capable one, else the private pipe_wrap binding - the same
+    // public-then-private choice bindHandle() makes for TCP (BoundSocket else
+    // tcp_wrap). The capability signal is the presence of the `isPipe` accessor
+    // on the prototype (a { path } bind reports isPipe true). Chosen once, like
+    // useBoundSocket().
+    useBoundPipe() {
+      var BoundSocket = nodeSockHelpers.getNet().BoundSocket;
+      return nodeSockHelpers.boundPipeOk ??= !!(BoundSocket && 'isPipe' in BoundSocket.prototype);
+    },
+    getPipe() {
+      if (!nodeSockHelpers.pipeModule) {
+        try {
+          nodeSockHelpers.pipeModule = process.binding('pipe_wrap');
+        } catch (e) {
+          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        }
+      }
+      return nodeSockHelpers.pipeModule;
+    },
+    // Synchronously bind an AF_UNIX stream socket to a filesystem path,
+    // reserving the entry (EADDRINUSE if already in use) exactly when POSIX
+    // bind() would, and record the path. sock.bound is the resulting bound
+    // handle - a net.BoundSocket or a raw pipe_wrap Pipe - adopted as-is by
+    // listen() (server.listen). node reports no name back for a pipe, so the
+    // path we store here is authoritative for getsockname().
+    bindPipe(sock, path) {
+      if (nodeSockHelpers.useBoundPipe()) {
+        // The constructor binds synchronously and throws a conflict
+        // (EADDRINUSE etc.) right here, matching POSIX bind().
+        try {
+          var bh = new (nodeSockHelpers.getNet().BoundSocket)({ path });
+        }
+        catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
+        sock.bound = bh;
+        sock.saddr = path;
+        return;
+      }
+      var pipe = nodeSockHelpers.getPipe();
+      var handle = new pipe.Pipe(pipe.constants.SERVER);
+      var code = handle.bind(path);
+      if (code) {
+        try { handle.close(); } catch (e) {}
+        throw new FS.ErrnoError(nodeSockHelpers.codeToErrno(code));
+      }
+      sock.bound = handle;
+      sock.saddr = path;
+    },
     // The peer address is already a numeric IP (emscripten resolves names in
     // its own DNS layer), so skip node's async DNS lookup. The family follows
     // the literal: a colon means IPv6.
@@ -432,6 +480,13 @@ var NodeSockFSLibrary = {
       if (sock.saddr !== undefined || sock.sport !== undefined) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}}); // already bound
       }
+      if (sock.family === {{{ cDefs.AF_UNIX }}}) {
+        // addr is a filesystem path (or an abstract '\0...' name). Bind
+        // synchronously so EADDRINUSE surfaces here and getsockname() works.
+        nodeSockHelpers.bindPipe(sock, addr);
+        sock.state = {{{ SOCK_STATE_BOUND }}};
+        return;
+      }
       if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
         var udp = nodeSockHelpers.ensureUdpHandle(sock);
         if (sock.udpPublic) {
@@ -462,6 +517,29 @@ var NodeSockFSLibrary = {
       sock.state = {{{ SOCK_STATE_BOUND }}};
     },
     connect(sock, addr, port) {
+      if (sock.family === {{{ cDefs.AF_UNIX }}}) {
+        if (sock.server) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        if (sock.connection) {
+          throw new FS.ErrnoError(sock.state === {{{ SOCK_STATE_CONNECTING }}} ? {{{ cDefs.EALREADY }}} : {{{ cDefs.EISCONN }}});
+        }
+        // addr is the peer path. node reports no name back, so record it as the
+        // peer name ourselves; the local end is unnamed unless bind() named it.
+        sock.daddr = addr;
+        sock.state = {{{ SOCK_STATE_CONNECTING }}};
+        var uconn = new (nodeSockHelpers.getNet().Socket)({ allowHalfOpen: true });
+        uconn.once('connect', () => {
+          sock.state = {{{ SOCK_STATE_CONNECTED }}};
+          sock.saddr ??= '';
+          try { uconn.resume(); } catch (e) {}
+          SOCKFS.emit('open', sock.stream.fd);
+        });
+        // A missing path surfaces as ENOENT and a non-socket path as
+        // ECONNREFUSED, both through wireConnection's 'error' handler and the
+        // same SO_ERROR/poll seam as TCP.
+        nodeSockHelpers.wireConnection(sock, uconn);
+        uconn.connect({ path: addr });
+        return;
+      }
       if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
         sock.daddr = addr;
         sock.dport = port;
@@ -521,10 +599,15 @@ var NodeSockFSLibrary = {
       if (sock.type !== {{{ cDefs.SOCK_STREAM }}}) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}}); // not a stream socket
       if (sock.server) throw new FS.ErrnoError({{{ cDefs.EINVAL }}}); // already listening
       if (sock.connection) throw new FS.ErrnoError({{{ cDefs.EINVAL }}}); // a connected socket cannot listen
-      // POSIX listen without a prior bind auto-binds an ephemeral port. The bind
-      // is eager and synchronous (bindHandle), so the assigned port is known and
-      // any conflict surfaces before we listen.
-      if (!sock.bound) {
+      // AF_UNIX has no autobind for listen(): the socket must have been named by
+      // a prior bind() (which produced the bound Pipe handle we listen on).
+      var isUnix = sock.family === {{{ cDefs.AF_UNIX }}};
+      if (isUnix) {
+        if (!sock.bound) throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      } else if (!sock.bound) {
+        // POSIX listen without a prior bind auto-binds an ephemeral port. The
+        // bind is eager and synchronous (bindHandle), so the assigned port is
+        // known and any conflict surfaces before we listen.
         nodeSockHelpers.bindHandle(sock, '0.0.0.0', 0);
         sock.state = {{{ SOCK_STATE_BOUND }}};
       }
@@ -534,10 +617,17 @@ var NodeSockFSLibrary = {
       server.on('connection', (conn) => {
         var newsock = SOCKFS.createSocket(sock.family, sock.type, sock.protocol);
         newsock.state = {{{ SOCK_STATE_CONNECTED }}};
-        newsock.saddr = conn.localAddress;
-        newsock.sport = conn.localPort;
-        newsock.daddr = conn.remoteAddress;
-        newsock.dport = conn.remotePort;
+        if (isUnix) {
+          // node reports no name for a pipe: the accepted socket's local name is
+          // the listener's path, the peer is unnamed (the client rarely binds).
+          newsock.saddr = sock.saddr;
+          newsock.daddr = '';
+        } else {
+          newsock.saddr = conn.localAddress;
+          newsock.sport = conn.localPort;
+          newsock.daddr = conn.remoteAddress;
+          newsock.dport = conn.remotePort;
+        }
         nodeSockHelpers.wireConnection(newsock, conn);
         try { conn.resume(); } catch (e) {} // paused by pauseOnConnect
         sock.pending.push(newsock);
