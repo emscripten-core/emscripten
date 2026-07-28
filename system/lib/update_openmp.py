@@ -14,8 +14,8 @@ from update_common import (
   default_llvm_dir,
   emscripten_root,
   parse_args,
-  update_readme,
   script_dir,
+  update_readme,
 )
 
 # system/lib/openmp (to be updated)
