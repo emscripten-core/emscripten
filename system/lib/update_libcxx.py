@@ -106,12 +106,6 @@ def main():
   # We don't use frozen c++03 headers for now
   shutil.rmtree(os.path.join(local_inc, '__cxx03'))
 
-  # libcxx includes headers from LLVM's libc
-  libc_upstream_dir = os.path.join(llvm_dir, 'libc')
-  assert os.path.exists(libc_upstream_dir)
-  libc_local_dir = os.path.join(script_dir, 'llvm-libc')
-
-  shutil.copy2(os.path.join(libc_upstream_dir, 'LICENSE.TXT'), libc_local_dir)
   update_readme(local_root, llvm_dir)
 
 
