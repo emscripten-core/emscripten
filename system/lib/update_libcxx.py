@@ -106,6 +106,14 @@ def main():
   # We don't use frozen c++03 headers for now
   shutil.rmtree(os.path.join(local_inc, '__cxx03'))
 
+  # Copy module.modulemap.in to module.modulemap and replace __config_site
+  # string
+  with open(os.path.join(local_inc, 'module.modulemap.in'), 'r') as f:
+    modulemap = f.read()
+  modulemap = modulemap.replace('@LIBCXX_CONFIG_SITE_MODULE_ENTRY@',
+                                'textual header "__config_site"')
+  write_file(os.path.join(local_inc, 'module.modulemap'), modulemap)
+
   update_readme(local_root, llvm_dir)
 
 
