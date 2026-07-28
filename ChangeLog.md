@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.5 (in development)
 ----------------------
+- Revert #27397, which changed the way config keys such as NODE_JS were parsed
+  when reading the config file.  This change broke emsdk installations that
+  contained spaces. (#27421)
 
 6.0.4 - 07/24/26
 ----------------

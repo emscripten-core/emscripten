@@ -901,11 +901,11 @@ f.close()
       generators = ['Unix Makefiles', 'Ninja', 'Eclipse CDT4 - Ninja']
 
     configurations = {
-      'MinGW Makefiles'     : {'build'   : ['mingw32-make'] }, # noqa
-      'NMake Makefiles'     : {'build'   : ['nmake', '/NOLOGO']}, # noqa
-      'Unix Makefiles'      : {'build'   : ['make']}, # noqa
-      'Ninja'               : {'build'   : ['ninja']}, # noqa
-      'Eclipse CDT4 - Ninja': {'build'   : ['ninja']}, # noqa
+      'MinGW Makefiles'     : {'build'   : ['mingw32-make'] }, # ruff: ignore[whitespace-before-close-bracket, whitespace-before-punctuation]
+      'NMake Makefiles'     : {'build'   : ['nmake', '/NOLOGO']}, # ruff: ignore[whitespace-before-punctuation]
+      'Unix Makefiles'      : {'build'   : ['make']}, # ruff: ignore[whitespace-before-punctuation]
+      'Ninja'               : {'build'   : ['ninja']}, # ruff: ignore[whitespace-before-punctuation]
+      'Eclipse CDT4 - Ninja': {'build'   : ['ninja']}, # ruff: ignore[whitespace-before-punctuation]
     }
     for generator in generators:
       conf = configurations[generator]
@@ -7949,15 +7949,15 @@ int main() {
       return os.path.getsize('a.out.wasm')
 
     print('no bad ctor')
-    first  = test(1000, 2000, 3000, 0xe, 0x58e) # noqa: E221
+    first  = test(1000, 2000, 3000, 0xe, 0x58e) # ruff: ignore[multiple-spaces-before-operator]
     second = test(3000, 1000, 2000, 0xe, 0x8e5)
-    third  = test(2000, 3000, 1000, 0xe, 0xe58) # noqa: E221
+    third  = test(2000, 3000, 1000, 0xe, 0xe58) # ruff: ignore[multiple-spaces-before-operator]
     print(first, second, third)
     assert first == second and second == third
     print('with bad ctor')
-    first  = test(1000, 2000, 3000, 0xf, 0x58f) # noqa: E221,  2 will succeed
+    first  = test(1000, 2000, 3000, 0xf, 0x58f) # ruff: ignore[multiple-spaces-before-operator],  2 will succeed
     second = test(3000, 1000, 2000, 0xf, 0x8f5) # 1 will succeed
-    third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa: E221,  0 will succeed
+    third  = test(2000, 3000, 1000, 0xf, 0xf58) # ruff: ignore[multiple-spaces-before-operator],  0 will succeed
     print(first, second, third)
     self.assertLess(first, second)
     self.assertLess(second, third)
@@ -8224,7 +8224,7 @@ addToLibrary({
     self.assertNotContained(error, read_file('a.out.js'))
 
   def test_warn_module_out_err(self):
-    def test(contents, expected, args=[], assert_returncode=0):  # noqa
+    def test(contents, expected, args=[], assert_returncode=0):  # ruff: ignore[mutable-argument-default]
       create_file('src.c', r'''
         #include <emscripten.h>
         int main() {

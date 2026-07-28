@@ -1188,7 +1188,7 @@ class benchmark(common.RunnerCore):
       }
     ''' % DEFAULT_ARG)
 
-    def lib_builder(name, native, env_init):  # noqa
+    def lib_builder(name, native, env_init):  # ruff: ignore[unused-function-argument]
       if '-m64' in env_init.get('CFLAGS', ''):
         env_init['CPPFLAGS'] = '-m64'
         env_init['LDFLAGS'] = '-m64'

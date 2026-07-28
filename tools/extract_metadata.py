@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# ruff:noqa: F841
-
 import logging
 from dataclasses import dataclass
 
@@ -19,8 +17,8 @@ logger = logging.getLogger('extract_metadata')
 def skip_function_header(module):
   num_local_decls = module.read_uleb()
   while num_local_decls:
-    local_count = module.read_uleb()
-    local_type = module.read_type()
+    _local_count = module.read_uleb()
+    _local_type = module.read_type()
     num_local_decls -= 1
 
 
@@ -132,8 +130,8 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
       case OpCode.BR_TABLE:
         count = module.read_uleb()
         for _ in range(count):
-          depth = module.read_uleb()
-        default = module.read_uleb()
+          _depth = module.read_uleb()
+        _default = module.read_uleb()
       case _:
         assert False, "unknown: %s" % opcode
 

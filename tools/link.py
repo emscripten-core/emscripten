@@ -847,7 +847,7 @@ def add_required_heap_symbols():
 
 
 @ToolchainProfiler.profile_block('linker_setup')
-def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
+def phase_linker_setup(options, linker_args):  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 244 vs 10 recommended.
@@ -2238,7 +2238,7 @@ if (isNode) {{
   mod = mod.replace('(import "wasi_snapshot_preview1"', f'(import "{support_url}"')
 
   wasm_as = os.path.join(building.get_binaryen_bin(), 'wasm-as')
-  cmd = [wasm_as, '--all-features', '-o', wasm_target, '-']
+  cmd = [wasm_as, *building.get_binaryen_feature_flags(), '-o', wasm_target, '-']
   if settings.EMIT_NAME_SECTION:
     cmd.append('-g')
   shared.check_call(cmd, input=mod)
