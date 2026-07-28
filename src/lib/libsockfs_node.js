@@ -167,12 +167,14 @@ var NodeSockFSLibrary = {
       return nodeSockHelpers.boundPipeOk ??= !!(BoundSocket && 'isPipe' in BoundSocket.prototype);
     },
     getPipe() {
-      if (nodeSockHelpers.pipeModule) return nodeSockHelpers.pipeModule;
-      try {
-        return nodeSockHelpers.pipeModule = process.binding('pipe_wrap');
-      } catch (e) {
-        throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+      if (!nodeSockHelpers.pipeModule) {
+        try {
+          nodeSockHelpers.pipeModule = process.binding('pipe_wrap');
+        } catch (e) {
+          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        }
       }
+      return nodeSockHelpers.pipeModule;
     },
     // Synchronously bind an AF_UNIX stream socket to a filesystem path,
     // reserving the entry (EADDRINUSE if already in use) exactly when POSIX

@@ -824,7 +824,7 @@ addToLibrary({
 
   $readSockaddr__deps: ['$inetNtop4', '$inetNtop6', 'ntohs'
 #if NODERAWSOCKETS
-    , '$UTF8ArrayToString'
+    , '$UTF8ToString'
 #endif
   ],
   $readSockaddr: (sa, salen) => {
@@ -845,10 +845,10 @@ addToLibrary({
         var path = '';
         if (pathLen > 0) {
           if (HEAPU8[pathStart] === 0) {
-            path = '\0' + UTF8ArrayToString(HEAPU8, pathStart + 1, pathLen - 1, /*ignoreNul=*/true);
+            path = '\0' + UTF8ToString(pathStart + 1, pathLen - 1, /*ignoreNul=*/true);
           } else {
             // A pathname address is NUL-terminated; stop at the first NUL.
-            path = UTF8ArrayToString(HEAPU8, pathStart, pathLen);
+            path = UTF8ToString(pathStart, pathLen);
           }
         }
         return { family, addr: path, port: 0 };
@@ -880,9 +880,9 @@ addToLibrary({
     return { family: family, addr: addr, port: port };
   },
   $writeSockaddr__docs: '/** @param {number=} addrlen */',
-  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', 'htons'
+  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', '$DNS', 'htons'
 #if NODERAWSOCKETS
-    , '$lengthBytesUTF8', '$stringToUTF8Array'
+    , '$lengthBytesUTF8', '$stringToUTF8'
 #endif
   ],
   $writeSockaddr: (sa, family, addr, port, addrlen) => {
@@ -902,10 +902,10 @@ addToLibrary({
         zeroMemory(sa, total);
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_un.sun_family, 'family', 'i16') }}};
         if (addr) {
-          // stringToUTF8Array NUL-terminates and needs room for it, so hand it a
+          // stringToUTF8 NUL-terminates and needs room for it, so hand it a
           // budget one past the path bytes; the terminating NUL lands on the
           // zeroed byte just past the reported length and is harmless.
-          stringToUTF8Array(addr, HEAPU8, sa + {{{ C_STRUCTS.sockaddr_un.sun_path }}}, bytes + 1);
+          stringToUTF8(addr, sa + {{{ C_STRUCTS.sockaddr_un.sun_path }}}, bytes + 1);
         }
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, 'total', 'i32') }}};
@@ -914,7 +914,10 @@ addToLibrary({
       }
 #endif
       case {{{ cDefs.AF_INET }}}:
-        addr = inetPton4(addr);
+        // The address may still be an unresolved hostname (e.g. a peer name
+        // recorded at connect time); map it to its (possibly fake) IP here so
+        // callers can pass names and IPs alike.
+        addr = inetPton4(DNS.lookup_name(addr));
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
@@ -924,7 +927,7 @@ addToLibrary({
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
         break;
       case {{{ cDefs.AF_INET6 }}}:
-        addr = inetPton6(addr);
+        addr = inetPton6(DNS.lookup_name(addr));
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
