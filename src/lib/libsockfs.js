@@ -64,6 +64,14 @@ addToLibrary({
 #if NODERAWSOCKETS
           // The node:net backend supports IPv6; other backends are IPv4 only.
           && family != {{{ cDefs.AF_INET6 }}}
+#if NODERAWFS
+          // AF_UNIX stream sockets are backed by node's named pipes, and their
+          // paths live in the host filesystem. That only stays coherent with the
+          // program's own file syscalls (bind's parent dir, getsockname, unlink)
+          // under NODERAWFS, so the family is gated behind it - MEMFS paths are a
+          // disjoint namespace and would fail confusingly.
+          && family != {{{ cDefs.AF_UNIX }}}
+#endif
 #endif
          ) {
         throw new FS.ErrnoError({{{ cDefs.EAFNOSUPPORT }}});
@@ -73,8 +81,20 @@ addToLibrary({
       if (type != {{{ cDefs.SOCK_STREAM }}} && type != {{{ cDefs.SOCK_DGRAM }}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
+#if NODERAWSOCKETS && NODERAWFS
+      // node has no AF_UNIX datagram primitive; only stream unix sockets exist.
+      if (family == {{{ cDefs.AF_UNIX }}} && type != {{{ cDefs.SOCK_STREAM }}}) {
+        throw new FS.ErrnoError({{{ cDefs.EPROTONOSUPPORT }}});
+      }
+#endif
       var streaming = type == {{{ cDefs.SOCK_STREAM }}};
-      if (streaming && protocol && protocol != {{{ cDefs.IPPROTO_TCP }}}) {
+      // The IPPROTO_TCP protocol guard only applies to INET stream sockets; unix
+      // stream sockets use protocol 0.
+      if (streaming && protocol && protocol != {{{ cDefs.IPPROTO_TCP }}}
+#if NODERAWSOCKETS && NODERAWFS
+          && family != {{{ cDefs.AF_UNIX }}}
+#endif
+         ) {
         throw new FS.ErrnoError({{{ cDefs.EPROTONOSUPPORT }}}); // if SOCK_STREAM, must be tcp or 0.
       }
 

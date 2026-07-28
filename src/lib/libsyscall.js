@@ -344,6 +344,10 @@ var SyscallsLibrary = {
   $getSocketAddress: (addrp, addrlen) => {
     var info = readSockaddr(addrp, addrlen);
     if (info.errno) throw new FS.ErrnoError(info.errno);
+#if NODERAWSOCKETS
+    // AF_UNIX addresses are filesystem paths, not IP names; pass them verbatim.
+    if (info.family != {{{ cDefs.AF_UNIX }}})
+#endif
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
 #if SYSCALL_DEBUG
     dbg(`    (socketaddress: "${[info.addr, info.port]}")`);
@@ -355,23 +359,36 @@ var SyscallsLibrary = {
     var sock = SOCKFS.createSocket(domain, type, protocol);
     return sock.stream.fd;
   },
-  __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr'],
   __syscall_getsockname: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
+#if NODERAWSOCKETS
+    // An unbound AF_UNIX socket is unnamed (family-only address), not a
+    // wildcard IP.
+    var defaultAddr = sock.family == {{{ cDefs.AF_UNIX }}} ? '' : '0.0.0.0';
+#else
+    var defaultAddr = '0.0.0.0';
+#endif
     // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
-    var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport, len);
+    var errno = writeSockaddr(addr, sock.family, sock.saddr || defaultAddr, sock.sport, len);
 #if ASSERTIONS
     assert(!errno);
 #endif
     return 0;
   },
-  __syscall_getpeername__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __syscall_getpeername__deps: ['$getSocketFromFD', '$writeSockaddr'],
   __syscall_getpeername: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
+#if NODERAWSOCKETS
+    // '' is a valid connected-but-unnamed AF_UNIX peer (e.g. an accepted
+    // connection's client), so only undefined means not connected there.
+    if (sock.family == {{{ cDefs.AF_UNIX }}} ? sock.daddr === undefined : !sock.daddr) {
+#else
     if (!sock.daddr) {
+#endif
       return -{{{ cDefs.ENOTCONN }}}; // The socket is not connected.
     }
-    var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport, len);
+    var errno = writeSockaddr(addr, sock.family, sock.daddr, sock.dport, len);
 #if ASSERTIONS
     assert(!errno);
 #endif
@@ -393,12 +410,12 @@ var SyscallsLibrary = {
     return -{{{ cDefs.ENOSYS }}}; // unsupported feature
 #endif
   },
-  __syscall_accept4__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __syscall_accept4__deps: ['$getSocketFromFD', '$writeSockaddr'],
   __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
     var sock = getSocketFromFD(fd);
     var newsock = sock.sock_ops.accept(sock);
     if (addr) {
-      var errno = writeSockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport, len);
+      var errno = writeSockaddr(addr, newsock.family, newsock.daddr, newsock.dport, len);
 #if ASSERTIONS
       assert(!errno);
 #endif
@@ -418,13 +435,13 @@ var SyscallsLibrary = {
     sock.sock_ops.listen(sock, backlog);
     return 0;
   },
-  __syscall_recvfrom__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __syscall_recvfrom__deps: ['$getSocketFromFD', '$writeSockaddr'],
   __syscall_recvfrom: (fd, buf, len, flags, addr, alen) => {
     var sock = getSocketFromFD(fd);
     var msg = sock.sock_ops.recvmsg(sock, len, flags);
     if (!msg) return 0; // socket is closed
     if (addr) {
-      var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, alen);
+      var errno = writeSockaddr(addr, sock.family, msg.addr, msg.port, alen);
 #if ASSERTIONS
       assert(!errno);
 #endif
@@ -507,7 +524,7 @@ var SyscallsLibrary = {
     // write the buffer
     return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
   },
-  __syscall_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __syscall_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr'],
   __syscall_recvmsg: (fd, message, flags, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
@@ -531,7 +548,7 @@ var SyscallsLibrary = {
     var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
     if (name) {
       var namelen = message + {{{ C_STRUCTS.msghdr.msg_namelen }}};
-      var errno = writeSockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port, namelen);
+      var errno = writeSockaddr(name, sock.family, msg.addr, msg.port, namelen);
 #if ASSERTIONS
       assert(!errno);
 #endif

@@ -822,7 +822,11 @@ addToLibrary({
     return str;
   },
 
-  $readSockaddr__deps: ['$inetNtop4', '$inetNtop6', 'ntohs'],
+  $readSockaddr__deps: ['$inetNtop4', '$inetNtop6', 'ntohs'
+#if NODERAWSOCKETS
+    , '$UTF8ToString'
+#endif
+  ],
   $readSockaddr: (sa, salen) => {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -830,6 +834,26 @@ addToLibrary({
     var addr;
 
     switch (family) {
+#if NODERAWSOCKETS
+      case {{{ cDefs.AF_UNIX }}}: {
+        // sun_path runs from offsetof(sun_path) to salen. An address of only the
+        // family (salen <= offset) is the unnamed/autobind case -> empty path. A
+        // leading NUL marks the Linux abstract namespace; keep the NUL so the
+        // path round-trips and never collides with a filesystem path.
+        var pathStart = sa + {{{ C_STRUCTS.sockaddr_un.sun_path }}};
+        var pathLen = salen - {{{ C_STRUCTS.sockaddr_un.sun_path }}};
+        var path = '';
+        if (pathLen > 0) {
+          if (HEAPU8[pathStart] === 0) {
+            path = '\0' + UTF8ToString(pathStart + 1, pathLen - 1, /*ignoreNul=*/true);
+          } else {
+            // A pathname address is NUL-terminated; stop at the first NUL.
+            path = UTF8ToString(pathStart, pathLen);
+          }
+        }
+        return { family, addr: path, port: 0 };
+      }
+#endif
       case {{{ cDefs.AF_INET }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in.__size__ }}}) {
           return { errno: {{{ cDefs.EINVAL }}} };
@@ -856,11 +880,44 @@ addToLibrary({
     return { family: family, addr: addr, port: port };
   },
   $writeSockaddr__docs: '/** @param {number=} addrlen */',
-  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', 'htons'],
+  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', '$DNS', 'htons'
+#if NODERAWSOCKETS
+    , '$lengthBytesUTF8', '$stringToUTF8'
+#endif
+  ],
   $writeSockaddr: (sa, family, addr, port, addrlen) => {
     switch (family) {
+#if NODERAWSOCKETS
+      case {{{ cDefs.AF_UNIX }}}: {
+        // addr is the JS path string produced by readSockaddr: a leading '\0'
+        // marks the abstract namespace (its bytes are written verbatim, no NUL
+        // terminator), any other path is written NUL-terminated. An empty path
+        // is the unnamed address (family only).
+        addr ||= '';
+        var abstract = addr.charCodeAt(0) === 0;
+        // Pathname addresses include the trailing NUL in the reported length;
+        // abstract addresses do not; an empty address is family-only (unnamed).
+        var bytes = addr ? lengthBytesUTF8(addr) + (abstract ? 0 : 1) : 0;
+        var total = {{{ C_STRUCTS.sockaddr_un.sun_path }}} + bytes;
+        zeroMemory(sa, total);
+        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_un.sun_family, 'family', 'i16') }}};
+        if (addr) {
+          // stringToUTF8 NUL-terminates and needs room for it, so hand it a
+          // budget one past the path bytes; the terminating NUL lands on the
+          // zeroed byte just past the reported length and is harmless.
+          stringToUTF8(addr, sa + {{{ C_STRUCTS.sockaddr_un.sun_path }}}, bytes + 1);
+        }
+        if (addrlen) {
+          {{{ makeSetValue('addrlen', 0, 'total', 'i32') }}};
+        }
+        break;
+      }
+#endif
       case {{{ cDefs.AF_INET }}}:
-        addr = inetPton4(addr);
+        // The address may still be an unresolved hostname (e.g. a peer name
+        // recorded at connect time); map it to its (possibly fake) IP here so
+        // callers can pass names and IPs alike.
+        addr = inetPton4(DNS.lookup_name(addr));
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
@@ -870,7 +927,7 @@ addToLibrary({
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
         break;
       case {{{ cDefs.AF_INET6 }}}:
-        addr = inetPton6(addr);
+        addr = inetPton6(DNS.lookup_name(addr));
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};

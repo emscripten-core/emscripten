@@ -300,10 +300,20 @@
              "AF_INET",
              "AF_UNSPEC",
              "AF_INET6",
+             "AF_UNIX",
              "SOL_SOCKET",
              "SO_ERROR",
              "SO_REUSEPORT"
         ]
+    },
+    {
+        "file": "sys/un.h",
+        "structs": {
+            "sockaddr_un": [
+                "sun_family",
+                "sun_path"
+            ]
+        }
     },
     {
         "file": "bits/ioctl.h",

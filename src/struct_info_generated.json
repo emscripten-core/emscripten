@@ -2,6 +2,7 @@
     "defines": {
         "AF_INET": 2,
         "AF_INET6": 10,
+        "AF_UNIX": 1,
         "AF_UNSPEC": 0,
         "AI_ADDRCONFIG": 32,
         "AI_ALL": 16,
@@ -1083,6 +1084,11 @@
             },
             "sin6_family": 0,
             "sin6_port": 2
+        },
+        "sockaddr_un": {
+            "__size__": 110,
+            "sun_family": 0,
+            "sun_path": 2
         },
         "stat": {
             "__size__": 96,
