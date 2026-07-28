@@ -24,6 +24,7 @@ from update_common import (
   default_llvm_dir,
   emscripten_root,
   parse_args,
+  read_file,
   script_dir,
   update_readme,
   write_file,
@@ -108,8 +109,7 @@ def main():
 
   # Copy module.modulemap.in to module.modulemap and replace __config_site
   # string
-  with open(os.path.join(local_inc, 'module.modulemap.in'), 'r') as f:
-    modulemap = f.read()
+  modulemap = read_file(os.path.join(local_inc, 'module.modulemap.in'))
   modulemap = modulemap.replace('@LIBCXX_CONFIG_SITE_MODULE_ENTRY@',
                                 'textual header "__config_site"')
   write_file(os.path.join(local_inc, 'module.modulemap'), modulemap)
@@ -117,7 +117,7 @@ def main():
   # Copy default_assertion_handler.in to __assertion_handler
   shutil.copy2(
     os.path.join(libcxx_dir, 'vendor', 'llvm', 'default_assertion_handler.in'),
-    os.path.join(local_inc, '__assertion_handler')
+    os.path.join(local_inc, '__assertion_handler'),
   )
 
   update_readme(local_root, llvm_dir)
