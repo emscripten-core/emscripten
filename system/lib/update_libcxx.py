@@ -114,6 +114,12 @@ def main():
                                 'textual header "__config_site"')
   write_file(os.path.join(local_inc, 'module.modulemap'), modulemap)
 
+  # Copy default_assertion_handler.in to __assertion_handler
+  shutil.copy2(
+    os.path.join(libcxx_dir, 'vendor', 'llvm', 'default_assertion_handler.in'),
+    os.path.join(local_inc, '__assertion_handler')
+  )
+
   update_readme(local_root, llvm_dir)
 
 
