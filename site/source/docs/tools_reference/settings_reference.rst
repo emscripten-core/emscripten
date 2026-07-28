@@ -2509,6 +2509,26 @@ If 1, target compiling a shared Wasm Memory.
 
 Default value: false
 
+.. _shared_wasmgc:
+
+SHARED_WASMGC
+=============
+
+If true, enables support for experimental shared Wasm GC. Expects the
+module to contain a mutable shared anyref global to be imported as "env"
+"_shared_heap_root" and exported as "_shared_heap_root". The import will be
+provided a null value on the main thread, where the user code is expected to
+initialize it with some shared object during the start function. This shared
+object will then be provided as the import when instantiating the module on
+additional Workers. This shared anyref global can be used to bootstrap
+arbitrary shared Wasm GC state. Since LLVM cannot emit Wasm GC instructions
+or shared anyref globals, users are expected to use wasm-merge to add the
+_shared_heap_root global and additional Wasm GC code post-link.
+
+.. note:: This is an experimental setting
+
+Default value: false
+
 .. _wasm_workers:
 
 WASM_WORKERS
