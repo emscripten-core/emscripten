@@ -821,6 +821,9 @@ def add_standard_wasm_imports(send_items_map):
   if settings.IMPORTED_MEMORY:
     send_items_map['memory'] = 'wasmMemory'
 
+  if settings.SHARED_WASMGC:
+    send_items_map['shared_root'] = '_shared_root'
+
   if settings.AUTODEBUG:
     extra_sent_items += [
       'log_execution',

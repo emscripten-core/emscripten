@@ -112,6 +112,10 @@ if (ENVIRONMENT_IS_PTHREAD) {
         wasmSourceMap = resetPrototype(WasmSourceMap, msgData.wasmSourceMap);
 #endif
 
+#if SHARED_WASMGC
+        _shared_root = getSharedRootGlobal(msgData.sharedRootVal);
+#endif
+
 #if !WASM_ESM_INTEGRATION
 #if MINIMAL_RUNTIME
         // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.

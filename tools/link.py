@@ -517,6 +517,9 @@ def setup_pthreads():
     '$invokeEntryPoint',
   ]
 
+  if settings.SHARED_WASMGC:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['shared_root']
+
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
 

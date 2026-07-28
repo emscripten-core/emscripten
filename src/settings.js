@@ -1661,6 +1661,10 @@ var USE_SQLITE3 = false;
 // [compile+link]
 var SHARED_MEMORY = false;
 
+// If true, enables support for experimental shared Wasm GC.
+// [link]
+var SHARED_WASMGC = false;
+
 // Enables support for Wasm Workers.  Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
 // of Wasm SharedArrayBuffer + Atomics API.
