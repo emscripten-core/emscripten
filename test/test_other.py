@@ -43,6 +43,7 @@ from common import (
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
+  WASM_MERGE,
   WEBIDL_BINDER,
   RunnerCore,
   check_node_version,
@@ -13348,7 +13349,7 @@ void foo() {}
     ])
 
     self.run_process([
-      common.WASM_MERGE, '--enable-threads', '--enable-reference-types',
+      WASM_MERGE, '--enable-threads', '--enable-reference-types',
       '--enable-gc', '--enable-shared-everything', out_wasm, 'app',
       'shared_gc.wat', 'wat', '-o', out_wasm,
     ])

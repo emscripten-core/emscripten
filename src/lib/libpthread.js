@@ -1368,8 +1368,7 @@ var LibraryPThread = {
     var bytes = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 6, 9, 1, 99, 101, 110, 1, 208, 101, 113, 11, 7, 5, 1, 1, 103, 3, 0]);
     var module = new WebAssembly.Module(bytes);
     var instance = new WebAssembly.Instance(module, {});
-    var global = instance.exports.g;
-    return global;
+    return instance.exports.g;
   },
 #endif // SHARED_WASMGC
 };
