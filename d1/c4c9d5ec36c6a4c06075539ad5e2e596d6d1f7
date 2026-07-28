@@ -1,0 +1,25 @@
+src/jsifier.mjs
+  s_64b9c63bf77802::t_2ed3d6afa4098e 976-979
+tools/building.py
+  s_64b9c63bf77802::t_2a4b9ec6900066 60-63
+tools/emscripten.py
+  s_64b9c63bf77802::t_c184d449782089 449-456
+tools/link.py
+  s_64b9c63bf77802::t_ae5211345d0331 2194-2197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d1c4c9d5ec36c6a4c06075539ad5e2e596d6d1f7",
+  "prompts": {},
+  "sessions": {
+    "s_64b9c63bf77802": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_055cd4783ffeF5PucidKb4H7kq",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
