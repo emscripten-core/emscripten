@@ -59,6 +59,10 @@ EXPECTED_BINARYEN_VERSION = 131
 _is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: set[str] = set()
+# JS library symbols that ended up in EXPORTED_FUNCTIONS (including additions
+# made by JS libraries themselves at load time), derived from the JS compiler's
+# forwarded data; the WASM_ESM_INTEGRATION wrapper re-exports them.
+exported_js_library_symbols: set[str] = set()
 # A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
 # etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
 # which reads it using `--detect-features`.

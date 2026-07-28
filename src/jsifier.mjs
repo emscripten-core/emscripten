@@ -973,6 +973,10 @@ var proxiedFunctionTable = [
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
+          // The final EXPORTED_FUNCTIONS set, including any additions made by
+          // JS libraries at load time, so the caller can re-derive which
+          // library symbols were exported.
+          exportedFunctions: Array.from(EXPORTED_FUNCTIONS),
           nativeAliases,
           warnings: warningOccured(),
           asyncFuncs,

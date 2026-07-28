@@ -6,7 +6,7 @@
 from subprocess import PIPE
 
 from common import RunnerCore, copy_asset, create_file, read_file, test_file
-from decorators import also_with_wasm64, also_without_bigint, parameterized
+from decorators import also_with_wasm64, also_without_bigint, parameterized, requires_node_25
 
 from tools.shared import EMCC
 from tools.utils import delete_file
@@ -163,6 +163,35 @@ int main() {
 ''')
     self.do_runf('src.c', 'c calling: 12\njs calling: 10.',
                  cflags=['--js-library', 'lib.js', '-sEXPORTED_FUNCTIONS=_main,_jslibfunc'])
+
+  @parameterized({
+    '': ([],),
+    'esm_integration': (['-sWASM_ESM_INTEGRATION'],),
+  })
+  @requires_node_25
+  def test_jslib_self_export(self, args):
+    # A JS library can add its own symbols to EXPORTED_FUNCTIONS at load time
+    # (e.g. a binding layer registering the public API it defines), making them
+    # ES module exports under MODULARIZE=instance without the user needing to
+    # list them on the command line.
+    self.node_args += ['--no-warnings']
+    create_file('lib.js', '''\
+EXPORTED_FUNCTIONS.add('libExport');
+addToLibrary({
+  $libExport: () => 42,
+});
+''')
+    create_file('main.c', 'int main() { return 0; }')
+    self.run_process([EMCC, 'main.c', '-sMODULARIZE=instance', '-Wno-experimental',
+                      '--js-library', 'lib.js', '-o', 'mod.mjs'] + args + self.get_cflags())
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import init, { libExport } from './mod.mjs';
+      await init();
+      assert(libExport() == 42);
+      console.log('ok');
+    ''')
+    self.assertContained('ok', self.run_js('runner.mjs'))
 
   def test_jslib_using_asm_lib(self):
     create_file('lib.js', r'''

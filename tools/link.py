@@ -2195,6 +2195,10 @@ def node_detection_code():
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   js_exports = building.user_requested_exports.union(settings.EXPORTED_RUNTIME_METHODS)
+  # JS library symbols the support module exports at declaration (including
+  # any the libraries themselves added to EXPORTED_FUNCTIONS at load time);
+  # the wrapper must forward these too.
+  js_exports |= building.exported_js_library_symbols
   js_exports = ', '.join(sorted(js_exports))
 
   wrapper = []
