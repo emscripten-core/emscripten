@@ -13276,9 +13276,8 @@ void foo() {}
     self.do_runf('other/test_pthread_js_exception.c', 'missing is not defined', assert_returncode=NON_ZERO, cflags=['-pthread'])
 
   @requires_pthreads
+  @requires_node_25
   def test_shared_wasmgc(self):
-    self.require_node_25()
-
     create_file('test_shared_wasmgc.c', r'''
     #include <pthread.h>
     #include <emscripten.h>
@@ -13314,21 +13313,26 @@ void foo() {}
     create_file('shared_gc.wat', r'''
     (module
       (type $counter (shared (struct (field (mut i32)))))
-      (import "env" "_shared_heap_root" (global $_shared_heap_root (mut (ref null (shared any)))))
-      (export "_shared_heap_root" (global $_shared_heap_root))
+
       (import "app" "print_int" (func $print_int (param i32)))
 
+      (global $root
+        (export "_shared_heap_root")
+        (import "env" "_shared_heap_root")
+        (mut (ref null (shared any)))
+      )
+
       (func $init
-        (if (ref.is_null (global.get $_shared_heap_root))
+        (if (ref.is_null (global.get $root))
           (then
-            (global.set $_shared_heap_root (struct.new $counter (i32.const 0)))
+            (global.set $root (struct.new $counter (i32.const 0)))
           )
         )
       )
       (start $init)
 
       (func (export "shared_gc_main")
-        (call $print_int (ref.is_null (global.get $_shared_heap_root)))
+        (call $print_int (ref.is_null (global.get $root)))
       )
     )
     ''')
@@ -13343,13 +13347,11 @@ void foo() {}
       out_js,
     ])
 
-    building.run_binaryen_command(
-      'wasm-merge',
-      None,
-      out_wasm,
-      args=['--enable-threads', '--enable-reference-types', '--enable-gc', '--enable-shared-everything',
-            out_wasm, 'app', 'shared_gc.wat', 'wat'],
-    )
+    self.run_process([
+      common.WASM_MERGE, '--enable-threads', '--enable-reference-types',
+      '--enable-gc', '--enable-shared-everything', out_wasm, 'app',
+      'shared_gc.wat', 'wat', '-o', out_wasm,
+    ])
 
     self.node_args.append('--experimental-wasm-shared')
 
