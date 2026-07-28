@@ -77,6 +77,7 @@ EMCONFIGURE = exe_path_from_root('emconfigure')
 EMCONFIG = exe_path_from_root('em-config')
 EMRUN = exe_path_from_root('emrun')
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
+WASM_MERGE = os.path.join(building.get_binaryen_bin(), 'wasm-merge')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
 

@@ -435,6 +435,9 @@ var LibraryPThread = {
 #if LOAD_SOURCE_MAP
         wasmSourceMap,
 #endif
+#if SHARED_WASMGC
+        sharedHeapRootVal: wasmExports['_shared_heap_root'].value,
+#endif
 #if MAIN_MODULE
         dynamicLibraries,
         // Share all modules that have been loaded so far.  New workers
@@ -1354,7 +1357,20 @@ var LibraryPThread = {
       }
       worker.postMessage({cmd: {{{ CMD_CHECK_MAILBOX }}}});
     }
-  }
+  },
+
+#if SHARED_WASMGC
+  _shared_heap_root__deps: ['$makeSharedHeapRootGlobal'],
+  _shared_heap_root: "makeSharedHeapRootGlobal()",
+  $makeSharedHeapRootGlobal: () => {
+    // Wasm module for acquiring a shared anyref WebAssembly.Global:
+    // (module (global (export "g") (mut (ref null (shared any))) (ref.null (shared any))))
+    var bytes = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 6, 9, 1, 99, 101, 110, 1, 208, 101, 113, 11, 7, 5, 1, 1, 103, 3, 0]);
+    var module = new WebAssembly.Module(bytes);
+    var instance = new WebAssembly.Instance(module, {});
+    return instance.exports.g;
+  },
+#endif // SHARED_WASMGC
 };
 
 autoAddDeps(LibraryPThread, '$PThread');

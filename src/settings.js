@@ -1661,6 +1661,20 @@ var USE_SQLITE3 = false;
 // [compile+link]
 var SHARED_MEMORY = false;
 
+// If true, enables support for experimental shared Wasm GC. Expects the
+// module to contain a mutable shared anyref global to be imported as "env"
+// "_shared_heap_root" and exported as "_shared_heap_root". The import will be
+// provided a null value on the main thread, where the user code is expected to
+// initialize it with some shared object during the start function. This shared
+// object will then be provided as the import when instantiating the module on
+// additional Workers. This shared anyref global can be used to bootstrap
+// arbitrary shared Wasm GC state. Since LLVM cannot emit Wasm GC instructions
+// or shared anyref globals, users are expected to use wasm-merge to add the
+// _shared_heap_root global and additional Wasm GC code post-link.
+// [link]
+// [experimental]
+var SHARED_WASMGC = false;
+
 // Enables support for Wasm Workers.  Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
 // of Wasm SharedArrayBuffer + Atomics API.
