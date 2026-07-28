@@ -1,0 +1,21 @@
+src/postamble.js
+  s_64b9c63bf77802::t_242f7026a5a13e 241-245,247
+tools/emscripten.py
+  s_64b9c63bf77802::t_4acfe080b73b36 622-624
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4c5b555f7776e581eedd2c7f61f0ba1619b7cb41",
+  "prompts": {},
+  "sessions": {
+    "s_64b9c63bf77802": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_055cd4783ffeF5PucidKb4H7kq",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
