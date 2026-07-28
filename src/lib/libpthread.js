@@ -1360,24 +1360,15 @@ var LibraryPThread = {
   },
 
 #if SHARED_WASMGC
-  _shared_heap_root__deps: ['$getSharedHeapRootGlobal'],
-  _shared_heap_root: null,
-  _shared_heap_root__postset: "if (!ENVIRONMENT_IS_PTHREAD) { __shared_heap_root = getSharedHeapRootGlobal(null); }",
-  $getSharedHeapRootGlobal: (val) => {
-#if ASSERTIONS
-    if (ENVIRONMENT_IS_PTHREAD) {
-      assert(val, "expected _shared_heap_root to be assigned on pthread");
-    } else {
-      assert(!val, "expected _shared_heap_root to be null on main thread");
-    }
-#endif // ASSERTIONS
+  _shared_heap_root__deps: ['$makeSharedHeapRootGlobal'],
+  _shared_heap_root: "makeSharedHeapRootGlobal()",
+  $makeSharedHeapRootGlobal: () => {
     // Wasm module for acquiring a shared anyref WebAssembly.Global:
     // (module (global (export "g") (mut (ref null (shared any))) (ref.null (shared any))))
     var bytes = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 6, 9, 1, 99, 101, 110, 1, 208, 101, 113, 11, 7, 5, 1, 1, 103, 3, 0]);
     var module = new WebAssembly.Module(bytes);
     var instance = new WebAssembly.Instance(module, {});
     var global = instance.exports.g;
-    global.value = val;
     return global;
   },
 #endif // SHARED_WASMGC
