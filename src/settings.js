@@ -1663,6 +1663,7 @@ var SHARED_MEMORY = false;
 
 // If true, enables support for experimental shared Wasm GC.
 // [link]
+// [experimental]
 var SHARED_WASMGC = false;
 
 // Enables support for Wasm Workers.  Wasm Workers enable applications
