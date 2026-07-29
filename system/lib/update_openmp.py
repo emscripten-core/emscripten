@@ -15,6 +15,7 @@ from update_common import (
   emscripten_root,
   parse_args,
   script_dir,
+  update_readme,
 )
 
 # system/lib/openmp (to be updated)
@@ -91,6 +92,8 @@ def main():
   built_files = ['kmp_config.h', 'kmp_i18n_id.inc', 'kmp_i18n_default.inc']
   for file in built_files:
     shutil.copy2(os.path.join(upstream_build_src, file), local_prebuilt)
+
+  update_readme(local_root, llvm_dir)
 
 
 if __name__ == '__main__':
