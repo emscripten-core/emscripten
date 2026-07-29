@@ -6,6 +6,7 @@ Compiling and Running Projects
 
 This section contains topics about building projects and running the output.
 
+- :ref:`best-practices` covers recommended compiler flags, modern web workflows, and Dos and Don'ts for using Emscripten.
 - :ref:`Building-Projects` shows how to use :ref:`emccdoc` as a drop-in replacement for *gcc* in your existing project.
 - :ref:`WebAssembly` explains how Emscripten can be used to build WebAssembly files
 - :ref:`Running-html-files-with-emrun` explains how to use *emrun* to run generated HTML pages in a locally launched web server.
@@ -19,6 +20,7 @@ This section contains topics about building projects and running the output.
 .. toctree::
    :hidden:
 
+   best_practices
    Building-Projects
    WebAssembly
    Modularized-Output
