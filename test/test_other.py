@@ -43,6 +43,7 @@ from common import (
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
+  WASM_MERGE,
   WEBIDL_BINDER,
   RunnerCore,
   check_node_version,
@@ -13274,6 +13275,90 @@ void foo() {}
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_runf('other/test_pthread_js_exception.c', 'missing is not defined', assert_returncode=NON_ZERO, cflags=['-pthread'])
+
+  @requires_pthreads
+  @requires_node_25
+  def test_shared_wasmgc(self):
+    create_file('test_shared_wasmgc.c', r'''
+    #include <pthread.h>
+    #include <emscripten.h>
+    #include <emscripten/console.h>
+
+    __attribute__((import_module("wat"))) void shared_gc_main(void);
+
+    void print_int(int val) {
+      emscripten_console_logf("%d", val);
+    }
+
+    void* thread_main(void* arg) {
+      shared_gc_main();
+      return NULL;
+    }
+
+    int main() {
+      shared_gc_main();
+
+      pthread_t t1, t2, t3;
+      pthread_create(&t1, NULL, thread_main, NULL);
+      pthread_create(&t2, NULL, thread_main, NULL);
+      pthread_create(&t3, NULL, thread_main, NULL);
+
+      pthread_join(t1, NULL);
+      pthread_join(t2, NULL);
+      pthread_join(t3, NULL);
+
+      return 0;
+    }
+    ''')
+
+    create_file('shared_gc.wat', r'''
+    (module
+      (type $counter (shared (struct (field (mut i32)))))
+
+      (import "app" "print_int" (func $print_int (param i32)))
+
+      (global $root
+        (export "_shared_heap_root")
+        (import "env" "_shared_heap_root")
+        (mut (ref null (shared any)))
+      )
+
+      (func $init
+        (if (ref.is_null (global.get $root))
+          (then
+            (global.set $root (struct.new $counter (i32.const 0)))
+          )
+        )
+      )
+      (start $init)
+
+      (func (export "shared_gc_main")
+        (call $print_int (ref.is_null (global.get $root)))
+      )
+    )
+    ''')
+
+    out_js = self.in_dir('test_shared_wasmgc.js')
+    out_wasm = self.in_dir('test_shared_wasmgc.wasm')
+
+    self.run_process([
+      EMCC, '-pthread', '-sSHARED_WASMGC', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+      '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD',
+      '-sEXPORTED_FUNCTIONS=_main,_print_int', 'test_shared_wasmgc.c', '-o',
+      out_js,
+    ])
+
+    self.run_process([
+      WASM_MERGE, '--enable-threads', '--enable-reference-types',
+      '--enable-gc', '--enable-shared-everything', out_wasm, 'app',
+      'shared_gc.wat', 'wat', '-o', out_wasm,
+    ])
+
+    self.node_args.append('--experimental-wasm-shared')
+
+    # TODO: Once multithreaded casting is fixed, increment and print the counter value.
+    output = self.run_js(out_js)
+    self.assertEqual(output.splitlines(), ['0', '0', '0', '0'])
 
   @crossplatform
   def test_config_closure_compiler(self):

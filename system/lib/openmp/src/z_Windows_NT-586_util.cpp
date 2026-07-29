@@ -12,8 +12,7 @@
 
 #include "kmp.h"
 
-#if (KMP_ARCH_X86 || KMP_ARCH_X86_64 || KMP_ARCH_AARCH64 || KMP_ARCH_ARM ||    \
-     KMP_ARCH_ARM64EC)
+#if (KMP_ARCH_X86 || KMP_ARCH_X86_64 || KMP_ARCH_AARCH64 || KMP_ARCH_ARM)
 /* Only 32-bit "add-exchange" instruction on IA-32 architecture causes us to
    use compare_and_store for these routines */
 
@@ -190,5 +189,4 @@ int __kmp_invoke_microtask(microtask_t pkfn, int gtid, int tid, int argc,
 }
 #endif
 
-#endif /* KMP_ARCH_X86 || KMP_ARCH_X86_64 || KMP_ARCH_AARCH64 || KMP_ARCH_ARM  \
-          || KMP_ARCH_ARM64EC */
+#endif /* KMP_ARCH_X86 || KMP_ARCH_X86_64 || KMP_ARCH_AARCH64 || KMP_ARCH_ARM */

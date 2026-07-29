@@ -821,6 +821,11 @@ def add_standard_wasm_imports(send_items_map):
   if settings.IMPORTED_MEMORY:
     send_items_map['memory'] = 'wasmMemory'
 
+  # This import should come from user code merged into the module with
+  # wasm-merge post-link.
+  if settings.SHARED_WASMGC:
+    send_items_map['_shared_heap_root'] = '__shared_heap_root'
+
   if settings.AUTODEBUG:
     extra_sent_items += [
       'log_execution',
