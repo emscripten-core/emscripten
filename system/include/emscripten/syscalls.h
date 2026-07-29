@@ -122,7 +122,6 @@ int __syscall_shutdown(int sockfd, int how, int unused1, int unused2, int unused
 int __syscall_epoll_create1(int flags);
 int __syscall_epoll_ctl(int epfd, int op, int fd, struct epoll_event *ev);
 int __syscall_epoll_pwait(int epfd, struct epoll_event *ev, int maxevents, int timeout, const sigset_t *sigmask, size_t sigsetsize);
-ssize_t __syscall_copy_file_range(int fd_in, off_t *off_in, int fd_out, off_t *off_out, size_t len, unsigned flags);
 
 #ifdef __cplusplus
 }

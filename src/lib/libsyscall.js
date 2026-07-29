@@ -725,8 +725,6 @@ var SyscallsLibrary = {
   __syscall_epoll_ctl: (epfd, op, fd, ev) => -{{{ cDefs.ENOSYS }}},
   __syscall_epoll_pwait__nothrow: true,
   __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => -{{{ cDefs.ENOSYS }}},
-  __syscall_copy_file_range__nothrow: true,
-  __syscall_copy_file_range: (fd_in, off_in, fd_out, off_out, len, flags) => -{{{ cDefs.ENOSYS }}},
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
     if (size === 0) return -{{{ cDefs.EINVAL }}};
