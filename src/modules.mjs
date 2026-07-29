@@ -23,6 +23,8 @@ import {
   mergeInto,
   localFile,
   timer,
+  toValidIdentifier,
+  quoteExportName,
 } from './utility.mjs';
 import {preprocess, processMacros} from './parseTools.mjs';
 
@@ -463,12 +465,13 @@ function addMissingLibraryStubs(unusedLibSymbols) {
 }
 
 function exportSymbol(name) {
+  const binding = toValidIdentifier(name);
   // In MODULARIZE=instance mode symbols are exported by being included in
   // an export { foo, bar } list so we build up the simple list of names
   if (MODULARIZE === 'instance') {
-    return name;
+    return binding == name ? name : `${binding} as ${quoteExportName(name)}`;
   }
-  return `Module['${name}'] = ${name};`;
+  return `Module['${name}'] = ${binding};`;
 }
 
 // export parts of the JS runtime that the user asked for
