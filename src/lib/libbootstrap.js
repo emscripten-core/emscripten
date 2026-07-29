@@ -11,7 +11,7 @@
 assert(false, 'libbootstrap.js only designed for use with BOOTSTRAPPING_STRUCT_INFO')
 #endif
 
-assert(Object.keys(LibraryManager.library).length === 0);
+assert(!Object.keys(LibraryManager.library).length);
 addToLibrary({
   $callRuntimeCallbacks: () => {},
 

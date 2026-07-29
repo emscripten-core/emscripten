@@ -280,17 +280,17 @@ addToLibrary({
         // When the last write end closes, wake any poll/epoll waiter on the read
         // end with POLLHUP so a reader blocked on the writer dropping unblocks.
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
-          if (--pipe.writerCount === 0) {
+          if (!--pipe.writerCount) {
             pipe.writeClosed = true;
             pipe.readNode.notifyListeners({{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
           }
-        } else if (--pipe.readerCount === 0) {
+        } else if (!--pipe.readerCount) {
           // Mirror: when the last read end closes, wake any poll/epoll waiter on
           // the write end with POLLERR (a further write would get EPIPE).
           pipe.readClosed = true;
           pipe.writeNode.notifyListeners({{{ cDefs.POLLERR }}} | {{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
         }
-        if (pipe.readerCount === 0 && pipe.writerCount === 0) {
+        if (!pipe.readerCount && !pipe.writerCount) {
           pipe.buckets = null;
         }
       }

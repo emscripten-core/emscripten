@@ -406,7 +406,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     // bits are needed to represent x, or, if x was rounded up to next pow2,
     // which index is the single '1' bit at?
     // Then log2ceilLookup[x] returns ceil(log2(x)).
-    log2ceilLookup: (i) => 32 - Math.clz32(i === 0 ? 0 : i - 1),
+    log2ceilLookup: (i) => 32 - Math.clz32(i ? i - 1 : 0),
 
     generateTempBuffers: (quads, context) => {
       var largestIndex = GL.log2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);

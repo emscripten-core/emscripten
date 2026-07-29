@@ -263,7 +263,7 @@ var NodeSockFSLibrary = {
         sock.udp.recvStart();
         if (sock.sport === undefined) {
           var name = {};
-          if (sock.udp.getsockname(name) === 0) {
+          if (!sock.udp.getsockname(name)) {
             sock.saddr = name.address;
             sock.sport = name.port;
           }
@@ -438,7 +438,7 @@ var NodeSockFSLibrary = {
       if (sock.connection) {
         var conn = sock.connection;
         var linger = sock.opts?.linger;
-        if (linger?.onoff && linger.linger === 0 && conn.resetAndDestroy) {
+        if (linger?.onoff && !linger.linger && conn.resetAndDestroy) {
           // SO_LINGER with a zero timeout: abortive close - send RST and
           // discard any unsent data.
           conn.resetAndDestroy();
@@ -464,7 +464,7 @@ var NodeSockFSLibrary = {
     // how: SHUT_RD 0, SHUT_WR 1, SHUT_RDWR 2 (musl sys/socket.h).
     shutdown(sock, how) {
       if (!sock.connection) throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
-      if (how === 0 || how === 2) {
+      if (!how || how === 2) {
         // No more reads: subsequent recv returns EOF.
         sock.readClosed = true;
       }
