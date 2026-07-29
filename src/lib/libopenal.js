@@ -721,15 +721,17 @@ var LibraryOpenAL = {
         AL.setSourceState(src, {{{ cDefs.AL_INITIAL }}});
       }
 
-      if (src.bufQueue[src.bufsProcessed].audioBuf !== null) {
-        src.bufsProcessed = 0;
-        while (offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
-          offset -= src.bufQueue[src.bufsProcessed].audioBuf.duration;
-          src.bufsProcessed++;
+      src.bufsProcessed = 0;
+      for (var buf of src.bufQueue) {
+        var duration = buf.audioBuf?.duration ?? 0.0;
+        if (offset < duration) {
+          break;
         }
-
-        src.bufOffset = offset;
+        offset -= duration;
+        src.bufsProcessed++;
       }
+      // 'offset' is now the intra-buffer offset within the target buffer.
+      src.bufOffset = offset;
 
       if (playing) {
         AL.setSourceState(src, {{{ cDefs.AL_PLAYING }}});
