@@ -6,32 +6,24 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef _LIBCPP___TUPLE_MAKE_TUPLE_INDICES_H
-#define _LIBCPP___TUPLE_MAKE_TUPLE_INDICES_H
+#ifndef _LIBCPP___TYPE_TRAITS_IS_WITHIN_LIFETIME_H
+#define _LIBCPP___TYPE_TRAITS_IS_WITHIN_LIFETIME_H
 
 #include <__config>
-#include <__cstddef/size_t.h>
-#include <__utility/integer_sequence.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
 #endif
 
-#ifndef _LIBCPP_CXX03_LANG
-
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-template <size_t...>
-struct __tuple_indices {};
-
-template <size_t _Ep, size_t _Sp = 0>
-struct __make_tuple_indices {
-  static_assert(_Sp <= _Ep, "__make_tuple_indices input error");
-  typedef __make_indices_imp<_Ep, _Sp> type;
-};
+#if _LIBCPP_STD_VER >= 26 && __has_builtin(__builtin_is_within_lifetime)
+template <class _Tp>
+_LIBCPP_HIDE_FROM_ABI consteval bool is_within_lifetime(const _Tp* __p) noexcept {
+  return __builtin_is_within_lifetime(__p);
+}
+#endif
 
 _LIBCPP_END_NAMESPACE_STD
 
-#endif // _LIBCPP_CXX03_LANG
-
-#endif // _LIBCPP___TUPLE_MAKE_TUPLE_INDICES_H
+#endif // _LIBCPP___TYPE_TRAITS_IS_WITHIN_LIFETIME_H

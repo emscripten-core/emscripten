@@ -1,4 +1,4 @@
-//===----------------------------------------------------------------------===//
+//===-----------------------------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef _LIBCPP___TUPLE_TUPLE_TYPES_H
-#define _LIBCPP___TUPLE_TUPLE_TYPES_H
+#ifndef _LIBCPP___LOCALE_DIR_SUPPORT_NETBSD_H
+#define _LIBCPP___LOCALE_DIR_SUPPORT_NETBSD_H
 
 #include <__config>
 
@@ -15,11 +15,6 @@
 #  pragma GCC system_header
 #endif
 
-_LIBCPP_BEGIN_NAMESPACE_STD
+#include <__locale_dir/support/bsd_like.h>
 
-template <class... _Tp>
-struct __tuple_types {};
-
-_LIBCPP_END_NAMESPACE_STD
-
-#endif // _LIBCPP___TUPLE_TUPLE_TYPES_H
+#endif // _LIBCPP___LOCALE_DIR_SUPPORT_NETBSD_H
