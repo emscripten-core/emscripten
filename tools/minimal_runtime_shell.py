@@ -8,6 +8,7 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from . import building, shared, utils
+from .cmdline import options
 from .settings import settings
 
 logger = logging.getLogger('minimal_runtime_shell')
@@ -168,7 +169,7 @@ def generate_minimal_runtime_load_statement(target_basename):
   return load
 
 
-def generate_minimal_runtime_html(target, options, js_target, target_basename):
+def generate_minimal_runtime_html(target, js_target, target_basename):
   logger.debug('generating HTML for minimal runtime')
   shell = utils.read_file(options.shell_html)
   if settings.SINGLE_FILE:

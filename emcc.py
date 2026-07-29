@@ -344,17 +344,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    link.run_post_link(options.input_files[0], options, linker_args)
+    link.run_post_link(options.input_files[0], linker_args)
     return 0
 
   # Compile source code to object files
   # When only compiling this function never returns.
-  linker_args = phase_compile_inputs(options, state, newargs)
+  linker_args = phase_compile_inputs(state, newargs)
 
   if state.mode == Mode.COMPILE_AND_LINK:
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    return link.run(options, linker_args)
+    return link.run(linker_args)
   else:
     logger.debug('stopping after compile phase')
     return 0
@@ -502,7 +502,7 @@ def phase_setup(state):
 
 
 @ToolchainProfiler.profile_block('compile inputs')
-def phase_compile_inputs(options, state, newargs):
+def phase_compile_inputs(state, newargs):
   if shared.run_via_emxx:
     compiler = [shared.CLANG_CXX]
   else:
