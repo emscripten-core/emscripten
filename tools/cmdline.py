@@ -18,7 +18,6 @@ from tools import (
   config,
   diagnostics,
   feature_matrix,
-  ports,
   shared,
   utils,
 )
@@ -204,6 +203,9 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
+  # TODO(sbc): Remove this import, or move it to the top, once we resolve the
+  # circular dependency issue with ports/__init__.py -> system_libs.py -> cmdline.py
+  from tools import ports
   should_exit = False
   skip = False
   builtin_settings = set(settings.keys())

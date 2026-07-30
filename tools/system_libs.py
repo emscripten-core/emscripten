@@ -18,6 +18,7 @@ from glob import iglob
 from time import time
 
 from . import building, cache, diagnostics, shared, utils
+from .cmdline import options
 from .settings import settings
 from .toolchain_profiler import ToolchainProfiler
 from .utils import get_env_bool, read_file
@@ -2345,7 +2346,7 @@ class libopenmp(Library):
   ]
 
 
-def get_libs_to_link(options):
+def get_libs_to_link():
   libs_to_link = []
 
   if options.nostdlib:
@@ -2512,8 +2513,8 @@ def get_libs_to_link(options):
   return libs_to_link
 
 
-def calculate(options):
-  libs_to_link = get_libs_to_link(options)
+def calculate():
+  libs_to_link = get_libs_to_link()
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
