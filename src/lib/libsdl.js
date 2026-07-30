@@ -1186,12 +1186,8 @@ var LibrarySDL = {
       // initialize Web Audio context ever once on the web page, since
       // initializing multiple times fails on Chrome saying 'audio resources
       // have been exhausted'.
-      if (!SDL.audioContext) {
-        if (typeof AudioContext != 'undefined') {
-          SDL.audioContext = new AudioContext();
-        } else if (typeof webkitAudioContext != 'undefined') {
-          SDL.audioContext = new webkitAudioContext();
-        }
+      if (!SDL.audioContext && globalThis.AudioContext) {
+        SDL.audioContext = new AudioContext();
       }
     },
 
