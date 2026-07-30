@@ -2628,6 +2628,10 @@ The current type of b is: 9
     self.do_runf_out_file('pthread/test_pthread_nested_work_queue.c')
 
   @requires_pthreads
+  def test_pthread_callback_alignment(self):
+    self.do_runf('pthread/test_pthread_callback_alignment.c', 'done\n', cflags=['-sSAFE_HEAP'])
+
+  @requires_pthreads
   @flaky('Times out in bigendian0 suite only. https://github.com/emscripten-core/emscripten/issues/25316')
   def test_pthread_thread_local_storage(self):
     self.set_setting('PROXY_TO_PTHREAD')
