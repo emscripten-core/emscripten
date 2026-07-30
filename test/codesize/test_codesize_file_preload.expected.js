@@ -859,7 +859,7 @@ var TTY = {
         } catch (e) {
           throw new FS.ErrnoError(29);
         }
-        if (result === undefined && bytesRead === 0) {
+        if (result === undefined && !bytesRead) {
           throw new FS.ErrnoError(6);
         }
         if (result === null || result === undefined) break;
@@ -1176,7 +1176,7 @@ var MEMFS = {
       if (canOwn) {
         node.contents = buffer.subarray(offset, offset + length);
         node.usedBytes = length;
-      } else if (node.usedBytes === 0 && position === 0) {
+      } else if (!node.usedBytes && !position) {
         // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
         node.contents = buffer.slice(offset, offset + length);
         node.usedBytes = length;
@@ -2517,7 +2517,7 @@ var FS = {
     // to write to file opened in read-only mode with MAP_PRIVATE flag,
     // as all modifications will be visible only in the memory of
     // the current process.
-    if ((prot & 2) !== 0 && (flags & 2) === 0 && (stream.flags & 2097155) !== 2) {
+    if ((prot & 2) && !(flags & 2) && (stream.flags & 2097155) !== 2) {
       throw new FS.ErrnoError(2);
     }
     if ((stream.flags & 2097155) === 1) {
@@ -2610,7 +2610,7 @@ var FS = {
     // use a buffer to avoid overhead of individual crypto calls per byte
     var randomBuffer = new Uint8Array(1024), randomLeft = 0;
     var randomByte = () => {
-      if (randomLeft === 0) {
+      if (!randomLeft) {
         randomFill(randomBuffer);
         randomLeft = randomBuffer.byteLength;
       }
@@ -2826,7 +2826,7 @@ var FS = {
           } catch (e) {
             throw new FS.ErrnoError(29);
           }
-          if (result === undefined && bytesRead === 0) {
+          if (result === undefined && !bytesRead) {
             throw new FS.ErrnoError(6);
           }
           if (result === null || result === undefined) break;

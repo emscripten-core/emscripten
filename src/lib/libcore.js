@@ -1740,7 +1740,7 @@ addToLibrary({
   _Unwind_Backtrace: (func, arg) => {
     var trace = getCallstack();
     var parts = trace.split('\n');
-    for (var _ of parts) {
+    for (var i = 0; i < parts.length; i++) {
       var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
       if (ret) return;
     }
