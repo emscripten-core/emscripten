@@ -478,7 +478,7 @@ var LibraryDylink = {
 
     if (binary instanceof WebAssembly.Module) {
       var dylinkSection = WebAssembly.Module.customSections(binary, 'dylink.0');
-      failIf(dylinkSection.length === 0, 'need dylink section');
+      failIf(!dylinkSection.length, 'need dylink section');
       binary = new Uint8Array(dylinkSection[0]);
       end = binary.length
     } else {
@@ -490,7 +490,7 @@ var LibraryDylink = {
 #endif
       failIf(!magicNumberFound, 'need to see wasm magic number'); // \0asm
       // we should see the dylink custom section right after the magic number and wasm version
-      failIf(binary[8] !== 0, 'need the dylink section to be first')
+      failIf(binary[8], 'need the dylink section to be first')
       offset = 9;
       var section_size = getLEB(); // section size
       end = offset + section_size;

@@ -282,11 +282,11 @@ addToLibrary({
 
         if (canOwn) {
 #if ASSERTIONS
-          assert(position === 0, 'canOwn must imply no weird position inside the file');
+          assert(!position, 'canOwn must imply no weird position inside the file');
 #endif
           node.contents = buffer.subarray(offset, offset + length);
           node.usedBytes = length;
-        } else if (node.usedBytes === 0 && position === 0) { // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
+        } else if (!node.usedBytes && !position) { // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
           node.contents = buffer.slice(offset, offset + length);
           node.usedBytes = length;
         } else {

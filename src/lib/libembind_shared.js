@@ -195,7 +195,7 @@ var LibraryEmbindShared = {
 
   $getEnumValueType(rawValueType) {
     // This must match the values of enum_value_type in wire.h
-    return rawValueType === 0 ? 'object' : (rawValueType === 1 ? 'number' : 'string');
+    return !rawValueType ? 'object' : (rawValueType === 1 ? 'number' : 'string');
   },
 
   $getRequiredArgCount(argTypes) {

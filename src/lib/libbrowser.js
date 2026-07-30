@@ -107,8 +107,8 @@ var LibraryBrowser = {
               var ret = '';
               var leftchar = 0;
               var leftbits = 0;
-              for (var i = 0; i < data.length; i++) {
-                leftchar = (leftchar << 8) | data[i];
+              for (var byte of data) {
+                leftchar = (leftchar << 8) | byte;
                 leftbits += 8;
                 while (leftbits >= 6) {
                   var curr = (leftchar >> (leftbits-6)) & 0x3f;
@@ -601,7 +601,7 @@ var LibraryBrowser = {
     }
 #endif
 #if ASSERTIONS
-    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
+    assert(!runDependencies, 'async_load_script must be run when no other dependencies are active');
 #endif
     {{{ runtimeKeepalivePush() }}}
 

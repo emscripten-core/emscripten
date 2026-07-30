@@ -322,7 +322,7 @@ var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
 var printChar = (stream, curr) => {
   var buffer = printCharBuffers[stream];
-  if (curr === 0 || curr === 10) {
+  if (!curr || curr === 10) {
     (stream === 1 ? out : err)(UTF8ArrayToString(buffer));
     buffer.length = 0;
   } else {

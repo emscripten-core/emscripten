@@ -229,7 +229,7 @@ addToLibrary({
     // offset is passed to msync to maintain backwards compatibility with the legacy JS API but is not used by WasmFS.
     msync: (stream, bufferPtr, offset, length, mmapFlags) => {
 #if ASSERTIONS
-      assert(offset === 0);
+      assert(!offset);
 #endif
       // TODO: assert that stream has the fd corresponding to the mapped buffer (bufferPtr).
       return FS.handleError(__wasmfs_msync(bufferPtr, length, mmapFlags));
@@ -409,7 +409,7 @@ addToLibrary({
             } catch (e) {
               throw new FS.ErrnoError({{{ cDefs.EIO }}});
             }
-            if (result === undefined && bytesRead === 0) {
+            if (result === undefined && !bytesRead) {
               throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
             }
             if (result === null || result === undefined) break;
