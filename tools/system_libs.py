@@ -1644,7 +1644,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       '-std=c++23',
       '-Wno-unused-but-set-variable',
     ]
-  includes = ['system/lib/libcxx/src']
+  includes = ['system/lib/libcxx/src', 'system/lib/libunwind/include']
 
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
