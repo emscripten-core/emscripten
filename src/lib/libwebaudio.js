@@ -45,7 +45,7 @@ var LibraryWebAudio = {
   $emAudioExpectContext: (handle, methodName) => {
     var obj = _emAudioExpectHandle(handle, methodName);
 #if ASSERTIONS
-    assert(obj instanceof (window.AudioContext || window.webkitAudioContext), `${methodName}() called with ${handle} that is not an AudioContext, but of type ${typeof obj}`);
+    assert(obj instanceof window.AudioContext, `${methodName}() called with ${handle} that is not an AudioContext, but of type ${typeof obj}`);
 #endif
   },
 
@@ -61,7 +61,7 @@ var LibraryWebAudio = {
   $emAudioExpectNodeOrContext: (handle, methodName) => {
     var obj = _emAudioExpectHandle(handle, methodName);
 #if ASSERTIONS
-    assert(obj instanceof window.AudioNode || obj instanceof (window.AudioContext || window.webkitAudioContext), `${methodName}() called with a handle ${handle} that is not an AudioContext or AudioNode, but of type ${typeof obj}`);
+    assert(obj instanceof window.AudioNode || obj instanceof window.AudioContext, `${methodName}() called with a handle ${handle} that is not an AudioContext or AudioNode, but of type ${typeof obj}`);
 #endif
   },
 #endif
@@ -88,11 +88,8 @@ var LibraryWebAudio = {
   emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject', '$emscriptenGetAudioObject'],
   emscripten_create_audio_context: (options) => {
     // Safari added unprefixed AudioContext support in Safari 14.5 on iOS: https://caniuse.com/audio-api
-#if MIN_SAFARI_VERSION < 140500 || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    var ctx = window.AudioContext || window.webkitAudioContext;
 #if ASSERTIONS
-    if (!ctx) console.error('emscripten_create_audio_context failed! Web Audio is not supported.');
-#endif
+    if (!globalThis.AudioContext) console.error('emscripten_create_audio_context failed! Web Audio is not supported.');
 #endif
 
     // Converts AUDIO_CONTEXT_RENDER_SIZE_* into AudioContextRenderSizeCategory
@@ -111,12 +108,7 @@ var LibraryWebAudio = {
     console.dir(opts);
 #endif
 
-#if MIN_SAFARI_VERSION < 140500 || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    return ctx && emscriptenRegisterAudioObject(new ctx(opts));
-#else
-    // We are targeting an environment where we assume that AudioContext() API unconditionally exists.
     return emscriptenRegisterAudioObject(new AudioContext(opts));
-#endif
   },
 
   emscripten_resume_audio_context_async: (contextHandle, callback, userData) => {
