@@ -19,7 +19,7 @@ typedef struct callback_args_t {
   int event_type;
   void *user_data;
   // Since we cast this to various event types it needs to be at aligned to the
-  // to the same level as any the event types.   The simplest way to acheive
+  // to the same level as any the event types.   The simplest way to achieve
   // this is with max_align-t.
   alignas(max_align_t) uint8_t event_data[];
 } callback_args_t;

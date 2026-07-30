@@ -26,6 +26,8 @@ extern void _emscripten_run_callback_on_thread(pthread_t t,
 
 static bool on_wheel(int event_type, void *event_data, void *user_data) {
   const EmscriptenWheelEvent *e = (const EmscriptenWheelEvent *)event_data;
+  // Test that the event_data contents are properly aligned.  These accesses
+  // will fail under SAFE_HEAP if they are not.
   assert(e->deltaX == 1.0);
   assert(e->deltaY == 2.0);
   assert(e->deltaZ == 3.0);
