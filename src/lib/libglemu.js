@@ -2474,7 +2474,7 @@ var LibraryGLEmulation = {
           this.hasNormal = GLImmediate.enabledClientAttributes[GLImmediate.NORMAL] &&
                            GLImmediate.clientAttributes[GLImmediate.NORMAL].size > 0 &&
                            this.normalLocation >= 0;
-          this.hasColor = (this.colorLocation === 0) || this.colorLocation > 0;
+          this.hasColor = this.colorLocation >= 0;
 
           this.floatType = GLctx.FLOAT; // minor optimization
 

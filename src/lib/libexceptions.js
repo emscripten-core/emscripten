@@ -275,7 +275,7 @@ var LibraryExceptions = {
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
     for (var caughtType of args) {
-      if (caughtType === 0 || caughtType === thrownType) {
+      if (!caughtType || caughtType === thrownType) {
         // Catch all clause matched or exactly the same type is caught
         break;
       }

@@ -85,7 +85,7 @@ var LibraryHTML5 = {
       function arraysHaveEqualContent(arrA, arrB) {
         if (arrA.length != arrB.length) return false;
 
-        for (var i in arrA) {
+        for (var i = 0; i < arrA.length; i++) {
           if (arrA[i] != arrB[i]) return false;
         }
         return true;
@@ -2140,7 +2140,7 @@ var LibraryHTML5 = {
       if (canvas.GLctxObject?.GLctx) {
         var prevViewport = canvas.GLctxObject.GLctx.getParameter(0xBA2 /* GL_VIEWPORT */);
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
-        autoResizeViewport = (prevViewport[0] === 0 && prevViewport[1] === 0 && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);
+        autoResizeViewport = (!prevViewport[0] && !prevViewport[1] && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);
 #if GL_DEBUG
         dbg(`Resizing canvas from ${canvas.width}x${canvas.height} to ${width}x${height}. Previous GL viewport size was ${prevViewport}, so autoResizeViewport=${autoResizeViewport}`);
 #endif

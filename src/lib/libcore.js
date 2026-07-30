@@ -764,7 +764,10 @@ addToLibrary({
     var v4part = '';
     // check if the 10 high-order bytes are all zeros (first 5 words)
     for (i = 0; i < 5; i++) {
-      if (parts[i] !== 0) { hasipv4 = false; break; }
+      if (parts[i]) {
+        hasipv4 = false;
+        break;
+      }
     }
 
     if (hasipv4) {
@@ -777,7 +780,7 @@ addToLibrary({
         return str;
       }
       // IPv4-compatible IPv6 address if 16-bit value (bytes 11 and 12) == 0x0000 (6th word)
-      if (parts[5] === 0) {
+      if (!parts[5]) {
         str = '::';
         // special case IPv6 addresses
         if (v4part === '0.0.0.0') v4part = ''; // any/unspecified address
@@ -791,7 +794,7 @@ addToLibrary({
 
     // first run to find the longest contiguous zero words
     for (word = 0; word < 8; word++) {
-      if (parts[word] === 0) {
+      if (!parts[word]) {
         if (word - lastzero > 1) {
           len = 0;
         }
@@ -807,10 +810,10 @@ addToLibrary({
     for (word = 0; word < 8; word++) {
       if (longest > 1) {
         // compress contiguous zeros - to produce '::'
-        if (parts[word] === 0 && word >= zstart && word < (zstart + longest) ) {
+        if (!parts[word] && word >= zstart && word < (zstart + longest) ) {
           if (word === zstart) {
             str += ':';
-            if (zstart === 0) str += ':'; //leading zeros case
+            if (!zstart) str += ':'; //leading zeros case
           }
           continue;
         }
@@ -844,7 +847,7 @@ addToLibrary({
         var pathLen = salen - {{{ C_STRUCTS.sockaddr_un.sun_path }}};
         var path = '';
         if (pathLen > 0) {
-          if (HEAPU8[pathStart] === 0) {
+          if (!HEAPU8[pathStart]) {
             path = '\0' + UTF8ToString(pathStart + 1, pathLen - 1, /*ignoreNul=*/true);
           } else {
             // A pathname address is NUL-terminated; stop at the first NUL.
@@ -894,7 +897,7 @@ addToLibrary({
         // terminator), any other path is written NUL-terminated. An empty path
         // is the unnamed address (family only).
         addr ||= '';
-        var abstract = addr.charCodeAt(0) === 0;
+        var abstract = !addr.charCodeAt(0);
         // Pathname addresses include the trailing NUL in the reported length;
         // abstract addresses do not; an empty address is family-only (unnamed).
         var bytes = addr ? lengthBytesUTF8(addr) + (abstract ? 0 : 1) : 0;
@@ -1067,10 +1070,10 @@ addToLibrary({
 
     // If type or proto are set to zero in hints we should really be returning multiple addrinfo values, but for
     // now default to a TCP STREAM socket so we can at least return a sensible addrinfo given NULL hints.
-    if (proto === 0) {
+    if (!proto) {
       proto = {{{ cDefs.IPPROTO_TCP }}};
     }
-    if (type === 0) {
+    if (!type) {
       type = {{{ cDefs.SOCK_STREAM }}};
     }
 
@@ -1081,14 +1084,14 @@ addToLibrary({
         {{{ cDefs.AI_NUMERICSERV }}}|{{{ cDefs.AI_V4MAPPED }}}|{{{ cDefs.AI_ALL }}}|{{{ cDefs.AI_ADDRCONFIG }}})) {
       return {{{ cDefs.EAI_BADFLAGS }}};
     }
-    if (hint !== 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefs.AI_CANONNAME }}}) && !node) {
+    if (hint && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefs.AI_CANONNAME }}}) && !node) {
       return {{{ cDefs.EAI_BADFLAGS }}};
     }
     if (flags & {{{ cDefs.AI_ADDRCONFIG }}}) {
       // TODO
       return {{{ cDefs.EAI_NONAME }}};
     }
-    if (type !== 0 && type !== {{{ cDefs.SOCK_STREAM }}} && type !== {{{ cDefs.SOCK_DGRAM }}}) {
+    if (type && type !== {{{ cDefs.SOCK_STREAM }}} && type !== {{{ cDefs.SOCK_DGRAM }}}) {
       return {{{ cDefs.EAI_SOCKTYPE }}};
     }
     if (family !== {{{ cDefs.AF_UNSPEC }}} && family !== {{{ cDefs.AF_INET }}} && family !== {{{ cDefs.AF_INET6 }}}) {
@@ -1113,7 +1116,7 @@ addToLibrary({
       if (family === {{{ cDefs.AF_UNSPEC }}}) {
         family = {{{ cDefs.AF_INET }}};
       }
-      if ((flags & {{{ cDefs.AI_PASSIVE }}}) === 0) {
+      if (!(flags & {{{ cDefs.AI_PASSIVE }}})) {
         if (family === {{{ cDefs.AF_INET }}}) {
           addr = _htonl({{{ cDefs.INADDR_LOOPBACK }}});
         } else {
@@ -1263,7 +1266,7 @@ addToLibrary({
     // to add extra entries from /etc/protocols if desired - though not sure if that'd actually be useful.
     var list = Protocols.list;
     var map  = Protocols.map;
-    if (list.length === 0) {
+    if (!list.length) {
         var entry = allocprotoent('tcp', 6, ['TCP']);
         list.push(entry);
         map['tcp'] = map['6'] = entry;
@@ -1739,7 +1742,7 @@ addToLibrary({
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
       var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
-      if (ret !== 0) return;
+      if (ret) return;
     }
   },
 
@@ -2364,7 +2367,7 @@ addToLibrary({
     assert(id, 'addRunDependency requires an ID')
     assert(!runDependencyTracking[id]);
     runDependencyTracking[id] = 1;
-    if (runDependencyWatcher === null && globalThis.setInterval) {
+    if (!runDependencyWatcher && globalThis.setInterval) {
       // Check for missing dependencies every few seconds
       runDependencyWatcher = setInterval(() => {
         if (ABORT) {

@@ -18,7 +18,6 @@ from tools import (
   config,
   diagnostics,
   feature_matrix,
-  ports,
   shared,
   utils,
 )
@@ -74,6 +73,7 @@ class EmccOptions:
   input_language = None
   js_transform = None
   lib_dirs: list[str] = []
+  lto: str | None = None
   memory_profiler = False
   no_entry = False
   no_minify = False
@@ -204,6 +204,9 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
+  # TODO(sbc): Remove this import, or move it to the top, once we resolve the
+  # circular dependency issue with ports/__init__.py -> system_libs.py -> cmdline.py
+  from tools import ports
   should_exit = False
   skip = False
   builtin_settings = set(settings.keys())
@@ -313,11 +316,11 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       settings.OPT_LEVEL = level
     elif arg.startswith('-flto'):
       if '=' in arg:
-        settings.LTO = arg.split('=')[1]
+        options.lto = arg.split('=')[1]
       else:
-        settings.LTO = 'full'
+        options.lto = 'full'
     elif arg == "-fno-lto":
-      settings.LTO = 0
+      options.lto = None
     elif arg == "--save-temps":
       options.save_temps = True
     elif check_arg('--closure-args'):

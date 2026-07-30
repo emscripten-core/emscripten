@@ -508,8 +508,8 @@ var LibrarySDL = {
         dr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
       }
       if (dstData.clipRect) {
-        var widthScale = (!scale || sr.w === 0) ? 1 : sr.w / dr.w;
-        var heightScale = (!scale || sr.h === 0) ? 1 : sr.h / dr.h;
+        var widthScale = (!scale || !sr.w) ? 1 : sr.w / dr.w;
+        var heightScale = (!scale || !sr.h) ? 1 : sr.h / dr.h;
 
         dr = SDL.intersectionOfRects(dstData.clipRect, dr);
 
@@ -526,7 +526,7 @@ var LibrarySDL = {
       } else {
         blitw = sr.w; blith = sr.h;
       }
-      if (sr.w === 0 || sr.h === 0 || blitw === 0 || blith === 0) {
+      if (!sr.w || !sr.h || !blitw || !blith) {
         return 0;
       }
       var oldAlpha = dstData.ctx.globalAlpha;
@@ -992,7 +992,7 @@ var LibrarySDL = {
           var dx = x - lx;
           var dy = y - ly;
           touch.deviceID ??= SDL.TOUCH_DEFAULT_ID;
-          if (dx === 0 && dy === 0 && event.type === 'touchmove') return false; // don't send these if nothing happened
+          if (!dx && !dy && event.type === 'touchmove') return false; // don't send these if nothing happened
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.timestamp, '_SDL_GetTicks()', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_TouchFingerEvent.touchId, 'touch.deviceID', 'i64') }}};
@@ -1186,12 +1186,8 @@ var LibrarySDL = {
       // initialize Web Audio context ever once on the web page, since
       // initializing multiple times fails on Chrome saying 'audio resources
       // have been exhausted'.
-      if (!SDL.audioContext) {
-        if (typeof AudioContext != 'undefined') {
-          SDL.audioContext = new AudioContext();
-        } else if (typeof webkitAudioContext != 'undefined') {
-          SDL.audioContext = new webkitAudioContext();
-        }
+      if (!SDL.audioContext && globalThis.AudioContext) {
+        SDL.audioContext = new AudioContext();
       }
     },
 
@@ -1965,7 +1961,7 @@ var LibrarySDL = {
 
   rotozoomSurface__deps: ['zoomSurface'],
   rotozoomSurface: (src, angle, zoom, smooth) => {
-    if (angle % 360 === 0) {
+    if (!(angle % 360)) {
       return _zoomSurface(src, zoom, zoom, smooth);
     }
     var srcData = SDL.surfaces[src];

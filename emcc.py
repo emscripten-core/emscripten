@@ -306,16 +306,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(libname)
     return 0
 
-  if 'EMMAKEN_NO_SDK' in os.environ:
-    exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
-
-  if 'EMMAKEN_COMPILER' in os.environ:
-    exit_with_error('`EMMAKEN_COMPILER` is no longer supported.\n' +
-                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instead')
-
-  if 'EMMAKEN_CFLAGS' in os.environ:
-    exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
-
   if 'EMCC_REPRODUCE' in os.environ:
     options.reproduce = os.environ['EMCC_REPRODUCE']
 
@@ -344,17 +334,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    link.run_post_link(options.input_files[0], options, linker_args)
+    link.run_post_link(options.input_files[0], linker_args)
     return 0
 
   # Compile source code to object files
   # When only compiling this function never returns.
-  linker_args = phase_compile_inputs(options, state, newargs)
+  linker_args = phase_compile_inputs(state, newargs)
 
   if state.mode == Mode.COMPILE_AND_LINK:
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    return link.run(options, linker_args)
+    return link.run(linker_args)
   else:
     logger.debug('stopping after compile phase')
     return 0
@@ -502,7 +492,7 @@ def phase_setup(state):
 
 
 @ToolchainProfiler.profile_block('compile inputs')
-def phase_compile_inputs(options, state, newargs):
+def phase_compile_inputs(state, newargs):
   if shared.run_via_emxx:
     compiler = [shared.CLANG_CXX]
   else:
@@ -524,7 +514,7 @@ def phase_compile_inputs(options, state, newargs):
     return compiler + compile.get_target_flags()
 
   if state.mode == Mode.COMPILE_ONLY:
-    if options.output_file and get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
+    if options.output_file and get_file_suffix(options.output_file) == '.bc' and not options.lto and '-emit-llvm' not in state.orig_args:
       diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
     if all(get_file_suffix(i) in ASSEMBLY_EXTENSIONS for i in options.input_files):
       cmd = get_clang_command_asm() + newargs

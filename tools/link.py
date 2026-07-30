@@ -31,7 +31,7 @@ from . import (
   utils,
   webassembly,
 )
-from .cmdline import OFormat
+from .cmdline import OFormat, options
 from .feature_matrix import Feature
 from .minimal_runtime_shell import generate_minimal_runtime_html
 from .settings import (
@@ -339,7 +339,7 @@ def get_binaryen_lowering_passes():
   return passes
 
 
-def get_binaryen_passes(options):
+def get_binaryen_passes():
   passes = get_binaryen_lowering_passes()
   optimizing = should_run_binaryen_optimizer()
 
@@ -473,7 +473,7 @@ def make_js_executable(script):
     pass # can fail if e.g. writing the executable to /dev/null
 
 
-def do_split_module(wasm_file, options):
+def do_split_module(wasm_file):
   os.replace(wasm_file, wasm_file + '.orig')
   args = ['--instrument']
   if options.requested_debug:
@@ -669,7 +669,7 @@ def check_settings():
 
 
 @ToolchainProfiler.profile()
-def setup_sanitizers(options):
+def setup_sanitizers():
   assert options.sanitize
 
   if settings.WASM_WORKERS:
@@ -774,7 +774,7 @@ def setup_sanitizers(options):
     settings.LOAD_SOURCE_MAP = 1
 
 
-def get_dylibs(options, linker_args):
+def get_dylibs(linker_args):
   """Find all the Wasm dynamic libraries specified on the command line.
 
   This can either be via `-lfoo` or via `libfoo.so` directly.
@@ -847,7 +847,7 @@ def add_required_heap_symbols():
 
 
 @ToolchainProfiler.profile_block('linker_setup')
-def phase_linker_setup(options, linker_args):  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
+def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 244 vs 10 recommended.
@@ -864,13 +864,13 @@ def phase_linker_setup(options, linker_args):  # ruff: ignore[complex-structure,
     default_setting('SIDE_MODULE', 1)
 
   if not settings.SIDE_MODULE and not settings.FAKE_DYLIBS:
-    options.dylibs = get_dylibs(options, linker_args)
+    options.dylibs = get_dylibs(linker_args)
     # If there are any dynamic libraries on the command line then enable
     # `MAIN_MODULE` by default in order to produce JS code that can load them.
     if options.dylibs and not settings.MAIN_MODULE:
       default_setting('MAIN_MODULE', 2)
 
-  linker_args += calc_extra_ldflags(options)
+  linker_args += calc_extra_ldflags()
 
   # We used to do this check during on startup during `check_sanity`, but
   # we now only do it when linking, in order to reduce the overhead when
@@ -1697,7 +1697,7 @@ def phase_linker_setup(options, linker_args):  # ruff: ignore[complex-structure,
     diagnostics.warning('emcc', 'JavaScript output suffix requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   if options.sanitize:
-    setup_sanitizers(options)
+    setup_sanitizers()
 
   if settings.USE_ASAN or settings.SAFE_HEAP:
     # ASan and SAFE_HEAP check address 0 themselves
@@ -1898,13 +1898,13 @@ def phase_linker_setup(options, linker_args):  # ruff: ignore[complex-structure,
 
 
 @ToolchainProfiler.profile_block('calculate system libraries')
-def phase_calculate_system_libraries(options):
+def phase_calculate_system_libraries():
   extra_files_to_link = []
   # Link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
     # Ports are always linked into the main module, never the side module.
     extra_files_to_link += ports.get_libs(settings)
-  extra_files_to_link += system_libs.calculate(options)
+  extra_files_to_link += system_libs.calculate()
   return extra_files_to_link
 
 
@@ -1941,7 +1941,7 @@ def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
 
 
 @ToolchainProfiler.profile_block('post link')
-def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadata=None):
+def phase_post_link(in_wasm, wasm_target, target, js_syms, base_metadata=None):
   global final_js
 
   target_basename = unsuffixed_basename(target)
@@ -1965,15 +1965,15 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
   if settings.EMBIND_AOT:
-    phase_embind_aot(options, wasm_target, js_syms)
+    phase_embind_aot(wasm_target, js_syms)
 
   if options.emit_tsd:
-    phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata)
+    phase_emit_tsd(wasm_target, js_target, js_syms, metadata)
 
   if options.js_transform:
-    phase_source_transforms(options)
+    phase_source_transforms()
 
-  phase_binaryen(target, options, wasm_target)
+  phase_binaryen(target, wasm_target)
 
   # Compute the SHA-256 hash of the final wasm (after binaryen) and substitute
   # the <<< WASM_HASH_VALUE >>> placeholder that preamble.js left in the JS.
@@ -1985,7 +1985,7 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
-    phase_final_emitting(options, target, js_target, wasm_target)
+    phase_final_emitting(target, js_target, wasm_target)
 
 
 @ToolchainProfiler.profile_block('emscript')
@@ -2007,7 +2007,7 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
   return metadata
 
 
-def run_embind_gen(options, wasm_target, js_syms, extra_settings):
+def run_embind_gen(wasm_target, js_syms, extra_settings):
   # Save settings so they can be restored after TS generation.
   original_settings = settings.backup()
   settings.attrs.update(extra_settings)
@@ -2096,12 +2096,12 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
 
 
 @ToolchainProfiler.profile_block('emit tsd')
-def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
+def phase_emit_tsd(wasm_target, js_target, js_syms, metadata):
   logger.debug('emit tsd')
   filename = options.emit_tsd
   embind_tsd = ''
   if settings.EMBIND:
-    embind_tsd = run_embind_gen(options, wasm_target, js_syms, {'EMBIND_AOT': False})
+    embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_AOT': False})
   bindgen_ts_files = []
   if settings.WASM_BINDGEN:
     bindgen_ts_files = glob.glob(get_emscripten_temp_dir() + '/bindgen_out/*.d.ts')
@@ -2113,8 +2113,8 @@ def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
 
 
 @ToolchainProfiler.profile_block('embind aot js')
-def phase_embind_aot(options, wasm_target, js_syms):
-  out = run_embind_gen(options, wasm_target, js_syms, {})
+def phase_embind_aot(wasm_target, js_syms):
+  out = run_embind_gen(wasm_target, js_syms, {})
   if DEBUG:
     write_file(in_temp('embind_aot.json'), out)
   out = json.loads(out)
@@ -2153,7 +2153,7 @@ def remove_quotes(arg):
 
 
 @ToolchainProfiler.profile_block('source transforms')
-def phase_source_transforms(options):
+def phase_source_transforms():
   # Apply a source code transformation, if requested
   global final_js
   safe_copy(final_js, final_js + '.tr.js')
@@ -2254,7 +2254,7 @@ def convert_line_endings_in_file(filename, to_eol):
 
 
 @ToolchainProfiler.profile_block('final emitting')
-def phase_final_emitting(options, target, js_target, wasm_target):
+def phase_final_emitting(target, js_target, wasm_target):
   global final_js
 
   if shared.SKIP_SUBPROCS:
@@ -2319,18 +2319,18 @@ def phase_final_emitting(options, target, js_target, wasm_target):
 
   # If we were asked to also generate HTML, do that
   if options.oformat == OFormat.HTML:
-    generate_html(target, options, js_target, target_basename,
+    generate_html(target, js_target, target_basename,
                   wasm_target)
 
   if settings.SPLIT_MODULE:
-    do_split_module(wasm_target, options)
+    do_split_module(wasm_target)
 
   if settings.EXECUTABLE:
     make_js_executable(js_target)
 
 
 @ToolchainProfiler.profile_block('binaryen')
-def phase_binaryen(target, options, wasm_target):
+def phase_binaryen(target, wasm_target):
   global final_js
   logger.debug('using binaryen')
   # whether we need to emit -g (function name debug info) in the final wasm
@@ -2353,7 +2353,7 @@ def phase_binaryen(target, options, wasm_target):
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
-  passes = get_binaryen_passes(options)
+  passes = get_binaryen_passes()
   if passes:
     # if asyncify is used, we will use it in the next stage, and so if it is
     # the only reason we need intermediate debug info, we can stop keeping it
@@ -2547,7 +2547,7 @@ def module_export_name_substitution():
   save_intermediate('module_export_name_substitution')
 
 
-def generate_traditional_runtime_html(target, options, js_target, wasm_target):
+def generate_traditional_runtime_html(target, js_target, wasm_target):
   script = ScriptSource()
 
   if settings.EXPORT_NAME != 'Module' and options.shell_html == DEFAULT_SHELL_HTML:
@@ -2686,13 +2686,13 @@ def minify_html(filename):
   logger.debug(f'HTML minification shrunk {filename} from {size_before} to {size_after} bytes, delta={delta} ({delta * 100.0 / size_before:+.2f}%)')
 
 
-def generate_html(target, options, js_target, target_basename, wasm_target):
+def generate_html(target, js_target, target_basename, wasm_target):
   logger.debug('generating HTML')
 
   if settings.MINIMAL_RUNTIME:
-    generate_minimal_runtime_html(target, options, js_target, target_basename)
+    generate_minimal_runtime_html(target, js_target, target_basename)
   else:
-    generate_traditional_runtime_html(target, options, js_target, wasm_target)
+    generate_traditional_runtime_html(target, js_target, wasm_target)
 
   if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
     minify_html(target)
@@ -2759,7 +2759,7 @@ def map_to_js_libs(library_name):
   return None
 
 
-def process_libraries(options, flags):
+def process_libraries(flags):
   """Process `-l` and `--js-library` flags."""
   new_flags = []
   system_libs_map = system_libs.Library.get_usable_variations()
@@ -2886,7 +2886,7 @@ class ScriptSource:
       return f'<script id="mainScript">\n{self.inline}\n</script>'
 
 
-def filter_out_fake_dynamic_libs(options, inputs):
+def filter_out_fake_dynamic_libs(inputs):
   """Filter out "fake" dynamic libraries that are really just intermediate object files."""
   def is_fake_dylib(input_file):
     if get_file_suffix(input_file) in DYLIB_EXTENSIONS and os.path.exists(input_file) and not building.is_wasm_dylib(input_file):
@@ -3067,7 +3067,7 @@ def get_subresource_location_js(path):
 
 
 @ToolchainProfiler.profile()
-def package_files(options, target):
+def package_files(target):
   rtn = []
   logger.debug('setting up files')
   file_args = ['--from-emcc']
@@ -3110,8 +3110,8 @@ def package_files(options, target):
 
 
 @ToolchainProfiler.profile_block('calculate linker inputs')
-def phase_calculate_linker_inputs(options, linker_args):
-  using_lld = not (options.oformat == OFormat.OBJECT and settings.LTO)
+def phase_calculate_linker_inputs(linker_args):
+  using_lld = not (options.oformat == OFormat.OBJECT and options.lto)
 
   linker_args = filter_link_flags(linker_args, using_lld)
 
@@ -3119,7 +3119,7 @@ def phase_calculate_linker_inputs(options, linker_args):
   # "fake" dynamic libraries, since otherwise we will end up with
   # multiple copies in the final executable.
   if options.oformat == OFormat.OBJECT or options.ignore_dynamic_linking:
-    linker_args = filter_out_fake_dynamic_libs(options, linker_args)
+    linker_args = filter_out_fake_dynamic_libs(linker_args)
   else:
     linker_args = filter_out_duplicate_fake_dynamic_libs(linker_args)
 
@@ -3129,7 +3129,7 @@ def phase_calculate_linker_inputs(options, linker_args):
   return linker_args
 
 
-def calc_extra_ldflags(options):
+def calc_extra_ldflags():
   extra_args = []
   system_libpath = str(cache.get_lib_dir(absolute=True))
   system_js_path = utils.path_from_root('src', 'lib')
@@ -3155,14 +3155,14 @@ def calc_extra_ldflags(options):
   return extra_args
 
 
-def run_post_link(wasm_input, options, linker_args):
+def run_post_link(wasm_input, linker_args):
   settings.limit_settings(None)
-  target, wasm_target = phase_linker_setup(options, linker_args)
-  process_libraries(options, linker_args)
-  phase_post_link(options, wasm_input, wasm_target, target, {})
+  target, wasm_target = phase_linker_setup(linker_args)
+  process_libraries(linker_args)
+  phase_post_link(wasm_input, wasm_target, target, {})
 
 
-def run(options, linker_args):
+def run(linker_args):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
 
@@ -3178,16 +3178,16 @@ def run(options, linker_args):
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error(f'invalid output filename: `{options.output_file}`')
 
-  target, wasm_target = phase_linker_setup(options, linker_args)
+  target, wasm_target = phase_linker_setup(linker_args)
 
-  linker_args = process_libraries(options, linker_args)
+  linker_args = process_libraries(linker_args)
 
   # Link object files using wasm-ld or llvm-link (for bitcode linking)
-  linker_args = phase_calculate_linker_inputs(options, linker_args)
+  linker_args = phase_calculate_linker_inputs(linker_args)
 
   # Embed and preload files
   if options.preload_files or options.embed_files:
-    linker_args += package_files(options, target)
+    linker_args += package_files(target)
 
   if options.oformat == OFormat.OBJECT:
     logger.debug(f'link_to_object: {linker_args} -> {target}')
@@ -3195,7 +3195,7 @@ def run(options, linker_args):
     logger.debug('stopping after linking to object file')
     return 0
 
-  system_libs = phase_calculate_system_libraries(options)
+  system_libs = phase_calculate_system_libraries()
   # Only add system libraries that have not already been specified.
   # This avoids issues where the user explicitly includes, for example, `-lGL`.
   # This is not normally a problem except in the case of -sMAIN_MODULE=1 where
@@ -3246,6 +3246,6 @@ def run(options, linker_args):
 
   # Perform post-link steps (unless we are running bare mode)
   if options.oformat != OFormat.BARE:
-    phase_post_link(options, wasm_target, wasm_target, target, js_syms, base_metadata)
+    phase_post_link(wasm_target, wasm_target, target, js_syms, base_metadata)
 
   return 0

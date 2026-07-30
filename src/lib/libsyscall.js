@@ -727,7 +727,7 @@ var SyscallsLibrary = {
   __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => -{{{ cDefs.ENOSYS }}},
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
-    if (size === 0) return -{{{ cDefs.EINVAL }}};
+    if (!size) return -{{{ cDefs.EINVAL }}};
     var cwd = FS.cwd();
     var cwdLengthInBytes = lengthBytesUTF8(cwd) + 1;
     if (size < cwdLengthInBytes) return -{{{ cDefs.ERANGE }}};

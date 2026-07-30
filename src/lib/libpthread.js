@@ -904,7 +904,7 @@ var LibraryPThread = {
     // Synchronously proxy the thread creation to main thread if possible. If we
     // need to transfer ownership of objects, then proxy asynchronously via
     // postMessage.
-    if (ENVIRONMENT_IS_PTHREAD && (transferList.length === 0 || error)) {
+    if (ENVIRONMENT_IS_PTHREAD && (!transferList.length || error)) {
       return pthreadCreateProxied(pthread_ptr, attr, startRoutine, arg);
     }
 
@@ -1232,7 +1232,7 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'dlsyncThreadsAsync() should only be called from the main thread');
-    assert(Object.keys(PThread.outstandingPromises).length === 0);
+    assert(!Object.keys(PThread.outstandingPromises).length);
 #endif
 
     const promises = [];

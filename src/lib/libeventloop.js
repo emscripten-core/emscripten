@@ -290,7 +290,7 @@ LibraryJSEventLoop = {
     fakeRequestAnimationFrame(func) {
       // try to keep 60fps between calls to here
       var now = Date.now();
-      if (MainLoop.nextRAF === 0) {
+      if (!MainLoop.nextRAF) {
         MainLoop.nextRAF = now + 1000/60;
       } else {
         while (now + 2 >= MainLoop.nextRAF) { // fudge a little, to avoid timer jitter causing us to do lots of delay:0

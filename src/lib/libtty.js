@@ -71,7 +71,7 @@ addToLibrary({
           } catch (e) {
             throw new FS.ErrnoError({{{ cDefs.EIO }}});
           }
-          if (result === undefined && bytesRead === 0) {
+          if (result === undefined && !bytesRead) {
             throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
           }
           if (result === null || result === undefined) break;

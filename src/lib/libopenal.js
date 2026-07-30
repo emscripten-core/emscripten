@@ -1649,8 +1649,6 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    var AudioContext = window.AudioContext || window.webkitAudioContext;
-
     if (!AL.sharedCaptureAudioCtx) {
       try {
         AL.sharedCaptureAudioCtx = new AudioContext();
@@ -2047,12 +2045,13 @@ var LibraryOpenAL = {
       }
     }
 
-    if (globalThis.AudioContext || globalThis.webkitAudioContext) {
-      var deviceId = AL.newId();
-      AL.deviceRefCounts[deviceId] = 0;
-      return deviceId;
+    if (!globalThis.AudioContext) {
+      return 0;
     }
-    return 0;
+
+    var deviceId = AL.newId();
+    AL.deviceRefCounts[deviceId] = 0;
+    return deviceId;
   },
 
   alcCloseDevice__proxy: 'sync',
@@ -2077,7 +2076,7 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    var options = null;
+    var options = {};
     var attrs = [];
     var hrtf = null;
     pAttrList >>= 2;
@@ -2095,10 +2094,6 @@ var LibraryOpenAL = {
 
         switch (attr) {
         case 0x1007 /* ALC_FREQUENCY */:
-          if (!options) {
-            options = {};
-          }
-
           options.sampleRate = val;
           break;
         case 0x1010 /* ALC_MONO_SOURCES */: // fallthrough
@@ -2142,15 +2137,9 @@ var LibraryOpenAL = {
       }
     }
 
-    var AudioContext = window.AudioContext || window.webkitAudioContext;
-    var ac = null;
+    var ac;
     try {
-      // Only try to pass options if there are any, for compat with browsers that don't support this
-      if (options) {
-        ac = new AudioContext(options);
-      } else {
-        ac = new AudioContext();
-      }
+      ac = new AudioContext(options);
     } catch (e) {
       if (e.name === 'NotSupportedError') {
 #if OPENAL_DEBUG
@@ -2372,14 +2361,14 @@ var LibraryOpenAL = {
       ret = 'Out of Memory';
       break;
     case 0x1004 /* ALC_DEFAULT_DEVICE_SPECIFIER */:
-      if (globalThis.AudioContext || globalThis.webkitAudioContext) {
+      if (globalThis.AudioContext) {
         ret = AL.DEVICE_NAME;
       } else {
         return 0;
       }
       break;
     case 0x1005 /* ALC_DEVICE_SPECIFIER */:
-      if (globalThis.AudioContext || globalThis.webkitAudioContext) {
+      if (globalThis.AudioContext) {
         ret = AL.DEVICE_NAME + '\0';
       } else {
         ret = '\0';
