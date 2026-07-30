@@ -8164,7 +8164,7 @@ void* operator new(size_t size) {
       start_addr_loc = wat.find('0x', call_loc)
       assert start_addr_loc > 0
       start_addr_loc_end = wat.find('\n', start_addr_loc)
-      start_addr = int(wat[start_addr_loc:start_addr_loc_end], 0)
+      start_addr = int(wat[start_addr_loc:start_addr_loc_end].split()[0], 0)
       # the call ends with the drop, which is the last in the stream, at the
       # highest address
       end_addr_loc = wat.rfind('drop', 0, call_loc)
@@ -8173,7 +8173,7 @@ void* operator new(size_t size) {
       assert end_addr_loc > 0
       end_addr_loc_end = wat.find('\n', end_addr_loc)
       assert end_addr_loc_end > 0
-      end_addr = int(wat[end_addr_loc:end_addr_loc_end], 0)
+      end_addr = int(wat[end_addr_loc:end_addr_loc_end].split()[0], 0)
       return (start_addr, end_addr)
 
     # match up the DWARF and the wat
