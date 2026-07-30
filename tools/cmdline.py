@@ -73,6 +73,7 @@ class EmccOptions:
   input_language = None
   js_transform = None
   lib_dirs: list[str] = []
+  lto: str | None = None
   memory_profiler = False
   no_entry = False
   no_minify = False
@@ -315,11 +316,11 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       settings.OPT_LEVEL = level
     elif arg.startswith('-flto'):
       if '=' in arg:
-        settings.LTO = arg.split('=')[1]
+        options.lto = arg.split('=')[1]
       else:
-        settings.LTO = 'full'
+        options.lto = 'full'
     elif arg == "-fno-lto":
-      settings.LTO = 0
+      options.lto = None
     elif arg == "--save-temps":
       options.save_temps = True
     elif check_arg('--closure-args'):

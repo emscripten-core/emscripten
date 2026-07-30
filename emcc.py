@@ -524,7 +524,7 @@ def phase_compile_inputs(state, newargs):
     return compiler + compile.get_target_flags()
 
   if state.mode == Mode.COMPILE_ONLY:
-    if options.output_file and get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
+    if options.output_file and get_file_suffix(options.output_file) == '.bc' and not options.lto and '-emit-llvm' not in state.orig_args:
       diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
     if all(get_file_suffix(i) in ASSEMBLY_EXTENSIONS for i in options.input_files):
       cmd = get_clang_command_asm() + newargs
