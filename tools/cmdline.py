@@ -8,7 +8,6 @@ import logging
 import os
 import re
 import shlex
-import sys
 from enum import Enum, auto, unique
 from subprocess import PIPE
 
@@ -53,6 +52,9 @@ class OFormat(Enum):
 
 
 class EmccOptions:
+  check = False
+  clear_cache = False
+  clear_ports = False
   cpu_profiler = False
   dash_E = False
   dash_M = False
@@ -98,6 +100,7 @@ class EmccOptions:
   requested_debug = None
   sanitize: set[str] = set()
   sanitize_minimal_runtime = False
+  show_ports = False
   s_args: list[str] = []
   save_temps = False
   shared = False
@@ -106,6 +109,7 @@ class EmccOptions:
   syntax_only = False
   target = ''
   use_closure_compiler = None
+  use_ports: list[str] = []
   use_preload_cache = False
   use_preload_plugins = False
   valid_abspaths: list[str] = []
@@ -204,10 +208,6 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
-  # TODO(sbc): Remove this import, or move it to the top, once we resolve the
-  # circular dependency issue with ports/__init__.py -> system_libs.py -> cmdline.py
-  from tools import ports
-  should_exit = False
   skip = False
   builtin_settings = set(settings.keys())
   LEGACY_ARGS = {'--js-opts', '--llvm-opts', '--llvm-lto', '--memory-init-file'}
@@ -460,23 +460,13 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       # libraries)
       os.environ['EM_CACHE'] = config.CACHE
     elif check_flag('--clear-cache'):
-      logger.info('clearing cache as requested by --clear-cache: `%s`', cache.cachedir)
-      cache.erase()
-      shared.perform_sanity_checks() # this is a good time for a sanity check
-      should_exit = True
+      options.clear_cache = True
     elif check_flag('--clear-ports'):
-      logger.info('clearing ports and cache as requested by --clear-ports')
-      ports.clear()
-      cache.erase()
-      shared.perform_sanity_checks() # this is a good time for a sanity check
-      should_exit = True
+      options.clear_ports = True
     elif check_flag('--check'):
-      print(version_string(), file=sys.stderr)
-      shared.check_sanity(force=True)
-      should_exit = True
+      options.check = True
     elif check_flag('--show-ports'):
-      ports.show_ports()
-      should_exit = True
+      options.show_ports = True
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
     elif arg.startswith(('-I', '-L')):
@@ -587,7 +577,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       if options.target not in {'wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'}:
         exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
     elif check_arg('--use-port'):
-      ports.handle_use_port_arg(settings, consume_arg())
+      options.use_ports.append(consume_arg())
     elif arg in {'-c', '--precompile'}:
       options.dash_c = True
     elif arg == '-S':
@@ -623,9 +613,6 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       options.sanitize.difference_update(arg.split('=', 1)[1].split(','))
     elif arg and (arg == '-' or not arg.startswith('-')):
       options.input_files.append(arg)
-
-  if should_exit:
-    sys.exit(0)
 
   return [a for a in newargs if a]
 
