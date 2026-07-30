@@ -7767,18 +7767,13 @@ void* operator new(size_t size) {
     self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', *extra_flags, '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro_noexcept.cpp', 'rejected with: bang from JS promise!\n')
 
-  @parameterized({
-    'emscripten_eh': (['-fexceptions'],),
-    'wasm_eh': (['-fwasm-exceptions'],),
-  })
-  def test_embind_val_coro_catch_cpp_exception(self, extra_flags):
-    if self.is_wasm2js() and '-fwasm-exceptions' in extra_flags:
-      self.skipTest('wasm2js does not support WASM exceptions')
+  @with_all_eh_sjlj
+  def test_embind_val_coro_catch_cpp_exception(self):
     self.set_setting('EXCEPTION_STACK_TRACES') # For debugging
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.catchCppExceptionPromise().then(console.log);
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', *extra_flags, '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'successfully caught!\n')
 
   def test_embind_val_coro_await_in_non_val_coro(self):
