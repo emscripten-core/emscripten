@@ -72,7 +72,7 @@ def make_executable(filename):
 
 
 def maybe_remove(filename):
-  if os.path.exists(filename):
+  if os.path.lexists(filename):
     os.remove(filename)
 
 
@@ -82,6 +82,7 @@ def read_file(filename):
 
 
 def write_file(filename, content):
+  maybe_remove(filename)
   with open(filename, 'w', encoding='utf-8') as f:
     f.write(content)
 
