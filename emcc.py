@@ -287,6 +287,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
 @ToolchainProfiler.profile()
 def main(args):
+  shared.run_via_emxx = os.path.basename(args[0]).startswith('em++')
+
   # Special case the handling of `-v` because it has a special/different meaning
   # when used with no other arguments.  In particular, we must handle this early
   # on, before we inject EMCC_CFLAGS.  This is because tools like cmake and
