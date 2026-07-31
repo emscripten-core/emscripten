@@ -43,6 +43,7 @@ from tools import (
   compile,
   config,
   diagnostics,
+  ports,
   shared,
   system_libs,
   utils,
@@ -255,6 +256,9 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if not shared.SKIP_SUBPROCS:
     shared.check_sanity()
 
+  for port in options.use_ports:
+    ports.handle_use_port_arg(settings, port)
+
   # For internal consistency, ensure we don't attempt to read or write any link time
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
@@ -314,6 +318,28 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # trying to re-implement the logic.
     shared.exec_process([clang, *compile.get_cflags(tuple(args)), *newargs])
     assert False, 'exec_process should not return'
+
+  if options.clear_cache:
+    logger.info('clearing cache as requested by --clear-cache: `%s`', cache.cachedir)
+    cache.erase()
+    shared.perform_sanity_checks() # this is a good time for a sanity check
+    return 0
+
+  if options.clear_ports:
+    logger.info('clearing ports and cache as requested by --clear-ports')
+    ports.clear()
+    cache.erase()
+    shared.perform_sanity_checks() # this is a good time for a sanity check
+    return 0
+
+  if options.check:
+    print(cmdline.version_string(), file=sys.stderr)
+    shared.check_sanity(force=True)
+    return 0
+
+  if options.show_ports:
+    ports.show_ports()
+    return 0
 
   if '--cflags' in args:
     # Just print the flags we pass to clang and exit.  We need to do this after
