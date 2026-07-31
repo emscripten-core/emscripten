@@ -204,7 +204,11 @@ LibraryJSEventLoop = {
     Module['resumeMainLoop'] = MainLoop.resume;
     MainLoop.init();`,
   $MainLoop: {
-    running: false,
+    // The main loop tick function that will be called at each iteration.
+    // This will be non-null whenever a loop function is registered.
+    func: null,
+    // This will be non-null whenever a loop function is both registered and
+    // currently running.
     scheduler: null,
     // Each main loop is numbered with a ID in sequence order. Only one main
     // loop can run at a time. This variable stores the ordinal number of the
@@ -212,8 +216,6 @@ LibraryJSEventLoop = {
     // will quit themselves. This is incremented whenever a new main loop is
     // created.
     currentlyRunningMainloop: 0,
-    // The main loop tick function that will be called at each iteration.
-    func: null,
     // The argument that will be passed to the main loop. (of type void*)
     arg: 0,
     timingMode: 0,
@@ -224,9 +226,12 @@ LibraryJSEventLoop = {
     postMainLoop: [],
 
     pause() {
-      MainLoop.scheduler = null;
-      // Incrementing this signals the previous main loop that it's now become old, and it must return.
-      MainLoop.currentlyRunningMainloop++;
+      if (MainLoop.scheduler) {
+        MainLoop.scheduler = null;
+        // Incrementing this signals the previous main loop that it's now become old, and it must return.
+        MainLoop.currentlyRunningMainloop++;
+        {{{ runtimeKeepalivePop() }}}
+      }
     },
 
     resume() {
@@ -328,10 +333,13 @@ LibraryJSEventLoop = {
       return 1; // Return non-zero on failure, can't set timing mode when there is no main loop.
     }
 
-    if (!MainLoop.running) {
-      {{{ runtimeKeepalivePush() }}}
-      MainLoop.running = true;
+#if useRuntimeKeepaliveStack()
+    // If there is no existing scheduler then we are transitioning from
+    // inactive to active and we add to runtime keepalive counter.
+    if (!MainLoop.scheduler) {
+      runtimeKeepalivePush();
     }
+#endif
     if (mode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
       MainLoop.scheduler = function MainLoop_scheduler_setTimeout() {
         var timeUntilNextTick = Math.max(0, MainLoop.tickStartTime + value - _emscripten_get_now())|0;
@@ -422,7 +430,6 @@ LibraryJSEventLoop = {
 #if RUNTIME_DEBUG
         dbg('main loop exiting');
 #endif
-        {{{ runtimeKeepalivePop() }}}
 #if !MINIMAL_RUNTIME
         maybeExit();
 #endif
@@ -433,10 +440,7 @@ LibraryJSEventLoop = {
 
     // We create the loop runner here but it is not actually running until
     // _emscripten_set_main_loop_timing is called (which might happen at a
-    // later time).  This member signifies that the current runner has not
-    // yet been started so that we can call runtimeKeepalivePush when it
-    // gets its timing set for the first time.
-    MainLoop.running = false;
+    // later time).
     MainLoop.runner = function MainLoop_runner() {
       if (ABORT) return;
       if (MainLoop.queue.length > 0) {
