@@ -295,7 +295,8 @@ def main(args):
   if len(args) == 2 and args[1] == '-v':
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print(cmdline.version_string(), file=sys.stderr)
-    return shared.check_call([get_clang(), '-v', *compile.get_target_flags()], check=False).returncode
+    shared.exec_process([get_clang(), '-v', *compile.get_target_flags()])
+    assert False, 'exec_process should not return'
 
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
