@@ -524,10 +524,7 @@ def phase_setup(state):
 
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(state, newargs):
-  if shared.run_via_emxx:
-    compiler = [shared.CLANG_CXX]
-  else:
-    compiler = [shared.CLANG_CC]
+  compiler = [get_clang()]
 
   if config.COMPILER_WRAPPER:
     logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
