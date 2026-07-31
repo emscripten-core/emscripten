@@ -12406,6 +12406,21 @@ int main () {
     output = self.run_process([os.path.abspath('a.out')], stdout=PIPE).stdout
     self.assertContained('Hello, world!', output)
 
+  def test_autoconf_check_lib_side_module(self):
+    # AC_CHECK_LIB probes for a symbol using an unprototyped declaration and a
+    # zero-argument call.  Verify that the signature mismatch against the real
+    # function does not make the probe fail when the library is a side module.
+    create_file('libtest.c', 'int identity(int x) { return x; }\n')
+    self.run_process([EMCC, '-fPIC', '-shared', '-o', 'libtest.so', 'libtest.c'])
+    create_file('conftest.c', '''
+      char identity ();
+
+      int main(void) {
+        return identity ();
+      }
+    ''')
+    self.run_process([EMCC, 'conftest.c', 'libtest.so', '-o', 'conftest.js'])
+
   def test_standalone_export_main(self):
     # Tests that explicitly exported `_main` does not fail, even though `_start` is the entry
     # point.

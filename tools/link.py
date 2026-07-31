@@ -889,6 +889,13 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # autoconf declares functions without their proper signatures, and STRICT causes that to trip up by passing --fatal-warnings to the linker.
     if settings.STRICT:
       exit_with_error('autoconfiguring is not compatible with STRICT')
+    # AC_CHECK_LIB probes for a symbol by declaring it without a prototype
+    # (`char foo ();`) and then calling it with no arguments.  When the symbol
+    # comes from an object file or an archive lld only warns about the
+    # resulting signature mismatch and synthesizes a thunk, but when it comes
+    # from a shared library the mismatch is a hard error. This turns off the
+    # shared library check.
+    linker_args.append('--no-shlib-sigcheck')
 
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
