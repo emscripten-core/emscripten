@@ -10076,7 +10076,6 @@ core2ss = make_run('core2ss', cflags=['-O2'], settings={'STACK_OVERFLOW_CHECK': 
 esm_integration = make_run('esm_integration', init=lambda self: self.setup_esm_integration())
 instance = make_run('instance', cflags=['-Wno-experimental'], settings={'MODULARIZE': 'instance'})
 
-# Add DEFAULT_TO_CXX=0
 strict = make_run('strict', cflags=[], settings={'STRICT': 1})
 strict_js = make_run('strict_js', cflags=[], settings={'STRICT_JS': 1})
 

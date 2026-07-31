@@ -29,7 +29,7 @@ from decorators import no_windows, parameterized, with_env_modify
 
 from tools import building, cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
-from tools.shared import EMCC, config
+from tools.shared import EMCC, EMXX, config
 from tools.utils import delete_dir, delete_file
 
 SANITY_FILE = cache.get_path('sanity.txt')
@@ -419,7 +419,7 @@ fi
     for i in range(3):
       print(i)
       self.clear()
-      output = self.do([EMCC, '-O' + str(i), test_file('hello_libcxx.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0'])
+      output = self.do([EMXX, '-O' + str(i), test_file('hello_libcxx.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0'])
       if i == 0:
         libname = cache.get_lib_name('libc++-debug.a')
       else:

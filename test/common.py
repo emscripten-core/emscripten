@@ -741,11 +741,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.skip_exec = None
     self.flaky = False
     self.cflags = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
-    # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-    # For historical reasons emcc compiles and links as C++ by default.
-    # However we want to run our tests in a more strict manner.  We can
-    # remove this if the issue above is ever fixed.
-    self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
     # Increase the stack trace limit to maximise usefulness of test failure reports.
     # Also, include backtrace for all uncaught exceptions (not just Error).
