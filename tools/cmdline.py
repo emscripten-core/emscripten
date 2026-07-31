@@ -265,7 +265,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
     def consume_arg_file():
       name = consume_arg()
       if not os.path.isfile(name):
-        exit_with_error("'%s': file not found: '%s'" % (arg, name))
+        exit_with_error(f"'{arg}': file not found: '{name}'")
       return name
 
     if arg in LEGACY_FLAGS:
@@ -383,7 +383,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
             diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
             settings.GENERATE_SOURCE_MAP = 1
           elif debug_level > 4:
-            exit_with_error("unknown argument: '%s'", arg)
+            exit_with_error(f"unknown argument: '{arg}'")
       else:
         if debug_level.startswith('force_dwarf'):
           exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
@@ -622,7 +622,7 @@ def expand_byte_size_suffixes(value):
   value = value.strip()
   match = re.match(r'^(\d+)\s*([kmgt]?b)?$', value, re.I)
   if not match:
-    exit_with_error("invalid byte size `%s`.  Valid suffixes are: kb, mb, gb, tb" % value)
+    exit_with_error(f'invalid byte size `{value}`.  Valid suffixes are: kb, mb, gb, tb')
   value, suffix = match.groups()
   value = int(value)
   if suffix:
