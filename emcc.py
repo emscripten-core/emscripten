@@ -352,9 +352,6 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if handle_early_exit_flags(args, newargs):
     return 0
 
-  if 'EMCC_REPRODUCE' in os.environ:
-    options.reproduce = os.environ['EMCC_REPRODUCE']
-
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
 

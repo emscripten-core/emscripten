@@ -96,7 +96,7 @@ class EmccOptions:
   pre_js: list[str] = [] # before all js
   preload_files: list[str] = []
   relocatable = False
-  reproduce = None
+  reproduce = os.getenv('EMCC_REPRODUCE')  # None by default.
   requested_debug = None
   sanitize: set[str] = set()
   sanitize_minimal_runtime = False
