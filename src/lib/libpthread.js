@@ -436,7 +436,7 @@ var LibraryPThread = {
         wasmSourceMap,
 #endif
 #if SHARED_WASMGC
-        sharedHeapRootVal: wasmExports['_shared_heap_root'].value,
+        sharedHeapRootVal: wasmExports['_shared_heap_root']?.value ?? null,
 #endif
 #if MAIN_MODULE
         dynamicLibraries,
@@ -725,6 +725,9 @@ var LibraryPThread = {
         start_routine: threadParams.startRoutine,
         arg: threadParams.arg,
         pthread_ptr: threadParams.pthread_ptr,
+#if SHARED_WASMGC
+        gcSpawnArg: threadParams.gcSpawnArg,
+#endif
     };
 #if OFFSCREENCANVAS_SUPPORT
     // Note that we do not need to quote these names because they are only used
@@ -901,10 +904,18 @@ var LibraryPThread = {
     }
 #endif // OFFSCREENCANVAS_SUPPORT
 
+#if SHARED_WASMGC
+    var gcSpawnArg = wasmExports['_gc_spawn_arg']?.value ?? null;
+#endif
+
     // Synchronously proxy the thread creation to main thread if possible. If we
     // need to transfer ownership of objects, then proxy asynchronously via
     // postMessage.
-    if (ENVIRONMENT_IS_PTHREAD && (!transferList.length || error)) {
+    if (ENVIRONMENT_IS_PTHREAD && (!transferList.length || error)
+#if SHARED_WASMGC
+        && gcSpawnArg === null
+#endif
+    ) {
       return pthreadCreateProxied(pthread_ptr, attr, startRoutine, arg);
     }
 
@@ -925,6 +936,9 @@ var LibraryPThread = {
       startRoutine,
       pthread_ptr,
       arg,
+#if SHARED_WASMGC
+      gcSpawnArg,
+#endif
 #if OFFSCREENCANVAS_SUPPORT
       moduleCanvasId,
       offscreenCanvases,

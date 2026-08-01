@@ -13349,6 +13349,109 @@ void foo() {}
     output = self.run_js(out_js)
     self.assertEqual(output.splitlines(), ['0', '0', '0', '0'])
 
+  @requires_pthreads
+  @requires_node_25
+  def test_shared_wasmgc_thread_state(self):
+    create_file('test_shared_wasmgc_thread_state.c', r'''
+    #include <pthread.h>
+    #include <emscripten.h>
+    #include <emscripten/console.h>
+
+    __attribute__((import_module("wat"))) void run_test(void);
+    __attribute__((import_module("wat"))) void thread_main(void);
+
+    void print_int(int val) {
+      emscripten_console_logf("%d", val);
+    }
+
+    static void* thread_entry(void* arg) {
+      thread_main();
+      return NULL;
+    }
+
+    pthread_t spawn_pthread(void) {
+      pthread_t thread;
+      pthread_create(&thread, NULL, thread_entry, NULL);
+      return thread;
+    }
+
+    void join_pthread(pthread_t thread) {
+      pthread_join(thread, NULL);
+    }
+
+    int main() {
+      run_test();
+      return 0;
+    }
+    ''')
+
+    create_file('thread_state.wat', r'''
+    (module
+      (import "app" "print_int" (func $print_int (param i32)))
+      (import "app" "spawn_pthread" (func $spawn_pthread (result i32)))
+      (import "app" "join_pthread" (func $join_pthread (param i32)))
+
+      (global $state (export "_gc_thread_state") (mut (ref null (shared any))) (ref.null (shared none)))
+      (global $spawn_arg (export "_gc_spawn_arg") (mut (ref null (shared any))) (ref.null (shared none)))
+
+      (func $spawn_thread (param $arg (ref null (shared any))) (result i32)
+        (local $tid i32)
+        (global.set $spawn_arg (local.get $arg))
+        (local.set $tid (call $spawn_pthread))
+        (global.set $spawn_arg (ref.null (shared none)))
+        (local.get $tid)
+      )
+
+      ;; TODO: Once multithreaded casting is fixed, have $spawn_thread take a
+      ;; function reference and an anyref argument.
+      (func (export "thread_main")
+        (call $print_int
+          (i31.get_u
+            (ref.cast (ref (shared i31))
+              (global.get $state)
+            )
+          )
+        )
+      )
+
+      (func (export "run_test")
+        (local $t1 i32)
+        (local $t2 i32)
+        (local $t3 i32)
+
+        (local.set $t1 (call $spawn_thread (ref.i31_shared (i32.const 42))))
+        (call $join_pthread (local.get $t1))
+
+        (local.set $t2 (call $spawn_thread (ref.i31_shared (i32.const 100))))
+        (call $join_pthread (local.get $t2))
+
+        (local.set $t3 (call $spawn_thread (ref.i31_shared (i32.const 300))))
+        (call $join_pthread (local.get $t3))
+      )
+    )
+    ''')
+
+    out_js = self.in_dir('test_shared_wasmgc_thread_state.js')
+    out_wasm = self.in_dir('test_shared_wasmgc_thread_state.wasm')
+
+    self.run_process([
+      EMCC, '-pthread', '-sSHARED_WASMGC', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+      '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD',
+      '-sEXPORTED_FUNCTIONS=_main,_print_int,_spawn_pthread,_join_pthread',
+      'test_shared_wasmgc_thread_state.c', '-o', out_js,
+    ])
+
+    self.run_process([
+      WASM_MERGE, '--enable-threads', '--enable-reference-types',
+      '--enable-gc', '--enable-shared-everything', out_wasm, 'app',
+      'thread_state.wat', 'wat', '-o', out_wasm,
+    ])
+
+    self.node_args.append('--experimental-wasm-shared')
+
+    output = self.run_js(out_js)
+    self.assertEqual(sorted(output.splitlines()), ['100', '300', '42'])
+
   @crossplatform
   def test_config_closure_compiler(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'])

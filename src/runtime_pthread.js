@@ -139,6 +139,11 @@ if (ENVIRONMENT_IS_PTHREAD) {
         assert(msgData.pthread_ptr);
         assert(wasmMemory, "CMD_RUN received before CMD_LOAD");
 #endif
+#if SHARED_WASMGC
+        if (wasmExports['_gc_thread_state']) {
+          wasmExports['_gc_thread_state'].value = msgData.gcSpawnArg ?? null;
+        }
+#endif
         // Call inside JS module to set up the stack frame for this pthread in JS module scope.
         // This needs to be the first thing that we do, as we cannot call to any C/C++ functions
         // until the thread stack is initialized.
