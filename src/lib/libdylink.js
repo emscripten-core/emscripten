@@ -935,22 +935,34 @@ var LibraryDylink = {
         return moduleExports;
       }
 
+#if SHARED_WASMGC
+      var compileOptions = {
+        builtins: ['js-string'],
+        importedStringConstants: "'",
+      };
+#endif
+
       if (flags.loadAsync) {
         return (async () => {
           var instance;
           if (binary instanceof WebAssembly.Module) {
             instance = new WebAssembly.Instance(binary, info);
           } else {
-            // Destructuring assignment without declaration has to be wrapped
-            // with parens or parser will treat the l-value as an object
-            // literal instead.
-            ({ module: binary, instance } = await WebAssembly.instantiate(binary, info));
+            ({ module: binary, instance } = await WebAssembly.instantiate(binary, info
+#if SHARED_WASMGC
+              , compileOptions
+#endif
+            ));
           }
           return postInstantiation(binary, instance);
         })();
       }
 
-      var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
+      var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary
+#if SHARED_WASMGC
+        , compileOptions
+#endif
+      );
       var instance = new WebAssembly.Instance(module, info);
       return postInstantiation(module, instance);
     }

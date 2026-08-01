@@ -13452,6 +13452,60 @@ void foo() {}
     output = self.run_js(out_js)
     self.assertEqual(sorted(output.splitlines()), ['100', '300', '42'])
 
+  @requires_pthreads
+  @requires_node_25
+  def test_shared_wasmgc_strings(self):
+    create_file('test_shared_wasmgc_strings.c', r'''
+    #include <emscripten.h>
+    #include <emscripten/console.h>
+
+    __attribute__((import_module("wat"))) void run_test(void);
+
+    void print_int(int val) {
+      emscripten_console_logf("%d", val);
+    }
+
+    int main() {
+      run_test();
+      return 0;
+    }
+    ''')
+
+    create_file('strings.wat', r'''
+    (module
+      (import "app" "print_int" (func $print_int (param i32)))
+      (import "wasm:js-string" "length" (func $length (param (ref null (shared extern))) (result i32)))
+      (import "wasm:js-string" "fromCharCode" (func $fromCharCode (param i32) (result (ref (shared extern)))))
+      (import "'" "hello world" (global $msg (ref (shared extern))))
+
+      (func (export "run_test")
+        (call $print_int (call $length (global.get $msg)))
+        (call $print_int (call $length (call $fromCharCode (i32.const 65))))
+      )
+    )
+    ''')
+
+    out_js = self.in_dir('test_shared_wasmgc_strings.js')
+    out_wasm = self.in_dir('test_shared_wasmgc_strings.wasm')
+
+    self.run_process([
+      EMCC, '-pthread', '-sSHARED_WASMGC', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
+      '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD',
+      '-sEXPORTED_FUNCTIONS=_main,_print_int',
+      'test_shared_wasmgc_strings.c', '-o', out_js,
+    ])
+
+    self.run_process([
+      WASM_MERGE, '--enable-threads', '--enable-reference-types',
+      '--enable-gc', '--enable-shared-everything', '--enable-strings',
+      out_wasm, 'app', 'strings.wat', 'wat', '-o', out_wasm,
+    ])
+
+    self.node_args.append('--experimental-wasm-shared')
+
+    output = self.run_js(out_js)
+    self.assertEqual(output.splitlines(), ['11', '1'])
+
   @crossplatform
   def test_config_closure_compiler(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'])

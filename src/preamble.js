@@ -543,6 +543,13 @@ var splitModuleProxyHandler = {
 };
 #endif
 
+#if SHARED_WASMGC
+var compileOptions = {
+  builtins: ['js-string'],
+  importedStringConstants: "'",
+};
+#endif
+
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
 function instantiateSync(file, info) {
   var module;
@@ -569,7 +576,11 @@ function instantiateSync(file, info) {
       }
     }
   }
-  module ||= new WebAssembly.Module(binary);
+  module ||= new WebAssembly.Module(binary
+#if SHARED_WASMGC
+    , compileOptions
+#endif
+  );
   if (ENVIRONMENT_IS_NODE && !hasCached) {
 #if RUNTIME_DEBUG
     dbg('NODE_CODE_CACHING: saving module');
@@ -577,7 +588,11 @@ function instantiateSync(file, info) {
     fs.writeFileSync(cachedCodeFile, v8.serialize(module));
   }
 #else // NODE_CODE_CACHING
-  module = new WebAssembly.Module(binary);
+  module = new WebAssembly.Module(binary
+#if SHARED_WASMGC
+    , compileOptions
+#endif
+  );
 #endif // NODE_CODE_CACHING
   var instance = new WebAssembly.Instance(module, info);
   return [instance, module];
@@ -588,7 +603,11 @@ function instantiateSync(file, info) {
 async function instantiateArrayBuffer(binaryFile, imports) {
   try {
     var binary = await getWasmBinary(binaryFile);
-    var instance = await WebAssembly.instantiate(binary, imports);
+    var instance = await WebAssembly.instantiate(binary, imports
+#if SHARED_WASMGC
+      , compileOptions
+#endif
+    );
     return instance;
   } catch (reason) {
     err(`failed to asynchronously prepare wasm: ${reason}`);
@@ -637,7 +656,11 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #if expectToReceiveOnModule('onCOSCacheHit')
       Module['onCOSCacheHit']?.(cosHash.value);
 #endif
-      return WebAssembly.instantiate(cosBytes, imports);
+      return WebAssembly.instantiate(cosBytes, imports
+#if SHARED_WASMGC
+        , compileOptions
+#endif
+      );
     } catch {
       // Any error (not found, not allowed, …) — fetch from the network and
       // attempt to store in COS for future page loads.
@@ -670,7 +693,11 @@ async function instantiateAsync(binary, binaryFile, imports) {
             err(`COS store failed: ${storeErr}`);
           }
         })();
-        return WebAssembly.instantiate(wasmBytes, imports);
+        return WebAssembly.instantiate(wasmBytes, imports
+#if SHARED_WASMGC
+          , compileOptions
+#endif
+        );
       } catch (fetchErr) {
         // Network fetch failed; fall through to the standard path below.
         err(`COS fallback fetch failed: ${fetchErr}`);
@@ -704,7 +731,11 @@ async function instantiateAsync(binary, binaryFile, imports) {
      ) {
     try {
       var response = fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
-      var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
+      var instantiationResult = await WebAssembly.instantiateStreaming(response, imports
+#if SHARED_WASMGC
+        , compileOptions
+#endif
+      );
       return instantiationResult;
     } catch (reason) {
       // We expect the most common failure cause to be a bad MIME type for the binary,
