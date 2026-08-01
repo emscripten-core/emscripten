@@ -2536,6 +2536,9 @@ are not present. Since LLVM cannot emit Wasm GC instructions or shared anyref
 globals, users are expected to use wasm-merge to add these globals and
 additional Wasm GC code post-link.
 
+Additionally, WebAssembly JS string builtins and imported string constants
+(with module "'") are enabled when compiling the WebAssembly module.
+
 .. note:: This is an experimental setting
 
 Default value: false

@@ -202,6 +202,12 @@ const moduleUrl = `ENVIRONMENT_IS_AUDIO_WORKLET ? '${TARGET_BASENAME}.wasm' : ne
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
+#if SHARED_WASMGC
+var compileOptions = {
+  builtins: ['js-string'],
+  importedStringConstants: "'",
+};
+#endif
 #if MODULARIZE || AUDIO_WORKLET
 instantiatePromise =
 #endif
@@ -210,13 +216,25 @@ instantiatePromise =
   // Node's fetch API cannot be used for local files, so we cannot use instantiateStreaming
   && !ENVIRONMENT_IS_NODE
 #endif
-  ? WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports)
-  : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
+  ? WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports
+#if SHARED_WASMGC
+    , compileOptions
+#endif
+  )
+  : WebAssembly.instantiate(Module['wasm'], imports
+#if SHARED_WASMGC
+    , compileOptions
+#endif
+  )).then((output) => {
 #else
 #if MODULARIZE || AUDIO_WORKLET
 instantiatePromise =
 #endif
-WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports).then((output) => {
+WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports
+#if SHARED_WASMGC
+  , compileOptions
+#endif
+).then((output) => {
 #endif
 
 #else // Non-streaming instantiation
@@ -235,7 +253,11 @@ assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm 
 #if MODULARIZE || AUDIO_WORKLET
 instantiatePromise =
 #endif
-WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProperties} */ (output) => {
+WebAssembly.instantiate(Module['wasm'], imports
+#if SHARED_WASMGC
+  , compileOptions
+#endif
+).then(/** @suppress {missingProperties} */ (output) => {
 #endif
 
 #if !LibraryManager.has('libexports.js') && ASYNCIFY != 1
