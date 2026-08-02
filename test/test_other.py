@@ -248,7 +248,7 @@ def requires_tool(tool, env_name=None):
         env_var = f'EMTEST_SKIP_{tool.upper()}'
       if not shutil.which(tool):
         if env_var in os.environ:
-          self.skipTest(f'test requires ccache and {env_var} is set')
+          self.skipTest(f'test requires {tool} and {env_var} is set')
         else:
           self.fail(f'{tool} required to run this test.  Use {env_var} to skip')
       return func(self, *args, **kwargs)
@@ -3380,6 +3380,28 @@ More info: https://emscripten.org
     })
 
     self.run_process([path_from_root('emscons'), 'scons', '--expected-env', expected_to_propagate])
+
+  @crossplatform
+  @requires_tool('meson')
+  @requires_ninja
+  @with_env_modify({'PATH': path_from_root() + os.pathsep + os.getenv('PATH', '')})
+  def test_meson(self):
+    self.run_process(['meson', 'setup', '.', test_file('meson/simple'), '--cross-file', path_from_root('tools/meson/wasm32-emscripten.ini')])
+    self.run_process(['meson', 'compile', '-C', '.'])
+    output = self.run_js('hello.js')
+    self.assertContained('sizeof pointer: 4', output)
+    self.run_process(['meson', 'test', '-C', '.'])
+
+  @requires_tool('meson')
+  @requires_ninja
+  @requires_wasm64
+  @with_env_modify({'PATH': path_from_root() + os.pathsep + os.getenv('PATH', '')})
+  def test_meson_wasm64(self):
+    self.run_process(['meson', 'setup', '.', test_file('meson/simple'), '--cross-file', path_from_root('tools/meson/wasm64-emscripten.ini')])
+    self.run_process(['meson', 'compile', '-C', '.'])
+    output = self.run_js('hello.js')
+    self.assertContained('sizeof pointer: 8', output)
+    self.run_process(['meson', 'test', '-C', '.'])
 
   def test_embind_fail(self):
     self.assert_fail([EMXX, test_file('embind/test_unsigned.cpp')], 'undefined symbol: _embind_register_function')
