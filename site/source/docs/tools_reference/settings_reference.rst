@@ -1770,7 +1770,6 @@ Changes enabled by this:
   - IGNORE_MISSING_MAIN is disabled.
   - AUTO_JS_LIBRARIES is disabled.
   - AUTO_NATIVE_LIBRARIES is disabled.
-  - DEFAULT_TO_CXX is disabled.
   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
   - INCOMING_MODULE_JS_API is set to empty by default.
 
@@ -3180,11 +3179,10 @@ Default value: []
 DEFAULT_TO_CXX
 ==============
 
-Default to c++ mode even when run as ``emcc`` rather than ``emc++``.
-When this is disabled ``em++`` is required when linking C++ programs.
-Disabling this will match the behaviour of gcc/g++ and clang/clang++.
+Default to c++ mode even when run as ``emcc`` rather than ``em++``.
+By default, ``em++`` is required when linking C++ programs.
 
-Default value: true
+Default value: false
 
 .. _printf_long_double:
 

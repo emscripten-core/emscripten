@@ -17,6 +17,7 @@ from subprocess import PIPE
 from . import (
   cache,
   cmdline,
+  colored_logger,
   config,
   diagnostics,
   js_optimizer,
@@ -344,7 +345,27 @@ def link_lld(args, target, external_symbols=None, linker_inputs=None):
     cmd += lld_flags_for_executable(external_symbols)
   cmd += lld_flags(args, linker_inputs)
   cmd = get_command_with_possible_response_file(cmd)
-  check_call(cmd)
+  if settings.LINK_AS_CXX:
+    check_call(cmd)
+  else:
+    # When not running C++ mode we currently capture the stderr of the linker
+    # so that we can recommend using `em++` when there are libc++ symbols missing.
+    # TODO: Remove this extra complexity one day.
+    if colored_logger.ansi_color_available():
+      # We force color diagnostics from wasm-ld when we know that they are available
+      # in the current TTY.  Without this, the use of stderr=PIPE would cause
+      # wasm-ld to always disable color output.
+      cmd.append('--color-diagnostics=always')
+    try:
+      proc = shared.run_process(cmd, stderr=subprocess.PIPE)
+      if proc.stderr:
+        sys.stderr.write(proc.stderr)
+    except subprocess.CalledProcessError as e:
+      sys.stderr.write(e.stderr)
+      cxx_symbols = ('std::', 'operator new', 'operator delete', 'vtable for', 'typeinfo for', '__cxa_')
+      if any(sym in e.stderr for sym in cxx_symbols):
+        diagnostics.warn("link failed with undefined C++ symbols. Try linking with 'em++' or passing '-sDEFAULT_TO_CXX'")
+      exit_with_error("'%s' failed (%s)", shlex.join(cmd), shared.returncode_to_str(e.returncode))
 
 
 def get_command_with_possible_response_file(cmd):

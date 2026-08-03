@@ -1220,7 +1220,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.STRICT:
     if not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
-    default_setting('DEFAULT_TO_CXX', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     if settings.MAIN_MODULE != 1:

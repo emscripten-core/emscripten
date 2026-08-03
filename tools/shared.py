@@ -183,17 +183,23 @@ def run_multiple_processes(commands,
     return [x[1] for x in std_outs]
 
 
-def check_call(cmd, *args, **kw):
-  """Like `run_process` above but treat failures as fatal and exit_with_error."""
+def run_process(cmd, *args, **kw):
+  """Wrapper around utils.run_process used to running compiler sub-processes."""
   print_compiler_stage(cmd)
   if SKIP_SUBPROCS:
-    return 0
+    return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
   try:
     return utils.run_process(cmd, *args, **kw)
-  except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%s)", shlex.join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
     exit_with_error("'%s' failed: %s", shlex.join(cmd), e)
+
+
+def check_call(cmd, *args, **kw):
+  """Like `run_process` above but treat failures as fatal and exit_with_error."""
+  try:
+    return run_process(cmd, *args, **kw)
+  except subprocess.CalledProcessError as e:
+    exit_with_error("'%s' failed (%s)", shlex.join(cmd), returncode_to_str(e.returncode))
 
 
 def exec_process(cmd):

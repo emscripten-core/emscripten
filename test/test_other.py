@@ -2951,6 +2951,9 @@ More info: https://emscripten.org
     self.run_process([EMCC, 'main.c', '-Wl,--unresolved-symbols=ignore-all'])
     self.run_process([EMCC, 'main.c', '-Wl,--allow-undefined'])
 
+  def test_emcc_cxx_link_hint(self):
+    self.assert_fail([EMCC, test_file('hello_libcxx.cpp')], "warning: link failed with undefined C++ symbols. Try linking with 'em++' or passing '-sDEFAULT_TO_CXX'")
+
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail
     self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.c', args=['0'], cflags=['-sLEGACY_GL_EMULATION=0', '-sGL_ENABLE_GET_PROC_ADDRESS'])
@@ -3757,12 +3760,12 @@ More info: https://emscripten.org
 
   def test_embind_tsgen_val(self):
     # Check that any dependencies from val still works with TS generation enabled.
-    self.run_process([EMCC, test_file('other/embind_tsgen_val.cpp'),
+    self.run_process([EMXX, test_file('other/embind_tsgen_val.cpp'),
                       '-lembind', '--emit-tsd', 'embind_tsgen_val.d.ts'])
     self.assertExists('embind_tsgen_val.d.ts')
 
   def test_embind_tsgen_constant_only(self):
-    self.run_process([EMCC, test_file('other/embind_tsgen_constant_only.cpp'),
+    self.run_process([EMXX, test_file('other/embind_tsgen_constant_only.cpp'),
                       '-lembind', '--emit-tsd', 'out.d.ts'])
     self.assertFilesMatch(test_file('other/embind_tsgen_constant_only.d.ts'), 'out.d.ts')
 
@@ -9373,7 +9376,7 @@ end
     'gl_emu': (['-sLEGACY_GL_EMULATION', '-sMAXIMUM_MEMORY=4GB', '-sALLOW_MEMORY_GROWTH'],),
     'no_exception_throwing': (['-sDISABLE_EXCEPTION_THROWING'],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
-    'embind': (['-lembind'],),
+    'embind': (['-lembind', '-sDEFAULT_TO_CXX'],),
   })
   def test_full_js_library(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'] + args)
@@ -11670,7 +11673,7 @@ int main(void) {
         throw 5;
       }
       ''')
-    self.run_process([EMCC, 'src.cpp', '-fexceptions', '--closure=1'])
+    self.run_process([EMXX, 'src.cpp', '-fexceptions', '--closure=1'])
 
   def test_assertions_on_incoming_module_api_changes(self):
     create_file('pre.js', 'Module.read = () => {};')
@@ -14798,7 +14801,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   def test_no_minify_and_later_closure(self):
     # test that running closure after --minify=0 works
-    self.run_process([EMCC, test_file('hello_libcxx.cpp'), '-O2', '--minify=0'])
+    self.run_process([EMXX, test_file('hello_libcxx.cpp'), '-O2', '--minify=0'])
     temp = building.closure_compiler('a.out.js',
                                      advanced=True,
                                      extra_closure_args=['--formatting', 'PRETTY_PRINT'])
@@ -15753,7 +15756,7 @@ addToLibrary({
       /emsdk/emscripten/system/lib/libcxx
     ''')
 
-    self.run_process([EMCC, 'main.cpp', 'foo.cpp', '-gsource-map', '-g2', '-o', 'test.js'])
+    self.run_process([EMXX, 'main.cpp', 'foo.cpp', '-gsource-map', '-g2', '-o', 'test.js'])
     empath_split_cmd = [empath_split, 'test.wasm', 'path_list.txt', '-g', '-o', 'test_primary.wasm', '--out-prefix=test_', '-v']
     out = self.run_process(empath_split_cmd, stdout=PIPE).stdout
 
