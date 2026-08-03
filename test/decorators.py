@@ -579,7 +579,6 @@ def with_all_eh_sjlj(func):
     if DEBUG:
       print('parameterize:eh_mode=%s' % mode)
     if mode in {'wasm', 'wasm_legacy'}:
-      # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
       self.cflags.append('-fwasm-exceptions')
