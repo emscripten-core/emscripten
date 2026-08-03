@@ -259,7 +259,9 @@ var LibraryBrowser = {
       if (!Browser.fullscreenHandlersInstalled) {
         Browser.fullscreenHandlersInstalled = true;
         document.addEventListener('fullscreenchange', fullscreenChange);
+#if MIN_SAFARI_VERSION < 160400
         document.addEventListener('webkitfullscreenchange', fullscreenChange);
+#endif
       }
 
       // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root

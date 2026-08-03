@@ -6275,6 +6275,25 @@ int main(void) {
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
+  def test_modularize_instance_auto_init_embind(self):
+    # Embind exports must be assigned when the module self-initializes on
+    # import.  See https://github.com/emscripten-core/emscripten/issues/27411
+    self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
+                      '-sMODULARIZE=instance', '-sAUTO_INIT',
+                      '-Wno-experimental',
+                      '-lembind', '-sEMBIND_AOT',
+                      '-o', 'modularize_instance_embind.mjs'] + self.get_cflags())
+
+    create_file('runner.mjs', '''
+      import { foo, Bar } from "./modularize_instance_embind.mjs";
+      foo();
+      const bar = new Bar();
+      bar.print();
+      bar.delete();
+    ''')
+
+    self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
+
   @also_with_pthreads
   @requires_node_25
   def test_esm_integration_auto_init(self):
@@ -14211,10 +14230,9 @@ int main() {
     expected = 'Stack overflow! Stack cookie has been overwritten at 0x[a-f0-9]*, expected hex dwords 0x89bacdfe and 0x02135467, but received 0xaaaaaaa0 0xfffffff0'
     self.do_runf('test.c', expected, regex=True, cflags=args + ['-sSTACK_OVERFLOW_CHECK=1'], assert_returncode=NON_ZERO)
 
-  @crossplatform
-  def test_reproduce(self):
+  def do_test_reproduce(self, args):
     ensure_dir('tmp')
-    self.run_process([EMCC, '-sASSERTIONS=1', '--reproduce=foo.tar', '-otmp/out.js', test_file('hello_world.c')])
+    self.run_process([EMCC, '-sASSERTIONS=1', '-otmp/out.js', test_file('hello_world.c'), *args])
     self.assertExists('foo.tar')
     names = []
     root = os.path.splitdrive(path_from_root())[1][1:]
@@ -14242,6 +14260,14 @@ out.js
     response = utils.normalize_path(response)
     response = response.replace(root, '<root>')
     self.assertTextDataIdentical(expected, response)
+
+  @crossplatform
+  def test_reproduce(self):
+    self.do_test_reproduce(['--reproduce=foo.tar'])
+
+  @with_env_modify({'EMCC_REPRODUCE': 'foo.tar'})
+  def test_reproduce_env(self):
+    self.do_test_reproduce([])
 
   def test_min_browser_version(self):
     expected = 'emcc: error: MIN_SAFARI_VERSION=140100 is not compatible with WASM_BIGINT (MIN_SAFARI_VERSION=150000 or above required)'
