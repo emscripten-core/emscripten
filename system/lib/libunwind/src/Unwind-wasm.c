@@ -22,13 +22,6 @@
 _LIBUNWIND_EXPORT thread_local struct _Unwind_LandingPadContext
     __wasm_lpad_context;
 
-// Backwards compatibility for older LLVMs that still emit calls to
-// _Unwind_CallPersonality.
-extern _Unwind_Reason_Code __gxx_wasm_personality_v0(void *);
-_LIBUNWIND_EXPORT _Unwind_Reason_Code _Unwind_CallPersonality(void *exception_ptr) {
-  return __gxx_wasm_personality_v0(exception_ptr);
-}
-
 /// Called by __cxa_throw.
 _LIBUNWIND_EXPORT _Unwind_Reason_Code
 _Unwind_RaiseException(_Unwind_Exception *exception_object) {
