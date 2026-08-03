@@ -594,12 +594,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.run_process([compiler, target, '-o', target + '.js'])
       self.assertContained('Hello, world!', self.run_js(target + '.js'))
 
-  def test_bc_output_warning(self):
-    err = self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'out.bc'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: .bc output file suffix used without -flto or -emit-llvm', err)
+  def test_bc_output_suffix(self):
+    # Emscripten doe not use the output name when compiling to decide on the type
+    # of output.  For example, specifying an output filename that ends in `.bc` does
+    # *not* imply the output is actually bitcode.
+    self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'out.bc'])
+    self.assertTrue(building.is_wasm('out.bc'))
 
   def test_bc_as_archive(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c'), '-flto', '-o', 'out.a'])
+    self.assertTrue(is_bitcode('out.a'))
     self.run_process([EMCC, 'out.a'])
 
   @parameterized({
