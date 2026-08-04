@@ -95,7 +95,6 @@ COMPILE_TIME_SETTINGS = {
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',
     'WASM_EXCEPTIONS',
-    'LTO',
     'OPT_LEVEL',
     'DEBUG_LEVEL',
 }.union(PORTS_SETTINGS)
