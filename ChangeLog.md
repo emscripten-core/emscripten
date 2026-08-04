@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 - `DEFAULT_TO_CXX` is now disabled by default. This means that `em++` is now
   required when linking C++ programs, matching the behavior of clang and gcc.
   The old behavior is still available using `-sDEFAULT_TO_CXX`. (#11121)
+- Added example Meson cross compilation files (`wasm32-emscripten.ini` and
+  `wasm64-emscripten.ini`) in `tools/meson/`. (#27478)
 - libcxx and libcxxabi were updated to LLVM 22.1.8. (#27428)
 
 6.0.5 - 07/29/26

@@ -760,6 +760,7 @@ jobs:
   test-wasm64-misc:
     environment:
       LANG: "C.UTF-8"
+      EMTEST_SKIP_NINJA: "1"
     executor: ubuntu-lts
     steps:
       - prepare-for-tests
@@ -790,6 +791,7 @@ jobs:
     executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_NINJA: "1"
       EMTEST_SKIP_WASM64: "1"
     steps:
       - checkout
@@ -807,6 +809,7 @@ jobs:
     executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_NINJA: "1"
     steps:
       - checkout
       - pip-install
@@ -1230,6 +1233,7 @@ jobs:
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_PKG_CONFIG: "1"
+      EMTEST_SKIP_MESON: "1"
       EMTEST_BROWSER: "0"
     steps:
       - checkout
@@ -1271,6 +1275,7 @@ jobs:
       EMTEST_SKIP_WASM_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_MESON: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_25: "1"
       # Some native clang tests assume x86 clang (e.g. -sse2)
