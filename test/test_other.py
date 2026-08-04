@@ -15897,6 +15897,24 @@ console.log('OK');'''
     err = self.run_process([EMCC, '-sUSE_PTHREADS', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
 
+  def test_setting_sets_validity(self):
+    from tools.settings import (
+      COMPILE_TIME_SETTINGS,
+      EXPERIMENTAL_SETTINGS,
+      INTERNAL_SETTINGS,
+      JS_ONLY_SETTINGS,
+      MEM_SIZE_SETTINGS,
+    )
+    setting_names = (
+      COMPILE_TIME_SETTINGS
+      | JS_ONLY_SETTINGS
+      | MEM_SIZE_SETTINGS
+      | INTERNAL_SETTINGS
+      | set(EXPERIMENTAL_SETTINGS)
+    )
+    for name in setting_names:
+      self.assertIn(name, settings.attrs, f"setting '{name}' in tools/settings.py does not exist in settings.js or settings_internal.js")
+
   def test_cross_origin_storage(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sCROSS_ORIGIN_STORAGE', '-o', 'hello.js'])
     js = read_file('hello.js')
