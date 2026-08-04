@@ -173,7 +173,7 @@ def will_metadce():
   # when assertions are enabled.
   if settings.ASSERTIONS:
     return False
-  return settings.OPT_LEVEL >= 3 or settings.SHRINK_LEVEL >= 1
+  return options.opt_level >= 3 or settings.SHRINK_LEVEL >= 1
 
 
 def setup_environment_settings():
@@ -307,7 +307,7 @@ def should_run_binaryen_optimizer():
   # great majority of the work; not running the binaryen optimizer in that case
   # keeps -O1 mostly-optimized while compiling quickly and without rewriting
   # DWARF etc.
-  return settings.OPT_LEVEL >= 2
+  return options.opt_level >= 2
 
 
 def get_binaryen_lowering_passes():
@@ -362,7 +362,7 @@ def get_binaryen_passes():
     passes += ['--post-emscripten']
     if settings.SIDE_MODULE:
       passes += ['--pass-arg=post-emscripten-side-module']
-    passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
+    passes += [building.opt_level_to_str(options.opt_level, settings.SHRINK_LEVEL)]
     # when optimizing, use the fact that low memory is never used (1024 is a
     # hardcoded value in the binaryen pass). we also cannot do it when the stack
     # is first, as then the stack is in the low memory that should be unused.
@@ -894,7 +894,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # See https://github.com/llvm/llvm-project/issues/214557
     linker_args.append('--no-shlib-sigcheck')
 
-  if settings.OPT_LEVEL >= 1:
+  if options.opt_level >= 1:
     default_setting('ASSERTIONS', 0)
 
   if options.emrun:
@@ -1657,8 +1657,8 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   # JSPI does not support this optimization yet as it has a hardcoded check for 'main' as an
   # export name. TODO
   if will_metadce() and \
-      settings.OPT_LEVEL >= 2 and \
-      settings.DEBUG_LEVEL <= 2 and \
+      options.opt_level >= 2 and \
+      options.debug_level <= 2 and \
       options.oformat not in {OFormat.WASM, OFormat.BARE} and \
       settings.ASYNCIFY != 2 and \
       not settings.LINKABLE and \
@@ -1703,7 +1703,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # ASan and SAFE_HEAP check address 0 themselves
     settings.CHECK_NULL_WRITES = 0
 
-  if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL and not settings.USE_ASAN:
+  if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not options.opt_level and not settings.USE_ASAN:
     # When optimizing for size it helps to put static data first before
     # the stack (since this makes instructions for accessing this data
     # use a smaller LEB encoding).
@@ -1824,7 +1824,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # Also include EMSCRIPTEN_VERSION from the internal settings since there are
     # known usage of this with `emscripten_get_compiler_setting`.
     settings.PUBLIC_SETTINGS.append('EMSCRIPTEN_VERSION')
-  settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
   settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and not options.nostdlibxx
 
@@ -1880,7 +1879,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   settings.PRE_JS_FILES = options.pre_js
   settings.POST_JS_FILES = options.post_js
 
-  settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
+  settings.MINIFY_WHITESPACE = options.opt_level >= 2 and options.debug_level == 0 and not options.no_minify
 
   # Closure might be run if we run it ourselves, or if whitespace is not being
   # minified. In the latter case we keep both whitespace and comments, and the
@@ -2265,7 +2264,7 @@ def phase_final_emitting(target, js_target, wasm_target):
   # Run a final optimization pass to clean up items that were not possible to
   # optimize by Closure, or unoptimalities that were left behind by processing
   # steps that occurred after Closure.
-  if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
+  if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and options.debug_level == 0:
     args = [final_js, '-o', final_js]
     if not settings.MINIFY_WHITESPACE:
       args.append('--pretty')
@@ -2331,7 +2330,7 @@ def phase_binaryen(target, wasm_target):
   global final_js
   logger.debug('using binaryen')
   # whether we need to emit -g (function name debug info) in the final wasm
-  debug_function_names = settings.DEBUG_LEVEL >= 2 or settings.EMIT_NAME_SECTION
+  debug_function_names = options.debug_level >= 2 or settings.EMIT_NAME_SECTION
   # whether we need to emit -g in the intermediate binaryen invocations (but not
   # necessarily at the very end). this is necessary if we depend on debug info
   # during compilation, even if we do not emit it at the end.
@@ -2403,7 +2402,7 @@ def phase_binaryen(target, wasm_target):
       with ToolchainProfiler.profile_block('little_endian_heap'):
         final_js = building.little_endian_heap(final_js)
 
-    if settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL <= 2:
+    if options.opt_level >= 2 and options.debug_level <= 2:
       # minify the JS. Do not minify whitespace if Closure is used, so that
       # Closure can print out readable error messages (Closure will then
       # minify whitespace afterwards)
@@ -2442,7 +2441,7 @@ def phase_binaryen(target, wasm_target):
 
     wasm2js = building.wasm2js(wasm2js_template,
                                wasm_target,
-                               opt_level=settings.OPT_LEVEL,
+                               opt_level=options.opt_level,
                                use_closure_compiler=options.use_closure_compiler,
                                debug_info=debug_function_names,
                                symbols_file=symbols_file,
@@ -2609,19 +2608,19 @@ def generate_traditional_runtime_html(target, js_target, wasm_target):
 
 @ToolchainProfiler.profile()
 def minify_html(filename):
-  if settings.DEBUG_LEVEL >= 2:
+  if options.debug_level >= 2:
     return
 
   opts = []
   # -g1 and greater retain whitespace and comments in source
-  if settings.DEBUG_LEVEL == 0:
+  if options.debug_level == 0:
     opts += ['--collapse-whitespace',
              '--remove-comments',
              '--remove-tag-whitespace',
              '--sort-attributes',
              '--sort-class-name']
   # -g2 and greater do not minify HTML at all
-  if settings.DEBUG_LEVEL <= 1:
+  if options.debug_level <= 1:
     opts += ['--decode-entities',
              '--collapse-boolean-attributes',
              '--remove-attribute-quotes',
@@ -2695,7 +2694,7 @@ def generate_html(target, js_target, target_basename, wasm_target):
   else:
     generate_traditional_runtime_html(target, js_target, wasm_target)
 
-  if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
+  if settings.MINIFY_HTML and (options.opt_level >= 1 or settings.SHRINK_LEVEL >= 1):
     minify_html(target)
 
   convert_line_endings_in_file(target, options.output_eol)

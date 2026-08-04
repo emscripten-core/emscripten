@@ -2020,7 +2020,7 @@ class libembind(MTLibrary):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(with_rtti=settings.USE_RTTI, **kwargs)
+    return super().get_default_variation(with_rtti=options.rtti, **kwargs)
 
 
 class libfetch(MTLibrary):
