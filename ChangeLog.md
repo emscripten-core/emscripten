@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.6 (in development)
+6.0.7 (in development)
 ----------------------
+
+6.0.6 - 08/05/26
+----------------
 - `DEFAULT_TO_CXX` is now disabled by default. This means that `em++` is now
   required when linking C++ programs, matching the behavior of clang and gcc.
   The old behavior is still available using `-sDEFAULT_TO_CXX`. (#11121)
