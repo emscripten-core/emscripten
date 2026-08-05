@@ -1223,6 +1223,10 @@ window.close = () => {
   def test_webgl2_texsubimage3d(self):
     self.btest_exit('webgl2_texsubimage3d.c', cflags=['-sMIN_WEBGL_VERSION=2'])
 
+  @requires_webgl2
+  def test_webgl2_readpixels(self):
+    self.btest_exit('webgl2_readpixels_pack_row_length.c', cflags=['-sMIN_WEBGL_VERSION=2'])
+
   # Test that -sGL_PREINITIALIZED_CONTEXT works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
