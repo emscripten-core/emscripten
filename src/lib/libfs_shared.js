@@ -200,10 +200,3 @@ addToLibrary({
   $FS_readFile__deps: ['$FS'],
   $FS_readFile: 'FS.readFile',
 });
-
-// Normally only the FS things that the compiler sees are needed are included.
-// FORCE_FILESYSTEM makes us always include the FS object, which lets the user
-// call APIs on it from JS freely.
-if (FORCE_FILESYSTEM) {
-  extraLibraryFuncs.push('$FS');
-}

@@ -193,7 +193,6 @@ addToLibrary({
 ''')
     create_file('main.c', 'int main() { return 0; }')
     self.run_process([EMCC, 'main.c', '-sMODULARIZE=instance', '-Wno-experimental',
-                      '-sEXPORTED_RUNTIME_METHODS=forceExport',
                       '--js-library', 'lib.js', '-o', 'mod.mjs'] + args + self.get_cflags())
     create_file('runner.mjs', '''
       import { strict as assert } from 'assert';

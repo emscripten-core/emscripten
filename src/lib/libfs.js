@@ -5,6 +5,10 @@
  */
 
 var LibraryFS = {
+#if FORCE_FILESYSTEM
+  // Include FS even when it is not referenced by compiled code.
+  $FS__force: true,
+#endif
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
     '$FS_modeStringToFlags',
     '$FS_fileDataToTypedArray',

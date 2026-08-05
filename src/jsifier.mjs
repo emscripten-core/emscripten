@@ -41,7 +41,7 @@ import {
   localFile,
   timer,
 } from './utility.mjs';
-import {extraLibraryExports, LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
+import {extraExports, LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
 
 const addedLibraryItems = {};
 
@@ -707,7 +707,7 @@ function(${args}) {
       librarySymbols.push(mangled);
 
       if (!isStub && LibraryManager.library[symbol + '__export']) {
-        extraLibraryExports.add(mangled);
+        extraExports.add(mangled);
       }
 
       const original = LibraryManager.library[symbol];
@@ -848,7 +848,7 @@ function(${args}) {
         contentText = `var ${mangled} = ${snippet};`;
       }
 
-      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled) || extraLibraryExports.has(mangled)) && !isStub) {
+      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled) || extraExports.has(mangled)) && !isStub) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;
@@ -983,7 +983,7 @@ var proxiedFunctionTable = [
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
-          extraExports: Array.from(extraLibraryExports),
+          extraExports: Array.from(extraExports),
           nativeAliases,
           warnings: warningOccured(),
           asyncFuncs,

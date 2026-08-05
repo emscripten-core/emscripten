@@ -5,6 +5,10 @@
  */
 
 addToLibrary({
+#if FORCE_FILESYSTEM
+  // Include FS even when it is not referenced by compiled code.
+  $FS__force: true,
+#endif
   $MEMFS__deps: ['wasmfs_create_memory_backend'],
   $MEMFS: {
     createBackend(opts) {
