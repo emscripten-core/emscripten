@@ -96,6 +96,8 @@ function range(size) {
   return Array.from(Array(size).keys());
 }
 
+export const extraLibraryFuncs = [];
+
 export function mergeInto(obj, other, options = null) {
   if (options) {
     // check for unintended symbol redefinition
@@ -148,11 +150,11 @@ export function mergeInto(obj, other, options = null) {
       }
 
       const index = key.lastIndexOf('__');
+      const decorated = key.slice(0, index);
       const decoratorName = key.slice(index);
       const type = typeof other[key];
 
       if (decoratorName == '__async') {
-        const decorated = key.slice(0, index);
         if (isJsOnlySymbol(decorated)) {
           error(`__async decorator applied to JS symbol: ${decorated}`);
         }
@@ -195,6 +197,10 @@ export function mergeInto(obj, other, options = null) {
         if (type !== expected && !expected.includes(type)) {
           error(`Decorator (${key}) has wrong type. Expected '${expected}' not '${type}'`);
         }
+      }
+
+      if (decoratorName === '__force' && other[key]) {
+        extraLibraryFuncs.push(decorated);
       }
     }
   }

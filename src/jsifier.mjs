@@ -30,6 +30,7 @@ import {
   debugLog,
   error,
   errorOccured,
+  extraLibraryFuncs,
   isDecorator,
   isJsOnlySymbol,
   compileTimeContext,
@@ -44,8 +45,6 @@ import {
 import {extraExports, LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
 
 const addedLibraryItems = {};
-
-const extraLibraryFuncs = [];
 
 // Experimental feature to check for invalid __deps entries.
 // See `EMCC_CHECK_DEPS` in in the environment to try it out.
@@ -420,12 +419,6 @@ export async function runJSify(outputFile, symbolsOnly) {
   let postSets = [];
 
   LibraryManager.load();
-
-  for (const key of Object.keys(LibraryManager.library)) {
-    if (!isDecorator(key) && LibraryManager.library[key + '__force']) {
-      extraLibraryFuncs.push(key);
-    }
-  }
 
   let outputHandle = process.stdout;
   if (outputFile) {

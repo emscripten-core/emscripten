@@ -2545,7 +2545,7 @@ for (const symbol of [
   '$stringToUTF8',
   '$lengthBytesUTF8',
 ]) {
-  LibraryManager.library[symbol + '__force'] = true;
+  addToLibrary({[symbol + '__force']: true}, {allowMissing: true});
 }
 #endif
 
