@@ -171,7 +171,7 @@ int main() {
     'esm_integration_optimized': (['-sWASM_ESM_INTEGRATION', '-O3'],),
   })
   @requires_node_25
-  def test_jslib_export_decorators(self, args):
+  def test_jslib_export_decorators_instance(self, args):
     self.node_args += ['--no-warnings']
     create_file('lib.js', '''\
 addToLibrary({
@@ -207,9 +207,13 @@ addToLibrary({
     ''')
     self.assertContained('ok', self.run_js('runner.mjs'))
 
-  def test_jslib_export_decorators_legacy(self):
+  def test_jslib_export_decorators(self):
     create_file('lib.js', '''\
 addToLibrary({
+  $dependencyExport__export: true,
+  $dependencyExport: () => 41,
+
+  $forceOnly__deps: ['$dependencyExport'],
   $forceOnly__force: true,
   $forceOnly__postset: "Module['forceOnlyIncluded'] = true",
   $forceOnly: () => {},
@@ -222,20 +226,25 @@ addToLibrary({
   $unusedExport: () => 43,
 });
 ''')
-    create_file('main.c', 'int main() { return 0; }')
-    self.run_process([EMCC, 'main.c', '-sMODULARIZE', '-sEXPORT_ES6',
-                      '--js-library', 'lib.js', '-o', 'mod.mjs'] + self.get_cflags())
-    create_file('runner.mjs', '''
-      import { strict as assert } from 'assert';
-      import createModule from './mod.mjs';
-      const module = await createModule();
-      assert.equal(module.forceExport(), 42);
-      assert.throws(() => module.forceOnly);
-      assert.throws(() => module.unusedExport);
-      assert(module.forceOnlyIncluded);
-      console.log('ok');
+    create_file('post.js', '''
+      Module.onRuntimeInitialized = () => {
+        if (Module.dependencyExport() != 41) throw new Error('dependency export failed');
+        if (Module.forceExport() != 42) throw new Error('forced export failed');
+        const isExported = (name) => {
+          try {
+            return Module[name] !== undefined;
+          } catch {
+            return false;
+          }
+        };
+        if (isExported('forceOnly')) throw new Error('force-only symbol was exported');
+        if (isExported('unusedExport')) throw new Error('unused symbol was exported');
+        if (!Module.forceOnlyIncluded) throw new Error('force-only symbol was not included');
+        out('ok');
+      };
     ''')
-    self.assertContained('ok', self.run_js('runner.mjs'))
+    create_file('main.c', 'int main() { return 0; }')
+    self.do_runf('main.c', 'ok\n', cflags=['--js-library', 'lib.js', '--post-js', 'post.js'])
 
   def test_jslib_using_asm_lib(self):
     create_file('lib.js', r'''

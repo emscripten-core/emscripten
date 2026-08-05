@@ -36,6 +36,8 @@ See docs/process.md for more on how version tagging works.
   when reading the config file.  This change broke emsdk installations that
   contained spaces. (#27421)
 - OpenMP was updated to LLVM 22.1.8 (#27437)
+- JavaScript library symbols can now use the `__force` and `__export`
+  decorators to control inclusion and export visibility. (#27436)
 
 6.0.4 - 07/24/26
 ----------------
