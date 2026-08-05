@@ -41,7 +41,7 @@ import {
   localFile,
   timer,
 } from './utility.mjs';
-import {LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
+import {extraLibraryExports, LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
 
 const addedLibraryItems = {};
 
@@ -421,6 +421,12 @@ export async function runJSify(outputFile, symbolsOnly) {
 
   LibraryManager.load();
 
+  for (const key of Object.keys(LibraryManager.library)) {
+    if (!isDecorator(key) && LibraryManager.library[key + '__force']) {
+      extraLibraryFuncs.push(key);
+    }
+  }
+
   let outputHandle = process.stdout;
   if (outputFile) {
     outputHandle = await fs.open(outputFile, 'w');
@@ -700,6 +706,10 @@ function(${args}) {
 
       librarySymbols.push(mangled);
 
+      if (!isStub && LibraryManager.library[symbol + '__export']) {
+        extraLibraryExports.add(mangled);
+      }
+
       const original = LibraryManager.library[symbol];
       let snippet = original;
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
@@ -838,7 +848,7 @@ function(${args}) {
         contentText = `var ${mangled} = ${snippet};`;
       }
 
-      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
+      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled) || extraLibraryExports.has(mangled)) && !isStub) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;
@@ -973,10 +983,7 @@ var proxiedFunctionTable = [
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
-          // The final EXPORTED_FUNCTIONS set, including any additions made by
-          // JS libraries at load time, so the caller can re-derive which
-          // library symbols were exported.
-          exportedFunctions: Array.from(EXPORTED_FUNCTIONS),
+          extraExports: Array.from(extraLibraryExports),
           nativeAliases,
           warnings: warningOccured(),
           asyncFuncs,

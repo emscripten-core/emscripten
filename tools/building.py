@@ -59,10 +59,8 @@ EXPECTED_BINARYEN_VERSION = 131
 _is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: set[str] = set()
-# JS library symbols that ended up in EXPORTED_FUNCTIONS (including additions
-# made by JS libraries themselves at load time), derived from the JS compiler's
-# forwarded data; the WASM_ESM_INTEGRATION wrapper re-exports them.
-exported_js_library_symbols: set[str] = set()
+# JS library symbols exported via the `__export` decorator.
+extra_js_exports: set[str] = set()
 # A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
 # etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
 # which reads it using `--detect-features`.
@@ -834,7 +832,7 @@ def metadce(js_file, wasm_file, debug_info, last):
     return js_file
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
-  required_symbols = user_requested_exports.union(set(settings.SIDE_MODULE_IMPORTS))
+  required_symbols = user_requested_exports.union(extra_js_exports, settings.SIDE_MODULE_IMPORTS)
   for item in graph:
     if 'export' in item:
       export = asmjs_mangle(item['export'])

@@ -166,29 +166,74 @@ int main() {
 
   @parameterized({
     '': ([],),
+    'optimized': (['-O3'],),
     'esm_integration': (['-sWASM_ESM_INTEGRATION'],),
+    'esm_integration_optimized': (['-sWASM_ESM_INTEGRATION', '-O3'],),
   })
   @requires_node_25
-  def test_jslib_self_export(self, args):
-    # A JS library can add its own symbols to EXPORTED_FUNCTIONS at load time
-    # (e.g. a binding layer registering the public API it defines), making them
-    # ES module exports under MODULARIZE=instance without the user needing to
-    # list them on the command line.
+  def test_jslib_export_decorators(self, args):
     self.node_args += ['--no-warnings']
     create_file('lib.js', '''\
-EXPORTED_FUNCTIONS.add('libExport');
 addToLibrary({
-  $libExport: () => 42,
+  $dependencyExport__export: true,
+  $dependencyExport: () => 41,
+
+  $forceOnly__deps: ['$dependencyExport'],
+  $forceOnly__force: true,
+  $forceOnly__postset: 'globalThis.forceOnlyIncluded = true',
+  $forceOnly: () => {},
+
+  $forceExport__export: true,
+  $forceExport__force: true,
+  $forceExport: () => 42,
+
+  $unusedExport__export: true,
+  $unusedExport: () => 43,
 });
 ''')
     create_file('main.c', 'int main() { return 0; }')
     self.run_process([EMCC, 'main.c', '-sMODULARIZE=instance', '-Wno-experimental',
+                      '-sEXPORTED_RUNTIME_METHODS=forceExport',
                       '--js-library', 'lib.js', '-o', 'mod.mjs'] + args + self.get_cflags())
     create_file('runner.mjs', '''
       import { strict as assert } from 'assert';
-      import init, { libExport } from './mod.mjs';
+      import init, * as exports from './mod.mjs';
       await init();
-      assert(libExport() == 42);
+      assert.equal(exports.dependencyExport(), 41);
+      assert.equal(exports.forceExport(), 42);
+      assert.equal(exports.forceOnly, undefined);
+      assert.equal(exports.unusedExport, undefined);
+      assert(globalThis.forceOnlyIncluded);
+      console.log('ok');
+    ''')
+    self.assertContained('ok', self.run_js('runner.mjs'))
+
+  def test_jslib_export_decorators_legacy(self):
+    create_file('lib.js', '''\
+addToLibrary({
+  $forceOnly__force: true,
+  $forceOnly__postset: "Module['forceOnlyIncluded'] = true",
+  $forceOnly: () => {},
+
+  $forceExport__export: true,
+  $forceExport__force: true,
+  $forceExport: () => 42,
+
+  $unusedExport__export: true,
+  $unusedExport: () => 43,
+});
+''')
+    create_file('main.c', 'int main() { return 0; }')
+    self.run_process([EMCC, 'main.c', '-sMODULARIZE', '-sEXPORT_ES6',
+                      '--js-library', 'lib.js', '-o', 'mod.mjs'] + self.get_cflags())
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import createModule from './mod.mjs';
+      const module = await createModule();
+      assert.equal(module.forceExport(), 42);
+      assert.throws(() => module.forceOnly);
+      assert.throws(() => module.unusedExport);
+      assert(module.forceOnlyIncluded);
       console.log('ok');
     ''')
     self.assertContained('ok', self.run_js('runner.mjs'))
@@ -311,6 +356,15 @@ addToLibrary({
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'],
                      "lib.js: Decorator (jslibfunc__internal) has wrong type. Expected 'boolean' not 'string'")
+
+    create_file('lib.js', r'''
+addToLibrary({
+  jslibfunc__export: 'yes',
+  jslibfunc: (x) => {},
+});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'],
+                     "lib.js: Decorator (jslibfunc__export) has wrong type. Expected 'boolean' not 'string'")
 
   @also_with_wasm64
   @also_without_bigint

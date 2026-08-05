@@ -188,6 +188,8 @@ export function mergeInto(obj, other, options = null) {
           __user: 'boolean',
           __async: ['string', 'boolean'],
           __i53abi: 'boolean',
+          __export: 'boolean',
+          __force: 'boolean',
         };
         const expected = decoratorTypes[decoratorName];
         if (type !== expected && !expected.includes(type)) {
@@ -219,6 +221,8 @@ export const decoratorSuffixes = [
   '__user',
   '__async',
   '__i53abi',
+  '__export',
+  '__force',
 ];
 
 export function isDecorator(ident) {

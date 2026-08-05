@@ -446,13 +446,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   report_missing_exports(forwarded_json['librarySymbols'])
 
-  # A JS library symbol is exported (MODULARIZE=instance) when it is in
-  # EXPORTED_FUNCTIONS; derive that set rather than tracking it separately. The
-  # forwarded EXPORTED_FUNCTIONS includes additions made by JS libraries
-  # themselves at load time.
-  exported_functions = set(forwarded_json['exportedFunctions'])
-  building.exported_js_library_symbols.update(
-    s for s in forwarded_json['librarySymbols'] if s in exported_functions)
+  building.extra_js_exports.update(forwarded_json['extraExports'])
 
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   if asm_const_pairs or settings.MAIN_MODULE:
@@ -972,7 +966,7 @@ def install_debug_wrapper(sym):
 
 
 def should_export(sym):
-  return settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
+  return settings.EXPORT_ALL or sym in building.extra_js_exports or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
 
 
 def create_receiving(function_exports, other_exports, library_symbols, aliases):
@@ -994,6 +988,9 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
     receiving.append('import {')
     receiving.append('  ' + ',\n  '.join(exports))
     receiving.append(f"}} from './{settings.WASM_BINARY_FILE}';")
+    alias_exports = building.extra_js_exports.intersection(aliases)
+    if alias_exports:
+      receiving.append(f"export {{ {', '.join(sorted(alias_exports))} }};")
 
     if generate_dyncall_assignment:
       receiving.append('\nfunction assignDynCalls() {')
