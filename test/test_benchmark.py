@@ -24,7 +24,7 @@ if __name__ == '__main__':
 import clang_native
 import common
 import jsrun
-from common import copy_asset, read_binary, read_file, test_file
+from common import compiler_for, copy_asset, read_binary, read_file, test_file
 from decorators import needs_make, parameterized
 
 from tools import utils
@@ -262,7 +262,7 @@ class EmscriptenBenchmarker(Benchmarker):
     final = final.replace('.cpp', '')
     utils.delete_file(final)
     cmd = [
-      EMCC, filename,
+      compiler_for(filename), filename,
       OPTIMIZATIONS,
       '-sINITIAL_MEMORY=256MB',
       '-sENVIRONMENT=node,shell',
