@@ -34,6 +34,7 @@ var LibraryGLEmulation = {
     'glVertexAttribPointer', 'glActiveTexture', '$stringToNewUTF8',
     '$ptrToString', '$getEmscriptenSupportedExtensions',
   ],
+  $GLEmulation__force: true,
   $GLEmulation__postset: `
     // Forward declare GL functions that are overridden by GLEmulation.
     /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawArrays;
@@ -3941,8 +3942,6 @@ var LibraryGLEmulation = {
   gluOrtho2D__deps: ['glOrtho'],
   gluOrtho2D: (left, right, bottom, top) => _glOrtho(left, right, bottom, top, -1, 1),
 };
-
-extraLibraryFuncs.push('$GLEmulation');
 
 recordGLProcAddressGet(LibraryGLEmulation);
 

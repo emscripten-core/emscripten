@@ -914,6 +914,7 @@ var LibraryEmbind = {
 #endif
   ],
   $emitOutput__postset: () => { addAtPostCtor('emitOutput()'); },
+  $emitOutput__force: true,
   $emitOutput: () => {
     for (const typeId in awaitingDependencies) {
       throwBindingError(`Missing binding for type: '${getTypeName(typeId)}' typeId: ${typeId}`);
@@ -935,7 +936,5 @@ var LibraryEmbind = {
   $setDelayFunction: () => { throw new Error('stub function should not be called'); },
   $PureVirtualError: () => { throw new Error('stub function should not be called'); },
 };
-
-extraLibraryFuncs.push('$emitOutput');
 
 addToLibrary(LibraryEmbind);

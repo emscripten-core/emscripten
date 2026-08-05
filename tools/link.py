@@ -2195,6 +2195,7 @@ def node_detection_code():
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   js_exports = building.user_requested_exports.union(settings.EXPORTED_RUNTIME_METHODS)
+  js_exports |= building.extra_js_exports
   js_exports = ', '.join(sorted(js_exports))
 
   wrapper = []

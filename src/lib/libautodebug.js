@@ -9,7 +9,7 @@
 #error "Should only be included in AUTODEBUG mode"
 #endif
 
-addToLibrary({
+const LibraryAutodebug = {
   $log_execution: (loc) => dbg('log_execution ' + loc),
   $get_i32: (loc, index, value) => {
     dbg('get_i32 ' + [loc, index, value]);
@@ -131,36 +131,12 @@ addToLibrary({
     dbg('memory_grow_post ' + [loc, result]);
     return result;
   },
-});
+};
 
-extraLibraryFuncs.push(
-  '$log_execution',
-  '$get_i32',
-  '$get_i64',
-  '$get_f32',
-  '$get_f64',
-  '$get_funcref',
-  '$get_externref',
-  '$get_anyref',
-  '$get_exnref',
-  '$set_i32',
-  '$set_i64',
-  '$set_f32',
-  '$set_f64',
-  '$set_funcref',
-  '$set_externref',
-  '$set_anyref',
-  '$set_exnref',
-  '$load_ptr',
-  '$load_val_i32',
-  '$load_val_i64',
-  '$load_val_f32',
-  '$load_val_f64',
-  '$store_ptr',
-  '$store_val_i32',
-  '$store_val_i64',
-  '$store_val_f32',
-  '$store_val_f64',
-  '$memory_grow_pre',
-  '$memory_grow_post',
-);
+for (const symbol of Object.keys(LibraryAutodebug)) {
+  if (!isDecorator(symbol)) {
+    LibraryAutodebug[symbol + '__force'] = true;
+  }
+}
+
+addToLibrary(LibraryAutodebug);

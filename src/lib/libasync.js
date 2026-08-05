@@ -20,6 +20,7 @@ addToLibrary({
   },
 
 #if ASYNCIFY
+  $Asyncify__force: true,
   $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
 #if ASSERTIONS
     '$createNamedFunction',
@@ -627,7 +628,3 @@ addToLibrary({
   },
 #endif // ASYNCIFY
 });
-
-if (ASYNCIFY) {
-  extraLibraryFuncs.push('$Asyncify');
-}

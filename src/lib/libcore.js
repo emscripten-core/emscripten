@@ -2517,7 +2517,7 @@ function autoAddDeps(lib, name) {
 #if LEGACY_RUNTIME
 // Library functions that were previously included as runtime functions are
 // automatically included when `LEGACY_RUNTIME` is set.
-extraLibraryFuncs.push(
+for (const symbol of [
   '$addFunction',
   '$removeFunction',
   '$AsciiToString',
@@ -2544,7 +2544,9 @@ extraLibraryFuncs.push(
   '$stringToUTF8Array',
   '$stringToUTF8',
   '$lengthBytesUTF8',
-);
+]) {
+  addToLibrary({[symbol + '__force']: true}, {allowMissing: true});
+}
 #endif
 
 function wrapSyscallFunction(x, library, isWasi) {
