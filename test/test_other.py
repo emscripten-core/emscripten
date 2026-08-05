@@ -13429,6 +13429,20 @@ void foo() {}
   def test_emscripten_main_loop(self, args):
     self.do_runf('test_emscripten_main_loop.c', cflags=args)
 
+  @parameterized({
+    '': ([],),
+    'exit_runtime': (['-sEXIT_RUNTIME'],),
+  })
+  def test_emscripten_main_loop_cancel_exit(self, args):
+    self.do_runf('test_emscripten_main_loop_cancel_exit.c', cflags=['-sASSERTIONS=2'] + args)
+
+  @parameterized({
+    '': ([],),
+    'exit_runtime': (['-sEXIT_RUNTIME'],),
+  })
+  def test_emscripten_main_loop_cancel_force_exit(self, args):
+    self.do_runf('test_emscripten_main_loop_cancel_force_exit.c', cflags=['-sASSERTIONS=2'] + args)
+
   def test_emscripten_main_loop_and_blocker(self):
     self.do_runf('test_emscripten_main_loop_and_blocker.c')
 

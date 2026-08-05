@@ -1063,13 +1063,20 @@ function awaitIf(condition) {
   return condition ? 'await ' : '';
 }
 
+function useRuntimeKeepaliveStack() {
+  return !(MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0));
+}
+
 // Adds a call to runtimeKeepalivePush, if needed by the current build
 // configuration.
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
 // don't ever need to exit the runtime.
 function runtimeKeepalivePush() {
-  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0)) return '';
-  return 'runtimeKeepalivePush();';
+  if (useRuntimeKeepaliveStack()) {
+    return 'runtimeKeepalivePush();';
+  } else {
+    return '';
+  }
 }
 
 // Adds a call to runtimeKeepalivePush, if needed by the current build
@@ -1077,8 +1084,11 @@ function runtimeKeepalivePush() {
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
 // don't ever need to exit the runtime.
 function runtimeKeepalivePop() {
-  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0)) return '';
-  return 'runtimeKeepalivePop();';
+  if (useRuntimeKeepaliveStack()) {
+    return 'runtimeKeepalivePop();';
+  } else {
+    return '';
+  }
 }
 
 // Some web APIs like TextDecoder.decode() and XMLHttpRequest.send() do not
@@ -1291,4 +1301,5 @@ addToCompileTimeContext({
   nodeWWDetection,
   wasmWorkerDetection,
   pthreadDetection,
+  useRuntimeKeepaliveStack,
 });

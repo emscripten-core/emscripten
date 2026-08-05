@@ -1798,6 +1798,12 @@ window.close = () => {
   def test_emscripten_main_loop(self):
     self.btest_exit('test_emscripten_main_loop.c')
 
+  def test_emscripten_main_loop_cancel_exit(self):
+    self.btest_exit('test_emscripten_main_loop_cancel_exit.c', cflags=['-sASSERTIONS=2'])
+
+  def test_emscripten_main_loop_cancel_force_exit(self):
+    self.btest_exit('test_emscripten_main_loop_cancel_force_exit.c', cflags=['-sASSERTIONS=2'])
+
   @parameterized({
     '': ([],),
     # test pthreads + AUTO_JS_LIBRARIES mode as well
