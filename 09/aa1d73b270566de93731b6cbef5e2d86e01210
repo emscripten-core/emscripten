@@ -1,0 +1,21 @@
+src/modules.mjs
+  s_6db9e8f0dd3fe8::t_696d8b0d43ba8c 33-34,485-488,584,611,631
+test/test_jslib.py
+  s_6db9e8f0dd3fe8::t_dd7717a24f2f3c 169,171,174,178-191,196,200,202-236,360-368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "09aa1d73b270566de93731b6cbef5e2d86e01210",
+  "prompts": {},
+  "sessions": {
+    "s_6db9e8f0dd3fe8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_02d0ebb19ffeeEsoMDj75lBlMy",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
