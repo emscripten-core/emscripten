@@ -1,20 +1,20 @@
 {
   "private": true,
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/eslintrc": "^3.3.6",
     "@eslint/js": "^10.0.1",
     "es-check": "^9.6.4",
-    "eslint": "^10.6.0",
+    "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.7.0",
-    "prettier": "^3.9.4",
-    "rollup": "^4.62.2",
-    "source-map": "0.7.6",
-    "typescript": "^6.0.3",
-    "vite": "^8.1.2",
-    "webpack": "^5.108.3",
-    "webpack-cli": "^7.1.0",
-    "ws": "^8.21.0"
+    "globals": "^17.8.0",
+    "prettier": "^3.9.6",
+    "rollup": "^4.62.3",
+    "source-map": "0.8.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "webpack": "^5.109.2",
+    "webpack-cli": "^7.2.2",
+    "ws": "^8.21.1"
   },
   "dependencies": {
     "acorn": "^8.18.0",
