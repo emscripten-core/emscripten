@@ -104,9 +104,7 @@ export function mergeInto(obj, other, options = null) {
     if (options.noOverride) {
       for (const key of Object.keys(other)) {
         if (obj.hasOwnProperty(key)) {
-          error(
-            `Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`,
-          );
+          error(`Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`);
           return;
         }
       }
@@ -165,15 +163,11 @@ export function mergeInto(obj, other, options = null) {
       if (decoratorName === '__deps') {
         const deps = other[key];
         if (!Array.isArray(deps)) {
-          error(
-            `JS library directive ${key}=${deps} is of type '${type}', but it should be an array`,
-          );
+          error(`JS library directive ${key}=${deps} is of type '${type}', but it should be an array`);
         }
         for (const dep of deps) {
           if (dep && typeof dep !== 'string' && typeof dep !== 'function') {
-            error(
-              `__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`,
-            );
+            error(`__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`);
           }
         }
       } else {
