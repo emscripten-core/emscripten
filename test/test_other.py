@@ -11287,25 +11287,25 @@ int main(void) {
 
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   @parameterized({
-    'c': ['c', [
+    'c': ('c', [
       r'in malloc .*lsan_interceptors\.cpp:\d+:\d+',
       r'(?im)in f (|[/a-z\.]:).*/test_lsan_leaks\.c:6:21$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.c:10:16$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.c:12:3$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.c:13:3$',
-    ]],
-    'cpp': ['cpp', [
+    ]),
+    'cpp': ('cpp', [
       r'in operator new\[\]\(unsigned long\) .*lsan_interceptors\.cpp:\d+:\d+',
       r'(?im)in f\(\) (|[/a-z\.]:).*/test_lsan_leaks\.cpp:4:21$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.cpp:8:16$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.cpp:10:3$',
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.cpp:11:3$',
-    ]],
+    ]),
   })
   @parameterized({
-    '': [[]],
+    '': ([],),
     # check that source maps work with instantiateWasm hook
-    'instantiate_wasm': [['--pre-js', test_file('other/test_lsan_instantiate_wasm.js')]],
+    'instantiate_wasm': (['--pre-js', test_file('other/test_lsan_instantiate_wasm.js')],),
   })
   def test_lsan_stack_trace(self, ext, regexes, args):
     self.do_runf(
