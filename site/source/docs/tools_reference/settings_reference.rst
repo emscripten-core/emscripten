@@ -2513,16 +2513,27 @@ Default value: false
 SHARED_WASMGC
 =============
 
-If true, enables support for experimental shared Wasm GC. Expects the
-module to contain a mutable shared anyref global to be imported as "env"
-"_shared_heap_root" and exported as "_shared_heap_root". The import will be
-provided a null value on the main thread, where the user code is expected to
-initialize it with some shared object during the start function. This shared
-object will then be provided as the import when instantiating the module on
-additional Workers. This shared anyref global can be used to bootstrap
-arbitrary shared Wasm GC state. Since LLVM cannot emit Wasm GC instructions
-or shared anyref globals, users are expected to use wasm-merge to add the
-_shared_heap_root global and additional Wasm GC code post-link.
+If true, enables experimental support for bootstrapping shared Wasm GC
+programs.
+
+If the module contains a mutable shared anyref global imported as "env"
+"_shared_heap_root" and exported as "_shared_heap_root", the import will be
+provided a null value on the main thread. The module's start function is
+expected to check if the imported global is null, and initialize it to some
+shared object if so. This shared object will then be provided as the imported
+value when instantiating the module on additional Workers. This shared anyref
+global can be used to bootstrap arbitrary shared Wasm GC state.
+
+Additionally, if the module exports mutable shared anyref globals named
+"_gc_thread_state" and "_gc_spawn_arg", the runtime will get the value of
+"_gc_spawn_arg" on the thread that calls pthread_create and assign it to
+"_gc_thread_state" on the spawned thread. This allows simpler bootstrapping
+of thread-local state.
+
+Both mechanisms are optional and will have no effect if the exported globals
+are not present. Since LLVM cannot emit Wasm GC instructions or shared anyref
+globals, users are expected to use wasm-merge to add these globals and
+additional Wasm GC code post-link.
 
 .. note:: This is an experimental setting
 
