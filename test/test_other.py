@@ -15368,15 +15368,14 @@ addToLibrary({
   @also_with_modularize
   def test_instantiate_wasm(self):
     create_file('pre.js', '''
-      Module['instantiateWasm'] = (imports, successCallback) => {
-        (async function () {
-          wasmBinaryFile ??= findWasmBinary();
-          const { instance, module } = await instantiateArrayBuffer(wasmBinaryFile, imports);
-          out('wasm instantiation succeeded');
-          Module['testWasmInstantiationSucceeded'] = 1;
-          successCallback(instance, module);
-        })();
-      }''')
+      Module['instantiateWasm'] = async (imports, successCallback) => {
+        wasmBinaryFile ??= findWasmBinary();
+        const { instance, module } = await instantiateArrayBuffer(wasmBinaryFile, imports);
+        out('wasm instantiation succeeded');
+        Module['testWasmInstantiationSucceeded'] = 1;
+        successCallback(instance, module);
+      };
+      ''')
     # Test with ASYNCIFY here to ensure that that wasmExports gets set to the wrapped version of the wasm exports.
     self.do_runf('test_manual_wasm_instantiate.c', cflags=['--pre-js=pre.js', '-sASYNCIFY', '-DASYNCIFY_ENABLED'])
 

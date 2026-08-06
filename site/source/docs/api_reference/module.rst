@@ -285,12 +285,10 @@ Other methods
 
   .. code:: javascript
 
-      Module['instantiateWasm'] = (imports, successCallback) => {
-        (async function () {
-          wasmBinaryFile ??= findWasmBinary();
-          const { instance, module } = await instantiateArrayBuffer(wasmBinaryFile, imports);
-          successCallback(instance, module);
-        })();
+      Module['instantiateWasm'] = async (imports, successCallback) => {
+        wasmBinaryFile ??= findWasmBinary();
+        const { instance, module } = await instantiateArrayBuffer(wasmBinaryFile, imports);
+        successCallback(instance, module);
       }
 
   This won't work with ``-sWASM_ASYNC_COMPILATION=0`` or with pthreads but in
