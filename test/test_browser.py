@@ -4004,8 +4004,8 @@ Module["preRun"] = () => {
     self.btest('core/test_safe_stack.c', expected='abort:stack overflow', cflags=['-pthread', '-sPROXY_TO_PTHREAD', '-sSTACK_OVERFLOW_CHECK=2', '-sSTACK_SIZE=64KB'])
 
   @parameterized({
-    'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
-    'no_leak': ['test_pthread_lsan_no_leak', []],
+    'leak': ('test_pthread_lsan_leak', ['-gsource-map']),
+    'no_leak': ('test_pthread_lsan_no_leak', []),
   })
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/15978')
   @no_safari('TODO: browser.test_pthread_lsan_leak fails with /report_result?0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
@@ -4015,8 +4015,8 @@ Module["preRun"] = () => {
   @no_highmem('ASAN + GLOBAL_BASE')
   @parameterized({
     # Reusing the LSan test files for ASan.
-    'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
-    'no_leak': ['test_pthread_lsan_no_leak', []],
+    'leak': ('test_pthread_lsan_leak', ['-gsource-map']),
+    'no_leak': ('test_pthread_lsan_no_leak', []),
   })
   @no_safari('TODO: browser.test_pthread_asan_leak fails with /report_result?0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_pthread_asan(self, name, args):
