@@ -1544,6 +1544,11 @@ f.close()
     self.run_process([EMCC, '-Wl,-whole-archive', '-Wl,--no-whole-archive', 'libtest.a', 'main.o'])
     self.assertContained('foo is: 0\n', self.run_js('a.out.js'))
 
+  def test_side_module_whole_archive(self):
+    # Make sure -sSIDE_MODULE=1 passes --whole-archive to the linker
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-sSIDE_MODULE=1', '-v', '-o', 'side.wasm'], stderr=PIPE).stderr
+    self.assertContained('--whole-archive', err)
+
   def test_whole_archive_48156(self):
     # Regression test for http://llvm.org/PR48156
     # TODO: distill this test further and move to lld
