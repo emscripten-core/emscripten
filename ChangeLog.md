@@ -23,6 +23,10 @@ See docs/process.md for more on how version tagging works.
 
 - JavaScript library symbols can now use the `__force` and `__export`
   decorators to control inclusion and export visibility. (#27436)
+- `-fwasm-exceptions` now links the Wasm EH runtime (libunwind and the
+  `__cpp_exception` tag) independently of C++ linking, so Wasm EH objects from
+  non-C++ frontends (e.g. rustc, which links via `emcc`) link without
+  requiring `em++` or `-sDEFAULT_TO_CXX`.
 
 6.0.6 - 08/05/26
 ----------------
