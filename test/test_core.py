@@ -7181,10 +7181,14 @@ void* operator new(size_t size) {
     create_file('post.js', '''
       var printBool = Module['cwrap']('print_bool', null, ['boolean']);
       out(Module['_print_bool'] === printBool); // the function should be the exact raw function in the module rather than a wrapped one
+      var getBool = Module['cwrap']('get_bool', 'boolean');
+      out(Module['_get_bool'] !== getBool); // boolean return must not use the fast path so the result is coerced to a JS boolean
+      var ret = getBool();
+      out([typeof ret, ret].join(','));
       ''')
 
-    self.set_setting('EXPORTED_FUNCTIONS', ['_print_bool'])
-    self.do_runf('core/test_ccall.cpp', 'true', cflags=['--post-js=post.js', '-Wno-return-stack-address'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_print_bool', '_get_bool'])
+    self.do_runf('core/test_ccall.cpp', 'true\ntrue\nboolean,true\n', cflags=['--post-js=post.js', '-Wno-return-stack-address'])
 
   @no_modularize_instance('ccall is not yet compatible with MODULARIZE=instance')
   def test_ccall_return_pointer(self):
