@@ -71,6 +71,10 @@ function calculateLibraries() {
     }
   }
 
+  if (!WASM_EXCEPTIONS) {
+    libraries.push('libunwind.js');
+  }
+
   if (!MINIMAL_RUNTIME) {
     libraries.push('libbrowser.js');
     libraries.push('libwget.js');

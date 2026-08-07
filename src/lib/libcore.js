@@ -1733,31 +1733,7 @@ addToLibrary({
   $jstoi_q__docs: '/** @suppress {checkTypes} */',
   $jstoi_q: (str) => parseInt(str),
 
-#if LINK_AS_CXX
-  // libunwind
 
-  _Unwind_Backtrace__deps: ['$getCallstack'],
-  _Unwind_Backtrace: (func, arg) => {
-    var trace = getCallstack();
-    var parts = trace.split('\n');
-    for (var i = 0; i < parts.length; i++) {
-      var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
-      if (ret) return;
-    }
-  },
-
-  _Unwind_GetIPInfo: (context, ipBefore) => abort('Unwind_GetIPInfo'),
-
-  _Unwind_FindEnclosingFunction: (ip) => 0, // we cannot succeed
-
-  _Unwind_RaiseException__deps: ['__cxa_throw'],
-  _Unwind_RaiseException: (ex) => {
-    err('Warning: _Unwind_RaiseException is not correctly implemented');
-    return ___cxa_throw(ex, 0, 0);
-  },
-
-  _Unwind_DeleteException: (ex) => err('TODO: Unwind_DeleteException'),
-#endif
 
   // special runtime support
 

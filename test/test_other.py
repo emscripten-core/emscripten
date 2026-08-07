@@ -8832,6 +8832,28 @@ int main() {
     # when not linking as C++.
     self.assert_fail([EMCC, '-sSTRICT', test_file('other/test_exceptions_c_linker.c')], 'error: undefined symbol: __cxa_find_matching_catch_1')
 
+  @parameterized({
+    # TODO: Add wasm_eh modes once the libunwind Wasm EH followup PR lands
+    '': ([],),
+    'exceptions': (['-fexceptions'],),
+  })
+  def test_libunwind(self, cflags):
+    src = r'''
+      #include <unwind.h>
+      #include <stdio.h>
+      #include <assert.h>
+
+      static struct _Unwind_Exception exc;
+
+      int main() {
+        printf("About to raise exception...\n");
+        _Unwind_RaiseException(&exc);
+        printf("ERROR: _Unwind_RaiseException returned!\n");
+        return 0;
+      }
+    '''
+    self.do_run(src, 'About to raise exception...\n', cflags=cflags, assert_returncode=NON_ZERO)
+
   @with_all_eh_sjlj
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_exceptions_stack_trace_and_message(self):
