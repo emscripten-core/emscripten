@@ -1,0 +1,19 @@
+tools/system_libs.py
+  s_da70cfac2791d8::t_fdd4780570f605 1763,2486-2490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bde7b9ee6b11d60d92e85c9a563b4004a6f28b6e",
+  "prompts": {},
+  "sessions": {
+    "s_da70cfac2791d8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_02630d879ffeyj13DvHsjOS7D0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
