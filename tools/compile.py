@@ -16,6 +16,9 @@ required compiler flags.
 
 get_cflags(): In addition to compiler flags this function also returns pre-processor
 flags. For example, include paths and macro definitions.
+
+NOTE: Default compiler flag construction logic here is also implemented natively
+in tools/emcc_native/driver.cpp. Keep changes in sync between both places!
 """
 
 import os

@@ -537,7 +537,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       options.openmp = 1
       settings.PTHREADS = 1
       settings.USE_PTHREADS = 1
-    elif arg == '-pthread':
+    elif arg in {'-pthread', '-pthreads'}:
       settings.PTHREADS = 1
       # Also set the legacy setting name, in case use JS code depends on it.
       settings.USE_PTHREADS = 1
@@ -545,8 +545,6 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       settings.PTHREADS = 0
       # Also set the legacy setting name, in case use JS code depends on it.
       settings.USE_PTHREADS = 0
-    elif arg == '-pthreads':
-      exit_with_error('unrecognized command-line option `-pthreads`; did you mean `-pthread`?')
     elif arg == '-fno-rtti':
       settings.USE_RTTI = 0
     elif arg == '-frtti':

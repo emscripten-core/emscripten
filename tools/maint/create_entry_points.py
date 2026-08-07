@@ -6,15 +6,15 @@
 
 """Tool for creating/maintaining the python launcher scripts for emscripten tools.
 
-This tool makes copies or `run_python.sh/.bat` and `run_python_compiler.sh/.bat`
+Note: This tool is deprecated and being replaced by emcc_native (built via `bootstrap.py`).
+
+This tool makes copies of `run_python.sh/.bat` and `run_python_compiler.sh/.bat`
 script for each entry point. On UNIX we previously used symbolic links for
 simplicity but this breaks MINGW users on windows who want to use the shell script
 launcher but don't have symlink support.
 """
 
 import os
-import platform
-import shutil
 import stat
 import sys
 
@@ -61,11 +61,6 @@ entry_remap = {
 }
 
 
-windows_exe = os.path.join(__rootdir__, 'tools/pylauncher/pylauncher.exe')
-if platform.machine().lower() in {'arm64', 'aarch64'}:
-  windows_exe = os.path.join(__rootdir__, 'tools/pylauncher/pylauncher-arm64.exe')
-
-
 def make_executable(filename):
   old_mode = stat.S_IMODE(os.stat(filename).st_mode)
   os.chmod(filename, old_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
@@ -87,9 +82,8 @@ def write_file(filename, content):
     f.write(content)
 
 
-def main(all_platforms, use_bat_file):
-  if 'EM_USE_BAT_FILES' in os.environ:
-    use_bat_file = True
+def main(all_platforms):
+  print('warning: create_entry_points.py is deprecated and being replaced by emcc_native', file=sys.stderr)
   is_windows = sys.platform.startswith('win')
   is_msys2 = 'MSYSTEM' in os.environ
   do_unix = all_platforms or not is_windows or is_msys2
@@ -118,17 +112,12 @@ def main(all_platforms, use_bat_file):
         make_executable(launcher)
 
       if do_windows:
-        maybe_remove(launcher + '.ps1')
-        maybe_remove(launcher + '.exe')
-        if use_bat_file:
-          write_file(launcher + '.bat', bat_data)
-          write_file(launcher + '.ps1', ps1_data)
-        else:
-          shutil.copyfile(windows_exe, launcher + '.exe')
+        write_file(launcher + '.bat', bat_data)
+        write_file(launcher + '.ps1', ps1_data)
 
   generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(__scriptdir__, 'run_python_compiler'))
 
 
 if __name__ == '__main__':
-  sys.exit(main('--all' in sys.argv, '--bat-files' in sys.argv))
+  sys.exit(main('--all' in sys.argv))

@@ -16,10 +16,22 @@ interested in helping out!
 Setting up
 ==========
 
-For contributing to core Emscripten code, such as ``emcc.py``, you don't need to
-build any binaries as ``emcc.py`` is in Python, and the core JS generation is
-in JavaScript. You do still need binaries for LLVM and Binaryen, which you can
-get using the emsdk.
+When setting up a Git checkout of Emscripten, run the top-level ``bootstrap.py``
+script to set up dependencies (such as ``npm install``) and build the native
+compiler frontend launcher (``emcc_native``):
+
+::
+
+    ./bootstrap.py
+
+Building ``emcc_native`` requires CMake 3.20+ and a C++20 host compiler
+toolchain. If you prefer not to build the native launcher, setting ``EMCC_NATIVE=0``
+in your environment before running ``./bootstrap.py`` will generate legacy Python
+launcher scripts (e.g., ``.bat`` / ``.ps1`` files on Windows) via
+``./tools/maint/create_entry_points.py``.
+
+For LLVM and Binaryen binaries, you don't need to build them from source if you
+are only contributing to Emscripten; you can get them using the emsdk.
 
 If you want to contribute back to Emscripten, it is recommended that you install
 the precise version of the emsdk binaries that are used by Emscripten CI when

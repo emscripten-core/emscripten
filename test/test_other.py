@@ -12327,9 +12327,9 @@ int main(void) {
     self.run_process([EMCC, '-c', '-o', 'out.o', '-Xclang', '-include', '-Xclang', 'foo.h', test_file('hello_world.c')])
 
   def test_emcc_size_parsing(self):
-    create_file('foo.h', ' ')
-    self.assert_fail([EMCC, '-sTOTAL_MEMORY=X', 'foo.h'], 'error: invalid byte size `X`.  Valid suffixes are: kb, mb, gb, tb')
-    self.assert_fail([EMCC, '-sTOTAL_MEMORY=11PB', 'foo.h'], 'error: invalid byte size `11PB`.  Valid suffixes are: kb, mb, gb, tb')
+    create_file('foo.c', ' ')
+    self.assert_fail([EMCC, '-sTOTAL_MEMORY=X', 'foo.c'], 'error: invalid byte size `X`.  Valid suffixes are: kb, mb, gb, tb')
+    self.assert_fail([EMCC, '-sTOTAL_MEMORY=11PB', 'foo.c'], 'error: invalid byte size `11PB`.  Valid suffixes are: kb, mb, gb, tb')
 
   def test_native_call_before_init(self):
     self.set_setting('ASSERTIONS')
@@ -14487,12 +14487,9 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.run_process([EMXX, '-std=c++20', test_file('other/hello_world.cppm'), '--precompile', '-o', 'hello_world.pcm'])
     self.do_other_test('test_cpp_module.cpp', cflags=['-std=c++20', '-fprebuilt-module-path=.', 'hello_world.pcm'])
 
-  @crossplatform
   def test_pthreads_flag(self):
-    # We support just the singular form of `-pthread`, like gcc
-    # Clang supports the plural form too but I think just due to historical accident:
-    # See https://github.com/llvm/llvm-project/commit/c800391fb974cdaaa62bd74435f76408c2e5ceae
-    self.assert_fail([EMCC, '-pthreads', '-c', test_file('hello_world.c')], 'emcc: error: unrecognized command-line option `-pthreads`; did you mean `-pthread`?')
+    # Test support for plural `-pthreads` flag
+    self.do_runf_out_file('hello_world.c', cflags=['-pthreads'])
 
   def test_missing_struct_info(self):
     create_file('lib.js', '''
