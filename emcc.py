@@ -287,6 +287,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
 @ToolchainProfiler.profile()
 def main(args):
+  shared.run_via_emxx = os.path.basename(args[0]).startswith('em++')
+
   # Special case the handling of `-v` because it has a special/different meaning
   # when used with no other arguments.  In particular, we must handle this early
   # on, before we inject EMCC_CFLAGS.  This is because tools like cmake and
@@ -351,9 +353,6 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
 
   if handle_early_exit_flags(args, newargs):
     return 0
-
-  if 'EMCC_REPRODUCE' in os.environ:
-    options.reproduce = os.environ['EMCC_REPRODUCE']
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -524,10 +523,7 @@ def phase_setup(state):
 
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(state, newargs):
-  if shared.run_via_emxx:
-    compiler = [shared.CLANG_CXX]
-  else:
-    compiler = [shared.CLANG_CC]
+  compiler = [get_clang()]
 
   if config.COMPILER_WRAPPER:
     logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
@@ -545,8 +541,6 @@ def phase_compile_inputs(state, newargs):
     return compiler + compile.get_target_flags()
 
   if state.mode == Mode.COMPILE_ONLY:
-    if options.output_file and get_file_suffix(options.output_file) == '.bc' and not options.lto and '-emit-llvm' not in state.orig_args:
-      diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
     if all(get_file_suffix(i) in ASSEMBLY_EXTENSIONS for i in options.input_files):
       cmd = get_clang_command_asm() + newargs
     else:

@@ -1220,7 +1220,6 @@ var LINKABLE = false;
 //   - IGNORE_MISSING_MAIN is disabled.
 //   - AUTO_JS_LIBRARIES is disabled.
 //   - AUTO_NATIVE_LIBRARIES is disabled.
-//   - DEFAULT_TO_CXX is disabled.
 //   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
 //   - INCOMING_MODULE_JS_API is set to empty by default.
 // [compile+link]
@@ -2116,11 +2115,10 @@ var ASAN_SHADOW_SIZE = -1;
 // [link]
 var SOURCE_MAP_PREFIXES = [];
 
-// Default to c++ mode even when run as ``emcc`` rather than ``emc++``.
-// When this is disabled ``em++`` is required when linking C++ programs.
-// Disabling this will match the behaviour of gcc/g++ and clang/clang++.
+// Default to c++ mode even when run as ``emcc`` rather than ``em++``.
+// By default, ``em++`` is required when linking C++ programs.
 // [link]
-var DEFAULT_TO_CXX = true;
+var DEFAULT_TO_CXX = false;
 
 // While LLVM's wasm32 has long double = float128, we don't support printing
 // that at full precision by default. Instead we print as 64-bit doubles, which

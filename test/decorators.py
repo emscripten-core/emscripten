@@ -579,10 +579,6 @@ def with_all_eh_sjlj(func):
     if DEBUG:
       print('parameterize:eh_mode=%s' % mode)
     if mode in {'wasm', 'wasm_legacy'}:
-      # FIXME Remove this after
-      # https://github.com/emscripten-core/emscripten/issues/27442 is fixed
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/27442')
-      # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
       self.cflags.append('-fwasm-exceptions')
@@ -641,7 +637,9 @@ def parameterize(func, parameters):
   """
   prev = getattr(func, '_parameterize', None)
   assert not any(p.startswith('_') for p in parameters), 'test variant names should not start with _'
+  assert all(isinstance(v, tuple) for v in parameters.values()), f'parameter values must be tuples: {parameters}'
   if prev:
+    assert all(isinstance(v, tuple) for v in prev.values()), f'previous parameter values must be tuples: {prev}'
     # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
     func._parameterize = {
       '_'.join(filter(None, [k1, k2])): v2 + v1 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())

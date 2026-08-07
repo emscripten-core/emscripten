@@ -889,6 +889,10 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # autoconf declares functions without their proper signatures, and STRICT causes that to trip up by passing --fatal-warnings to the linker.
     if settings.STRICT:
       exit_with_error('autoconfiguring is not compatible with STRICT')
+    # autoconf declares functions without their proper signatures, so turn off shared library signature checks
+    # TODO: Align defaults for signature checking with static and dynamic linking?
+    # See https://github.com/llvm/llvm-project/issues/214557
+    linker_args.append('--no-shlib-sigcheck')
 
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
@@ -1220,7 +1224,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.STRICT:
     if not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
-    default_setting('DEFAULT_TO_CXX', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
     if settings.MAIN_MODULE != 1:
@@ -2131,7 +2134,7 @@ function assignEmbindExports() {{ {assigns} }};
 addOnPostCtor(assignEmbindExports);
 {decls}
 // end embind exports'''
-    src += exports
+    src = do_replace(src, '<<< EMBIND_AOT_EXPORTS >>>', exports)
   write_file(final_js, src)
   if settings.WASM_ESM_INTEGRATION:
     # With ESM integration the embind exports also need to be exported by the main file.
@@ -2196,6 +2199,7 @@ def node_detection_code():
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   js_exports = building.user_requested_exports.union(settings.EXPORTED_RUNTIME_METHODS)
+  js_exports |= building.extra_js_exports
   js_exports = ', '.join(sorted(js_exports))
 
   wrapper = []

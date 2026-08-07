@@ -1343,9 +1343,8 @@ Functions
   For values containing anything other than an integer, a string is returned
   (you will need to cast the ``long`` return value to a ``char*``).
 
-  Some useful things this can do is provide the version of Emscripten
-  (“EMSCRIPTEN_VERSION”), the optimization level (“OPT_LEVEL”), debug level
-  (“DEBUG_LEVEL”), etc.
+  In addition to normal compiler settings (such as ``INITIAL_MEMORY`` or
+  ``ASSERTIONS``), ``EMSCRIPTEN_VERSION`` can also be retrieved as a string.
 
   For this command to work, you must build with the following compiler option
   (as we do not want to increase the build size with this metadata): ::
@@ -1354,8 +1353,8 @@ Functions
 
   :param name: The compiler setting to return.
   :type name: const char*
-  :returns: The value of the specified setting. Note that for values other than an integer, a string is returned (cast the ``int`` return value to a ``char*``).
-  :rtype: int
+  :returns: The value of the specified setting. Note that for values other than an integer, a string is returned (cast the ``long`` return value to a ``char*``).
+  :rtype: long
 
 .. c:function:: int emscripten_has_asyncify()
 

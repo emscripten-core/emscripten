@@ -243,11 +243,11 @@ class sockets(BrowserCore):
   # CompiledServerHarness only uses one. Start with 49160 & 49159 as the first server port
   # addresses. If adding new tests, increment the used port addresses below.
   @parameterized({
-    'websockify': [WebsockifyServerHarness, 49160, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 49161, ['-DTEST_DGRAM=0']],
-    'udp': [CompiledServerHarness, 49162, ['-DTEST_DGRAM=1']],
+    'websockify': (WebsockifyServerHarness, 49160, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 49161, ['-DTEST_DGRAM=0']),
+    'udp': (CompiledServerHarness, 49162, ['-DTEST_DGRAM=1']),
     # The following forces non-NULL addr and addlen parameters for the accept call
-    'accept_addr': [CompiledServerHarness, 49163, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']],
+    'accept_addr': (CompiledServerHarness, 49163, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']),
   })
   def test_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -271,11 +271,11 @@ class sockets(BrowserCore):
       self.btest_exit('sockets/sdl2_net_client.c', cflags=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', f'-DSOCKK={harness.listen_port}'])
 
   @parameterized({
-    'websockify': [WebsockifyServerHarness, 49166, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 49167, ['-DTEST_DGRAM=0']],
-    'udp': [CompiledServerHarness, 49168, ['-DTEST_DGRAM=1']],
+    'websockify': (WebsockifyServerHarness, 49166, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 49167, ['-DTEST_DGRAM=0']),
+    'udp': (CompiledServerHarness, 49168, ['-DTEST_DGRAM=1']),
     # The following forces non-NULL addr and addlen parameters for the accept call
-    'accept_addr': [CompiledServerHarness, 49169, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']],
+    'accept_addr': (CompiledServerHarness, 49169, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']),
   })
   def test_sockets_async_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -295,9 +295,9 @@ class sockets(BrowserCore):
     self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-DSOCKK=49169', '-DTEST_ASYNC=1'])
 
   @parameterized({
-    'websockify': [WebsockifyServerHarness, 49171, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 49172, ['-DTEST_DGRAM=0']],
-    'udp': [CompiledServerHarness, 49173, ['-DTEST_DGRAM=1']],
+    'websockify': (WebsockifyServerHarness, 49171, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 49172, ['-DTEST_DGRAM=0']),
+    'udp': (CompiledServerHarness, 49173, ['-DTEST_DGRAM=1']),
   })
   def test_sockets_echo_bigdata(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -368,10 +368,10 @@ class sockets(BrowserCore):
 
   @crossplatform
   @parameterized({
-    'native': [WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]],
-    'udp': [CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']],
-    'pthread': [CompiledServerHarness, 59166, ['-pthread', '-sPROXY_TO_PTHREAD']],
+    'native': (WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 59162, ['-DTEST_DGRAM=0', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]),
+    'udp': (CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']),
+    'pthread': (CompiledServerHarness, 59166, ['-pthread', '-sPROXY_TO_PTHREAD']),
   })
   def test_nodejs_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -588,9 +588,9 @@ class sockets(BrowserCore):
   # N.B. running this test requires 'npm install ws' in Emscripten root directory
   # NOTE: Shared buffer is not allowed for websocket sending.
   @parameterized({
-    '': [[]],
-    'shared': [['-sSHARED_MEMORY']],
-    'deinitialize': [['-DTEST_EMSCRIPTEN_WEBSOCKET_DEINITIALIZE']],
+    '': ([],),
+    'shared': (['-sSHARED_MEMORY'],),
+    'deinitialize': (['-DTEST_EMSCRIPTEN_WEBSOCKET_DEINITIALIZE'],),
   })
   @requires_dev_dependency('ws')
   def test_websocket_send(self, args):

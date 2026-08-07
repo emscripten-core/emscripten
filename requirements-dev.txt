@@ -22,5 +22,8 @@ sphinx-design==0.6.1
 sphinxcontrib-jquery==4.0
 shibuya==2026.5.19
 
-# Needed by test/test_sockets.py
+# Needed by tests in test_sockets.py
 websockify==0.12.0
+
+# Needed by tests in test_other.py
+meson==1.11.2

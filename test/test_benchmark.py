@@ -24,7 +24,7 @@ if __name__ == '__main__':
 import clang_native
 import common
 import jsrun
-from common import copy_asset, read_binary, read_file, test_file
+from common import compiler_for, copy_asset, read_binary, read_file, test_file
 from decorators import needs_make, parameterized
 
 from tools import utils
@@ -262,7 +262,7 @@ class EmscriptenBenchmarker(Benchmarker):
     final = final.replace('.cpp', '')
     utils.delete_file(final)
     cmd = [
-      EMCC, filename,
+      compiler_for(filename), filename,
       OPTIMIZATIONS,
       '-sINITIAL_MEMORY=256MB',
       '-sENVIRONMENT=node,shell',
@@ -1112,26 +1112,38 @@ class benchmark(common.RunnerCore):
     def lib_builder(name, native, env_init):
       return self.get_library(os.path.join('third_party', 'box2d'), ['box2d.a'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
 
-    self.do_benchmarkf('box2d', 'benchmark/test_box2d_benchmark.cpp', 'frame averages', shared_args=['-I' + test_file('third_party/box2d')], lib_builder=lib_builder)
+    cflags = ['-Wno-null-conversion']
+    self.do_benchmarkf('box2d', 'benchmark/test_box2d_benchmark.cpp', 'frame averages', shared_args=['-I' + test_file('third_party/box2d')], lib_builder=lib_builder, emcc_args=cflags, native_args=cflags)
 
   def test_zzz_bullet(self):
     self.cflags.remove('-Werror')
-    self.cflags += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
+    bullet_cflags = [
+        '-Wno-int-to-void-pointer-cast',
+        '-Wno-c++11-narrowing',
+        '-Wno-deprecated-register',
+        '-Wno-writable-strings',
+        '-Wno-shift-negative-value',
+        '-Wno-format',
+        '-Wno-nontrivial-memcall',
+        '-Wno-single-bit-bitfield-constant-conversion',
+    ]
     src = read_file(test_file('third_party/bullet/Demos/Benchmarks/BenchmarkDemo.cpp'))
     src += read_file(test_file('third_party/bullet/Demos/Benchmarks/main.cpp'))
 
     def lib_builder(name, native, env_init):
-      cflags = ' '.join(self.cflags) + ' ' + env_init.get('CFLAGS', '')
+      cflags = env_init.get('CFLAGS', '') + ' ' + ' '.join(bullet_cflags)
+      if not native:
+        cflags += ' ' + ' '.join(self.cflags)
       return self.get_library(str(Path('third_party/bullet')),
                               ['src/BulletDynamics/libBulletDynamics.a',
                                'src/BulletCollision/libBulletCollision.a',
                                'src/LinearMath/libLinearMath.a'],
                               configure=['cmake', '.'], configure_args=['-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF', '-DCMAKE_CXX_STANDARD=14', f'-DCMAKE_CXX_FLAGS={cflags}'],
-                              make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
+                              make=['cmake', '--build', '.', '--'], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',
                       shared_args=['-I' + test_file('third_party/bullet/src'), '-I' + test_file('third_party/bullet/Demos/Benchmarks')],
-                      lib_builder=lib_builder)
+                      lib_builder=lib_builder, native_args=bullet_cflags, emcc_args=bullet_cflags)
 
   def test_zzz_lzma(self):
     def lib_builder(name, native, env_init):
