@@ -511,9 +511,9 @@ fi
       for_all_files(path_from_root('system/include'), utils.make_writable)
 
   @parameterized({
-    '': [False, False],
-    'response_files': [True, False],
-    'relative': [False, True],
+    '': (False, False),
+    'response_files': (True, False),
+    'relative': (False, True),
   })
   def test_emcc_cache_flag(self, use_response_files, relative):
     restore_and_set_up()
