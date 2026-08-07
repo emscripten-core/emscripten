@@ -392,21 +392,6 @@ var DYLINK_DEBUG = 0;
 // [link]
 var FS_DEBUG = false;
 
-// Select socket backend, either webrtc or websockets. XXX webrtc is not
-// currently tested, may be broken
-
-// As well as being configurable at compile time via the "-s" option the
-// WEBSOCKET_URL and WEBSOCKET_SUBPROTOCOL
-// settings may be configured at run time via the Module object e.g.
-// Module['websocket'] = {subprotocol: 'base64, binary, text'};
-// Module['websocket'] = {url: 'wss://', subprotocol: 'base64'};
-// You can set 'subprotocol' to null, if you don't want to specify it.
-// Run time configuration may be useful as it lets an application select
-// multiple different services.
-// [link]
-// [deprecated]
-var SOCKET_WEBRTC = false;
-
 // A string containing either a WebSocket URL prefix (ws:// or wss://) or a
 // complete RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
 // In the (default) case of only a prefix being specified the URL will be
@@ -435,7 +420,7 @@ var PROXY_POSIX_SOCKETS = false;
 // It is event-driven. Socket readiness comes through the same
 // ``emscripten_set_socket_*_callback`` hooks the WebSocket backend uses, so it
 // works with existing readiness reactors. It cannot be combined with the
-// WebSocket emulation, :ref:`PROXY_POSIX_SOCKETS` or :ref:`SOCKET_WEBRTC`.
+// WebSocket emulation or :ref:`PROXY_POSIX_SOCKETS`.
 //
 // It works under -pthread with :ref:`PROXY_TO_PTHREAD`, where main() and every socket
 // syscall run on a single worker alongside the node handles and their event
