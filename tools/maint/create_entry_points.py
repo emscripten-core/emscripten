@@ -46,6 +46,7 @@ emscan-deps
 empath-split
 tools/file_packager
 tools/webidl_binder
+tools/wasm-sourcemap
 test/runner
 '''.split()
 
