@@ -6,10 +6,6 @@
 
 var LibraryExceptions = {
 #if !WASM_EXCEPTIONS
-  $uncaughtExceptionCount: '0',
-#if !DISABLE_EXCEPTION_CATCHING
-  $exceptionLast: null,
-#endif
   $exceptionCaught: ' []',
 
   // This class is the exception metadata which is prepended to each thrown object (in WASM memory).
@@ -84,7 +80,7 @@ var LibraryExceptions = {
 
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__deps: ['$ExceptionInfo', '$uncaughtExceptionCount',
+  __cxa_throw__deps: ['$ExceptionInfo',
 #if !DISABLE_EXCEPTION_CATCHING
     '$exceptionLast',
     '__cxa_increment_exception_refcount',
@@ -99,6 +95,7 @@ var LibraryExceptions = {
     // 'throw' is used here.
     '$decrementExceptionRefcount', '$incrementExceptionRefcount',
 #endif
+    '_Unwind_RaiseException',
   ],
   __cxa_throw: (ptr, type, destructor) => {
 #if EXCEPTION_DEBUG
@@ -109,20 +106,20 @@ var LibraryExceptions = {
     info.init(type, destructor);
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
-    exceptionLast = new CppException(ptr);
+    ptr = new CppException(ptr);
 #endif
-    uncaughtExceptionCount++;
-    {{{ makeThrow() }}}
+    __Unwind_RaiseException(ptr);
   },
 
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['$exceptionCaught', '$uncaughtExceptionCount',
+  __cxa_rethrow__deps: ['$exceptionCaught',
 #if !DISABLE_EXCEPTION_CATCHING
     '$exceptionLast',
     '__cxa_increment_exception_refcount',
 #endif
+    '_Unwind_RaiseException',
   ],
   __cxa_rethrow: () => {
     if (!exceptionCaught.length) {
@@ -132,16 +129,15 @@ var LibraryExceptions = {
     var ptr = info.excPtr;
     info.set_rethrown(true);
     info.set_caught(false);
-    uncaughtExceptionCount++;
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
 #if EXCEPTION_DEBUG
     dbg('__cxa_rethrow: ' +
       [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
 #endif
-    exceptionLast = new CppException(ptr);
+    ptr = new CppException(ptr);
 #endif
-    {{{ makeThrow() }}}
+    __Unwind_RaiseException(ptr);
   },
 
   llvm_eh_typeid_for: (type) => type,
@@ -212,11 +208,12 @@ var LibraryExceptions = {
     return info.get_type();
   },
 
-  __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$uncaughtExceptionCount',
+  __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo',
 #if !DISABLE_EXCEPTION_CATCHING
     '$exceptionLast',
     '__cxa_increment_exception_refcount',
 #endif
+    '_Unwind_RaiseException',
   ],
   __cxa_rethrow_primary_exception: (ptr) => {
     if (!ptr) return;
@@ -226,12 +223,11 @@ var LibraryExceptions = {
     var info = new ExceptionInfo(ptr);
     info.set_rethrown(true);
     info.set_caught(false);
-    uncaughtExceptionCount++;
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
-    exceptionLast = new CppException(ptr);
+    ptr = new CppException(ptr);
 #endif
-    {{{ makeThrow('exceptionLast') }}}
+    __Unwind_RaiseException(ptr);
   },
 
   // Finds a suitable catch clause for when an exception is thrown.
@@ -293,19 +289,20 @@ var LibraryExceptions = {
 #endif
   },
 
+  __resumeException__deps: [
 #if !DISABLE_EXCEPTION_CATCHING
-  __resumeException__deps: ['$exceptionLast'],
+    '$exceptionLast',
 #endif
+    '_Unwind_Resume',
+  ],
   __resumeException: (ptr) => {
 #if !DISABLE_EXCEPTION_CATCHING
 #if EXCEPTION_DEBUG
     dbg("__resumeException " + [ptrToString(ptr), exceptionLast]);
 #endif
-    if (!exceptionLast) {
-      exceptionLast = new CppException(ptr);
-    }
+    ptr = exceptionLast ?? new CppException(ptr);
 #endif
-    {{{ makeThrow() }}}
+    __Unwind_Resume(ptr);
   },
 
 #endif

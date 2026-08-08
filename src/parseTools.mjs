@@ -664,7 +664,7 @@ export function makeReturn64(value) {
   return `(setTempRet0(${pair[1]}), ${pair[0]})`;
 }
 
-function makeThrow() {
+function makeThrow(exc) {
   if (DISABLE_EXCEPTION_CATCHING) {
     if (ASSERTIONS) {
       var assertInfo =
@@ -678,7 +678,7 @@ function makeThrow() {
       return 'abort()';
     }
   }
-  return 'throw exceptionLast;';
+  return `throw ${exc};`;
 }
 
 function charCode(char) {
