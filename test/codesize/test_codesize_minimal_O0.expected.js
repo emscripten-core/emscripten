@@ -114,7 +114,7 @@ if (ENVIRONMENT_IS_NODE) {
   // the complexity of lazy-loading.
   var fs = require('node:fs');
 
-  scriptDirectory = __dirname + '/';
+  scriptDirectory = `${__dirname}/`;
 
 // include: node_shell_read.js
 readBinary = (filename) => {
@@ -204,7 +204,7 @@ if (ENVIRONMENT_IS_WORKER) {
     if (response.ok) {
       return response.arrayBuffer();
     }
-    throw new Error(response.status + ' : ' + response.url);
+    throw new Error(`${response.status} : ${response.url}`);
   };
 // end include: web_or_worker_shell_read.js
   }
@@ -272,7 +272,7 @@ var EXITSTATUS;
 /** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) {
-    abort('Assertion failed' + (text ? ': ' + text : ''));
+    abort(`Assertion failed${text ? `: ${text}` : ''}`);
   }
 }
 
@@ -411,7 +411,7 @@ function missingLibrarySymbol(sym) {
     // for a JS name like _name.
     var librarySymbol = sym;
     if (!librarySymbol.startsWith('_')) {
-      librarySymbol = '$' + sym;
+      librarySymbol = `$${sym}`;
     }
     msg += ` (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='${librarySymbol}')`;
     if (isExportedByForceFilesystem(sym)) {
@@ -465,7 +465,7 @@ function writeStackCookie() {
 }
 
 function u32ToHexString(num) {
-  return '0x' + (num >>> 0).toString(16).padStart(8, '0');
+  return `0x${(num >>> 0).toString(16).padStart(8, '0')}`;
 }
 
 function checkStackCookie() {
@@ -755,7 +755,7 @@ async function createWasm() {
       assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
       // Convert to 32-bit unsigned value
       ptr >>>= 0;
-      return '0x' + ptr.toString(16).padStart(8, '0');
+      return `0x${ptr.toString(16).padStart(8, '0')}`;
     }
 
   var stackRestore = (val) => __emscripten_stack_restore(val);
@@ -766,7 +766,7 @@ async function createWasm() {
       warnOnce.shown ||= {};
       if (!warnOnce.shown[text]) {
         warnOnce.shown[text] = 1;
-        if (ENVIRONMENT_IS_NODE) text = 'warning: ' + text;
+        if (ENVIRONMENT_IS_NODE) text = `warning: ${text}`;
         err(text);
       }
     };
