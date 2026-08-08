@@ -205,6 +205,12 @@ var LibraryPThread = {
       PThread.pthreads = {};
     },
 
+    clearMailboxAwait: (pthread_ptr) => {
+      if (!waitAsyncPolyfilled) {
+        Atomics.notify(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}});
+      }
+    },
+
     terminateRuntime: () => {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD, 'terminateRuntime() should only be called from the main thread');
@@ -212,12 +218,7 @@ var LibraryPThread = {
       PThread.terminateAllThreads();
       var pthread_ptr = _pthread_self();
       ___set_thread_state(0, 0, 0, 1);
-      if (!waitAsyncPolyfilled) {
-        // Break the waitAsync loop.  Note that checkMailbox will not
-        // re-register since the `___set_thread_state` above causes _pthread_self
-        // to return 0.
-        Atomics.notify(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}});
-      }
+      PThread.clearMailboxAwait(pthread_ptr);
     },
 
     returnWorkerToPool: (worker) => {
@@ -246,6 +247,11 @@ var LibraryPThread = {
         worker.unref();
       }
 #endif
+
+      // Clear any pending waitAsync waiter armed on this thread's struct
+      // BEFORE freeing the memory so that memory recycled by malloc in another
+      // thread will not have a window where a stale async waiter is still active.
+      PThread.clearMailboxAwait(pthread_ptr);
 
       // Finally, free the underlying (and now-unused) pthread structure in
       // linear memory.
