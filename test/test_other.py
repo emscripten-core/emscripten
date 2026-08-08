@@ -8833,9 +8833,10 @@ int main() {
     self.assert_fail([EMCC, '-sSTRICT', test_file('other/test_exceptions_c_linker.c')], 'error: undefined symbol: __cxa_find_matching_catch_1')
 
   @parameterized({
-    # TODO: Add wasm_eh modes once the libunwind Wasm EH followup PR lands
     '': ([],),
     'exceptions': (['-fexceptions'],),
+    'wasm_eh': (['-fwasm-exceptions'],),
+    'wasm_legacy_eh': (['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'],),
   })
   def test_libunwind(self, cflags):
     src = r'''
@@ -14621,9 +14622,35 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
     # When using Wasm exception, SUPPORT_LONGJMP defaults to 'wasm', which does
     # not use the JS-based support. This should succeed.
-    # -fwasm-exceptions exports __cpp_exception, so this is necessary
-    self.set_setting('DEFAULT_TO_CXX')
     self.do_runf('core/test_longjmp.c', cflags=['-fwasm-exceptions'])
+
+  def test_cpp_exception_tag(self):
+    # Wasm EH throw/catch sites reference the `__cpp_exception` tag directly,
+    # regardless of source language (e.g. rustc objects), so an object whose
+    # only undefined symbol is the tag must still pull in its libunwind definition.
+    create_file('throw.S', '''
+.tagtype __cpp_exception i32
+.text
+.globl throw_tag
+throw_tag:
+  .functype throw_tag (i32) -> ()
+  local.get 0
+  throw __cpp_exception
+  end_function
+''')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      void throw_tag(int);
+      int main(int argc, char* argv[]) {
+        if (argc > 100) {
+          throw_tag(argc);
+        }
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    # -mexception-handling is needed for the assembler to accept `throw`.
+    self.do_runf('main.c', 'done\n', cflags=['throw.S', '-fwasm-exceptions', '-mexception-handling'])
 
   def test_memory_init_file_unsupported(self):
     self.assert_fail([EMCC, test_file('hello_world.c'), '-Werror', '--memory-init-file=1'], 'error: --memory-init-file is no longer supported')
