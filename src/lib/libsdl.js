@@ -334,18 +334,18 @@ var LibrarySDL = {
     // Load SDL color into a CSS-style color specification
     loadColorToCSSRGB(color) {
       var rgba = {{{ makeGetValue('color', 0, 'i32') }}};
-      return 'rgb(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ')';
+      return `rgb(${rgba & 255},${(rgba >> 8) & 255},${(rgba >> 16) & 255})`;
     },
     loadColorToCSSRGBA(color) {
       var rgba = {{{ makeGetValue('color', 0, 'i32') }}};
-      return 'rgba(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ',' + (((rgba >> 24)&255)/255) + ')';
+      return `rgba(${rgba & 255},${(rgba >> 8) & 255},${(rgba >> 16) & 255},${((rgba >> 24) & 255) / 255})`;
     },
 
     translateColorToCSSRGBA: (rgba) =>
-      'rgba(' + (rgba&0xff) + ',' + (rgba>>8 & 0xff) + ',' + (rgba>>16 & 0xff) + ',' + (rgba>>>24)/0xff + ')',
+      `rgba(${rgba & 0xff},${rgba >> 8 & 0xff},${rgba >> 16 & 0xff},${(rgba >>> 24) / 0xff})`,
 
     translateRGBAToCSSRGBA: (r, g, b, a) =>
-      'rgba(' + (r&0xff) + ',' + (g&0xff) + ',' + (b&0xff) + ',' + (a&0xff)/255 + ')',
+      `rgba(${r & 0xff},${g & 0xff},${b & 0xff},${(a & 0xff) / 255})`,
 
     translateRGBAToColor: (r, g, b, a) => r | g << 8 | b << 16 | a << 24,
 
@@ -1063,7 +1063,7 @@ var LibrarySDL = {
         // BTW, quote all font names is easier than searching spaces
         fontName = `"${fontName}"`;
       }
-      return height + 'px ' + fontName + ', serif';
+      return `${height}px ${fontName}, serif`;
     },
 
     estimateTextWidth(fontData, text) {
@@ -1229,12 +1229,12 @@ var LibrarySDL = {
 
 #if ASSERTIONS
     debugSurface(surfData) {
-      dbg('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
+      dbg(`dumping surface ${[surfData.surf, surfData.source, surfData.width, surfData.height]}`);
       var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
       var data = image.data;
       var num = Math.min(surfData.width, surfData.height);
       for (var i = 0; i < num; i++) {
-        dbg('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
+        dbg(`   diagonal ${i}:${[data[i * surfData.width * 4 + i * 4 + 0], data[i * surfData.width * 4 + i * 4 + 1], data[i * surfData.width * 4 + i * 4 + 2], data[i * surfData.width * 4 + i * 4 + 3]]}`);
       }
     },
 #endif
@@ -1604,7 +1604,7 @@ var LibrarySDL = {
       var data = surfData.image.data;
       var buffer = surfData.buffer;
 #if ASSERTIONS
-      assert(buffer % 4 == 0, 'Invalid buffer offset: ' + buffer);
+      assert(buffer % 4 == 0, `Invalid buffer offset: ${buffer}`);
 #endif
       var src = {{{ getHeapOffset('buffer', 'i32') }}};
       var dst = 0;
@@ -1856,7 +1856,7 @@ var LibrarySDL = {
     }
 
     var oldData = SDL.surfaces[surf];
-    var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags, false, 'copy:' + oldData.source);
+    var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags, false, `copy:${oldData.source}`);
     var newData = SDL.surfaces[ret];
 
     newData.ctx.globalCompositeOperation = 'copy';
@@ -2037,7 +2037,7 @@ var LibrarySDL = {
         }
         return retrievedEventCount;
       }
-      default: abort('SDL_PeepEvents does not yet support that action: ' + action);
+      default: abort(`SDL_PeepEvents does not yet support that action: ${action}`);
     }
   },
 
@@ -2190,7 +2190,7 @@ var LibrarySDL = {
         var x = stackAlloc({{{ getNativeTypeSize('i32') }}});
         var y = stackAlloc({{{ getNativeTypeSize('i32') }}});
         var comp = stackAlloc({{{ getNativeTypeSize('i32') }}});
-        var data = Module['_' + func](...params, x, y, comp, 0);
+        var data = Module[`_${func}`](...params, x, y, comp, 0);
         if (!data) return null;
         addCleanup(() => Module['_stbi_image_free'](data));
         return {
@@ -2244,7 +2244,7 @@ var LibrarySDL = {
 #endif
       }
 
-      var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
+      var surf = SDL.makeSurface(raw.width, raw.height, 0, false, `load:${filename}`);
       var surfData = SDL.surfaces[surf];
       surfData.ctx.globalCompositeOperation = 'copy';
       if (!raw.rawData) {
@@ -2720,7 +2720,7 @@ var LibrarySDL = {
 #if expectToReceiveOnModule('freePreloadedMediaOnUse')
         if (raw === null) err('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
 #endif
-        if (!Module['noAudioDecoding']) warnOnce('Cannot find preloaded audio ' + filename);
+        if (!Module['noAudioDecoding']) warnOnce(`Cannot find preloaded audio ${filename}`);
 
         // see if we can read the file-contents from the in-memory FS
         try {
@@ -3144,7 +3144,7 @@ var LibrarySDL = {
     var h = fontData.size;
     color = SDL.loadColorToCSSRGB(color); // XXX alpha breaks fonts?
     var fontString = SDL.makeFontString(h, fontData.name);
-    var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
+    var surf = SDL.makeSurface(w, h, 0, false, `text:${text}`); // bogus numbers..
     var surfData = SDL.surfaces[surf];
     surfData.ctx.save();
     surfData.ctx.fillStyle = color;
@@ -3236,8 +3236,8 @@ var LibrarySDL = {
       var w = Math.abs(x2 - x1);
       var h = Math.abs(y2 - y1);
       surfData.ctx.save();
-      surfData.ctx[action + 'Style'] = cssColor;
-      surfData.ctx[action + 'Rect'](x, y, w, h);
+      surfData.ctx[`${action}Style`] = cssColor;
+      surfData.ctx[`${action}Rect`](x, y, w, h);
       surfData.ctx.restore();
     },
     drawLine: (surf, x1, y1, x2, y2, cssColor) => {
@@ -3276,7 +3276,7 @@ var LibrarySDL = {
       surfData.ctx.restore();
 
       surfData.ctx.save();
-      surfData.ctx[action + 'Style'] = cssColor;
+      surfData.ctx[`${action}Style`] = cssColor;
       surfData.ctx[action]();
       surfData.ctx.restore();
     },

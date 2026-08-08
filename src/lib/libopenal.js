@@ -2369,7 +2369,7 @@ var LibraryOpenAL = {
       break;
     case 0x1005 /* ALC_DEVICE_SPECIFIER */:
       if (globalThis.AudioContext) {
-        ret = AL.DEVICE_NAME + '\0';
+        ret = `${AL.DEVICE_NAME}\0`;
       } else {
         ret = '\0';
       }
@@ -2379,7 +2379,7 @@ var LibraryOpenAL = {
       break;
     case 0x310 /* ALC_CAPTURE_DEVICE_SPECIFIER */:
       if (!deviceId) {
-        ret = AL.CAPTURE_DEVICE_NAME + '\0';
+        ret = `${AL.CAPTURE_DEVICE_NAME}\0`;
       } else {
         var c = AL.requireValidCaptureDevice(deviceId, 'alcGetString');
         if (!c) {

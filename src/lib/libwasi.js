@@ -49,7 +49,7 @@ var WasiLibrary = {
   $getEnvStrings: () => {
     if (!getEnvStrings.strings) {
       // Default values.
-      var lang = (globalThis.navigator?.language ?? 'C').replace('-', '_') + '.UTF-8';
+      var lang = `${(globalThis.navigator?.language ?? 'C').replace('-', '_')}.UTF-8`;
       var env = {
 #if !PURE_WASI
         'USER': 'web_user',

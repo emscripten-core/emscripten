@@ -204,7 +204,7 @@ if (ENVIRONMENT_IS_NODE) {
     scriptDirectory = require('node:path').dirname(require('node:url').fileURLToPath(_scriptName)) + '/';
   }
 #else
-  scriptDirectory = __dirname + '/';
+  scriptDirectory = `${__dirname}/`;
 #endif
 
 #include "node_shell_read.js"

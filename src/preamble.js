@@ -73,7 +73,7 @@ var EXITSTATUS;
 function assert(condition, text) {
   if (!condition) {
 #if ASSERTIONS
-    abort('Assertion failed' + (text ? ': ' + text : ''));
+    abort(`Assertion failed${text ? `: ${text}` : ''}`);
 #else
     // This build was created without ASSERTIONS defined.  `assert()` should not
     // ever be called in this configuration but in case there are callers in

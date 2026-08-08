@@ -1166,8 +1166,8 @@ var LibraryHTML5 = {
     document.body.style.backgroundColor ||= 'black'; // IE11
     // Firefox always shows black letterboxes independent of style color.
 
-    target.style.width = cssWidth + 'px';
-    target.style.height = cssHeight + 'px';
+    target.style.width = `${cssWidth}px`;
+    target.style.height = `${cssHeight}px`;
 
     if (strategy.filteringMode == {{{ cDefs.EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST }}}) {
       target.style.imageRendering = 'optimizeSpeed';
@@ -1285,8 +1285,8 @@ var LibraryHTML5 = {
   // Add letterboxes to a fullscreen element in a cross-browser way.
   $setLetterbox: (element, topBottom, leftRight) => {
     // Cannot use margin to specify letterboxes in FF or Chrome, since those ignore margins in fullscreen mode.
-    element.style.paddingLeft = element.style.paddingRight = leftRight + 'px';
-    element.style.paddingTop = element.style.paddingBottom = topBottom + 'px';
+    element.style.paddingLeft = element.style.paddingRight = `${leftRight}px`;
+    element.style.paddingTop = element.style.paddingBottom = `${topBottom}px`;
   },
 
   $currentFullscreenStrategy: 0,
@@ -1336,8 +1336,8 @@ var LibraryHTML5 = {
       var b = (innerWidth - jstoi_q(canvas.style.width)) / 2;
       setLetterbox(canvas, t, b);
     } else {
-      canvas.style.width = w + 'px';
-      canvas.style.height = h + 'px';
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
       var b = (innerWidth - w) / 2;
       setLetterbox(canvas, topMargin, b);
     }
@@ -2313,8 +2313,8 @@ var LibraryHTML5 = {
 #endif
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 
-    target.style.width = width + 'px';
-    target.style.height = height + 'px';
+    target.style.width = `${width}px`;
+    target.style.height = `${height}px`;
 
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },

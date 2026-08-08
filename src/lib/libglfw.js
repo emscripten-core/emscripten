@@ -1538,7 +1538,7 @@ var LibraryGLFW = {
 
     // extensions from GLEmulations do not come unprefixed
     // so, try with prefix
-    return (GLFW.extensions.includes('GL_' + extension));
+    return (GLFW.extensions.includes(`GL_${extension}`));
   },
 
   glfwSwapInterval__deps: ['emscripten_set_main_loop_timing'],

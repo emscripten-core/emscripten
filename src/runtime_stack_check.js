@@ -38,7 +38,7 @@ function writeStackCookie() {
 }
 
 function u32ToHexString(num) {
-  return '0x' + (num >>> 0).toString(16).padStart(8, '0');
+  return `0x${(num >>> 0).toString(16).padStart(8, '0')}`;
 }
 
 function checkStackCookie() {

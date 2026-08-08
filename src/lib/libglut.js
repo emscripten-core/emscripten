@@ -561,7 +561,7 @@ var LibraryGLUT = {
         cursorStyle = 'none';
         break;
       default:
-        abort('glutSetCursor: Unknown cursor type: ' + cursor);
+        abort(`glutSetCursor: Unknown cursor type: ${cursor}`);
     }
     Browser.getCanvas().style.cursor = cursorStyle;
   },

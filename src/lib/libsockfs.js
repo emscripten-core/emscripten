@@ -258,7 +258,7 @@ addToLibrary({
 
             if (url === 'ws://' || url === 'wss://') { // Is the supplied URL config just a prefix, if so complete it.
               var parts = addr.split('/');
-              url = url + parts[0] + ':' + port + '/' + parts.slice(1).join('/');
+              url = `${url + parts[0]}:${port}/${parts.slice(1).join('/')}`;
             }
 
             if (subProtocols !== 'null') {
@@ -323,13 +323,13 @@ addToLibrary({
         return peer;
       },
       getPeer(sock, addr, port) {
-        return sock.peers[addr + ':' + port];
+        return sock.peers[`${addr}:${port}`];
       },
       addPeer(sock, peer) {
-        sock.peers[peer.addr + ':' + peer.port] = peer;
+        sock.peers[`${peer.addr}:${peer.port}`] = peer;
       },
       removePeer(sock, peer) {
-        delete sock.peers[peer.addr + ':' + peer.port];
+        delete sock.peers[`${peer.addr}:${peer.port}`];
       },
       handlePeerEvents(sock, peer) {
         var first = true;

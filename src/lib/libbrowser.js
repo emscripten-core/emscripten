@@ -125,7 +125,7 @@ var LibraryBrowser = {
               }
               return ret;
             }
-            audio.src = 'data:audio/x-' + name.slice(-3) + ';base64,' + encode64(byteArray);
+            audio.src = `data:audio/x-${name.slice(-3)};base64,${encode64(byteArray)}`;
             finish(audio); // we don't wait for confirmation this worked - but it's worth trying
           };
           audio.src = url;
@@ -359,11 +359,11 @@ var LibraryBrowser = {
               delta *= 80;
               break;
             default:
-              abort('unrecognized mouse wheel delta mode: ' + event.deltaMode);
+              abort(`unrecognized mouse wheel delta mode: ${event.deltaMode}`);
           }
           break;
         default:
-          abort('unrecognized mouse wheel event: ' + event.type);
+          abort(`unrecognized mouse wheel event: ${event.type}`);
       }
       return delta;
     },
@@ -512,8 +512,8 @@ var LibraryBrowser = {
         if (canvas.height != hNative) canvas.height = hNative;
         if (typeof canvas.style != 'undefined') {
           if (w != wNative || h != hNative) {
-            canvas.style.setProperty( 'width', w + 'px', 'important');
-            canvas.style.setProperty('height', h + 'px', 'important');
+            canvas.style.setProperty( 'width', `${w}px`, 'important');
+            canvas.style.setProperty('height', `${h}px`, 'important');
           } else {
             canvas.style.removeProperty( 'width');
             canvas.style.removeProperty('height');
