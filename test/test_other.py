@@ -11350,10 +11350,15 @@ int main(void) {
       r'(?im)in main (|[/a-z\.]:).*/test_lsan_leaks\.cpp:11:3$',
     ]),
   })
-  def test_lsan_stack_trace(self, ext, regexes):
+  @parameterized({
+    '': ([],),
+    # check that source maps work with instantiateWasm hook
+    'instantiate_wasm': (['--pre-js', test_file('other/test_lsan_instantiate_wasm.js')],),
+  })
+  def test_lsan_stack_trace(self, ext, regexes, args):
     self.do_runf(
       'other/test_lsan_leaks.' + ext,
-      cflags=['-fsanitize=leak', '-gsource-map', '-g2'],
+      cflags=['-fsanitize=leak', '-gsource-map', '-g2'] + args,
       regex=True,
       assert_all=True,
       assert_returncode=NON_ZERO,
@@ -15447,17 +15452,14 @@ addToLibrary({
   @also_with_modularize
   def test_instantiate_wasm(self):
     create_file('pre.js', '''
-      Module['instantiateWasm'] = (imports, successCallback) => {
-        var wasmFile = findWasmBinary();
-        getWasmBinary(wasmFile).then((bytes) => {
-          WebAssembly.instantiate(bytes, imports).then((res) => {
-            out('wasm instantiation succeeded');
-            Module['testWasmInstantiationSucceeded'] = 1;
-            successCallback(res.instance, res.module);
-          });
-        });
-        return {}; // Compiling asynchronously, no exports.
-      }''')
+      Module['instantiateWasm'] = async (imports, successCallback) => {
+        wasmBinaryFile ??= findWasmBinary();
+        const { instance, module } = await instantiateArrayBuffer(wasmBinaryFile, imports);
+        out('wasm instantiation succeeded');
+        Module['testWasmInstantiationSucceeded'] = 1;
+        successCallback(instance, module);
+      };
+      ''')
     # Test with ASYNCIFY here to ensure that that wasmExports gets set to the wrapped version of the wasm exports.
     self.do_runf('test_manual_wasm_instantiate.c', cflags=['--pre-js=pre.js', '-sASYNCIFY', '-DASYNCIFY_ENABLED'])
 
