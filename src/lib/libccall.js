@@ -11,7 +11,7 @@ addToLibrary({
 #endif
   $getCFunc__internal: true,
   $getCFunc: (ident) => {
-    var func = Module['_' + ident]; // closure exported function
+    var func = Module[`_${ident}`]; // closure exported function
 #if ASSERTIONS
     assert(func, `Cannot call unknown function ${ident}, make sure it is exported`);
 #endif

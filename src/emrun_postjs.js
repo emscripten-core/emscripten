@@ -44,7 +44,7 @@ if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD =
       http.onreadystatechange = () => {
         if (http.readyState == 4 /*DONE*/) {
           if (--emrun_num_post_messages_in_flight == 0 && emrun_should_close_itself) {
-            postExit('^exit^'+EXITSTATUS);
+            postExit(`^exit^${EXITSTATUS}`);
           }
         }
       }
@@ -60,17 +60,17 @@ if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD =
       var prevErr = err;
       addOnExit(() => {
         if (emrun_num_post_messages_in_flight == 0) {
-          postExit('^exit^'+EXITSTATUS);
+          postExit(`^exit^${EXITSTATUS}`);
         } else {
           emrun_should_close_itself = true;
         }
       });
       out = (text) => {
-        post('stdio.html', '^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
+        post('stdio.html', `^out^${emrun_http_sequence_number++}^${encodeURIComponent(text)}`);
         prevPrint(text);
       };
       err = (text) => {
-        post('stdio.html', '^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
+        post('stdio.html', `^err^${emrun_http_sequence_number++}^${encodeURIComponent(text)}`);
         prevErr(text);
       };
       emrun_file_dump = (filename, data) => {
@@ -78,7 +78,7 @@ if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD =
         if (ArrayBuffer.isView(data) && typeof SharedArrayBuffer !== "undefined" && data.buffer instanceof SharedArrayBuffer) {
           data = new data.constructor(data); // Make a clone of the typed array of the same type, since http.send() does not allow SharedArrayBuffer backing.
         }
-        post("stdio.html?file=" + filename, data);
+        post(`stdio.html?file=${filename}`, data);
       };
 
       // Notify emrun web server that this browser has successfully launched the

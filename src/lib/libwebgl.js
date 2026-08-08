@@ -1279,7 +1279,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   $webglGetExtensions: () => {
     var exts = getEmscriptenSupportedExtensions(GLctx);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-    exts = exts.concat(exts.map((e) => 'GL_' + e));
+    exts = exts.concat(exts.map((e) => `GL_${e}`));
 #endif
     return exts;
   },
@@ -1340,7 +1340,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           var ver_re = /^WebGL GLSL ES ([0-9]\.[0-9][0-9]?)(?:$| .*)/;
           var ver_num = glslVersion.match(ver_re);
           if (ver_num !== null) {
-            if (ver_num[1].length == 3) ver_num[1] = ver_num[1] + '0'; // ensure minor version has 2 digits
+            if (ver_num[1].length == 3) ver_num[1] = `${ver_num[1]}0`; // ensure minor version has 2 digits
             glslVersion = `OpenGL ES GLSL ES ${ver_num[1]} (${glslVersion})`;
           }
           ret = stringToNewUTF8(glslVersion);

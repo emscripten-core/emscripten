@@ -231,7 +231,7 @@ FS.staticInit();`;
       opts.follow_mount ??= true
 
       if (!PATH.isAbs(path)) {
-        path = FS.cwd() + '/' + path;
+        path = `${FS.cwd()}/${path}`;
       }
 
       // limit max consecutive symlinks to SYMLOOP_MAX.
@@ -257,7 +257,7 @@ FS.staticInit();`;
           if (parts[i] === '..') {
             current_path = PATH.dirname(current_path);
             if (FS.isRoot(current)) {
-              path = current_path + '/' + parts.slice(i + 1).join('/');
+              path = `${current_path}/${parts.slice(i + 1).join('/')}`;
               // We're making progress here, don't let many consecutive ..'s
               // lead to ELOOP
               nlinks--;
@@ -294,9 +294,9 @@ FS.staticInit();`;
             }
             var link = current.node_ops.readlink(current);
             if (!PATH.isAbs(link)) {
-              link = PATH.dirname(current_path) + '/' + link;
+              link = `${PATH.dirname(current_path)}/${link}`;
             }
-            path = link + '/' + parts.slice(i + 1).join('/');
+            path = `${link}/${parts.slice(i + 1).join('/')}`;
             continue linkloop;
           }
         }

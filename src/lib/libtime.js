@@ -281,7 +281,7 @@ addToLibrary({
     // TODO: not sure we really need to escape all of these in JS regexps
     var SPECIAL_CHARS = '\\!@#$^&*()+=-[]/{}|:<>?,.';
     for (var i=0, ii=SPECIAL_CHARS.length; i<ii; ++i) {
-      pattern = pattern.replace(new RegExp('\\'+SPECIAL_CHARS[i], 'g'), '\\'+SPECIAL_CHARS[i]);
+      pattern = pattern.replace(new RegExp(`\\${SPECIAL_CHARS[i]}`, 'g'), `\\${SPECIAL_CHARS[i]}`);
     }
 
     // reduce number of matchers
@@ -343,7 +343,7 @@ addToLibrary({
         /\s+/g,'\\s*'
       );
 
-    var matches = new RegExp('^'+pattern_out, 'i').exec(UTF8ToString(buf))
+    var matches = new RegExp(`^${pattern_out}`, 'i').exec(UTF8ToString(buf))
 
     function initDate() {
       function fixup(value, min, max) {

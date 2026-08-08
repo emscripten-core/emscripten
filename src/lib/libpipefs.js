@@ -299,7 +299,7 @@ addToLibrary({
       if (!PIPEFS.nextname.current) {
         PIPEFS.nextname.current = 0;
       }
-      return 'pipe[' + (PIPEFS.nextname.current++) + ']';
+      return `pipe[${PIPEFS.nextname.current++}]`;
     },
   },
 });

@@ -260,7 +260,7 @@ var LibraryEmbindShared = {
       args1.push(argName);
     }
 
-    invokerFnBody += (returns || isAsync ? 'var rv = ' : '') + `invoker(${argsListWired});\n`;
+    invokerFnBody += `${returns || isAsync ? 'var rv = ' : ''}invoker(${argsListWired});\n`;
 
     var returnVal = returns ? 'rv' : '';
 #if ASYNCIFY == 1
@@ -299,7 +299,7 @@ var LibraryEmbindShared = {
     invokerFnBody += `return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(${returnVal});\n`
 #elif ASYNCIFY == 2
     invokerFnBody += '}\n';
-    invokerFnBody += 'return ' + (isAsync ? 'rv.then(onDone)' : `onDone(${returnVal})`) + ';';
+    invokerFnBody += `return ${isAsync ? 'rv.then(onDone)' : `onDone(${returnVal})`};`;
 #endif
 
     invokerFnBody += '}\n';

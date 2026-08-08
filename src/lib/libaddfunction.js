@@ -189,7 +189,7 @@ addToLibrary({
         throw err;
       }
 #if ASSERTIONS
-      assert(typeof sig != 'undefined', 'Missing signature argument to addFunction: ' + func);
+      assert(typeof sig != 'undefined', `Missing signature argument to addFunction: ${func}`);
 #endif
       var wrapped = convertJsFunctionToWasm(func, sig);
       setWasmTableEntry(ret, wrapped);

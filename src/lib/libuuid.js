@@ -83,7 +83,7 @@ addToLibrary({
     var uuid = 'xxxx-xx-xx-xx-xxxxxx'.replace(/[x]/g, function(c) {
       var r = upper ? ({{{ makeGetValue('uu', 'i', 'u8') }}}).toString(16).toUpperCase() :
                       ({{{ makeGetValue('uu', 'i', 'u8') }}}).toString(16);
-      r = (r.length === 1) ? '0' + r : r; // Zero pad single digit hex values
+      r = (r.length === 1) ? `0${r}` : r; // Zero pad single digit hex values
       i++;
       return r;
     });

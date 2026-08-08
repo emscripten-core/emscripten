@@ -45,5 +45,5 @@
     if (response.ok) {
       return response.arrayBuffer();
     }
-    throw new Error(response.status + ' : ' + response.url);
+    throw new Error(`${response.status} : ${response.url}`);
   };

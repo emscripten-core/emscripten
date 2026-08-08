@@ -402,7 +402,7 @@ vec3.unproject = function (vec, view, proj, viewport, dest) {
  * _returns {string} String representation of vec
  */
 vec3.str = function (vec) {
-    return '[' + vec[0] + ', ' + vec[1] + ', ' + vec[2] + ']';
+    return `[${vec[0]}, ${vec[1]}, ${vec[2]}]`;
 };
 
 /*
@@ -1927,7 +1927,7 @@ quat4.slerp = function (quat, quat2, slerp, dest) {
  * _returns {string} String representation of quat
  */
 quat4.str = function (quat) {
-    return '[' + quat[0] + ', ' + quat[1] + ', ' + quat[2] + ', ' + quat[3] + ']';
+    return `[${quat[0]}, ${quat[1]}, ${quat[2]}, ${quat[3]}]`;
 };
 
 

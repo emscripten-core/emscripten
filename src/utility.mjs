@@ -24,7 +24,7 @@ export function dump(item) {
       funcData = item.funcData;
       item.funcData = null;
     }
-    return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
+    return `// ${JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ')}`;
   } catch {
     const ret = [];
     for (const [i, j] of Object.entries(item)) {
@@ -113,7 +113,7 @@ export function mergeInto(obj, other, options = null) {
     // check if sig is missing for added functions
     if (options.checkSig) {
       for (const [key, value] of Object.entries(other)) {
-        if (typeof value === 'function' && !other.hasOwnProperty(key + '__sig')) {
+        if (typeof value === 'function' && !other.hasOwnProperty(`${key}__sig`)) {
           error(`__sig is missing for function: ${key}. Do not use checkSig if this is intended`);
           return;
         }
@@ -274,7 +274,7 @@ class Profiler {
   log(msg) {
     const depth = this.ids.length;
     const indent = ' '.repeat(depth)
-    printErr('[prof] ' + indent + msg);
+    printErr(`[prof] ${indent}${msg}`);
   }
 
   start(id) {

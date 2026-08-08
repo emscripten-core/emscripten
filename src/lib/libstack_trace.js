@@ -56,7 +56,7 @@ var LibraryStackTrace = {
         } else {
           // Was not able to extract this line for demangling/sourcemapping
           // purposes. Output it as-is.
-          callstack += line + '\n';
+          callstack += `${line}\n`;
           continue;
         }
       }

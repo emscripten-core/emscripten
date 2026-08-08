@@ -215,7 +215,7 @@ function checkUnflushedContent() {
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
     for (var name of ['stdout', 'stderr']) {
-      var info = FS.analyzePath('/dev/' + name);
+      var info = FS.analyzePath(`/dev/${name}`);
       if (!info) return;
       var stream = info.object;
       var rdev = stream.rdev;

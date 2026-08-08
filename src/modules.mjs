@@ -304,7 +304,7 @@ export const LibraryManager = {
       }
     }
     for (const [key, value] of Object.entries(aliases)) {
-      (this.library[key + '__deps'] ??= []).push(value);
+      (this.library[`${key}__deps`] ??= []).push(value);
     }
   },
 
@@ -313,7 +313,7 @@ export const LibraryManager = {
       set(target, prop, value) {
         target[prop] = value;
         if (!isDecorator(prop)) {
-          target[prop + '__user'] = true;
+          target[`${prop}__user`] = true;
         }
         return true;
       },
@@ -432,7 +432,7 @@ function cDefine(key) {
 }
 
 function isInternalSymbol(ident) {
-  return ident + '__internal' in LibraryManager.library;
+  return `${ident}__internal` in LibraryManager.library;
 }
 
 function getUnusedLibrarySymbols() {
@@ -547,7 +547,7 @@ function exportRuntimeSymbols() {
       // Note that this assertion may be hit when a function is moved into the
       // JS library. In that case the function should be removed from the list
       // of runtime elements above.
-      assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
+      assert(!runtimeElementsSet.has(jsname), `runtimeElements contains library symbol: ${ident}`);
       runtimeElements.push(jsname);
     }
   }
@@ -565,7 +565,7 @@ function exportRuntimeSymbols() {
 
   if (MODULARIZE == 'instance') {
     if (results.length == 0) return '';
-    return '// Runtime exports\nexport { ' + results.join(', ') + ' };\n';
+    return `// Runtime exports\nexport { ${results.join(', ')} };\n`;
   }
 
   if (ASSERTIONS && !EXPORT_ALL) {
@@ -601,7 +601,7 @@ function exportRuntimeSymbols() {
 
   results.unshift('// Begin runtime exports');
   results.push('// End runtime exports');
-  return results.join('\n  ') + '\n';
+  return `${results.join('\n  ')}\n`;
 }
 
 function exportLibrarySymbols() {
@@ -613,14 +613,14 @@ function exportLibrarySymbols() {
     }
   }
   results.push('// End JS library exports');
-  return results.join('\n  ') + '\n';
+  return `${results.join('\n  ')}\n`;
 }
 
 function exportJSSymbols() {
   // In MODULARIZE=instance mode JS library symbols are marked with `export`
   // at the point of declaration.
   if (MODULARIZE == 'instance') return exportRuntimeSymbols();
-  return exportRuntimeSymbols() + '  ' + exportLibrarySymbols();
+  return `${exportRuntimeSymbols()}  ${exportLibrarySymbols()}`;
 }
 
 addToCompileTimeContext({

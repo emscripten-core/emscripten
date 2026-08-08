@@ -67,7 +67,7 @@ addToLibrary({
     // rather than the empty string.
     basename: (path) => path && path.match(/([^\/]+|\/)\/*$/)[1],
     join: (...paths) => PATH.normalize(paths.join('/')),
-    join2: (l, r) => PATH.normalize(l + '/' + r),
+    join2: (l, r) => PATH.normalize(`${l}/${r}`),
   },
   // The FS-using parts are split out into a separate object, so simple path
   // usage does not require the FS.
@@ -92,7 +92,7 @@ addToLibrary({
         } else if (!path) {
           return ''; // an invalid portion invalidates the whole thing
         }
-        resolvedPath = path + '/' + resolvedPath;
+        resolvedPath = `${path}/${resolvedPath}`;
         resolvedAbsolute = PATH.isAbs(path);
       }
       // At this point the path should be resolved to a full absolute path, but

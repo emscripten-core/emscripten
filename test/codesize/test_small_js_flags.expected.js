@@ -56,7 +56,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
       if (response.ok) {
         return response.arrayBuffer();
       }
-      throw new Error(response.status + " : " + response.url);
+      throw new Error(`${response.status} : ${response.url}`);
     };
   }
 } else {}

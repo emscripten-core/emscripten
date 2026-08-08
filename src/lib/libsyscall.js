@@ -35,7 +35,7 @@ var SyscallsLibrary = {
         }
         return dir;
       }
-      return dir + '/' + path;
+      return `${dir}/${path}`;
     },
 
     writeStat(buf, stat) {
@@ -642,7 +642,7 @@ var SyscallsLibrary = {
 #endif
     var count = doPollSync(fds, nfds);
 #if ASSERTIONS
-    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+    if (!count && timeout != 0) warnOnce(`non-zero poll() timeout not supported: ${timeout}`)
 #endif
     return count;
   },

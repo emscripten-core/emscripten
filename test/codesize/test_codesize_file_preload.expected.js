@@ -187,7 +187,7 @@ if (ENVIRONMENT_IS_NODE) {
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
   var fs = require("node:fs");
-  scriptDirectory = __dirname + "/";
+  scriptDirectory = `${__dirname}/`;
   // include: node_shell_read.js
   readBinary = filename => {
     // We need to re-wrap `file://` strings to URLs.
@@ -260,7 +260,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
       if (response.ok) {
         return response.arrayBuffer();
       }
-      throw new Error(response.status + " : " + response.url);
+      throw new Error(`${response.status} : ${response.url}`);
     };
   }
 } else {}
@@ -571,7 +571,7 @@ var PATH = {
   },
   basename: path => path && path.match(/([^\/]+|\/)\/*$/)[1],
   join: (...paths) => PATH.normalize(paths.join("/")),
-  join2: (l, r) => PATH.normalize(l + "/" + r)
+  join2: (l, r) => PATH.normalize(`${l}/${r}`)
 };
 
 var initRandomFill = () => {
@@ -596,7 +596,7 @@ var PATH_FS = {
       } else if (!path) {
         return "";
       }
-      resolvedPath = path + "/" + resolvedPath;
+      resolvedPath = `${path}/${resolvedPath}`;
       resolvedAbsolute = PATH.isAbs(path);
     }
     // At this point the path should be resolved to a full absolute path, but
@@ -1496,7 +1496,7 @@ var FS = {
     }
     opts.follow_mount ??= true;
     if (!PATH.isAbs(path)) {
-      path = FS.cwd() + "/" + path;
+      path = `${FS.cwd()}/${path}`;
     }
     // limit max consecutive symlinks to SYMLOOP_MAX.
     linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
@@ -1517,7 +1517,7 @@ var FS = {
         if (parts[i] === "..") {
           current_path = PATH.dirname(current_path);
           if (FS.isRoot(current)) {
-            path = current_path + "/" + parts.slice(i + 1).join("/");
+            path = `${current_path}/${parts.slice(i + 1).join("/")}`;
             // We're making progress here, don't let many consecutive ..'s
             // lead to ELOOP
             nlinks--;
@@ -1553,9 +1553,9 @@ var FS = {
           }
           var link = current.node_ops.readlink(current);
           if (!PATH.isAbs(link)) {
-            link = PATH.dirname(current_path) + "/" + link;
+            link = `${PATH.dirname(current_path)}/${link}`;
           }
-          path = link + "/" + parts.slice(i + 1).join("/");
+          path = `${link}/${parts.slice(i + 1).join("/")}`;
           continue linkloop;
         }
       }
@@ -3073,7 +3073,7 @@ var SYSCALLS = {
       }
       return dir;
     }
-    return dir + "/" + path;
+    return `${dir}/${path}`;
   },
   writeStat(buf, stat) {
     HEAPU32[((buf) >> 2)] = stat.dev;

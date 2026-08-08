@@ -87,7 +87,7 @@ addToLibrary({
     // Convert to 32-bit unsigned value
     ptr >>>= 0;
 #endif
-    return '0x' + ptr.toString(16).padStart({{{ POINTER_SIZE * 2 }}}, '0');
+    return `0x${ptr.toString(16).padStart({{{ POINTER_SIZE * 2 }}}, '0')}`;
   },
 
   $zeroMemory: (ptr, size) => HEAPU8.fill(0, ptr, ptr + size),
@@ -437,7 +437,7 @@ addToLibrary({
   // ==========================================================================
 
   __assert_fail: (condition, filename, line, func) =>
-    abort(`Assertion failed: ${UTF8ToString(condition)}, at: ` + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']),
+    abort(`Assertion failed: ${UTF8ToString(condition)}, at: ${[filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']}`),
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -667,7 +667,7 @@ addToLibrary({
     return (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0;
   },
   $inetNtop4: (addr) =>
-    (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff),
+    `${addr & 0xff}.${(addr >> 8) & 0xff}.${(addr >> 16) & 0xff}.${(addr >> 24) & 0xff}`,
   $inetPton6__deps: ['htons'],
   $inetPton6: (str) => {
     var words;
@@ -982,7 +982,7 @@ addToLibrary({
         assert(id < 65535, 'exceeded max address mappings of 65535');
 #endif
 
-        addr = '172.29.' + (id & 0xff) + '.' + (id & 0xff00);
+        addr = `172.29.${id & 0xff}.${id & 0xff00}`;
 
         DNS.address_map.names[addr] = name;
         DNS.address_map.addrs[name] = addr;
@@ -1208,7 +1208,7 @@ addToLibrary({
     }
 
     if (serv && servlen) {
-      port = '' + port;
+      port = `${port}`;
       var numBytesWrittenExclNull = stringToUTF8(port, serv, servlen);
 
       if (numBytesWrittenExclNull+1 >= servlen) {
@@ -1489,7 +1489,7 @@ addToLibrary({
     if (!warnOnce.shown[text]) {
       warnOnce.shown[text] = 1;
 #if ENVIRONMENT_MAY_BE_NODE
-      if (ENVIRONMENT_IS_NODE) text = 'warning: ' + text;
+      if (ENVIRONMENT_IS_NODE) text = `warning: ${text}`;
 #endif
       err(text);
     }
@@ -1549,7 +1549,7 @@ addToLibrary({
 
   emscripten_print_double__deps: ['$stringToUTF8', '$lengthBytesUTF8'],
   emscripten_print_double: (x, to, max) => {
-    var str = x + '';
+    var str = `${x}`;
     if (to) return stringToUTF8(str, to, max);
     else return lengthBytesUTF8(str);
   },
@@ -1992,7 +1992,7 @@ addToLibrary({
   emscripten_dbgn: (str, len) => dbg(UTF8ToString(str, len)),
 
   emscripten_dbg_backtrace: (str) => {
-    dbg(UTF8ToString(str) + '\n' + new Error().stack);
+    dbg(`${UTF8ToString(str)}\n${new Error().stack}`);
   },
 #endif
 
@@ -2184,9 +2184,9 @@ addToLibrary({
       x = 'main';
     }
 #if DYNCALLS
-    return x.startsWith('dynCall_') ? x : '_' + x;
+    return x.startsWith('dynCall_') ? x : `_${x}`;
 #else
-    return '_' + x;
+    return `_${x}`;
 #endif
   },
 
