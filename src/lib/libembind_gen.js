@@ -79,7 +79,7 @@ var LibraryEmbind = {
         let argName;
         if (arg.type instanceof OptionalType && !seenNonOptional) {
           argType = nameMap(arg.type.type);
-          argName = arg.name + '?';
+          argName = `${arg.name}?`;
         } else {
           seenNonOptional = true;
           argType = nameMap(arg.type);
@@ -548,7 +548,7 @@ var LibraryEmbind = {
           thisType = argTypes[1].classType;
         }
         if (!(thisType instanceof ClassDefinition)) {
-          throw new Error('This type must be class definition for: ' + name);
+          throw new Error(`This type must be class definition for: ${name}`);
         }
         argStart = 2;
       }
@@ -926,7 +926,7 @@ var LibraryEmbind = {
 #endif
     const output = printer.print();
     var fs = require('node:fs');
-    fs.writeFileSync(process.argv[2], output + '\n');
+    fs.writeFileSync(process.argv[2], `${output}\n`);
   },
 
   // Stub functions used by eval, but not needed for TS generation:

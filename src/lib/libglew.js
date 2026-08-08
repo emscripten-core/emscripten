@@ -106,7 +106,7 @@ var LibraryGLEW = {
 
       // extensions from GLEmulations do not come unprefixed
       // so, try with prefix
-      return (GLEW.extensions.includes('GL_' + name));
+      return (GLEW.extensions.includes(`GL_${name}`));
     },
   },
 

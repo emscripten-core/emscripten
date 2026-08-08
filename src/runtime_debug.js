@@ -24,7 +24,7 @@ function dbg(...args) {
       }
       return a;
     }
-    fs.writeSync(2, args.map(stringify).join(' ') + '\n');
+    fs.writeSync(2, `${args.map(stringify).join(' ')}\n`);
   } else
 #endif
   // TODO(sbc): Make this configurable somehow.  Its not always convenient for
@@ -146,7 +146,7 @@ function missingLibrarySymbol(sym) {
     // for a JS name like _name.
     var librarySymbol = sym;
     if (!librarySymbol.startsWith('_')) {
-      librarySymbol = '$' + sym;
+      librarySymbol = `$${sym}`;
     }
     msg += ` (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='${librarySymbol}')`;
     if (isExportedByForceFilesystem(sym)) {
@@ -267,10 +267,10 @@ function prettyPrint(arg) {
   var index = printObjectList.indexOf(arg);
   if (index >= 0) return `<${arg}|${index}>`;
   if (arg.toString() == '[object HTMLImageElement]') {
-    return arg + '\n\n';
+    return `${arg}\n\n`;
   }
   if (arg.byteLength) {
-    return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 400)) + '}';
+    return `{${Array.prototype.slice.call(arg, 0, Math.min(arg.length, 400))}}`;
   }
   if (typeof arg == 'function') {
     return '<function>';

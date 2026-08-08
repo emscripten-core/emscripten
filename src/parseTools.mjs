@@ -139,7 +139,7 @@ export function preprocess(filename) {
         }
         if (inStyle) {
           if (showCurrentLine()) {
-            ret += line + '\n';
+            ret += `${line}\n`;
           }
           continue;
         }
@@ -220,7 +220,7 @@ export function preprocess(filename) {
           if (emptyLine && !line) {
             continue;
           }
-          ret += line + '\n';
+          ret += `${line}\n`;
           if (!line) {
             emptyLine = true;
           } else {
@@ -324,7 +324,7 @@ function splitI64(value) {
   // For negatives, we need to ensure a -1 if the value is overall negative,
   // even if not significant negative component
 
-  const low = value + '>>>0';
+  const low = `${value}>>>0`;
   // prettier-ignore
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
@@ -431,8 +431,8 @@ function ensureDot(value) {
   // (0.001 will turn into 1e-3, which has no .)
   if (value.includes('.') || /[IN]/.test(value)) return value;
   const e = value.indexOf('e');
-  if (e < 0) return value + '.0';
-  return value.slice(0, e) + '.0' + value.slice(e);
+  if (e < 0) return `${value}.0`;
+  return `${value.slice(0, e)}.0${value.slice(e)}`;
 }
 
 export function isNumber(x) {
@@ -988,7 +988,7 @@ function makeRemovedFSAssert(fsName) {
 // Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
 function buildStringArray(array) {
   if (array.length > 0) {
-    return "['" + array.join("','") + "']";
+    return `['${array.join("','")}']`;
   } else {
     return '[]';
   }
@@ -1164,7 +1164,7 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
   var envs = [];
   if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');
   if (WASM_WORKERS) envs.push('ENVIRONMENT_IS_WASM_WORKER');
-  return '(' + envs.join('||') + ')';
+  return `(${envs.join('||')})`;
 }
 
 function nodeDetectionCode() {

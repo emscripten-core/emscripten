@@ -149,15 +149,15 @@ var emscriptenCpuProfiler = {
        + ', JavaScript CPU load: ' + asmJSLoad.toFixed(2) + '%';
 
       if (hotGL || coldGL) {
-        str += '. WebGL CPU load: ' + (webGLMSecs * 100.0 / totalDt).toFixed(2) + '% (' + (webGLMSecs * 100.0 / totalCPUMsecs).toFixed(2) + '% of all CPU work)';
+        str += `. WebGL CPU load: ${(webGLMSecs * 100.0 / totalDt).toFixed(2)}% (${(webGLMSecs * 100.0 / totalCPUMsecs).toFixed(2)}% of all CPU work)`;
       }
       document.getElementById('fpsResult').innerHTML = str;
 
       // Update lite FPS counter
       if (this.fpsOverlay1) {
-        this.fpsOverlay1.innerText = fps.toFixed(1) + ' (' + asmJSLoad.toFixed(1) + '%)';
+        this.fpsOverlay1.innerText = `${fps.toFixed(1)} (${asmJSLoad.toFixed(1)}%)`;
         this.fpsOverlay1.style.color = fps >= 30 ? 'lightgreen' : fps >= 15 ? 'yellow' : 'red';
-        this.fpsOverlay2.innerText = minDt.toFixed(2) + '/' + avgDt.toFixed(2) + '/' + maxDt.toFixed(2) + ' ms';
+        this.fpsOverlay2.innerText = `${minDt.toFixed(2)}/${avgDt.toFixed(2)}/${maxDt.toFixed(2)} ms`;
       }
 
       this.fpsCounterLastPrint = now;
@@ -227,10 +227,10 @@ var emscriptenCpuProfiler = {
           var at = fn.indexOf('@');
           if (at != -1) fn = fn.slice(0, at);
           fn = fn.trim();
-          cs += '"' + fn + '"';
+          cs += `"${fn}"`;
         }
 
-        console.error('Trace: at t=' + performance.realNow().toFixed(1) + ', section "' + sect.name + '" called via ' + cs + ' took ' + timeInSection.toFixed(2) + ' msecs!');
+        console.error(`Trace: at t=${performance.realNow().toFixed(1)}, section "${sect.name}" called via ${cs} took ${timeInSection.toFixed(2)} msecs!`);
       }
       if (this.insideMainLoopRecursionCounter) {
         sect.accumulatedTimeInsideMainLoop += timeInSection;
@@ -363,20 +363,20 @@ var emscriptenCpuProfiler = {
         document.body.style.overflow = '';
       }
       var helpText = "<div style='margin-left: 10px;'>Color Legend:";
-      helpText += "<div class='colorbox' style='background-color: " + this.colorCpuTimeSpentInUserCode + ";'></div>Main Loop (C/C++) Code"
-      helpText += "<div class='colorbox' style='background-color: " + this.colorHotGLFunction + ";'></div>Hot WebGL Calls"
-      helpText += "<div class='colorbox' style='background-color: " + this.colorColdGLFunction + ";'></div>Cold WebGL Calls"
-      helpText += "<div class='colorbox' style='background-color: " + this.color60FPS + ";'></div>Browser Execution (&ge; 60fps)"
-      helpText += "<div class='colorbox' style='background-color: " + this.colorWorseThan60FPS + ";'></div>Browser Execution (30-60fps)"
-      helpText += "<div class='colorbox' style='background-color: " + this.colorWorseThan30FPS + ";'></div>Browser Execution (&lt; 30fps)"
-      helpText += "<div class='colorbox' style='background-color: " + this.colorSetIntervalSection + ";'></div>setInterval()"
-      helpText += "<div class='colorbox' style='background-color: " + this.colorSetTimeoutSection + ";'></div>setTimeout()"
+      helpText += `<div class='colorbox' style='background-color: ${this.colorCpuTimeSpentInUserCode};'></div>Main Loop (C/C++) Code`
+      helpText += `<div class='colorbox' style='background-color: ${this.colorHotGLFunction};'></div>Hot WebGL Calls`
+      helpText += `<div class='colorbox' style='background-color: ${this.colorColdGLFunction};'></div>Cold WebGL Calls`
+      helpText += `<div class='colorbox' style='background-color: ${this.color60FPS};'></div>Browser Execution (&ge; 60fps)`
+      helpText += `<div class='colorbox' style='background-color: ${this.colorWorseThan60FPS};'></div>Browser Execution (30-60fps)`
+      helpText += `<div class='colorbox' style='background-color: ${this.colorWorseThan30FPS};'></div>Browser Execution (&lt; 30fps)`
+      helpText += `<div class='colorbox' style='background-color: ${this.colorSetIntervalSection};'></div>setInterval()`
+      helpText += `<div class='colorbox' style='background-color: ${this.colorSetTimeoutSection};'></div>setTimeout()`
       helpText += "</div>";
       helpText += "<div id='cpuprofiler_help_text' style='display:none; margin-top: 20px; margin-left: 10px;'>"
       helpText += "<p>cpuprofiler.js is an interactive CPU execution profiler which measures the time spent in executing code that utilizes requestAnimationFrame(), setTimeout() and/or setInterval() handlers to run. Each one pixel column in the above graph denotes a single executed application frame tick. The vertical axis represents in millisecond units the time taken to render a frame. Use this tool to interactively locate stuttering related events, and then use other profiling tools (<a href='https://developer.mozilla.org/en-US/docs/Tools/Performance'>Firefox profiler</a>, <a href='https://developer.mozilla.org/en-US/docs/Mozilla/Performance/Profiling_with_the_Built-in_Profiler'>geckoprofiler</a>) to identify their cause."
       helpText += "<p>The header line above the graph prints out timing statistics:"
-      helpText += "<ul><li><b>Last FPS:</b> Displays the current FPS measured by averaging across " + this.fpsCounterNumMostRecentFrames + " most recently rendered frames.";
-      helpText += "<li><b>Avg FPS:</b> Displays the total FPS measured by averaging across the whole visible graph, i.e. <span id='ntotalframes'>" + (document.documentElement.clientWidth - 32) + "</span> most recently rendered frames.";
+      helpText += `<ul><li><b>Last FPS:</b> Displays the current FPS measured by averaging across ${this.fpsCounterNumMostRecentFrames} most recently rendered frames.`;
+      helpText += `<li><b>Avg FPS:</b> Displays the total FPS measured by averaging across the whole visible graph, i.e. <span id='ntotalframes'>${document.documentElement.clientWidth - 32}</span> most recently rendered frames.`;
       helpText += "<li><b>min/avg/max dt:</b> Displays the minimum, average and maximum durations that an application frame took overall, across the visible graph. These numbers include the time the browser was idle.";
       helpText += "<li><b>dt variance:</b> Computes the amount of <a href='https://en.wikipedia.org/wiki/Variance'>statistical variance</a> in the overall frame durations.";
       helpText += "<li><b>JavaScript CPU load:</b> This field estimates the amount of time the CPU was busy executing user code (requestAnimationFrame, setTimeout and setInterval handlers), with the simple assumption that the browser would be idle the remaining time.";
@@ -385,18 +385,18 @@ var emscriptenCpuProfiler = {
       helpText += "<br>Press the <span style='border: solid 1px #909090;'>Profile WebGL</span> button to toggle the profiling of WebGL CPU overhead. When the button background is displayed in green, WebGL CPU profiling is active. This profiling mode has some overhead by itself, so when recording profiles with other tools, prefer to leave this disabled.";
       helpText += "<br>With the <span style='border: solid 1px #909090;'>Trace Calls</span> option, you can log WebGL and setInterval()/setTimeout() operations that take a long time to finish. These are typically cold operations like shader compilation or large reallocating buffer uploads, or other long event-based computation. For this option to be able to trace WebGL calls, the option Profile WebGL must also be enabled. The trace results appear in the web page console.";
       helpText += "<p>The different colors on the graph have the following meaning:";
-      helpText += "<br><div class='colorbox' style='background-color: " + this.colorCpuTimeSpentInUserCode + ";'></div><b>Main Loop (C/C++) Code</b>: This is the time spent executing application JavaScript code inside the main loop event handler, generally via requestAnimationFrame().";
-      helpText += "<br><div class='colorbox' style='background-color: " + this.colorHotGLFunction + ";'></div><b>Hot WebGL Calls</b>: This measures the CPU time spent in running common per-frame rendering related WebGL calls: <div style='margin-left: 100px; margin-top: 10px; max-width: 800px; font-size: 12px;'>" + this.hotGLFunctions.join(', ') + ', uniform* and vertexAttrib*.</div>';
-      helpText += "<br><div class='colorbox' style='background-color: " + this.colorColdGLFunction + ";'></div><b>Cold WebGL Calls</b>: This shows the CPU time spent in all the remaining WebGL functions that are not considered 'hot' (not in the above list).";
-      helpText += "<br><div class='colorbox' style='background-color: " + this.color60FPS + ";'></div><b>Browser Execution (&ge; 60fps)</b>: This is the time taken by browser that falls outside the tracked requestAnimationFrame(), setTimeout() and/or setInterval() handlers. If the page is running at 60fps, the browser time will be drawn with this color. Likely the browser was idle waiting for vsync.";
-      helpText += "<br><div class='colorbox' style='background-color: " + this.colorWorseThan60FPS + ";'></div><b>Browser Execution (30-60fps)</b>: This is the same as above, except that when 60fps is not reached, the browser time is drawn in this color.";
-      helpText += "<br><div class='colorbox' style='background-color: " + this.colorWorseThan30FPS + ";'></div><b>Browser Execution (&lt; 30fps)</b>: Same as above, except that the frame completed slowly, so the browser time is drawn in this color. Long spikes of this color indicate that the browser is running some internal operations (e.g. garbage collection) that can cause stuttering.";
-      helpText += "<br><div class='colorbox' style='background-color: " + this.colorSetIntervalSection + ";'></div><b>setInterval()</b>: Specifies the amount of time spent in executing user code in setInterval() handlers.";
-      helpText += "<br><div class='colorbox' style='background-color: " + this.colorSetTimeoutSection + ";'></div><b>setTimeout()</b>: Specifies the amount of time spent in executing user code in setTimeout() handlers.";
+      helpText += `<br><div class='colorbox' style='background-color: ${this.colorCpuTimeSpentInUserCode};'></div><b>Main Loop (C/C++) Code</b>: This is the time spent executing application JavaScript code inside the main loop event handler, generally via requestAnimationFrame().`;
+      helpText += `<br><div class='colorbox' style='background-color: ${this.colorHotGLFunction};'></div><b>Hot WebGL Calls</b>: This measures the CPU time spent in running common per-frame rendering related WebGL calls: <div style='margin-left: 100px; margin-top: 10px; max-width: 800px; font-size: 12px;'>${this.hotGLFunctions.join(', ')}, uniform* and vertexAttrib*.</div>`;
+      helpText += `<br><div class='colorbox' style='background-color: ${this.colorColdGLFunction};'></div><b>Cold WebGL Calls</b>: This shows the CPU time spent in all the remaining WebGL functions that are not considered 'hot' (not in the above list).`;
+      helpText += `<br><div class='colorbox' style='background-color: ${this.color60FPS};'></div><b>Browser Execution (&ge; 60fps)</b>: This is the time taken by browser that falls outside the tracked requestAnimationFrame(), setTimeout() and/or setInterval() handlers. If the page is running at 60fps, the browser time will be drawn with this color. Likely the browser was idle waiting for vsync.`;
+      helpText += `<br><div class='colorbox' style='background-color: ${this.colorWorseThan60FPS};'></div><b>Browser Execution (30-60fps)</b>: This is the same as above, except that when 60fps is not reached, the browser time is drawn in this color.`;
+      helpText += `<br><div class='colorbox' style='background-color: ${this.colorWorseThan30FPS};'></div><b>Browser Execution (&lt; 30fps)</b>: Same as above, except that the frame completed slowly, so the browser time is drawn in this color. Long spikes of this color indicate that the browser is running some internal operations (e.g. garbage collection) that can cause stuttering.`;
+      helpText += `<br><div class='colorbox' style='background-color: ${this.colorSetIntervalSection};'></div><b>setInterval()</b>: Specifies the amount of time spent in executing user code in setInterval() handlers.`;
+      helpText += `<br><div class='colorbox' style='background-color: ${this.colorSetTimeoutSection};'></div><b>setTimeout()</b>: Specifies the amount of time spent in executing user code in setTimeout() handlers.`;
       helpText += "<p>For bugs and suggestions, visit <a href='https://github.com/emscripten-core/emscripten/issues'>Emscripten bug tracker</a>.";
       helpText += "</div>";
 
-      div.innerHTML = "<div style='color: black; border: 2px solid black; padding: 2px; margin-bottom: 10px; margin-left: 5px; margin-right: 5px; margin-top: 5px; background-color: #F0F0FF;'><span style='margin-left: 10px;'><b>Cpu Profiler</b><sup style='cursor: pointer;' onclick='emscriptenCpuProfiler.toggleHelpTextVisible();'>[?]</sup></span> <button style='display:inline; border: solid 1px #ADADAD; margin: 2px; background-color: #E1E1E1;' onclick='noExitRuntime=false;Module.exit();'>Halt</button><button id='toggle_webgl_profile' style='display:inline; border: solid 1px #ADADAD; margin: 2px;  background-color: #E1E1E1;' onclick='emscriptenCpuProfiler.toggleHookWebGL()'>Profile WebGL</button><button id='toggle_webgl_trace' style='display:inline; border: solid 1px #ADADAD; margin: 2px;  background-color: #E1E1E1;' onclick='emscriptenCpuProfiler.toggleTraceWebGL()'>Trace Calls</button> slower than <input id='trace_limit' oninput='emscriptenCpuProfiler.disableTraceWebGL();' style='width:40px;' value='100'></input> msecs. <span id='fpsResult' style='margin-left: 5px;'></span><canvas style='border: 1px solid black; margin-left:auto; margin-right:auto; display: block;' id='cpuprofiler_canvas' width='800px' height='200'></canvas><div id='cpuprofiler'></div>" + helpText;
+      div.innerHTML = `<div style='color: black; border: 2px solid black; padding: 2px; margin-bottom: 10px; margin-left: 5px; margin-right: 5px; margin-top: 5px; background-color: #F0F0FF;'><span style='margin-left: 10px;'><b>Cpu Profiler</b><sup style='cursor: pointer;' onclick='emscriptenCpuProfiler.toggleHelpTextVisible();'>[?]</sup></span> <button style='display:inline; border: solid 1px #ADADAD; margin: 2px; background-color: #E1E1E1;' onclick='noExitRuntime=false;Module.exit();'>Halt</button><button id='toggle_webgl_profile' style='display:inline; border: solid 1px #ADADAD; margin: 2px;  background-color: #E1E1E1;' onclick='emscriptenCpuProfiler.toggleHookWebGL()'>Profile WebGL</button><button id='toggle_webgl_trace' style='display:inline; border: solid 1px #ADADAD; margin: 2px;  background-color: #E1E1E1;' onclick='emscriptenCpuProfiler.toggleTraceWebGL()'>Trace Calls</button> slower than <input id='trace_limit' oninput='emscriptenCpuProfiler.disableTraceWebGL();' style='width:40px;' value='100'></input> msecs. <span id='fpsResult' style='margin-left: 5px;'></span><canvas style='border: 1px solid black; margin-left:auto; margin-right:auto; display: block;' id='cpuprofiler_canvas' width='800px' height='200'></canvas><div id='cpuprofiler'></div>${helpText}`;
       document.getElementById('trace_limit').onkeydown = (e) => {
         if (e.which == 13 || e.keycode == 13) {
           emscriptenCpuProfiler.enableTraceWebGL();
@@ -434,8 +434,8 @@ var emscriptenCpuProfiler = {
         var overlayHeight = fpsOverlay.getBoundingClientRect().height || fpsOverlay.height;
         fpsOverlay.height = overlayHeight; // Remember the overlay height when it was visible, if it is hidden.
         fpsOverlay.style.display = (rect.bottom >= overlayHeight) ? 'block' : 'none';
-        fpsOverlay.style.top = Math.max(rect.top, 0) + 'px';
-        fpsOverlay.style.left = Math.max(rect.left, 0) + 'px';
+        fpsOverlay.style.top = `${Math.max(rect.top, 0)}px`;
+        fpsOverlay.style.left = `${Math.max(rect.left, 0)}px`;
       }
       setTimeout(positionOverlay, 100);
       setInterval(positionOverlay, 5000);
@@ -521,7 +521,7 @@ var emscriptenCpuProfiler = {
         if (sect.frametimesInsideMainLoop.length > this.canvas.width) sect.frametimesInsideMainLoop.length = this.canvas.width;
         if (sect.frametimesOutsideMainLoop.length > this.canvas.width) sect.frametimesOutsideMainLoop.length = this.canvas.width;
       }
-      document.getElementById('ntotalframes').innerHTML = this.canvas.width + '';
+      document.getElementById('ntotalframes').innerHTML = `${this.canvas.width}`;
       this.clearUi(0, this.canvas.width);
       this.drawGraphLabels();
       startX = 0; // Full redraw all columns.
@@ -587,7 +587,7 @@ var emscriptenCpuProfiler = {
     if (l9.includes(f)) return 9;
     if (l10.includes(f)) return 10;
     if (l11.includes(f)) return 11;
-    console.warn('Unexpected WebGL function ' + f);
+    console.warn(`Unexpected WebGL function ${f}`);
   },
 
   detectWebGLContext() {
@@ -630,7 +630,7 @@ var emscriptenCpuProfiler = {
 
     for (var f in glCtx) {
       if (typeof glCtx[f] != 'function' || f.startsWith('real_')) continue;
-      var realf = 'real_' + f;
+      var realf = `real_${f}`;
       glCtx[f] = glCtx[realf];
       delete glCtx[realf];
     }
@@ -638,7 +638,7 @@ var emscriptenCpuProfiler = {
 
   hookWebGLFunction(f, glCtx) {
     var section = (this.hotGLFunctions.includes(f) || f.startsWith('uniform') || f.startsWith('vertexAttrib')) ? 0 : 1;
-    var realf = 'real_' + f;
+    var realf = `real_${f}`;
     glCtx[realf] = glCtx[f];
     var numArgs = this.webGLFunctionLength(f); // On Firefox & Chrome, could do "glCtx[realf].length", but that doesn't work on Edge, which always reports 0.
     // Accessing 'arguments'/'...' is super slow, so to avoid overhead, statically reason the number of arguments.
@@ -655,7 +655,7 @@ var emscriptenCpuProfiler = {
       case 9: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9); this.endSection(section); return ret; }; break;
       case 10: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10); this.endSection(section); return ret; }; break;
       case 11: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11); this.endSection(section); return ret; }; break;
-      default: throw new Error('hookWebGL failed! Unexpected length ' + glCtx[realf].length);
+      default: throw new Error(`hookWebGL failed! Unexpected length ${glCtx[realf].length}`);
     }
   },
 
@@ -712,7 +712,7 @@ var emscriptenCpuProfiler = {
     matrixFuncs.forEach(f => {
       glCtx[f] = (a1, a2, a3, a4, a5) => {
         // WebGL2 version has 2 extra optional parameters, ensure we forward them
-        var ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4, a5) : glCtx['real_' + f](a1, a2, a3);
+        var ret = (a4 !== undefined) ? glCtx[`real_${f}`](a1, a2, a3, a4, a5) : glCtx[`real_${f}`](a1, a2, a3);
         return ret;
       }
     });
@@ -720,7 +720,7 @@ var emscriptenCpuProfiler = {
     ndvFuncs.forEach(f => {
       glCtx[f] = (a1, a2, a3, a4) => {
         // WebGL2 version has 1 extra parameter, ensure we forward them
-        var ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4) : glCtx['real_' + f](a1, a2, a3);
+        var ret = (a4 !== undefined) ? glCtx[`real_${f}`](a1, a2, a3, a4) : glCtx[`real_${f}`](a1, a2, a3);
         return ret;
       }
     });
