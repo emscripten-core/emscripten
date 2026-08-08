@@ -58,12 +58,9 @@ def run_test(args):
     test.__class__.setUpClass()
 
   start_time = time.perf_counter()
-  olddir = os.getcwd()
   result = BufferedParallelTestResult()
   result.start_time = start_time
   result.buffer = buffer
-  temp_dir = tempfile.mkdtemp(prefix='emtest_')
-  test.set_temp_dir(temp_dir)
   try:
     test(result)
   except KeyboardInterrupt:
@@ -73,17 +70,11 @@ def run_test(args):
   finally:
     result.elapsed = time.perf_counter() - start_time
 
-  # Before attempting to delete the tmp dir make sure the current
-  # working directory is not within it.
-  os.chdir(olddir)
-  common.force_delete_dir(temp_dir)
-
   # Since we are returning this result to the main thread we need to make sure
   # that it is serializable/picklable. To do this, we delete any non-picklable
   # fields from the instance.
   del result._original_stdout
   del result._original_stderr
-
   return result
 
 
