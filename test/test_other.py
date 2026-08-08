@@ -12087,6 +12087,10 @@ int main(void) {
     self.cflags += ['--extern-post-js', test_file('pthread/test_pthread_mem_leak_post.js')]
     self.do_runf('hello_world.c', 'SUCCESS: No leak detected', cflags=['-pthread'])
 
+  @requires_pthreads
+  def test_pthread_waitasync_after_exit(self):
+    self.do_runf('other/test_pthread_waitasync_after_exit.c', 'done\n', cflags=['-pthread'])
+
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
     outputStdin = self.run_process([EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
