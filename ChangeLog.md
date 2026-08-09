@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 
 - JavaScript library symbols can now use the `__force` and `__export`
   decorators to control inclusion and export visibility. (#27436)
+- contrib.glfw3 port upgraded to use the latest version of GLFW 3.5.1
+  (#27508)
 
 6.0.6 - 08/05/26
 ----------------
