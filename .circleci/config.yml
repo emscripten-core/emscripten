@@ -1023,7 +1023,6 @@ jobs:
     environment:
       EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_RUST: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
       - install-rust
@@ -1216,9 +1215,6 @@ jobs:
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_WASM_LEGACY_EH: "1"
-      EMTEST_SKIP_WASM_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_25: "1"
@@ -1270,9 +1266,6 @@ jobs:
       # We don't install d8 or modern node on the mac runner so we skip any
       # tests that depend on those.
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_WASM_LEGACY_EH: "1"
-      EMTEST_SKIP_WASM_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_MESON: "1"
       EMTEST_SKIP_RUST: "1"
