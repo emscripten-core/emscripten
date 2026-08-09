@@ -9308,6 +9308,26 @@ int main() {
     self.assertExists('hello_world.js')
     self.assertFileContents('hello_world.wasm', 'not wasm')
 
+  def test_single_file_html_minified(self):
+    # Test that HTML minification in SINGLE_FILE mode does not corrupt
+    # WASM binary data containing custom fragment patterns like <?foo?>.
+    create_file('src.c', '''
+#include <stdio.h>
+#include <string.h>
+volatile const char custom_fragment_test[] = "   <?foo?>   ";
+int main(int argc, char** argv) {
+  int len = 0;
+  for (int i = 0; i < 13; i++) {
+    if (custom_fragment_test[i]) len++;
+  }
+  printf("Length: %d\\n", len);
+  return 0;
+}
+''')
+    self.run_process([EMCC, 'src.c', '-O2', '-sSINGLE_FILE', '-o', 'out.html'])
+    html = read_file('out.html')
+    self.assertContained('   <?foo?>   ', html)
+
   def test_single_file_disables_source_map(self):
     cmd = [EMCC, test_file('hello_world.c'), '-sSINGLE_FILE', '-gsource-map']
     stderr = self.run_process(cmd, stderr=PIPE).stderr

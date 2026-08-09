@@ -2637,7 +2637,11 @@ def minify_html(filename):
              '--remove-style-link-type-attributes',
              '--use-short-doctype',
              '--minify-css', 'true',
-             '--minify-js', 'true']
+             '--minify-js', 'true',
+             # Disable default PHP/ASP fragment regexes (<?...?> and <%...%>)
+             # which can match raw byte sequences in embedded WASM binary
+             # data in SINGLE_FILE builds and corrupt surrounding whitespace.
+             '--ignore-custom-fragments', '[]']
 
   # html-minifier also has the following options, but they look unsafe for use:
   # '--collapse-inline-tag-whitespace': removes whitespace between inline tags in visible text,
