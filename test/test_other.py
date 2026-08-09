@@ -9330,6 +9330,16 @@ int main(int argc, char** argv) {
     html = read_file('out.html')
     self.assertContained('   <?foo?>   ', html)
 
+  def test_single_file_instantiate_failure(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sSINGLE_FILE', '-sASSERTIONS=1', '-o', 'out.js'])
+    code = read_file('out.js')
+    # Stub out binaryDecode so that it returns an invalid wasm binary.
+    code = code.replace('function binaryDecode(bin) {', 'function binaryDecode(bin) { return new Uint8Array([0]);')
+    write_file('out_bad.js', code)
+    out = self.run_js('out_bad.js', assert_returncode=1)
+    self.assertContained('Aborted(CompileError', out)
+    self.assertNotContained('startsWith is not a function', out)
+
   def test_single_file_disables_source_map(self):
     cmd = [EMCC, test_file('hello_world.c'), '-sSINGLE_FILE', '-gsource-map']
     stderr = self.run_process(cmd, stderr=PIPE).stderr

@@ -610,7 +610,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 #endif
 #endif // WASM == 2
 
-#if ASSERTIONS
+#if ASSERTIONS && !SINGLE_FILE
     // Warn on some common problems.
     if (isFileURI(binaryFile)) {
       err(`warning: Loading from a file URI (${binaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`);
@@ -714,7 +714,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
       // fall back of instantiateArrayBuffer below
     };
   }
-#endif
+#endif // !SINGLE_FILE
   return instantiateArrayBuffer(binaryFile, imports);
 }
 #endif // WASM_ASYNC_COMPILATION
