@@ -25,6 +25,10 @@ See docs/process.md for more on how version tagging works.
   decorators to control inclusion and export visibility. (#27436)
 - contrib.glfw3 port upgraded to use the latest version of GLFW 3.5.1
   (#27508)
+- `-fwasm-exceptions` now links the Wasm EH runtime (libunwind and the
+  `__cpp_exception` tag) independently of C++ linking, so Wasm EH objects from
+  non-C++ frontends (e.g. rustc, which links via `emcc`) link without
+  requiring `em++` or `-sDEFAULT_TO_CXX`. (#27496)
 
 6.0.6 - 08/05/26
 ----------------
