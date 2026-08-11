@@ -1,0 +1,23 @@
+test/js_optimizer/emitDCEGraph-scopes-output.js
+  s_44753193dc9ad8::t_036b2028a2bfea 22-31
+test/js_optimizer/emitDCEGraph-scopes.js
+  s_44753193dc9ad8::t_873a660e8eeb24 34-44
+tools/acorn-optimizer.mjs
+  s_44753193dc9ad8::t_bac098280690db 679-691,696-698,768,869-871,876
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9c3c7c22654605c07e90374662d9d8130bffa2c3",
+  "prompts": {},
+  "sessions": {
+    "s_44753193dc9ad8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00d59631affeCbu34S0ClicenB",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
