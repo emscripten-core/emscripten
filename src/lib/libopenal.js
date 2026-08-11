@@ -1316,33 +1316,26 @@ var LibraryOpenAL = {
           return;
         }
 
-        if (value === 0) {
-          for (var b of src.bufQueue) {
-            b.refCount--;
-          }
-          src.bufQueue.length = 1;
-          src.bufQueue[0] = AL.buffers[0];
+        var buf = AL.buffers[value];
+        if (!buf) {
+#if OPENAL_DEBUG
+          dbg('alSourcei(AL_BUFFER) called with an invalid buffer');
+#endif
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
+          return;
+        }
 
-          src.bufsProcessed = 0;
+        for (var oldBuf of src.bufQueue) {
+          oldBuf.refCount--;
+        }
+
+        src.bufQueue = [buf];
+        src.bufsProcessed = 0;
+
+        if (!value) {
           src.type = 0x1030 /* AL_UNDETERMINED */;
         } else {
-          var buf = AL.buffers[value];
-          if (!buf) {
-#if OPENAL_DEBUG
-            dbg('alSourcei(AL_BUFFER) called with an invalid buffer');
-#endif
-            AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
-            return;
-          }
-
-          for (var b of src.bufQueue) {
-            b.refCount--;
-          }
-          src.bufQueue.length = 0;
-
           buf.refCount++;
-          src.bufQueue = [buf];
-          src.bufsProcessed = 0;
           src.type = {{{ cDefs.AL_STATIC }}};
         }
 

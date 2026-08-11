@@ -30,6 +30,8 @@ import {preprocess, processMacros} from './parseTools.mjs';
 
 // List of symbols that were added from the library.
 export const librarySymbols = [];
+// Library symbols exported via the `__export` decorator.
+export const extraExports = new Set();
 // Map of library symbols which are aliases for native symbols
 // e.g. `wasmTable` -> `__indirect_function_table`
 export const nativeAliases = {};
@@ -67,6 +69,10 @@ function calculateLibraries() {
     } else {
       libraries.push('libexceptions.js');
     }
+  }
+
+  if (!WASM_EXCEPTIONS) {
+    libraries.push('libunwind.js');
   }
 
   if (!MINIMAL_RUNTIME) {
@@ -575,6 +581,7 @@ function exportRuntimeSymbols() {
       if (
         !EXPORTED_RUNTIME_METHODS.has(name) &&
         !EXPORTED_FUNCTIONS.has(name) &&
+        !extraExports.has(name) &&
         !unusedLibSymbols.has(name)
       ) {
         unexported.push(name);
@@ -601,7 +608,7 @@ function exportLibrarySymbols() {
   assert(MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
-    if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) && !nativeAliases[ident]) {
+    if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident) || extraExports.has(ident)) && !nativeAliases[ident]) {
       results.push(exportSymbol(ident));
     }
   }
@@ -621,6 +628,7 @@ addToCompileTimeContext({
   loadStructInfo,
   LibraryManager,
   librarySymbols,
+  extraExports,
   addToLibrary,
   cDefs,
   cDefine,

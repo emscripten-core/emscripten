@@ -966,8 +966,6 @@ jobs:
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
-            other.test_exceptions_stack_trace*
-            other.test_exceptions_rethrow_stack_trace*
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
             core2.test_sse2
@@ -993,6 +991,9 @@ jobs:
             other.test_js_base64_api
             other.test_pthread_growth*
             other.test_memory_growth
+            other.test_exceptions_stack_trace*
+            other.test_exceptions_rethrow_stack_trace*
+            core2.test_*exception*_wasm
             core2.test_hello_world
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
@@ -1154,6 +1155,11 @@ jobs:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja
+            # Choco can return 0 even if package installation/resolution fails (e.g. 504 Gateway Timeout).
+            # See: https://github.com/chocolatey/choco/issues/1609
+            # Explicitly check version commands to ensure executables exist in PATH.
+            cmake --version
+            ninja --version
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
@@ -1245,6 +1251,11 @@ jobs:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja
+            # Choco can return 0 even if package installation/resolution fails (e.g. 504 Gateway Timeout).
+            # See: https://github.com/chocolatey/choco/issues/1609
+            # Explicitly check version commands to ensure executables exist in PATH.
+            cmake --version
+            ninja --version
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - install-emsdk

@@ -637,7 +637,9 @@ def parameterize(func, parameters):
   """
   prev = getattr(func, '_parameterize', None)
   assert not any(p.startswith('_') for p in parameters), 'test variant names should not start with _'
+  assert all(isinstance(v, tuple) for v in parameters.values()), f'parameter values must be tuples: {parameters}'
   if prev:
+    assert all(isinstance(v, tuple) for v in prev.values()), f'previous parameter values must be tuples: {prev}'
     # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
     func._parameterize = {
       '_'.join(filter(None, [k1, k2])): v2 + v1 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())

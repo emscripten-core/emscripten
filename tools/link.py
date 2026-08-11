@@ -889,6 +889,10 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # autoconf declares functions without their proper signatures, and STRICT causes that to trip up by passing --fatal-warnings to the linker.
     if settings.STRICT:
       exit_with_error('autoconfiguring is not compatible with STRICT')
+    # autoconf declares functions without their proper signatures, so turn off shared library signature checks
+    # TODO: Align defaults for signature checking with static and dynamic linking?
+    # See https://github.com/llvm/llvm-project/issues/214557
+    linker_args.append('--no-shlib-sigcheck')
 
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
@@ -2083,13 +2087,9 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   if wasm_opt_args:
     building.run_wasm_opt(outfile_wasm, outfile_wasm, wasm_opt_args)
 
-  # Build the flags needed by Node.js to properly run the output file.
-  node_args = []
-  if settings.WASM_EXCEPTIONS:
-    node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
   output_file = in_temp('embind_generated_output.js')
-  shared.run_js_tool(outfile_js, [output_file], node_args)
+  shared.run_js_tool(outfile_js, [output_file])
   settings.restore(original_settings)
   return read_file(output_file)
 
@@ -2195,6 +2195,7 @@ def node_detection_code():
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   js_exports = building.user_requested_exports.union(settings.EXPORTED_RUNTIME_METHODS)
+  js_exports |= building.extra_js_exports
   js_exports = ', '.join(sorted(js_exports))
 
   wrapper = []
@@ -2632,7 +2633,11 @@ def minify_html(filename):
              '--remove-style-link-type-attributes',
              '--use-short-doctype',
              '--minify-css', 'true',
-             '--minify-js', 'true']
+             '--minify-js', 'true',
+             # Disable default PHP/ASP fragment regexes (<?...?> and <%...%>)
+             # which can match raw byte sequences in embedded WASM binary
+             # data in SINGLE_FILE builds and corrupt surrounding whitespace.
+             '--ignore-custom-fragments', '[]']
 
   # html-minifier also has the following options, but they look unsafe for use:
   # '--collapse-inline-tag-whitespace': removes whitespace between inline tags in visible text,

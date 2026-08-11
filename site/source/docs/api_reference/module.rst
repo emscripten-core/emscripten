@@ -271,27 +271,33 @@ Other methods
   called with two parameters, ``imports`` and ``successCallback``. ``imports``
   is a JS object which contains all the function imports that need to be passed
   to the WebAssembly Module when instantiating, and once instantiated, this
-  callback function should call ``successCallback()`` with the generated
-  WebAssembly Instance object.
-
-  The instantiation can be performed either synchronously or asynchronously. The
-  return value of this function should contain the ``exports`` object of the
-  instantiated WebAssembly Module, or an empty dictionary object ``{}`` if the
-  instantiation is performed asynchronously, or ``false`` if instantiation
-  failed.
+  callback function should call ``successCallback(instance, module)`` with the
+  generated WebAssembly Instance object and WebAssembly Module object.
 
   Overriding the WebAssembly instantiation procedure via this function is useful
   when you have other custom asynchronous startup actions or downloads that can
   be performed in parallel to WebAssembly compilation. Implementing this
-  callback allows performing all of these in parallel. See the file
-  ``test/manual_wasm_instantiate.html`` and the test
+  callback allows performing all of these in parallel.
+
+  It is easiest to provide ``instantiateWasm`` from inside of a `--pre-js` file.
+  Inside a ``--pre-js`` file, the default behavior can usually be achieved as
+  follows:
+
+  .. code:: javascript
+
+      Module['instantiateWasm'] = async (imports, successCallback) => {
+        wasmBinaryFile ??= findWasmBinary();
+        const { instance, module } = await instantiateArrayBuffer(wasmBinaryFile, imports);
+        successCallback(instance, module);
+      }
+
+  This won't work with ``-sWASM_ASYNC_COMPILATION=0`` or with pthreads but in
+  other cases this results in the default loading behavior.
+
+  See the file ``test/manual_wasm_instantiate.html`` and the test
   ``browser.test_manual_wasm_instantiate`` for an example of how this construct
   works in action.
 
-  .. note:: Source maps are currently not supported if overriding
-     WebAssembly instantiation with Module.instantiateWasm. Providing
-     Module.instantiateWasm when source maps are enabled can prevent
-     WebAssembly instantiation from finishing.
 
 .. js:function:: Module.fetchSettings
 

@@ -1,7 +1,7 @@
 {
-  "a.out.js": 267539,
-  "a.out.nodebug.wasm": 588309,
-  "total": 855848,
+  "a.out.js": 267819,
+  "a.out.nodebug.wasm": 588314,
+  "total": 856133,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -212,6 +212,12 @@
     "XSendEvent",
     "XSetWMHints",
     "XStoreName",
+    "_Unwind_Backtrace",
+    "_Unwind_DeleteException",
+    "_Unwind_FindEnclosingFunction",
+    "_Unwind_GetIPInfo",
+    "_Unwind_RaiseException",
+    "_Unwind_Resume",
     "__asctime_r",
     "__assert_fail",
     "__call_sighandler",

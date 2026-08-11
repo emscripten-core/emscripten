@@ -18,8 +18,20 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.6 (in development)
+6.0.7 (in development)
 ----------------------
+
+- JavaScript library symbols can now use the `__force` and `__export`
+  decorators to control inclusion and export visibility. (#27436)
+- contrib.glfw3 port upgraded to use the latest version of GLFW 3.5.1
+  (#27508)
+- `-fwasm-exceptions` now links the Wasm EH runtime (libunwind and the
+  `__cpp_exception` tag) independently of C++ linking, so Wasm EH objects from
+  non-C++ frontends (e.g. rustc, which links via `emcc`) link without
+  requiring `em++` or `-sDEFAULT_TO_CXX`. (#27496)
+
+6.0.6 - 08/05/26
+----------------
 - `DEFAULT_TO_CXX` is now disabled by default. This means that `em++` is now
   required when linking C++ programs, matching the behavior of clang and gcc.
   The old behavior is still available using `-sDEFAULT_TO_CXX`. (#11121)

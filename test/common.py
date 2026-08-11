@@ -604,17 +604,14 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def require_wasm_eh(self):
     if 'EMTEST_SKIP_WASM_EH' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_WASM_EH is set)')
+      self.skipTest('test requires node v24.15 or d8 (and EMTEST_SKIP_WASM_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
 
     if self.is_browser_test():
       self.check_browser_feature('EMTEST_SKIP_WASM_EH', Feature.WASM_EXCEPTIONS, 'test requires Wasm EH')
       return
 
-    if self.try_require_node_version(22):
-      # v25 and up don't require a flag at all
-      if not self.try_require_node_version(25):
-        self.node_args.append('--experimental-wasm-exnref')
+    if self.try_require_node_version(24, 15):
       return
 
     deno = get_deno()
@@ -633,7 +630,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.require_engine(v8)
       return
 
-    self.fail('either d8, deno, bun or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
+    self.fail('either d8, deno, bun or node v24.15 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
 
   def require_jspi(self):
     if 'EMTEST_SKIP_JSPI' in os.environ:

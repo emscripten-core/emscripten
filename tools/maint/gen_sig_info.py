@@ -181,6 +181,9 @@ def ignore_symbol(s, cxx):
            '__stack_pointer', '__stack_high', '__stack_low',
            # legacy aliases, not callable from native code.
            'stackSave', 'stackRestore', 'stackAlloc', 'getTempRet0', 'setTempRet0',
+           # _Unwind_* functions receive JS CppException objects from JS calls (__cxa_throw),
+           # so they should not have __sig parameter conversions injected by jsifier.
+           '_Unwind_RaiseException', '_Unwind_Resume',
            }:
     return True
   return (cxx and s == '__asctime_r') or s.startswith('__cxa_find_matching_catch')

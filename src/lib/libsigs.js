@@ -213,7 +213,6 @@ sigs = {
   _Unwind_DeleteException__sig: 'vp',
   _Unwind_FindEnclosingFunction__sig: 'pp',
   _Unwind_GetIPInfo__sig: 'ppp',
-  _Unwind_RaiseException__sig: 'ip',
   __asctime_r__sig: 'ppp',
   __assert_fail__sig: 'vppip',
   __call_sighandler__sig: 'vpi',

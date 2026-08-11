@@ -6,7 +6,7 @@
 from subprocess import PIPE
 
 from common import RunnerCore, copy_asset, create_file, read_file, test_file
-from decorators import also_with_wasm64, also_without_bigint, parameterized
+from decorators import also_with_wasm64, also_without_bigint, parameterized, requires_node_25
 
 from tools.shared import EMCC
 from tools.utils import delete_file
@@ -164,6 +164,88 @@ int main() {
     self.do_runf('src.c', 'c calling: 12\njs calling: 10.',
                  cflags=['--js-library', 'lib.js', '-sEXPORTED_FUNCTIONS=_main,_jslibfunc'])
 
+  @parameterized({
+    '': ([],),
+    'optimized': (['-O3'],),
+    'esm_integration': (['-sWASM_ESM_INTEGRATION'],),
+    'esm_integration_optimized': (['-sWASM_ESM_INTEGRATION', '-O3'],),
+  })
+  @requires_node_25
+  def test_jslib_export_decorators_instance(self, args):
+    self.node_args += ['--no-warnings']
+    create_file('lib.js', '''\
+addToLibrary({
+  $dependencyExport__export: true,
+  $dependencyExport: () => 41,
+
+  $forceOnly__deps: ['$dependencyExport'],
+  $forceOnly__force: true,
+  $forceOnly__postset: 'globalThis.forceOnlyIncluded = true',
+  $forceOnly: () => {},
+
+  $forceExport__export: true,
+  $forceExport__force: true,
+  $forceExport: () => 42,
+
+  $unusedExport__export: true,
+  $unusedExport: () => 43,
+});
+''')
+    create_file('main.c', 'int main() { return 0; }')
+    self.run_process([EMCC, 'main.c', '-sMODULARIZE=instance', '-Wno-experimental',
+                      '--js-library', 'lib.js', '-o', 'mod.mjs'] + args + self.get_cflags())
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import init, * as exports from './mod.mjs';
+      await init();
+      assert.equal(exports.dependencyExport(), 41);
+      assert.equal(exports.forceExport(), 42);
+      assert.equal(exports.forceOnly, undefined);
+      assert.equal(exports.unusedExport, undefined);
+      assert(globalThis.forceOnlyIncluded);
+      console.log('ok');
+    ''')
+    self.assertContained('ok', self.run_js('runner.mjs'))
+
+  def test_jslib_export_decorators(self):
+    create_file('lib.js', '''\
+addToLibrary({
+  $dependencyExport__export: true,
+  $dependencyExport: () => 41,
+
+  $forceOnly__deps: ['$dependencyExport'],
+  $forceOnly__force: true,
+  $forceOnly__postset: "Module['forceOnlyIncluded'] = true",
+  $forceOnly: () => {},
+
+  $forceExport__export: true,
+  $forceExport__force: true,
+  $forceExport: () => 42,
+
+  $unusedExport__export: true,
+  $unusedExport: () => 43,
+});
+''')
+    create_file('post.js', '''
+      Module.onRuntimeInitialized = () => {
+        if (Module.dependencyExport() != 41) throw new Error('dependency export failed');
+        if (Module.forceExport() != 42) throw new Error('forced export failed');
+        const isExported = (name) => {
+          try {
+            return Module[name] !== undefined;
+          } catch {
+            return false;
+          }
+        };
+        if (isExported('forceOnly')) throw new Error('force-only symbol was exported');
+        if (isExported('unusedExport')) throw new Error('unused symbol was exported');
+        if (!Module.forceOnlyIncluded) throw new Error('force-only symbol was not included');
+        out('ok');
+      };
+    ''')
+    create_file('main.c', 'int main() { return 0; }')
+    self.do_runf('main.c', 'ok\n', cflags=['--js-library', 'lib.js', '--post-js', 'post.js'])
+
   def test_jslib_using_asm_lib(self):
     create_file('lib.js', r'''
 addToLibrary({
@@ -282,6 +364,15 @@ addToLibrary({
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'],
                      "lib.js: Decorator (jslibfunc__internal) has wrong type. Expected 'boolean' not 'string'")
+
+    create_file('lib.js', r'''
+addToLibrary({
+  jslibfunc__export: 'yes',
+  jslibfunc: (x) => {},
+});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'],
+                     "lib.js: Decorator (jslibfunc__export) has wrong type. Expected 'boolean' not 'string'")
 
   @also_with_wasm64
   @also_without_bigint

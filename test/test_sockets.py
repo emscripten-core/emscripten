@@ -75,12 +75,15 @@ def _probe_ipv6_loopback():
 HAS_IPV6_LOOPBACK = _probe_ipv6_loopback()
 
 
-def verify_tcp_connection(address, retries=10, timeout=1):
-  # Poll a listening TCP address until it accepts a connection, so a harness
+def verify_tcp_connection(port, retries=10, timeout=1):
+  # Poll a listening TCP port until it accepts a connection, so a harness
   # doesn't return before its server is ready and race the client.
   for _ in range(retries):
     try:
-      sock = socket.create_connection(address, timeout=timeout)
+      # Use explicit '127.0.0.1' (IPv4) instead of 'localhost' because Emscripten's
+      # WebSocket server binds to 0.0.0.0 (IPv4), whereas 'localhost' can resolve to
+      # IPv6 ::1 first, causing connect timeouts.
+      sock = socket.create_connection(('127.0.0.1', port), timeout=timeout)
       sock.close()
       return True
     except OSError:
@@ -138,10 +141,10 @@ class WebsockifyServerHarness:
     self.websockify.start()
     self.processes.append(self.websockify)
     # Make sure both the actual server and the websocket proxy are running
-    if self.do_server_check and not verify_tcp_connection(('localhost', self.target_port)):
+    if self.do_server_check and not verify_tcp_connection(self.target_port):
       self.clean_processes()
       raise Exception('[Socket server failed to start up in a timely manner]')
-    if not verify_tcp_connection(('localhost', self.listen_port)):
+    if not verify_tcp_connection(self.listen_port):
       self.clean_processes()
       raise Exception('[Websockify proxy failed to start up in a timely manner]')
 
@@ -190,7 +193,7 @@ class CompiledServerHarness:
     # server binds its port asynchronously after process startup, so a client
     # that connects too early races the listen() and sees ECONNREFUSED. Skipped
     # for tests whose server intentionally never listens (e.g. server-down).
-    if self.do_server_check and not verify_tcp_connection(('localhost', self.listen_port)):
+    if self.do_server_check and not verify_tcp_connection(self.listen_port):
       clean_process(self.process)
       raise Exception('[Compiled server failed to start up in a timely manner]')
 
@@ -243,11 +246,11 @@ class sockets(BrowserCore):
   # CompiledServerHarness only uses one. Start with 49160 & 49159 as the first server port
   # addresses. If adding new tests, increment the used port addresses below.
   @parameterized({
-    'websockify': [WebsockifyServerHarness, 49160, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 49161, ['-DTEST_DGRAM=0']],
-    'udp': [CompiledServerHarness, 49162, ['-DTEST_DGRAM=1']],
+    'websockify': (WebsockifyServerHarness, 49160, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 49161, ['-DTEST_DGRAM=0']),
+    'udp': (CompiledServerHarness, 49162, ['-DTEST_DGRAM=1']),
     # The following forces non-NULL addr and addlen parameters for the accept call
-    'accept_addr': [CompiledServerHarness, 49163, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']],
+    'accept_addr': (CompiledServerHarness, 49163, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']),
   })
   def test_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -271,11 +274,11 @@ class sockets(BrowserCore):
       self.btest_exit('sockets/sdl2_net_client.c', cflags=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', f'-DSOCKK={harness.listen_port}'])
 
   @parameterized({
-    'websockify': [WebsockifyServerHarness, 49166, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 49167, ['-DTEST_DGRAM=0']],
-    'udp': [CompiledServerHarness, 49168, ['-DTEST_DGRAM=1']],
+    'websockify': (WebsockifyServerHarness, 49166, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 49167, ['-DTEST_DGRAM=0']),
+    'udp': (CompiledServerHarness, 49168, ['-DTEST_DGRAM=1']),
     # The following forces non-NULL addr and addlen parameters for the accept call
-    'accept_addr': [CompiledServerHarness, 49169, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']],
+    'accept_addr': (CompiledServerHarness, 49169, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']),
   })
   def test_sockets_async_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -295,9 +298,9 @@ class sockets(BrowserCore):
     self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-DSOCKK=49169', '-DTEST_ASYNC=1'])
 
   @parameterized({
-    'websockify': [WebsockifyServerHarness, 49171, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 49172, ['-DTEST_DGRAM=0']],
-    'udp': [CompiledServerHarness, 49173, ['-DTEST_DGRAM=1']],
+    'websockify': (WebsockifyServerHarness, 49171, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 49172, ['-DTEST_DGRAM=0']),
+    'udp': (CompiledServerHarness, 49173, ['-DTEST_DGRAM=1']),
   })
   def test_sockets_echo_bigdata(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -368,10 +371,10 @@ class sockets(BrowserCore):
 
   @crossplatform
   @parameterized({
-    'native': [WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']],
-    'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]],
-    'udp': [CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']],
-    'pthread': [CompiledServerHarness, 59166, ['-pthread', '-sPROXY_TO_PTHREAD']],
+    'native': (WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 59162, ['-DTEST_DGRAM=0', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]),
+    'udp': (CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']),
+    'pthread': (CompiledServerHarness, 59166, ['-pthread', '-sPROXY_TO_PTHREAD']),
   })
   def test_nodejs_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -588,9 +591,9 @@ class sockets(BrowserCore):
   # N.B. running this test requires 'npm install ws' in Emscripten root directory
   # NOTE: Shared buffer is not allowed for websocket sending.
   @parameterized({
-    '': [[]],
-    'shared': [['-sSHARED_MEMORY']],
-    'deinitialize': [['-DTEST_EMSCRIPTEN_WEBSOCKET_DEINITIALIZE']],
+    '': ([],),
+    'shared': (['-sSHARED_MEMORY'],),
+    'deinitialize': (['-DTEST_EMSCRIPTEN_WEBSOCKET_DEINITIALIZE'],),
   })
   @requires_dev_dependency('ws')
   def test_websocket_send(self, args):
