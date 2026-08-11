@@ -9311,6 +9311,7 @@ int main() {
   def test_single_file_html_minified(self):
     # Test that HTML minification in SINGLE_FILE mode does not corrupt
     # WASM binary data containing custom fragment patterns like <?foo?>.
+    # The whitespace around <?foo?> must not be removed here.
     create_file('src.c', '''
 #include <stdio.h>
 #include <string.h>
