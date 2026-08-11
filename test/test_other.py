@@ -15374,7 +15374,11 @@ addToLibrary({
     ''')
     self.do_runf('main.cpp', 'Hello Module!', cflags=['-std=c++20', '-fmodules'])
 
-  def test_invalid_export_name(self):
+  @parameterized({
+    '': (['-sASSERTIONS'],),
+    'no_assertions': (['-sASSERTIONS=0'],),
+  })
+  def test_invalid_export_name(self, args):
     create_file('main.c', r'''
       #include <emscripten.h>
       #include <stdio.h>
@@ -15394,12 +15398,11 @@ addToLibrary({
     self.assert_fail([EMCC, '-Werror', 'main.c'], expected)
 
     # With warning suppressed the above program should work.
-    for assertions in (0, 1):
-      self.do_runf(
-        'main.c',
-        'got: 42\ngot2: 42\n',
-        cflags=['-Wno-js-compiler', f'-sASSERTIONS={assertions}'],
-      )
+    self.do_runf(
+      'main.c',
+      'got: 42\ngot2: 42\n',
+      cflags=['-Wno-js-compiler'] + args,
+    )
 
     # When we are generating only wasm and not JS we don't need exports to
     # be valid JS symbols.
