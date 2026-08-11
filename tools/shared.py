@@ -329,17 +329,6 @@ def node_reference_types_flags(nodejs):
     return []
 
 
-def node_exception_flags(nodejs):
-  node_version = get_node_version(nodejs)
-  # Legacy exception handling was enabled by default in node v17.
-  if node_version and node_version < (17, 0, 0):
-    return ['--experimental-wasm-eh']
-  # Standard exception handling was supported behind flag in node v22.
-  if node_version and node_version >= (22, 0, 0) and not settings.WASM_LEGACY_EXCEPTIONS:
-    return ['--experimental-wasm-exnref']
-  return []
-
-
 @memoize
 @ToolchainProfiler.profile()
 def check_node():
