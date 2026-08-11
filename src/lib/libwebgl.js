@@ -3224,7 +3224,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       '__VERSION__': () => source.includes('#version 300') ? 300 : 100
     });
 #if GL_DEBUG
-    dbg(`Shader source after preprocessing: ${source}`;
+    dbg(`Shader source after preprocessing: ${source}`);
 #endif
 #endif // ~GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
 
@@ -3253,7 +3253,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GL.shaders[shader].explicitUniformLocations = explicitUniformLocations;
 
 #if GL_DEBUG
-    dbg(`Shader source after removing layout location directives: ${source}`;
+    dbg(`Shader source after removing layout location directives: ${source}`);
     dbg('Explicit uniform locations recorded in the shader:');
     console.dir(explicitUniformLocations);
 #endif
@@ -3314,7 +3314,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,\s*(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
 
 #if GL_DEBUG
-    dbg(`Shader source after removing layout binding directives: ${source}`;
+    dbg(`Shader source after removing layout binding directives: ${source}`);
     dbg('Sampler binding locations recorded in the shader:');
     console.dir(samplerBindings);
     dbg('Uniform binding locations recorded in the shader:');
