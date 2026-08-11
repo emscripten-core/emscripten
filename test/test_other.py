@@ -3829,8 +3829,8 @@ More info: https://emscripten.org
     'legacy': (1,),
   })
   def test_embind_tsgen_exceptions(self, legacy):
-    if not legacy and shared.get_node_version(config.NODE_JS)[0] < 22:
-      self.skipTest('Node version needs to be 22 or greater to run tsgen with Wasm EH')
+    if not legacy and shared.get_node_version(config.NODE_JS) < (24, 15, 0):
+      self.skipTest('Node version needs to be v24.15 or greater to run tsgen with Wasm EH')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
 
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
