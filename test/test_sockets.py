@@ -75,12 +75,15 @@ def _probe_ipv6_loopback():
 HAS_IPV6_LOOPBACK = _probe_ipv6_loopback()
 
 
-def verify_tcp_connection(address, retries=10, timeout=1):
-  # Poll a listening TCP address until it accepts a connection, so a harness
+def verify_tcp_connection(port, retries=10, timeout=1):
+  # Poll a listening TCP port until it accepts a connection, so a harness
   # doesn't return before its server is ready and race the client.
   for _ in range(retries):
     try:
-      sock = socket.create_connection(address, timeout=timeout)
+      # Use explicit '127.0.0.1' (IPv4) instead of 'localhost' because Emscripten's
+      # WebSocket server binds to 0.0.0.0 (IPv4), whereas 'localhost' can resolve to
+      # IPv6 ::1 first, causing connect timeouts.
+      sock = socket.create_connection(('127.0.0.1', port), timeout=timeout)
       sock.close()
       return True
     except OSError:
@@ -138,10 +141,10 @@ class WebsockifyServerHarness:
     self.websockify.start()
     self.processes.append(self.websockify)
     # Make sure both the actual server and the websocket proxy are running
-    if self.do_server_check and not verify_tcp_connection(('localhost', self.target_port)):
+    if self.do_server_check and not verify_tcp_connection(self.target_port):
       self.clean_processes()
       raise Exception('[Socket server failed to start up in a timely manner]')
-    if not verify_tcp_connection(('localhost', self.listen_port)):
+    if not verify_tcp_connection(self.listen_port):
       self.clean_processes()
       raise Exception('[Websockify proxy failed to start up in a timely manner]')
 
@@ -190,7 +193,7 @@ class CompiledServerHarness:
     # server binds its port asynchronously after process startup, so a client
     # that connects too early races the listen() and sees ECONNREFUSED. Skipped
     # for tests whose server intentionally never listens (e.g. server-down).
-    if self.do_server_check and not verify_tcp_connection(('localhost', self.listen_port)):
+    if self.do_server_check and not verify_tcp_connection(self.listen_port):
       clean_process(self.process)
       raise Exception('[Compiled server failed to start up in a timely manner]')
 
