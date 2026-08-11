@@ -15394,7 +15394,12 @@ addToLibrary({
     self.assert_fail([EMCC, '-Werror', 'main.c'], expected)
 
     # With warning suppressed the above program should work.
-    self.do_runf('main.c', 'got: 42\ngot2: 42\n', cflags=['-Wno-js-compiler'])
+    for assertions in (0, 1):
+      self.do_runf(
+        'main.c',
+        'got: 42\ngot2: 42\n',
+        cflags=['-Wno-js-compiler', f'-sASSERTIONS={assertions}'],
+      )
 
     # When we are generating only wasm and not JS we don't need exports to
     # be valid JS symbols.
