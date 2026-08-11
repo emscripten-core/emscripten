@@ -1018,25 +1018,29 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
     exports[export.name] = (export, info)
 
   mangled = [asmjs_mangle(s) for s in exports] + list(aliases.keys())
+  declarations = [sym for sym in mangled if js_manipulation.isidentifier(sym)]
   if settings.ASSERTIONS:
     # In debug builds we generate trapping functions in case
     # folks try to call/use a reference that was taken before the
     # wasm module is available.
+    declaration_set = set(declarations)
     for sym in mangled:
       module_export = (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(sym) and settings.MODULARIZE != 'instance'
-      if not js_manipulation.isidentifier(sym) and not module_export:
+      if sym not in declaration_set and not module_export:
         continue
       assignment = f'var {sym}'
       if module_export:
-        if js_manipulation.isidentifier(sym):
+        if sym in declaration_set:
           assignment += f" = Module['{sym}']"
         else:
           assignment = f"Module['{sym}']"
       receiving.append(f"{assignment} = makeInvalidEarlyAccess('{sym}');")
   else:
-    # Declare all exports in a single var statement
-    sep = ',\n  '
-    receiving.append(f'var {sep.join(mangled)};\n')
+    # Declare JavaScript bindings for exports whose names are valid identifiers.
+    # Other WASM exports are accessible through wasmExports or Module.
+    if declarations:
+      sep = ',\n  '
+      receiving.append(f'var {sep.join(declarations)};\n')
 
   if settings.MODULARIZE == 'instance':
     esm_exports = [e for e in mangled if should_export(e)]
