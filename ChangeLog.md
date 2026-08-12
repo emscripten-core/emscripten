@@ -29,6 +29,7 @@ See docs/process.md for more on how version tagging works.
   `__cpp_exception` tag) independently of C++ linking, so Wasm EH objects from
   non-C++ frontends (e.g. rustc, which links via `emcc`) link without
   requiring `em++` or `-sDEFAULT_TO_CXX`. (#27496)
+- FreeType was updated to 2.14.3 (#27518)
 
 6.0.6 - 08/05/26
 ----------------
