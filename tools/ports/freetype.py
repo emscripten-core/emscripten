@@ -5,10 +5,10 @@
 
 import os
 
-TAG = 'VER-2-13-3'
+TAG = 'VER-2-14-3'
 # See version_info in builds/unix/configure.raw or `freetype-config --version`
 PKG_VERSION = '26.2.20'
-HASH = 'ce413487c24e689631d705f53b64725256f89fffe9aade7cf07bbd785a9cd49eb6b8d2297a55554f3fee0a50b17e8af78f505cdab565768afab833794f968c2f'
+HASH = '460ea4dc9cc879822556d801341a1cf3efcd57a13cd4da64169603ea98873337dd19e3c8c6d9054b27d10acbbaa8d5c59b7f560c697b98dc2640bcd88f57554a'
 
 variants = {'freetype-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': 1}}
 deps = ['zlib']
