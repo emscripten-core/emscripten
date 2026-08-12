@@ -5,6 +5,7 @@
 
 import glob
 import hashlib
+import http.client
 import importlib.util
 import logging
 import os
@@ -359,8 +360,11 @@ class Ports:
         # available on macOS.
         data = subprocess.check_output(['curl', '-sSL', url])
       else:
-        f = urlopen(url)
-        data = f.read()
+        try:
+          with urlopen(url) as f:
+            data = f.read()
+        except (OSError, http.client.HTTPException) as e:
+          utils.exit_with_error(f'failed to download port "{name}" from {url}: {e}')
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
