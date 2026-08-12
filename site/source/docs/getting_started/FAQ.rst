@@ -174,7 +174,7 @@ Common issues are:
   on, and never use host libraries.
 * Some libraries or object files in your project were built using the host
   compiler rather then the emscripten compiler.  If you are using autoconf
-  or cmake make sure you use the emconfigure/emmake wrapper, see
+  or cmake make sure you use the emconfigure/emcmake/emmake wrappers, see
   :ref:`Building-Projects`.
 * LLVM IR from the old backend, if you built the project with a version before
   1.39.0 (which used the old backend by default), and are doing an incremental
