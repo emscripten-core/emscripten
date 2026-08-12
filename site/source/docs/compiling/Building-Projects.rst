@@ -50,7 +50,7 @@ To build with Emscripten, you would instead use the following commands:
 CMake-based projects
 --------------------
 
-Consider the case where you normally build a **CMake**-based project:
+Consider the case where you normally build a **CMake**-based project with the following commands:
 
 .. code-block:: bash
 
