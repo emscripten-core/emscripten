@@ -510,6 +510,12 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
                                     override=True)
     elif arg == '-mno-nontrapping-fptoint':
       feature_matrix.disable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT)
+    elif arg == '-mextended-const':
+      feature_matrix.enable_feature(feature_matrix.Feature.EXTENDED_CONST,
+                                    '-mextended-const',
+                                    override=True)
+    elif arg == '-mno-extended-const':
+      feature_matrix.disable_feature(feature_matrix.Feature.EXTENDED_CONST)
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm
