@@ -310,10 +310,7 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg("__resumeException " + [ptrToString(ptr), exceptionLast]);
 #endif
-    if (!exceptionLast) {
-      exceptionLast = new CppException(ptr);
-    }
-    ptr = exceptionLast;
+    ptr = exceptionLast ??= new CppException(ptr)
 #endif
     __Unwind_Resume(ptr);
   },
