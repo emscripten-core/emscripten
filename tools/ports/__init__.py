@@ -360,7 +360,7 @@ class Ports:
           # Unlike on Windows or Linux, curl is guaranteed to always be
           # available on macOS.
           # EMCC_USE_CURL here is purely for testing and undocumented.
-          data = utils.run_process(['curl', '-sSL', url], stdout=subprocess.PIPE).stdout
+          data = utils.run_process(['curl', '-sSL', url], stdout=subprocess.PIPE, text=False).stdout
         else:
           with urlopen(url) as f:
             data = f.read()
