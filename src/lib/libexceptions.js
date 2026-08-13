@@ -6,7 +6,7 @@
 
 var LibraryExceptions = {
 #if !WASM_EXCEPTIONS
-  $uncaughtExceptionCount: '0',
+  $uncaughtExceptionCount: 0,
 #if !DISABLE_EXCEPTION_CATCHING
   $exceptionLast: null,
 #endif
