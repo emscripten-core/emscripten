@@ -1030,7 +1030,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'emClearImmediate_deps',
   'emClearImmediate',
   'promiseMap',
-  'uncaughtExceptionCount',
   'Browser',
   'requestFullscreen',
   'setCanvasSize',
