@@ -16148,3 +16148,18 @@ console.log('OK');'''
 
     self.assertTextDataIdentical(normalized_original, normalized_rolled,
                                  fromfile='hello.normalized.mjs', tofile='hello.rolled.normalized.mjs')
+
+  @crossplatform
+  def test_download_failure(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    bad_port_path = self.in_dir('bad_port.py')
+    write_file(bad_port_path, '''
+URL = 'http://127.0.0.1:0/nonexistent.zip'
+DESCRIPTION = 'Bad Port'
+LICENSE = 'MIT'
+SHA512 = 'dummy'
+PORT_FILE = 'port.py'
+EXTERNAL_PORT = URL
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
