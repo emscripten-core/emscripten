@@ -110,8 +110,7 @@ var LibraryExceptions = {
     info.init(type, destructor);
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
-    exceptionLast = new CppException(ptr);
-    ptr = exceptionLast;
+    ptr = exceptionLast = new CppException(ptr);
 #endif
     uncaughtExceptionCount++;
     __Unwind_RaiseException(ptr);
@@ -142,8 +141,7 @@ var LibraryExceptions = {
     dbg('__cxa_rethrow: ' +
       [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
 #endif
-    exceptionLast = new CppException(ptr);
-    ptr = exceptionLast;
+    ptr = exceptionLast = new CppException(ptr);
 #endif
     __Unwind_RaiseException(ptr);
   },
@@ -234,8 +232,7 @@ var LibraryExceptions = {
     uncaughtExceptionCount++;
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
-    exceptionLast = new CppException(ptr);
-    ptr = exceptionLast;
+    ptr = exceptionLast = new CppException(ptr);
 #endif
     __Unwind_RaiseException(ptr);
   },
