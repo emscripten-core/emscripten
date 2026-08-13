@@ -352,19 +352,20 @@ class Ports:
       # retrieve from remote server
       logger.info(f'retrieving port: {name} from {url}')
 
-      if utils.MACOS:
-        # Use `curl` over `urllib` on macOS to avoid issues with
-        # certificate verification.
-        # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
-        # Unlike on Windows or Linux, curl is guaranteed to always be
-        # available on macOS.
-        data = subprocess.check_output(['curl', '-sSL', url])
-      else:
-        try:
+      try:
+        if utils.MACOS or os.environ.get('EMCC_USE_CURL'):
+          # Use `curl` over `urllib` on macOS to avoid issues with
+          # certificate verification.
+          # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
+          # Unlike on Windows or Linux, curl is guaranteed to always be
+          # available on macOS.
+          # EMCC_USE_CURL here is purely for testing and undocumented.
+          data = utils.run_process(['curl', '-sSL', url], stdout=subprocess.PIPE).stdout
+        else:
           with urlopen(url) as f:
             data = f.read()
-        except (OSError, http.client.HTTPException) as e:
-          utils.exit_with_error(f'failed to download port "{name}" from {url}: {e}')
+      except (subprocess.CalledProcessError, OSError, http.client.HTTPException) as e:
+        utils.exit_with_error(f'failed to download port "{name}" from {url}: {e}')
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
