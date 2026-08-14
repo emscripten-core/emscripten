@@ -11649,6 +11649,9 @@ int main(void) {
   def test_mmap_empty_wasmfs(self):
     self.do_other_test('test_mmap_empty.c', cflags=['-sWASMFS'])
 
+  def test_shm_open(self):
+    self.do_runf('other/test_shm_open.c', 'done\n')
+
   def test_files_and_module_assignment(self):
     # a pre-js can set Module to a new object or otherwise undo file preloading/
     # embedding changes to Module.preRun. we show an error to avoid confusion
