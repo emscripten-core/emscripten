@@ -20,6 +20,7 @@ from . import (
   colored_logger,
   config,
   diagnostics,
+  feature_matrix,
   js_optimizer,
   response_file,
   shared,
@@ -277,6 +278,9 @@ def lld_flags_for_executable(external_symbols):
     cmd.append('--table-base=%s' % settings.TABLE_BASE)
     if not settings.STACK_FIRST:
       cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
+
+  if feature_matrix.caniuse(feature_matrix.Feature.EXTENDED_CONST):
+    cmd.append('--extra-features=extended-const')
 
   return cmd
 

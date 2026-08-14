@@ -10480,6 +10480,13 @@ int main() {
     compile(['-sMIN_SAFARI_VERSION=140100', '-mbulk-memory'])
     verify_features_sec_linked('nontrapping-fptoint', False)
 
+    compile(['-sMIN_CHROME_VERSION=100'])
+    verify_features_sec_linked('extended-const', False)
+    compile(['-mextended-const'])
+    verify_features_sec_linked('extended-const', True)
+    compile(['-sMIN_CHROME_VERSION=114', '-sMIN_FIREFOX_VERSION=112', '-sMIN_SAFARI_VERSION=170400', '-sMIN_NODE_VERSION=210000'])
+    verify_features_sec_linked('extended-const', True)
+
   def test_no_bulk_memory(self):
     # The test_wasm_features test (above) uses the feature section to confirm
     # if a feature is present, but that doesn't work in optimizing builds

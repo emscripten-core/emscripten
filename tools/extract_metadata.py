@@ -53,17 +53,19 @@ def is_orig_main_wrapper(module, function):
 
 
 def get_const_expr_value(expr):
-  assert len(expr) == 2
-  assert expr[1][0] == OpCode.END
-  opcode, immediates = expr[0]
-  match opcode:
-    case OpCode.I32_CONST | OpCode.I64_CONST:
-      assert len(immediates) == 1
-      return immediates[0]
-    case OpCode.GLOBAL_GET:
-      return 0
-    case _:
-      exit_with_error('unexpected opcode in const expr: %s', opcode)
+  assert expr[-1][0] == OpCode.END
+  for inst in expr:
+    opcode, immediates = inst
+    match opcode:
+      case OpCode.I32_CONST | OpCode.I64_CONST:
+        assert len(immediates) == 1
+        return immediates[0]
+      case OpCode.GLOBAL_GET:
+        continue
+      case OpCode.END:
+        return 0
+      case _:
+        exit_with_error('unexpected opcode in const expr: %s', opcode)
 
 
 def get_global_value(globl):

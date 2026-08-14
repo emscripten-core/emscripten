@@ -42,6 +42,7 @@ class Feature(IntEnum):
   WEBGL2 = auto()
   WEBGPU = auto()
   GROWABLE_ARRAYBUFFERS = auto()
+  EXTENDED_CONST = auto()
 
 
 disable_override_features: set[Feature] = set()
@@ -135,10 +136,18 @@ min_browser_versions = {
   # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
   # https://caniuse.com/mdn-webassembly_api_memory_toresizablebuffer
   Feature.GROWABLE_ARRAYBUFFERS: {
+
     'chrome': 144,
     'firefox': 145,
     'safari': 260200,
     'node': 260000,
+  },
+  # https://caniuse.com/wasm-extended-const
+  Feature.EXTENDED_CONST: {
+    'chrome': 114,
+    'firefox': 112,
+    'safari': 170400,
+    'node': 210000,
   },
 
 # The following features we now support unconditionally, but keeping them around
