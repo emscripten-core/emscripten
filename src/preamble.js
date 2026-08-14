@@ -680,10 +680,6 @@ async function instantiateAsync(binary, binaryFile, imports) {
   }
 #endif // CROSS_ORIGIN_STORAGE
   if (!binary
-#if MIN_SAFARI_VERSION < 150000
-      // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-      && WebAssembly.instantiateStreaming
-#endif
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
       && !isFileURI(binaryFile)

@@ -30,6 +30,12 @@ See docs/process.md for more on how version tagging works.
   non-C++ frontends (e.g. rustc, which links via `emcc`) link without
   requiring `em++` or `-sDEFAULT_TO_CXX`. (#27496)
 - FreeType was updated to 2.14.3 (#27518)
+- The oldest supported Safari version (`MIN_SAFARI_VERSION`) was raised from
+  14.1 to 15.0, making 15.0 the minimum version that can be targeted. This
+  allows assuming `bulk-memory`, `nontrapping-fptoint`, and `WASM_BIGINT`
+  (`JS_BIGINT_INTEGRATION`) are universally available across all supported
+  engines, and removes legacy JS polyfills and Binaryen lowering passes.
+  (#27542)
 
 6.0.6 - 08/05/26
 ----------------
