@@ -59,11 +59,13 @@ LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 # A comma separated list of benchmarkers to run during test_benchmark tests. See
 # `named_benchmarkers` for what is available.
 EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors')
+# When enabled, record benchmark statistics to out/test/stats.json.
+EMTEST_RECORD_STATS = utils.get_env_bool('EMTEST_RECORD_STATS')
 
 
 class Benchmarker(ABC):
-  # Whether to record statistics. Set by SizeBenchmarker.
-  record_stats = False
+  # Whether to record statistics.
+  record_stats = EMTEST_RECORD_STATS
 
   # called when we init the object, which is during startup, even if we are
   # not running benchmarks
@@ -103,13 +105,15 @@ class Benchmarker(ABC):
   def display(self, baseline=None):
     # speed
 
+    speed_stats = []
     if self.times:
       if baseline == self:
         baseline = None
       mean = sum(self.times) / len(self.times)
       squared_times = [x * x for x in self.times]
       mean_of_squared = sum(squared_times) / len(self.times)
-      std = math.sqrt(mean_of_squared - mean * mean)
+      # max(0.0, ...) guards against floating point rounding errors producing negative variance
+      std = math.sqrt(max(0.0, mean_of_squared - mean * mean))
       sorted_times = sorted(self.times)
       count = len(sorted_times)
       if count % 2 == 0:
@@ -126,16 +130,25 @@ class Benchmarker(ABC):
       else:
         print('  Relative: No baseline recorded yet')
 
+      if self.record_stats:
+        speed_stats.extend([
+          {'value': 'mean', 'measurement': mean},
+          {'value': 'median', 'measurement': median},
+          {'value': 'min', 'measurement': min(self.times)},
+          {'value': 'max', 'measurement': max(self.times)},
+          {'value': 'std', 'measurement': std},
+        ])
+
     # size
 
-    recorded_stats = []
+    size_stats = []
 
     def add_stat(name, size, gzip_size):
-      recorded_stats.append({
+      size_stats.append({
         'value': name,
         'measurement': size,
       })
-      recorded_stats.append({
+      size_stats.append({
         'value': name + ' (gzipped)',
         'measurement': gzip_size,
       })
@@ -162,7 +175,7 @@ class Benchmarker(ABC):
         print('  (' + self.get_size_text() + ')', end=' ')
       print()
 
-    return recorded_stats
+    return speed_stats, size_stats
 
   def get_size_text(self):
     return ''
@@ -509,7 +522,9 @@ class benchmark(common.RunnerCore):
       b.build(self, filename, shared_args, emcc_args, native_args, native_exec, lib_builder)
       build_time = time.time() - t1
       b.bench(args, reps, output_parser, expected_output)
-      size_stats = b.display(baseline)
+      speed_stats, size_stats = b.display(baseline)
+      if speed_stats:
+        self.add_stats(name, speed_stats, units='s')
       if size_stats:
         self.add_stats(name, size_stats, units='bytes')
         self.add_stats(name, [{'value': 'compile_time', 'measurement': build_time}], units='s')
@@ -577,7 +592,7 @@ class benchmark(common.RunnerCore):
     '''
     self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
 
-  def do_toolchain_benchmark(self, args):
+  def do_toolchain_benchmark(self, name, args):
     # TODO: Perhaps this can be merged with the regular `do_benchmark` somehow.
     benchmarkers = [
       named_benchmarkers['clang-build'],
@@ -587,17 +602,21 @@ class benchmark(common.RunnerCore):
     print()
     for b in benchmarkers:
       b.bench(args)
-      b.display(baseline)
+      speed_stats, size_stats = b.display(baseline)
+      if speed_stats:
+        self.add_stats(name, speed_stats, units='s')
+      if size_stats:
+        self.add_stats(name, size_stats, units='bytes')
       if not baseline:
         # Use the first benchmarker as the baseline.  Other benchmarkers can then
         # report relative performance compared to this.
         baseline = b
 
   def test_compile_noop(self):
-    self.do_toolchain_benchmark(['--version'])
+    self.do_toolchain_benchmark('compile_noop', ['--version'])
 
   def test_compile_hello(self):
-    self.do_toolchain_benchmark(['-c', test_file('hello_world.c')])
+    self.do_toolchain_benchmark('compile_hello', ['-c', test_file('hello_world.c')])
 
   def test_memops(self):
     src = '''
