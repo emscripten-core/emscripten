@@ -130,7 +130,7 @@ version flags and must be enabled explicitly.
 See the :ref:`settings <min_firefox_version>` page for details of the default
 browser versions Emscripten targets.
 
-Some features are available even the oldest supported browser versions, and are
+Some features are available even in the oldest supported browser versions, and are
 enabled by default.  They can be turned of for specific compilation units using
 standard clang flags, but since they are present in the system libraries they
 will almost always be used in the final binary:
