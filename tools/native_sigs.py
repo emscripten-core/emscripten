@@ -529,6 +529,8 @@ native_sigs = {
   '__year_to_secs': '__p',
   '_embind_register_bindings': '_p',
   '_emscripten_dlsync_self_async': '_p',
+  '_emscripten_epoll_keepalive_on_thread': '_p_',
+  '_emscripten_epoll_run_callback_on_thread': '_ppp_',
   '_emscripten_find_dylib': 'ppppp',
   '_emscripten_proxy_dlsync': '_p',
   '_emscripten_proxy_dlsync_async': '_pp',
