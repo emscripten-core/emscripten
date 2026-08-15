@@ -570,6 +570,9 @@ Struct
     client area (Emscripten-specific extension; coordinates are rounded down to
     the nearest integer).
 
+    .. warning:: These attributes are deprecated. Register a listener on the
+       canvas directly to get canvas coordinates, or translate manually.
+
 
   .. c:member:: int padding
 
@@ -1695,6 +1698,9 @@ Struct
     int canvasY
 
     The touch coordinates mapped to the Emscripten canvas client area, in pixels (Emscripten-specific extension).
+
+    .. warning:: These attributes are deprecated. Register a listener on the
+       canvas directly to get canvas coordinates, or translate manually.
 
 
 
