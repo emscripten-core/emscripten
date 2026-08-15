@@ -72,7 +72,10 @@ static void test_exclusive(void) {
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, p[0], &ev) == 0);
   assert(write(p[1], "x", 1) == 1);
   assert(ready(ep) == 1);
-  // EPOLLEXCLUSIVE may not be combined with MOD.
+  // EPOLLEXCLUSIVE may not be combined with MOD...
+  assert(epoll_ctl(ep, EPOLL_CTL_MOD, p[0], &ev) == -1 && errno == EINVAL);
+  // ...and an EPOLLEXCLUSIVE registration cannot be modified at all.
+  ev.events = EPOLLIN;
   assert(epoll_ctl(ep, EPOLL_CTL_MOD, p[0], &ev) == -1 && errno == EINVAL);
 
   close(ep); close(p[0]); close(p[1]);
@@ -176,6 +179,6 @@ int main(void) {
   test_nesting();
   test_eloop();
   test_autoremove();
-  printf("EPOLL ADVANCED PASS\n");
+  printf("done\n");
   return 0;
 }

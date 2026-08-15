@@ -721,6 +721,8 @@ var SyscallsLibrary = {
   __syscall_epoll_create1__deps: ['$newEpollInstance'],
   __syscall_epoll_create1__proxy: 'sync',
   __syscall_epoll_create1: (flags) => {
+    // EPOLL_CLOEXEC is accepted but a no-op (there is no exec).
+    if (flags & ~{{{ cDefs.EPOLL_CLOEXEC }}}) return -{{{ cDefs.EINVAL }}};
     return newEpollInstance().fd;
   },
   __syscall_epoll_ctl__deps: ['$FS', '$epollCtl'],

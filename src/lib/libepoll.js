@@ -201,8 +201,9 @@ var EpollLibrary = {
       }
     } else { // EPOLL_CTL_MOD
       if (!has) return -{{{ cDefs.ENOENT }}};
-      // EPOLLEXCLUSIVE may only be set at ADD time.
-      if (events & {{{ cDefs.EPOLLEXCLUSIVE }}}) return -{{{ cDefs.EINVAL }}};
+      // An EPOLLEXCLUSIVE registration cannot be modified, and EPOLLEXCLUSIVE
+      // may only be set at ADD time.
+      if ((events | cur.events) & {{{ cDefs.EPOLLEXCLUSIVE }}}) return -{{{ cDefs.EINVAL }}};
     }
 
     // `data` is opaque user data echoed back by epoll_wait; keep its 8 bytes.

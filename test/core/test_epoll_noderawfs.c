@@ -54,6 +54,6 @@ int main(void) {
   close(p[1]);
   close(rf);
   unlink("epoll_noderawfs.tmp");
-  printf("EPOLL NODERAWFS PASS\n");
+  printf("done\n");
   return 0;
 }

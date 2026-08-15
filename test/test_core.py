@@ -5798,11 +5798,11 @@ got: 10
 
   @needs_epoll
   def test_epoll(self):
-    self.do_runf('core/test_epoll.c', 'EPOLL PASS')
+    self.do_runf('core/test_epoll.c', 'done\n')
 
   @needs_epoll
   def test_epoll_advanced(self):
-    self.do_runf('core/test_epoll_advanced.c', 'EPOLL ADVANCED PASS')
+    self.do_runf('core/test_epoll_advanced.c', 'done\n')
 
   @needs_epoll
   @requires_pthreads
@@ -5820,7 +5820,7 @@ got: 10
   def test_epoll_noderawfs(self):
     # Regular-file streams under NODERAWFS carry no stream_ops; the readiness
     # layer must not dereference a missing poll handler (poll/epoll on a file).
-    self.do_runf('core/test_epoll_noderawfs.c', 'EPOLL NODERAWFS PASS', cflags=['-sNODERAWFS'])
+    self.do_runf('core/test_epoll_noderawfs.c', 'done\n', cflags=['-sNODERAWFS'])
 
   @no_wasmfs('st.f_ffree > st.f_files, same issue than in wasmfs.test_fs_nodefs_statvfs. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_statvfs(self):

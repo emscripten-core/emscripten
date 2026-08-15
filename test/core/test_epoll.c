@@ -17,6 +17,12 @@
 #include <stdio.h>
 
 int main(void) {
+  // Unknown creation flags are rejected; EPOLL_CLOEXEC is accepted (a no-op).
+  assert(epoll_create1(999) == -1 && errno == EINVAL);
+  int cl = epoll_create1(EPOLL_CLOEXEC);
+  assert(cl >= 0);
+  close(cl);
+
   int ep = epoll_create1(0);
   assert(ep >= 0);
 
@@ -93,6 +99,6 @@ int main(void) {
   close(ep);
   close(p[0]);
   close(p[1]);
-  printf("EPOLL PASS\n");
+  printf("done\n");
   return 0;
 }
