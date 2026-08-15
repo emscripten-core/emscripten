@@ -9776,6 +9776,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_epoll_blocking_asyncify.c', 'done\n')
 
+  @with_asyncify_and_jspi
+  @needs_epoll
+  def test_epoll_wait_and_callback(self):
+    # A suspended blocking epoll_wait and a persistent callback on one epoll
+    # share a single ready list: they take disjoint slices, never the same edge.
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_epoll_wait_and_callback.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
   @parameterized({
     '': ([],),
     'pthread': (['-pthread'],),
