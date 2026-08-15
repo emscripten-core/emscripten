@@ -5805,6 +5805,17 @@ got: 10
     self.do_runf('core/test_epoll_advanced.c', 'EPOLL ADVANCED PASS')
 
   @needs_epoll
+  @requires_pthreads
+  def test_epoll_pthread_shared(self):
+    # Two threads block in epoll_wait() on one shared epoll fd: per-edge
+    # exactly-once wakeups under EPOLLET, herd wakeup under level triggering,
+    # EPOLLONESHOT disarm/re-arm delivery across threads, and exactly-once
+    # oneshot delivery over rounds of events against racing harvesters.
+    self.do_runf('core/test_epoll_pthread_shared.c',
+                 'done\n',
+                 cflags=['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  @needs_epoll
   @requires_node
   def test_epoll_noderawfs(self):
     # Regular-file streams under NODERAWFS carry no stream_ops; the readiness
