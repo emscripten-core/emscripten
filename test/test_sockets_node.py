@@ -185,6 +185,43 @@ class sockets_node(RunnerCore):
       self.skipTest('no IPv6 loopback available')
     self.do_runf('sockets/test_udp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
+  def test_noderawsockets_epoll_socket_blocking(self):
+    # A blocking epoll_wait() on a socket is woken by an incoming datagram
+    # through the unified readiness wait-queue (the SOCKFS.emit bridge), with
+    # main() proxied to a worker so the wait can suspend.
+    self.do_runf('sockets/test_epoll_socket_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def setup_jspi_node(self):
+    # require_jspi() falls back to the d8/SpiderMonkey shells when node is too
+    # old, but these tests need node (real sockets via node:net), so handle the
+    # node setup directly. The new JSPI API requires node >= 24, so skip below
+    # that.
+    if not common.check_node_version(24):
+      self.skipTest('JSPI requires node >= 24')
+    if not common.check_node_version(26):
+      self.node_args += ['--experimental-wasm-stack-switching']
+    self.cflags += ['-Wno-experimental']
+    self.set_setting('JSPI')
+
+  def test_noderawsockets_epoll_socket_blocking_jspi(self):
+    # Same, but the blocking epoll_wait() suspends the wasm stack under JSPI.
+    self.setup_jspi_node()
+    self.do_runf('sockets/test_epoll_socket_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_epoll_rdhup(self):
+    # A blocking epoll_wait reports EPOLLRDHUP when the TCP peer half-closes its
+    # write side (FIN), distinct from a full EPOLLHUP, and only when requested.
+    self.do_runf('sockets/test_epoll_rdhup.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_epoll_rdhup_jspi(self):
+    # Same, but the blocking calls suspend the wasm stack under JSPI.
+    self.setup_jspi_node()
+    self.do_runf('sockets/test_epoll_rdhup.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp(self):
     # Self-contained loopback UDP echo: the server binds(:0)+getsockname for its
