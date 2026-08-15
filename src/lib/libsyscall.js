@@ -718,12 +718,12 @@ var SyscallsLibrary = {
   },
   // epoll: the entry points live here (like every other syscall); the heavy
   // lifting is in libepoll.js, which they call after resolving the epoll stream.
-  __syscall_epoll_create1__deps: ['$newEpollInstance'],
+  __syscall_epoll_create1__deps: ['$epollNewInstance'],
   __syscall_epoll_create1__proxy: 'sync',
   __syscall_epoll_create1: (flags) => {
     // EPOLL_CLOEXEC is accepted but a no-op (there is no exec).
     if (flags & ~{{{ cDefs.EPOLL_CLOEXEC }}}) return -{{{ cDefs.EINVAL }}};
-    return newEpollInstance().fd;
+    return epollNewInstance().fd;
   },
   __syscall_epoll_ctl__deps: ['$FS', '$epollCtl'],
   __syscall_epoll_ctl__proxy: 'sync',

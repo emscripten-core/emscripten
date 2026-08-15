@@ -20,17 +20,17 @@ var EpollLibrary = {
   // reclaims it (tearing every registration down). An epoll fd can itself be
   // added to another epoll.
 
-  // Is the epoll set currently readable - i.e. does any listed registration have
-  // a genuine ready event? Walks the ready list (O(ready)), masking out the
+  // Would a wait on this epoll block - i.e. does no listed registration have a
+  // genuine ready event? Walks the ready list (O(ready)), masking out the
   // reporting-time flags (edge/oneshot/exclusive), and evicts a closed/reused fd
-  // as it goes (so a set only ever derived, never drained, does not accumulate
+  // as it goes (so a set only ever probed, never drained, does not accumulate
   // dead registrations). This is the readiness derivation behind the epoll fd's
   // own poll handler (nesting): a stale ready-list entry (a spurious edge, or
   // one left after its fd was drained then closed) is not a ready event, so it
   // never reports one.
-  $epollDerive__internal: true,
-  $epollDerive__deps: ['$FS', '$pollOne', '$epollEvict'],
-  $epollDerive: (ep) => {
+  $epollWouldBlock__internal: true,
+  $epollWouldBlock__deps: ['$FS', '$pollOne', '$epollEvict'],
+  $epollWouldBlock: (ep) => {
     for (var reg = ep.rdlHead, next; reg; reg = next) {
       next = reg.rdlNext;
       if (FS.getStream(reg.fd)?.shared !== reg.shared) {
@@ -38,15 +38,15 @@ var EpollLibrary = {
         continue;
       }
       if (pollOne(reg.fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}})) {
-        return true;
+        return false;
       }
     }
-    return false;
+    return true;
   },
 
-  $newEpollInstance__internal: true,
-  $newEpollInstance__deps: ['$FS', '$epollDerive', '$epollEvict'],
-  $newEpollInstance: () => {
+  $epollNewInstance__internal: true,
+  $epollNewInstance__deps: ['$FS', '$epollWouldBlock'],
+  $epollNewInstance: () => {
     // Its own (detached) node, so the epoll fd can be watched by a parent epoll
     // (nesting) and carry the readiness wait-queue methods. Shared across dups.
     var node = new FS.FSNode(0, '', 0, 0);
@@ -56,7 +56,7 @@ var EpollLibrary = {
         // Readable when any listed registration is currently ready: this is what
         // lets an epoll fd be polled/nested.
         poll(stream) {
-          return epollDerive(stream.shared) ? {{{ cDefs.POLLIN }}} : 0;
+          return epollWouldBlock(stream.shared) ? 0 : {{{ cDefs.POLLIN }}};
         },
         // dup(2): another fd to the same epoll instance (Linux: another reference
         // to the eventpoll). The instance state lives on the shared open file
@@ -206,7 +206,8 @@ var EpollLibrary = {
       if ((events | cur.events) & {{{ cDefs.EPOLLEXCLUSIVE }}}) return -{{{ cDefs.EINVAL }}};
     }
 
-    // `data` is opaque user data echoed back by epoll_wait; keep its 8 bytes.
+    // `data` is opaque user data echoed back by epoll_wait; keep its 8 bytes as
+    // an i32 pair so this also works without WASM_BIGINT (e.g. wasm2js).
     var reg = cur ?? {};
     reg.fd = fd;
     reg.shared = target.shared; // open file description: the dup-shared identity
