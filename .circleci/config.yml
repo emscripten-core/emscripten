@@ -451,7 +451,7 @@ commands:
             EMTEST_HEADLESS: "1"
             EMTEST_CORES: "2"
           command: |
-            test/runner sockets
+            test/runner sockets_node sockets_browser
       - upload-test-results
 
 jobs:
@@ -1271,8 +1271,8 @@ jobs:
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run:
-          name: "sockets.test_nodejs_sockets_echo*"
-          command: "test/runner sockets.test_nodejs_sockets_echo*"
+          name: "sockets_node.test_nodejs_sockets_echo*"
+          command: "test/runner sockets_node.test_nodejs_sockets_echo*"
       - upload-test-results
       - run:
           name: "check clean"
