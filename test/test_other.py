@@ -13507,6 +13507,20 @@ void foo() {}
   def test_emscripten_main_loop_setimmediate(self):
     self.do_runf('test_emscripten_main_loop_setimmediate.c')
 
+  # epoll is implemented in the JS (non-WASMFS) syscall layer and needs the FS.
+  # These exercise the JS API/readiness logic, which does not vary by wasm
+  # config, so they live here rather than in the test_core.py config matrix.
+  def test_epoll_fairness(self):
+    # More ready fds than maxevents: successive waits rotate (round-robin) so no
+    # fd starves.
+    self.do_runf('core/test_epoll_fairness.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
+
+  def test_epoll_dup(self):
+    # dup(2) of an epoll fd shares one instance: a registration added via the dup
+    # is visible to waits on the original fd, and closing one dup does not tear
+    # the instance down.
+    self.do_runf('core/test_epoll_dup.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
+
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_pthread_trap(self):
