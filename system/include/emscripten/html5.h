@@ -95,12 +95,12 @@ typedef struct EmscriptenKeyboardEvent {
   bool altKey;
   bool metaKey;
   bool repeat;
-  unsigned int charCode;
-  unsigned int keyCode;
-  unsigned int which;
+  unsigned int charCode __attribute__((deprecated("use key instead")));
+  unsigned int keyCode __attribute__((deprecated("use key or code instead")));
+  unsigned int which __attribute__((deprecated("use key or code instead")));
   EM_UTF8 key[EM_HTML5_SHORT_STRING_LEN_BYTES];
   EM_UTF8 code[EM_HTML5_SHORT_STRING_LEN_BYTES];
-  EM_UTF8 charValue[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 charValue[EM_HTML5_SHORT_STRING_LEN_BYTES] __attribute__((deprecated("use key instead")));
   EM_UTF8 locale[EM_HTML5_SHORT_STRING_LEN_BYTES];
 } EmscriptenKeyboardEvent;
 
@@ -126,9 +126,12 @@ typedef struct EmscriptenMouseEvent {
   int movementY;
   int targetX;
   int targetY;
-  // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
-  int canvasX;
-  int canvasY;
+  // canvasX and canvasY are deprecated - there no longer exists a
+  // Module['canvas'] object, so canvasX/Y are no longer reported (register a
+  // listener on canvas directly to get canvas coordinates, or translate
+  // manually)
+  int canvasX __attribute__((deprecated("register a listener on canvas directly to get canvas coordinates, or translate manually")));
+  int canvasY __attribute__((deprecated("register a listener on canvas directly to get canvas coordinates, or translate manually")));
   int padding;
 } EmscriptenMouseEvent;
 
@@ -346,9 +349,12 @@ typedef struct EmscriptenTouchPoint {
   bool onTarget;
   int targetX;
   int targetY;
-  // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
-  int canvasX;
-  int canvasY;
+  // canvasX and canvasY are deprecated - there no longer exists a
+  // Module['canvas'] object, so canvasX/Y are no longer reported (register a
+  // listener on canvas directly to get canvas coordinates, or translate
+  // manually)
+  int canvasX __attribute__((deprecated("register a listener on canvas directly to get canvas coordinates, or translate manually")));
+  int canvasY __attribute__((deprecated("register a listener on canvas directly to get canvas coordinates, or translate manually")));
 } EmscriptenTouchPoint;
 
 typedef struct EmscriptenTouchEvent {
