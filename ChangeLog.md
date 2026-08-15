@@ -41,6 +41,11 @@ See docs/process.md for more on how version tagging works.
   (`JS_BIGINT_INTEGRATION`) are universally available across all supported
   engines, and removes legacy JS polyfills and Binaryen lowering passes.
   (#27542)
+- Added support for `epoll` (`epoll_create1`/`epoll_ctl`/`epoll_wait`/
+  `epoll_pwait`) on the legacy (non-WASMFS) JS filesystem, including
+  level- and edge-triggered modes, `EPOLLONESHOT`, `EPOLLEXCLUSIVE`,
+  `EPOLLRDHUP`, nesting, and blocking waits under `PROXY_TO_PTHREAD`,
+  `ASYNCIFY`, and `JSPI`. (#27207)
 
 6.0.6 - 08/05/26
 ----------------
@@ -93,11 +98,6 @@ See docs/process.md for more on how version tagging works.
   FS-backend handler signature changed from `poll(stream, timeout)` to
   `poll(stream)` returning the current readiness mask; out-of-tree custom FS
   backends with a `poll` handler must update. (#27226)
-- Added support for `epoll` (`epoll_create1`/`epoll_ctl`/`epoll_wait`/
-  `epoll_pwait`) on the legacy (non-WASMFS) JS filesystem, including
-  level- and edge-triggered modes, `EPOLLONESHOT`, `EPOLLEXCLUSIVE`,
-  `EPOLLRDHUP`, nesting, and blocking waits under `PROXY_TO_PTHREAD`,
-  `ASYNCIFY`, and `JSPI`. (#27207)
 - compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245, #27246)
 - `-fcoverage-mapping` is currently broken due to a mismatch between the version
   of LLVM used and the imported version of compiler-rt.  We hope to fix this

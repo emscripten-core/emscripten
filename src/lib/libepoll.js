@@ -19,6 +19,7 @@ var EpollLibrary = {
   // ready list shared); close(2) drops one reference and only the last close
   // reclaims it (tearing every registration down). An epoll fd can itself be
   // added to another epoll.
+
   // Is the epoll set currently readable - i.e. does any listed registration have
   // a genuine ready event? Walks the ready list (O(ready)), masking out the
   // reporting-time flags (edge/oneshot/exclusive), and evicts a closed/reused fd
@@ -48,7 +49,7 @@ var EpollLibrary = {
   $newEpollInstance: () => {
     // Its own (detached) node, so the epoll fd can be watched by a parent epoll
     // (nesting) and carry the readiness wait-queue methods. Shared across dups.
-    var node = new FS.FSNode(0, 'epoll', 0, 0);
+    var node = new FS.FSNode(0, '', 0, 0);
     var stream = FS.createStream({
       node,
       stream_ops: {
@@ -97,8 +98,8 @@ var EpollLibrary = {
   // (reg.onList) is the edge state - a reg is listed on an edge (or when seeded
   // ready at ctl), removed when a wait consumes it, and re-listed at the tail if
   // a level trigger is still ready. O(1) add/remove, O(delivered) to drain.
-  $rdllistAdd__internal: true,
-  $rdllistAdd: (ep, reg) => {
+  $readyListAdd__internal: true,
+  $readyListAdd: (ep, reg) => {
     if (reg.onList) return;
     reg.onList = true;
     reg.rdlPrev = ep.rdlTail;
@@ -107,8 +108,8 @@ var EpollLibrary = {
     else ep.rdlHead = reg;
     ep.rdlTail = reg;
   },
-  $rdllistRemove__internal: true,
-  $rdllistRemove: (ep, reg) => {
+  $readyListRemove__internal: true,
+  $readyListRemove: (ep, reg) => {
     if (!reg.onList) return;
     reg.onList = false;
     if (reg.rdlPrev) reg.rdlPrev.rdlNext = reg.rdlNext;
@@ -124,9 +125,9 @@ var EpollLibrary = {
   // entry at ctl time, and a closed/reused fd seen at derive time (doEpollWait
   // or the nesting poll).
   $epollEvict__internal: true,
-  $epollEvict__deps: ['$rdllistRemove'],
+  $epollEvict__deps: ['$readyListRemove'],
   $epollEvict: (ep, reg) => {
-    rdllistRemove(ep, reg);
+    readyListRemove(ep, reg);
     reg.listener?.listeners.delete(reg.listener.entry);
     reg.listener = null;
     ep.epoll.delete(reg.fd);
@@ -136,7 +137,7 @@ var EpollLibrary = {
   // points stay in libsyscall.js (like every other syscall) and resolve the
   // epoll stream before calling in here, so `ep` is a known-valid epoll stream.
   $epollCtl__internal: true,
-  $epollCtl__deps: ['$FS', '$pollOne', '$rdllistAdd', '$epollEvict'],
+  $epollCtl__deps: ['$FS', '$pollOne', '$readyListAdd', '$epollEvict'],
   $epollCtl: (ep, op, fd, ev) => {
     var target = FS.getStream(fd);
     if (!target) return -{{{ cDefs.EBADF }}};
@@ -219,7 +220,7 @@ var EpollLibrary = {
     // epoll - and through ep.node any parent epoll nesting it.)
     if (!reg.listener) {
       reg.listener = target.node.addListener(() => {
-        rdllistAdd(ep, reg);
+        readyListAdd(ep, reg);
         ep.node.notifyListeners({{{ cDefs.POLLIN }}});
       // EPOLLEXCLUSIVE: when one fd is watched by several epolls, the watched
       // node wakes only one of them per edge (round-robin), not all.
@@ -229,7 +230,7 @@ var EpollLibrary = {
     // model only learns readiness from edges, so sample the level now - the
     // (re-)armed fd may already be ready with no producer notify to follow.
     if (pollOne(fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}})) {
-      rdllistAdd(ep, reg);
+      readyListAdd(ep, reg);
       ep.node.notifyListeners({{{ cDefs.POLLIN }}});
     }
     return 0;
@@ -243,7 +244,7 @@ var EpollLibrary = {
   // EPOLL_CTL_MOD; a no-longer-ready (spurious) edge is dropped; a closed/reused
   // fd is evicted.
   $doEpollWait__internal: true,
-  $doEpollWait__deps: ['$FS', '$pollOne', '$rdllistAdd', '$epollEvict'],
+  $doEpollWait__deps: ['$FS', '$pollOne', '$readyListAdd', '$epollEvict'],
   $doEpollWait: (ep, ev, maxevents) => {
     // Detach the list and drain from the head: re-armed level triggers and the
     // unprocessed remainder go back onto ep's now-empty list, so a single pass
@@ -276,7 +277,7 @@ var EpollLibrary = {
             node.listener.listeners.delete(node.listener.entry);
             node.listener = null;
           } else if (!(node.events & {{{ cDefs.EPOLLET }}})) {
-            rdllistAdd(ep, node); // level: re-list at tail
+            readyListAdd(ep, node); // level: re-list at tail
           }
         }
         // else: a spurious edge (no longer ready) - drop it from the list.
