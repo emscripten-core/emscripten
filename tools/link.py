@@ -32,7 +32,6 @@ from . import (
   webassembly,
 )
 from .cmdline import OFormat, options
-from .feature_matrix import Feature
 from .minimal_runtime_shell import generate_minimal_runtime_html
 from .settings import (
   DEPRECATED_SETTINGS,
@@ -310,37 +309,8 @@ def should_run_binaryen_optimizer():
   return settings.OPT_LEVEL >= 2
 
 
-def get_binaryen_lowering_passes():
-  passes = []
-
-  # The following features are all enabled in llvm by default and therefore
-  # enabled in the emscripten system libraries.  This means that we need to
-  # lower them away using binaryen passes, if they are not enabled in the
-  # feature matrix.
-  # This can happen if the feature is explicitly disabled on the command line,
-  # or when targeting an VM/engine that does not support the feature.
-
-  # List of [<feature_name>, <lowering_flag>, <feature_flags>] triples.
-  features = [
-    [Feature.NON_TRAPPING_FPTOINT, '--llvm-nontrapping-fptoint-lowering', ['--enable-nontrapping-float-to-int']],
-    [Feature.BULK_MEMORY, '--llvm-memory-copy-fill-lowering', ['--enable-bulk-memory', '--enable-bulk-memory-opt']],
-  ]
-
-  for feature, lowering_flag, feature_flags in features:
-    if not feature_matrix.caniuse(feature):
-      logger.debug(f'lowering {feature.name} feature due to incompatible target browser engines')
-      for f in feature_flags:
-        # Remove features from binaryen_features, otherwise future runs of binaryen
-        # could re-introduce the feature.
-        if f in building.binaryen_features:
-          building.binaryen_features.remove(f)
-      passes.append(lowering_flag)
-
-  return passes
-
-
 def get_binaryen_passes():
-  passes = get_binaryen_lowering_passes()
+  passes = []
   optimizing = should_run_binaryen_optimizer()
 
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
@@ -1098,7 +1068,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
       exit_with_error('WASM_BIGINT=1 is not compatible with wasm2js')
     settings.WASM_BIGINT = 0
-    feature_matrix.disable_feature(Feature.JS_BIGINT_INTEGRATION)
 
   if options.oformat == OFormat.WASM and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
@@ -1331,9 +1300,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
-
-  if settings.LINKABLE and settings.USER_EXPORTS:
-    diagnostics.warning('unused-command-line-argument', 'EXPORTED_FUNCTIONS is not valid with LINKABLE set (normally due to SIDE_MODULE=1/MAIN_MODULE=1) since all functions are exported this mode.  To export only a subset use SIDE_MODULE=2/MAIN_MODULE=2')
 
   if settings.MAIN_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
@@ -2116,13 +2082,9 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   if wasm_opt_args:
     building.run_wasm_opt(outfile_wasm, outfile_wasm, wasm_opt_args)
 
-  # Build the flags needed by Node.js to properly run the output file.
-  node_args = []
-  if settings.WASM_EXCEPTIONS:
-    node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
   output_file = in_temp('embind_generated_output.js')
-  shared.run_js_tool(outfile_js, [output_file], node_args)
+  shared.run_js_tool(outfile_js, [output_file])
   settings.restore(original_settings)
   return read_file(output_file)
 
@@ -2666,7 +2628,11 @@ def minify_html(filename):
              '--remove-style-link-type-attributes',
              '--use-short-doctype',
              '--minify-css', 'true',
-             '--minify-js', 'true']
+             '--minify-js', 'true',
+             # Disable default PHP/ASP fragment regexes (<?...?> and <%...%>)
+             # which can match raw byte sequences in embedded WASM binary
+             # data in SINGLE_FILE builds and corrupt surrounding whitespace.
+             '--ignore-custom-fragments', '[]']
 
   # html-minifier also has the following options, but they look unsafe for use:
   # '--collapse-inline-tag-whitespace': removes whitespace between inline tags in visible text,

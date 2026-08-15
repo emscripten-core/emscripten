@@ -17,6 +17,14 @@ executors:
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
+  linux-arm64:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: arm.medium
+    environment:
+      LANG: "C.UTF-8"
+      EMSDK_NOTTY: "1"
+      EMTEST_DETECT_TEMPFILE_LEAKS: "1"
   mac-arm64:
     environment:
       EMSDK_NOTTY: "1"
@@ -748,8 +756,6 @@ jobs:
       - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64-4gb:
-    environment:
-      LANG: "C.UTF-8"
     executor: ubuntu-lts
     steps:
       - prepare-for-tests
@@ -766,7 +772,6 @@ jobs:
       - upload-test-results
   test-wasm64-misc:
     environment:
-      LANG: "C.UTF-8"
       EMTEST_SKIP_NINJA: "1"
     executor: ubuntu-lts
     steps:
@@ -878,7 +883,6 @@ jobs:
   test-node-compat:
     executor: ubuntu-lts
     environment:
-      LANG: "C.UTF-8"
       EMTEST_SKIP_V8: "1"
     steps:
       - checkout
@@ -973,8 +977,6 @@ jobs:
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
-            other.test_exceptions_stack_trace*
-            other.test_exceptions_rethrow_stack_trace*
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
             core2.test_sse2
@@ -1000,6 +1002,9 @@ jobs:
             other.test_js_base64_api
             other.test_pthread_growth*
             other.test_memory_growth
+            other.test_exceptions_stack_trace*
+            other.test_exceptions_rethrow_stack_trace*
+            core2.test_*exception*_wasm
             core2.test_hello_world
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
@@ -1161,6 +1166,11 @@ jobs:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja
+            # Choco can return 0 even if package installation/resolution fails (e.g. 504 Gateway Timeout).
+            # See: https://github.com/chocolatey/choco/issues/1609
+            # Explicitly check version commands to ensure executables exist in PATH.
+            cmake --version
+            ninja --version
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
@@ -1252,6 +1262,11 @@ jobs:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja
+            # Choco can return 0 even if package installation/resolution fails (e.g. 504 Gateway Timeout).
+            # See: https://github.com/chocolatey/choco/issues/1609
+            # Explicitly check version commands to ensure executables exist in PATH.
+            cmake --version
+            ninja --version
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - install-emsdk
@@ -1298,6 +1313,29 @@ jobs:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
       - upload-test-results
+
+  test-linux-arm64:
+    executor: linux-arm64
+    environment:
+      EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_WASM_LEGACY_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_NODE_25: "1"
+      # Some native clang tests assume x86 clang (e.g. -sse2)
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMCC_SKIP_SANITY_CHECK: "1"
+    steps:
+      - checkout
+      - install-emsdk
+      - pip-install
+      - run: sudo apt-get install -q -y ninja-build scons cmake make
+      - run-tests-linux:
+          title: "crossplatform tests"
+          frozen_cache: false
+          test_targets: "--crossplatform-only"
 
 workflows:
   build-test:
@@ -1373,3 +1411,4 @@ workflows:
       - test-mac-arm64:
          requires:
            - build-linux
+      - test-linux-arm64

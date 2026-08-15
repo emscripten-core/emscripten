@@ -2664,7 +2664,7 @@ Module["preRun"] = () => {
   def test_webgl_preprocessor_variables(self, opts):
     if '-DWEBGL_VERSION=2' in opts and webgl2_disabled():
       self.skipTest('This test requires WebGL2 to be available')
-    self.btest_exit('webgl_preprocessor_variables.c', cflags=['-lGL'] + opts)
+    self.btest_exit('webgl_preprocessor_variables.c', cflags=['-lGL', '-sGL_DEBUG'] + opts)
 
   @requires_graphics_hardware
   def test_webgl2_ubos(self):

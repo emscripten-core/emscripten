@@ -20,6 +20,7 @@ from . import (
   colored_logger,
   config,
   diagnostics,
+  feature_matrix,
   js_optimizer,
   response_file,
   shared,
@@ -54,7 +55,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 131
+EXPECTED_BINARYEN_VERSION = 132
 
 _is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
@@ -281,6 +282,9 @@ def lld_flags_for_executable(external_symbols):
     cmd.append('--table-base=%s' % settings.TABLE_BASE)
     if not settings.STACK_FIRST:
       cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
+
+  if feature_matrix.caniuse(feature_matrix.Feature.EXTENDED_CONST):
+    cmd.append('--extra-features=extended-const')
 
   return cmd
 
@@ -521,13 +525,7 @@ def get_closure_compiler():
     return config.CLOSURE_COMPILER
 
   # Otherwise use the one installed via npm
-  cmd = shared.get_npm_cmd('google-closure-compiler')
-  if not WINDOWS:
-    # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
-    # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap
-    # out of memory"
-    cmd.insert(-1, '--max_old_space_size=8192')
-  return cmd
+  return shared.get_npm_cmd('google-closure-compiler')
 
 
 def check_closure_compiler(cmd, args, env, allowed_to_fail):
@@ -552,6 +550,10 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
 
 def get_closure_compiler_and_env(user_args):
   env = shared.env_with_node_in_path()
+  # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
+  # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap
+  # out of memory"
+  env['NODE_OPTIONS'] = '--max_old_space_size=8192'
   closure_cmd = get_closure_compiler()
 
   native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)

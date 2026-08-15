@@ -3834,8 +3834,8 @@ More info: https://emscripten.org
     'legacy': (1,),
   })
   def test_embind_tsgen_exceptions(self, legacy):
-    if not legacy and shared.get_node_version(config.NODE_JS)[0] < 22:
-      self.skipTest('Node version needs to be 22 or greater to run tsgen with Wasm EH')
+    if not legacy and shared.get_node_version(config.NODE_JS) < (24, 15, 0):
+      self.skipTest('Node version needs to be v24.15 or greater to run tsgen with Wasm EH')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
 
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
@@ -9314,6 +9314,37 @@ int main() {
     self.assertExists('hello_world.js')
     self.assertFileContents('hello_world.wasm', 'not wasm')
 
+  def test_single_file_html_minified(self):
+    # Test that HTML minification in SINGLE_FILE mode does not corrupt
+    # WASM binary data containing custom fragment patterns like <?foo?>.
+    # The whitespace around <?foo?> must not be removed here.
+    create_file('src.c', '''
+#include <stdio.h>
+#include <string.h>
+volatile const char custom_fragment_test[] = "   <?foo?>   ";
+int main(int argc, char** argv) {
+  int len = 0;
+  for (int i = 0; i < 13; i++) {
+    if (custom_fragment_test[i]) len++;
+  }
+  printf("Length: %d\\n", len);
+  return 0;
+}
+''')
+    self.run_process([EMCC, 'src.c', '-O2', '-sSINGLE_FILE', '-o', 'out.html'])
+    html = read_file('out.html')
+    self.assertContained('   <?foo?>   ', html)
+
+  def test_single_file_instantiate_failure(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sSINGLE_FILE', '-sASSERTIONS=1', '-o', 'out.js'])
+    code = read_file('out.js')
+    # Stub out binaryDecode so that it returns an invalid wasm binary.
+    code = code.replace('function binaryDecode(bin) {', 'function binaryDecode(bin) { return new Uint8Array([0]);')
+    write_file('out_bad.js', code)
+    out = self.run_js('out_bad.js', assert_returncode=1)
+    self.assertContained('Aborted(CompileError', out)
+    self.assertNotContained('startsWith is not a function', out)
+
   def test_single_file_disables_source_map(self):
     cmd = [EMCC, test_file('hello_world.c'), '-sSINGLE_FILE', '-gsource-map']
     stderr = self.run_process(cmd, stderr=PIPE).stderr
@@ -10430,46 +10461,21 @@ int main() {
     compile(['-mno-sign-ext', '-c'])
     verify_features_sec('sign-ext', False)
 
-    # Disable via browser selection
-    compile(['-sMIN_SAFARI_VERSION=140100'])
-    verify_features_sec_linked('bulk-memory-opt', False)
-    verify_features_sec_linked('nontrapping-fptoint', False)
-    # Flag disabling overrides default browser versions
-    compile(['-mno-bulk-memory'])
-    verify_features_sec_linked('bulk-memory', False)
-    # Flag disabling overrides explicit browser version
-    compile(['-sMIN_SAFARI_VERSION=160000', '-mno-bulk-memory'])
-    verify_features_sec_linked('bulk-memory', False)
-    # Flag enabling overrides explicit browser version
-    compile(['-sMIN_SAFARI_VERSION=140100', '-mnontrapping-fptoint'])
-    verify_features_sec_linked('nontrapping-fptoint', True)
-    # Flag disabling overrides explicit version for bulk memory
-    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
-    verify_features_sec_linked('bulk-memory-opt', False)
+    # Feature is disabled by default browser versions
+    compile([])
+    verify_features_sec_linked('extended-const', False)
 
-    # Bigint ovrride does not cause other features to enable
-    compile(['-sMIN_SAFARI_VERSION=140100', '-sWASM_BIGINT=1'])
-    verify_features_sec_linked('bulk-memory-opt', False)
+    # Flag enabling overrides default browser versions
+    compile(['-mextended-const'])
+    verify_features_sec_linked('extended-const', True)
 
-    compile(['-sMIN_SAFARI_VERSION=140100', '-mbulk-memory'])
-    verify_features_sec_linked('nontrapping-fptoint', False)
+    # Enable via browser selection
+    compile(['-sMIN_CHROME_VERSION=114', '-sMIN_FIREFOX_VERSION=112', '-sMIN_SAFARI_VERSION=170400', '-sMIN_NODE_VERSION=210000'])
+    verify_features_sec_linked('extended-const', True)
 
-  def test_no_bulk_memory(self):
-    # The test_wasm_features test (above) uses the feature section to confirm
-    # if a feature is present, but that doesn't work in optimizing builds
-    # since we strip the feature section in release builds.
-    # This test confirms that no DATACOUNT section is present in the final
-    # binary.
-
-    def has_data_count(filename):
-      with webassembly.Module(filename) as wasm:
-        return wasm.get_section(webassembly.SecType.DATACOUNT)
-
-    self.emcc('hello_world.c', ['-O3', '-o', 'bulk.js'])
-    self.assertTrue(has_data_count('bulk.wasm'))
-
-    self.emcc('hello_world.c', ['-O3', '-o', 'nobulk.js', '-mno-bulk-memory', '-mno-bulk-memory-opt'])
-    self.assertFalse(has_data_count('nobulk.wasm'))
+    # Flag disabling overrides explicit browser versions
+    compile(['-sMIN_CHROME_VERSION=114', '-sMIN_FIREFOX_VERSION=112', '-sMIN_SAFARI_VERSION=170400', '-sMIN_NODE_VERSION=210000', '-mno-extended-const'])
+    verify_features_sec_linked('extended-const', False)
 
   @crossplatform
   def test_html_preprocess(self):
@@ -11623,6 +11629,9 @@ int main(void) {
   def test_mmap_empty_wasmfs(self):
     self.do_other_test('test_mmap_empty.c', cflags=['-sWASMFS'])
 
+  def test_shm_open(self):
+    self.do_runf('other/test_shm_open.c', 'done\n')
+
   def test_files_and_module_assignment(self):
     # a pre-js can set Module to a new object or otherwise undo file preloading/
     # embedding changes to Module.preRun. we show an error to avoid confusion
@@ -12187,7 +12196,6 @@ int main(void) {
     # plain -O0
     legalization_message = 'to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
     fail(['-sWASM_BIGINT=0'], legalization_message)
-    fail(['-sMIN_SAFARI_VERSION=140100'], legalization_message)
     # optimized builds even without legalization
     optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
     fail(['-O2'], optimization_message)
@@ -12202,9 +12210,9 @@ int main(void) {
   def test_drop_support_for_browser(self):
     # Test that -1 means "not supported"
     self.run_process([EMCC, test_file('browser/test_html5_core.c')])
-    self.assertContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
+    self.assertContained('getContextSafariWebGL2Fixed', read_file('a.out.js'))
     self.run_process([EMCC, test_file('browser/test_html5_core.c'), '-sMIN_SAFARI_VERSION=-1'])
-    self.assertNotContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
+    self.assertNotContained('getContextSafariWebGL2Fixed', read_file('a.out.js'))
 
   def test_errno_type(self):
     create_file('errno_type.c', '''
@@ -14143,56 +14151,6 @@ int main() {
       }
     ''', assert_returncode=NON_ZERO, cflags=['-fexceptions'])
 
-  def test_bigint64array_polyfill(self):
-    bigint64array = read_file(path_from_root('src/polyfill/bigint64array.js'))
-    test_code = read_file(test_file('test_bigint64array_polyfill.js'))
-    bigint_list = [
-      0,
-      1,
-      -1,
-      5,
-      (1 << 64),
-      (1 << 64) - 1,
-      (1 << 64) + 1,
-      (1 << 63),
-      (1 << 63) - 1,
-      (1 << 63) + 1,
-    ]
-    bigint_list_strs = [str(x) for x in bigint_list]
-
-    bigint_list_unsigned = [x % (1 << 64) for x in bigint_list]
-    bigint_list_signed = [
-      x if x < 0 else (x % (1 << 64)) - 2 * (x & (1 << 63)) for x in bigint_list
-    ]
-    bigint_list_unsigned_n = [f'{x}n' for x in bigint_list_unsigned]
-    bigint_list_signed_n = [f'{x}n' for x in bigint_list_signed]
-
-    bigint64array = '\n'.join(bigint64array.splitlines()[3:])
-
-    create_file(
-      'test.js',
-      f'''
-      let bigint_list = {bigint_list_strs}.map(x => BigInt(x));
-      let arr1signed = new BigInt64Array(20);
-      let arr1unsigned = new BigUint64Array(20);
-      delete globalThis.BigInt64Array;
-      ''' + bigint64array + test_code,
-    )
-    output = json.loads(self.run_js('test.js'))
-    self.assertEqual(output['BigInt64Array_name'], 'createBigInt64Array')
-    for key in ('arr1_to_arr1', 'arr1_to_arr2', 'arr2_to_arr1'):
-      print(key + '_unsigned')
-      self.assertEqual(output[key + '_unsigned'], bigint_list_unsigned_n)
-    for key in ('arr1_to_arr1', 'arr1_to_arr2', 'arr2_to_arr1'):
-      print(key + '_signed')
-      self.assertEqual(output[key + '_signed'], bigint_list_signed_n)
-
-    self.assertEqual(output['arr2_slice'], ['2n', '3n', '4n', '5n'])
-    self.assertEqual(output['arr2_subarray'], ['2n', '3n', '4n', '5n'])
-
-    for m, [v1, v2] in output['assertEquals']:
-      self.assertEqual(v1, v2, msg=m)
-
   def test_warn_once(self):
     create_file('main.c', r'''\
       #include <stdio.h>
@@ -14365,8 +14323,8 @@ out.js
     self.do_test_reproduce([])
 
   def test_min_browser_version(self):
-    expected = 'emcc: error: MIN_SAFARI_VERSION=140100 is not compatible with WASM_BIGINT (MIN_SAFARI_VERSION=150000 or above required)'
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=140100'], expected)
+    expected = 'emcc: error: MIN_SAFARI_VERSION=150000 is not compatible with OFFSCREENCANVAS_SUPPORT (MIN_SAFARI_VERSION=170000 or above required)'
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sOFFSCREENCANVAS_SUPPORT', '-sMIN_SAFARI_VERSION=150000'], expected)
 
   # Test that using two different ways to disable a target environment at the same time will not produce a warning.
   def test_double_disable_environment(self):
@@ -15531,7 +15489,11 @@ addToLibrary({
     ''')
     self.do_runf('main.cpp', 'Hello Module!', cflags=['-std=c++20', '-fmodules'])
 
-  def test_invalid_export_name(self):
+  @parameterized({
+    '': (['-sASSERTIONS'],),
+    'no_assertions': (['-sASSERTIONS=0'],),
+  })
+  def test_invalid_export_name(self, args):
     create_file('main.c', r'''
       #include <emscripten.h>
       #include <stdio.h>
@@ -15551,7 +15513,7 @@ addToLibrary({
     self.assert_fail([EMCC, '-Werror', 'main.c'], expected)
 
     # With warning suppressed the above program should work.
-    self.do_runf('main.c', 'got: 42\ngot2: 42\n', cflags=['-Wno-js-compiler'])
+    self.do_runf('main.c', 'got: 42\ngot2: 42\n', cflags=['-Wno-js-compiler'] + args)
 
     # When we are generating only wasm and not JS we don't need exports to
     # be valid JS symbols.
@@ -16183,3 +16145,18 @@ console.log('OK');'''
 
     self.assertTextDataIdentical(normalized_original, normalized_rolled,
                                  fromfile='hello.normalized.mjs', tofile='hello.rolled.normalized.mjs')
+
+  @crossplatform
+  def test_download_failure(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    bad_port_path = self.in_dir('bad_port.py')
+    write_file(bad_port_path, '''
+URL = 'http://127.0.0.1:0/nonexistent.zip'
+DESCRIPTION = 'Bad Port'
+LICENSE = 'MIT'
+SHA512 = 'dummy'
+PORT_FILE = 'port.py'
+EXTERNAL_PORT = URL
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')

@@ -6,6 +6,10 @@
 
 var LibraryExceptions = {
 #if !WASM_EXCEPTIONS
+  $uncaughtExceptionCount: 0,
+#if !DISABLE_EXCEPTION_CATCHING
+  $exceptionLast: null,
+#endif
   $exceptionCaught: ' []',
 
   // This class is the exception metadata which is prepended to each thrown object (in WASM memory).
@@ -80,7 +84,7 @@ var LibraryExceptions = {
 
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__deps: ['$ExceptionInfo',
+  __cxa_throw__deps: ['$ExceptionInfo', '$uncaughtExceptionCount',
 #if !DISABLE_EXCEPTION_CATCHING
     '$exceptionLast',
     '__cxa_increment_exception_refcount',
@@ -106,15 +110,16 @@ var LibraryExceptions = {
     info.init(type, destructor);
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
-    ptr = new CppException(ptr);
+    ptr = exceptionLast = new CppException(ptr);
 #endif
+    uncaughtExceptionCount++;
     __Unwind_RaiseException(ptr);
   },
 
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['$exceptionCaught',
+  __cxa_rethrow__deps: ['$exceptionCaught', '$uncaughtExceptionCount',
 #if !DISABLE_EXCEPTION_CATCHING
     '$exceptionLast',
     '__cxa_increment_exception_refcount',
@@ -129,13 +134,14 @@ var LibraryExceptions = {
     var ptr = info.excPtr;
     info.set_rethrown(true);
     info.set_caught(false);
+    uncaughtExceptionCount++;
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
 #if EXCEPTION_DEBUG
     dbg('__cxa_rethrow: ' +
       [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
 #endif
-    ptr = new CppException(ptr);
+    ptr = exceptionLast = new CppException(ptr);
 #endif
     __Unwind_RaiseException(ptr);
   },
@@ -208,7 +214,7 @@ var LibraryExceptions = {
     return info.get_type();
   },
 
-  __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo',
+  __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$uncaughtExceptionCount',
 #if !DISABLE_EXCEPTION_CATCHING
     '$exceptionLast',
     '__cxa_increment_exception_refcount',
@@ -223,9 +229,10 @@ var LibraryExceptions = {
     var info = new ExceptionInfo(ptr);
     info.set_rethrown(true);
     info.set_caught(false);
+    uncaughtExceptionCount++;
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
-    ptr = new CppException(ptr);
+    ptr = exceptionLast = new CppException(ptr);
 #endif
     __Unwind_RaiseException(ptr);
   },
@@ -300,7 +307,7 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg("__resumeException " + [ptrToString(ptr), exceptionLast]);
 #endif
-    ptr = exceptionLast ?? new CppException(ptr);
+    ptr = exceptionLast ??= new CppException(ptr);
 #endif
     __Unwind_Resume(ptr);
   },

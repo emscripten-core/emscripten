@@ -196,7 +196,7 @@ const moduleUrl = `ENVIRONMENT_IS_AUDIO_WORKLET ? '${TARGET_BASENAME}.wasm' : ne
 #endif
 }}}
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
