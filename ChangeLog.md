@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.7 (in development)
+6.0.8 (in development)
 ----------------------
+
+6.0.7 - 08/17/26
+----------------
 
 - JavaScript library symbols can now use the `__force` and `__export`
   decorators to control inclusion and export visibility. (#27436)
