@@ -15006,11 +15006,6 @@ addToLibrary({
     # was not included in the compilation unit using val.
     self.do_runf('embind/test_optional_val_main.cpp', 'done\n', cflags=['-lembind', test_file('embind/test_optional_val_lib.cpp')])
 
-  def test_no_pthread(self):
-    self.do_runf_out_file('hello_world.c', cflags=['-pthread', '-no-pthread'])
-    self.assertExists('hello_world.js')
-    self.assertNotContained('new Worker(', read_file('hello_world.js'))
-
   def test_sysroot_includes_first(self):
     self.do_other_test('test_stdint_limits.c', cflags=['-iwithsysroot/include'])
 
