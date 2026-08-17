@@ -7,11 +7,18 @@ Building Emscripten from Source
 Building Emscripten yourself is an alternative to getting binaries using the
 emsdk.
 
-Emscripten itself is written in Python and JavaScript so it does not need to be
-compiled.  However, after checkout you will need to run the top level
-``bootstrap.py`` script before the toolchain is usable.  This performs
-various steps including ``npm install`` and the creation of compiler entry
-points (e.g. `.bat` files on windows).
+Emscripten itself is primarily written in Python and JavaScript. However,
+after checkout you will need to run the top-level ``bootstrap.py`` script
+before the toolchain is usable. This performs various steps including ``npm
+install`` and building the native compiler frontend launcher (``emcc_native``),
+which provides high-performance ``emcc`` and ``em++`` binaries.
+
+Building ``emcc_native`` requires CMake 3.20+ and a C++20 host compiler
+toolchain (which you already need for building LLVM and Binaryen). If you prefer
+not to perform a native build, setting ``EMCC_NATIVE=0`` in your environment
+before running ``./bootstrap.py`` instructs it to generate legacy Python launcher
+scripts (e.g., ``.bat`` / ``.ps1`` files on Windows) via
+``./tools/maint/create_entry_points.py``.
 
 Emscripten comes with its own versions of some C/C++ system libraries which
 ``emcc`` builds automatically as and when needed (in the emsdk builds, these are
