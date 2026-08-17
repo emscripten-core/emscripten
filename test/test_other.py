@@ -13513,13 +13513,13 @@ void foo() {}
   def test_epoll_fairness(self):
     # More ready fds than maxevents: successive waits rotate (round-robin) so no
     # fd starves.
-    self.do_runf('core/test_epoll_fairness.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
+    self.do_runf('other/test_epoll_fairness.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
   def test_epoll_dup(self):
     # dup(2) of an epoll fd shares one instance: a registration added via the dup
     # is visible to waits on the original fd, and closing one dup does not tear
     # the instance down.
-    self.do_runf('core/test_epoll_dup.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
+    self.do_runf('other/test_epoll_dup.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
