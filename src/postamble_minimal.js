@@ -207,7 +207,9 @@ instantiatePromise =
 #endif
 (WebAssembly.instantiateStreaming
 #if ENVIRONMENT_MAY_BE_NODE
-  // Node's fetch API cannot be used for local files, so we cannot use instantiateStreaming
+  // Avoid using instantiateStreaming() on Node.js since the `fetch()` API
+  // does not support `file://` URLs.
+  // See: https://github.com/emscripten-core/emscripten/pull/16917
   && !ENVIRONMENT_IS_NODE
 #endif
   ? WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports)
