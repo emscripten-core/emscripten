@@ -635,9 +635,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def require_jspi(self):
     if 'EMTEST_SKIP_JSPI' in os.environ:
       self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
-    # emcc warns about stack switching being experimental, and we build with
-    # warnings-as-errors, so disable that warning
-    self.cflags += ['-Wno-experimental']
     self.set_setting('JSPI')
     if self.is_wasm2js():
       self.skipTest('JSPI is not currently supported for WASM2JS')

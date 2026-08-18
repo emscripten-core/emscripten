@@ -1374,11 +1374,10 @@ JSPI
 ====
 
 Use VM support for the JavaScript Promise Integration proposal. This allows
-async operations to happen without the overhead of modifying the wasm. This
-is experimental at the moment while spec discussion is ongoing, see
-https://github.com/WebAssembly/js-promise-integration/ TODO: document which
-of the following flags are still relevant in this mode (e.g. IGNORE_INDIRECT
-etc. are not needed)
+async operations to happen without the overhead of modifying the wasm.
+See https://github.com/WebAssembly/js-promise-integration/
+TODO: document which of the following flags are still relevant in this mode
+(e.g. IGNORE_INDIRECT etc. are not needed)
 
 Default value: 0
 

@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 6.0.8 (in development)
 ----------------------
+- The `JSPI` setting is no longer considered experimental, and the compiler
+  diagnostic warning has been removed. (#27559)
 
 6.0.7 - 08/17/26
 ----------------
