@@ -2139,6 +2139,8 @@ WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
 i64 is used.
 
+.. note:: This setting is deprecated
+
 Default value: true
 
 .. _emit_producers_section:
@@ -3521,6 +3523,7 @@ these settings please open a bug (or reply to one of the existing bugs).
 
  - ``RUNTIME_LINKED_LIBS``: you can simply list the libraries directly on the commandline now
  - ``CLOSURE_WARNINGS``: use -Wclosure/-Wno-closure instead
+ - ``WASM_BIGINT``: no longer needed. Should only ever be implicitly disabled by -sWASM=0
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
  - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.

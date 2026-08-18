@@ -416,24 +416,6 @@ def also_with_minimal_runtime(func):
   return metafunc
 
 
-def also_without_bigint(func):
-  assert callable(func)
-
-  @wraps(func)
-  def metafunc(self, no_bigint, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:no_bigint=%s' % no_bigint)
-    if no_bigint:
-      if self.get_setting('WASM_BIGINT') is not None:
-        self.skipTest('redundant in bigint test config')
-      self.set_setting('WASM_BIGINT', 0)
-    return func(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (False,),
-                          'no_bigint': (True,)})
-  return metafunc
-
-
 def also_with_wasm64(func):
   assert callable(func)
 

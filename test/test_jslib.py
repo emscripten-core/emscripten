@@ -6,7 +6,7 @@
 from subprocess import PIPE
 
 from common import RunnerCore, copy_asset, create_file, read_file, test_file
-from decorators import also_with_wasm64, also_without_bigint, parameterized, requires_node_25
+from decorators import also_with_wasm2js, also_with_wasm64, parameterized, requires_node_25
 
 from tools.shared import EMCC
 from tools.utils import delete_file
@@ -375,7 +375,7 @@ addToLibrary({
                      "lib.js: Decorator (jslibfunc__export) has wrong type. Expected 'boolean' not 'string'")
 
   @also_with_wasm64
-  @also_without_bigint
+  @also_with_wasm2js
   def test_jslib_i53abi(self):
     create_file('lib.js', r'''
 addToLibrary({
@@ -597,7 +597,7 @@ extraLibraryFuncs.push('jsfunc');
     self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'foo.js'], 'foo.js:5: file not found: inc.js')
 
   @also_with_wasm64
-  @also_without_bigint
+  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'closure': (['--closure=1'],),

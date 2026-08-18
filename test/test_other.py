@@ -71,7 +71,6 @@ from decorators import (
   also_with_wasm2js,
   also_with_wasm64,
   also_with_wasmfs,
-  also_without_bigint,
   crossplatform,
   disabled,
   flaky,
@@ -7961,6 +7960,7 @@ int main() {
 
   def test_EM_ASM_i64_nobigint(self):
     self.set_setting('WASM_BIGINT', 0)
+    self.cflags.append('-Wno-error=deprecated')
     self.do_runf('other/test_em_asm_i64.cpp', 'Invalid character 106("j") in readEmAsmArgs!', assert_returncode=NON_ZERO)
 
   def test_eval_ctor_ordering(self):
@@ -9471,9 +9471,9 @@ end
   @crossplatform
   @parameterized({
     '': ([],),
-    # bigint support is interesting to test here because it changes which
+    # wasm2js support is interesting to test here because it changes which
     # binaryen tools get run, which can affect how debug info is kept around
-    'nobigint': (['-sWASM_BIGINT=0'],),
+    'wasm2js': (['-sWASM=0'],),
     'pthread': (['-pthread', '-Wno-experimental'],),
     'pthread_offscreen': (['-pthread', '-Wno-experimental', '-sOFFSCREEN_FRAMEBUFFER'],),
     'wasmfs': (['-sWASMFS'],),
@@ -9482,6 +9482,12 @@ end
   })
   def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
+    # Enable as many features as possible in order to maximise
+    # the amount of library code we include here.
+    if '-sWASM=0' in args:
+      args += ['-sEXPORT_ALL']
+    else:
+      args += ['-sMAIN_MODULE']
     self.build('hello_world.c', cflags=[
       '--closure=1',
       '--minify=0',
@@ -9492,9 +9498,6 @@ end
       '-sAUTO_JS_LIBRARIES',
       '-sINCLUDE_FULL_LIBRARY',
       '-sOFFSCREEN_FRAMEBUFFER',
-      # Enable as many features as possible in order to maximise
-      # the amount of library code we include here.
-      '-sMAIN_MODULE',
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-sLEGACY_GL_EMULATION',
@@ -14103,7 +14106,7 @@ int main() {
   def test_no_cfi(self):
     self.assert_fail([EMCC, '-fsanitize=cfi', '-flto', test_file('hello_world.c')], 'emcc: error: emscripten does not currently support -fsanitize=cfi')
 
-  @also_without_bigint
+  @also_with_wasm2js
   def test_parseTools(self):
     # Suppress js compiler warnings because we deliberately use legacy parseTools functions
     self.cflags += ['-Wno-js-compiler', '--js-library', test_file('other/test_parseTools.js')]
@@ -14355,7 +14358,7 @@ out.js
     self.do_other_test('test_itimer.c')
 
   def test_itimer_standalone(self):
-    self.do_other_test('test_itimer_standalone.c', cflags=['-sSTANDALONE_WASM', '-sWASM_BIGINT'])
+    self.do_other_test('test_itimer_standalone.c', cflags=['-sSTANDALONE_WASM'])
     for engine in config.WASM_ENGINES:
       print('wasm engine', engine)
       self.assertContained('done\n', self.run_js('test_itimer_standalone.wasm', engine))
