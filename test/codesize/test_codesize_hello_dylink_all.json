@@ -1,7 +1,7 @@
 {
-  "a.out.js": 267819,
-  "a.out.nodebug.wasm": 588299,
-  "total": 856118,
+  "a.out.js": 270568,
+  "a.out.nodebug.wasm": 588359,
+  "total": 858927,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -231,6 +231,7 @@
     "__syscall_epoll_create1",
     "__syscall_epoll_ctl",
     "__syscall_epoll_pwait",
+    "__syscall_epoll_pwait_nonblocking",
     "__syscall_faccessat",
     "__syscall_fadvise64",
     "__syscall_fallocate",
@@ -1762,6 +1763,7 @@
     "env.__syscall_epoll_create1",
     "env.__syscall_epoll_ctl",
     "env.__syscall_epoll_pwait",
+    "env.__syscall_epoll_pwait_nonblocking",
     "env.__syscall_faccessat",
     "env.__syscall_fadvise64",
     "env.__syscall_fallocate",

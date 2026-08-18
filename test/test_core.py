@@ -400,6 +400,17 @@ def no_wasmfs(note):
   return decorator
 
 
+def needs_epoll(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if self.get_setting('WASMFS'):
+      self.skipTest('epoll is implemented in the JS (non-WASMFS) syscall layer')
+    return func(self, *args, **kwargs)
+  return decorated
+
+
 def make_no_decorator_for_setting(name):
   def outer_decorator(note):
     assert not callable(note)
@@ -5783,6 +5794,32 @@ got: 10
       self.set_setting('FORCE_FILESYSTEM')
     self.do_core_test('test_poll.c')
 
+  @needs_epoll
+  def test_epoll(self):
+    self.do_runf('core/test_epoll.c', 'done\n')
+
+  @needs_epoll
+  def test_epoll_advanced(self):
+    self.do_runf('core/test_epoll_advanced.c', 'done\n')
+
+  @needs_epoll
+  @requires_pthreads
+  def test_epoll_pthread_shared(self):
+    # Two threads block in epoll_wait() on one shared epoll fd: per-edge
+    # exactly-once wakeups under EPOLLET, herd wakeup under level triggering,
+    # EPOLLONESHOT disarm/re-arm delivery across threads, and exactly-once
+    # oneshot delivery over rounds of events against racing harvesters.
+    self.do_runf('core/test_epoll_pthread_shared.c',
+                 'done\n',
+                 cflags=['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  @needs_epoll
+  @requires_node
+  def test_epoll_noderawfs(self):
+    # Regular-file streams under NODERAWFS carry no stream_ops; the readiness
+    # layer must not dereference a missing poll handler (poll/epoll on a file).
+    self.do_runf('core/test_epoll_noderawfs.c', 'done\n', cflags=['-sNODERAWFS'])
+
   @no_wasmfs('st.f_ffree > st.f_files, same issue than in wasmfs.test_fs_nodefs_statvfs. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_statvfs(self):
     self.do_core_test('test_statvfs.c')
@@ -9731,6 +9768,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @with_asyncify_and_jspi
+  @needs_epoll
+  def test_epoll_blocking_asyncify(self):
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_epoll_blocking_asyncify.c', 'done\n')
 
   @parameterized({
     '': ([],),

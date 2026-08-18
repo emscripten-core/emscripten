@@ -22,6 +22,11 @@ See docs/process.md for more on how version tagging works.
 ----------------------
 - The `JSPI` setting is no longer considered experimental, and the compiler
   diagnostic warning has been removed. (#27559)
+- Added support for `epoll` (`epoll_create1`/`epoll_ctl`/`epoll_wait`/
+  `epoll_pwait`) on the legacy (non-WASMFS) JS filesystem, including
+  level- and edge-triggered modes, `EPOLLONESHOT`, `EPOLLEXCLUSIVE`,
+  `EPOLLRDHUP`, nesting, and blocking waits under `PROXY_TO_PTHREAD`,
+  `ASYNCIFY`, and `JSPI`. (#27207)
 
 6.0.7 - 08/17/26
 ----------------
