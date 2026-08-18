@@ -533,7 +533,7 @@ def finalize_wasm(infile, outfile, js_syms):
     # to force wasm-emscripten-finalize not to do any legalization at all.
     args.append('--bigint')
   else:
-    if settings.LEGALIZE_JS_FFI:
+    if not settings.WASM_BIGINT:
       # When we dynamically link our JS loader adds functions from wasm modules to
       # the table. It must add the original versions of them, not legalized ones,
       # so that indirect calls have the right type, so export those.

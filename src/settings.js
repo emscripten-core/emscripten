@@ -1521,14 +1521,6 @@ var EMIT_PRODUCERS_SECTION = false;
 // [link]
 var EMIT_EMSCRIPTEN_LICENSE = false;
 
-// Whether to lower i64 parameters and return values for function
-// imports/exports.  This is done by lowering them to pairs of i32 and should
-// only be needed on JS engines that do not have Wasm/BigInt integration.
-// This is automatically enabled when WASM_BIGINT is disabled.
-// [link]
-// [deprecated]
-var LEGALIZE_JS_FFI = false;
-
 // Ports
 
 // Specify the SDL version that is being linked against.

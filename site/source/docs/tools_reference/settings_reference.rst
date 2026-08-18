@@ -2183,20 +2183,6 @@ Emits emscripten license info in the JS output.
 
 Default value: false
 
-.. _legalize_js_ffi:
-
-LEGALIZE_JS_FFI
-===============
-
-Whether to lower i64 parameters and return values for function
-imports/exports.  This is done by lowering them to pairs of i32 and should
-only be needed on JS engines that do not have Wasm/BigInt integration.
-This is automatically enabled when WASM_BIGINT is disabled.
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _use_sdl:
 
 USE_SDL
@@ -3553,7 +3539,6 @@ these settings please open a bug (or reply to one of the existing bugs).
 
  - ``RUNTIME_LINKED_LIBS``: you can simply list the libraries directly on the commandline now
  - ``CLOSURE_WARNINGS``: use -Wclosure/-Wno-closure instead
- - ``LEGALIZE_JS_FFI``: to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
  - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.
@@ -3653,3 +3638,4 @@ for backwards compatibility with older versions:
  - ``RELOCATABLE``: No longer supported (Valid values: [0])
  - ``WASM_JS_TYPES``: No longer supported (Valid values: [0])
  - ``DETERMINISTIC``: No longer supported (Valid values: [0])
+ - ``LEGALIZE_JS_FFI``: legacy JS FFI legalization is no longer supported (Valid values: [0])
