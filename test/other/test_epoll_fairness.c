@@ -19,7 +19,7 @@
 int main(void) {
   int ep = epoll_create1(0);
   int rfd[3];
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < sizeof(rfd) / sizeof(rfd[0]); i++) {
     int p[2];
     assert(pipe(p) == 0);
     rfd[i] = p[0];
@@ -29,9 +29,9 @@ int main(void) {
     assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd[i], &ev) == 0);
   }
 
-  int expect[6] = { rfd[0], rfd[1], rfd[2], rfd[0], rfd[1], rfd[2] };
+  int expect[] = { rfd[0], rfd[1], rfd[2], rfd[0], rfd[1], rfd[2] };
   struct epoll_event out;
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < sizeof(expect) / sizeof(expect[0]); i++) {
     assert(epoll_wait(ep, &out, 1, 0) == 1);
     assert(out.data.fd == expect[i]);
   }

@@ -401,14 +401,12 @@ def no_wasmfs(note):
 
 
 def needs_epoll(func):
-  # epoll is implemented in the JS (non-WASMFS) syscall layer and needs the FS.
   assert callable(func)
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
     if self.get_setting('WASMFS'):
       self.skipTest('epoll is implemented in the JS (non-WASMFS) syscall layer')
-    self.set_setting('FORCE_FILESYSTEM')
     return func(self, *args, **kwargs)
   return decorated
 

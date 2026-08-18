@@ -26,15 +26,15 @@
 #include <pthread.h>
 #endif
 
-static int rx = -1, tx = -1;
-static struct sockaddr_in addr;
+int rx = -1, tx = -1;
+struct sockaddr_in addr;
 
-static void send_ping(void* arg) {
+void send_ping(void* arg) {
   assert(sendto(tx, "ping", 4, 0, (struct sockaddr*)&addr, sizeof(addr)) == 4);
 }
 
 #ifdef __EMSCRIPTEN_PTHREADS__
-static void* sender(void* arg) {
+void* sender(void* arg) {
   usleep(100000); // let epoll_wait() block first
   send_ping(NULL);
   return NULL;
@@ -73,11 +73,13 @@ int main(void) {
 
   struct epoll_event out[4];
   int n = epoll_wait(ep, out, 4, -1); // blocks; only the arrival can wake it
-  assert(n == 1 && (out[0].events & EPOLLIN));
+  assert(n == 1);
+  assert(out[0].events & EPOLLIN);
   assert(out[0].data.fd == rx);
 
   char buf[4];
-  assert(recv(rx, buf, sizeof(buf), 0) == 4 && memcmp(buf, "ping", 4) == 0);
+  assert(recv(rx, buf, sizeof(buf), 0) == 4);
+  assert(memcmp(buf, "ping", 4) == 0);
 
   close(ep);
   close(rx);

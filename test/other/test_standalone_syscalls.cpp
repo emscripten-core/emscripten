@@ -44,13 +44,17 @@ int main() {
   // one through __syscall_epoll_pwait, covering all four stubs.
   struct epoll_event ev = {};
   errno = 0;
-  assert(epoll_create1(0) < 0 && errno == ENOSYS);
+  assert(epoll_create1(0) < 0);
+  assert(errno == ENOSYS);
   errno = 0;
-  assert(epoll_ctl(1, EPOLL_CTL_ADD, 0, &ev) < 0 && errno == ENOSYS);
+  assert(epoll_ctl(1, EPOLL_CTL_ADD, 0, &ev) < 0);
+  assert(errno == ENOSYS);
   errno = 0;
-  assert(epoll_wait(1, &ev, 1, 0) < 0 && errno == ENOSYS);
+  assert(epoll_wait(1, &ev, 1, 0) < 0);
+  assert(errno == ENOSYS);
   errno = 0;
-  assert(epoll_pwait(1, &ev, 1, -1, NULL) < 0 && errno == ENOSYS);
+  assert(epoll_pwait(1, &ev, 1, -1, NULL) < 0);
+  assert(errno == ENOSYS);
 
   // This doesn't do anything because we have no handler registered, but it
   // verifies that `raise` can be included in the build without any non-standard

@@ -41,7 +41,8 @@ int main(void) {
   // The server-side 'connection' can land just after connect() returns, so wait
   // for the listener to be readable before accepting.
   struct pollfd lp = { .fd = listen_fd, .events = POLLIN };
-  assert(poll(&lp, 1, -1) == 1 && (lp.revents & POLLIN));
+  assert(poll(&lp, 1, -1) == 1);
+  assert(lp.revents & POLLIN);
   int peer_fd = accept(listen_fd, NULL, NULL);
   assert(peer_fd >= 0);
 
