@@ -3202,9 +3202,9 @@ Module["preRun"] = () => {
   @parameterized({
     'asyncify': (['-sASYNCIFY'],),
     'asyncify_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY'],),
-    'jspi': (['-sJSPI', '-Wno-experimental'],),
-    'jspi_wasm_bigint': (['-sJSPI', '-sWASM_BIGINT', '-Wno-experimental'],),
-    'jspi_wasm_bigint_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sJSPI', '-sWASM_BIGINT', '-Wno-experimental'],),
+    'jspi': (['-sJSPI'],),
+    'jspi_wasm_bigint': (['-sJSPI', '-sWASM_BIGINT'],),
+    'jspi_wasm_bigint_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sJSPI', '-sWASM_BIGINT'],),
   })
   def test_async(self, opt, args):
     if is_jspi(args) and not is_chrome():
@@ -4883,7 +4883,7 @@ Module["preRun"] = () => {
 
   @parameterized({
     'asyncify': (['-sASYNCIFY'],),
-    'jspi': (['-sJSPI', '-Wno-experimental'],),
+    'jspi': (['-sJSPI'],),
   })
   def test_embind(self, args):
     if is_jspi(args) and not is_chrome():
@@ -5292,8 +5292,8 @@ Module["preRun"] = () => {
   @no_firefox('no OPFS support yet')
   @parameterized({
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-    'jspi': (['-Wno-experimental', '-sJSPI'],),
-    'jspi_wasm_bigint': (['-Wno-experimental', '-sJSPI', '-sWASM_BIGINT'],),
+    'jspi': (['-sJSPI'],),
+    'jspi_wasm_bigint': (['-sJSPI', '-sWASM_BIGINT'],),
     'asyncify': (['-sASYNCIFY=1'],),
   })
   @no_safari('TODO: Fails with abort:Assertion failed: err == 0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)

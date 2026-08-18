@@ -1752,9 +1752,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
 
-    if settings.ASYNCIFY == 2:
-      diagnostics.warning('experimental', '-sJSPI (ASYNCIFY=2) is still experimental')
-
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
