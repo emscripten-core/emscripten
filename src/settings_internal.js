@@ -103,23 +103,11 @@ var JS_LIBRARIES = [];
 // they are being used with.
 var EMSCRIPTEN_VERSION = '';
 
-// Will be set to 0 if -fno-rtti is used on the command line.
-var USE_RTTI = true;
-
-// This will contain the optimization level (-Ox).
-var OPT_LEVEL = 0;
-
-// This will contain the debug level (-gx).
-var DEBUG_LEVEL = 0;
-
 // This will contain the shrink level (1 or 2 for -Os or -Oz, or just 0).
 var SHRINK_LEVEL = 0;
 
 // Whether or not to emit the name section in the final wasm binary.
 var EMIT_NAME_SECTION = false;
-
-// Whether we are emitting a symbol map.
-var EMIT_SYMBOL_MAP = false;
 
 // List of symbols explicitly exported by user on the command line.
 var USER_EXPORTS = [];
@@ -127,8 +115,6 @@ var USER_EXPORTS = [];
 // name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 
-// Base URL the source mapfile, if relevant
-var SOURCE_MAP_BASE = '';
 
 // If set to 1 then base64 decoding functions will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
@@ -282,8 +268,6 @@ var WARN_DEPRECATED = true;
 var WEBGL_USE_GARBAGE_FREE_APIS = false;
 
 var INCLUDE_WEBGL1_FALLBACK = true;
-
-var MINIFICATION_MAP = '';
 
 var OUTPUT_FORMAT = '';
 

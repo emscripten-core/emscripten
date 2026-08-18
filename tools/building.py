@@ -16,7 +16,6 @@ from subprocess import PIPE
 
 from . import (
   cache,
-  cmdline,
   colored_logger,
   config,
   diagnostics,
@@ -27,6 +26,7 @@ from . import (
   utils,
   webassembly,
 )
+from .cmdline import options
 from .settings import settings
 from .shared import (
   CLANG_CC,
@@ -189,13 +189,13 @@ def lld_flags_for_executable(external_symbols):
   # section and DWARF, so we can only use it when we don't need any of
   # those things.
   if (not settings.GENERATE_DWARF and
-      not settings.EMIT_SYMBOL_MAP and
+      not options.emit_symbol_map and
       not settings.GENERATE_SOURCE_MAP and
       not settings.EMIT_NAME_SECTION and
       not settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
-  if cmdline.options.lto and not settings.EXIT_RUNTIME:
+  if options.lto and not settings.EXIT_RUNTIME:
     # The WebAssembly backend can generate new references to `__cxa_atexit` at
     # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
     # included at LTO time.  For other such symbols we exclude them from LTO
@@ -651,7 +651,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     args += ['--externs', e]
   args += user_args
 
-  if settings.DEBUG_LEVEL > 1:
+  if options.debug_level > 1:
     args += ['--debug']
 
   # Now that we have run closure compiler once, we have stripped all the closure compiler
@@ -817,7 +817,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
 # get the flags to pass into the very last binaryen tool invocation, that runs
 # the final set of optimizations
 def get_last_binaryen_opts():
-  return [f'--optimize-level={settings.OPT_LEVEL}',
+  return [f'--optimize-level={options.opt_level}',
           f'--shrink-level={settings.SHRINK_LEVEL}',
           '--optimize-stack-ir']
 
@@ -989,9 +989,9 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
   if settings.MINIFY_WHITESPACE:
     passes.append('--minify-whitespace')
   extra_info = {'mapping': mapping}
-  if settings.MINIFICATION_MAP:
+  if options.minification_map:
     lines = [f'{new}:{old}' for old, new in mapping.items()]
-    utils.write_file(settings.MINIFICATION_MAP, '\n'.join(lines) + '\n')
+    utils.write_file(options.minification_map, '\n'.join(lines) + '\n')
   return acorn_optimizer(js_file, passes, extra_info=extra_info)
 
 
@@ -1290,7 +1290,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
       # in are not enough to see what went wrong)
       if settings.LEGALIZE_JS_FFI:
         extra += '\nnote: to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
-      if settings.OPT_LEVEL > 1:
+      if options.opt_level > 1:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
       exit_with_error(f'changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: {cmd}{extra}')
   if debug:

@@ -56,6 +56,7 @@ class EmccOptions:
   clear_cache = False
   clear_ports = False
   cpu_profiler = False
+  debug_level = 0
   dash_E = False
   dash_M = False
   dash_S = False
@@ -77,6 +78,7 @@ class EmccOptions:
   lib_dirs: list[str] = []
   lto: str | None = None
   memory_profiler = False
+  minification_map = ''
   no_entry = False
   no_minify = False
   nodefaultlibs = False
@@ -86,6 +88,7 @@ class EmccOptions:
   nostdlib = False
   nostdlibxx = False
   oformat = None
+  opt_level = 0
   # Specifies the line ending format to use for all generated text files.
   # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
   # Linux & MacOS)
@@ -98,6 +101,7 @@ class EmccOptions:
   relocatable = False
   reproduce = os.getenv('EMCC_REPRODUCE')  # None by default.
   requested_debug = None
+  rtti = True
   sanitize: set[str] = set()
   sanitize_minimal_runtime = False
   show_ports = False
@@ -297,7 +301,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       elif opt_level == 'g':
         opt_level = 1
         settings.SHRINK_LEVEL = 0
-        settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
+        options.debug_level = max(options.debug_level, 1)
       elif opt_level == 'fast':
         # -Ofast typically includes -ffast-math semantics
         options.fast_math = True
@@ -313,7 +317,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
         diagnostics.warn(f"optimization level '{arg}' is not supported; using '-O3' instead")
         newargs[i] = '-O3'
         level = 3
-      settings.OPT_LEVEL = level
+      options.opt_level = level
     elif arg.startswith('-flto'):
       if '=' in arg:
         options.lto = arg.split('=')[1]
@@ -361,7 +365,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       if is_unsigned_int(debug_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
         debug_level = int(debug_level)
-        settings.DEBUG_LEVEL = debug_level
+        options.debug_level = debug_level
         if debug_level == 0:
           # Set these explicitly so -g0 overrides previous -g on the cmdline
           settings.GENERATE_DWARF = 0
@@ -400,7 +404,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
           else:
             settings.SEPARATE_DWARF = True
           settings.GENERATE_DWARF = 1
-          settings.DEBUG_LEVEL = 3
+          options.debug_level = 3
         elif debug_level in {'source-map', 'source-map=inline'}:
           settings.GENERATE_SOURCE_MAP = 1 if debug_level == 'source-map' else 2
           newargs[i] = '-g'
@@ -413,9 +417,9 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
           # clang and make the emscripten code treat it like any other DWARF.
           settings.GENERATE_DWARF = 1
           settings.EMIT_NAME_SECTION = 1
-          settings.DEBUG_LEVEL = 3
+          options.debug_level = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
-      settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
+      options.debug_level = max(options.debug_level, 2)
       settings.EMIT_NAME_SECTION = 1
     elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):
       settings.EMIT_NAME_SECTION = 1
@@ -426,9 +430,8 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       settings.EMSCRIPTEN_TRACING = 1
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
-      settings.EMIT_SYMBOL_MAP = 1
     elif check_arg('--emit-minification-map'):
-      settings.MINIFICATION_MAP = consume_arg()
+      options.minification_map = consume_arg()
     elif check_arg('--embed-file'):
       options.embed_files.append(consume_arg())
     elif check_arg('--preload-file'):
@@ -538,9 +541,9 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
     elif arg == '-pthreads':
       exit_with_error('unrecognized command-line option `-pthreads`; did you mean `-pthread`?')
     elif arg == '-fno-rtti':
-      settings.USE_RTTI = 0
+      options.rtti = False
     elif arg == '-frtti':
-      settings.USE_RTTI = 1
+      options.rtti = True
     elif arg.startswith('-jsD'):
       key = arg.removeprefix('-jsD')
       if '=' in key:
