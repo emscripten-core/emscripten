@@ -1197,6 +1197,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       make = ['make']
     if env_init is None:
       env_init = {}
+    else:
+      env_init = env_init.copy()
     if make_args is None:
       make_args = ['-j', str(utils.get_num_cores())]
 
@@ -1231,8 +1233,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       configure += configure_args
 
     cflags = ' '.join(cflags)
-    env_init.setdefault('CFLAGS', cflags)
-    env_init.setdefault('CXXFLAGS', cflags)
+    # Append library-specific cflags without overwriting caller-provided optimizations
+    env_init['CFLAGS'] = f"{env_init.get('CFLAGS', '')} {cflags}".strip()
+    env_init['CXXFLAGS'] = f"{env_init.get('CXXFLAGS', '')} {cflags}".strip()
     return self.build_library(name, build_dir, generated_libs, configure,
                               make, make_args, cache_name, env_init=env_init, native=native)
 
@@ -1509,7 +1512,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
           raise
     return js_output
 
-  def get_freetype_library(self):
+  def get_freetype_library(self, env_init=None):
     self.cflags += [
       '-Wno-misleading-indentation',
       '-Wno-unused-but-set-variable',
@@ -1521,10 +1524,11 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     ]
     return self.get_library(os.path.join('third_party', 'freetype'),
                             os.path.join('objs', '.libs', 'libfreetype.a'),
+                            env_init=env_init,
                             configure_args=['--disable-shared', '--without-zlib'])
 
   def get_poppler_library(self, env_init=None):
-    freetype = self.get_freetype_library()
+    freetype = self.get_freetype_library(env_init=env_init)
 
     self.cflags += [
       '-I' + test_file('third_party/freetype/include'),

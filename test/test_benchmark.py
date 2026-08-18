@@ -255,6 +255,7 @@ class EmscriptenBenchmarker(Benchmarker):
       # systems (like zlib) if they see a CFLAGS it will override all their
       # default flags, including optimizations.
       env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.cflags)
+      env_init['CXXFLAGS'] = env_init['CFLAGS']
       # Avoid mutating incoming emcc_args
       emcc_args = emcc_args.copy()
       emcc_args += lib_builder('js_' + llvm_root, native=False, env_init=env_init)
