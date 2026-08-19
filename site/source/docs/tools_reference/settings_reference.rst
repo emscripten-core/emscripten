@@ -2188,14 +2188,14 @@ Default value: false
 LEGALIZE_JS_FFI
 ===============
 
-Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
-to automatically demote i64 to i32 and promote f32 to f64. This is necessary
-in order to interface with JavaScript.  For non-web/non-JS embeddings,
-setting this to 0 may be desirable.
+Whether to lower i64 parameters and return values for function
+imports/exports.  This is done by lowering them to pairs of i32 and should
+only be needed on JS engines that do not have Wasm/BigInt integration.
+This is automatically enabled when WASM_BIGINT is disabled.
 
 .. note:: This setting is deprecated
 
-Default value: true
+Default value: false
 
 .. _use_sdl:
 

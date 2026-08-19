@@ -1120,9 +1120,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       exit_with_error('explicitly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
     settings.EXIT_RUNTIME = settings.EXPECT_MAIN
     settings.IGNORE_MISSING_MAIN = 0
-    # the wasm must be runnable without the JS, so there cannot be anything that
-    # requires JS legalization
-    default_setting('LEGALIZE_JS_FFI', 0)
     if 'MEMORY_GROWTH_LINEAR_STEP' in user_settings:
       exit_with_error('MEMORY_GROWTH_LINEAR_STEP is not compatible with STANDALONE_WASM')
     if 'MEMORY_GROWTH_GEOMETRIC_CAP' in user_settings:
@@ -1642,8 +1639,8 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # module names buys nothing and would break that rewrite.
     settings.MINIFY_WASM_IMPORTED_MODULES = not settings.WASM_ESM_INTEGRATION
 
-  if settings.WASM_BIGINT:
-    settings.LEGALIZE_JS_FFI = 0
+  if not settings.WASM_BIGINT:
+    default_setting('LEGALIZE_JS_FFI', 1)
 
   if settings.SINGLE_FILE and settings.GENERATE_SOURCE_MAP:
     diagnostics.warning('emcc', 'SINGLE_FILE disables source map support (which requires a .map file)')
