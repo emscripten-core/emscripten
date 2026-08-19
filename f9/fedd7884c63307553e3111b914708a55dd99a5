@@ -1,0 +1,23 @@
+test/sockets/test_tcp_connect_getsockname.c
+  s_561b011a88c250::t_b364bfc4a72f62 1-151
+src/lib/libsockfs_node.js
+  s_561b011a88c250::t_f1bf9c0cb41b58 25-28,578-583,585-587
+test/test_sockets_node.py
+  s_561b011a88c250::t_15b3481c46fccc 129-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f9fedd7884c63307553e3111b914708a55dd99a5",
+  "prompts": {},
+  "sessions": {
+    "s_561b011a88c250": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fe8b9251bffeWmA7MDH52XelIC",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
