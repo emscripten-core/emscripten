@@ -1,0 +1,55 @@
+src/struct_info_generated.json
+  s_012db06836eaa8::t_5d51b83da6b312 67
+src/struct_info_generated_wasm64.json
+  s_012db06836eaa8::t_86c4765155330a 67
+system/lib/libc/musl/src/network/freeaddrinfo.c
+  s_012db06836eaa8::t_ac9e5e369d0364 10-18
+test/sockets/test_dns_async.c
+  s_012db06836eaa8::t_f563643f7f558b 1-124
+test/sockets/test_dns_async_default.c
+  s_012db06836eaa8::t_499e3f07626e9e 1-62
+test/codesize/test_codesize_minimal_O0.expected.js
+  s_012db06836eaa8::t_a1df89a6e26fd2 843-844
+src/struct_info.json
+  s_012db06836eaa8::t_41b93ca437be83 209-210
+test/codesize/test_codesize_hello_dylink_all.json
+  s_012db06836eaa8::t_492a816ccf8eb8 2,4,470-471
+test/codesize/test_codesize_hello_O0.json
+  s_012db06836eaa8::t_c9f89dceb0cc2c 2-3,6-7
+src/lib/libsigs.js
+  s_012db06836eaa8::t_457fce552388a2 645-646
+test/codesize/test_codesize_minimal_O0.json
+  s_012db06836eaa8::t_666d53891c952d 2-3,6-7
+src/lib/libcore.js
+  s_012db06836eaa8::t_580a674907470e 1010-1021,1024-1025,1029,1031-1033,1035-1038,1040,1042,1044-1064,1134,1165,1174-1189,1198-1241
+test/codesize/test_unoptimized_code_size.json
+  s_012db06836eaa8::t_7a7e2c0c3f79f6 2-3,10-11,14-15
+src/lib/libsockfs_node.js
+  s_012db06836eaa8::t_9658751dada3d5 57,70-154
+test/sockets/test_dns_async_net.c
+  s_012db06836eaa8::t_6dfe6e98570c80 1-77
+test/sockets/test_dns_jspi.c
+  s_012db06836eaa8::t_aa637d5bb81a11 1-38
+site/source/docs/api_reference/emscripten.h.rst
+  s_012db06836eaa8::t_5c8d9841ffc6a5 1608-1635
+src/lib/libsockfs.js
+  s_012db06836eaa8::t_d52cc6680c6a76 39-45,176-180,203-204,864-930
+system/include/emscripten/emscripten.h
+  s_012db06836eaa8::t_c68336bcd95e4a 71-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "62e062e34440e1f5d676e5239bd53fb48edb821e",
+  "prompts": {},
+  "sessions": {
+    "s_012db06836eaa8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fe8b9942ffferbto8NIWKBlnul",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
