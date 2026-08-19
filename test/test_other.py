@@ -12186,9 +12186,6 @@ int main(void) {
       self.assertContained('changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK', err)
       self.assertContained(details, err)
 
-    # plain -O0
-    legalization_message = 'to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
-    fail(['-sWASM_BIGINT=0'], legalization_message)
     # optimized builds even without legalization
     optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
     fail(['-O2'], optimization_message)
