@@ -287,6 +287,12 @@ function _free() {
 }
 
 /**
+ * Indicates whether filename is delivered via URL.createObjectURL()
+ * @noinline
+ */
+var isBlobURI = (filename) => filename.startsWith('blob:');
+
+/**
  * Indicates whether filename is delivered via file protocol (as opposed to http/https)
  * @noinline
  */
@@ -651,13 +657,18 @@ async function instantiateAsync(binary, binaryFile, imports) {
   if (!binary
       // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
       && !isFileURI(binaryFile)
-      // Avoid instantiateStreaming() on Node.js environment for now, as while
-      // Node.js v18.1.0 implements it, it does not have a full fetch()
-      // implementation yet.
-      //
-      // Reference:
-      //   https://github.com/emscripten-core/emscripten/pull/16917
-      && !ENVIRONMENT_IS_NODE
+      && (
+        // Avoid instantiateStreaming() on Node.js environment for now, as while
+        // Node.js v18.1.0 implements it, it does not have a full fetch()
+        // implementation yet.
+        //
+        // Reference:
+        //   https://github.com/emscripten-core/emscripten/pull/16917
+        !ENVIRONMENT_IS_NODE
+        // On browsers this check won't be reached but on Node.js it is the only way to avoid
+        // throwing when URL.createObjectURL(blob) has been passed as the binaryFile.
+        || isBlobURI(binaryFile)
+      )
      ) {
     try {
       var response = fetch(binaryFile, { credentials: 'same-origin' });

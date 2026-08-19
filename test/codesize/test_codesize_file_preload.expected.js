@@ -295,6 +295,11 @@ var ABORT = false;
 var EXITSTATUS;
 
 /**
+ * Indicates whether filename is delivered via URL.createObjectURL()
+ * @noinline
+ */ var isBlobURI = (filename) => filename.startsWith('blob:');
+
+/**
  * Indicates whether filename is delivered via file protocol (as opposed to http/https)
  * @noinline
  */ var isFileURI = filename => filename.startsWith("file://");
@@ -415,7 +420,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 }
 
 async function instantiateAsync(binary, binaryFile, imports) {
-  if (!binary && !isFileURI(binaryFile) && !ENVIRONMENT_IS_NODE) {
+  if (!binary && !isFileURI(binaryFile) && (!ENVIRONMENT_IS_NODE || isBlobURI(binaryFile))) {
     try {
       var response = fetch(binaryFile, {
         credentials: "same-origin"
