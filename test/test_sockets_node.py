@@ -205,6 +205,37 @@ class sockets_node(RunnerCore):
       self.skipTest('no IPv6 loopback available')
     self.do_runf('sockets/test_udp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_dns_async(self):
+    # getaddrinfo() resolves numeric and /etc/hosts names (read via emscripten's
+    # FS) synchronously and returns EAI_AGAIN for a real hostname.
+    # emscripten_dns_lookup_async() is the async getaddrinfo: a pollable fd whose
+    # emscripten_dns_lookup_result() yields the addrinfo payload directly.
+    self.do_runf('sockets/test_dns_async.c', 'DNS ASYNC PASS', cflags=['-sNODERAWSOCKETS'])
+
+  def test_noderawsockets_dns_async_net(self):
+    # A real public hostname is EAI_AGAIN synchronously, then resolves via the
+    # async getaddrinfo, whose result is delivered as an addrinfo payload. The
+    # async resolution pre-warms the shared cache, so a following synchronous
+    # getaddrinfo() of the same name then succeeds. This hits the real network
+    # (like test_getaddrinfo).
+    self.do_runf('sockets/test_dns_async_net.c', 'DNS ASYNC NET PASS', cflags=['-sNODERAWSOCKETS'])
+
+  def test_dns_async_default(self):
+    # The async getaddrinfo API is available without -sNODERAWSOCKETS, resolving
+    # synchronously (the same fake address getaddrinfo() returns) and delivering
+    # it via the pollable fd.
+    self.do_runf('sockets/test_dns_async_default.c', 'DNS ASYNC DEFAULT PASS')
+
+  @also_with_proxy_to_pthread
+  @requires_jspi_node
+  def test_noderawsockets_dns_jspi(self):
+    # Under JSPI, getaddrinfo() of a real public hostname blocks on the
+    # node:dns lookup (suspending the wasm stack) and resolves directly,
+    # without the EAI_AGAIN + async retry needed in non-JSPI builds. This
+    # hits the real network (like test_getaddrinfo).
+    self.do_runf('sockets/test_dns_jspi.c', 'DNS JSPI PASS', cflags=['-sNODERAWSOCKETS'])
+
   def test_noderawsockets_epoll_socket_blocking(self):
     # A blocking epoll_wait() on a socket is woken by an incoming datagram
     # through the unified readiness wait-queue (the SOCKFS.emit bridge), with

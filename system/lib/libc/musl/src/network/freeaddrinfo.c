@@ -7,11 +7,15 @@
 void freeaddrinfo(struct addrinfo *p)
 {
 #if __EMSCRIPTEN__
-	// Emscripten's usage of this structure is very simple: we always allocate
-	// ai_addr, and do not use the linked list aspect at all. There is also no
-	// aliasing with aibuf.
-	free(p->ai_addr);
-	free(p);
+	// Emscripten allocates each node and its ai_addr separately (no aibuf block,
+	// no aliasing), and getaddrinfo may return a linked list, so walk it freeing
+	// each node and its address.
+	while (p) {
+		struct addrinfo *next = p->ai_next;
+		free(p->ai_addr);
+		free(p);
+		p = next;
+	}
 #else
 	size_t cnt;
 	for (cnt=1; p->ai_next; cnt++, p=p->ai_next);
