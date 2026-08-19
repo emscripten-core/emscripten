@@ -1285,11 +1285,6 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
     if settings.ERROR_ON_WASM_CHANGES_AFTER_LINK:
       # emit some extra helpful text for common issues
       extra = ''
-      # a plain -O0 build *almost* doesn't need post-link changes, except for
-      # legalization. show a clear error for those (as the flags the user passed
-      # in are not enough to see what went wrong)
-      if settings.LEGALIZE_JS_FFI:
-        extra += '\nnote: to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
       if settings.OPT_LEVEL > 1:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
       exit_with_error(f'changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: {cmd}{extra}')
