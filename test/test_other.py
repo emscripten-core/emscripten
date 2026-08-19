@@ -8574,17 +8574,17 @@ int main() {
       self.assertContained(f'Module["{export}"]', js)
 
   @parameterized({
-    'legal_side_O1': (['-sLEGALIZE_JS_FFI=1', '-sSIDE_MODULE', '-O1'], True),
-    'nolegal_side_O1': (['-sLEGALIZE_JS_FFI=0', '-sSIDE_MODULE', '-O1'], False),
-    'nolegal_side_O0': (['-sLEGALIZE_JS_FFI=0', '-sSIDE_MODULE', '-O0'], False),
-    'legal_O0': (['-sLEGALIZE_JS_FFI=1', '-sWARN_ON_UNDEFINED_SYMBOLS=0', '-O0'], True),
-    'nolegal_O0': (['-sLEGALIZE_JS_FFI=0', '-sWARN_ON_UNDEFINED_SYMBOLS=0', '-O0'], False),
+    'legal_side_O1': (['-sSIDE_MODULE', '-O1', '-sWASM_BIGINT=0'], True),
+    'nolegal_side_O1': (['-sSIDE_MODULE', '-O1', '-sWASM_BIGINT=1'], False),
+    'nolegal_side_O0': (['-sSIDE_MODULE', '-O0', '-sWASM_BIGINT=1'], False),
+    'legal_O0': (['-sWARN_ON_UNDEFINED_SYMBOLS=0', '-O0', '-sWASM_BIGINT=0'], True),
+    'nolegal_O0': (['-sWARN_ON_UNDEFINED_SYMBOLS=0', '-O0', '-sWASM_BIGINT=1'], False),
   })
   def test_legalize_js_ffi(self, args, js_ffi):
-    # test disabling of JS FFI legalization when not using bigint
+    # test disabling of JS FFI legalization when using bigint
     print(args)
     delete_file('a.out.wasm')
-    cmd = [EMCC, test_file('other/test_legalize_js_ffi.c'), '-g', '-o', 'a.out.wasm', '-sWASM_BIGINT=0'] + args
+    cmd = [EMCC, test_file('other/test_legalize_js_ffi.c'), '-g', '-o', 'a.out.wasm'] + args
     print(' '.join(cmd))
     self.run_process(cmd)
     text = self.get_wasm_text('a.out.wasm')
@@ -8608,13 +8608,13 @@ int main() {
       assert not e_i64_i32, 'i64 converted to i32 in exports'
 
   def test_legalize_js_ffi_cpp(self):
-    for legalizing in (0, 1):
+    for bigint in (0, 1):
       # test minimal JS FFI legalization for invoke and dyncalls
-      args = ['-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0', '-g', '-sWASM_BIGINT=0']
-      args.append(f'-sLEGALIZE_JS_FFI={legalizing}')
+      args = ['-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0', '-g', f'-sWASM_BIGINT={bigint}']
       self.run_process([EMXX, test_file('other/test_legalize_js_ffi_cpp.cpp')] + args)
       text = self.get_wasm_text('a.out.wasm')
       # Verify that legalization either did, or did not, occur
+      legalizing = not bigint
       self.assertContainedIf('$legalimport', text, legalizing)
       self.assertContainedIf('$legalstub', text, legalizing)
 

@@ -345,7 +345,7 @@ def get_binaryen_passes():
     passes += ['--instrument-locals']
     passes += ['--log-execution']
     passes += ['--instrument-memory']
-    if settings.LEGALIZE_JS_FFI:
+    if not settings.WASM_BIGINT:
       # legalize it again now, as the instrumentation may need it
       passes += ['--legalize-js-interface']
       passes += building.js_legalization_pass_flags()
@@ -1639,9 +1639,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # module names buys nothing and would break that rewrite.
     settings.MINIFY_WASM_IMPORTED_MODULES = not settings.WASM_ESM_INTEGRATION
 
-  if not settings.WASM_BIGINT:
-    default_setting('LEGALIZE_JS_FFI', 1)
-
   if settings.SINGLE_FILE and settings.GENERATE_SOURCE_MAP:
     diagnostics.warning('emcc', 'SINGLE_FILE disables source map support (which requires a .map file)')
     settings.GENERATE_SOURCE_MAP = 0
@@ -1652,7 +1649,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.AUTODEBUG:
     settings.REQUIRED_EXPORTS += ['_emscripten_tempret_set']
 
-  if settings.LEGALIZE_JS_FFI:
+  if not settings.WASM_BIGINT:
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
 
   if settings.SPLIT_MODULE:

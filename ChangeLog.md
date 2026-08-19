@@ -27,6 +27,11 @@ See docs/process.md for more on how version tagging works.
   level- and edge-triggered modes, `EPOLLONESHOT`, `EPOLLEXCLUSIVE`,
   `EPOLLRDHUP`, nesting, and blocking waits under `PROXY_TO_PTHREAD`,
   `ASYNCIFY`, and `JSPI`. (#27207)
+- The deprecated `LEGALIZE_JS_FFI` setting was completely removed and moved to
+  legacy settings.  This behaviour of lowering away i64 values at the
+  Wasm bounary is still used when `WASM_BIGINT` is disabled.  However
+  disabling of `WASM_BIGINT` itself should only be needed under `-sWASM=0`
+  (where it is automatically disabled). (#27568)
 
 6.0.7 - 08/17/26
 ----------------
