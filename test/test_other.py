@@ -8584,7 +8584,7 @@ int main() {
     # test disabling of JS FFI legalization when not using bigint
     print(args)
     delete_file('a.out.wasm')
-    cmd = [EMCC, test_file('other/ffi.c'), '-g', '-o', 'a.out.wasm', '-sWASM_BIGINT=0'] + args
+    cmd = [EMCC, test_file('other/test_legalize_js_ffi.c'), '-g', '-o', 'a.out.wasm', '-sWASM_BIGINT=0'] + args
     print(' '.join(cmd))
     self.run_process(cmd)
     text = self.get_wasm_text('a.out.wasm')
@@ -8593,11 +8593,11 @@ int main() {
     text = re.sub(r'\$var\$*.', '', text)
     text = re.sub(r'param \$\d+', 'param ', text)
     text = re.sub(r' +', ' ', text)
-    e_add_f32 = re.search(r'func \$add_f (\(type .*\) )?\(param f32\) \(param f32\) \(result f32\)', text)
+    e_add_f32 = re.search(r'func \$add_f32 (\(type .*\) )?\(param f32\) \(param f32\) \(result f32\)', text)
     assert e_add_f32, 'add_f export missing'
-    i_i64_i32 = re.search(r'import "env" "import_ll" .*\(param i32 i32\) \(result i32\)', text)
-    i_i64_i64 = re.search(r'import "env" "import_ll" .*\(param i64\) \(result i64\)', text)
-    e_i64_i32 = re.search(r'func \$legalstub\$add_ll (\(type .*\) )?\(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
+    i_i64_i32 = re.search(r'import "env" "import_i64" .*\(param i32 i32\) \(result i32\)', text)
+    i_i64_i64 = re.search(r'import "env" "import_i64" .*\(param i64\) \(result i64\)', text)
+    e_i64_i32 = re.search(r'func \$legalstub\$add_i64 (\(type .*\) )?\(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
     if js_ffi:
       assert i_i64_i32,     'i64 not converted to i32 in imports'
       assert not i_i64_i64, 'i64 not converted to i32 in imports'
@@ -8607,14 +8607,12 @@ int main() {
       assert i_i64_i64,     'i64 converted to i32 in imports'
       assert not e_i64_i32, 'i64 converted to i32 in exports'
 
-  @disabled('https://github.com/WebAssembly/binaryen/pull/6428')
-  def test_no_legalize_js_ffi(self):
+  def test_legalize_js_ffi_cpp(self):
     for legalizing in (0, 1):
       # test minimal JS FFI legalization for invoke and dyncalls
-      args = ['-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0', '-g']
-      if not legalizing:
-        args.append('-sLEGALIZE_JS_FFI=0')
-      self.run_process([EMXX, test_file('other/noffi.cpp')] + args)
+      args = ['-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0', '-g', '-sWASM_BIGINT=0']
+      args.append(f'-sLEGALIZE_JS_FFI={legalizing}')
+      self.run_process([EMXX, test_file('other/test_legalize_js_ffi_cpp.cpp')] + args)
       text = self.get_wasm_text('a.out.wasm')
       # Verify that legalization either did, or did not, occur
       self.assertContainedIf('$legalimport', text, legalizing)

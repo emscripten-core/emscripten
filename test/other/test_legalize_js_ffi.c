@@ -9,28 +9,26 @@
 #include <stdio.h>
 #include <math.h>
 
-EMSCRIPTEN_KEEPALIVE
-float add_f(float a, float b) {
+EMSCRIPTEN_KEEPALIVE float add_f32(float a, float b) {
   return a + b;
 }
 
-EMSCRIPTEN_KEEPALIVE
-long long add_ll(long long a, long long b) {
+EMSCRIPTEN_KEEPALIVE int64_t add_i64(int64_t a, int64_t b) {
   return a + b;
 }
 
-extern float import_f(float x);
+extern float import_f32(float x);
 
-extern long long import_ll(long long x);
+extern int64_t import_i64(int64_t x);
 
 int main () {
-  float a = 1.2,
-        b = import_f((float)3.4),
-        c;
-  c = add_f(a, b);
+  float a = 1.2;
+  float b = import_f32((float)3.4);
+  float c;
+  c = add_f32(a, b);
 
-  long long d = 1,
-            e = import_ll((long long)2),
-            f;
-  f = add_ll(d, e);
+  int64_t d = 1;
+  int64_t e = import_i64((int64_t)2);
+  int64_t f;
+  f = add_i64(d, e);
 }
