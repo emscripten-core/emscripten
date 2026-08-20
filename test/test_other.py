@@ -8806,13 +8806,13 @@ int main() {
   # We have LTO tests covered in 'wasmltoN' targets in test_core.py, but they
   # don't run as a part of Emscripten CI, so we add a separate LTO test here.
   @requires_wasm_eh
-  def test_lto_wasm_exceptions(self):
+  @parameterized({
+    '': (['-sWASM_LEGACY_EXCEPTIONS=0'],),
+    'legacy': (['-sWASM_LEGACY_EXCEPTIONS'],),
+  })
+  def test_lto_wasm_exceptions(self, args):
     self.set_setting('EXCEPTION_DEBUG')
-    self.cflags += ['-fwasm-exceptions', '-flto']
-    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
-    self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
+    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught', cflags=['-fwasm-exceptions', '-flto'] + args)
 
   @parameterized({
     '': ([],),
@@ -12514,14 +12514,14 @@ int main () {
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core/test_hello_world.c')])
 
   @requires_wasm_eh
-  def test_standalone_wasm_exceptions(self):
+  @parameterized({
+    '': (['-sWASM_LEGACY_EXCEPTIONS=0'],),
+    'legacy': (['-sWASM_LEGACY_EXCEPTIONS'],),
+  })
+  def test_standalone_wasm_exceptions(self, args):
     self.set_setting('STANDALONE_WASM')
     self.wasm_engines = []
-    self.cflags += ['-fwasm-exceptions']
-    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
-    self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
+    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught', cflags=['-fwasm-exceptions'] + args)
 
   def test_missing_malloc_export(self):
     # we used to include malloc by default. show a clear error in builds with
