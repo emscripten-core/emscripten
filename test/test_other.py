@@ -2617,6 +2617,14 @@ F1 -> ''
     self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '-sUSE_SDL_GFX=2', '-o', 'a.out.js'])
     self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '--use-port=sdl2_gfx', '-o', 'a.out.js'])
 
+  @with_all_sjlj
+  @requires_network
+  def test_sdl2_image_linkable(self):
+    # Same as above but for sdl2_image library
+    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '-sUSE_SDL_IMAGE=2', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '--use-port=sdl2_image', '-o', 'a.out.js'])
+
+  @with_all_sjlj
   @requires_network
   def test_libpng(self):
     copy_asset('third_party/libpng/pngtest.png')
@@ -2625,6 +2633,7 @@ F1 -> ''
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  cflags=['--embed-file', 'pngtest.png', '--use-port=libpng'])
 
+  @with_all_sjlj
   @requires_pthreads
   @requires_network
   def test_libpng_with_pthreads(self):

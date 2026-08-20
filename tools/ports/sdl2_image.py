@@ -44,7 +44,10 @@ def get_lib_name(settings):
   if settings.PTHREADS:
     libname += '-mt'
   if settings.SUPPORT_LONGJMP == 'wasm':
-    libname += '-wasm-sjlj'
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      libname += '-legacysjlj'
+    else:
+      libname += '-wasmsjlj'
   return libname + '.a'
 
 
@@ -76,6 +79,7 @@ def get(ports, settings, shared):
 
     if settings.SUPPORT_LONGJMP == 'wasm':
       flags.append('-sSUPPORT_LONGJMP=wasm')
+      flags.append(f'-sWASM_LEGACY_EXCEPTIONS={settings.WASM_LEGACY_EXCEPTIONS}')
 
     ports.build_port(src_dir, final, 'sdl2_image', flags=flags, srcs=srcs)
 
