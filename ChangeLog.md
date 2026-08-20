@@ -24,6 +24,11 @@ See docs/process.md for more on how version tagging works.
   `WebAssembly.instantiateStreaming()` (via `Blob.stream()` and a `tee()`'d
   network body respectively), so enabling the flag no longer loses the
   download/compile overlap of the standard streaming path. (#27609)
+- `WASM_LEGACY_EXCEPTIONS` now defaults to `false`. When `-fwasm-exceptions` is
+  used, Emscripten now emits instructions for the standardized WebAssembly
+  exception handling proposal by default. Users targeting older engines can
+  still opt in to the legacy exception handling proposal with
+  `-sWASM_LEGACY_EXCEPTIONS`. (#27575)
 
 6.0.8 - 08/20/26
 ----------------
