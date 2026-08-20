@@ -805,10 +805,7 @@ jobs:
       - run:
           name: install bun
           command: |
-            # Temporally pin to 1.3.14 (the last non-rust version) until we
-            # can investigate the breakages:
-            # https://github.com/emscripten-core/emscripten/issues/27580
-            curl -fsSL https://bun.com/install | bash -s "bun-v1.3.14"
+            curl -fsSL https://bun.com/install | bash
             echo "BUN = '~/.bun/bin/bun'" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [BUN]" >> ~/emsdk/.emscripten
       - run-tests:
