@@ -276,3 +276,5 @@ def auto_enable_features():
   # compiler rather then adding them all ad-hoc as internal settings
   if caniuse(Feature.GROWABLE_ARRAYBUFFERS):
     default_setting('GROWABLE_ARRAYBUFFERS', 2)
+  if not caniuse(Feature.WASM_LEGACY_EXCEPTIONS):
+    default_setting('WASM_LEGACY_EXCEPTIONS', 0)
