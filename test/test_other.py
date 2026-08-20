@@ -2910,34 +2910,36 @@ More info: https://emscripten.org
       ''')
 
     for value in ([0, 1]):
-      delete_file('a.out.js')
-      print('checking %s' % value)
-      extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
-      proc = self.run_process([EMCC, '-sUSE_SDL', '-sGL_ENABLE_GET_PROC_ADDRESS', 'main.c'] + extra + args, stderr=PIPE, check=False)
-      if common.EMTEST_VERBOSE:
-        print(proc.stderr)
-      if value or action is None:
-        # The default is that we error in undefined symbols
-        self.assertContained('undefined symbol: something', proc.stderr)
-        self.assertContained('undefined symbol: elsey', proc.stderr)
-        check_success = False
-      elif action == 'ERROR' and not value:
-        # Error disables, should only warn
-        self.assertContained('warning: undefined symbol: something', proc.stderr)
-        self.assertContained('warning: undefined symbol: elsey', proc.stderr)
-        self.assertNotContained('undefined symbol: emscripten_', proc.stderr)
-        check_success = True
-      elif action == 'WARN' and not value:
-        # Disabled warning should imply disabling errors
-        self.assertNotContained('undefined symbol', proc.stderr)
-        check_success = True
+      # Ensure that JS compiler output cache doesn't affect the generated warnings/errors.
+      for _ in range(2):
+        delete_file('a.out.js')
+        print('checking %s' % value)
+        extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
+        proc = self.run_process([EMCC, '-sUSE_SDL', '-sGL_ENABLE_GET_PROC_ADDRESS', 'main.c'] + extra + args, stderr=PIPE, check=False)
+        if common.EMTEST_VERBOSE:
+          print(proc.stderr)
+        if value or action is None:
+          # The default is that we error in undefined symbols
+          self.assertContained('undefined symbol: something', proc.stderr)
+          self.assertContained('undefined symbol: elsey', proc.stderr)
+          check_success = False
+        elif action == 'ERROR' and not value:
+          # Error disables, should only warn
+          self.assertContained('warning: undefined symbol: something', proc.stderr)
+          self.assertContained('warning: undefined symbol: elsey', proc.stderr)
+          self.assertNotContained('undefined symbol: emscripten_', proc.stderr)
+          check_success = True
+        elif action == 'WARN' and not value:
+          # Disabled warning should imply disabling errors
+          self.assertNotContained('undefined symbol', proc.stderr)
+          check_success = True
 
-      if check_success:
-        self.assertEqual(proc.returncode, 0)
-        self.assertTrue(os.path.exists('a.out.js'))
-      else:
-        self.assertNotEqual(proc.returncode, 0)
-        self.assertFalse(os.path.exists('a.out.js'))
+        if check_success:
+          self.assertEqual(proc.returncode, 0)
+          self.assertTrue(os.path.exists('a.out.js'))
+        else:
+          self.assertNotEqual(proc.returncode, 0)
+          self.assertFalse(os.path.exists('a.out.js'))
 
   def test_undefined_data_symbols(self):
     create_file('main.c', r'''

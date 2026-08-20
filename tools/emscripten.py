@@ -301,10 +301,10 @@ def trim_asm_const_body(body):
   return body
 
 
-def get_cached_file(filetype, filename, generator, cache_limit):
+def get_cached_file(filetype, filename, generator, cache_limit, has_warnings=None):
   """Implement a file cache which lives inside the main emscripten cache directory.
 
-  The defference here is that we use a per-file lock rather than a cache-wide lock.
+  The difference here is that we use a per-file lock rather than a cache-wide lock.
 
   The cache is pruned (by removing the oldest files) if it grows above
   a certain number of files.
@@ -319,9 +319,10 @@ def get_cached_file(filetype, filename, generator, cache_limit):
       # Cache hit, read the file
       file_content = utils.read_file(cache_file)
     else:
-      # Cache miss, generate the symbol list and write the file
+      # Cache miss, generate the file content and write the file
       file_content = generator()
-      utils.write_file(cache_file, file_content)
+      if has_warnings is None or not has_warnings(file_content):
+        utils.write_file(cache_file, file_content)
 
   if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
     with filelock.FileLock(cache.get_path(f'{filetype}.lock')):
@@ -351,10 +352,20 @@ def compile_javascript_cached():
 
   content_hash = generate_js_compiler_input_hash()
 
+  # Avoid caching the JS output when we have warnings because warnings emitted
+  # during JS compilation are printed to stderr and not stored in the cache.
+  # Hitting the cache on subsequent builds would suppress them.
+  def has_warnings(content):
+    if '//FORWARDED_DATA:' in content:
+      forwarded_data = content.split('//FORWARDED_DATA:', 1)[1]
+      forwarded_json = json.loads(forwarded_data)
+      return bool(forwarded_json['warnings'])
+    return False
+
   # Limit of the overall size of the cache.
   # This code will get test coverage since a full test run of `other` or `core`
   # generates ~1000 unique outputs.
-  return get_cached_file('js_output', f'{content_hash}.js', compile_javascript, cache_limit=500)
+  return get_cached_file('js_output', f'{content_hash}.js', compile_javascript, cache_limit=500, has_warnings=has_warnings)
 
 
 def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadata=None):
