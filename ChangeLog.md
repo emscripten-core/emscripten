@@ -30,6 +30,12 @@ See docs/process.md for more on how version tagging works.
   level- and edge-triggered modes, `EPOLLONESHOT`, `EPOLLEXCLUSIVE`,
   `EPOLLRDHUP`, nesting, and blocking waits under `PROXY_TO_PTHREAD`,
   `ASYNCIFY`, and `JSPI`. (#27207)
+- Blocking `accept`, `accept4`, `recv`, `recvfrom` and `recvmsg` on sockets
+  are now supported under `-pthread` on secondary threads (including `main()`
+  under `PROXY_TO_PTHREAD`): instead of returning `EAGAIN`, a would-block call
+  on a blocking socket parks the calling thread until ready. On the main
+  browser thread, which cannot block, `EAGAIN` still surfaces. `accept4` also
+  now honors `SOCK_NONBLOCK` on the accepted socket. (#27342)
 - The deprecated `LEGALIZE_JS_FFI` setting was completely removed and moved to
   legacy settings.  This behaviour of lowering away i64 values at the
   Wasm bounary is still used when `WASM_BIGINT` is disabled.  However
