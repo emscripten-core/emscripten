@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.8 (in development)
+6.0.9 (in development)
 ----------------------
+
+6.0.8 - 08/20/26
+----------------
 - The `JSPI` setting is no longer considered experimental, and the compiler
   diagnostic warning has been removed. (#27559)
 - Added support for `epoll` (`epoll_create1`/`epoll_ctl`/`epoll_wait`/
