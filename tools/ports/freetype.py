@@ -10,7 +10,10 @@ TAG = 'VER-2-14-3'
 PKG_VERSION = '26.2.20'
 HASH = '460ea4dc9cc879822556d801341a1cf3efcd57a13cd4da64169603ea98873337dd19e3c8c6d9054b27d10acbbaa8d5c59b7f560c697b98dc2640bcd88f57554a'
 
-variants = {'freetype-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': 1}}
+variants = {
+  'freetype-wasmsjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': 0},
+  'freetype-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': 1},
+}
 deps = ['zlib']
 
 
@@ -20,7 +23,10 @@ def needed(settings):
 
 def get_lib_name(settings):
   if settings.SUPPORT_LONGJMP == 'wasm':
-    return 'libfreetype-legacysjlj.a'
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      return 'libfreetype-legacysjlj.a'
+    else:
+      return 'libfreetype-wasmsjlj.a'
   else:
     return 'libfreetype.a'
 
@@ -97,6 +103,7 @@ def get(ports, settings, shared):
 
     if settings.SUPPORT_LONGJMP == 'wasm':
       flags.append('-sSUPPORT_LONGJMP=wasm')
+      flags.append(f'-sWASM_LEGACY_EXCEPTIONS={settings.WASM_LEGACY_EXCEPTIONS}')
 
     ports.make_pkg_config('freetype2', PKG_VERSION, '-sUSE_FREETYPE')
     ports.build_port(source_path, final, 'freetype', flags=flags, srcs=srcs)
