@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 6.0.9 (in development)
 ----------------------
+- `WASM_LEGACY_EXCEPTIONS` now defaults to `false`. When `-fwasm-exceptions` is
+  used, Emscripten now emits instructions for the standardized WebAssembly
+  exception handling proposal by default. Users targeting older engines can
+  still opt in to the legacy exception handling proposal with
+  `-sWASM_LEGACY_EXCEPTIONS`. (#27575)
 
 6.0.8 - 08/20/26
 ----------------

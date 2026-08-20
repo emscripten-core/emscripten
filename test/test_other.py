@@ -8787,7 +8787,7 @@ int main() {
   @parameterized({
     'noexcept': (),
     'except_emscripten': ('-sDISABLE_EXCEPTION_CATCHING=0',),
-    'except_wasm': ('-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'),
+    'except_wasm': ('-fwasm-exceptions',),
     'except_wasm_legacy': ('-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'),
   })
   def test_lto_libcxx(self, *args):
@@ -12622,11 +12622,11 @@ exec "$@"
     # automatically sets DISABLE_EXCEPTION_THROWING to 1, which is 0 by default,
     # because Emscripten EH and Wasm SjLj cannot be used at the same time.
     self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP=wasm', '-o', 'a.o'])
-    self.assertContained('try', self.get_wasm_text('a.o'))
+    self.assertContained('try_table', self.get_wasm_text('a.o'))
 
-    # If -sWASM_LEGACY_EXCEPTIONS=0 is provided, it uses the standard Wasm EH.
-    self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP=wasm', '-sWASM_LEGACY_EXCEPTIONS=0', '-o', 'b.o'])
-    self.assertContained('try_table', self.get_wasm_text('b.o'))
+    # If -sWASM_LEGACY_EXCEPTIONS is provided, it uses the legacy Wasm EH.
+    self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP=wasm', '-sWASM_LEGACY_EXCEPTIONS', '-o', 'b.o'])
+    self.assertContained('try', self.get_wasm_text('b.o'))
 
   @parameterized({
     '': ([],),
@@ -15243,7 +15243,7 @@ addToLibrary({
     'noexcept': ('-fno-exceptions',),
     'default': (),
     'except': ('-sDISABLE_EXCEPTION_CATCHING=0',),
-    'except_wasm': ('-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'),
+    'except_wasm': ('-fwasm-exceptions',),
     'except_wasm_legacy': ('-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'),
   })
   def test_std_promise_link(self, *args):

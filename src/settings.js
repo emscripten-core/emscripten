@@ -796,7 +796,7 @@ var EXCEPTION_STACK_TRACES = false;
 // If false, emit instructions for the standardized exception handling proposal:
 // https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 // [compile+link]
-var WASM_LEGACY_EXCEPTIONS = true;
+var WASM_LEGACY_EXCEPTIONS = false;
 
 // Whether to support async operations in the compiled code. This makes it
 // possible to call JS functions from synchronous-looking code in C/C++.
