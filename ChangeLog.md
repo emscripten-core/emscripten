@@ -33,6 +33,9 @@ See docs/process.md for more on how version tagging works.
   disabling of `WASM_BIGINT` itself should only be needed under `-sWASM=0`
   (where it is automatically disabled). (#27568)
 - The `SOCKET_WEBRTC` setting was removed (#27367)
+- `WASM_BIGINT` was deprecated. BigInt integration is standard and enabled by
+  default across all supported engines; it should now only ever be disabled
+  implicitly when targeting JavaScript via `-sWASM=0`. (#27558)
 
 6.0.7 - 08/17/26
 ----------------

@@ -1490,6 +1490,7 @@ var DYNCALLS = false;
 // legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
 // i64 is used.
 // [link]
+// [deprecated]
 var WASM_BIGINT = true;
 
 // WebAssembly defines a "producers section" which compilers and tools can

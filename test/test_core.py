@@ -48,7 +48,6 @@ from decorators import (
   also_with_pthreads,
   also_with_standalone_wasm,
   also_with_wasmfs,
-  also_without_bigint,
   can_do_standalone,
   crossplatform,
   disabled,
@@ -2080,7 +2079,7 @@ int main(int argc, char **argv) {
   @no_wasm2js('test depends on WASM_BIGINT which is not compatible with wasm2js')
   def test_em_js_i64(self):
     expected = 'emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`'
-    self.assert_fail([EMCC, '-Werror', '-sWASM_BIGINT=0', test_file('core/test_em_js_i64.c')], expected)
+    self.assert_fail([EMCC, '-Werror', '-sWASM=0', test_file('core/test_em_js_i64.c')], expected)
     self.do_core_test('test_em_js_i64.c')
 
   def test_em_js_address_taken(self):
@@ -4419,7 +4418,6 @@ caught outer int: 123
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True)
 
   @with_dylink_reversed
-  @also_without_bigint
   def test_dylink_i64_c(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4471,7 +4469,6 @@ res64 - external 64\n''', header='''\
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
     ''', force_c=True)
 
-  @also_without_bigint
   @parameterized({
     '': (False,),
     'rtld_local': (True,),
@@ -5728,7 +5725,6 @@ got: 10
       self.cflags += ['-DWASMFS_NODERAWFS']
     self.do_runf_out_file('dirent/test_readdir.c')
 
-  @also_without_bigint
   def test_readdir_empty(self):
     self.do_runf_out_file('dirent/test_readdir_empty.c')
 
@@ -5782,7 +5778,6 @@ got: 10
       self.skipTest('noderawfs fails here under non-linux')
     self.do_runf_out_file('fcntl/test_fcntl_open.c')
 
-  @also_without_bigint
   def test_fcntl_misc(self):
     if self.get_setting('WASMFS'):
       self.cflags += ['-sFORCE_FILESYSTEM']
@@ -5860,7 +5855,6 @@ got: 10
     self.do_runf('core/test_utf8.c', 'done\n')
 
   @with_both_text_decoder
-  @also_without_bigint
   def test_utf8_bench(self):
     self.cflags += ['--embed-file', test_file('test_utf8_bench.txt') + '@/utf8_corpus.txt']
     self.do_runf('test_utf8_bench.c', 'done\n')
@@ -6304,7 +6298,6 @@ Module.onRuntimeInitialized = () => {
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
     self.do_runf_out_file('unistd/symlink_on_nodefs.c', cflags=['-lnodefs.js'])
 
-  @also_without_bigint
   @also_with_nodefs
   def test_unistd_io(self):
     if self.get_setting('WASMFS'):
@@ -7269,7 +7262,6 @@ void* operator new(size_t size) {
   def test_dyncall_pointers(self, args):
     self.do_core_test('test_dyncall_pointers.c', cflags=args)
 
-  @also_without_bigint
   @no_modularize_instance('uses Module object directly')
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -7704,7 +7696,6 @@ void* operator new(size_t size) {
   def test_embind_negative_constants(self):
     self.do_runf_out_file('embind/test_negative_constants.cpp', cflags=['-lembind'])
 
-  @also_without_bigint
   def test_embind_unsigned(self):
     self.do_runf_out_file('embind/test_unsigned.cpp', cflags=['-lembind'])
 
@@ -8242,7 +8233,6 @@ void* operator new(size_t size) {
 
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @no_modularize_instance('assumes .js output filename')
-  @also_without_bigint
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_emscripten_log(self):
     self.cflags += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
@@ -9788,7 +9778,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pipe_pollhup(self):
     self.do_runf('core/test_pipe_pollhup.c', 'done\n')
 
-  @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to receive i64 argument in syscalls.
