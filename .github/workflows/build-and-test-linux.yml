@@ -1,0 +1,968 @@
+name: Linux Build and Test
+
+on:
+  create:
+    tags:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LANG: "C.UTF-8"
+  EMSDK_NOTTY: "1"
+  EMTEST_WASI_SYSROOT: "/home/runner/wasi-sdk/wasi-sysroot"
+  EMTEST_DETECT_TEMPFILE_LEAKS: "1"
+  PYTHONUNBUFFERED: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    runs-on: emscripten-premerge-linux-runners
+    env:
+      EMCC_USE_NINJA: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Get wasmer
+        run: |
+          wget https://github.com/wasmerio/wasmer/releases/download/v3.1.1/wasmer-linux-amd64.tar.gz
+          tar -xf wasmer-linux-amd64.tar.gz
+          mkdir -p ~/vms
+          cp bin/wasmer ~/vms
+
+      - name: Get wasmtime
+        run: |
+          export VERSION=v0.33.0
+          wget https://github.com/bytecodealliance/wasmtime/releases/download/$VERSION/wasmtime-$VERSION-x86_64-linux.tar.xz
+          tar -xf wasmtime-$VERSION-x86_64-linux.tar.xz
+          cp wasmtime-$VERSION-x86_64-linux/wasmtime ~/vms
+
+      - name: Get wasi-sdk-sysroot
+        run: |
+          wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/libclang_rt.builtins-wasm32-wasi-11.0.tar.gz
+          wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sysroot-11.0.tar.gz
+          mkdir -p ~/wasi-sdk
+          tar xf libclang_rt.builtins-wasm32-wasi-11.0.tar.gz -C ~/wasi-sdk
+          tar xf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
+
+      - name: Install V8
+        uses: ./.github/actions/install-v8
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+          actions-cache-folder: 'emsdk-install'
+
+      - name: Set EM_CONFIG
+        run: |
+          echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+
+      - name: Setup cache config
+        run: |
+          echo "import os" >> $EMSDK/.emscripten
+          echo "CACHE = os.path.expanduser('~/cache')" >> $EMSDK/.emscripten
+          echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8')]" >> $EMSDK/.emscripten
+          echo "JS_ENGINES = [NODE_JS]" >> $EMSDK/.emscripten
+          echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> $EMSDK/.emscripten
+          echo "WASM_ENGINES = []" >> $EMSDK/.emscripten
+          test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> $EMSDK/.emscripten || true
+          test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> $EMSDK/.emscripten || true
+          test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $($EMSDK/upstream/bin/clang -print-resource-dir) || true
+
+      - name: Install ccache
+        run: sudo apt-get install -y ccache
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Bootstrap
+        run: ./bootstrap
+
+      - name: Build Hello world
+        run: |
+          ./emcc --clear-cache
+          ./test/runner test_hello_world core3.test_hello_world
+
+      - name: Build ALL
+        run: |
+          ./embuilder build ALL
+
+      - name: Build MINIMAL (LTO)
+        run: |
+          ./embuilder build MINIMAL --lto
+
+      - name: Build MINIMAL (wasm64)
+        run: |
+          ./embuilder build MINIMAL --wasm64
+
+      - name: Build MINIMAL (PIC)
+        run: |
+          ./embuilder build MINIMAL --pic
+
+      - name: Build MINIMAL (PIC+LTO)
+        run: |
+          ./embuilder build MINIMAL --pic --lto
+
+      - name: Clean build directory
+        run: rm -rf ~/cache/build
+
+      - name: Archive persistent directories
+        run: tar -czvf ~/emscripten-cache.tar.gz -C ~/ .jsvu cache vms wasi-sdk
+
+      - name: Persist workspace
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: emscripten-cache
+          path: ~/emscripten-cache.tar.gz
+
+  test-sanity:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Run sanity tests
+        run: ./test/runner sanity
+
+
+
+  test-core0:
+    needs: build-linux
+    runs-on: emscripten-premerge-linux-runners
+    env:
+      EMTEST_SKIP_NODE_25: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Run core0 tests
+        run: ./test/runner core0
+
+
+
+  test-wasm64-4gb:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Reinstall V8
+        run: rm -rf $HOME/.jsvu
+        shell: bash
+
+      - name: Install V8
+        uses: ./.github/actions/install-v8
+
+      - name: Install Node newest
+        uses: ./.github/actions/install-node
+        with:
+          node-version: newest
+
+      - name: Configure Node v25
+        run: echo "NODE_JS = NODE_JS_TEST" >> $EMSDK/.emscripten
+        shell: bash
+
+      - name: Run wasm64_4gb tests
+        run: ./test/runner wasm64_4gb
+        shell: bash
+
+
+
+  test-core2:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    env:
+      EMTEST_BROWSER: "node"
+      EMTEST_SKIP_NODE_25: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Run asan+lsan tests
+        run: |
+          ./test/runner \
+            asan.test_stat \
+            asan.test_stack \
+            asan.test_float_builtins \
+            asan.test_embind* \
+            asan.test_abort_on_exceptions \
+            asan.test_ubsan_full_left_shift_fsanitize_integer \
+            asan.test_pthread* \
+            asan.test_dyncall_specific_minimal_runtime \
+            asan.test_async_hello \
+            asan.test_dlfcn_basic \
+            asan.test_async_hello_jspi \
+            asan.test_cubescript \
+            asan.test_externref_emjs_dynlink \
+            asan.test_asyncify_longjmp \
+            asan.test_pthread_run_on_main_thread \
+            asan.test_minimal_runtime_global_initializer \
+            asan.test_fs_js_api_wasmfs \
+            asan.test_modularize_instance_pthreads \
+            asan.test_minimal_runtime_hello_world \
+            asan.test_select_blocking \
+            asan.test_ppoll_blocking \
+            lsan.test_dylink_dso_needed \
+            lsan.test_stdio_locking \
+            lsan.test_dlfcn_basic \
+            lsan.test_pthread_create \
+            lsan.test_pthread_exit_main_stub \
+            lsan.test_dylink_iostream \
+            lsan.test_embind_lib_with_asyncify \
+            ubsan.test_dlfcn_self \
+            ubsan.test_externref_emjs_dynlink
+        shell: bash
+
+      - name: Run core2+extras tests
+        run: |
+          ./test/runner \
+            core2 \
+            browser.test_pthread_join \
+            corez.test_dylink_syslibs_all
+        shell: bash
+
+  test-core3:
+    needs: build-linux
+    runs-on: emscripten-premerge-linux-runners
+    env:
+      EMTEST_SKIP_NODE_25: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Run core3+extras tests
+        run: |
+          ./test/runner \
+            lto2.test_dylink_syslibs_all \
+            lto2.test_float_builtins \
+            lto2.test_avx_nontrapping \
+            lto0.test_exceptions_allowed_uncaught \
+            lto0.test_longjmp_standalone_standalone \
+            lto0.test_embind_i64_val \
+            lto0.test_wasm_worker_futex_wait \
+            thinlto0.test_pthread_dlsym \
+            core3 \
+            core2g.test_externref \
+            corez.test_dylink_iostream \
+            core2ss.test_pthread_dylink \
+            core2ss.test_pthread_thread_local_storage \
+            core2ss.test_wasm_worker_futex_wait \
+            core2s.test_dylink_syslibs_missing_assertions \
+            core2s.test_module_wasm_memory \
+            cores.test_minimal_runtime_safe_heap \
+            wasm2js3.test_memorygrowth_2 \
+            wasm2js2.test_pthread_proxying \
+            wasmfs.test_hello_world \
+            wasmfs.test_pipe_select \
+            wasmfs.test_unistd_links* \
+            wasmfs.test_atexit_standalone \
+            wasmfs.test_emscripten_get_now \
+            wasmfs.test_dyncall_specific_minimal_runtime \
+            wasmfs.test_fcntl_misc \
+            wasmfs.test_readdir_rawfs \
+            wasmfs.test_utime \
+            wasmfs.test_unistd_unlink \
+            wasmfs.test_unistd_dup \
+            wasmfs.test_unistd_access \
+            wasmfs.test_unistd_close \
+            wasmfs.test_unistd_truncate \
+            wasmfs.test_readdir \
+            wasmfs.test_readdir_unlink \
+            wasmfs.test_unistd_pipe \
+            wasmfs.test_unistd_io \
+            wasmfs.test_unistd_curdir \
+            wasmfs.test_poll \
+            wasmfs.test_fs_64bit \
+            wasmfs.test_fs_write \
+            wasmfs.test_fs_writev \
+            wasmfs.test_fs_writev_rawfs \
+            wasmfs.test_fs_readv \
+            wasmfs.test_fs_write \
+            wasmfs.test_fs_readv_rawfs \
+            wasmfs.test_fs_nodefs_nofollow \
+            wasmfs.test_fs_nodefs_readdir \
+            wasmfs.test_fs_nodefs_home \
+            wasmfs.test_fs_nodefs_cloexec \
+            wasmfs.test_fs_nodefs_cloexec_rawfs \
+            wasmfs.test_fs_errorstack \
+            wasmfs.test_fs_errorstack_rawfs \
+            wasmfs.test_fs_emptyPath \
+            wasmfs.test_webidl \
+            wasmfs.test_dlfcn_self \
+            wasmfs.test_dlfcn_unique_sig \
+            wasmfs.test_dylink_basics \
+            wasmfs.test_exit_status \
+            wasmfs.test_minimal_runtime_memorygrowth \
+            wasmfs.test_mmap_anon* \
+            wasmfs.test_mount \
+            wasmfs.test_getcwd_with_non_ascii_name \
+            wasmfs.test_stat \
+            wasmfs.test_fstatat \
+            wasmfs.test_futimens \
+            wasmfs.test_unistd_links \
+            wasmfs.test_fcntl_open \
+            wasmfs.test_fs_llseek \
+            wasmfs.test_fs_llseek_rawfs \
+            wasmfs.test_freetype \
+            wasmfs.test_unistd_close_rawfs \
+            minimal0.test_utf \
+            minimal0.test_ubsan_full_stack_trace_gsource_map \
+            minimal0.test_static_variable \
+            minimal0.test_stack_overflow \
+            omitexports0.test_asyncify_longjmp \
+            omitexports0.test_emscripten_api \
+            strict.test_no_declare_asm_module_exports \
+            strict.test_dylink_global_inits_reversed
+        shell: bash
+
+  test-wasm64-misc:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Reinstall V8
+        run: rm -rf $HOME/.jsvu
+        shell: bash
+
+      - name: Install V8
+        uses: ./.github/actions/install-v8
+
+      - name: Install Node newest
+        uses: ./.github/actions/install-node
+        with:
+          node-version: newest
+
+      - name: Configure Node v25
+        run: echo "NODE_JS = NODE_JS_TEST" >> $EMSDK/.emscripten
+        shell: bash
+
+      - name: Run wasm64 misc tests
+        run: |
+          ./test/runner \
+            other.*_wasm64 \
+            core_2gb.test_*em_asm* \
+            core_2gb.test_*embind* \
+            core_2gb.test_fs_js_api_wasmfs \
+            wasm64.test_safe_stack \
+            wasm64l.test_hello_world \
+            wasm64l.test_bigswitch \
+            wasm64l.test_module_wasm_memory \
+            wasm64l.test_longjmp2_emscripten \
+            wasm64l.test_embind_val_basics_legacy
+        shell: bash
+
+  test-wasm2js1:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    env:
+      EMTEST_SKIP_NODE_25: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Run wasm2js1 tests
+        run: ./test/runner wasm2js1
+        shell: bash
+
+  test-bun:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
+
+      - name: Install Bun
+        run: |
+          curl -fsSL https://bun.com/install | bash
+        shell: bash
+
+      - name: Run Bun tests
+        run: |
+          echo "BUN = os.path.expanduser('~/.bun/bin/bun')" >> $EMSDK/.emscripten
+          echo "JS_ENGINES = [BUN]" >> $EMSDK/.emscripten
+          ./test/runner --crossplatform-only
+        shell: bash
+        env:
+          EMTEST_SKIP_NEW_CMAKE: "1"
+          EMTEST_SKIP_WASM64: "1"
+          EMTEST_SKIP_WASM_LEGACY_EH: "1"
+          EMTEST_SKIP_WASM_EH: "1"
+
+  test-deno:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
+
+      - name: Install Deno
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh
+        shell: bash
+
+      - name: Run Deno tests
+        run: |
+          echo "DENO = os.path.expanduser('~/.deno/bin/deno')" >> $EMSDK/.emscripten
+          echo "JS_ENGINES = [DENO]" >> $EMSDK/.emscripten
+          ./test/runner --crossplatform-only
+        shell: bash
+        env:
+          EMTEST_SKIP_NEW_CMAKE: "1"
+          EMTEST_SKIP_WASM64: "1"
+          # TODO: we can prbably run legacy EH
+          EMTEST_SKIP_WASM_LEGACY_EH: "1"
+          EMTEST_SKIP_WASM_EH: "1"
+
+  test-jsc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
+
+      - name: Install jsvu
+        run: npm install jsvu -g
+        shell: bash
+
+      - name: Install JSC
+        run: |
+          jsvu --os=default --engines=javascriptcore
+        shell: bash
+
+      - name: Run JSC tests
+        run: |
+          echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/javascriptcore')]" >> $EMSDK/.emscripten
+          echo "JS_ENGINES = [JSC_ENGINE]" >> $EMSDK/.emscripten
+          ./test/runner core0.test_hello_argc other.test_modularize_incoming other.test_modularize_incoming_export_name
+        shell: bash
+
+  test-spidermonkey:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
+
+      - name: Install jsvu
+        run: npm install jsvu -g
+        shell: bash
+
+      - name: Install SpiderMonkey
+        run: |
+          jsvu --os=default --engines=spidermonkey
+        shell: bash
+
+      - name: Run SpiderMonkey tests
+        run: |
+          echo "SPIDERMONKEY_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> $EMSDK/.emscripten
+          echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> $EMSDK/.emscripten
+          ./test/runner other.test_prepost_jspi other.test_stdint_limits_wasm64 core0.test_hello_argc core2.test_demangle_stacks_symbol_map
+        shell: bash
+
+  test-node-compat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
+
+      - name: Setup Node Oldest (18.3.0)
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: '18.3.0'
+
+      - name: Run tests with Node Oldest
+        run: |
+          echo "NODE_JS = '$(which node)'" >> $EMSDK/.emscripten
+          echo "NODE_JS_TEST = ['$(which node)']" >> $EMSDK/.emscripten
+          ./test/runner other.test_embind_tsgen_remove_relaxed_simd other.test_gen_struct_info other.test_native_call_before_init other.test_js_optimizer_verbose other.test_file_packager_separate_metadata other.test_full_js_library* core2.test_hello_world core2.test_fcntl_open_nodefs core2.test_fcntl_open_rawfs core2.test_fgetc_ungetc_nodefs core2.test_fgetc_ungetc_rawfs core2.test_fs_append_rawfs core2.test_fs_emptyPath_rawfs core2.test_fs_enotdir_nodefs core2.test_fs_enotdir_rawfs core2.test_fs_errorstack_rawfs core2.test_fs_llseek_rawfs core2.test_fs_mkdir_dotdot_nodefs core2.test_fs_mkdir_dotdot_rawfs core2.test_fs_mmap_nodefs core2.test_fs_mmap_rawfs core2.test_fs_nodefs_cloexec core2.test_fs_nodefs_cloexec_rawfs core2.test_fs_nodefs_dup core2.test_fs_nodefs_dup_rawfs core2.test_fs_nodefs_home core2.test_fs_nodefs_nofollow core2.test_fs_nodefs_readdir core2.test_fs_noderawfs_nofollow core2.test_fs_readdir_ino_matches_stat_ino_nodefs core2.test_fs_readdir_ino_matches_stat_ino_rawfs core2.test_fs_readv_rawfs core2.test_fs_rename_on_existing_nodefs core2.test_fs_rename_on_existing_rawfs core2.test_fs_symlink_resolution_nodefs core2.test_fs_symlink_resolution_rawfs core2.test_fs_writeFile* core2.test_fs_write_rawfs core2.test_fs_writev_rawfs core2.test_futimens_rawfs core2.test_readdir_rawfs core2.test_stat_chmod_rawfs core2.test_unistd_access_nodefs core2.test_unistd_access_rawfs core2.test_unistd_close_rawfs core2.test_unistd_dup_rawfs core2.test_unistd_io_nodefs core2.test_unistd_links_nodefs core2.test_unistd_misc_nodefs core2.test_unistd_pipe_rawfs core2.test_unistd_symlink_on_nodefs core2.test_unistd_truncate_nodefs core2.test_unistd_truncate_rawfs core2.test_unistd_unlink_nodefs core2.test_unistd_unlink_rawfs core2.test_unistd_write_broken_link_rawfs
+        shell: bash
+        env:
+          EMTEST_SKIP_V8: "1"
+
+      - name: Setup Node LTS (22.21.0)
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: '22.21.0'
+
+      - name: Run tests with Node LTS
+        run: |
+          echo "NODE_JS = '$(which node)'" >> $EMSDK/.emscripten
+          echo "NODE_JS_TEST = ['$(which node)']" >> $EMSDK/.emscripten
+          ./test/runner -v other.test_gen_struct_info other.test_native_call_before_init other.test_js_optimizer_verbose other.test_min_node_version other.test_node_emscripten_num_logical_cores other.test_exceptions_stack_trace* other.test_exceptions_rethrow_stack_trace* core2.test_pthread_create core2.test_i64_invoke_bigint core2.test_sse2 core2.test_source_map core2.test_exceptions_wasm_legacy core2.test_pthread_unhandledrejection
+        shell: bash
+        env:
+          EMTEST_SKIP_V8: "1"
+
+      - name: Setup Node Newest (25.4.0)
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: '25.4.0'
+
+      - name: Run tests with Node Newest
+        run: |
+          echo "NODE_JS = '$(which node)'" >> $EMSDK/.emscripten
+          echo "NODE_JS_TEST = ['$(which node)']" >> $EMSDK/.emscripten
+          ./test/runner -v other.test_deterministic other.test_gen_struct_info other.test_native_call_before_init other.test_*growable_arraybuffers other.test_add_js_function_bigint_memory64 other.test_js_optimizer_verbose other.test_min_node_version other.test_node_emscripten_num_logical_cores other.test_js_base64_api core2.test_hello_world core2.test_pthread_create core2.test_i64_invoke_bigint core2.test_sse2 core2.test_source_map core2.test_exceptions_wasm_legacy core2.test_pthread_unhandledrejection core2.test_esm_integration* core0.test_esm_integration* core0.test_pthread_join_and_asyncify core0.test_async_ccall_promise_jspi* core0.test_cubescript_jspi core0.test_poll_blocking_asyncify_jspi
+        shell: bash
+        env:
+          EMTEST_SKIP_V8: "1"
+
+  test-browser-firefox:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    env:
+      EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Install Firefox
+        uses: ./.github/actions/install-firefox
+
+      - name: Run browser tests (firefox)
+        run: |
+          export EMTEST_BROWSER="$HOME/firefox/firefox"
+          export EM_FROZEN_CACHE=""
+          ./test/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_glut_glutget
+        shell: bash
+        env:
+          GALLIUM_DRIVER: softpipe
+          EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+          EMTEST_LACKS_SOUND_HARDWARE: "1"
+          EMTEST_LACKS_WEBGPU: "1"
+          EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+          EMTEST_HEADLESS: "1"
+          EMTEST_CORES: "4"
+          DISPLAY: ":0"
+
+  test-browser-firefox-wasm64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
+
+      - name: Install Firefox
+        uses: ./.github/actions/install-firefox
+
+      - name: Run browser64 tests (firefox)
+        run: |
+          export EMTEST_BROWSER="$HOME/firefox/firefox"
+          export EM_FROZEN_CACHE=""
+          ./test/runner browser64.test_sdl_image browser64.test_dylink_many
+        shell: bash
+        env:
+          GALLIUM_DRIVER: softpipe
+          EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+          EMTEST_LACKS_SOUND_HARDWARE: "1"
+          EMTEST_LACKS_WEBGPU: "1"
+          EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+          EMTEST_HEADLESS: "1"
+          EMTEST_CORES: "4"
+          DISPLAY: ":0"
+
+
+
+
+  test-browser-chrome:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Run browser chrome tests
+        uses: ./.github/actions/run-tests-chrome
+        with:
+          title: 'browser-chrome'
+          test_targets: 'browser.test_gl_stride browser.test_memory_growth_during_startup browser.test_pthread_large_pthread_allocation browser.test_pthread_sbrk* browser.test_pthread_asan* browser.test_webgl_multi_draw* browser.test_pthread_growth* browser.test_4gb browser.test_emmalloc_3gb* browser.test_dlmalloc_3gb browser.test_2gb_fail browser.test_audio_worklet*'
+
+  test-browser-chrome-wasm64:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Run browser64 tests
+        uses: ./.github/actions/run-tests-chrome
+        with:
+          title: 'browser-chrome-wasm64'
+          test_targets: 'browser64.test_emscripten_animate_canvas_element_size* browser64.test_*malloc_*gb* browser64.test_emmalloc_memgrowth browser64.test_subdata_es2* browser64.test_webgl2_garbage_free_entrypoints* browser64.test_gl_stride browser64.test_webgl2_get_buffer_sub_data browser64.test_webgl2_pbo browser64.test_webgl2_sokol* browser64.test_memory_growth_during_startup browser64.test_pthread_large_pthread_allocation browser64.test_pthread_sbrk* browser64.test_pthread_asan* browser64.test_webgl_multi_draw* browser64.test_pthread_growth*'
+          visualize: 'true'
+
+  test-browser-chrome-2gb:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Run browser_2gb tests
+        uses: ./.github/actions/run-tests-chrome
+        with:
+          title: 'browser-chrome-2gb'
+          test_targets: 'browser_2gb'
+
+  test-browser-chrome-wasm64-4gb:
+    needs: build-linux
+    runs-on: emscripten-premerge-linux-runners
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Run browser64_4gb tests
+        uses: ./.github/actions/run-tests-chrome
+        with:
+          title: 'browser-chrome-wasm64-4gb'
+          test_targets: 'browser64_4gb'
+
+  test-sockets-chrome:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Run sockets tests
+        uses: ./.github/actions/run-tests-chrome
+        with:
+          title: 'sockets-chrome'
+          test_targets: 'sockets'
+
+  test-other:
+    needs: build-linux
+    runs-on: emscripten-premerge-linux-runners
+    env:
+      EMTEST_SKIP_NODE_25: "1"
+      EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_NEW_CMAKE: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Install Scons and rustup
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y scons rustup
+        shell: bash
+
+      - name: Setup Rust target
+        run: |
+          rustup default stable
+          rustup target add wasm32-unknown-emscripten
+        shell: bash
+
+      - name: Run other and jslib tests
+        run: ./test/runner other jslib skip:other.test_native_link_error_message
+        shell: bash
+
+      - name: Run primes benchmark
+        run: ./test/runner benchmark.test_primes
+        shell: bash
+
+
+
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Update settings docs check
+        run: tools/maint/update_settings_docs.py --check
+        shell: bash
+
+      - name: Make site text
+        run: make -C site text
+        shell: bash
+
+      - name: Check emcc help text
+        run: tools/maint/check_emcc_help_text.py
+        shell: bash
+
+      - name: Make site html
+        run: make -C site html
+        shell: bash
+
+  test-modularize-instance:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    env:
+      EMTEST_SKIP_NODE_25: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Run modularize instance tests
+        run: ./test/runner instance
+        shell: bash
+
+
+
+  test-stress:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    env:
+      EMTEST_SKIP_NODE_25: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Run stress tests
+        run: ./test/runner stress
+        shell: bash
+
+
+
+  test-esm-integration:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Reinstall V8
+        run: rm -rf $HOME/.jsvu
+        shell: bash
+
+      - name: Install V8
+        uses: ./.github/actions/install-v8
+
+      - name: Install Node newest
+        uses: ./.github/actions/install-node
+        with:
+          node-version: newest
+
+      - name: Run esm_integration tests
+        run: ./test/runner esm_integration
+        shell: bash
+
+
+
+  linters:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: '24.13.1'
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Run ruff
+        run: ruff check
+        shell: bash
+
+      - name: Run vulture
+        run: vulture . --min-confidence 100
+        shell: bash
+
+      - name: Run mypy
+        run: mypy
+        shell: bash
+
+      - name: Install Node dependencies
+        run: npm ci
+        shell: bash
+
+      - name: Run eslint (lint)
+        run: npm run lint
+        shell: bash
+
+      - name: Run eslint (check)
+        run: npm run check
+        shell: bash
+
+
+
+
+
+
+

@@ -1,0 +1,17 @@
+name: 'Install Basic Packages'
+description: 'Installs packages missing from GHA runner base'
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v6.2.0
+      with:
+        python-version: '3.10'
+
+    - name: Install packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xz-utils build-essential ninja-build cmake wget ccache pkg-config clang
+      shell: bash
+
+
