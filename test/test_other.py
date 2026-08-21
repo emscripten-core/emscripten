@@ -16107,3 +16107,74 @@ PORT_FILE = 'port.py'
 EXTERNAL_PORT = URL
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
+
+  @parameterized({
+    '': ([],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
+    'O3': (['-O3', '-g'],),
+    'lto': (['-flto'],),
+  })
+  def test_emscripten_keepalive(self, args):
+    create_file('main.c', r'''
+#include <emscripten.h>
+#include <stdio.h>
+
+EMSCRIPTEN_KEEPALIVE
+int my_kept_global = 42;
+
+EMSCRIPTEN_KEEPALIVE
+int my_kept_func(int x) {
+  return x + my_kept_global;
+}
+
+int main() {
+  printf("kept func: %d\n", my_kept_func(10));
+  return 0;
+}
+''')
+    self.run_process([EMCC, 'main.c', '-o', 'main.html'] + args)
+    self.assertTrue(self.is_exported_in_wasm('my_kept_func', 'main.wasm'))
+    self.assertTrue(self.is_exported_in_wasm('my_kept_global', 'main.wasm'))
+    output = self.run_js('main.js')
+    self.assertContained('kept func: 52', output)
+
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2'],),
+  })
+  def test_emscripten_keepalive_cpp(self, args):
+    create_file('cpp_main.cpp', r'''
+#include <emscripten.h>
+#include <iostream>
+
+namespace my_ns {
+EMSCRIPTEN_KEEPALIVE int ns_global = 123;
+}
+
+EMSCRIPTEN_KEEPALIVE int overloaded_func(int x) { return x + 1; }
+EMSCRIPTEN_KEEPALIVE int overloaded_func(double x) { return (int)x + 2; }
+
+extern "C" {
+EMSCRIPTEN_KEEPALIVE
+int cpp_kept_global = 100;
+
+EMSCRIPTEN_KEEPALIVE
+int cpp_kept_func(int y) {
+  return y * 2 + cpp_kept_global;
+}
+}
+
+int main() {
+  std::cout << "cpp kept func: " << cpp_kept_func(5) << ' ' << overloaded_func(10) << ' ' << overloaded_func(20.0) << std::endl;
+  return 0;
+}
+''')
+    self.run_process([EMXX, 'cpp_main.cpp', '-o', 'cpp_main.html'] + args)
+    self.assertTrue(self.is_exported_in_wasm('cpp_kept_func', 'cpp_main.wasm'))
+    self.assertTrue(self.is_exported_in_wasm('cpp_kept_global', 'cpp_main.wasm'))
+    self.assertTrue(self.is_exported_in_wasm('_Z15overloaded_funci', 'cpp_main.wasm'))
+    self.assertTrue(self.is_exported_in_wasm('_Z15overloaded_funcd', 'cpp_main.wasm'))
+    self.assertTrue(self.is_exported_in_wasm('_ZN5my_ns9ns_globalE', 'cpp_main.wasm'))
+    output = self.run_js('cpp_main.js')
+    self.assertContained('cpp kept func: 110 11 22', output)
