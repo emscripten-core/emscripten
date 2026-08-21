@@ -16107,4 +16107,3 @@ PORT_FILE = 'port.py'
 EXTERNAL_PORT = URL
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
-
