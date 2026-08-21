@@ -34,6 +34,7 @@ int test_builtins() {
   TEST(fmin)
   TEST(fmod)
   TEST(scalbn)
+  TEST(scalbnl)
   TEST(ldexp)
 
   TEST(pow)
