@@ -3896,14 +3896,14 @@ More info: https://emscripten.org
                       '-o', 'test_emit_tsd.js'] +
                      self.get_cflags())
     actual = read_file('test_emit_tsd.d.ts')
-    self.assertContained("    let HEAP8: Int8Array;", actual)
-    self.assertContained("    let HEAPU8: Uint8Array;", actual)
-    self.assertContained("    let HEAP16: Int16Array;", actual)
-    self.assertContained("    let HEAPU16: Uint16Array;", actual)
-    self.assertContained("    let HEAP32: Int32Array;", actual)
-    self.assertContained("    let HEAPU32: Uint32Array;", actual)
-    self.assertContained("    let HEAPF32: Float32Array;", actual)
-    self.assertContained("    let HEAPF64: Float64Array;", actual)
+    self.assertContained("    HEAP8: Int8Array;", actual)
+    self.assertContained("    HEAPU8: Uint8Array;", actual)
+    self.assertContained("    HEAP16: Int16Array;", actual)
+    self.assertContained("    HEAPU16: Uint16Array;", actual)
+    self.assertContained("    HEAP32: Int32Array;", actual)
+    self.assertContained("    HEAPU32: Uint32Array;", actual)
+    self.assertContained("    HEAPF32: Float32Array;", actual)
+    self.assertContained("    HEAPF64: Float64Array;", actual)
 
   def test_emconfig(self):
     output = self.run_process([EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
