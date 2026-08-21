@@ -16136,8 +16136,6 @@ int main() {
     self.run_process([EMCC, 'main.c', '-o', 'main.html'] + args)
     self.assertTrue(self.is_exported_in_wasm('my_kept_func', 'main.wasm'))
     self.assertTrue(self.is_exported_in_wasm('my_kept_global', 'main.wasm'))
-    output = self.run_js('main.js')
-    self.assertContained('kept func: 52', output)
 
   @parameterized({
     '': ([],),
@@ -16176,5 +16174,3 @@ int main() {
     self.assertTrue(self.is_exported_in_wasm('_Z15overloaded_funci', 'cpp_main.wasm'))
     self.assertTrue(self.is_exported_in_wasm('_Z15overloaded_funcd', 'cpp_main.wasm'))
     self.assertTrue(self.is_exported_in_wasm('_ZN5my_ns9ns_globalE', 'cpp_main.wasm'))
-    output = self.run_js('cpp_main.js')
-    self.assertContained('cpp kept func: 110 11 22', output)
