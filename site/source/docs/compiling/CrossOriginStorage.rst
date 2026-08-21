@@ -329,7 +329,7 @@ via a reference to that config object:
        // read the hash via the outer Module reference instead.
        const cosHash = Module['wasmHash'];
        if (cosHash?.value && globalThis.navigator?.crossOriginStorage) {
-         navigator.crossOriginStorage.requestFileHandles(cosHash)
+         navigator.crossOriginStorage.requestFileHandle(cosHash)
            .then(handle => handle.getFile())
            .then(f => f.arrayBuffer())
            .then(bytes => WebAssembly.instantiate(bytes, imports))
