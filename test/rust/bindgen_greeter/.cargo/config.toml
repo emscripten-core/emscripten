@@ -1,0 +1,10 @@
+[build]
+target = "wasm32-unknown-emscripten"
+rustflags = [
+    "-Cllvm-args=-enable-emscripten-cxx-exceptions=0",
+    "-Cpanic=abort",
+    "-Crelocation-model=static",
+    # rust's precompiled std requires emscripten's C++ runtime libraries, but
+    # rustc links via emcc rather than em++.
+    "-Clink-arg=-sDEFAULT_TO_CXX",
+]
