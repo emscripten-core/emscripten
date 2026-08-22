@@ -440,6 +440,7 @@ class Ports:
   def write_file(filename, contents):
     if os.path.exists(filename) and utils.read_file(filename) == contents:
       return
+    utils.safe_ensure_dirs(os.path.dirname(filename))
     utils.write_file(filename, contents)
 
   @staticmethod

@@ -99,7 +99,7 @@ from decorators import (
   with_env_modify,
 )
 
-from tools import building, cache, response_file, shared, utils, webassembly
+from tools import building, cache, ports, response_file, shared, utils, webassembly
 from tools.building import get_building_env
 from tools.cmdline import options
 from tools.link import binary_encode
@@ -2752,6 +2752,17 @@ F1 -> ''
     # A compile-only test that checks if sdl3-ttf, and dependencies freetype and harfbuzz, are buildable.
     self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['-Wno-experimental', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3'])
     self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['-Wno-experimental', '--use-port=sdl3', '--use-port=sdl3_ttf'])
+
+  @requires_network
+  def test_sdl_ttf_parent_cache_lock(self):
+    # Verify that building sdl2_ttf while holding the cache lock (as a parent process does)
+    # succeeds even if libharfbuzz.a is not yet present in the cache.
+    shared.cache.erase_lib('libharfbuzz.a')
+    shared.cache.erase_lib('libSDL2_ttf.a')
+    self.set_setting('USE_SDL', 2)
+    self.set_setting('USE_SDL_TTF', 2)
+    with shared.cache.lock('test_sdl_ttf_parent_cache_lock'):
+      ports.get_port_by_name('sdl2_ttf').get(ports.Ports, settings, shared)
 
   @requires_network
   def test_contrib_ports(self):
