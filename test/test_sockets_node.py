@@ -218,6 +218,22 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_epoll_socket_blocking.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_tcp_blocking(self):
+    # Blocking accept() + recv() via the _emscripten_fd_wait primitive: the
+    # client connects from another thread after a delay so both would-block
+    # first and can only complete by being woken. This is a pthreads-only
+    # facility (the retry loops compile only into the -mt libc), so it runs
+    # under PROXY_TO_PTHREAD, where each blocking call parks its proxied worker.
+    self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_tcp_accept_nonblock(self):
+    # accept4(SOCK_NONBLOCK) off a blocking listener yields a non-blocking fd
+    # (the flag is applied on top of the inherited listener flags). Single
+    # threaded, poll()-driven, so no fd_wait blocking is involved.
+    self.do_runf('sockets/test_tcp_accept_nonblock.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
   def test_noderawsockets_epoll_rdhup(self):
     # A blocking epoll_wait reports EPOLLRDHUP when the TCP peer half-closes its
     # write side (FIN), distinct from a full EPOLLHUP, and only when requested.
