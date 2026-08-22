@@ -1651,10 +1651,15 @@ MAIN_MODULE
 A main module is a file compiled in a way that allows us to link it to
 a side module at runtime.
 
-- 1: Normal main module.
-- 2: DCE'd main module. We eliminate dead code normally. If a side
-  module needs something from main, it is up to you to make sure
-  it is kept alive.
+- 1: Normal main module. Dead code elimination is disabled, and all
+  symbols are exported and kept alive so that any side module loaded
+  at runtime can link against them.
+- 2: DCE'd main module. We eliminate dead code normally. Symbols needed by
+  side modules passed on the command line will be kept alive automatically.
+  If side modules are not passed on the command line (e.g. loaded later via
+  ``dlopen``), you must either keep symbols alive manually (via
+  ``EXPORTED_FUNCTIONS`` or ``EMSCRIPTEN_KEEPALIVE``) or pass the side
+  modules on the command line along with ``-sAUTOLOAD_DYLIBS=0``.
 
 .. note:: Applicable during both linking and compilation
 
@@ -3276,6 +3281,12 @@ AUTOLOAD_DYLIBS
 
 For MAIN_MODULE builds, automatically load any dynamic library dependencies
 on startup, before loading the main module.
+
+When dynamic libraries are passed on the command line, they will be loaded
+on startup by default. Setting this to 0 disables autoloading on startup.
+This is useful when side modules will be loaded dynamically at runtime via
+``dlopen()``, but are passed on the command line at link time so that
+``MAIN_MODULE=2`` can automatically keep their required symbols alive.
 
 Default value: true
 
