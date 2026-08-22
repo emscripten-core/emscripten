@@ -2,7 +2,17 @@
  * Helper function used in browser tests to simulate HTML5 events
  */
 
-function simulateKeyEvent(eventType, keyCode, code, key, target) {
+function deriveKey(code, keyCode) {
+  if (code && !code.startsWith('Key') && !code.startsWith('Digit')) {
+    return code;
+  }
+  if (keyCode) {
+    return String.fromCharCode(keyCode);
+  }
+}
+
+function simulateKeyEvent(eventType, keyCode, code = undefined, key = undefined, target = undefined) {
+  if (!key) key = deriveKey(code, keyCode);
   var props = { keyCode, charCode: keyCode, view: window, bubbles: true, cancelable: true };
   if (code) props['code'] = code;
   if (key) props['key'] = key;
@@ -20,13 +30,13 @@ function simulateKeyDown(keyCode, code = undefined, key = undefined, target = un
   }
 }
 
-function simulateKeyUp(keyCode, code = undefined, target = undefined) {
-  simulateKeyEvent('keyup', keyCode, code, target);
+function simulateKeyUp(keyCode, code = undefined, key = undefined, target = undefined) {
+  simulateKeyEvent('keyup', keyCode, code, key, target);
 }
 
-function simulateKeyDownUp(keyCode, code = undefined, target = undefined) {
-  simulateKeyDown(keyCode, code, target);
-  simulateKeyUp(keyCode, code, target);
+function simulateKeyDownUp(keyCode, code = undefined, key = undefined, target = undefined) {
+  simulateKeyDown(keyCode, code, key, target);
+  simulateKeyUp(keyCode, code, key, target);
 }
 
 function simulateMouseEvent(eventType, x, y, button, absolute) {
