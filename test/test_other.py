@@ -12518,6 +12518,18 @@ int main () {
     ''')
     self.run_process([EMCC, 'conftest.c', 'libtest.so', '-o', 'conftest.js'])
 
+  @no_windows('configure scripts are Unix shell scripts')
+  @requires_tool('autoconf')
+  def test_autoconf_configure(self):
+    copytree(test_file('autoconf'), '.')
+    self.run_process(['autoconf'])
+    out = self.run_process([EMCONFIGURE, './configure'], stdout=PIPE).stdout
+    self.assertContained('checking for getcwd... yes', out)
+    self.assertContained('checking for getwd... no', out)
+    self.assertContained('checking for nonexistent_func... no', out)
+    self.assertContained('checking for nonexistent_header.h... no', out)
+    self.assertContained('configure: run test passed', out)
+
   def test_standalone_export_main(self):
     # Tests that explicitly exported `_main` does not fail, even though `_start` is the entry
     # point.
