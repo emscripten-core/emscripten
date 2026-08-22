@@ -27,22 +27,22 @@ class interactive(BrowserCore):
     print()
 
   def test_html5_core(self):
-    self.btest_exit('test_html5_core.c', cflags=['-DKEEP_ALIVE'])
+    self.btest_exit('test_html5_core.c', cflags=['-DKEEP_ALIVE', '-Wno-deprecated-declarations'])
 
   def test_html5_fullscreen(self):
     self.btest('test_html5_fullscreen.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-sEXPORTED_FUNCTIONS=_requestFullscreen,_enterSoftFullscreen,_main', '--shell-file', test_file('browser/test_html5_fullscreen.html')])
 
   def test_html5_emscripten_exit_with_escape(self):
-    self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1', cflags=['-DEXIT_WITH_F'])
+    self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1', cflags=['-DEXIT_WITH_F', '-Wno-deprecated-declarations'])
 
   def test_html5_emscripten_exit_fullscreen(self):
-    self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1')
+    self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1', cflags=['-Wno-deprecated-declarations'])
 
   def test_html5_mouse(self):
     self.btest_exit('test_html5_mouse.c', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
 
   def test_html5_pointerlockerror(self):
-    self.btest('test_html5_pointerlockerror.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
+    self.btest('test_html5_pointerlockerror.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-Wno-deprecated-declarations'])
 
   def test_sdl_mousewheel(self):
     self.btest_exit('test_sdl_mousewheel.c')
@@ -250,7 +250,7 @@ class interactive(BrowserCore):
   def test_html5_callbacks_on_calling_thread(self):
     # TODO: Make this automatic by injecting mouse event in e.g. shell html file.
     for args in ([], ['-DTEST_SYNC_BLOCKING_LOOP=1']):
-      self.btest('html5_callbacks_on_calling_thread.c', expected='1', cflags=args + ['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-pthread', '-sPROXY_TO_PTHREAD'])
+      self.btest('html5_callbacks_on_calling_thread.c', expected='1', cflags=args + ['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-pthread', '-sPROXY_TO_PTHREAD', '-Wno-deprecated-declarations'])
 
   # Test that it is possible to register HTML5 event callbacks on either main browser thread, or
   # application main thread, and that the application can manually proxy the event from main browser
@@ -350,7 +350,7 @@ class interactive(BrowserCore):
     os.mkdir('audio_files')
     copy_asset('webaudio/audio_files/emscripten-beat.mp3', 'audio_files/')
     copy_asset('webaudio/audio_files/emscripten-bass.mp3', 'audio_files/')
-    self.btest_exit('webaudio/audioworklet_memory_growth.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sALLOW_MEMORY_GROWTH'])
+    self.btest_exit('webaudio/audioworklet_memory_growth.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sALLOW_MEMORY_GROWTH', '-Wno-deprecated-declarations'])
 
   def test_html_source_map(self):
     # browsers will try to 'guess' the corresponding original line if a
