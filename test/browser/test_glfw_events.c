@@ -10,6 +10,7 @@
 #else
     #include <GLFW/glfw3.h>
 #endif
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 
@@ -83,16 +84,6 @@ test_t g_tests[] = {
 
 static unsigned int g_test_actual = 0;
 static unsigned int g_test_count = sizeof(g_tests) / sizeof(test_t);
-static unsigned int g_state = 0;
-
-static void test_success() {
-  g_state |= 1 << g_test_actual;
-}
-
-static void test_fail() {
-  printf("Test %d: FAIL\n", g_test_actual);
-  g_state &= ~(1 << g_test_actual);
-}
 
 #if USE_GLFW == 2
 static void on_mouse_button_callback(int button, int action) {
@@ -100,11 +91,8 @@ static void on_mouse_button_callback(int button, int action) {
 static void on_mouse_button_callback(GLFWwindow* window, int button, int action, int modify) {
 #endif
   test_args_t args = g_tests[g_test_actual].args;
-  if (args.button == button && args.action == action) {
-    test_success();
-  } else {
-    test_fail();
-  }
+  assert(args.button == button);
+  assert(args.action == action);
 }
 
 #if USE_GLFW == 2
@@ -113,11 +101,8 @@ static void on_mouse_move(int x, int y) {
 static void on_mouse_move(GLFWwindow* window, double x, double y) {
 #endif
   test_args_t args = g_tests[g_test_actual].args;
-  if (args.x == x && args.y == y) {
-    test_success();
-  } else {
-    test_fail();
-  }
+  assert(args.x == x);
+  assert(args.y == y);
 }
 
 #if USE_GLFW == 2
@@ -126,11 +111,8 @@ static void on_key_callback(int key, int action) {
 static void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 #endif
   test_args_t args = g_tests[g_test_actual].args;
-  if (args.button == key && args.action == action) {
-    test_success();
-  } else {
-    test_fail();
-  }
+  assert(args.button == key);
+  assert(args.action == action);
 }
 
 #if USE_GLFW == 2
@@ -139,21 +121,15 @@ static void on_char_callback(int character, int action) {
 static void on_char_callback(GLFWwindow* window, unsigned int character) {
 #endif
   test_args_t args = g_tests[g_test_actual].args;
-  if (args.character != -1 && args.character == character) {
-    test_success();
-  } else {
-    test_fail();
-  }
+  assert(args.character != -1);
+  assert(args.character == character);
 }
 
 #if USE_GLFW == 3
 static void on_mouse_wheel(GLFWwindow* window, double x, double y) {
   test_args_t args = g_tests[g_test_actual].args;
-  if (args.x == x && args.y == y) {
-    test_success();
-  } else {
-    test_fail();
-  }
+  assert(args.x == x);
+  assert(args.y == y);
 }
 
 static void on_error(int error, const char *msg) {
@@ -162,8 +138,6 @@ static void on_error(int error, const char *msg) {
 #endif
 
 int main() {
-  unsigned int success = (1 << (sizeof(g_tests) / sizeof(test_t))) - 1; // (2^count)-1;
-
   EM_ASM({
     injectKeyEvent = (type, keyCode, options) => {
       // KeyboardEvent constructor always returns 0 keyCode on Chrome, so use generic events
@@ -208,49 +182,36 @@ int main() {
     glfwSetMouseButtonCallback(_mainWindow, p == 0 ? NULL : on_mouse_button_callback);
     glfwSetKeyCallback(_mainWindow, p == 0 ? NULL : on_key_callback);
 #endif
-    g_state = p == 0 ? success : 0;
 
     for (int i = 0; i < g_test_count; ++i) {
       g_test_actual = i;
       test_t test = g_tests[g_test_actual];
 
-      if (test.args.character == -1) {
-        test_success();
-      }
-
       emscripten_run_script(test.cmd);
 
       if (test.args.mouse) {
       #if USE_GLFW == 2
-        if (glfwGetMouseButton(test.args.button) != test.args.action) {
+        assert(glfwGetMouseButton(test.args.button) == test.args.action);
       #else
-        if (glfwGetMouseButton(_mainWindow, test.args.button) != test.args.action) {
+        assert(glfwGetMouseButton(_mainWindow, test.args.button) == test.args.action);
       #endif
-          test_fail();
-        }
       } else {
         // Keyboard.
       #if USE_GLFW == 2
-        if (test.args.action != -1 && glfwGetKey(test.args.button) != test.args.action) {
-      #else
-        if (test.args.action != -1 && glfwGetKey(_mainWindow, test.args.button) != test.args.action) {
-      #endif
-          test_fail();
+        if (test.args.action != -1) {
+          assert(glfwGetKey(test.args.button) == test.args.action);
         }
+      #else
+        if (test.args.action != -1) {
+          assert(glfwGetKey(_mainWindow, test.args.button) == test.args.action);
+        }
+      #endif
       }
-    }
-    if (g_state != success) {
-      break;
     }
   }
 
   glfwTerminate();
 
-  printf("%d == %d = %d", g_state, success, g_state == success);
-  if (g_state != success) {
-    printf("test failed\n");
-    return 1;
-  }
   printf("done\n");
   return 0;
 }
