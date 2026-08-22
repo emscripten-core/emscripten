@@ -1,6 +1,6 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
-declare namespace RuntimeExports {
-    let POINTER_SIZE: number;
+declare var RuntimeExports: {
+    POINTER_SIZE: number;
     /**
      * Given a pointer 'idx' to a null-terminated UTF8-encoded string in the given
      * array that contains uint8 values, returns a copy of that string as a
@@ -11,9 +11,10 @@ declare namespace RuntimeExports {
      * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
      * @return {string}
      */
-    function UTF8ArrayToString(heapOrArray: any, idx?: number | undefined, maxBytesToRead?: number | undefined, ignoreNul?: boolean | undefined): string;
-    let wasmTable: WebAssembly.Table;
-}
+    UTF8ArrayToString: (heapOrArray: any, idx?: number | undefined, maxBytesToRead?: number | undefined, ignoreNul?: boolean | undefined) => string;
+    /** @type {WebAssembly.Table} */
+    wasmTable: WebAssembly.Table;
+};
 interface WasmModule {
   _fooVoid(): Promise<void>;
   _fooInt(_0: number, _1: number): Promise<number>;
