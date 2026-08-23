@@ -2617,6 +2617,14 @@ The current type of b is: 9
         interleaved_output=False)
 
   @requires_pthreads
+  def test_pthread_proxying_canceled_caller(self):
+    # pthread_cancel of a thread blocked in a sync proxy call, both while the
+    # target still runs the work and after the target has been handed the ctx.
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_runf('pthread/test_pthread_proxying_canceled_caller.c', 'done\n')
+
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/19795')
   def test_pthread_proxying_refcount(self):
     self.set_setting('EXIT_RUNTIME')

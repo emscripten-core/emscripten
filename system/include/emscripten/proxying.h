@@ -60,7 +60,9 @@ bool emscripten_proxy_async(em_proxying_queue* q,
 // Enqueue `func` on the given queue and thread and wait for it to finish
 // executing before returning. Returns true if the task was successfully
 // completed and false otherwise, including if the target thread is canceled or
-// exits before the work is completed.
+// exits before the work is completed. The wait is a cancellation point: a
+// canceled caller exits with PTHREAD_CANCELED once `func` has completed, since
+// `arg` may be on the caller's stack.
 bool emscripten_proxy_sync(em_proxying_queue* q,
                            pthread_t target_thread,
                            void (*func)(void*),
@@ -72,7 +74,9 @@ bool emscripten_proxy_sync(em_proxying_queue* q,
 // instead store the context pointer and call `emscripten_proxy_finish` at an
 // arbitrary later time. Returns true if the task was successfully completed and
 // false otherwise, including if the target thread is canceled or exits before
-// the work is completed.
+// the work is completed. The wait is a cancellation point: a canceled caller
+// exits with PTHREAD_CANCELED once the task is finished (or canceled), since
+// `arg` may be on the caller's stack.
 bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
                                     pthread_t target_thread,
                                     void (*func)(em_proxying_ctx*, void*),

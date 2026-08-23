@@ -100,12 +100,12 @@ class sockets_node(RunnerCore):
   # are proxied to the main thread: with PROXY_TO_PTHREAD, main() runs on a
   # worker and every socket call funnels to the main thread where node:net lives.
   @also_with_proxy_to_pthread
-  def test_noderawsockets_echo(self):
+  def test_echo(self):
     # With -sNODERAWSOCKETS the client does a non-blocking connect, send and
     # recv over a real OS socket against a loopback echo server we run here.
     self._run_against_echo_server('sockets/test_tcp_echo.c')
 
-  def test_noderawsockets_client_bind(self):
+  def test_client_bind(self):
     # A client that bind()s an explicit source port has it honored by connect(),
     # and the plain client path never realizes a private tcp_wrap handle. We
     # allocate a free source port here and pass it alongside the echo server's.
@@ -126,22 +126,22 @@ class sockets_node(RunnerCore):
       server.server_close()
       thread.join()
 
-  def test_noderawsockets_connect_getsockname(self):
+  def test_connect_getsockname(self):
     # getsockname() immediately after a non-blocking connect() on an unbound
     # client reports the ephemeral source port synchronously (kernel semantics:
     # the port is assigned at connect(), not when the connection completes).
     self.do_runf('sockets/test_tcp_connect_getsockname.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
-  def test_noderawsockets_client_semantics(self):
+  def test_client_semantics(self):
     # EISCONN on a second connect, shutdown(SHUT_WR) leaving reads working,
     # EPIPE on a write after that, and POLLHUP after a full shutdown(SHUT_RDWR).
     self._run_against_echo_server('sockets/test_tcp_client_semantics.c')
 
-  def test_noderawsockets_refused(self):
+  def test_refused(self):
     # A connect to a loopback port with nothing listening reports ECONNREFUSED.
     self.do_runf('sockets/test_tcp_refused.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
-  def test_noderawsockets_backpressure(self):
+  def test_backpressure(self):
     # A sink server that accepts but never reads, so the client's writes fill
     # the buffers and send() reports EAGAIN rather than buffering unboundedly.
     done = threading.Event()
@@ -163,14 +163,14 @@ class sockets_node(RunnerCore):
       thread.join()
 
   @also_with_proxy_to_pthread
-  def test_noderawsockets_server(self):
+  def test_server(self):
     # Self-contained loopback accept+echo, exercising bind(:0)+getsockname
     # (synchronous ephemeral port), listen, accept, non-blocking connect, send
     # and recv over real OS sockets via the tcp_wrap server path.
     self.do_runf('sockets/test_tcp_server.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
-  def test_noderawsockets_peek(self):
+  def test_peek(self):
     # recv(MSG_PEEK) must leave the data buffered: a peek returns the bytes, the
     # socket stays readable, and the following plain recv returns them again.
     self.do_runf('sockets/test_tcp_peek.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
@@ -179,39 +179,39 @@ class sockets_node(RunnerCore):
   # filesystem, which only stays coherent with the program's own file syscalls
   # (bind's parent dir, getsockname, unlink) when the FS is the host FS.
   @also_with_proxy_to_pthread
-  def test_noderawsockets_unix_server(self):
+  def test_unix_server(self):
     # Self-contained named AF_UNIX (pathname) loopback accept+echo: bind(path),
     # listen, getsockname (the bound path), accept, getpeername, non-blocking
     # connect-by-path, send and recv over a real node pipe.
     self.do_runf('sockets/test_unix_server.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sNODERAWFS'])
 
-  def test_noderawsockets_unix_refused(self):
+  def test_unix_refused(self):
     # A connect to an AF_UNIX path with no socket file reports ENOENT.
     self.do_runf('sockets/test_unix_refused.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sNODERAWFS'])
 
-  def test_noderawsockets_unix_bind_inuse(self):
+  def test_unix_bind_inuse(self):
     # Binding an already-bound AF_UNIX path fails synchronously with EADDRINUSE.
     self.do_runf('sockets/test_unix_bind_inuse.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sNODERAWFS'])
 
-  def test_noderawsockets_server_autobind(self):
+  def test_server_autobind(self):
     # listen() without a prior bind() must auto-bind an ephemeral port and
     # getsockname() must report it (POSIX), then accept+echo as usual.
     self.do_runf('sockets/test_tcp_server.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-DNO_EXPLICIT_BIND'])
 
-  def test_noderawsockets_tcp_ipv6(self):
+  def test_tcp_ipv6(self):
     # Self-contained IPv6 TCP loopback accept+echo over ::1: bind(:0)+getsockname,
     # listen, accept, non-blocking connect, send/recv on AF_INET6 sockets.
     if not HAS_IPV6_LOOPBACK:
       self.skipTest('no IPv6 loopback available')
     self.do_runf('sockets/test_tcp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
-  def test_noderawsockets_udp_ipv6(self):
+  def test_udp_ipv6(self):
     # Self-contained IPv6 UDP loopback echo over ::1 on AF_INET6 sockets.
     if not HAS_IPV6_LOOPBACK:
       self.skipTest('no IPv6 loopback available')
     self.do_runf('sockets/test_udp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
-  def test_noderawsockets_epoll_socket_blocking(self):
+  def test_epoll_socket_blocking(self):
     # A blocking epoll_wait() on a socket is woken by an incoming datagram
     # through the unified readiness wait-queue (the SOCKFS.emit bridge), with
     # main() proxied to a worker so the wait can suspend.
@@ -219,47 +219,54 @@ class sockets_node(RunnerCore):
                  cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
 
   @requires_jspi_node
-  def test_noderawsockets_epoll_socket_blocking_jspi(self):
+  def test_epoll_socket_blocking_jspi(self):
     # Same, but the blocking epoll_wait() suspends the wasm stack under JSPI.
     self.do_runf('sockets/test_epoll_socket_blocking.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
-  def test_noderawsockets_epoll_rdhup(self):
+  def test_epoll_cancel(self):
+    # pthread_cancel of threads blocked in epoll_wait(-1) and poll(-1) exits
+    # them with PTHREAD_CANCELED; the readiness listeners they left behind are
+    # then fired by a real datagram and must complete harmlessly.
+    self.do_runf('sockets/test_epoll_cancel.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_epoll_rdhup(self):
     # A blocking epoll_wait reports EPOLLRDHUP when the TCP peer half-closes its
     # write side (FIN), distinct from a full EPOLLHUP, and only when requested.
     self.do_runf('sockets/test_epoll_rdhup.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
 
   @requires_jspi_node
-  def test_noderawsockets_epoll_rdhup_jspi(self):
+  def test_epoll_rdhup_jspi(self):
     # Same, but the blocking calls suspend the wasm stack under JSPI.
     self.do_runf('sockets/test_epoll_rdhup.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @also_with_proxy_to_pthread
-  def test_noderawsockets_udp(self):
+  def test_udp(self):
     # Self-contained loopback UDP echo: the server binds(:0)+getsockname for its
     # ephemeral port, the client sends a datagram, the server echoes it back.
     self.do_runf('sockets/test_udp_echo.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
-  def test_noderawsockets_udp_recvmsg(self):
+  def test_udp_recvmsg(self):
     # recvmsg scatters a datagram across multiple iovecs at the right offsets
     # and updates msg_namelen/msg_controllen/msg_flags in the caller's msghdr.
     self.do_runf('sockets/test_udp_recvmsg.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
-  def test_noderawsockets_mmsg(self):
+  def test_mmsg(self):
     # sendmmsg batches two datagrams out, recvmmsg receives them back in one
     # call, updating msg_len per message.
     self.do_runf('sockets/test_udp_mmsg.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
-  def test_noderawsockets_udp_connect(self):
+  def test_udp_connect(self):
     # Connected UDP: sendto() with an address gives EISCONN, send() reaches the
     # peer, and datagrams from a non-peer socket are filtered out.
     self.do_runf('sockets/test_udp_connect.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
-  def test_noderawsockets_udp_sockopts(self):
+  def test_udp_sockopts(self):
     # UDP multicast socket options: IP_MULTICAST_TTL/LOOP and their IPv6
     # counterparts round-trip through set/getsockopt, with POSIX defaults
     # readable before any set. EXIT_RUNTIME so the plain synchronous main()
@@ -268,7 +275,7 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_udp_sockopts.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @also_with_proxy_to_pthread
-  def test_noderawsockets_socket_options(self):
+  def test_socket_options(self):
     # Socket metadata/options on a fresh socket: fstat reports S_ISSOCK, SO_TYPE
     # reports the socket type, and SO_LINGER round-trips a struct linger.
     self.do_runf('sockets/test_socket_options.c', 'done\n',
