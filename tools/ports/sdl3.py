@@ -106,7 +106,8 @@ def get(ports, settings, shared):
       'sensor/dummy/*.c',
     ]
 
-    flags = ['-sUSE_SDL=0']
+    # Remove -Wno-deprecated-declarations after https://github.com/libsdl-org/SDL/pull/16179
+    flags = ['-sUSE_SDL=0', '-Wno-deprecated-declarations']
     if settings.PTHREADS:
       glob_patterns.append('thread/pthread/*.c')
       flags += ['-pthread']

@@ -2523,7 +2523,7 @@ Module["preRun"] = () => {
       });
       ''')
       self.cflags.append('--pre-js=pre.js')
-    self.btest_exit('test_html5_core.c', cflags=opts)
+    self.btest_exit('test_html5_core.c', cflags=opts + ['-Wno-deprecated-declarations'])
 
   def test_html5_remove_event_listener(self):
     self.btest_exit('test_html5_remove_event_listener.c')

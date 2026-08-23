@@ -207,7 +207,7 @@ void emscripten_fetch_attr_init(emscripten_fetch_attr_t * _Nonnull fetch_attr);
 // given URL or from IndexedDB database.
 emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t * _Nonnull fetch_attr, const char * _Nonnull url);
 
-EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t * _Nonnull fetch, double timeoutMSecs) __attribute__((deprecated));
+EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t * _Nonnull fetch, double timeoutMSecs) __attribute__((deprecated("waitable fetch requests are no longer implemented")));
 
 // Closes a finished or an executing fetch operation and frees up all memory. If
 // the fetch operation was still executing, the onerror() handler will be called
