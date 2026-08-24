@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 
+import errno
 import glob
 import hashlib
 import importlib
@@ -14,7 +15,6 @@ import os
 import platform
 import random
 import re
-import select
 import shlex
 import shutil
 import struct
@@ -84,6 +84,7 @@ from decorators import (
   parameterized,
   requires_dev_dependency,
   requires_jspi,
+  requires_login_tty,
   requires_native_clang,
   requires_network,
   requires_node,
@@ -332,22 +333,43 @@ class other(RunnerCore):
   def do_other_test(self, testname, cflags=None, **kwargs):
     return self.do_runf_out_file(test_file('other', testname), cflags=cflags, **kwargs)
 
-  def run_on_pty(self, cmd):
+  def run_on_pty(self, cmd, input=None):
     master, slave = os.openpty()
     output = []
     print(cmd)
 
+    if input:
+      assert hasattr(os, 'login_tty'), 'passing input to run_on_pty requires os.login_tty (python 3.11+)'
+      if isinstance(input, str):
+        input = input.encode('utf-8')
+      os.write(master, input)
+
     try:
       with env_modify({'TERM': 'xterm-color'}):
-        proc = subprocess.Popen(cmd, stdout=slave, stderr=slave)
-        while proc.poll() is None:
-          r, _w, _x = select.select([master], [], [], 1)
-          if r:
-            output.append(os.read(master, 1024))
-        return (proc.returncode, b''.join(output))
+        if hasattr(os, 'login_tty'):
+          proc = subprocess.Popen(cmd, preexec_fn=lambda: os.login_tty(slave), close_fds=True)  # ruff: ignore[subprocess-popen-preexec-fn]
+        else:
+          proc = subprocess.Popen(cmd, stdout=slave, stderr=slave, close_fds=True)
+    finally:
+      os.close(slave)
+
+    try:
+      while True:
+        try:
+          data = os.read(master, 1024)
+          if not data:
+            break
+          output.append(data)
+        except OSError as e:
+          # On Linux, once all slave descriptors are closed and all buffered
+          # output has been consumed, reading from master raises EIO (EOF).
+          if e.errno == errno.EIO:
+            break
+          raise
+      proc.wait()
+      return (proc.returncode, b''.join(output))
     finally:
       os.close(master)
-      os.close(slave)
 
   def create_huge_file(self, name, length):
     f = open(name, "wb")
@@ -9701,6 +9723,15 @@ end
     create_file('foo', 'bar')
     self.add_pre_run("console.log(FS.readFile('foo', { encoding: 'utf8' }));")
     self.do_runf('hello_world.c', 'bar', cflags=['-sNODERAWFS', '-sFORCE_FILESYSTEM'])
+
+  @also_with_noderawfs
+  @no_windows('ptys and select are not available on windows')
+  @requires_login_tty
+  def test_getpass(self):
+    self.run_process([EMCC, test_file('unistd/getpass.c'), '-sFORCE_FILESYSTEM'] + self.get_cflags())
+    returncode, output = self.run_on_pty(config.NODE_JS + ['a.out.js'], input='secret\n')
+    self.assertEqual(returncode, 0)
+    self.assertIn(b'done', output)
 
   @disabled('https://github.com/nodejs/node/issues/18265')
   def test_node_code_caching(self):

@@ -123,6 +123,8 @@ requires_native_clang = skip_if_simple('native clang tests are disabled', lambda
 
 needs_make = skip_if('tool not available on windows bots', lambda _: WINDOWS)
 
+requires_login_tty = skip_if_simple('requires os.login_tty (python 3.11+)', lambda _: not hasattr(os, 'login_tty'))
+
 
 def requires_node(func):
   assert callable(func)
