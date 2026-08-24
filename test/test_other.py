@@ -9744,10 +9744,16 @@ end
     # ioctl requires filesystem
     self.do_other_test('test_ioctl.c', cflags=['-sFORCE_FILESYSTEM'])
 
-  # @also_with_noderawfs # NODERAWFS needs to implement the ioctl syscalls, see issue #22264.
   def test_ioctl_termios(self):
     # ioctl requires filesystem
     self.do_other_test('test_ioctl_termios.c', cflags=['-sFORCE_FILESYSTEM'])
+
+  @no_windows('ptys and select are not available on windows')
+  def test_ioctl_termios_noderawfs(self):
+    self.run_process([EMCC, test_file('other/test_ioctl_termios.c'), '-sNODERAWFS', '-sFORCE_FILESYSTEM'])
+    returncode, output = self.run_on_pty(config.NODE_JS + ['a.out.js'])
+    self.assertEqual(returncode, 0)
+    self.assertIn(b'done\r\n', output)
 
   def test_fd_closed(self):
     self.do_other_test('test_fd_closed.cpp')

@@ -5,7 +5,7 @@
  */
 
 addToLibrary({
-  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags', '$NODERAWFS_stream_funcs'],
+  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$TTY', '$mmapAlloc', '$FS_modeStringToFlags', '$NODERAWFS_stream_funcs'],
   $NODERAWFS__postset: `
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error('NODERAWFS is currently only supported on Node.js environment.')
@@ -201,7 +201,9 @@ addToLibrary({
       if (!stream.stream_ops) {
         rtn.shared.refcnt ??= 0;
         rtn.shared.refcnt++;
-        rtn.tty = nodeTTY.isatty(rtn.nfd);
+        if (nodeTTY.isatty(rtn.nfd)) {
+          rtn.tty = { ops: TTY.default_tty_ops };
+        }
       }
       return rtn;
     },
