@@ -258,7 +258,7 @@ var WasiLibrary = {
 #if ASSERTIONS
     assert(buffer);
 #endif
-    if (curr === 0 || curr === {{{ charCode('\n') }}}) {
+    if (!curr || curr === {{{ charCode('\n') }}}) {
       (stream === 1 ? out : err)(UTF8ArrayToString(buffer));
       buffer.length = 0;
     } else {
@@ -383,7 +383,7 @@ var WasiLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
-    if (stream.getdents && offset === 0 && whence === {{{ cDefs.SEEK_SET }}}) stream.getdents = null; // reset readdir state
+    if (stream.getdents && !offset && whence === {{{ cDefs.SEEK_SET }}}) stream.getdents = null; // reset readdir state
     return 0;
 #else
     return {{{ cDefs.ESPIPE }}};

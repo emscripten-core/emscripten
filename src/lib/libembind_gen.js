@@ -311,7 +311,7 @@ var LibraryEmbind = {
         out.push('  value: T;\n}\n');
       }
       out.push(`export type ${this.name} = `);
-      if (this.items.length === 0) {
+      if (!this.items.length) {
         out.push('never/* Empty Enumerator */');
       } else {
         const outItems = [];
@@ -715,7 +715,7 @@ var LibraryEmbind = {
                                             setter,
                                             setterContext) {
     fieldName = AsciiToString(fieldName);
-    const readonly = setter === 0;
+    const readonly = !setter;
     if (!(readonly || getterReturnType === setterArgumentType)) {
       throw new error('Mismatched getter and setter types are not supported.');
     }
@@ -914,6 +914,7 @@ var LibraryEmbind = {
 #endif
   ],
   $emitOutput__postset: () => { addAtPostCtor('emitOutput()'); },
+  $emitOutput__force: true,
   $emitOutput: () => {
     for (const typeId in awaitingDependencies) {
       throwBindingError(`Missing binding for type: '${getTypeName(typeId)}' typeId: ${typeId}`);
@@ -935,7 +936,5 @@ var LibraryEmbind = {
   $setDelayFunction: () => { throw new Error('stub function should not be called'); },
   $PureVirtualError: () => { throw new Error('stub function should not be called'); },
 };
-
-extraLibraryFuncs.push('$emitOutput');
 
 addToLibrary(LibraryEmbind);

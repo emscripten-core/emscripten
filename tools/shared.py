@@ -183,17 +183,23 @@ def run_multiple_processes(commands,
     return [x[1] for x in std_outs]
 
 
-def check_call(cmd, *args, **kw):
-  """Like `run_process` above but treat failures as fatal and exit_with_error."""
+def run_process(cmd, *args, **kw):
+  """Wrapper around utils.run_process used to running compiler sub-processes."""
   print_compiler_stage(cmd)
   if SKIP_SUBPROCS:
-    return 0
+    return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
   try:
     return utils.run_process(cmd, *args, **kw)
-  except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%s)", shlex.join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
     exit_with_error("'%s' failed: %s", shlex.join(cmd), e)
+
+
+def check_call(cmd, *args, **kw):
+  """Like `run_process` above but treat failures as fatal and exit_with_error."""
+  try:
+    return run_process(cmd, *args, **kw)
+  except subprocess.CalledProcessError as e:
+    exit_with_error("'%s' failed (%s)", shlex.join(cmd), returncode_to_str(e.returncode))
 
 
 def exec_process(cmd):
@@ -201,7 +207,7 @@ def exec_process(cmd):
   utils.exec(cmd)
 
 
-def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # ruff: ignore[mutable-argument-default]
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are
@@ -321,17 +327,6 @@ def node_reference_types_flags(nodejs):
     return ['--experimental-wasm-reftypes']
   else:
     return []
-
-
-def node_exception_flags(nodejs):
-  node_version = get_node_version(nodejs)
-  # Legacy exception handling was enabled by default in node v17.
-  if node_version and node_version < (17, 0, 0):
-    return ['--experimental-wasm-eh']
-  # Standard exception handling was supported behind flag in node v22.
-  if node_version and node_version >= (22, 0, 0) and not settings.WASM_LEGACY_EXCEPTIONS:
-    return ['--experimental-wasm-exnref']
-  return []
 
 
 @memoize

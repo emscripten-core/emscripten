@@ -764,7 +764,10 @@ addToLibrary({
     var v4part = '';
     // check if the 10 high-order bytes are all zeros (first 5 words)
     for (i = 0; i < 5; i++) {
-      if (parts[i] !== 0) { hasipv4 = false; break; }
+      if (parts[i]) {
+        hasipv4 = false;
+        break;
+      }
     }
 
     if (hasipv4) {
@@ -777,7 +780,7 @@ addToLibrary({
         return str;
       }
       // IPv4-compatible IPv6 address if 16-bit value (bytes 11 and 12) == 0x0000 (6th word)
-      if (parts[5] === 0) {
+      if (!parts[5]) {
         str = '::';
         // special case IPv6 addresses
         if (v4part === '0.0.0.0') v4part = ''; // any/unspecified address
@@ -791,7 +794,7 @@ addToLibrary({
 
     // first run to find the longest contiguous zero words
     for (word = 0; word < 8; word++) {
-      if (parts[word] === 0) {
+      if (!parts[word]) {
         if (word - lastzero > 1) {
           len = 0;
         }
@@ -807,10 +810,10 @@ addToLibrary({
     for (word = 0; word < 8; word++) {
       if (longest > 1) {
         // compress contiguous zeros - to produce '::'
-        if (parts[word] === 0 && word >= zstart && word < (zstart + longest) ) {
+        if (!parts[word] && word >= zstart && word < (zstart + longest) ) {
           if (word === zstart) {
             str += ':';
-            if (zstart === 0) str += ':'; //leading zeros case
+            if (!zstart) str += ':'; //leading zeros case
           }
           continue;
         }
@@ -822,7 +825,11 @@ addToLibrary({
     return str;
   },
 
-  $readSockaddr__deps: ['$inetNtop4', '$inetNtop6', 'ntohs'],
+  $readSockaddr__deps: ['$inetNtop4', '$inetNtop6', 'ntohs'
+#if NODERAWSOCKETS
+    , '$UTF8ToString'
+#endif
+  ],
   $readSockaddr: (sa, salen) => {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -830,6 +837,26 @@ addToLibrary({
     var addr;
 
     switch (family) {
+#if NODERAWSOCKETS
+      case {{{ cDefs.AF_UNIX }}}: {
+        // sun_path runs from offsetof(sun_path) to salen. An address of only the
+        // family (salen <= offset) is the unnamed/autobind case -> empty path. A
+        // leading NUL marks the Linux abstract namespace; keep the NUL so the
+        // path round-trips and never collides with a filesystem path.
+        var pathStart = sa + {{{ C_STRUCTS.sockaddr_un.sun_path }}};
+        var pathLen = salen - {{{ C_STRUCTS.sockaddr_un.sun_path }}};
+        var path = '';
+        if (pathLen > 0) {
+          if (!HEAPU8[pathStart]) {
+            path = '\0' + UTF8ToString(pathStart + 1, pathLen - 1, /*ignoreNul=*/true);
+          } else {
+            // A pathname address is NUL-terminated; stop at the first NUL.
+            path = UTF8ToString(pathStart, pathLen);
+          }
+        }
+        return { family, addr: path, port: 0 };
+      }
+#endif
       case {{{ cDefs.AF_INET }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in.__size__ }}}) {
           return { errno: {{{ cDefs.EINVAL }}} };
@@ -856,11 +883,44 @@ addToLibrary({
     return { family: family, addr: addr, port: port };
   },
   $writeSockaddr__docs: '/** @param {number=} addrlen */',
-  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', 'htons'],
+  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', '$DNS', 'htons'
+#if NODERAWSOCKETS
+    , '$lengthBytesUTF8', '$stringToUTF8'
+#endif
+  ],
   $writeSockaddr: (sa, family, addr, port, addrlen) => {
     switch (family) {
+#if NODERAWSOCKETS
+      case {{{ cDefs.AF_UNIX }}}: {
+        // addr is the JS path string produced by readSockaddr: a leading '\0'
+        // marks the abstract namespace (its bytes are written verbatim, no NUL
+        // terminator), any other path is written NUL-terminated. An empty path
+        // is the unnamed address (family only).
+        addr ||= '';
+        var abstract = !addr.charCodeAt(0);
+        // Pathname addresses include the trailing NUL in the reported length;
+        // abstract addresses do not; an empty address is family-only (unnamed).
+        var bytes = addr ? lengthBytesUTF8(addr) + (abstract ? 0 : 1) : 0;
+        var total = {{{ C_STRUCTS.sockaddr_un.sun_path }}} + bytes;
+        zeroMemory(sa, total);
+        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_un.sun_family, 'family', 'i16') }}};
+        if (addr) {
+          // stringToUTF8 NUL-terminates and needs room for it, so hand it a
+          // budget one past the path bytes; the terminating NUL lands on the
+          // zeroed byte just past the reported length and is harmless.
+          stringToUTF8(addr, sa + {{{ C_STRUCTS.sockaddr_un.sun_path }}}, bytes + 1);
+        }
+        if (addrlen) {
+          {{{ makeSetValue('addrlen', 0, 'total', 'i32') }}};
+        }
+        break;
+      }
+#endif
       case {{{ cDefs.AF_INET }}}:
-        addr = inetPton4(addr);
+        // The address may still be an unresolved hostname (e.g. a peer name
+        // recorded at connect time); map it to its (possibly fake) IP here so
+        // callers can pass names and IPs alike.
+        addr = inetPton4(DNS.lookup_name(addr));
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
@@ -870,7 +930,7 @@ addToLibrary({
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
         break;
       case {{{ cDefs.AF_INET6 }}}:
-        addr = inetPton6(addr);
+        addr = inetPton6(DNS.lookup_name(addr));
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
@@ -1010,10 +1070,10 @@ addToLibrary({
 
     // If type or proto are set to zero in hints we should really be returning multiple addrinfo values, but for
     // now default to a TCP STREAM socket so we can at least return a sensible addrinfo given NULL hints.
-    if (proto === 0) {
+    if (!proto) {
       proto = {{{ cDefs.IPPROTO_TCP }}};
     }
-    if (type === 0) {
+    if (!type) {
       type = {{{ cDefs.SOCK_STREAM }}};
     }
 
@@ -1024,14 +1084,14 @@ addToLibrary({
         {{{ cDefs.AI_NUMERICSERV }}}|{{{ cDefs.AI_V4MAPPED }}}|{{{ cDefs.AI_ALL }}}|{{{ cDefs.AI_ADDRCONFIG }}})) {
       return {{{ cDefs.EAI_BADFLAGS }}};
     }
-    if (hint !== 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefs.AI_CANONNAME }}}) && !node) {
+    if (hint && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefs.AI_CANONNAME }}}) && !node) {
       return {{{ cDefs.EAI_BADFLAGS }}};
     }
     if (flags & {{{ cDefs.AI_ADDRCONFIG }}}) {
       // TODO
       return {{{ cDefs.EAI_NONAME }}};
     }
-    if (type !== 0 && type !== {{{ cDefs.SOCK_STREAM }}} && type !== {{{ cDefs.SOCK_DGRAM }}}) {
+    if (type && type !== {{{ cDefs.SOCK_STREAM }}} && type !== {{{ cDefs.SOCK_DGRAM }}}) {
       return {{{ cDefs.EAI_SOCKTYPE }}};
     }
     if (family !== {{{ cDefs.AF_UNSPEC }}} && family !== {{{ cDefs.AF_INET }}} && family !== {{{ cDefs.AF_INET6 }}}) {
@@ -1056,7 +1116,7 @@ addToLibrary({
       if (family === {{{ cDefs.AF_UNSPEC }}}) {
         family = {{{ cDefs.AF_INET }}};
       }
-      if ((flags & {{{ cDefs.AI_PASSIVE }}}) === 0) {
+      if (!(flags & {{{ cDefs.AI_PASSIVE }}})) {
         if (family === {{{ cDefs.AF_INET }}}) {
           addr = _htonl({{{ cDefs.INADDR_LOOPBACK }}});
         } else {
@@ -1206,7 +1266,7 @@ addToLibrary({
     // to add extra entries from /etc/protocols if desired - though not sure if that'd actually be useful.
     var list = Protocols.list;
     var map  = Protocols.map;
-    if (list.length === 0) {
+    if (!list.length) {
         var entry = allocprotoent('tcp', 6, ['TCP']);
         list.push(entry);
         map['tcp'] = map['6'] = entry;
@@ -1255,12 +1315,6 @@ addToLibrary({
   // sockets. Note that the implementation assumes all sockets are always
   // nonblocking
   // ==========================================================================
-#if SOCKET_WEBRTC
-  $Sockets__deps: [
-    () => 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n',
-    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'
-  ],
-#endif
   $Sockets: {
     BUFFER_SIZE: 10*1024, // initial size
     MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
@@ -1673,31 +1727,7 @@ addToLibrary({
   $jstoi_q__docs: '/** @suppress {checkTypes} */',
   $jstoi_q: (str) => parseInt(str),
 
-#if LINK_AS_CXX
-  // libunwind
 
-  _Unwind_Backtrace__deps: ['$getCallstack'],
-  _Unwind_Backtrace: (func, arg) => {
-    var trace = getCallstack();
-    var parts = trace.split('\n');
-    for (var i = 0; i < parts.length; i++) {
-      var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
-      if (ret !== 0) return;
-    }
-  },
-
-  _Unwind_GetIPInfo: (context, ipBefore) => abort('Unwind_GetIPInfo'),
-
-  _Unwind_FindEnclosingFunction: (ip) => 0, // we cannot succeed
-
-  _Unwind_RaiseException__deps: ['__cxa_throw'],
-  _Unwind_RaiseException: (ex) => {
-    err('Warning: _Unwind_RaiseException is not correctly implemented');
-    return ___cxa_throw(ex, 0, 0);
-  },
-
-  _Unwind_DeleteException: (ex) => err('TODO: Unwind_DeleteException'),
-#endif
 
   // special runtime support
 
@@ -2307,7 +2337,7 @@ addToLibrary({
     assert(id, 'addRunDependency requires an ID')
     assert(!runDependencyTracking[id]);
     runDependencyTracking[id] = 1;
-    if (runDependencyWatcher === null && globalThis.setInterval) {
+    if (!runDependencyWatcher && globalThis.setInterval) {
       // Check for missing dependencies every few seconds
       runDependencyWatcher = setInterval(() => {
         if (ABORT) {
@@ -2402,7 +2432,12 @@ addToLibrary({
     ATPOSTCTORS.unshift('callRuntimeCallbacks(onPostCtors);');
   },
   $addOnPostCtor__deps: ['$onPostCtors'],
-  $addOnPostCtor: (cb) => onPostCtors.push(cb),
+  $addOnPostCtor: (cb) => {
+#if ASSERTIONS
+    assert(!runtimeInitialized, 'addOnPostCtor called too late: ctors have already run');
+#endif
+    onPostCtors.push(cb);
+  },
   // See ATMAINS in parseTools.mjs for more information.
   $onMains: [],
   $onMains__internal: true,
@@ -2452,7 +2487,7 @@ function autoAddDeps(lib, name) {
 #if LEGACY_RUNTIME
 // Library functions that were previously included as runtime functions are
 // automatically included when `LEGACY_RUNTIME` is set.
-extraLibraryFuncs.push(
+for (const symbol of [
   '$addFunction',
   '$removeFunction',
   '$AsciiToString',
@@ -2479,7 +2514,9 @@ extraLibraryFuncs.push(
   '$stringToUTF8Array',
   '$stringToUTF8',
   '$lengthBytesUTF8',
-);
+]) {
+  addToLibrary({[symbol + '__force']: true}, {allowMissing: true});
+}
 #endif
 
 function wrapSyscallFunction(x, library, isWasi) {

@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# ruff:noqa: F841
-
 import logging
 from dataclasses import dataclass
 
@@ -19,8 +17,8 @@ logger = logging.getLogger('extract_metadata')
 def skip_function_header(module):
   num_local_decls = module.read_uleb()
   while num_local_decls:
-    local_count = module.read_uleb()
-    local_type = module.read_type()
+    _local_count = module.read_uleb()
+    _local_type = module.read_type()
     num_local_decls -= 1
 
 
@@ -55,17 +53,19 @@ def is_orig_main_wrapper(module, function):
 
 
 def get_const_expr_value(expr):
-  assert len(expr) == 2
-  assert expr[1][0] == OpCode.END
-  opcode, immediates = expr[0]
-  match opcode:
-    case OpCode.I32_CONST | OpCode.I64_CONST:
-      assert len(immediates) == 1
-      return immediates[0]
-    case OpCode.GLOBAL_GET:
-      return 0
-    case _:
-      exit_with_error('unexpected opcode in const expr: %s', opcode)
+  assert expr[-1][0] == OpCode.END
+  for inst in expr:
+    opcode, immediates = inst
+    match opcode:
+      case OpCode.I32_CONST | OpCode.I64_CONST:
+        assert len(immediates) == 1
+        return immediates[0]
+      case OpCode.GLOBAL_GET:
+        continue
+      case OpCode.END:
+        return 0
+      case _:
+        exit_with_error('unexpected opcode in const expr: %s', opcode)
 
 
 def get_global_value(globl):
@@ -132,8 +132,8 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
       case OpCode.BR_TABLE:
         count = module.read_uleb()
         for _ in range(count):
-          depth = module.read_uleb()
-        default = module.read_uleb()
+          _depth = module.read_uleb()
+        _default = module.read_uleb()
       case _:
         assert False, "unknown: %s" % opcode
 

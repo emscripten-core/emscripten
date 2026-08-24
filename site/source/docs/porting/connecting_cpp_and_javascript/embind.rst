@@ -1063,9 +1063,6 @@ First consider the JavaScript below, which shows how to use the API:
 
 .. code-block:: javascript
 
-   // Get web audio api context
-   var AudioContext = window.AudioContext || window.webkitAudioContext;
-
    // Got an AudioContext: Create context and OscillatorNode
    var context = new AudioContext();
    var oscillator = context.createOscillator();
@@ -1092,10 +1089,6 @@ The code can be transliterated to C++ using ``val``, as shown below:
 
    int main() {
      val AudioContext = val::global("AudioContext");
-     if (!AudioContext.as<bool>()) {
-       printf("No global AudioContext, trying webkitAudioContext\n");
-       AudioContext = val::global("webkitAudioContext");
-     }
 
      printf("Got an AudioContext\n");
      val context = AudioContext.new_();
@@ -1113,11 +1106,10 @@ The code can be transliterated to C++ using ``val``, as shown below:
    }
 
 First we use :cpp:func:`~emscripten::val::global` to get the symbol for
-the global ``AudioContext`` object (or ``webkitAudioContext`` if that
-does not exist). We then use :cpp:func:`~emscripten::val::new_` to create
-the context, and from this context we can create an ``oscillator``,
-:cpp:func:`~emscripten::val::set` its properties (again using ``val``)
-and then play the tone.
+the global ``AudioContext`` object.  We then use
+:cpp:func:`~emscripten::val::new_` to create the context, and from this context
+we can create an ``oscillator``, :cpp:func:`~emscripten::val::set` its
+properties (again using ``val``) and then play the tone.
 
 The example can be compiled on the Linux/macOS terminal with::
 

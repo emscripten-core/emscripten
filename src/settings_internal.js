@@ -152,8 +152,6 @@ var MINIFY_WASM_IMPORTED_MODULES = false;
 // Whether to minify exports from the Wasm module.
 var MINIFY_WASM_EXPORT_NAMES = true;
 
-// Internal: value of -flto argument (either full or thin)
-var LTO = 0;
 
 // Whether we may be accessing the address 2GB or higher. If so, then we need
 // to interpret incoming i32 pointers as unsigned.

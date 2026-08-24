@@ -8,6 +8,7 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from . import building, shared, utils
+from .cmdline import options
 from .settings import settings
 
 logger = logging.getLogger('minimal_runtime_shell')
@@ -26,21 +27,12 @@ def generate_minimal_runtime_load_statement(target_basename):
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in
   # the template directly)
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
-    if settings.MIN_SAFARI_VERSION < 150000:
-      # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
-      download_wasm = f"WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{target_basename}.wasm')) : binary('{target_basename}.wasm')"
-    else:
-      # WebAssembly.compileStreaming() is unconditionally supported:
-      download_wasm = f"WebAssembly.compileStreaming(fetch('{target_basename}.wasm'))"
+    # WebAssembly.compileStreaming() is unconditionally supported:
+    download_wasm = f"WebAssembly.compileStreaming(fetch('{target_basename}.wasm'))"
   elif settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
-    # Same compatibility story as above for
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-    if settings.MIN_SAFARI_VERSION < 150000:
-      download_wasm = f"!WebAssembly.instantiateStreaming && binary('{target_basename}.wasm')"
-    else:
-      # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm
-      # in the .html file, but leave it to the .js file to download
-      download_wasm = None
+    # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm
+    # in the .html file, but leave it to the .js file to download
+    download_wasm = None
   else:
     download_wasm = f"binary('{target_basename}.wasm')"
 
@@ -168,7 +160,7 @@ def generate_minimal_runtime_load_statement(target_basename):
   return load
 
 
-def generate_minimal_runtime_html(target, options, js_target, target_basename):
+def generate_minimal_runtime_html(target, js_target, target_basename):
   logger.debug('generating HTML for minimal runtime')
   shell = utils.read_file(options.shell_html)
   if settings.SINGLE_FILE:

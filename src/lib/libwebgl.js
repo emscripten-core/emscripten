@@ -406,7 +406,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     // bits are needed to represent x, or, if x was rounded up to next pow2,
     // which index is the single '1' bit at?
     // Then log2ceilLookup[x] returns ceil(log2(x)).
-    log2ceilLookup: (i) => 32 - Math.clz32(i === 0 ? 0 : i - 1),
+    log2ceilLookup: (i) => 32 - Math.clz32(i ? i - 1 : 0),
 
     generateTempBuffers: (quads, context) => {
       var largestIndex = GL.log2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
@@ -3224,7 +3224,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       '__VERSION__': () => source.includes('#version 300') ? 300 : 100
     });
 #if GL_DEBUG
-    dbg(`Shader source after preprocessing: ${source}`;
+    dbg(`Shader source after preprocessing: ${source}`);
 #endif
 #endif // ~GL_EXPLICIT_UNIFORM_LOCATION || GL_EXPLICIT_UNIFORM_BINDING
 
@@ -3253,7 +3253,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GL.shaders[shader].explicitUniformLocations = explicitUniformLocations;
 
 #if GL_DEBUG
-    dbg(`Shader source after removing layout location directives: ${source}`;
+    dbg(`Shader source after removing layout location directives: ${source}`);
     dbg('Explicit uniform locations recorded in the shader:');
     console.dir(explicitUniformLocations);
 #endif
@@ -3314,7 +3314,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,\s*(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
 
 #if GL_DEBUG
-    dbg(`Shader source after removing layout binding directives: ${source}`;
+    dbg(`Shader source after removing layout binding directives: ${source}`);
     dbg('Sampler binding locations recorded in the shader:');
     console.dir(samplerBindings);
     dbg('Uniform binding locations recorded in the shader:');

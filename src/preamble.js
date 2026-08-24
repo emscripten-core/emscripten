@@ -610,7 +610,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 #endif
 #endif // WASM == 2
 
-#if ASSERTIONS
+#if ASSERTIONS && !SINGLE_FILE
     // Warn on some common problems.
     if (isFileURI(binaryFile)) {
       err(`warning: Loading from a file URI (${binaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`);
@@ -680,21 +680,14 @@ async function instantiateAsync(binary, binaryFile, imports) {
   }
 #endif // CROSS_ORIGIN_STORAGE
   if (!binary
-#if MIN_SAFARI_VERSION < 150000
-      // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-      && WebAssembly.instantiateStreaming
-#endif
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
       && !isFileURI(binaryFile)
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
-      // Avoid instantiateStreaming() on Node.js environment for now, as while
-      // Node.js v18.1.0 implements it, it does not have a full fetch()
-      // implementation yet.
-      //
-      // Reference:
-      //   https://github.com/emscripten-core/emscripten/pull/16917
+      // Avoid using instantiateStreaming() on Node.js since the `fetch()` API
+      // does not support `file://` URLs.
+      // See: https://github.com/emscripten-core/emscripten/pull/16917
       && !ENVIRONMENT_IS_NODE
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -714,7 +707,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
       // fall back of instantiateArrayBuffer below
     };
   }
-#endif
+#endif // !SINGLE_FILE
   return instantiateArrayBuffer(binaryFile, imports);
 }
 #endif // WASM_ASYNC_COMPILATION

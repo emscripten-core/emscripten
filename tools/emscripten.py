@@ -446,6 +446,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   report_missing_exports(forwarded_json['librarySymbols'])
 
+  building.extra_js_exports.update(forwarded_json['extraExports'])
+
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   if asm_const_pairs or settings.MAIN_MODULE:
     pre += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
@@ -514,8 +516,6 @@ def finalize_wasm(infile, outfile, js_syms):
   if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.EMIT_NAME_SECTION:
     need_name_section = True
     args.append('-g')
-  if settings.WASM_BIGINT:
-    args.append('--bigint')
   if settings.DYNCALLS:
     # we need to add all dyncalls to the wasm
     modify_wasm = True
@@ -526,19 +526,17 @@ def finalize_wasm(infile, outfile, js_syms):
       args.append('--dyncalls-i64')
       # we need to add some dyncalls to the wasm
       modify_wasm = True
-  if settings.AUTODEBUG:
-    # In AUTODEBUG mode we want to delay all legalization until later.  This is hack
-    # to force wasm-emscripten-finalize not to do any legalization at all.
+  # In AUTODEBUG mode we want to delay all legalization until later.  Here we
+  # pass --bigint to tell wasm-emscripten-finalize not to do any legalization
+  # at this point.
+  if settings.WASM_BIGINT or settings.AUTODEBUG:
     args.append('--bigint')
   else:
-    if settings.LEGALIZE_JS_FFI:
-      # When we dynamically link our JS loader adds functions from wasm modules to
-      # the table. It must add the original versions of them, not legalized ones,
-      # so that indirect calls have the right type, so export those.
-      args += building.js_legalization_pass_flags()
-      modify_wasm = True
-    else:
-      args.append('--no-legalize-javascript-ffi')
+    # When we dynamically link our JS loader adds functions from wasm modules to
+    # the table. It must add the original versions of them, not legalized ones,
+    # so that indirect calls have the right type, so export those.
+    args += building.js_legalization_pass_flags()
+    modify_wasm = True
   if settings.SIDE_MODULE:
     args.append('--side-module')
   if settings.STACK_OVERFLOW_CHECK >= 2:
@@ -648,7 +646,7 @@ def create_tsd_exported_runtime_methods(metadata):
     if name in metadata.library_definitions:
       definition = metadata.library_definitions[name]
       if definition['snippet']:
-        snippet = ' = ' + definition['snippet']
+        snippet = f' = {definition["snippet"]}'
         # Clear the doc so the type is either computed from the snippet or
         # defined by the definition below.
         docs = ''
@@ -821,6 +819,11 @@ def add_standard_wasm_imports(send_items_map):
   if settings.IMPORTED_MEMORY:
     send_items_map['memory'] = 'wasmMemory'
 
+  # This import should come from user code merged into the module with
+  # wasm-merge post-link.
+  if settings.SHARED_WASMGC:
+    send_items_map['_shared_heap_root'] = '__shared_heap_root'
+
   if settings.AUTODEBUG:
     extra_sent_items += [
       'log_execution',
@@ -959,7 +962,7 @@ def install_debug_wrapper(sym):
 
 
 def should_export(sym):
-  return settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
+  return settings.EXPORT_ALL or sym in building.extra_js_exports or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
 
 
 def create_receiving(function_exports, other_exports, library_symbols, aliases):
@@ -981,6 +984,9 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
     receiving.append('import {')
     receiving.append('  ' + ',\n  '.join(exports))
     receiving.append(f"}} from './{settings.WASM_BINARY_FILE}';")
+    alias_exports = building.extra_js_exports.intersection(aliases)
+    if alias_exports:
+      receiving.append(f"export {{ {', '.join(sorted(alias_exports))} }};")
 
     if generate_dyncall_assignment:
       receiving.append('\nfunction assignDynCalls() {')
@@ -1008,25 +1014,29 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
     exports[export.name] = (export, info)
 
   mangled = [asmjs_mangle(s) for s in exports] + list(aliases.keys())
+  declarations = [sym for sym in mangled if js_manipulation.isidentifier(sym)]
   if settings.ASSERTIONS:
     # In debug builds we generate trapping functions in case
     # folks try to call/use a reference that was taken before the
     # wasm module is available.
+    declaration_set = set(declarations)
     for sym in mangled:
       module_export = (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(sym) and settings.MODULARIZE != 'instance'
-      if not js_manipulation.isidentifier(sym) and not module_export:
+      if sym not in declaration_set and not module_export:
         continue
       assignment = f'var {sym}'
       if module_export:
-        if js_manipulation.isidentifier(sym):
+        if sym in declaration_set:
           assignment += f" = Module['{sym}']"
         else:
           assignment = f"Module['{sym}']"
       receiving.append(f"{assignment} = makeInvalidEarlyAccess('{sym}');")
   else:
-    # Declare all exports in a single var statement
-    sep = ',\n  '
-    receiving.append(f'var {sep.join(mangled)};\n')
+    # Declare JavaScript bindings for exports whose names are valid identifiers.
+    # Other WASM exports are accessible through wasmExports or Module.
+    if declarations:
+      sep = ',\n  '
+      receiving.append(f'var {sep.join(declarations)};\n')
 
   if settings.MODULARIZE == 'instance':
     esm_exports = [e for e in mangled if should_export(e)]

@@ -29,7 +29,7 @@ from decorators import no_windows, parameterized, with_env_modify
 
 from tools import building, cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
-from tools.shared import EMCC, config
+from tools.shared import EMCC, EMXX, config
 from tools.utils import delete_dir, delete_file
 
 SANITY_FILE = cache.get_path('sanity.txt')
@@ -419,7 +419,7 @@ fi
     for i in range(3):
       print(i)
       self.clear()
-      output = self.do([EMCC, '-O' + str(i), test_file('hello_libcxx.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0'])
+      output = self.do([EMXX, '-O' + str(i), test_file('hello_libcxx.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0'])
       if i == 0:
         libname = cache.get_lib_name('libc++-debug.a')
       else:
@@ -511,9 +511,9 @@ fi
       for_all_files(path_from_root('system/include'), utils.make_writable)
 
   @parameterized({
-    '': [False, False],
-    'response_files': [True, False],
-    'relative': [False, True],
+    '': (False, False),
+    'response_files': (True, False),
+    'relative': (False, True),
   })
   def test_emcc_cache_flag(self, use_response_files, relative):
     restore_and_set_up()
@@ -584,7 +584,7 @@ WASMER = '~/wasmer'
     cfg_file = os.path.join(config_dir, 'custom_config')
 
     extra_config = '''
-NODE_JS = '"/path/to/node with spaces" --with-arg --option="hello world"'
+NODE_JS = '/path/to/node with spaces'
 CLOSURE_COMPILER = ['/path/to/closure', '--legacy-flag']
 '''
     create_file(cfg_file, get_basic_config() + extra_config, absolute=True)
@@ -594,11 +594,10 @@ CLOSURE_COMPILER = ['/path/to/closure', '--legacy-flag']
         return self.run_process([EMCONFIG, var_name], stdout=PIPE, stderr=PIPE)
 
       proc = get_em_config('NODE_JS')
-      self.assertEqual(proc.stdout.strip(), "['/path/to/node with spaces', '--with-arg', '--option=hello world']")
+      self.assertEqual(proc.stdout.strip(), "['/path/to/node with spaces']")
 
       proc = get_em_config('CLOSURE_COMPILER')
       self.assertEqual(proc.stdout.strip(), "['/path/to/closure', '--legacy-flag']")
-      self.assertContained('Found list-style config entry', proc.stderr)
 
   def test_emcc_ports(self):
     restore_and_set_up()

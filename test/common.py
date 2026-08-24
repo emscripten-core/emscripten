@@ -77,6 +77,7 @@ EMCONFIGURE = exe_path_from_root('emconfigure')
 EMCONFIG = exe_path_from_root('em-config')
 EMRUN = exe_path_from_root('emrun')
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
+WASM_MERGE = os.path.join(building.get_binaryen_bin(), 'wasm-merge')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
 
@@ -603,17 +604,14 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def require_wasm_eh(self):
     if 'EMTEST_SKIP_WASM_EH' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_WASM_EH is set)')
+      self.skipTest('test requires node v24.15 or d8 (and EMTEST_SKIP_WASM_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
 
     if self.is_browser_test():
       self.check_browser_feature('EMTEST_SKIP_WASM_EH', Feature.WASM_EXCEPTIONS, 'test requires Wasm EH')
       return
 
-    if self.try_require_node_version(22):
-      # v25 and up don't require a flag at all
-      if not self.try_require_node_version(25):
-        self.node_args.append('--experimental-wasm-exnref')
+    if self.try_require_node_version(24, 15):
       return
 
     deno = get_deno()
@@ -632,14 +630,11 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.require_engine(v8)
       return
 
-    self.fail('either d8, deno, bun or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
+    self.fail('either d8, deno, bun or node v24.15 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
 
   def require_jspi(self):
     if 'EMTEST_SKIP_JSPI' in os.environ:
       self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
-    # emcc warns about stack switching being experimental, and we build with
-    # warnings-as-errors, so disable that warning
-    self.cflags += ['-Wno-experimental']
     self.set_setting('JSPI')
     if self.is_wasm2js():
       self.skipTest('JSPI is not currently supported for WASM2JS')
@@ -740,11 +735,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.skip_exec = None
     self.flaky = False
     self.cflags = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
-    # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-    # For historical reasons emcc compiles and links as C++ by default.
-    # However we want to run our tests in a more strict manner.  We can
-    # remove this if the issue above is ever fixed.
-    self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
     # Increase the stack trace limit to maximise usefulness of test failure reports.
     # Also, include backtrace for all uncaught exceptions (not just Error).
@@ -899,7 +889,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     def is_ldflag(f):
       return f.startswith(('-l', '-sEXPORT_ES6', '-sGL_TESTING', '-sPROXY_TO_PTHREAD',
                            '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE=',
-                           '--profiling-funcs'))
+                           '--profiling-funcs', '--closure'))
 
     args = self.serialize_settings(compile_only or asm_only) + self.cflags
     if asm_only:
@@ -912,7 +902,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       for i, arg in enumerate(args):
         if arg in {'--pre-js', '--post-js'}:
           args[i] = None
-          args[i + 1] = None # noqa: B909
+          args[i + 1] = None # ruff: ignore[loop-iterator-mutation]
       args = [arg for arg in args if arg is not None]
     return args
 
@@ -1199,7 +1189,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     ensure_dir(ret)
     return ret
 
-  def get_library(self, name, generated_libs, configure=['sh', './configure'],  # noqa
+  def get_library(self, name, generated_libs, configure=['sh', './configure'],  # ruff: ignore[mutable-argument-default]
                   configure_args=None, make=None, make_args=None,
                   env_init=None, cache_name_extra='', native=False,
                   force_rebuild=False):
@@ -1207,6 +1197,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       make = ['make']
     if env_init is None:
       env_init = {}
+    else:
+      env_init = env_init.copy()
     if make_args is None:
       make_args = ['-j', str(utils.get_num_cores())]
 
@@ -1241,8 +1233,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       configure += configure_args
 
     cflags = ' '.join(cflags)
-    env_init.setdefault('CFLAGS', cflags)
-    env_init.setdefault('CXXFLAGS', cflags)
+    # Append library-specific cflags without overwriting caller-provided optimizations
+    env_init['CFLAGS'] = f"{env_init.get('CFLAGS', '')} {cflags}".strip()
+    env_init['CXXFLAGS'] = f"{env_init.get('CXXFLAGS', '')} {cflags}".strip()
     return self.build_library(name, build_dir, generated_libs, configure,
                               make, make_args, cache_name, env_init=env_init, native=native)
 
@@ -1288,7 +1281,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       rtn.stderr = None
     return rtn
 
-  def emcc(self, filename, args=[], **kwargs):  # noqa
+  def emcc(self, filename, args=[], **kwargs):  # ruff: ignore[mutable-argument-default]
     filename = maybe_test_file(filename)
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
     cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args
@@ -1519,7 +1512,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
           raise
     return js_output
 
-  def get_freetype_library(self):
+  def get_freetype_library(self, env_init=None):
     self.cflags += [
       '-Wno-misleading-indentation',
       '-Wno-unused-but-set-variable',
@@ -1531,10 +1524,11 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     ]
     return self.get_library(os.path.join('third_party', 'freetype'),
                             os.path.join('objs', '.libs', 'libfreetype.a'),
+                            env_init=env_init,
                             configure_args=['--disable-shared', '--without-zlib'])
 
   def get_poppler_library(self, env_init=None):
-    freetype = self.get_freetype_library()
+    freetype = self.get_freetype_library(env_init=env_init)
 
     self.cflags += [
       '-I' + test_file('third_party/freetype/include'),

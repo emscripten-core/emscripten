@@ -16,8 +16,11 @@ from subprocess import PIPE
 
 from . import (
   cache,
+  cmdline,
+  colored_logger,
   config,
   diagnostics,
+  feature_matrix,
   js_optimizer,
   response_file,
   shared,
@@ -52,11 +55,13 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 131
+EXPECTED_BINARYEN_VERSION = 132
 
 _is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: set[str] = set()
+# JS library symbols exported via the `__export` decorator.
+extra_js_exports: set[str] = set()
 # A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
 # etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
 # which reads it using `--detect-features`.
@@ -190,7 +195,7 @@ def lld_flags_for_executable(external_symbols):
       not settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
-  if settings.LTO and not settings.EXIT_RUNTIME:
+  if cmdline.options.lto and not settings.EXIT_RUNTIME:
     # The WebAssembly backend can generate new references to `__cxa_atexit` at
     # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
     # included at LTO time.  For other such symbols we exclude them from LTO
@@ -274,6 +279,9 @@ def lld_flags_for_executable(external_symbols):
     if not settings.STACK_FIRST:
       cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
 
+  if feature_matrix.caniuse(feature_matrix.Feature.EXTENDED_CONST):
+    cmd.append('--extra-features=extended-const')
+
   return cmd
 
 
@@ -327,11 +335,6 @@ def lld_flags(args, linker_inputs=None):
   if settings.WASM_EXCEPTIONS:
     args += ['-mllvm', '-wasm-enable-eh']
   if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
-    if settings.WASM_LEGACY_EXCEPTIONS:
-      args += ['-mllvm', '-wasm-use-legacy-eh']
-    else:
-      args += ['-mllvm', '-wasm-use-legacy-eh=0']
-  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     args += ['-mllvm', '-exception-model=wasm']
 
   return args
@@ -348,7 +351,27 @@ def link_lld(args, target, external_symbols=None, linker_inputs=None):
     cmd += lld_flags_for_executable(external_symbols)
   cmd += lld_flags(args, linker_inputs)
   cmd = get_command_with_possible_response_file(cmd)
-  check_call(cmd)
+  if settings.LINK_AS_CXX:
+    check_call(cmd)
+  else:
+    # When not running C++ mode we currently capture the stderr of the linker
+    # so that we can recommend using `em++` when there are libc++ symbols missing.
+    # TODO: Remove this extra complexity one day.
+    if colored_logger.ansi_color_available():
+      # We force color diagnostics from wasm-ld when we know that they are available
+      # in the current TTY.  Without this, the use of stderr=PIPE would cause
+      # wasm-ld to always disable color output.
+      cmd.append('--color-diagnostics=always')
+    try:
+      proc = shared.run_process(cmd, stderr=subprocess.PIPE)
+      if proc.stderr:
+        sys.stderr.write(proc.stderr)
+    except subprocess.CalledProcessError as e:
+      sys.stderr.write(e.stderr)
+      cxx_symbols = ('std::', 'operator new', 'operator delete', 'vtable for', 'typeinfo for', '__cxa_')
+      if any(sym in e.stderr for sym in cxx_symbols):
+        diagnostics.warn("link failed with undefined C++ symbols. Try linking with 'em++' or passing '-sDEFAULT_TO_CXX'")
+      exit_with_error("'%s' failed (%s)", shlex.join(cmd), shared.returncode_to_str(e.returncode))
 
 
 def get_command_with_possible_response_file(cmd):
@@ -493,13 +516,7 @@ def get_closure_compiler():
     return config.CLOSURE_COMPILER
 
   # Otherwise use the one installed via npm
-  cmd = shared.get_npm_cmd('google-closure-compiler')
-  if not WINDOWS:
-    # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
-    # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap
-    # out of memory"
-    cmd.insert(-1, '--max_old_space_size=8192')
-  return cmd
+  return shared.get_npm_cmd('google-closure-compiler')
 
 
 def check_closure_compiler(cmd, args, env, allowed_to_fail):
@@ -524,6 +541,10 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
 
 def get_closure_compiler_and_env(user_args):
   env = shared.env_with_node_in_path()
+  # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
+  # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap
+  # out of memory"
+  env['NODE_OPTIONS'] = '--max_old_space_size=8192'
   closure_cmd = get_closure_compiler()
 
   native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
@@ -813,7 +834,7 @@ def metadce(js_file, wasm_file, debug_info, last):
     return js_file
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
-  required_symbols = user_requested_exports.union(set(settings.SIDE_MODULE_IMPORTS))
+  required_symbols = user_requested_exports.union(extra_js_exports, settings.SIDE_MODULE_IMPORTS)
   for item in graph:
     if 'export' in item:
       export = asmjs_mangle(item['export'])
@@ -1264,11 +1285,6 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
     if settings.ERROR_ON_WASM_CHANGES_AFTER_LINK:
       # emit some extra helpful text for common issues
       extra = ''
-      # a plain -O0 build *almost* doesn't need post-link changes, except for
-      # legalization. show a clear error for those (as the flags the user passed
-      # in are not enough to see what went wrong)
-      if settings.LEGALIZE_JS_FFI:
-        extra += '\nnote: to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
       if settings.OPT_LEVEL > 1:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
       exit_with_error(f'changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: {cmd}{extra}')
@@ -1294,7 +1310,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
   return ret
 
 
-def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
+def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # ruff: ignore[mutable-argument-default]
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 

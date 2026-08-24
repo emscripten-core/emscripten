@@ -1,10 +1,10 @@
 {
-  "a.out.js": 26265,
-  "a.out.js.gz": 11212,
-  "a.out.nodebug.wasm": 17861,
-  "a.out.nodebug.wasm.gz": 9019,
-  "total": 44126,
-  "total_gz": 20231,
+  "a.out.js": 26242,
+  "a.out.js.gz": 11203,
+  "a.out.nodebug.wasm": 17854,
+  "a.out.nodebug.wasm.gz": 9021,
+  "total": 44096,
+  "total_gz": 20224,
   "sent": [
     "__syscall_stat64",
     "emscripten_resize_heap",

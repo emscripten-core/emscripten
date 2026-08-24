@@ -98,7 +98,7 @@ def sync_repo(name, repo_dir, revision, url):
     return
 
   if is_dirty(repo_dir):
-    utils.exit_with_error("Directory for {name} is dirty: '{repo_dir}'")
+    utils.exit_with_error(f"Directory for {name} is dirty: '{repo_dir}'")
 
   if not has_revision(repo_dir, revision):
     print('  Fetching revision')

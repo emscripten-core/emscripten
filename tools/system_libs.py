@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# ruff: noqa: RUF005
+# ruff: file-ignore[collection-literal-concatenation]
 
 import itertools
 import logging
@@ -18,6 +18,7 @@ from glob import iglob
 from time import time
 
 from . import building, cache, diagnostics, shared, utils
+from .cmdline import options
 from .settings import settings
 from .toolchain_profiler import ToolchainProfiler
 from .utils import get_env_bool, read_file
@@ -51,7 +52,7 @@ def files_in_path(path: str, filenames: list[str]):
   return [os.path.join(srcdir, f) for f in filenames]
 
 
-def glob_in_path(path: str, glob_pattern: str, excludes: set[str] = set()): # noqa: B006
+def glob_in_path(path: str, glob_pattern: str, excludes: set[str] = set()): # ruff: ignore[mutable-argument-default]
   srcdir = utils.path_from_root(path)
   files = iglob(os.path.join(srcdir, glob_pattern), recursive=True)
   return sorted(f for f in files if os.path.basename(f) not in excludes)
@@ -61,8 +62,8 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
   flags = ['-g', '-sSTRICT', '-Werror']
-  if settings.LTO and not force_object_files:
-    flags += ['-flto=' + settings.LTO]
+  if options.lto and not force_object_files:
+    flags += ['-flto=' + options.lto]
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
     # Explicitly include `-sMAIN_MODULE` when building system libraries.
     # `-fPIC` alone is not enough to configure trigger the building and
@@ -1643,7 +1644,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       '-std=c++23',
       '-Wno-unused-but-set-variable',
     ]
-  includes = ['system/lib/libcxx/src']
+  includes = ['system/lib/libcxx/src', 'system/lib/libunwind/include']
 
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
@@ -1685,7 +1686,6 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
       'cxa_exception_js_utils.cpp',
-      '__cpp_exception.S',
     ]
     match self.eh_mode:
       case Exceptions.NONE:
@@ -2341,11 +2341,11 @@ class libopenmp(Library):
     'kmp_barrier.cpp', 'kmp_wait_release.cpp', 'kmp_affinity.cpp', 'kmp_dispatch.cpp',
     'kmp_lock.cpp', 'kmp_sched.cpp', 'kmp_collapse.cpp', 'z_Linux_util.cpp',
     'kmp_gsupport.cpp', 'kmp_taskdeps.cpp', 'kmp_cancel.cpp', 'kmp_ftn_cdecl.cpp',
-    'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S', 'kmp_invoke_microtask.cpp',
+    'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S',
   ]
 
 
-def get_libs_to_link(options):
+def get_libs_to_link():
   libs_to_link = []
 
   if options.nostdlib:
@@ -2483,8 +2483,10 @@ def get_libs_to_link(options):
     add_library('libc++')
   if settings.LINK_AS_CXX or sanitize:
     add_library('libc++abi')
-    if settings.WASM_EXCEPTIONS:
-      add_library('libunwind')
+  if settings.WASM_EXCEPTIONS:
+    # libunwind is implemented in JS, and not natively, when Emscripten EH is
+    # used.
+    add_library('libunwind')
 
   if settings.PROXY_POSIX_SOCKETS:
     add_library('libsockets_proxy')
@@ -2512,8 +2514,8 @@ def get_libs_to_link(options):
   return libs_to_link
 
 
-def calculate(options):
-  libs_to_link = get_libs_to_link(options)
+def calculate():
+  libs_to_link = get_libs_to_link()
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we

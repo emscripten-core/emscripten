@@ -266,7 +266,7 @@ addToLibrary({
       },
       close(stream) {
         NODEFS.tryFSOperation(() => {
-          if (stream.nfd && --stream.shared.refcount === 0) {
+          if (stream.nfd && !--stream.shared.refcount) {
             fs.closeSync(stream.nfd);
           }
         });

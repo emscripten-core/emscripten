@@ -5,6 +5,7 @@
 
 import glob
 import hashlib
+import http.client
 import importlib.util
 import logging
 import os
@@ -223,7 +224,7 @@ class Ports:
       maybe_copy(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # ruff: ignore[mutable-argument-default]
     mangled_name = str(Path(output_path).relative_to(Path(cache.get_sysroot(True)) / 'lib'))
     mangled_name = mangled_name.replace(os.sep, '_').replace('.a', '').replace('-emscripten', '')
     build_dir = os.path.join(Ports.get_build_dir(), port_name, mangled_name)
@@ -351,16 +352,20 @@ class Ports:
       # retrieve from remote server
       logger.info(f'retrieving port: {name} from {url}')
 
-      if utils.MACOS:
-        # Use `curl` over `urllib` on macOS to avoid issues with
-        # certificate verification.
-        # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
-        # Unlike on Windows or Linux, curl is guaranteed to always be
-        # available on macOS.
-        data = subprocess.check_output(['curl', '-sSL', url])
-      else:
-        f = urlopen(url)
-        data = f.read()
+      try:
+        if utils.MACOS or os.environ.get('EMCC_USE_CURL'):
+          # Use `curl` over `urllib` on macOS to avoid issues with
+          # certificate verification.
+          # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
+          # Unlike on Windows or Linux, curl is guaranteed to always be
+          # available on macOS.
+          # EMCC_USE_CURL here is purely for testing and undocumented.
+          data = utils.run_process(['curl', '-sSL', url], stdout=subprocess.PIPE, text=False).stdout
+        else:
+          with urlopen(url) as f:
+            data = f.read()
+      except (subprocess.CalledProcessError, OSError, http.client.HTTPException) as e:
+        utils.exit_with_error(f'failed to download port "{name}" from {url}: {e}')
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()

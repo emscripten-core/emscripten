@@ -34,6 +34,7 @@ var LibraryGLEmulation = {
     'glVertexAttribPointer', 'glActiveTexture', '$stringToNewUTF8',
     '$ptrToString', '$getEmscriptenSupportedExtensions',
   ],
+  $GLEmulation__force: true,
   $GLEmulation__postset: `
     // Forward declare GL functions that are overridden by GLEmulation.
     /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawArrays;
@@ -2474,7 +2475,7 @@ var LibraryGLEmulation = {
           this.hasNormal = GLImmediate.enabledClientAttributes[GLImmediate.NORMAL] &&
                            GLImmediate.clientAttributes[GLImmediate.NORMAL].size > 0 &&
                            this.normalLocation >= 0;
-          this.hasColor = (this.colorLocation === 0) || this.colorLocation > 0;
+          this.hasColor = this.colorLocation >= 0;
 
           this.floatType = GLctx.FLOAT; // minor optimization
 
@@ -3941,8 +3942,6 @@ var LibraryGLEmulation = {
   gluOrtho2D__deps: ['glOrtho'],
   gluOrtho2D: (left, right, bottom, top) => _glOrtho(left, right, bottom, top, -1, 1),
 };
-
-extraLibraryFuncs.push('$GLEmulation');
 
 recordGLProcAddressGet(LibraryGLEmulation);
 

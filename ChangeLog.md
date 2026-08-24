@@ -18,8 +18,62 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.4 (in development)
+6.0.8 (in development)
 ----------------------
+- The `JSPI` setting is no longer considered experimental, and the compiler
+  diagnostic warning has been removed. (#27559)
+- Added support for `epoll` (`epoll_create1`/`epoll_ctl`/`epoll_wait`/
+  `epoll_pwait`) on the legacy (non-WASMFS) JS filesystem, including
+  level- and edge-triggered modes, `EPOLLONESHOT`, `EPOLLEXCLUSIVE`,
+  `EPOLLRDHUP`, nesting, and blocking waits under `PROXY_TO_PTHREAD`,
+  `ASYNCIFY`, and `JSPI`. (#27207)
+- The deprecated `LEGALIZE_JS_FFI` setting was completely removed and moved to
+  legacy settings.  This behaviour of lowering away i64 values at the
+  Wasm bounary is still used when `WASM_BIGINT` is disabled.  However
+  disabling of `WASM_BIGINT` itself should only be needed under `-sWASM=0`
+  (where it is automatically disabled). (#27568)
+- The `SOCKET_WEBRTC` setting was removed (#27367)
+- `WASM_BIGINT` was deprecated. BigInt integration is standard and enabled by
+  default across all supported engines; it should now only ever be disabled
+  implicitly when targeting JavaScript via `-sWASM=0`. (#27558)
+
+6.0.7 - 08/17/26
+----------------
+
+- JavaScript library symbols can now use the `__force` and `__export`
+  decorators to control inclusion and export visibility. (#27436)
+- contrib.glfw3 port upgraded to use the latest version of GLFW 3.5.1
+  (#27508)
+- `-fwasm-exceptions` now links the Wasm EH runtime (libunwind and the
+  `__cpp_exception` tag) independently of C++ linking, so Wasm EH objects from
+  non-C++ frontends (e.g. rustc, which links via `emcc`) link without
+  requiring `em++` or `-sDEFAULT_TO_CXX`. (#27496)
+- FreeType was updated to 2.14.3 (#27518)
+- The oldest supported Safari version (`MIN_SAFARI_VERSION`) was raised from
+  14.1 to 15.0, making 15.0 the minimum version that can be targeted. This
+  allows assuming `bulk-memory`, `nontrapping-fptoint`, and `WASM_BIGINT`
+  (`JS_BIGINT_INTEGRATION`) are universally available across all supported
+  engines, and removes legacy JS polyfills and Binaryen lowering passes.
+  (#27542)
+
+6.0.6 - 08/05/26
+----------------
+- `DEFAULT_TO_CXX` is now disabled by default. This means that `em++` is now
+  required when linking C++ programs, matching the behavior of clang and gcc.
+  The old behavior is still available using `-sDEFAULT_TO_CXX`. (#11121)
+- Added example Meson cross compilation files (`wasm32-emscripten.ini` and
+  `wasm64-emscripten.ini`) in `tools/meson/`. (#27478)
+- libcxx and libcxxabi were updated to LLVM 22.1.8. (#27428)
+
+6.0.5 - 07/29/26
+----------------
+- Revert #27397, which changed the way config keys such as NODE_JS were parsed
+  when reading the config file.  This change broke emsdk installations that
+  contained spaces. (#27421)
+- OpenMP was updated to LLVM 22.1.8 (#27437)
+
+6.0.4 - 07/24/26
+----------------
 - The emscripten config file parser can now handle strings that contain
   environment variables (e.g. `$HOME`) and that use the `~/` prefix.  This means
   that it should be possible, in most cases, to avoid the use of python's
@@ -33,6 +87,7 @@ See docs/process.md for more on how version tagging works.
 - Backport fix for musl's qsort (CVE-2026-40200) (#27029)
 - `recvmmsg` and `sendmmsg` are now implemented in terms of `recvmsg` and
   `sendmsg`. (#27395)
+- The `SOCKET_WEBRTC` marked as deprecated (#27371)
 
 6.0.3 - 07/13/26
 ----------------

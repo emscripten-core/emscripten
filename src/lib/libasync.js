@@ -20,6 +20,7 @@ addToLibrary({
   },
 
 #if ASYNCIFY
+  $Asyncify__force: true,
   $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
 #if ASSERTIONS
     '$createNamedFunction',
@@ -232,7 +233,7 @@ addToLibrary({
 #endif
       if (Asyncify.currData &&
           Asyncify.state === Asyncify.State.Unwinding &&
-          Asyncify.exportCallStack.length === 0) {
+          !Asyncify.exportCallStack.length) {
         // We just finished unwinding.
         // Be sure to set the state before calling any other functions to avoid
         // possible infinite recursion here (For example in debug pthread builds
@@ -548,7 +549,7 @@ addToLibrary({
 
       var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
 
-      if (entryPoint !== 0) {
+      if (entryPoint) {
 #if STACK_OVERFLOW_CHECK
         writeStackCookie();
 #endif
@@ -627,7 +628,3 @@ addToLibrary({
   },
 #endif // ASYNCIFY
 });
-
-if (ASYNCIFY) {
-  extraLibraryFuncs.push('$Asyncify');
-}

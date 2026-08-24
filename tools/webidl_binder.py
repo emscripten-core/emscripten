@@ -395,7 +395,7 @@ def type_to_cdec(raw):
   return ret + '*'
 
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer,  # noqa: C901, PLR0912, PLR0915
+def render_function(class_name, func_name, sigs, return_type, non_pointer,  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
                     copy, operator, constructor, is_static, func_scope,
                     call_content=None, const=False, array_attribute=False,
                     bind_to=None):

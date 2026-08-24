@@ -244,6 +244,11 @@ var wasmRawExports;
 #endif
 
 #if MODULARIZE == 'instance'
+#if EMBIND_AOT
+// The embind exports are declared here so that their post-ctor registration
+// precedes any self-initialization below.  See phase_embind_aot in link.py.
+<<< EMBIND_AOT_EXPORTS >>>
+#endif
 // In MODULARIZE=instance mode we delay most of the initialization work until
 // the `init` function is called.
 #if ASSERTIONS

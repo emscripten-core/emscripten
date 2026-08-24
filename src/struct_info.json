@@ -142,6 +142,30 @@
         }
     },
     {
+        "file": "sys/epoll.h",
+        "defines": [
+            "EPOLLIN",
+            "EPOLLOUT",
+            "EPOLLERR",
+            "EPOLLHUP",
+            "EPOLLRDNORM",
+            "EPOLLWRNORM",
+            "EPOLLET",
+            "EPOLLONESHOT",
+            "EPOLLEXCLUSIVE",
+            "EPOLL_CTL_ADD",
+            "EPOLL_CTL_DEL",
+            "EPOLL_CTL_MOD",
+            "EPOLL_CLOEXEC"
+        ],
+        "structs": {
+            "epoll_event": [
+                "events",
+                "data"
+            ]
+        }
+    },
+    {
         "file": "time.h",
         "defines": [
             "CLOCK_REALTIME"
@@ -300,10 +324,20 @@
              "AF_INET",
              "AF_UNSPEC",
              "AF_INET6",
+             "AF_UNIX",
              "SOL_SOCKET",
              "SO_ERROR",
              "SO_REUSEPORT"
         ]
+    },
+    {
+        "file": "sys/un.h",
+        "structs": {
+            "sockaddr_un": [
+                "sun_family",
+                "sun_path"
+            ]
+        }
     },
     {
         "file": "bits/ioctl.h",

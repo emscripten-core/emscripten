@@ -5,6 +5,10 @@
  */
 
 var LibraryFS = {
+#if FORCE_FILESYSTEM
+  // Include FS even when it is not referenced by compiled code.
+  $FS__force: true,
+#endif
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
     '$FS_modeStringToFlags',
     '$FS_fileDataToTypedArray',
@@ -1384,8 +1388,8 @@ FS.staticInit();`;
       // to write to file opened in read-only mode with MAP_PRIVATE flag,
       // as all modifications will be visible only in the memory of
       // the current process.
-      if ((prot & {{{ cDefs.PROT_WRITE }}}) !== 0
-          && (flags & {{{ cDefs.MAP_PRIVATE}}}) === 0
+      if ((prot & {{{ cDefs.PROT_WRITE }}})
+          && !(flags & {{{ cDefs.MAP_PRIVATE}}})
           && (stream.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_RDWR}}}) {
         throw new FS.ErrnoError({{{ cDefs.EACCES }}});
       }
@@ -1487,7 +1491,7 @@ FS.staticInit();`;
       // use a buffer to avoid overhead of individual crypto calls per byte
       var randomBuffer = new Uint8Array(1024), randomLeft = 0;
       var randomByte = () => {
-        if (randomLeft === 0) {
+        if (!randomLeft) {
           randomFill(randomBuffer);
           randomLeft = randomBuffer.byteLength;
         }
@@ -1734,7 +1738,7 @@ FS.staticInit();`;
             } catch (e) {
               throw new FS.ErrnoError({{{ cDefs.EIO }}});
             }
-            if (result === undefined && bytesRead === 0) {
+            if (result === undefined && !bytesRead) {
               throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
             }
             if (result === null || result === undefined) break;

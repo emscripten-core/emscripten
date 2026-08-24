@@ -7,7 +7,7 @@
 coverage[toml]==7.15.0
 mypy==2.3.0
 psutil==7.0.0
-ruff==0.15.21
+ruff==0.16.0
 types-requests==2.32.0.20241016
 unittest-xml-reporting==3.2.0
 deadcode==2.3.1
@@ -22,5 +22,8 @@ sphinx-design==0.6.1
 sphinxcontrib-jquery==4.0
 shibuya==2026.5.19
 
-# Needed by test/test_sockets.py
+# Needed by tests in test_sockets.py
 websockify==0.12.0
+
+# Needed by tests in test_other.py
+meson==1.11.2

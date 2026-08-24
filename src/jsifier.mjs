@@ -30,6 +30,7 @@ import {
   debugLog,
   error,
   errorOccured,
+  extraLibraryFuncs,
   isDecorator,
   isJsOnlySymbol,
   compileTimeContext,
@@ -41,11 +42,9 @@ import {
   localFile,
   timer,
 } from './utility.mjs';
-import {LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
+import {extraExports, LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
 
 const addedLibraryItems = {};
-
-const extraLibraryFuncs = [];
 
 // Experimental feature to check for invalid __deps entries.
 // See `EMCC_CHECK_DEPS` in in the environment to try it out.
@@ -580,9 +579,7 @@ function(${args}) {
     // of argument.
     if (LINK_AS_CXX && !WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
-        error(
-          'DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.',
-        );
+        error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
       }
       if (!(symbol in LibraryManager.library)) {
@@ -700,6 +697,10 @@ function(${args}) {
 
       librarySymbols.push(mangled);
 
+      if (!isStub && LibraryManager.library[symbol + '__export']) {
+        extraExports.add(mangled);
+      }
+
       const original = LibraryManager.library[symbol];
       let snippet = original;
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
@@ -777,9 +778,7 @@ function(${args}) {
         // in libcore.js and libpthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
         if (dep === '$noExitRuntime') {
-          error(
-            'noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS',
-          );
+          error('noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS');
         }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`);
       }
@@ -838,7 +837,7 @@ function(${args}) {
         contentText = `var ${mangled} = ${snippet};`;
       }
 
-      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
+      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled) || extraExports.has(mangled)) && !isStub) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;
@@ -973,6 +972,7 @@ var proxiedFunctionTable = [
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
+          extraExports: Array.from(extraExports),
           nativeAliases,
           warnings: warningOccured(),
           asyncFuncs,

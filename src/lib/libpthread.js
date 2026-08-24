@@ -205,6 +205,12 @@ var LibraryPThread = {
       PThread.pthreads = {};
     },
 
+    clearMailboxAwait: (pthread_ptr) => {
+      if (!waitAsyncPolyfilled) {
+        Atomics.notify(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}});
+      }
+    },
+
     terminateRuntime: () => {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD, 'terminateRuntime() should only be called from the main thread');
@@ -212,12 +218,7 @@ var LibraryPThread = {
       PThread.terminateAllThreads();
       var pthread_ptr = _pthread_self();
       ___set_thread_state(0, 0, 0, 1);
-      if (!waitAsyncPolyfilled) {
-        // Break the waitAsync loop.  Note that checkMailbox will not
-        // re-register since the `___set_thread_state` above causes _pthread_self
-        // to return 0.
-        Atomics.notify(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}});
-      }
+      PThread.clearMailboxAwait(pthread_ptr);
     },
 
     returnWorkerToPool: (worker) => {
@@ -246,6 +247,11 @@ var LibraryPThread = {
         worker.unref();
       }
 #endif
+
+      // Clear any pending waitAsync waiter armed on this thread's struct
+      // BEFORE freeing the memory so that memory recycled by malloc in another
+      // thread will not have a window where a stale async waiter is still active.
+      PThread.clearMailboxAwait(pthread_ptr);
 
       // Finally, free the underlying (and now-unused) pthread structure in
       // linear memory.
@@ -434,6 +440,9 @@ var LibraryPThread = {
 #endif
 #if LOAD_SOURCE_MAP
         wasmSourceMap,
+#endif
+#if SHARED_WASMGC
+        sharedHeapRootVal: wasmExports['_shared_heap_root'].value,
 #endif
 #if MAIN_MODULE
         dynamicLibraries,
@@ -901,7 +910,7 @@ var LibraryPThread = {
     // Synchronously proxy the thread creation to main thread if possible. If we
     // need to transfer ownership of objects, then proxy asynchronously via
     // postMessage.
-    if (ENVIRONMENT_IS_PTHREAD && (transferList.length === 0 || error)) {
+    if (ENVIRONMENT_IS_PTHREAD && (!transferList.length || error)) {
       return pthreadCreateProxied(pthread_ptr, attr, startRoutine, arg);
     }
 
@@ -1229,7 +1238,7 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'dlsyncThreadsAsync() should only be called from the main thread');
-    assert(Object.keys(PThread.outstandingPromises).length === 0);
+    assert(!Object.keys(PThread.outstandingPromises).length);
 #endif
 
     const promises = [];
@@ -1354,7 +1363,20 @@ var LibraryPThread = {
       }
       worker.postMessage({cmd: {{{ CMD_CHECK_MAILBOX }}}});
     }
-  }
+  },
+
+#if SHARED_WASMGC
+  _shared_heap_root__deps: ['$makeSharedHeapRootGlobal'],
+  _shared_heap_root: "makeSharedHeapRootGlobal()",
+  $makeSharedHeapRootGlobal: () => {
+    // Wasm module for acquiring a shared anyref WebAssembly.Global:
+    // (module (global (export "g") (mut (ref null (shared any))) (ref.null (shared any))))
+    var bytes = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 6, 9, 1, 99, 101, 110, 1, 208, 101, 113, 11, 7, 5, 1, 1, 103, 3, 0]);
+    var module = new WebAssembly.Module(bytes);
+    var instance = new WebAssembly.Instance(module, {});
+    return instance.exports.g;
+  },
+#endif // SHARED_WASMGC
 };
 
 autoAddDeps(LibraryPThread, '$PThread');

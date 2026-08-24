@@ -48,7 +48,6 @@ from decorators import (
   also_with_pthreads,
   also_with_standalone_wasm,
   also_with_wasmfs,
-  also_without_bigint,
   can_do_standalone,
   crossplatform,
   disabled,
@@ -398,6 +397,17 @@ def no_wasmfs(note):
       return func(self, *args, **kwargs)
     return decorated
   return decorator
+
+
+def needs_epoll(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if self.get_setting('WASMFS'):
+      self.skipTest('epoll is implemented in the JS (non-WASMFS) syscall layer')
+    return func(self, *args, **kwargs)
+  return decorated
 
 
 def make_no_decorator_for_setting(name):
@@ -936,9 +946,9 @@ class TestCoreBase(RunnerCore):
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   @parameterized({
-    'normal': [],
-    'memvalidate': ['-DEMMALLOC_MEMVALIDATE'],
-    'memvalidate_verbose': ['-DEMMALLOC_MEMVALIDATE', '-DEMMALLOC_VERBOSE', '-DRANDOM_ITERS=130'],
+    'normal': (),
+    'memvalidate': ('-DEMMALLOC_MEMVALIDATE',),
+    'memvalidate_verbose': ('-DEMMALLOC_MEMVALIDATE', '-DEMMALLOC_VERBOSE', '-DRANDOM_ITERS=130'),
   })
   def test_emmalloc(self, *args):
     self.maybe_closure()
@@ -2069,7 +2079,7 @@ int main(int argc, char **argv) {
   @no_wasm2js('test depends on WASM_BIGINT which is not compatible with wasm2js')
   def test_em_js_i64(self):
     expected = 'emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`'
-    self.assert_fail([EMCC, '-Werror', '-sWASM_BIGINT=0', test_file('core/test_em_js_i64.c')], expected)
+    self.assert_fail([EMCC, '-Werror', '-sWASM=0', test_file('core/test_em_js_i64.c')], expected)
     self.do_core_test('test_em_js_i64.c')
 
   def test_em_js_address_taken(self):
@@ -4408,7 +4418,6 @@ caught outer int: 123
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True)
 
   @with_dylink_reversed
-  @also_without_bigint
   def test_dylink_i64_c(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4460,7 +4469,6 @@ res64 - external 64\n''', header='''\
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
     ''', force_c=True)
 
-  @also_without_bigint
   @parameterized({
     '': (False,),
     'rtld_local': (True,),
@@ -5717,7 +5725,6 @@ got: 10
       self.cflags += ['-DWASMFS_NODERAWFS']
     self.do_runf_out_file('dirent/test_readdir.c')
 
-  @also_without_bigint
   def test_readdir_empty(self):
     self.do_runf_out_file('dirent/test_readdir_empty.c')
 
@@ -5771,7 +5778,6 @@ got: 10
       self.skipTest('noderawfs fails here under non-linux')
     self.do_runf_out_file('fcntl/test_fcntl_open.c')
 
-  @also_without_bigint
   def test_fcntl_misc(self):
     if self.get_setting('WASMFS'):
       self.cflags += ['-sFORCE_FILESYSTEM']
@@ -5782,6 +5788,32 @@ got: 10
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     self.do_core_test('test_poll.c')
+
+  @needs_epoll
+  def test_epoll(self):
+    self.do_runf('core/test_epoll.c', 'done\n')
+
+  @needs_epoll
+  def test_epoll_advanced(self):
+    self.do_runf('core/test_epoll_advanced.c', 'done\n')
+
+  @needs_epoll
+  @requires_pthreads
+  def test_epoll_pthread_shared(self):
+    # Two threads block in epoll_wait() on one shared epoll fd: per-edge
+    # exactly-once wakeups under EPOLLET, herd wakeup under level triggering,
+    # EPOLLONESHOT disarm/re-arm delivery across threads, and exactly-once
+    # oneshot delivery over rounds of events against racing harvesters.
+    self.do_runf('core/test_epoll_pthread_shared.c',
+                 'done\n',
+                 cflags=['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  @needs_epoll
+  @requires_node
+  def test_epoll_noderawfs(self):
+    # Regular-file streams under NODERAWFS carry no stream_ops; the readiness
+    # layer must not dereference a missing poll handler (poll/epoll on a file).
+    self.do_runf('core/test_epoll_noderawfs.c', 'done\n', cflags=['-sNODERAWFS'])
 
   @no_wasmfs('st.f_ffree > st.f_files, same issue than in wasmfs.test_fs_nodefs_statvfs. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_statvfs(self):
@@ -5823,7 +5855,6 @@ got: 10
     self.do_runf('core/test_utf8.c', 'done\n')
 
   @with_both_text_decoder
-  @also_without_bigint
   def test_utf8_bench(self):
     self.cflags += ['--embed-file', test_file('test_utf8_bench.txt') + '@/utf8_corpus.txt']
     self.do_runf('test_utf8_bench.c', 'done\n')
@@ -6267,7 +6298,6 @@ Module.onRuntimeInitialized = () => {
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
     self.do_runf_out_file('unistd/symlink_on_nodefs.c', cflags=['-lnodefs.js'])
 
-  @also_without_bigint
   @also_with_nodefs
   def test_unistd_io(self):
     if self.get_setting('WASMFS'):
@@ -6940,7 +6970,7 @@ void* operator new(size_t size) {
     zlib = self.get_zlib_library(use_cmake)
 
     # example.c uses K&R style function declarations
-    self.cflags += ['-Wno-deprecated-non-prototype']
+    self.cflags += ['-Wno-deprecated-non-prototype', '-Wno-unused-command-line-argument']
     self.do_core_test('test_zlib.c', libraries=zlib, includes=[test_file('third_party/zlib')])
 
   @needs_make('make')
@@ -7232,7 +7262,6 @@ void* operator new(size_t size) {
   def test_dyncall_pointers(self, args):
     self.do_core_test('test_dyncall_pointers.c', cflags=args)
 
-  @also_without_bigint
   @no_modularize_instance('uses Module object directly')
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -7667,7 +7696,6 @@ void* operator new(size_t size) {
   def test_embind_negative_constants(self):
     self.do_runf_out_file('embind/test_negative_constants.cpp', cflags=['-lembind'])
 
-  @also_without_bigint
   def test_embind_unsigned(self):
     self.do_runf_out_file('embind/test_unsigned.cpp', cflags=['-lembind'])
 
@@ -7767,18 +7795,13 @@ void* operator new(size_t size) {
     self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', *extra_flags, '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro_noexcept.cpp', 'rejected with: bang from JS promise!\n')
 
-  @parameterized({
-    'emscripten_eh': (['-fexceptions'],),
-    'wasm_eh': (['-fwasm-exceptions'],),
-  })
-  def test_embind_val_coro_catch_cpp_exception(self, extra_flags):
-    if self.is_wasm2js() and '-fwasm-exceptions' in extra_flags:
-      self.skipTest('wasm2js does not support WASM exceptions')
+  @with_all_eh_sjlj
+  def test_embind_val_coro_catch_cpp_exception(self):
     self.set_setting('EXCEPTION_STACK_TRACES') # For debugging
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.catchCppExceptionPromise().then(console.log);
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', *extra_flags, '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'successfully caught!\n')
 
   def test_embind_val_coro_await_in_non_val_coro(self):
@@ -8169,7 +8192,7 @@ void* operator new(size_t size) {
       start_addr_loc = wat.find('0x', call_loc)
       assert start_addr_loc > 0
       start_addr_loc_end = wat.find('\n', start_addr_loc)
-      start_addr = int(wat[start_addr_loc:start_addr_loc_end], 0)
+      start_addr = int(wat[start_addr_loc:start_addr_loc_end].split()[0], 0)
       # the call ends with the drop, which is the last in the stream, at the
       # highest address
       end_addr_loc = wat.rfind('drop', 0, call_loc)
@@ -8178,7 +8201,7 @@ void* operator new(size_t size) {
       assert end_addr_loc > 0
       end_addr_loc_end = wat.find('\n', end_addr_loc)
       assert end_addr_loc_end > 0
-      end_addr = int(wat[end_addr_loc:end_addr_loc_end], 0)
+      end_addr = int(wat[end_addr_loc:end_addr_loc_end].split()[0], 0)
       return (start_addr, end_addr)
 
     # match up the DWARF and the wat
@@ -8210,7 +8233,6 @@ void* operator new(size_t size) {
 
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @no_modularize_instance('assumes .js output filename')
-  @also_without_bigint
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_emscripten_log(self):
     self.cflags += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
@@ -9046,8 +9068,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @asan
   @parameterized({
-    'c': ['test_asan_no_error.c'],
-    'cpp': ['test_asan_no_error.cpp'],
+    'c': ('test_asan_no_error.c',),
+    'cpp': ('test_asan_no_error.cpp',),
   })
   def test_asan_no_error(self, name):
     self.do_runf('core/' + name, 'done\n', cflags=['-fsanitize=address'])
@@ -9662,8 +9684,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_externref.c', libraries=['asm.o'])
 
   @parameterized({
-    '': [False],
-    'dynlink': [True],
+    '': (False,),
+    'dynlink': (True,),
   })
   @requires_node
   @no_wasm2js('wasm2js does not support reference types')
@@ -9676,8 +9698,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_externref_emjs.c', cflags=['-mreference-types'])
 
   @parameterized({
-    '': [False],
-    'dylink': [True],
+    '': (False,),
+    'dylink': (True,),
   })
   @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/25543')
   @no_omit_asm_module_exports('https://github.com/emscripten-core/emscripten/issues/25550')
@@ -9737,6 +9759,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
+  @with_asyncify_and_jspi
+  @needs_epoll
+  def test_epoll_blocking_asyncify(self):
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_epoll_blocking_asyncify.c', 'done\n')
+
   @parameterized({
     '': ([],),
     'pthread': (['-pthread'],),
@@ -9749,7 +9778,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pipe_pollhup(self):
     self.do_runf('core/test_pipe_pollhup.c', 'done\n')
 
-  @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to receive i64 argument in syscalls.
@@ -9953,8 +9981,9 @@ int main() {
     self.assertExists('out.profdata')
     self.assertEqual(expected, self.run_process([LLVM_COV, 'show', 'test_hello_world.wasm', '-instr-profile=out.profdata'], stdout=PIPE).stdout)
 
+
 # Generate tests for everything
-def make_run(name, cflags=None, settings=None, env=None, # noqa
+def make_run(name, cflags=None, settings=None, env=None,
              v8_args=None, node_args=None,
              require_wasm64=False,
              init=None):
@@ -9969,7 +9998,7 @@ def make_run(name, cflags=None, settings=None, env=None, # noqa
     # we need to pass this flag here to avoid warnings from compile-only commands.
     cflags.append('-Wno-unused-command-line-argument')
 
-  TT = type(name, (TestCoreBase,), dict(run_name=name, env=env, __module__=__name__))  # noqa
+  TT = type(name, (TestCoreBase,), dict(run_name=name, env=env, __module__=__name__))  # ruff: ignore[unnecessary-collection-call, undefined-name]
 
   def tearDown(self):
     try:
@@ -10080,7 +10109,6 @@ core2ss = make_run('core2ss', cflags=['-O2'], settings={'STACK_OVERFLOW_CHECK': 
 esm_integration = make_run('esm_integration', init=lambda self: self.setup_esm_integration())
 instance = make_run('instance', cflags=['-Wno-experimental'], settings={'MODULARIZE': 'instance'})
 
-# Add DEFAULT_TO_CXX=0
 strict = make_run('strict', cflags=[], settings={'STRICT': 1})
 strict_js = make_run('strict_js', cflags=[], settings={'STRICT_JS': 1})
 

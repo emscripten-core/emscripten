@@ -163,20 +163,19 @@
       // exports object of the instantiated Module, or an empty dictionary
       // object {} if the instantiation is performed asynchronously, or false
       // if instantiation failed.
-      Module.instantiateWasm = (imports, successCallback) => {
-        console.log('instantiateWasm: instantiating asynchronously');
-        wasm.then((bytes) => {
+      Module.instantiateWasm = async (imports, successCallback) => {
+        try {
+          console.log('instantiateWasm: instantiating asynchronously');
+          const bytes = await wasm;
           console.log('wasm download finished, begin instantiating');
-          var wasmInstantiate = WebAssembly.instantiate(bytes, imports).then((output) => {
-            console.log('wasm instantiation succeeded');
-            Module.testWasmInstantiationSucceeded = 1;
-            successCallback(output.instance);
-          }).catch((e) => {
-            console.log('wasm instantiation failed! ' + e);
-          });
-        });
-        return {}; // Compiling asynchronously, no exports.
-      }
+          const {instance, module} = await WebAssembly.instantiate(bytes, imports);
+          console.log('wasm instantiation succeeded');
+          Module.testWasmInstantiationSucceeded = 1;
+          successCallback(instance, module);
+        } catch (e) {
+          console.log('wasm instantiation failed! ' + e);
+        }
+      };
 
       var script = document.createElement('script');
       script.src = "manual_wasm_instantiate.js";
