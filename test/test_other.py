@@ -12356,11 +12356,11 @@ int main(void) {
   @parameterized({
     '': (['-DUSE_KEEPALIVE'],),
     'minimal': (['-DUSE_KEEPALIVE', '-sMINIMAL_RUNTIME'],),
-    'command_line': (['-sEXPORTED_FUNCTIONS=_g_foo,_main'],),
-    'himem': (['-sEXPORTED_FUNCTIONS=_g_foo,_main', '-sGLOBAL_BASE=2gb', '-sINITIAL_MEMORY=3gb'],),
+    'command_line': (['-sEXPORTED_FUNCTIONS=_g_var,_g_func,__ZN2ns6ns_varE,__Z8cpp_funci,_main'],),
+    'himem': (['-sEXPORTED_FUNCTIONS=_g_var,_g_func,__ZN2ns6ns_varE,__Z8cpp_funci,_main', '-sGLOBAL_BASE=2gb', '-sINITIAL_MEMORY=3gb'],),
   })
   def test_export_global_address(self, args):
-    self.do_other_test('test_export_global_address.c', cflags=args)
+    self.do_other_test('test_export_global_address.cpp', cflags=args)
 
   def test_linker_version(self):
     out = self.run_process([EMCC, '-Wl,--version'], stdout=PIPE).stdout
