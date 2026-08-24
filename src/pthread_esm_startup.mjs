@@ -48,7 +48,12 @@ self.onmessage = async (msg) => {
 
   // Now that we have the wasmMemory we can import the main program
   globalThis.wasmMemory = msg.data.wasmMemory;
+
   const prog = await import('./{{{ TARGET_JS_NAME }}}');
+
+#if !AUTO_INIT
+  await prog.default()
+#endif
 
   // Now that the import is completed the main program will have installed
   // its own `onmessage` handler and replaced our handler.
@@ -56,6 +61,4 @@ self.onmessage = async (msg) => {
   for (const msg of messageQueue) {
     await self.onmessage(msg);
   }
-
-  await prog.default()
 };

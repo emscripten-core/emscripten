@@ -6,8 +6,8 @@ GitHub CI status: [![CircleCI](https://circleci.com/gh/emscripten-core/emscripte
 
 Chromium builder status: [emscripten-releases](https://ci.chromium.org/p/emscripten-releases)
 
-Overview
---------
+
+# Overview
 
 Emscripten compiles C and C++ to [WebAssembly](https://webassembly.org/) using
 [LLVM](https://en.wikipedia.org/wiki/LLVM) and
@@ -26,8 +26,58 @@ While Emscripten mostly focuses on compiling C and C++ using
 compilers (for example, Rust has Emscripten integration, with the
 `wasm32-unknown-emscripten` target).
 
-License
--------
+
+# Getting Started
+
+For detailed instructions and tutorials, visit the [Emscripten Website](https://emscripten.org).
+
+## Installation
+
+There are two primary ways to install Emscripten:
+
+1.  **Using the Emscripten SDK (emsdk) (Recommended)**
+    The easiest way to get started is by using the Emscripten SDK. Follow the instructions on the [downloads page](https://emscripten.org/docs/getting_started/downloads.html) to install it.
+
+2.  **From a Git Checkout (Manual Installation)**
+    If you have cloned the repository from Git, you can install the dependencies manually and then run the bootstrap script:
+    ```bash
+    ./bootstrap.py
+    ```
+    For more details, see the [developer guide](https://emscripten.org/docs/contributing/developers_guide.html).
+
+## Using the compiler
+
+Run `emcc` like you would `gcc` or `clang`:
+
+```bash
+$ emcc hello.c -o hello.js
+$ node hello.js
+Hello, world!
+```
+
+Emscripten will compile your code into a WebAssembly module along with a
+JavaScript file that can load and run it.  You can then run the resulting
+JavaScript in your browser or under [Node.js](https://nodejs.org/) (or
+[Deno](https://deno.com/) or [Bun](https://bun.sh/)).
+
+Emscripten can also generate a sample HTML page that then loads the JavaScript:
+
+```bash
+$ emcc hello.c -o hello.html
+```
+
+You can then serve the generated `hello.html` using the `emrun` tool, or a
+web server of your choosing.
+
+
+# Contributing
+
+For information on how to contribute to the project, see
+[CONTRIBUTING.md](CONTRIBUTING.md) and the [Contributing section on the
+website](https://emscripten.org/docs/contributing/contributing.html).
+
+
+# License
 
 Emscripten is available under 2 licenses, the MIT license and the
 University of Illinois/NCSA Open Source License.

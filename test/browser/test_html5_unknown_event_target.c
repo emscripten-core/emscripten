@@ -32,6 +32,7 @@ int main(int argc, char **argv) {
   assert(emscripten_set_mouseleave_callback("this_dom_element_does_not_exist", 0, 0, mouse_cb) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
   assert(emscripten_set_mouseover_callback("this_dom_element_does_not_exist", 0, 0, mouse_cb) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
   assert(emscripten_set_mouseout_callback("this_dom_element_does_not_exist", 0, 0, mouse_cb) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
+  assert(emscripten_set_contextmenu_callback("this_dom_element_does_not_exist", 0, 0, mouse_cb) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
 
   assert(emscripten_set_wheel_callback("this_dom_element_does_not_exist", 0, 1, wheel_cb) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
 

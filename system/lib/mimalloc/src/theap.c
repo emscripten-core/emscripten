@@ -110,7 +110,8 @@ static bool mi_theap_page_collect(mi_theap_t* theap, mi_page_queue_t* pq, mi_pag
 
 static void mi_theap_merge_stats(mi_theap_t* theap) {
   mi_assert_internal(mi_theap_is_initialized(theap));
-  _mi_stats_merge_into(&_mi_theap_heap(theap)->stats, &theap->stats);
+  mi_heap_t* const heap = _mi_theap_heap(theap);
+  _mi_stats_merge_into(&heap->stats, &theap->stats);
 }
 
 static void mi_theap_collect_ex(mi_theap_t* theap, mi_collect_t collect)
@@ -170,17 +171,28 @@ mi_theap_t* mi_theap_get_default(void) {
   return theap;
 }
 
+mi_theap_t* mi_theap_set_default(mi_theap_t* theap) {
+  mi_theap_t* const previous = mi_theap_get_default();
+  if (mi_theap_is_initialized(theap)) {
+    _mi_theap_default_set(theap);
+  }
+  return previous;
+}
+
 // todo: make order of parameters consistent (but would that break compat with CPython?)
 void _mi_theap_init(mi_theap_t* theap, mi_heap_t* heap, mi_tld_t* tld)
 {
   mi_assert_internal(theap!=NULL);
   mi_assert_internal(heap!=NULL);
+  mi_assert_internal(tld!=NULL);
   mi_memid_t memid = theap->memid;
   _mi_memcpy_aligned(theap, &_mi_theap_empty, sizeof(mi_theap_t));
   theap->memid = memid;
-  theap->refcount = 1;
   theap->tld   = tld;  // avoid reading the thread-local tld during initialization
+  mi_atomic_store_release(&theap->refcount,1);
+  mi_atomic_store_release(&theap->freed,0);
   mi_atomic_store_ptr_relaxed(mi_heap_t,&theap->heap,heap);
+  mi_assert_internal(theap->stats.size == sizeof(mi_stats_t));
   
   _mi_theap_options_init(theap);
   if (theap->tld->is_in_threadpool) {
@@ -195,15 +207,19 @@ void _mi_theap_init(mi_theap_t* theap, mi_heap_t* heap, mi_tld_t* tld)
 
   // push on the thread local theaps list
   mi_theap_t* head = NULL;
+  mi_random_ctx_t head_random;
   mi_lock(&theap->tld->theaps_lock) {
     head = theap->tld->theaps;
     theap->tprev = NULL;
     theap->tnext = head;
-    if (head!=NULL) { head->tprev = theap; }
     theap->tld->theaps = theap;
+    if (head!=NULL) { 
+      head->tprev = theap; 
+      head_random = head->random;
+    }    
   }
 
-  // initialize random
+  // initialize random if heap==NULL
   if (head == NULL) {  // first theap in this thread?
     #if defined(_WIN32) && !defined(MI_SHARED_LIB)
       _mi_random_init_weak(&theap->random);    // prevent allocation failure during bcrypt dll initialization with static linking (issue #1185)
@@ -212,7 +228,7 @@ void _mi_theap_init(mi_theap_t* theap, mi_heap_t* heap, mi_tld_t* tld)
     #endif
   }
   else {
-    _mi_random_split(&head->random, &theap->random);
+    _mi_random_split(&head_random, &theap->random); // &theap->random is used as nonce so it is ok if threads capture the same head->random
   }
   theap->cookie  = _mi_theap_random_next(theap) | 1;
   _mi_theap_guarded_init(theap);
@@ -247,8 +263,7 @@ mi_theap_t* _mi_theap_create(mi_heap_t* heap, mi_tld_t* tld) {
     // theaps associated with a specific arena are allocated in that arena
     // note: takes up at least one slice which is quite wasteful...
     const size_t size = _mi_align_up(sizeof(mi_theap_t),MI_ARENA_MIN_OBJ_SIZE);
-    theap = (mi_theap_t*)_mi_arenas_alloc(heap, size, true, true, heap->exclusive_arena, tld->thread_seq, tld->numa_node, &memid);
-    mi_assert_internal(memid.mem.os.size >= size);
+    theap = (mi_theap_t*)_mi_arenas_alloc(heap, size, true, true, heap->exclusive_arena, tld->thread_seq, tld->numa_node, &memid);    
   }
   if (theap==NULL) {
     _mi_error_message(ENOMEM, "unable to allocate theap meta-data\n");
@@ -280,6 +295,7 @@ static void mi_theap_free_mem(mi_theap_t* theap) {
   }
 }
 
+// we need to reference count theaps due to the _mi_theap_cached thread locals
 void _mi_theap_incref(mi_theap_t* theap) {
   if (theap!=NULL && theap->memid.memkind > MI_MEM_STATIC) {
     mi_atomic_increment_acq_rel(&theap->refcount);
@@ -287,7 +303,7 @@ void _mi_theap_incref(mi_theap_t* theap) {
 }
 
 void _mi_theap_decref(mi_theap_t* theap) {
-  if (theap!=NULL && theap->memid.memkind > MI_MEM_STATIC) {
+  if (theap!=NULL && !mi_memid_needs_no_free(theap->memid)) {
     if (mi_atomic_decrement_acq_rel(&theap->refcount) == 1) {
       mi_theap_free_mem(theap);
     }
@@ -300,13 +316,15 @@ bool _mi_theap_free(mi_theap_t* theap, bool acquire_heap_theaps_lock, bool acqui
   mi_assert(theap != NULL);
   if (theap==NULL) return true;
 
-  mi_heap_t* const heap = mi_atomic_exchange_ptr_acq_rel(mi_heap_t, &theap->heap, NULL);
-  if (heap==NULL) {
+  // ensure only one thread actually frees the theap
+  const size_t freed = mi_atomic_exchange_acq_rel( &theap->freed, 1 );
+  if (freed!=0) {
     // concurrent interaction, retry in an outer loop (as the other thread may be blocked on our lock)
     return false;
   }
   else {
     // merge stats to the owning heap
+    mi_heap_t* const heap = _mi_theap_heap(theap);
     _mi_stats_merge_into(&heap->stats, &theap->stats);
 
     // remove ourselves from the heap theaps list
@@ -322,8 +340,14 @@ bool _mi_theap_free(mi_theap_t* theap, bool acquire_heap_theaps_lock, bool acqui
       if (theap->tnext != NULL) { theap->tnext->tprev = theap->tprev;  }
       if (theap->tprev != NULL) { theap->tprev->tnext = theap->tnext;  }
                           else { mi_assert_internal(theap->tld->theaps == theap); theap->tld->theaps = theap->tnext; }
-      theap->tnext = theap->tprev = NULL;                        
+      theap->tnext = theap->tprev = NULL;           
     }
+
+    // Set heap to NULL only after we are removed from the thread local theaps list since
+    // we may concurrently traverse it to collect (in `init.c:mi_thread_theaps_done`)
+    // (We need to set it to NULL to avoid an ABA problem where the _mi_theap_cached
+    // has a heap address that is reused for a newly allocated heap.)
+    mi_atomic_store_ptr_release(mi_heap_t, &theap->heap, NULL);
     theap->tld = NULL;
     _mi_theap_decref(theap);
     return true;
@@ -662,6 +686,11 @@ bool _mi_theap_area_visit_blocks(const mi_heap_area_t* area, mi_page_t* page, mi
   return true;
 }
 
+bool _mi_page_visit_blocks( mi_page_t* page, mi_block_visit_fun* visitor, void* arg ) {
+  mi_heap_area_t area;
+  _mi_heap_area_init(&area, page);
+  return _mi_theap_area_visit_blocks(&area, page, visitor, arg);
+}
 
 
 // Separate struct to keep `mi_page_t` out of the public interface

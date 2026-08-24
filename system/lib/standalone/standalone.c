@@ -78,7 +78,7 @@ weak int _mmap_js(size_t length,
 }
 
 weak int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
   return -ENOSYS;
 }
 
@@ -349,7 +349,11 @@ weak int _poll_js(void *fds, int nfds, int timeout, void* ctx, void* arg) {
   return -ENOSYS;
 }
 
-weak int __syscall_poll(intptr_t fds, int nfds, int timeout) {
+weak int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
+  return -ENOSYS;
+}
+
+weak int __syscall_poll_nonblocking(struct pollfd *fds, nfds_t nfds) {
   return -ENOSYS;
 }
 
@@ -357,8 +361,8 @@ weak int __syscall_poll(intptr_t fds, int nfds, int timeout) {
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-weak int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
-  const char* resolved_path = (const char*)path;
+weak int __syscall_openat(int dirfd, const char *path, int flags, ...) {
+  const char* resolved_path = path;
   if (!strcmp(resolved_path, "/dev/stdin")) {
     return STDIN_FILENO;
   }
@@ -621,8 +625,8 @@ weak int __syscall_ftruncate64(int fd, off_t length) {
   return 0;
 }
 
-int rmdirat(int dirfd, intptr_t path) {
-  const char* resolved_path = (const char*)path;
+int rmdirat(int dirfd, const char *path) {
+  const char* resolved_path = path;
 
   // Resolve path if fd is AT_FDCWD.
   if (dirfd == AT_FDCWD) {
@@ -647,17 +651,17 @@ int rmdirat(int dirfd, intptr_t path) {
   return 0;
 }
 
-weak int __syscall_rmdir(intptr_t path) {
+weak int __syscall_rmdir(const char *path) {
   return rmdirat(AT_FDCWD, path);
 }
 
-weak int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
+weak int __syscall_unlinkat(int dirfd, const char *path, int flags) {
   // unlinkat with AT_REMOVEDIR flag is acutally rmdir.
   if ((flags & AT_REMOVEDIR) != 0) {
     return rmdirat(dirfd, path);
   }
 
-  const char* resolved_path = (const char*)path;
+  const char* resolved_path = path;
 
   // Resolve path if fd is AT_FDCWD.
   if (dirfd == AT_FDCWD) {
@@ -687,8 +691,8 @@ weak int __syscall_pipe(intptr_t fd) {
   return -ENOSYS;
 }
 
-weak int __syscall_renameat(int olddirfd, intptr_t oldpath, int newdirfd, intptr_t newpath) {
-  const char* oldpathresolved_path = (const char*)oldpath;
+weak int __syscall_renameat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath) {
+  const char* oldpathresolved_path = oldpath;
 
   // Resolve path if fd is AT_FDCWD.
   if (olddirfd == AT_FDCWD) {
@@ -704,7 +708,7 @@ weak int __syscall_renameat(int olddirfd, intptr_t oldpath, int newdirfd, intptr
     oldpathresolved_path = oldpathrelative_path;
   }
 
-  const char* newpathresolved_path = (const char*)newpath;
+  const char* newpathresolved_path = newpath;
 
   // Resolve path if fd is AT_FDCWD.
   if (newdirfd == AT_FDCWD) {
@@ -736,8 +740,8 @@ weak int __syscall_dup3(int fd, int suggestfd, int flags) {
     return -ENOSYS;
 }
 
-weak int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
-  const char* resolved_path = (const char*)path;
+weak int __syscall_faccessat(int dirfd, const char *path, int amode, int flags) {
+  const char* resolved_path = path;
 
   // Resolve path if fd is AT_FDCWD.
   if (dirfd == AT_FDCWD) {
@@ -832,18 +836,18 @@ static void __wasi_filestat_to_stat(const __wasi_filestat_t *in,
   }
 }
 
-weak int __syscall_fstat64(int fd, intptr_t buf) {
+weak int __syscall_fstat64(int fd, struct stat *buf) {
   __wasi_filestat_t internal_stat;
   __wasi_errno_t error = __wasi_fd_filestat_get(fd, &internal_stat);
   if (error != __WASI_ERRNO_SUCCESS) {
     return __wasi_syscall_ret(error);
   }
-  __wasi_filestat_to_stat(&internal_stat, (struct stat *) buf);
+  __wasi_filestat_to_stat(&internal_stat, buf);
   return 0;
 }
 
-weak int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
-  intptr_t dirpointer = dirp;
+weak int __syscall_getdents64(int fd, void *dirp, size_t count) {
+  intptr_t dirpointer = (intptr_t)dirp;
   struct dirent *de;
   de = (void *)(dirpointer);
 
@@ -998,14 +1002,14 @@ weak int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
   return dirent_processed;
 }
 
-int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
+int __syscall_newfstatat(int dirfd, const char *path, struct stat *buf, int flags) {
   // Convert flags to WASI.
   __wasi_lookupflags_t lookup_flags = 0;
   if ((flags & AT_SYMLINK_NOFOLLOW) == 0) {
     lookup_flags |= __WASI_LOOKUPFLAGS_SYMLINK_FOLLOW;
   }
 
-  const char* resolved_path = (const char*)path;
+  const char* resolved_path = path;
 
   // Resolve path if fd is AT_FDCWD.
   if (dirfd == AT_FDCWD) {
@@ -1027,16 +1031,16 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
     return __wasi_syscall_ret(error);
   }
 
-  __wasi_filestat_to_stat(&fsb_cur, (struct stat *) buf);
+  __wasi_filestat_to_stat(&fsb_cur, buf);
 
   return 0;
 }
 
-weak int __syscall_stat64(intptr_t path, intptr_t buf) {
+weak int __syscall_stat64(const char *path, struct stat *buf) {
   return __syscall_newfstatat(AT_FDCWD, path, buf, 0);
 }
 
-weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
+weak int __syscall_lstat64(const char *path, struct stat *buf) {
   return __syscall_newfstatat(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
 }
 
@@ -1044,7 +1048,7 @@ weak int getentropy(void *buffer, size_t length) {
   return __wasi_syscall_ret(__wasi_random_get(buffer, length));
 }
 
-weak int __syscall_getcwd(intptr_t buf, size_t size) {
+weak int __syscall_getcwd(char *buf, size_t size) {
   // Check if buf points to a bad address.
   if (!buf && size > 0) {
     return -EFAULT;
@@ -1066,13 +1070,13 @@ weak int __syscall_getcwd(intptr_t buf, size_t size) {
   }
 
   // Return value is a null-terminated c string.
-  strcpy((char*)buf, res);
+  strcpy(buf, res);
 
   return len;
 }
 
-weak int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
-  const char* resolved_path = (const char*)path;
+weak int __syscall_mkdirat(int dirfd, const char *path, mode_t mode) {
+  const char* resolved_path = path;
 
   // Resolve path if fd is AT_FDCWD.
   if (dirfd == AT_FDCWD) {
@@ -1161,21 +1165,21 @@ void __cxa_throw(void* ptr, void* type, void* destructor) {
 // WasmFS integration. We stub out file preloading and such, that are not
 // expected to work anyhow.
 
-size_t _wasmfs_get_num_preloaded_files() { return 0; }
+int _wasmfs_get_num_preloaded_files() { return 0; }
 
-size_t _wasmfs_get_num_preloaded_dirs() { return 0; }
+int _wasmfs_get_num_preloaded_dirs() { return 0; }
 
-int _wasmfs_get_preloaded_file_size(int index) { return 0; }
+size_t _wasmfs_get_preloaded_file_size(uint32_t index) { return 0; }
 
 int _wasmfs_get_preloaded_file_mode(int index) { return 0; }
 
-void _wasmfs_copy_preloaded_file_data(int index, void* buffer) {}
+void _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* buffer) {}
 
-void _wasmfs_get_preloaded_parent_path(int index, void* buffer) {}
+void _wasmfs_get_preloaded_parent_path(int index, char* buffer) {}
 
-void _wasmfs_get_preloaded_child_path(int index, void* buffer) {}
+void _wasmfs_get_preloaded_child_path(int index, char* buffer) {}
 
-void _wasmfs_get_preloaded_path_name(int index, void* buffer) {}
+void _wasmfs_get_preloaded_path_name(int index, char* buffer) {}
 
 // Import the VM's fd_write under a different name. Then we can interpose in
 // between it and WasmFS's fd_write. That is, libc calls fd_write, which WasmFS

@@ -74,18 +74,32 @@ EMBUILDER = exe_path_from_root('embuilder')
 EMMAKE = exe_path_from_root('emmake')
 EMCMAKE = exe_path_from_root('emcmake')
 EMCONFIGURE = exe_path_from_root('emconfigure')
+EMCONFIG = exe_path_from_root('em-config')
 EMRUN = exe_path_from_root('emrun')
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
 
-assert config.NODE_JS # assert for mypy's benefit
-# By default we run the tests in the same version of node as emscripten itself used.
-if not config.NODE_JS_TEST:
-  config.NODE_JS_TEST = config.NODE_JS
-# The default set of JS_ENGINES contains just node.
-if not config.JS_ENGINES:
-  config.JS_ENGINES = [config.NODE_JS_TEST]
+
+def setup_test_config():
+  assert config.NODE_JS # assert for mypy's benefit
+  # By default we run the tests in the same version of node as emscripten itself used.
+  if not config.NODE_JS_TEST:
+    config.NODE_JS_TEST = config.NODE_JS
+  # The default set of JS_ENGINES contains just node.
+  if not config.JS_ENGINES:
+    config.JS_ENGINES = [config.NODE_JS_TEST]
+  if not config.WASM_ENGINES:
+    config.WASM_ENGINES = []
+
+  config.SPIDERMONKEY_ENGINE = config.listify(config.SPIDERMONKEY_ENGINE)
+  config.NODE_JS_TEST = config.listify(config.NODE_JS_TEST)
+  config.V8_ENGINE = config.listify(config.V8_ENGINE)
+  config.JS_ENGINES = [config.listify(e) for e in config.JS_ENGINES]
+  config.WASM_ENGINES = [config.listify(e) for e in config.WASM_ENGINES]
+
+
+setup_test_config()
 
 
 def errlog(*args):
@@ -332,6 +346,14 @@ def get_deno():
   return get_engine(engine_is_deno)
 
 
+def check_node_version(major, minor=0, revision=0):
+  nodejs = get_nodejs()
+  if not nodejs:
+    return False
+  version = shared.get_node_version(nodejs)
+  return version >= (major, minor, revision)
+
+
 def clean_js_output(output):
   """Cleanup the JS output prior to running verification steps on it.
 
@@ -495,6 +517,17 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         self.skipTest('test requires node v25 and current Node.js version is older than this, with EMTEST_AUTOSKIP being set')
       self.fail('node v25 required to run this test.  Use EMTEST_SKIP_NODE_25 to skip')
 
+  def require_node_26(self):
+    if 'EMTEST_SKIP_NODE_26' in os.environ or 'EMTEST_SKIP_NODE_25' in os.environ:
+      self.skipTest('test requires node v26 and EMTEST_SKIP_NODE_25/EMTEST_SKIP_NODE_26 is set')
+    nodejs = get_nodejs()
+    if not nodejs:
+      self.skipTest('Test requires nodejs to run')
+    if not self.try_require_node_version(26, 0, 0):
+      if utils.get_env_bool('EMTEST_AUTOSKIP'):
+        self.skipTest('test requires node v26 and current Node.js version is older than this, with EMTEST_AUTOSKIP being set')
+      self.fail('node v26 required to run this test.  Use EMTEST_SKIP_NODE_25/EMTEST_SKIP_NODE_26 to skip')
+
   def require_engine(self, engine, force=False):
     logger.debug(f'require_engine: {engine}')
     if not force and self.required_engine and self.required_engine != engine:
@@ -532,14 +565,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.fail('either d8, node >= 24 or deno required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor=0, revision=0):
-    nodejs = get_nodejs()
-    if not nodejs:
-      return False
-    version = shared.get_node_version(nodejs)
-    if version < (major, minor, revision):
+    if not check_node_version(major, minor, revision):
       return False
 
-    self.require_engine(nodejs)
+    self.require_engine(get_nodejs())
     return True
 
   def require_wasm_legacy_eh(self):
@@ -582,7 +611,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       return
 
     if self.try_require_node_version(22):
-      self.node_args.append('--experimental-wasm-exnref')
+      # v25 and up don't require a flag at all
+      if not self.try_require_node_version(25):
+        self.node_args.append('--experimental-wasm-exnref')
       return
 
     deno = get_deno()
@@ -599,7 +630,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
-      self.v8_args.append('--experimental-wasm-exnref')
       return
 
     self.fail('either d8, deno, bun or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
@@ -994,7 +1024,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       engine += ['--unstable-detect-cjs', '--allow-all', '--v8-flags=--expose-gc']
     elif engine_is_v8(engine):
       engine += self.v8_args
-    elif engine == config.SPIDERMONKEY_ENGINE:
+    elif engine_is_spidermonkey(engine):
       engine += self.spidermonkey_args
     return engine
 
@@ -1097,7 +1127,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       fail_message += '\n' + msg
     self.fail(fail_message)
 
-  def assertFileContents(self, filename, contents):
+  def assertFileContents(self, filename, contents, tofile=None):
     if EMTEST_VERBOSE:
       print(f'Comparing results contents of file: {filename}')
 
@@ -1113,7 +1143,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     expected_content = read_file(filename)
     message = "Run with --rebaseline to automatically update expectations"
     self.assertTextDataIdentical(expected_content, contents, message,
-                                 filename, filename + '.new')
+                                 filename, tofile or (filename + '.new'))
+
+  def assertFilesMatch(self, expected, actual):
+    self.assertFileContents(expected, read_file(actual), tofile=actual)
 
   def assertContained(self, values, string, additional_info='', regex=False):
     if callable(string):
@@ -1401,10 +1434,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         cfunc_ptr();
         return 0;
       }
-    ''' % locals(),
-           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', cflags=extra_args)
+    ''', 'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', cflags=extra_args)
 
-  def do_run(self, src, expected_output=None, force_c=False, **kwargs):
+  def do_run(self, src, *args, force_c=False, **kwargs):
     if 'no_build' in kwargs:
       filename = src
     else:
@@ -1413,12 +1445,12 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       else:
         filename = 'src.cpp'
       create_file(filename, src)
-    return self._build_and_run(filename, expected_output, **kwargs)
+    return self._build_and_run(filename, *args, **kwargs)
 
-  def do_runf(self, filename, expected_output=None, **kwargs):
-    return self._build_and_run(filename, expected_output, **kwargs)
+  def do_runf(self, filename, *args, **kwargs):
+    return self._build_and_run(filename, *args, **kwargs)
 
-  def do_run_in_out_file_test(self, srcfile, **kwargs):
+  def do_runf_out_file(self, srcfile, *args, **kwargs):
     srcfile = maybe_test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = utils.unsuffixed(srcfile) + out_suffix + '.out'
@@ -1426,13 +1458,13 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       expected = None
     else:
       expected = read_file(outfile)
-    output = self._build_and_run(srcfile, expected, **kwargs)
+    output = self._build_and_run(srcfile, expected, *args, **kwargs)
     if EMTEST_REBASELINE:
       utils.write_file(outfile, output)
     return output
 
   # Does a complete test - builds, runs, checks output, etc.
-  def _build_and_run(self, filename, expected_output, args=None,
+  def _build_and_run(self, filename, expected_output=None, args=None,
                      no_build=False,
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True,

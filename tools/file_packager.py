@@ -88,9 +88,8 @@ from tools.response_file import substitute_response_files
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
-excluded_patterns: list[str] = []
-new_data_files = []
-walked = []
+# chrome limit is 2MB under 2Gi
+PRELOAD_DATA_FILE_LIMIT = int(os.environ.get('EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB', '2046')) * 1024 * 1024
 
 
 class Options:
@@ -130,6 +129,9 @@ class DataFile:
 
 
 options = Options()
+excluded_patterns: list[str] = []
+new_data_files: list[DataFile] = []
+walked: list[str] = []
 
 
 def err(*args):
@@ -320,13 +322,13 @@ def generate_object_file(data_files):
       # The `.dc.a` directive gives us a pointer (address) sized entry.
       # See https://sourceware.org/binutils/docs/as/Dc.html
       out.write(dedent(f'''\
-        .p2align %s
+        .p2align {align}
         .dc.a {f.c_symbol_name}_name
-        .p2align %s
+        .p2align {align}
         .int32 {os.path.getsize(f.srcpath)}
-        .p2align %s
+        .p2align {align}
         .dc.a {f.c_symbol_name}
-        ''' % (align, align, align)))
+        '''))
 
     ptr_size = 4
     elem_size = (2 * ptr_size) + 4
@@ -545,13 +547,55 @@ def main():  # noqa: C901, PLR0912, PLR0915
   data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
 
+  targets = []
+  if options.obj_output:
+    if not options.has_embedded:
+      diagnostics.error('--obj-output is only applicable when embedding files')
+    targets.append(options.obj_output)
+    generate_object_file(data_files)
+  else:
+    file_chunks = [data_files]
+    file_chunks = [[]]
+    current_size = 0
+    for file_ in data_files:
+      fsize = os.path.getsize(file_.srcpath)
+      if current_size + fsize <= PRELOAD_DATA_FILE_LIMIT:
+        file_chunks[-1].append(file_)
+        current_size += fsize
+      elif fsize > PRELOAD_DATA_FILE_LIMIT:
+        diagnostics.error('cannot package file %s, which is larger than maximum individual file size limit %d MB.' % (file_.srcpath, (PRELOAD_DATA_FILE_LIMIT / (1024 * 1024))))
+        return 1
+      else:
+        current_size = fsize
+        file_chunks.append([file_])
+
+    if len(file_chunks) > 1:
+      diagnostics.warn('warning: file packager is splitting bundle into %d chunks' % len(file_chunks))
+
+    for counter, data_files in enumerate(file_chunks):
+      metadata = {'files': []}
+
+      def construct_data_file_name(base, ext):
+        return f"{base}{f'_{counter}' if counter else ''}{ext}"
+      data_file = construct_data_file_name(*os.path.splitext(data_target))
+      js_file = None
+      if options.jsoutput:
+        js_file = construct_data_file_name(*os.path.splitext(options.jsoutput))
+      targets.append(data_file)
+      ret = generate_preload_js(data_file, data_files, metadata, js_file)
+      if options.force or len(data_files):
+        if not js_file:
+          print(ret)
+        else:
+          # Overwrite the old jsoutput file (if exists) only when its content
+          # differs from the current generated one, otherwise leave the file
+          # untouched preserving its old timestamp
+          targets.append(js_file)
+          if ret != (utils.read_file(js_file) if os.path.isfile(js_file) else ''):
+            utils.write_file(js_file, ret)
+          if options.separate_metadata:
+            utils.write_file(js_file + '.metadata', json.dumps(metadata, separators=(',', ':')))
   if options.depfile:
-    targets = []
-    if options.obj_output:
-      targets.append(options.obj_output)
-    if options.jsoutput:
-      targets.append(data_target)
-      targets.append(options.jsoutput)
     with open(options.depfile, 'w', encoding='utf-8') as f:
       for target in targets:
         if target:
@@ -561,31 +605,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
       for dependency in walked:
         f.write(escape_for_makefile(dependency))
         f.write(' \\\n')
-
-  if options.obj_output:
-    if not options.has_embedded:
-      diagnostics.error('--obj-output is only applicable when embedding files')
-    generate_object_file(data_files)
-  else:
-    metadata = {'files': []}
-
-    ret = generate_preload_js(data_target, data_files, metadata)
-
-    if options.force or data_files:
-      if options.jsoutput is None:
-        print(ret)
-      else:
-        # Overwrite the old jsoutput file (if exists) only when its content
-        # differs from the current generated one, otherwise leave the file
-        # untouched preserving its old timestamp
-        if os.path.isfile(options.jsoutput):
-          old = utils.read_file(options.jsoutput)
-          if old != ret:
-            utils.write_file(options.jsoutput, ret)
-        else:
-          utils.write_file(options.jsoutput, ret)
-        if options.separate_metadata:
-          utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
 
   return 0
 
@@ -598,7 +617,7 @@ def escape_for_makefile(fpath):
   return fpath.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ ')
 
 
-def generate_preload_js(data_target, data_files, metadata):
+def generate_preload_js(data_target, data_files, metadata, js_file):
   # emcc will add this to the output itself, so it is only needed for
   # standalone calls
   if options.from_emcc:
@@ -679,24 +698,13 @@ def generate_preload_js(data_target, data_files, metadata):
         try {
           // canOwn this data in the filesystem, it is a slice into the heap that will never change
           await Module['FS_preloadFile'](name, null, data, true, true, false, true);
-          Module['removeRunDependency'](`fp ${name}`);
         } catch (e) {
           err(`Preloading file ${name} failed`, e);
         }\n'''
   create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
-        Module['FS_createDataFile'](name, null, data, true, true, true);
-        Module['removeRunDependency'](`fp ${name}`);'''
+        Module['FS_createDataFile'](name, null, data, true, true, true);'''
 
   finish_handler = create_preloaded if options.use_preload_plugins else create_data
-
-  if not options.lz4:
-    # Data requests - for getting a block of data out of the big archive - have
-    # a similar API to XHRs
-    code += '''
-    for (var file of metadata['files']) {
-      var name = file['filename']
-      Module['addRunDependency'](`fp ${name}`);
-    }\n'''
 
   catch_handler = ''
   if options.export_es6:
@@ -735,7 +743,7 @@ def generate_preload_js(data_target, data_files, metadata):
       use_data = '''var compressedData = %s;
             compressedData['data'] = byteArray;
             assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with -sLZ4?');
-            Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
+            await Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
             Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if options.use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
 
     if options.export_es6:
@@ -993,7 +1001,7 @@ def generate_preload_js(data_target, data_files, metadata):
         async function preloadFallback(error) {
           console.error(error);
           console.error('falling back to default preload behavior');
-          processPackageData(await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE));
+          await processPackageData(await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE));
         }
 
         try {
@@ -1002,14 +1010,14 @@ def generate_preload_js(data_target, data_files, metadata):
           var useCached = !!pkgMetadata;
           Module['preloadResults'][PACKAGE_NAME] = {fromCache: useCached};
           if (useCached) {
-            processPackageData(await fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, pkgMetadata));
+            await processPackageData(await fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, pkgMetadata));
           } else {
             var packageData = await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
             try {
-              processPackageData(await cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}))
+              await processPackageData(await cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}))
             } catch (error) {
               console.error(error);
-              processPackageData(packageData);
+              await processPackageData(packageData);
             }
           }
         } catch(e) {
@@ -1037,14 +1045,15 @@ def generate_preload_js(data_target, data_files, metadata):
       if (!fetched) {
         fetched = await fetchPromise;
       }
-      processPackageData(fetched);\n'''
+      await processPackageData(fetched);\n'''
 
   ret += '''
     async function runWithFS(Module) {\n'''
   ret += code
   ret += '''
     }
-    if (Module['calledRun']) {
+    // Detect whether the module JS file has already been loaded.
+    if (Module['FS_createPath']) {
       runWithFS(Module)%s;
     } else {
       if (!Module['preRun']) Module['preRun'] = [];
@@ -1077,15 +1086,16 @@ def generate_preload_js(data_target, data_files, metadata):
       throw new Error(`${response.status}: ${response.url}`);
     }
     var json = await response.json();
-    await loadPackage(json);
+    loadPackage(json);
   }
 
-  if (Module['calledRun']) {
+  // Detect whether the module JS file has already been loaded.
+  if (Module['FS_createPath']) {
     runMetaWithFS();
   } else {
     if (!Module['preRun']) Module['preRun'] = [];
     Module['preRun'].push(runMetaWithFS);
-  }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
+  }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(js_file + '.metadata')}
   else:
     ret += '''
     }

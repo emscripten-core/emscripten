@@ -26,7 +26,7 @@
   // In pthread builds this gets defined in libpthread.js
   const CMD_UNCAUGHT_EXN = 8;
 #endif
-  const workerSupportsFutexWait = () => AUDIO_WORKLET ? "!ENVIRONMENT_IS_AUDIO_WORKLET" : '1';
+  const workerSupportsFutexWait = () => AUDIO_WORKLET ? '!ENVIRONMENT_IS_AUDIO_WORKLET' : '1';
   const wasmWorkerJs = `
 #if MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
@@ -63,6 +63,10 @@
 
 addToLibrary({
   $_wasmWorkers: {},
+#if TRUSTED_TYPES
+  // Cached Trusted Types policy for Wasm Worker creation.
+  $_emscriptenWasmWorkerPolicy: null,
+#endif
 
   // Starting up a Wasm Worker is an asynchronous operation, hence if the parent
   // thread performs any postMessage()-based wasm function calls to the
@@ -104,7 +108,7 @@ addToLibrary({
     assert(wwParams.stackSize % {{{ STACK_ALIGN }}} == 0);
 #endif
 #if RUNTIME_DEBUG
-    dbg("wasmWorkerInitializeRuntime wwID:", wwParams.wwID);
+    dbg('wasmWorkerInitializeRuntime wwID:', wwParams.wwID);
 #endif
 
 #if !MINIMAL_RUNTIME && isSymbolNeeded('$noExitRuntime')
@@ -181,7 +185,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #endif
   ) {
   _wasmWorkers[0] = globalThis;
-  addEventListener("message", _wasmWorkerAppendToQueue);
+  addEventListener('message', _wasmWorkerAppendToQueue);
 }`,
   _emscripten_create_wasm_worker: (wwID, stackLowestAddress, stackSize, pthreadPtr) => {
 #if ASSERTIONS
@@ -194,10 +198,8 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #if TRUSTED_TYPES
     // Use Trusted Types compatible wrappers.
     if (globalThis.trustedTypes?.createPolicy) {
-      var p = trustedTypes.createPolicy(
-          'emscripten#workerPolicy1', { createScriptURL: (ignored) => {{{ wasmWorkerJs }}}}
-      );
-      worker = _wasmWorkers[wwID] = new Worker(p.createScriptURL('ignored'), {{{ wasmWorkerOptions }}});
+      _emscriptenWasmWorkerPolicy ??= trustedTypes.createPolicy('emscripten#workerPolicy', { createScriptURL: (url) => url });
+      worker = _wasmWorkers[wwID] = new Worker(_emscriptenWasmWorkerPolicy.createScriptURL({{{ wasmWorkerJs }}}), {{{ wasmWorkerOptions }}});
     } else
 #endif
     worker = _wasmWorkers[wwID] = new Worker({{{ wasmWorkerJs }}}, {{{ wasmWorkerOptions }}});
@@ -232,7 +234,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     }
 #endif
 #if RUNTIME_DEBUG
-    dbg("done _emscripten_create_wasm_worker", wwID)
+    dbg('done _emscripten_create_wasm_worker', wwID)
 #endif
     return true;
   },

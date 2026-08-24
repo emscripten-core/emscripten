@@ -1,3 +1,4 @@
+#preprocess
 var workerResponded = false, workerCallbackId = -1;
 
 (() => {
@@ -43,9 +44,9 @@ var workerResponded = false, workerCallbackId = -1;
     workerResponded = false;
     workerCallbackId = msg.data['callbackId'];
     if (data) {
-      func(buffer, data.length);
+      func({{{ to64('buffer') }}}, data.length);
     } else {
-      func(0, 0);
+      func({{{ to64('0') }}}, 0);
     }
   }
 })();

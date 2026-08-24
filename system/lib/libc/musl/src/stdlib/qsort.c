@@ -34,12 +34,12 @@
 
 typedef int (*cmpfun)(const void *, const void *, void *);
 
+/* returns index of first bit set, excluding the low bit assumed to always
+ * be set, starting from low bit of p[0] up through high bit of p[1] */
 static inline int pntz(size_t p[2]) {
-	int r = ntz(p[0] - 1);
-	if(r != 0 || (r = 8*sizeof(size_t) + ntz(p[1])) != 8*sizeof(size_t)) {
-		return r;
-	}
-	return 0;
+	if (p[0] != 1) return ntz(p[0] - 1);
+    if (p[1]) return 8*sizeof(size_t) + ntz(p[1]);
+    return 0;
 }
 
 static void cycle(size_t width, unsigned char* ar[], int n)
@@ -71,6 +71,7 @@ static inline void shl(size_t p[2], int n)
 		n -= 8 * sizeof(size_t);
 		p[1] = p[0];
 		p[0] = 0;
+	if (!n) return;
 	}
 	p[1] <<= n;
 	p[1] |= p[0] >> (sizeof(size_t) * 8 - n);
@@ -83,16 +84,23 @@ static inline void shr(size_t p[2], int n)
 		n -= 8 * sizeof(size_t);
 		p[0] = p[1];
 		p[1] = 0;
+		if (!n) return;
 	}
 	p[0] >>= n;
 	p[0] |= p[1] << (sizeof(size_t) * 8 - n);
 	p[1] >>= n;
 }
 
+/* power-of-two length for working array so that we can mask indices and
+ * not depend on any invariant of the algorithm for spatial memory safety.
+ * the original size was just 14*sizeof(size_t)+1 */
+#define AR_LEN  (16 * sizeof(size_t))
+#define AR_MASK (AR_LEN - 1)
+
 static void sift(unsigned char *head, size_t width, cmpfun cmp, void *arg, int pshift, size_t lp[])
 {
 	unsigned char *rt, *lf;
-	unsigned char *ar[14 * sizeof(size_t) + 1];
+	unsigned char *ar[AR_LEN];
 	int i = 1;
 
 	ar[0] = head;
@@ -104,16 +112,16 @@ static void sift(unsigned char *head, size_t width, cmpfun cmp, void *arg, int p
 			break;
 		}
 		if(cmp(lf, rt, arg) >= 0) {
-			ar[i++] = lf;
+			ar[i++ & AR_MASK] = lf;
 			head = lf;
 			pshift -= 1;
 		} else {
-			ar[i++] = rt;
+			ar[i++ & AR_MASK] = rt;
 			head = rt;
 			pshift -= 2;
 		}
 	}
-	cycle(width, ar, i);
+	cycle(width, ar, i & AR_MASK);
 }
 
 static void trinkle(unsigned char *head, size_t width, cmpfun cmp, void *arg, size_t pp[2], int pshift, int trusty, size_t lp[])
@@ -121,7 +129,7 @@ static void trinkle(unsigned char *head, size_t width, cmpfun cmp, void *arg, si
 	unsigned char *stepson,
 	              *rt, *lf;
 	size_t p[2];
-	unsigned char *ar[14 * sizeof(size_t) + 1];
+	unsigned char *ar[AR_LEN];
 	int i = 1;
 	int trail;
 
@@ -142,7 +150,7 @@ static void trinkle(unsigned char *head, size_t width, cmpfun cmp, void *arg, si
 			}
 		}
 
-		ar[i++] = stepson;
+		ar[i++ & AR_MASK] = stepson;
 		head = stepson;
 		trail = pntz(p);
 		shr(p, trail);
@@ -150,7 +158,7 @@ static void trinkle(unsigned char *head, size_t width, cmpfun cmp, void *arg, si
 		trusty = 0;
 	}
 	if(!trusty) {
-		cycle(width, ar, i);
+		cycle(width, ar, i & AR_MASK);
 		sift(head, width, cmp, arg, pshift, lp);
 	}
 }

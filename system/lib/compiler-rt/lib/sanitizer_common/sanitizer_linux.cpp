@@ -646,7 +646,7 @@ bool DirExists(const char *path) {
 }
 
 #  if !SANITIZER_NETBSD && !SANITIZER_EMSCRIPTEN
-tid_t GetTid() {
+ThreadID GetTid() {
 #    if SANITIZER_FREEBSD
   long Tid;
   thr_self(&Tid);
@@ -661,7 +661,7 @@ tid_t GetTid() {
 }
 
 #    if !SANITIZER_EMSCRIPTEN
-int TgKill(pid_t pid, tid_t tid, int sig) {
+int TgKill(pid_t pid, ThreadID tid, int sig) {
 #      if SANITIZER_LINUX
   return internal_syscall(SYSCALL(tgkill), pid, tid, sig);
 #      elif SANITIZER_FREEBSD
@@ -1108,7 +1108,7 @@ ThreadLister::ThreadLister(pid_t pid) : buffer_(4096) {
 }
 
 ThreadLister::Result ThreadLister::ListThreads(
-    InternalMmapVector<tid_t> *threads) {
+    InternalMmapVector<ThreadID> *threads) {
   int descriptor = internal_open(task_path_.data(), O_RDONLY | O_DIRECTORY);
   if (internal_iserror(descriptor)) {
     Report("Can't open %s for reading.\n", task_path_.data());
@@ -1163,7 +1163,7 @@ ThreadLister::Result ThreadLister::ListThreads(
   }
 }
 
-const char *ThreadLister::LoadStatus(tid_t tid) {
+const char *ThreadLister::LoadStatus(ThreadID tid) {
   status_path_.clear();
   status_path_.AppendF("%s/%llu/status", task_path_.data(), tid);
   auto cleanup = at_scope_exit([&] {
@@ -1176,7 +1176,7 @@ const char *ThreadLister::LoadStatus(tid_t tid) {
   return buffer_.data();
 }
 
-bool ThreadLister::IsAlive(tid_t tid) {
+bool ThreadLister::IsAlive(ThreadID tid) {
   // /proc/%d/task/%d/status uses same call to detect alive threads as
   // proc_task_readdir. See task_state implementation in Linux.
   static const char kPrefix[] = "\nPPid:";
@@ -1310,7 +1310,7 @@ extern "C" void _emscripten_get_progname(char *buf, int buf_len);
 
 uptr ReadBinaryName(/*out*/ char *buf, uptr buf_len) {
 #  if SANITIZER_HAIKU
-  int32_t cookie = 0;
+  int32 cookie = 0;
   image_info info;
   const char *argv0 = "<UNKNOWN>";
   while (get_next_image_info(B_CURRENT_TEAM, &cookie, &info) == B_OK) {

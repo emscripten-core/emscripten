@@ -1,6 +1,10 @@
 VERSION = $(shell cat emscripten-version.txt | sed s/\"//g)
-DESTDIR ?= ../emscripten-$(VERSION)
+DESTDIR ?= out/emscripten-$(VERSION)
 DISTFILE = emscripten-$(VERSION).tar.bz2
+
+no_default:
+	@echo 'Error: You must specify an explicit make target (e.g. `dist` or `install`)'
+	@exit 1
 
 dist: $(DISTFILE)
 

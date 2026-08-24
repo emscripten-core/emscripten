@@ -167,6 +167,7 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
   set(CMAKE_CXX_COMPILER_ID Clang)
   set(CMAKE_CXX_COMPILER_FRONTEND_VARIANT GNU)
   set(CMAKE_CXX_STANDARD_COMPUTED_DEFAULT 98)
+  set(CMAKE_CXX_STANDARD_LIBRARY libc++)
 
   set(CMAKE_C_PLATFORM_ID "emscripten")
   set(CMAKE_CXX_PLATFORM_ID "emscripten")
@@ -380,3 +381,45 @@ endif()
 # complain about unused CMake variable.
 if (CMAKE_CROSSCOMPILING_EMULATOR)
 endif()
+
+# C++23 stl modules (Ref: https://cmake.org/cmake/help/latest/manual/cmake-cxxmodules.7.html#import-std-support)
+# Opt-in via CMAKE_CXX_MODULE_STD (Ref: https://cmake.org/cmake/help/latest/variable/CMAKE_CXX_MODULE_STD.html)
+if(CMAKE_CXX_MODULE_STD AND CMAKE_CXX_COMPILER_LOADED AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.30 AND NOT CMAKE_CXX_STDLIB_MODULES_JSON)
+  # include guard and auxiliary for _cmake_cxx_import_std
+  set(CMAKE_CXX_STDLIB_MODULES_JSON "${EMSCRIPTEN_SYSROOT}/lib/${CMAKE_LIBRARY_ARCHITECTURE}/${CMAKE_CXX_STANDARD_LIBRARY}.modules.json")
+
+  # Ref: https://cmake.org/cmake/help/latest/variable/CMAKE_CXX_COMPILER_IMPORT_STD.html
+  unset(CMAKE_CXX_COMPILER_IMPORT_STD)
+  foreach(COMPILE_FEATURE IN LISTS CMAKE_CXX_COMPILE_FEATURES)
+    if(COMPILE_FEATURE MATCHES [[cxx_std_([0-9]+)]] AND CMAKE_MATCH_1 GREATER_EQUAL 23 AND CMAKE_MATCH_1 LESS 98)
+      list(APPEND CMAKE_CXX_COMPILER_IMPORT_STD ${CMAKE_MATCH_1})
+    endif()
+  endforeach()
+
+  include(Compiler/Clang-CXX-CXXImportStd)
+  if(COMMAND _cmake_cxx_find_modules_json)
+    # CMake >= 4.3
+    _cmake_cxx_find_modules_json()
+    if(CMAKE_CXX_COMPILER_IMPORT_STD_ERROR_MESSAGE)
+      message(WARNING "${CMAKE_CXX_COMPILER_IMPORT_STD_ERROR_MESSAGE}")
+      unset(CMAKE_CXX_COMPILER_IMPORT_STD)
+    endif()
+  elseif(COMMAND _cmake_cxx_import_std)
+    # CMake 3.30 ... 4.3
+    foreach(STD_VERSION IN LISTS CMAKE_CXX_COMPILER_IMPORT_STD)
+      _cmake_cxx_import_std(${STD_VERSION} eval_code)
+      cmake_language(EVAL CODE "${eval_code}")
+      if(CMAKE_CXX${STD_VERSION}_COMPILER_IMPORT_STD_NOT_FOUND_MESSAGE)
+        message(WARNING "${CMAKE_CXX${STD_VERSION}_COMPILER_IMPORT_STD_NOT_FOUND_MESSAGE}")
+        list(REMOVE_ITEM CMAKE_CXX_COMPILER_IMPORT_STD ${STD_VERSION})
+      endif()
+    endforeach()
+  endif()
+endif()
+
+set_property(SOURCE
+  "${EMSCRIPTEN_SYSROOT}/share/libc++/v1/std.cppm"
+  "${EMSCRIPTEN_SYSROOT}/share/libc++/v1/std.compat.cppm"
+  PROPERTY
+    COMPILE_FLAGS -Wno-reserved-module-identifier
+)

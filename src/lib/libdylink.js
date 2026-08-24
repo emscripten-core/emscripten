@@ -54,7 +54,7 @@ var LibraryDylink = {
   $replaceORIGIN__deps: ['$PATH'],
   $replaceORIGIN: (parentLibName, rpath) => {
     if (rpath.startsWith('$ORIGIN')) {
-      // TODO: what to do if we only know the relative path of the file? It will return "." here.
+      // TODO: what to do if we only know the relative path of the file? It will return '.' here.
       var origin = PATH.dirname(parentLibName);
       return rpath.replace('$ORIGIN', origin);
     }
@@ -101,7 +101,7 @@ var LibraryDylink = {
       // In theory this if statement could be done on
       // creating the function, but I just added this to
       // save wasting code space as it only happens on exception.
-      if (sig[0] == "j") return 0n;
+      if (sig[0] == 'j') return 0n;
 #endif
     }
   },
@@ -265,7 +265,7 @@ var LibraryDylink = {
 #endif
     }
 #if DYLINK_DEBUG
-    dbg("done updateGOT");
+    dbg('done updateGOT');
 #endif
   },
 
@@ -401,7 +401,7 @@ var LibraryDylink = {
   $getMemory: (size) => {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
-    dbg("getMemory: " + size + " runtimeInitialized=" + runtimeInitialized);
+    dbg(`getMemory: ${size} runtimeInitialized=${runtimeInitialized}`);
 #endif
     if (runtimeInitialized) {
       // Currently we don't support freeing of static data when modules are
@@ -702,7 +702,7 @@ var LibraryDylink = {
         assert({{{ from64Expr('wasmTable.length') }}} == tableBase, `unexpected table size while loading ${libName}: ${wasmTable.length}`);
 #endif
 #if DYLINK_DEBUG
-        dbg("loadModule: growing table by: " + metadata.tableSize);
+        dbg(`loadModule: growing table by: ${metadata.tableSize}`);
 #endif
         wasmTable.grow({{{ toIndexType('metadata.tableSize') }}});
       }
@@ -834,7 +834,7 @@ var LibraryDylink = {
             if (!body.includes(argName)) break;
             args.push(argName);
           }
-          args = args.join(',');
+          args = args.join();
           var func = `(${args}) => { ${body} };`;
 #if DYLINK_DEBUG
           dbg('adding new EM_ASM constant at:', ptrToString(start));
@@ -990,7 +990,7 @@ var LibraryDylink = {
       dbg(`setDylinkStackLimits for '${name}'`);
 #endif
       var lib = LDSO.loadedLibsByName[name];
-      lib.exports['__set_stack_limits']?.({{{ to64("stackTop") }}}, {{{ to64("stackMax") }}});
+      lib.exports['__set_stack_limits']?.({{{ to64('stackTop') }}}, {{{ to64('stackMax') }}});
     }
   },
 #endif
@@ -1078,7 +1078,7 @@ var LibraryDylink = {
   //
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
-  // Once a library becomes "global" or "nodelete", it cannot be removed or unloaded.
+  // Once a library becomes 'global' or 'nodelete', it cannot be removed or unloaded.
   $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule',
                               '$mergeLibSymbols', '$newDSO',
                               '$asyncLoad',
@@ -1122,7 +1122,7 @@ var LibraryDylink = {
         dso.global = true;
         mergeLibSymbols(dso.exports, libName)
       }
-      // same for "nodelete"
+      // same for 'nodelete'
       if (flags.nodelete && dso.refcount !== Infinity) {
         dso.refcount = Infinity;
       }
@@ -1219,7 +1219,7 @@ var LibraryDylink = {
 
     if (flags.loadAsync) {
 #if DYLINK_DEBUG
-      dbg("loadDynamicLibrary: done (async)");
+      dbg('loadDynamicLibrary: done (async)');
 #endif
       return getExports().then((exports) => {
         moduleLoaded(exports);
@@ -1229,13 +1229,13 @@ var LibraryDylink = {
 
     moduleLoaded(getExports());
 #if DYLINK_DEBUG
-    dbg("loadDynamicLibrary: done");
+    dbg('loadDynamicLibrary: done');
 #endif
     return true;
   },
 
   $loadDylibs__internal: true,
-  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols', '$addRunDependency', '$removeRunDependency'],
+  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $loadDylibs: async () => {
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
@@ -1248,7 +1248,6 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('loadDylibs:', dynamicLibraries);
 #endif
-    addRunDependency('loadDylibs');
 
     // Load binaries asynchronously
     for (var lib of dynamicLibraries) {
@@ -1260,7 +1259,6 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('loadDylibs done!');
 #endif
-    removeRunDependency('loadDylibs');
   },
 
   // void* dlopen(const char* filename, int flags);
@@ -1336,7 +1334,7 @@ var LibraryDylink = {
 
   _dlsym_catchup_js: (handle, symbolIndex) => {
 #if DYLINK_DEBUG
-    dbg("_dlsym_catchup: handle=" + ptrToString(handle) + " symbolIndex=" + symbolIndex);
+    dbg(`_dlsym_catchup: handle=${ptrToString(handle)} symbolIndex=${symbolIndex}`);
 #endif
     var lib = LDSO.loadedLibsByHandle[handle];
     var symDict = lib.exports;

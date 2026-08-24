@@ -220,6 +220,36 @@ var MAYBE_CLOSURE_COMPILER = false;
 // in ports using settings.CLOSURE_ARGS
 var CLOSURE_ARGS = [];
 
+var EXTRA_INCOMING_JS_API = [
+  'fetchSettings',
+  'logReadFiles',
+  'loadSplitModule',
+  'onMalloc',
+  'onRealloc',
+  'onFree',
+  'onSbrkGrow',
+  'onCOSCacheHit',
+  'onCOSCacheMiss',
+  'onCOSStore',
+  'GL_MAX_TEXTURE_IMAGE_UNITS',
+  'SDL_canPlayWithWebAudio',
+  'SDL_numSimultaneouslyQueuedBuffers',
+  'freePreloadedMediaOnUse',
+  'preinitializedWebGLContext',
+  'keyboardListeningElement',
+  'doNotCaptureKeyboard',
+  'extraStackTrace',
+  'preloadPlugins',
+  'preMainLoop',
+  'postMainLoop',
+  'forcedAspectRatio',
+  'mainScriptUrlOrBlob',
+  'onFullScreen',
+  'INITIAL_MEMORY',
+  'wasmMemory',
+  'wasmBinary'
+];
+
 // A copy of the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
 var ALL_INCOMING_MODULE_JS_API = [];
@@ -264,6 +294,12 @@ var OUTPUT_FORMAT = '';
 var LOAD_SOURCE_MAP = false;
 
 var ALIASES = [];
+
+// Internal setting for passing EM_JS and EM_ASM function code snippets to JSifier so that
+// implicit heap dependencies (e.g. HEAP8, HEAP32) can be scanned and included automatically
+// without needing to search for them in Python.
+// This could be removed if/when we require explicit heap dependencies (via EM_JS_DEPS).
+var EM_JS_SNIPPETS = [];
 
 // List of public setting names (Used by RETAIN_COMPILER_SETTINGS)
 var PUBLIC_SETTINGS = [];

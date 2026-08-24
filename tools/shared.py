@@ -63,7 +63,7 @@ SKIP_SUBPROCS = False
 # in debian/stable (bookworm).  We need at least v18.3.0 because we make
 # use of util.parseArg which was added in v18.3.0.
 MINIMUM_NODE_VERSION = (18, 3, 0)
-EXPECTED_LLVM_VERSION = 23
+EXPECTED_LLVM_VERSION = 24
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -582,10 +582,10 @@ def is_internal_global(name):
   return name in internal_start_stop_symbols or name.startswith(internal_prefixes)
 
 
-def is_user_export(name):
+def is_internal_symbol(name):
   if is_internal_global(name):
-    return False
-  return name not in {'__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'} and not name.startswith(('dynCall_', 'orig$'))
+    return True
+  return name in {'__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'} or name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):
@@ -598,9 +598,10 @@ def asmjs_mangle(name):
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':
     name = 'main'
-  if is_user_export(name):
-    return '_' + name
-  return name
+  if is_internal_symbol(name):
+    # Don't mangle "internal" symbols.
+    return name
+  return '_' + name
 
 
 def do_replace(input_, pattern, replacement):

@@ -61,7 +61,7 @@ process.env['EMCC_BUILD_DIR'] = process.cwd();
 // In case compiler.mjs is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.
 if (!ALL_INCOMING_MODULE_JS_API.size) {
-  ALL_INCOMING_MODULE_JS_API = INCOMING_MODULE_JS_API;
+  ALL_INCOMING_MODULE_JS_API = new Set([...INCOMING_MODULE_JS_API, ...EXTRA_INCOMING_JS_API]);
 }
 if (symbolsOnly) {
   INCLUDE_FULL_LIBRARY = 1;

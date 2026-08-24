@@ -74,8 +74,6 @@
       var spinnerElement = document.getElementById('spinner');
 
       var Module = {
-        preRun: [],
-        postRun: [],
         print: (() => {
           var element = document.getElementById('output');
           if (element) element.value = ''; // clear browser cache
@@ -94,7 +92,7 @@
           };
         })(),
         printErr: (...args) => {
-          var text = args.join(' '); 
+          var text = args.join(' ');
           if (0) { // XXX disabled for safety typeof dump == 'function') {
             dump(text + '\n'); // fast, straight to the real console
           } else {
@@ -170,11 +168,6 @@
         wasm.then((bytes) => {
           console.log('wasm download finished, begin instantiating');
           var wasmInstantiate = WebAssembly.instantiate(bytes, imports).then((output) => {
-            // When overriding instantiateWasm, in asan builds, we also need
-            // to take care of creating the WasmOffsetConverter
-            if (typeof WasmOffsetConverter != "undefined") {
-              wasmOffsetConverter = new WasmOffsetConverter(bytes, output.module);
-            }
             console.log('wasm instantiation succeeded');
             Module.testWasmInstantiationSucceeded = 1;
             successCallback(output.instance);

@@ -96,7 +96,7 @@
         }
       };
       setStatus('Downloading...');
-      window.onerror = (event) => {
+      window.onerror = window.onunhandledrejection = () => {
         // TODO: do not warn on ok events like simulating an infinite loop or exitStatus
         setStatus('Exception thrown, see JavaScript console');
         spinnerElement.style.display = 'none';

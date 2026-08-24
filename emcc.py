@@ -29,6 +29,7 @@ import sys
 import tarfile
 from dataclasses import dataclass
 from enum import Enum, auto, unique
+from subprocess import PIPE
 
 # This assert needs to happen early, before any too-recent python syntax is used.
 # In particular it needs to happen before we import any python file that uses the
@@ -83,6 +84,19 @@ LINK_ONLY_FLAGS = {
     '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins',
+}
+
+PASSTHROUGH_FLAGS = {
+  '-print-resource-dir',
+  '--print-resource-dir',
+  '-dumpmachine',
+  '-print-target-triple',
+  '--print-target-triple',
+}
+
+PASSTHROUGH_PREFIXES = {
+  '-print-prog-name',
+  '--print-prog-name',
 }
 
 
@@ -172,6 +186,15 @@ def create_reproduce_file(name, args):
       reproduce_file.add(rsp_name, os.path.join(root, 'response.txt'))
 
 
+def get_clang_resource_dir(args):
+  resource_dir = [a for a in args if a.startswith(('-resource-dir=', '--resource-dir='))]
+  if resource_dir:
+    return resource_dir[-1].split('=')[1]
+  else:
+    output = utils.run_process([shared.CLANG_CC, '-print-resource-dir'], stdout=PIPE).stdout
+    return output.strip()
+
+
 @ToolchainProfiler.profile()
 def main(args):
   if shared.run_via_emxx:
@@ -232,6 +255,12 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if not shared.SKIP_SUBPROCS:
     shared.check_sanity()
 
+  # For internal consistency, ensure we don't attempt to read or write any link time
+  # settings until we reach the linking phase.
+  settings.limit_settings(COMPILE_TIME_SETTINGS)
+
+  phase_setup(state)
+
   # Begin early-exit flag handling.
 
   if '--version' in args:
@@ -247,33 +276,35 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(utils.EMSCRIPTEN_VERSION)
     return 0
 
-  if '-dumpmachine' in args or '-print-target-triple' in args or '--print-target-triple' in args:
-    print(shared.get_llvm_target())
-    return 0
-
+  # Sadly we cannot rely on PASSTHROUGH_FLAGS for -print-search-dirs or -print-libgcc-file-name
+  # because there is no way to tell clang today about our custom library paths.
+  # TODO: Teach clang about emscripten's library layout so we can remove this code.
   if '-print-search-dirs' in args or '--print-search-dirs' in args:
     print(f'programs: ={config.LLVM_ROOT}')
-    print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
+    resource_dir = get_clang_resource_dir(args)
+    libdir = cache.get_lib_dir(absolute=True)
+    print(f'libraries: ={resource_dir}{os.pathsep}{libdir}')
     return 0
 
   if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
     settings.limit_settings(None)
-    compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
-    print(compiler_rt.get_path(absolute=True))
+    clang_rt = system_libs.Library.get_usable_variations()['libclang_rt.builtins']
+    print(clang_rt.get_path(absolute=True))
     return 0
 
   print_file_name = [a for a in args if a.startswith(('-print-file-name=', '--print-file-name='))]
   if print_file_name:
     libname = print_file_name[-1].split('=')[1]
+    resource_dir = get_clang_resource_dir(args)
     system_libpath = cache.get_lib_dir(absolute=True)
-    fullpath = os.path.join(system_libpath, libname)
-    if os.path.isfile(fullpath):
-      print(fullpath)
+    for dirname in (resource_dir, system_libpath):
+      fullpath = os.path.join(dirname, libname)
+      if os.path.isfile(fullpath):
+        print(fullpath)
+        break
     else:
       print(libname)
     return 0
-
-  # End early-exit flag handling
 
   if 'EMMAKEN_NO_SDK' in os.environ:
     exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
@@ -288,14 +319,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if 'EMCC_REPRODUCE' in os.environ:
     options.reproduce = os.environ['EMCC_REPRODUCE']
 
-  # For internal consistency, ensure we don't attempt to read or write any link time
-  # settings until we reach the linking phase.
-  settings.limit_settings(COMPILE_TIME_SETTINGS)
-
-  phase_setup(state)
-
-  if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
-    shared.exec_process([clang, *compile.get_cflags(tuple(args)), *args])
+  if any(a in PASSTHROUGH_FLAGS for a in args) or any(a.startswith(p) for p in PASSTHROUGH_PREFIXES for a in args):
+    # For several -print-xxx-name flags we just defer to clang rather than
+    # trying to re-implement the logic.
+    shared.exec_process([clang, *compile.get_cflags(tuple(args)), *newargs])
     assert False, 'exec_process should not return'
 
   if '--cflags' in args:
@@ -304,6 +331,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     cflags = compile.get_cflags(x for x in args if x != '--cflags')
     print(shlex.join(cflags))
     return 0
+
+  # End early-exit flag handling
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -578,7 +607,7 @@ def phase_compile_inputs(options, state, newargs):
       # Default to assuming the inputs are object files and pass them to the linker
       pass
 
-  return [f.value for f in linker_args]
+  return linker_args
 
 
 if __name__ == '__main__':

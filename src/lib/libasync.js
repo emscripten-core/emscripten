@@ -525,7 +525,7 @@ addToLibrary({
           var fiber = Fibers.nextFiber;
           Fibers.nextFiber = 0;
 #if ASYNCIFY_DEBUG >= 2
-          dbg("ASYNCIFY/FIBER: trampoline jump into fiber", fiber, new Error().stack);
+          dbg('ASYNCIFY/FIBER: trampoline jump into fiber', fiber, new Error().stack);
 #endif
           Fibers.finishContextSwitch(fiber);
         } while (Fibers.nextFiber);
@@ -574,7 +574,7 @@ addToLibrary({
     },
   },
 
-  emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers", '$stackSave'],
+  emscripten_fiber_swap__deps: ['$Asyncify', '$Fibers', '$stackSave'],
   emscripten_fiber_swap__async: true,
   emscripten_fiber_swap: (oldFiber, newFiber) => {
     if (ABORT) return;

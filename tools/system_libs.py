@@ -947,8 +947,8 @@ class AsanInstrumentedLibrary(Library):
 
 
 # Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
-class libcompiler_rt(MTLibrary, SjLjLibrary):
-  name = 'libcompiler_rt'
+class libclang_rt_builtins(MTLibrary, SjLjLibrary):
+  name = 'libclang_rt.builtins'
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
@@ -1039,6 +1039,13 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   ]
 
   def get_files(self):
+    # Overlay mode doesn't support mbstate_t which is used by these sources.
+    mbstate_t_excludes = {
+        'wcrtomb.cpp', 'mbrtowc.cpp', 'mbrlen.cpp', 'mbsinit.cpp',
+        'mbsnrtowcs.cpp', 'mbsrtowcs.cpp', 'wcsnrtombs.cpp', 'wcsrtombs.cpp',
+        'mblen.cpp', 'mbtowc.cpp', 'wctomb.cpp', 'mbstowcs.cpp', 'wcstombs.cpp',
+    }
+
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/complex', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp', excludes={'memset.cpp', 'memcpy.cpp'} if self.is_asan else set())
@@ -1046,8 +1053,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
-    # Overlay mode doesn't support mbstate_t which is used by these wchar sources.
-    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes={'wcrtomb.cpp', 'mbrtowc.cpp', 'wctomb.cpp', 'mbtowc.cpp'})
+    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes=mbstate_t_excludes)
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes={'at_quick_exit.cpp',
@@ -1055,7 +1061,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
                                                                                 'atexit.cpp',
                                                                                 'exit.cpp',
                                                                                 '_Exit.cpp',
-                                                                                'getenv.cpp'})
+                                                                                'getenv.cpp'} | mbstate_t_excludes)
     files += glob_in_path('system/lib/llvm-libc/src/math/generic', '**/*.cpp', excludes={'atan2l.cpp', 'exp_utils.cpp'})
     files += glob_in_path('system/lib/llvm-libc/src/__support/StringUtil', '**/*.cpp')
     return files
@@ -1338,7 +1344,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',
-        filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c', 'wait4.c', 'wait3.c'])
+        filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c', 'wait4.c', 'wait3.c', 'epoll.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/malloc',
@@ -2137,8 +2143,8 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
-  name = 'libubsan_minimal_rt'
+class libclang_rt_ubsan_minimal(CompilerRTLibrary, MTLibrary):
+  name = 'libclang_rt.ubsan_minimal'
   never_force = True
 
   includes = ['system/lib/compiler-rt/lib']
@@ -2146,8 +2152,8 @@ class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
   src_files = ['ubsan_minimal_handlers.cpp']
 
 
-class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
-  name = 'libsanitizer_common_rt'
+class libclang_rt_sanitizer_common(CompilerRTLibrary, MTLibrary):
+  name = 'libclang_rt.sanitizer_common'
   includes = ['system/lib/compiler-rt/lib',
               'system/lib/libc']
   never_force = True
@@ -2172,8 +2178,8 @@ class SanitizerLibrary(CompilerRTLibrary, MTLibrary):
   src_glob = '*.cpp'
 
 
-class libubsan_rt(SanitizerLibrary):
-  name = 'libubsan_rt'
+class libclang_rt_ubsan(SanitizerLibrary):
+  name = 'libclang_rt.ubsan'
 
   includes = ['system/lib/libc']
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
@@ -2181,15 +2187,15 @@ class libubsan_rt(SanitizerLibrary):
   src_glob_exclude = {'ubsan_diag_standalone.cpp'}
 
 
-class liblsan_common_rt(SanitizerLibrary):
-  name = 'liblsan_common_rt'
+class libclang_rt_lsan_common(SanitizerLibrary):
+  name = 'libclang_rt.lsan_common'
 
   src_dir = 'system/lib/compiler-rt/lib/lsan'
   src_glob = 'lsan_common*.cpp'
 
 
-class liblsan_rt(SanitizerLibrary):
-  name = 'liblsan_rt'
+class libclang_rt_lsan(SanitizerLibrary):
+  name = 'libclang_rt.lsan'
 
   includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/lsan'
@@ -2197,8 +2203,8 @@ class liblsan_rt(SanitizerLibrary):
                       'lsan_common_emscripten.cpp'}
 
 
-class libasan_rt(SanitizerLibrary):
-  name = 'libasan_rt'
+class libclang_rt_asan(SanitizerLibrary):
+  name = 'libclang_rt.asan'
 
   includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/asan'
@@ -2252,7 +2258,7 @@ class libstandalonewasm(MuslInternalLibrary, MTLibrary):
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
-      is_pure=settings.PURE_WASI or settings.GROWABLE_ARRAYBUFFERS,
+      is_pure=settings.PURE_WASI or settings.GROWABLE_ARRAYBUFFERS == 2,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
       **kwargs,
     )
@@ -2302,6 +2308,41 @@ class libstubs(DebugLibrary):
   src_dir = 'system/lib/libc'
   includes = ['system/lib/libc/musl/src/include']
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
+
+
+class libopenmp(Library):
+  name = 'libopenmp'
+  includes = [
+    'system/lib/openmp/src',
+    'system/lib/openmp/src/i18n',
+    'system/lib/openmp/src/thirdparty/ittnotify',
+    'system/lib/openmp/prebuilt',
+  ]
+  # This needs to come from the flags. If it does not, llvm won't add proper magic symbols
+  never_force = True
+  cflags = [
+    '-O3', '-DNDEBUG', '-pthread',
+    '-D_GNU_SOURCE', '-U_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_NO_ASSERTIONS',
+    '-fno-exceptions', '-fno-rtti',
+    '-Wall', '-Wformat-pedantic',
+    '-Wimplicit-fallthrough', '-Wsign-compare',
+    '-Wno-covered-switch-default',
+    '-Wno-frame-address', '-Wno-strict-aliasing', '-Wno-switch',
+    '-Wno-uninitialized', '-Wno-return-type-c-linkage', '-Wno-cast-qual',
+    '-Wno-int-to-void-pointer-cast', '-Wno-#warnings', '-Wno-unused-function',
+    '-Wno-sign-compare', '-Wno-comment', '-Wno-unused-variable', '-Wno-unused-but-set-global',
+  ]
+  src_dir = 'system/lib/openmp/src'
+  src_files = [
+    'kmp_alloc.cpp', 'kmp_atomic.cpp', 'kmp_csupport.cpp', 'kmp_debug.cpp',
+    'kmp_itt.cpp', 'kmp_environment.cpp', 'kmp_error.cpp', 'kmp_global.cpp',
+    'kmp_i18n.cpp', 'kmp_io.cpp', 'kmp_runtime.cpp', 'kmp_settings.cpp',
+    'kmp_str.cpp', 'kmp_tasking.cpp', 'kmp_threadprivate.cpp', 'kmp_utility.cpp',
+    'kmp_barrier.cpp', 'kmp_wait_release.cpp', 'kmp_affinity.cpp', 'kmp_dispatch.cpp',
+    'kmp_lock.cpp', 'kmp_sched.cpp', 'kmp_collapse.cpp', 'z_Linux_util.cpp',
+    'kmp_gsupport.cpp', 'kmp_taskdeps.cpp', 'kmp_cancel.cpp', 'kmp_ftn_cdecl.cpp',
+    'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S', 'kmp_invoke_microtask.cpp',
+  ]
 
 
 def get_libs_to_link(options):
@@ -2380,25 +2421,25 @@ def get_libs_to_link(options):
 
   def add_sanitizer_libs():
     if settings.USE_ASAN:
-      force_include.append('libasan_rt')
-      add_library('libasan_rt')
+      force_include.append('libclang_rt.asan')
+      add_library('libclang_rt.asan')
     elif settings.USE_LSAN:
-      force_include.append('liblsan_rt')
-      add_library('liblsan_rt')
+      force_include.append('libclang_rt.lsan')
+      add_library('libclang_rt.lsan')
 
     if settings.UBSAN_RUNTIME == 1:
-      add_library('libubsan_minimal_rt')
+      add_library('libclang_rt.ubsan_minimal')
     elif settings.UBSAN_RUNTIME == 2:
-      add_library('libubsan_rt')
+      add_library('libclang_rt.ubsan')
 
     if settings.USE_LSAN or settings.USE_ASAN:
-      add_library('liblsan_common_rt')
+      add_library('libclang_rt.lsan_common')
 
     if sanitize:
-      add_library('libsanitizer_common_rt')
+      add_library('libclang_rt.sanitizer_common')
 
   if only_forced:
-    add_library('libcompiler_rt')
+    add_library('libclang_rt.builtins')
     add_sanitizer_libs()
     add_forced_libs()
     return libs_to_link
@@ -2412,6 +2453,9 @@ def get_libs_to_link(options):
   # libc math.
   if settings.JS_MATH:
     add_library('libjsmath')
+
+  if options.openmp:
+    add_library('libopenmp')
 
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
@@ -2434,7 +2478,7 @@ def get_libs_to_link(options):
         utils.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
-  add_library('libcompiler_rt')
+  add_library('libclang_rt.builtins')
   if settings.LINK_AS_CXX:
     add_library('libc++')
   if settings.LINK_AS_CXX or sanitize:
@@ -2528,6 +2572,12 @@ def install_system_headers(stamp):
     'system/lib/libcxx/include': 'c++/v1',
     'system/lib/libcxxabi/include': 'c++/v1',
     'system/lib/mimalloc/include': '',
+    # Install openmp headers
+    'system/lib/openmp/include': '',
+    'system/lib/libcxx/modules/prebuilt/lib/emscripten': cache.get_lib_dir(absolute=True),
+    'system/lib/libcxx/modules/prebuilt/share': cache.get_sysroot_dir('share'),
+    'system/lib/libcxx/modules/std': cache.get_sysroot_dir('share/libc++/v1/std'),
+    'system/lib/libcxx/modules/std.compat': cache.get_sysroot_dir('share/libc++/v1/std.compat'),
   }
 
   target_include_dir = cache.get_include_dir()

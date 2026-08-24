@@ -146,6 +146,17 @@ def requires_node_25(func):
   return decorated
 
 
+def requires_node_26(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_node_26()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 # Used to mark dependencies in various tests to npm developer dependency
 # packages, which might not be installed on Emscripten end users' systems.
 def requires_dev_dependency(package):
@@ -265,6 +276,21 @@ def also_with_pthreads(f):
 
   parameterize(decorated, {'': (False,),
                            'pthreads': (True,)})
+
+  return decorated
+
+
+def also_with_proxy_to_pthread(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, threads, *args, **kwargs):
+    if threads:
+      self.cflags += ['-pthread', '-sPROXY_TO_PTHREAD']
+    f(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'proxy_to_pthread': (True,)})
 
   return decorated
 

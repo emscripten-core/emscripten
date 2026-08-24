@@ -861,7 +861,9 @@ Enums
 
       :param const char* name: The name of the enumerated value.
       :param EnumType value: The enumerated value.
-      :returns: A reference to the current object. This allows chaining of multiple enum values in the :cpp:func:`EMSCRIPTEN_BINDINGS` block.
+      :returns: A reference to the current object. This allows chaining of
+                multiple enum values in the :cpp:func:`EMSCRIPTEN_BINDINGS`
+                block.
 
 
 

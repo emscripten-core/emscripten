@@ -11,11 +11,6 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Special placeholder for `import.meta` and `await import`.
-var EMSCRIPTEN$IMPORT$META;
-var EMSCRIPTEN$AWAIT$IMPORT;
-var EMSCRIPTEN$AWAIT;
-
 // Don't minify createRequire
 var createRequire;
 
@@ -189,23 +184,11 @@ var devicePixelRatio;
 var id;
 
 /**
- * Used in MODULARIZE mode as the name of the incoming module argument.
- * This is generated outside of the code we pass to closure so from closure's
- * POV this is "extern".
- */
-var moduleArg;
-
-/**
- * Used in MODULARIZE mode.
- * We need to access this after the code we pass to closure so from closure's
- * POV this is "extern".
- */
-var moduleRtn;
-
-/**
  * This was removed from upstream closure compiler in
  * https://github.com/google/closure-compiler/commit/f83322c1b.
  * Perhaps we should remove it too?
+ *
+ * TODO(sbc): Remove this once SDL2 is updated not to depend on it.
  *
  * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
  * @param {function(!MediaStream)} successCallback
@@ -225,3 +208,9 @@ var os = {};
 AudioWorkletProcessor.parameterDescriptors;
 
 var scheduler = {};
+
+/** @type {boolean} */
+ArrayBuffer.prototype.resizable;
+
+/** @type {boolean} */
+SharedArrayBuffer.prototype.growable;

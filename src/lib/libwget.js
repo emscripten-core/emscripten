@@ -143,9 +143,9 @@ var LibraryWget = {
       delete wget.wgetRequests[handle];
     };
 
-    if (_request == "POST") {
+    if (_request == 'POST') {
       // Send the proper header information along with the request
-      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
       http.send(_param);
     } else {
       http.send(null);
@@ -183,7 +183,7 @@ var LibraryWget = {
 
     // LOAD
     http.onload = (e) => {
-      if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.slice(0, 4).toLowerCase() != "http")) {
+      if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.slice(0, 4).toLowerCase() != 'http')) {
         var byteArray = new Uint8Array(/** @type{ArrayBuffer} */(http.response));
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
@@ -211,9 +211,9 @@ var LibraryWget = {
       delete wget.wgetRequests[handle];
     };
 
-    if (_request == "POST") {
+    if (_request == 'POST') {
       // Send the proper header information along with the request
-      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
       http.send(_param);
     } else {
       http.send(null);

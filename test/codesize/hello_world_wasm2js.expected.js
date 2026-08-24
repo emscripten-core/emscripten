@@ -1,4 +1,4 @@
-var d = Module, g, h = new TextDecoder, k, l;
+var d = Module, g = new TextDecoder, h, k, l;
 
 function e(a) {
     this.exports = function(q) {
@@ -48,8 +48,8 @@ function e(a) {
         a: a => {
             var q = console, u = q.log;
             if (a) {
-                for (var n = a, c = g, f = n + void 0; c[n] && !(n >= f); ) ++n;
-                a = h.decode(g.subarray(a, n));
+                for (var n = a, c = h, f = n + void 0; c[n] && !(n >= f); ) ++n;
+                a = g.decode(h.subarray(a, n));
             } else a = "";
             u.call(q, a);
         }
@@ -58,7 +58,7 @@ function e(a) {
     a = a.instance.exports;
     k = a.d;
     l = a.b;
-    g = new Uint8Array(l.buffer);
+    h = new Uint8Array(l.buffer);
     a.c();
     k();
 }));

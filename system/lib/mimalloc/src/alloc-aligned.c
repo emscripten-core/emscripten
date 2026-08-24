@@ -39,8 +39,9 @@ static mi_decl_restrict void* mi_theap_malloc_guarded_aligned(mi_theap_t* theap,
     return NULL;
   }
   const size_t oversize = size + alignment - 1;
-  void* base = _mi_theap_malloc_guarded(theap, oversize, zero);
-  void* p = _mi_align_up_ptr(base, alignment);
+  void* const base = _mi_theap_malloc_guarded(theap, oversize, zero);
+  if (base==NULL) return NULL;
+  void* const p = _mi_align_up_ptr(base, alignment);
   mi_track_align(base, p, (uint8_t*)p - (uint8_t*)base, size);
   mi_assert_internal(mi_usable_size(p) >= size);
   mi_assert_internal(_mi_is_aligned(p, alignment));

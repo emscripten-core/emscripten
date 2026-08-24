@@ -64,11 +64,11 @@ static mi_decl_noinline mi_theap_t* mi_heap_init_theap(const mi_heap_t* const_he
     }    
     // then allocate the theap
     theap = _mi_theap_create(heap, _mi_theap_default_safe()->tld);
+    _mi_thread_local_set(heap->theap, theap);  // Cannot fail now as it was set before. Always set so the local is valid or NULL (and not 1)
     if (theap==NULL) {
       _mi_error_message(EFAULT, "unable to allocate memory for a thread local heap\n");
       return NULL;
-    }
-    _mi_thread_local_set(heap->theap, theap); // this cannot fail now as it was set before to a non-zero value
+    }    
   }
   return theap;
 }
@@ -118,7 +118,7 @@ mi_heap_t* mi_heap_new_in_arena(mi_arena_id_t exclusive_arena_id) {
   heap->heap_seq = mi_atomic_increment_relaxed(&heap_main->subproc->heap_total_count);
   heap->exclusive_arena = _mi_arena_from_id(exclusive_arena_id);
   heap->numa_node = -1; // no initial affinity
-
+  mi_stats_header_init(&heap->stats);
   mi_lock_init(&heap->theaps_lock);
   mi_lock_init(&heap->os_abandoned_pages_lock);
   mi_lock_init(&heap->arena_pages_lock);

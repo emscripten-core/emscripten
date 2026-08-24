@@ -165,11 +165,15 @@ var LibraryWebAudio = {
   },
 
 #if AUDIO_WORKLET
-  // _emscripten_create_audio_worklet() doesn't use stackAlloc,
+  // _emscripten_create_audio_worklet() doesn't use stackAlloc, HEAPs,
   // etc., but the created worklet does.
   _emscripten_create_audio_worklet__deps: [
     '$_emAudioDispatchProcessorCallback',
-    '$stackAlloc', '$stackRestore', '$stackSave'],
+    '$stackAlloc', '$stackRestore', '$stackSave', '$HEAP32', '$HEAPU32', '$HEAPF32',
+#if WASM_BIGINT || MEMORY64
+    '$HEAP64', '$HEAPU64',
+#endif
+  ],
   _emscripten_create_audio_worklet: (wwID, contextHandle, stackLowestAddress, stackSize, pthreadPtr, callback, userData) => {
 
 #if ASSERTIONS || WEBAUDIO_DEBUG
@@ -304,7 +308,7 @@ var LibraryWebAudio = {
     }
 #elif ASSERTIONS
     var numAudioParams = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.numAudioParams, 'i32') }}};
-    assert(numAudioParams == 0 && "Rebuild with -sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS to utilize AudioParams");
+    assert(numAudioParams == 0 && 'Rebuild with -sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS to utilize AudioParams');
 #endif
 
 #if WEBAUDIO_DEBUG

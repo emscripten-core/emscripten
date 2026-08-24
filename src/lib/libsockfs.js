@@ -8,7 +8,11 @@ addToLibrary({
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS'],
+  $SOCKFS__deps: ['$FS',
+#if NODERAWSOCKETS
+    '$nodeSockOps',
+#endif
+  ],
   $SOCKFS: {
 #if expectToReceiveOnModule('websocket')
     websocketArgs: {},
@@ -19,6 +23,18 @@ addToLibrary({
     },
     emit(event, param) {
       SOCKFS.callbacks[event]?.(param);
+      // Bridge socket readiness into the inode wait-queue (poll/epoll). The
+      // 'error' event carries [fd, ...]; the rest carry the fd directly.
+      var fd = event === 'error' ? param[0] : param;
+      var flags = {
+        'message':    {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}},
+        'open':       {{{ cDefs.POLLOUT }}},
+        'connection': {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}},
+        'close':      {{{ cDefs.POLLIN }}} | {{{ cDefs.POLLHUP }}},
+        'error':      {{{ cDefs.POLLERR }}},
+      }[event];
+      // 'listen' has no readiness mapping; skip it.
+      if (flags) FS.getStream(fd)?.node.notifyListeners(flags);
     },
     mount(mount) {
 #if expectToReceiveOnModule('websocket')
@@ -44,8 +60,12 @@ addToLibrary({
       return FS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
     },
     createSocket(family, type, protocol) {
-      // Emscripten only supports AF_INET
-      if (family != {{{ cDefs.AF_INET }}}) {
+      if (family != {{{ cDefs.AF_INET }}}
+#if NODERAWSOCKETS
+          // The node:net backend supports IPv6; other backends are IPv4 only.
+          && family != {{{ cDefs.AF_INET6 }}}
+#endif
+         ) {
         throw new FS.ErrnoError({{{ cDefs.EAFNOSUPPORT }}});
       }
       type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // Some applications may pass it; it makes no sense for a single process.
@@ -69,6 +89,8 @@ addToLibrary({
         pending: [],
         recv_queue: [],
 #if SOCKET_WEBRTC
+#elif NODERAWSOCKETS
+        sock_ops: nodeSockOps
 #else
         sock_ops: SOCKFS.websocket_sock_ops
 #endif
@@ -104,6 +126,24 @@ addToLibrary({
     },
     // node and stream ops are backend agnostic
     stream_ops: {
+      getattr(stream) {
+        var node = stream.node;
+        return {
+          dev: 1,
+          ino: node.id,
+          mode: {{{ cDefs.S_IFSOCK }}} | 0o777,
+          nlink: 1,
+          uid: 0,
+          gid: 0,
+          rdev: 0,
+          size: 0,
+          atime: new Date(0),
+          mtime: new Date(0),
+          ctime: new Date(0),
+          blksize: 4096,
+          blocks: 0,
+        };
+      },
       poll(stream) {
         var sock = stream.node.sock;
         return sock.sock_ops.poll(sock);
@@ -198,13 +238,13 @@ addToLibrary({
 
             if (url === 'ws://' || url === 'wss://') { // Is the supplied URL config just a prefix, if so complete it.
               var parts = addr.split('/');
-              url = url + parts[0] + ":" + port + "/" + parts.slice(1).join('/');
+              url = url + parts[0] + ':' + port + '/' + parts.slice(1).join('/');
             }
 
             if (subProtocols !== 'null') {
               // The regex trims the string (removes spaces at the beginning and end), then splits the string by
               // <any space>,<any space> into an Array. Whitespace removal is important for Websockify and ws.
-              subProtocols = subProtocols.replace(/^ +| +$/g,"").split(/ *, */);
+              subProtocols = subProtocols.replace(/^ +| +$/g,'').split(/ *, */);
 
               opts = subProtocols;
             }
@@ -407,7 +447,8 @@ addToLibrary({
           if (sock.connecting) {
             mask |= {{{ cDefs.POLLOUT }}};
           } else  {
-            mask |= {{{ cDefs.POLLHUP }}};
+            // A closed peer is both a full hangup and a read-side hangup.
+            mask |= {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLRDHUP }}};
           }
         }
 
@@ -545,6 +586,8 @@ addToLibrary({
             // push to queue for accept to pick up
             sock.pending.push(newsock);
             SOCKFS.emit('connection', newsock.stream.fd);
+            // A queued client makes the listening socket readable (POLLIN).
+            sock.stream.node.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
           } else {
             // create a peer on the listen socket so calling sendto
             // with the listen socket and an address will resolve
@@ -672,14 +715,17 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
       },
-      recvmsg(sock, length) {
+      recvmsg(sock, length, flags) {
         // http://pubs.opengroup.org/onlinepubs/7908799/xns/recvmsg.html
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && sock.server) {
           // tcp servers should not be recv()'ing on the listen socket
           throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
         }
 
-        var queued = sock.recv_queue.shift();
+        // MSG_PEEK returns the head of the queue without consuming it, so a
+        // later recv sees the same bytes and poll still reports it readable.
+        var peek = flags & {{{ cDefs.MSG_PEEK }}};
+        var queued = sock.recv_queue[0];
         if (!queued) {
           if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
             var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
@@ -714,6 +760,9 @@ addToLibrary({
         dbg(`websocket: read (${bytesRead} bytes): ${res.buffer}`);
 #endif
 
+        if (peek) return res;
+        sock.recv_queue.shift();
+
         // push back any unread data for TCP connections
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && bytesRead < queuedLength) {
           var bytesRemaining = queuedLength - bytesRead;
@@ -726,7 +775,7 @@ addToLibrary({
 
         return res;
       }
-    }
+    },
   },
 
   /*

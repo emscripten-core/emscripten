@@ -68,9 +68,7 @@
 #define SYS_fallocate		__syscall_fallocate
 #define SYS_dup3		__syscall_dup3
 #define SYS_pipe2		__syscall_pipe2
-#define SYS_recvmmsg		__syscall_recvmmsg
 #define SYS_prlimit64		__syscall_prlimit64
-#define SYS_sendmmsg		__syscall_sendmmsg
 #define SYS_socket		__syscall_socket
 #define SYS_socketpair		__syscall_socketpair
 #define SYS_bind		__syscall_bind
@@ -86,3 +84,6 @@
 #define SYS_recvfrom		__syscall_recvfrom
 #define SYS_recvmsg		__syscall_recvmsg
 #define SYS_shutdown		__syscall_shutdown
+#define SYS_epoll_create1	__syscall_epoll_create1
+#define SYS_epoll_ctl		__syscall_epoll_ctl
+#define SYS_epoll_pwait		__syscall_epoll_pwait

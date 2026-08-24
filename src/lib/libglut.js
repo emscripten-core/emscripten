@@ -207,16 +207,16 @@ var LibraryGLUT = {
 
       var touches = event.changedTouches,
           main = touches[0],
-          type = "";
+          type = '';
 
       switch (event.type) {
-        case "touchstart": type = "mousedown"; break;
-        case "touchmove": type = "mousemove"; break;
-        case "touchend": type = "mouseup"; break;
+        case 'touchstart': type = 'mousedown'; break;
+        case 'touchmove': type = 'mousemove'; break;
+        case 'touchend': type = 'mouseup'; break;
         default: return;
       }
 
-      var simulatedEvent = document.createEvent("MouseEvent");
+      var simulatedEvent = document.createEvent('MouseEvent');
       simulatedEvent.initMouseEvent(type, true, true, window, 1,
                                     main.screenX, main.screenY,
                                     main.clientX, main.clientY, false,
@@ -279,8 +279,8 @@ var LibraryGLUT = {
       var width;
       var height;
       if (getFullscreenElement()) {
-        width = screen["width"];
-        height = screen["height"];
+        width = screen['width'];
+        height = screen['height'];
       } else {
         width = GLUT.windowWidth;
         height = GLUT.windowHeight;
@@ -293,7 +293,7 @@ var LibraryGLUT = {
                                                   // Just call it once here.
       /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
       if (GLUT.reshapeFunc) {
-        // out("GLUT.reshapeFunc (from FS): " + width + ", " + height);
+        // out('GLUT.reshapeFunc (from FS): ' + width + ', ' + height);
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
       _glutPostRedisplay();
@@ -421,7 +421,7 @@ var LibraryGLUT = {
         return GLctx.getContextAttributes().antialias ? 1 : 0;
 
       default:
-        abort("glutGet(" + type + ") not implemented yet");
+        abort(`glutGet(${type}) not implemented yet`);
     }
   },
 
@@ -561,7 +561,7 @@ var LibraryGLUT = {
         cursorStyle = 'none';
         break;
       default:
-        abort("glutSetCursor: Unknown cursor type: " + cursor);
+        abort('glutSetCursor: Unknown cursor type: ' + cursor);
     }
     Browser.getCanvas().style.cursor = cursorStyle;
   },

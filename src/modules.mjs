@@ -115,6 +115,10 @@ function calculateLibraries() {
         'libsockfs.js', // ok to include it by default since it's only used if the syscall is used
       );
 
+      if (NODERAWSOCKETS) {
+        libraries.push('libsockfs_node.js');
+      }
+
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
         libraries.push('libnodefs.js');

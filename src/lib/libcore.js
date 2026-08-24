@@ -66,6 +66,7 @@ addToLibrary({
   setTempRet0: '$setTempRet0',
   getTempRet0: '$getTempRet0',
 
+
   // Assign a name to a given function. This is mostly useful for debugging
   // purposes in cases where new functions are created at runtime.
   $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
@@ -154,9 +155,6 @@ addToLibrary({
     // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
     if (keepRuntimeAlive() && !implicit) {
       var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
-#if MODULARIZE
-      readyPromiseReject?.(msg);
-#endif // MODULARIZE
       err(msg);
     }
 #endif // ASSERTIONS
@@ -219,7 +217,7 @@ addToLibrary({
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
       wasmMemory.grow({{{ toIndexType('pages') }}}); // .grow() takes a delta compared to the previous size
-#if !GROWABLE_ARRAYBUFFERS
+#if GROWABLE_ARRAYBUFFERS != 2
       updateMemoryViews();
 #endif
 #if MEMORYPROFILER
@@ -233,7 +231,7 @@ addToLibrary({
       err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`);
 #endif
     }
-    // implicit 0 return to save code size (caller will cast "undefined" into 0
+    // implicit 0 return to save code size (caller will cast 'undefined' into 0
     // anyhow)
   },
 
@@ -341,7 +339,7 @@ addToLibrary({
 #endif
 
 #if EMSCRIPTEN_TRACING
-        traceLogMessage("Emscripten", `Enlarging memory arrays from ${oldSize} to ${newSize}`);
+        traceLogMessage('Emscripten', `Enlarging memory arrays from ${oldSize} to ${newSize}`);
         // And now report the new layout
         _emscripten_trace_report_memory_layout();
 #endif
@@ -359,7 +357,7 @@ addToLibrary({
 #endif // ALLOW_MEMORY_GROWTH
   },
 
-#if !GROWABLE_ARRAYBUFFERS
+#if GROWABLE_ARRAYBUFFERS != 2
   // Called after wasm grows memory. At that time we need to update the views.
   // Without this notification, we'd need to check the buffer in JS every time
   // we return from any wasm, which adds overhead. See
@@ -680,25 +678,25 @@ addToLibrary({
     if (!valid6regx.test(str)) {
       return null;
     }
-    if (str === "::") {
+    if (str === '::') {
       return [0, 0, 0, 0, 0, 0, 0, 0];
     }
-    // Z placeholder to keep track of zeros when splitting the string on ":"
-    if (str.startsWith("::")) {
-      str = str.replace("::", "Z:"); // leading zeros case
+    // Z placeholder to keep track of zeros when splitting the string on ':'
+    if (str.startsWith('::')) {
+      str = str.replace('::', 'Z:'); // leading zeros case
     } else {
-      str = str.replace("::", ":Z:");
+      str = str.replace('::', ':Z:');
     }
 
-    if (str.indexOf(".") > 0) {
+    if (str.indexOf('.') > 0) {
       // parse IPv4 embedded address
-      str = str.replace(new RegExp('[.]', 'g'), ":");
-      words = str.split(":");
+      str = str.replace(new RegExp('[.]', 'g'), ':');
+      words = str.split(':');
       words[words.length-4] = Number(words[words.length-4]) + Number(words[words.length-3])*256;
       words[words.length-3] = Number(words[words.length-2]) + Number(words[words.length-1])*256;
       words = words.slice(0, words.length-2);
     } else {
-      words = str.split(":");
+      words = str.split(':');
     }
 
     offset = 0; z = 0;
@@ -742,7 +740,7 @@ addToLibrary({
     //  +--------------------------------------+----+---------------------+
     //  |0000..............................0000|FFFF|    IPv4 ADDRESS     | (mapped)
     //  +--------------------------------------+----+---------------------+
-    var str = "";
+    var str = '';
     var word = 0;
     var longest = 0;
     var lastzero = 0;
@@ -763,7 +761,7 @@ addToLibrary({
     // Handle IPv4-compatible, IPv4-mapped, loopback and any/unspecified addresses
 
     var hasipv4 = true;
-    var v4part = "";
+    var v4part = '';
     // check if the 10 high-order bytes are all zeros (first 5 words)
     for (i = 0; i < 5; i++) {
       if (parts[i] !== 0) { hasipv4 = false; break; }
@@ -774,16 +772,16 @@ addToLibrary({
       v4part = inetNtop4(parts[6] | (parts[7] << 16));
       // IPv4-mapped IPv6 address if 16-bit value (bytes 11 and 12) == 0xFFFF (6th word)
       if (parts[5] === -1) {
-        str = "::ffff:";
+        str = '::ffff:';
         str += v4part;
         return str;
       }
       // IPv4-compatible IPv6 address if 16-bit value (bytes 11 and 12) == 0x0000 (6th word)
       if (parts[5] === 0) {
-        str = "::";
+        str = '::';
         // special case IPv6 addresses
-        if (v4part === "0.0.0.0") v4part = ""; // any/unspecified address
-        if (v4part === "0.0.0.1") v4part = "1";// loopback address
+        if (v4part === '0.0.0.0') v4part = ''; // any/unspecified address
+        if (v4part === '0.0.0.1') v4part = '1';// loopback address
         str += v4part;
         return str;
       }
@@ -808,18 +806,18 @@ addToLibrary({
 
     for (word = 0; word < 8; word++) {
       if (longest > 1) {
-        // compress contiguous zeros - to produce "::"
+        // compress contiguous zeros - to produce '::'
         if (parts[word] === 0 && word >= zstart && word < (zstart + longest) ) {
           if (word === zstart) {
-            str += ":";
-            if (zstart === 0) str += ":"; //leading zeros case
+            str += ':';
+            if (zstart === 0) str += ':'; //leading zeros case
           }
           continue;
         }
       }
       // converts 16-bit words from big-endian to little-endian before converting to hex string
       str += Number(_ntohs(parts[word] & 0xffff)).toString(16);
-      str += word < 7 ? ":" : "";
+      str += word < 7 ? ':' : '';
     }
     return str;
   },
@@ -1347,7 +1345,7 @@ addToLibrary({
   emscripten_run_script_string__noleakcheck: true,
   emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'realloc'],
   emscripten_run_script_string: (ptr) => {
-    {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
+    {{{ makeEval('var s = eval(UTF8ToString(ptr));') }}}
     if (s == null) {
       return 0;
     }
@@ -1389,7 +1387,7 @@ addToLibrary({
 `,
 #else
   // Modern environment where performance.now() is supported:
-  // N.B. a shorter form "_emscripten_get_now = performance.now;" is
+  // N.B. a shorter form '_emscripten_get_now = performance.now;' is
   // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
   emscripten_get_now: () => performance.now(),
 #endif
@@ -1669,9 +1667,9 @@ addToLibrary({
 #endif
 
   // Parses as much of the given JS string to an integer, with quiet error
-  // handling (returns a NaN on error). E.g. jstoi_q("123abc") returns 123.
-  // Note that "smart" radix handling is employed for input string:
-  // "0314" is parsed as octal, and "0x1234" is parsed as base-16.
+  // handling (returns a NaN on error). E.g. jstoi_q('123abc') returns 123.
+  // Note that 'smart' radix handling is employed for input string:
+  // '0314' is parsed as octal, and '0x1234' is parsed as base-16.
   $jstoi_q__docs: '/** @suppress {checkTypes} */',
   $jstoi_q: (str) => parseInt(str),
 
@@ -1722,7 +1720,7 @@ addToLibrary({
       return process.argv[1].replace(/\\/g, '/');
     }
 #endif
-    return "./this.program";
+    return './this.program';
   },
 #else
   $getExecutableName: () => thisProgram,
@@ -2270,10 +2268,15 @@ addToLibrary({
   // it happens right before run - run will be postponed until
   // the dependencies are met.
   $runDependencies__internal: true,
+  $runDependencies__deps: ['$resolveRunDependencies'],
   $runDependencies: 0,
-  // overridden to take different actions when all run dependencies are fulfilled
-  $dependenciesFulfilled__internal: true,
-  $dependenciesFulfilled: null,
+  $dependenciesPromise__internal: true,
+  $dependenciesPromise: null,
+  $dependenciesPromiseResolve__internal: true,
+  $dependenciesPromiseResolve: null,
+  $resolveRunDependencies__internal: true,
+  $resolveRunDependencies__deps: ['$dependenciesPromise'],
+  $resolveRunDependencies: async () => dependenciesPromise,
 #if ASSERTIONS
   $runDependencyTracking__internal: true,
   $runDependencyTracking: {},
@@ -2281,13 +2284,16 @@ addToLibrary({
   $runDependencyWatcher: null,
 #endif
 
-  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency',
+  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency', '$dependenciesPromise', '$dependenciesPromiseResolve',
 #if ASSERTIONS
     '$runDependencyTracking',
     '$runDependencyWatcher',
 #endif
   ],
   $addRunDependency: (id) => {
+    if (!runDependencies) {
+      dependenciesPromise = new Promise((resolve) => dependenciesPromiseResolve = resolve);
+    }
     runDependencies++;
 
 #if expectToReceiveOnModule('monitorRunDependencies')
@@ -2330,7 +2336,7 @@ addToLibrary({
 #endif
   },
 
-  $removeRunDependency__deps: ['$runDependencies', '$dependenciesFulfilled',
+  $removeRunDependency__deps: ['$runDependencies', '$dependenciesPromiseResolve',
 #if ASSERTIONS
     '$runDependencyTracking',
     '$runDependencyWatcher',
@@ -2351,18 +2357,14 @@ addToLibrary({
     assert(runDependencyTracking[id]);
     delete runDependencyTracking[id];
 #endif
-    if (runDependencies == 0) {
+    if (!runDependencies) {
 #if ASSERTIONS
       if (runDependencyWatcher !== null) {
         clearInterval(runDependencyWatcher);
         runDependencyWatcher = null;
       }
 #endif
-      if (dependenciesFulfilled) {
-        var callback = dependenciesFulfilled;
-        dependenciesFulfilled = null;
-        callback(); // can add another dependenciesFulfilled
-      }
+      dependenciesPromiseResolve();
     }
   },
 #endif
@@ -2453,9 +2455,6 @@ function autoAddDeps(lib, name) {
 extraLibraryFuncs.push(
   '$addFunction',
   '$removeFunction',
-  '$allocate',
-  '$ALLOC_NORMAL',
-  '$ALLOC_STACK',
   '$AsciiToString',
   '$stringToAscii',
   '$UTF16ToString',
@@ -2513,7 +2512,7 @@ function wrapSyscallFunction(x, library, isWasi) {
 
   library[x + '__deps'] ??= [];
 
-#if PURE_WASI && !GROWABLE_ARRAYBUFFERS
+#if PURE_WASI && GROWABLE_ARRAYBUFFERS != 2
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
   // and politely notify us on memory growth.  Instead we have to check for
   // possible memory growth on each syscall.
@@ -2536,14 +2535,14 @@ function wrapSyscallFunction(x, library, isWasi) {
     }
   }
   pre += `dbg('syscall! ${x}: [' + Array.prototype.slice.call(arguments) + ']');\n`;
-  pre += "var canWarn = true;\n";
-  pre += "var ret = (() => {";
-  post += "})();\n";
-  post += "if (ret && ret < 0 && canWarn) {\n";
-  post += "  dbg(`error: syscall may have failed with ${-ret} (${strError(-ret)})`);\n";
-  post += "}\n";
-  post += "dbg(`syscall return: ${ret}`);\n";
-  post += "return ret;\n";
+  pre += 'var canWarn = true;\n';
+  pre += 'var ret = (() => {';
+  post += '})();\n';
+  post += 'if (ret && ret < 0 && canWarn) {\n';
+  post += '  dbg(`error: syscall may have failed with ${-ret} (${strError(-ret)})`);\n';
+  post += '}\n';
+  post += 'dbg(`syscall return: ${ret}`);\n';
+  post += 'return ret;\n';
   // Emit dependency to strError() since we added use of it above.
   library[x + '__deps'].push('$strError');
 #endif
@@ -2552,21 +2551,21 @@ function wrapSyscallFunction(x, library, isWasi) {
   if (canThrow) {
     pre += 'try {\n';
     handler +=
-    "} catch (e) {\n" +
+    '} catch (e) {\n' +
     "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
-    "  dbg(`error: syscall failed with ${e.errno} (${strError(e.errno)})`);\n" +
-    "  canWarn = false;\n";
+    '  dbg(`error: syscall failed with ${e.errno} (${strError(e.errno)})`);\n' +
+    '  canWarn = false;\n';
 #endif
     // Musl syscalls are negated.
     if (isWasi) {
-      handler += "  return e.errno;\n";
+      handler += '  return e.errno;\n';
     } else {
       // Musl syscalls are negated.
-      handler += "  return -e.errno;\n";
+      handler += '  return -e.errno;\n';
     }
-    handler += "}\n";
+    handler += '}\n';
   }
   post = handler + post;
 

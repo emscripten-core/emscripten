@@ -19,15 +19,15 @@ from tools import cache, config, shared, system_libs, utils
 from tools.settings import settings
 from tools.toolchain_profiler import ToolchainProfiler
 
-ports = []
+ports: list[dict] = []
 
 ports_by_name: dict[str, object] = {}
 
-ports_needed = set()
+ports_needed: set[str] = set()
 
 # Variant builds that we want to support for certain ports
 # {variant_name: (port_name, extra_settings)}
-port_variants = {}
+port_variants: dict[str, tuple] = {}
 
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -373,9 +373,22 @@ class Ports:
 
     def unpack():
       logger.info(f'unpacking port: {name}')
-      utils.safe_ensure_dirs(fullname)
-      shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
-      utils.write_file(marker, url + '\n')
+      unpack_dir = fullname + '.tmp'
+      # We unpack to a temporary directory and then atomically rename it to the
+      # final destination. This ensures that the destination directory either
+      # does not exist or is 100% complete, avoiding races where other processes
+      # might see a partially unpacked directory (lacking the marker) and
+      # incorrectly assume it is invalid or needs to be cleared.
+      utils.delete_dir(unpack_dir)
+      utils.safe_ensure_dirs(unpack_dir)
+
+      shutil.unpack_archive(filename=fullpath, extract_dir=unpack_dir)
+      tmp_marker = os.path.join(unpack_dir, '.emscripten_url')
+      utils.write_file(tmp_marker, url + '\n')
+
+      # Atomically replace the target directory
+      utils.delete_dir(fullname)
+      os.replace(unpack_dir, fullname)
 
     def up_to_date():
       return os.path.exists(marker) and utils.read_file(marker).strip() == url

@@ -134,6 +134,15 @@ FS.staticInit();`;
       readMode = {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
       writeMode = {{{ cDefs.S_IWUGO }}};
       mounted = null;
+#if USE_CLOSURE_COMPILER
+      // Closure (@struct) requires these declared ahead of time. The readiness
+      // wait-queue is populated lazily, and only on nodes that derive real
+      // readiness (sockets, pipes, an epoll's own node).
+      /** @type {Set<?>|null} */
+      listeners = null;
+      /** @type {number} */
+      exclTurn = 0;
+#endif
       constructor(parent, name, mode, rdev) {
         if (!parent) {
           parent = this;  // root node sets parent to itself
@@ -163,6 +172,48 @@ FS.staticInit();`;
       }
       get isDevice() {
         return FS.isChrdev(this.mode);
+      }
+      // The per-inode readiness wait-queue. The node carries a Set of listener
+      // entries {cb}; producers (SOCKFS, PIPEFS) call notifyListeners on a
+      // readiness transition, and poll()/epoll consume it. It lives on the node
+      // (not the fd) so dup'd fds share one queue. Only nodes that derive real
+      // readiness (sockets, pipes, and an epoll's own node) ever use this -
+      // always-ready types (regular files, ttys) never register or notify.
+      addListener(cb, exclusive = false) {
+        var entry = {cb, exclusive};
+        var listeners = (this.listeners ??= new Set());
+        listeners.add(entry);
+        return {listeners, entry};
+      }
+      notifyListeners(flags) {
+        // Iterates the set without copying, which is safe ONLY under a
+        // load-bearing contract that every internal listener must honour:
+        //   1. A listener must not run user code synchronously (a poll waiter only
+        //      resolves a Promise; an epoll registration only re-lists +
+        //      re-notifies; the epoll callback only schedules a tick). User code
+        //      runs on a later tick, never inside this loop.
+        //   2. A listener may delete entries only from ITS OWN waiter, never from
+        //      a sibling node's set that may be mid-iteration. (Deleting an entry
+        //      of the set being iterated here is fine - a Set tolerates removal of
+        //      a not-yet-visited entry mid-iteration; mutating a *different* node's
+        //      set is fine because that set is not being iterated.)
+        // Violating either gives silently skipped wakeups that are near-impossible
+        // to reproduce. Any new producer/listener must preserve it.
+        if (!this.listeners) return;
+        // Fire every non-exclusive listener. Among EPOLLEXCLUSIVE registrations
+        // (one fd watched by several epolls) wake only one, rotating round-robin
+        // per node, to avoid a thundering herd. (Only epoll registrations are ever
+        // exclusive; poll waiters and a node's own consumers are not.)
+        var excl;
+        for (var entry of this.listeners) {
+          if (entry.exclusive) (excl ||= []).push(entry);
+          else entry.cb(flags);
+        }
+        if (excl) {
+          var i = (this.exclTurn || 0) % excl.length;
+          this.exclTurn = i + 1;
+          excl[i].cb(flags);
+        }
       }
     },
 
@@ -804,6 +855,25 @@ FS.staticInit();`;
 #endif
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
+    link(oldpath, newpath, flags) {
+      var lookup = FS.lookupPath(newpath, { parent: true });
+      var parent = lookup.node;
+      if (!parent) {
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+      }
+      var newname = PATH.basename(newpath);
+      var errCode = FS.mayCreate(parent, newname);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
+      }
+      // Hardlinks are only supported by filesystem backends that provide a
+      // `link` node op (e.g. NODERAWFS backed by the host). NODEFS omits it:
+      // a host hardlink cannot be confined to the mount root.
+      if (!parent.node_ops.link) {
+        throw new FS.ErrnoError({{{ cDefs.EMLINK }}});
+      }
+      return parent.node_ops.link(parent, newname, oldpath, flags);
+    },
     rename(old_path, new_path) {
       var old_dirname = PATH.dirname(old_path);
       var new_dirname = PATH.dirname(new_path);
@@ -1068,17 +1138,16 @@ FS.staticInit();`;
       }
       FS.doTruncate(stream, stream.node, len);
     },
-    utime(path, atime, mtime) {
-      var lookup = FS.lookupPath(path, { follow: true });
-      var node = lookup.node;
-      var setattr = FS.checkOpExists(node.node_ops.setattr, {{{ cDefs.EPERM }}});
-      setattr(node, {
+    utime(path, atime, mtime, dontFollow) {
+      var lookup = FS.lookupPath(path, { follow: !dontFollow });
+      FS.doSetAttr(null, lookup.node, {
         atime: atime,
-        mtime: mtime
+        mtime: mtime,
+        dontFollow
       });
     },
     open(path, flags, mode = 0o666) {
-      if (path === "") {
+      if (path === '') {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
       flags = FS_modeStringToFlags(flags);
@@ -1092,7 +1161,7 @@ FS.staticInit();`;
       if (typeof path == 'object') {
         node = path;
       } else {
-        isDirPath = path.endsWith("/");
+        isDirPath = path.endsWith('/');
         // noent_okay makes it so that if the final component of the path
         // doesn't exist, lookupPath returns `node: undefined`. `path` will be
         // updated to point to the target of all symlinks.
@@ -1189,6 +1258,11 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EBADF }}});
       }
       if (stream.getdents) stream.getdents = null; // free readdir state
+      // The fd is going away: wake anything waiting on it (poll/epoll) with
+      // POLLNVAL so a blocking wait unblocks and an epoll registration is evicted
+      // on its next derive. Only sockets/pipes/epoll ever carry a wait-queue, so
+      // for every other stream (incl. nodeless noderawfs stdio) this is a no-op.
+      stream.node?.notifyListeners({{{ cDefs.POLLNVAL }}});
       try {
         if (stream.stream_ops.close) {
           stream.stream_ops.close(stream);
@@ -1696,7 +1770,7 @@ FS.staticInit();`;
       dbg(`forceLoadFile: ${obj.url}`)
  #endif
       if (globalThis.XMLHttpRequest) {
-        abort("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
+        abort('Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.');
       } else { // Command-line.
         try {
           obj.contents = readBinary(obj.url);
@@ -1739,11 +1813,11 @@ FS.staticInit();`;
           var xhr = new XMLHttpRequest();
           xhr.open('HEAD', url, false);
           xhr.send(null);
-          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
-          var datalength = Number(xhr.getResponseHeader("Content-length"));
+          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort(`Couldn't load ${url}. Status: ${xhr.status}`);
+          var datalength = Number(xhr.getResponseHeader('Content-length'));
           var header;
-          var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
-          var usesGzip = (header = xhr.getResponseHeader("Content-Encoding")) && header === "gzip";
+          var hasByteServing = (header = xhr.getResponseHeader('Accept-Ranges')) && header === 'bytes';
+          var usesGzip = (header = xhr.getResponseHeader('Content-Encoding')) && header === 'gzip';
 
   #if SMALL_XHR_CHUNKS
           var chunkSize = 1024; // Chunk size in bytes
@@ -1761,7 +1835,7 @@ FS.staticInit();`;
             // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
             var xhr = new XMLHttpRequest();
             xhr.open('GET', url, false);
-            if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
+            if (datalength !== chunkSize) xhr.setRequestHeader('Range', `bytes=${from}-${to}`);
 
             // Some hints to the browser that we want binary data.
             xhr.responseType = 'arraybuffer';
@@ -1770,7 +1844,7 @@ FS.staticInit();`;
             }
 
             xhr.send(null);
-            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
+            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort(`Couldn't load ${url}. Status: ${xhr.status}`);
             if (xhr.response !== undefined) {
               return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
             }
@@ -1793,7 +1867,7 @@ FS.staticInit();`;
             chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
             datalength = this.getter(0).length;
             chunkSize = datalength;
-            out("LazyFiles on gzip forces download of the whole file when length is accessed");
+            out('LazyFiles on gzip forces download of the whole file when length is accessed');
           }
 
           this._length = datalength;

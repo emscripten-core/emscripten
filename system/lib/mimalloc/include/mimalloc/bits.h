@@ -16,6 +16,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #include <stddef.h>   // size_t
 #include <stdint.h>   // int64_t etc
 #include <stdbool.h>  // bool
+#include <limits.h>   // LONG_MAX
 
 // ------------------------------------------------------
 // Size of a pointer.
@@ -177,12 +178,16 @@ typedef int32_t  mi_ssize_t;
 -------------------------------------------------------------------------------- */
 
 size_t _mi_popcount_generic(size_t x);
+extern bool _mi_cpu_has_popcnt;
 
 static inline size_t mi_popcount(size_t x) {
   #if mi_has_builtinz(popcount)
     return mi_builtinz(popcount)(x);
-  #elif defined(_MSC_VER) && (MI_ARCH_X64 || MI_ARCH_X86 || MI_ARCH_ARM64 || MI_ARCH_ARM32)
+  #elif defined(_MSC_VER) && (MI_ARCH_ARM64 || MI_ARCH_ARM32)
     return mi_msc_builtinz(__popcnt)(x);
+  #elif defined(_MSC_VER) && (MI_ARCH_X64 || MI_ARCH_X86)
+    if (_mi_cpu_has_popcnt) { return mi_msc_builtinz(__popcnt)(x); }
+                       else { return _mi_popcount_generic(x); }      // see issue #1291
   #elif MI_ARCH_X64 && defined(__BMI1__)
     return (size_t)_mm_popcnt_u64(x);
   #else

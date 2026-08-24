@@ -436,7 +436,7 @@ addCxaCatch = (n) => {
     args.push(`arg${i}`);
     sig += 'p';
   }
-  const argString = args.join(',');
+  const argString = args.join();
   LibraryManager.library[`__cxa_find_matching_catch_${n}__sig`] = sig;
   LibraryManager.library[`__cxa_find_matching_catch_${n}__deps`] = ['$findMatchingCatch'];
   LibraryManager.library[`__cxa_find_matching_catch_${n}`] = eval(`(${args}) => findMatchingCatch([${argString}])`);

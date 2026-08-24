@@ -260,6 +260,7 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // flags, which do the same thing.
 // Assumes WASM_BIGINT.
 // [compile+link]
+// [deprecated]
 var MEMORY64 = 0;
 
 // Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is used
@@ -403,6 +404,7 @@ var FS_DEBUG = false;
 // Run time configuration may be useful as it lets an application select
 // multiple different services.
 // [link]
+// [deprecated]
 var SOCKET_WEBRTC = false;
 
 // A string containing either a WebSocket URL prefix (ws:// or wss://) or a
@@ -417,6 +419,30 @@ var WEBSOCKET_URL = 'ws://';
 // sockets calls from browser to native world.
 // [link]
 var PROXY_POSIX_SOCKETS = false;
+
+// If enabled, the POSIX sockets API is backed by Node.js's ``node:net``
+// module, giving real non-blocking outgoing TCP sockets with no WebSockets,
+// proxy process or pthreads. This is the sockets counterpart to
+// :ref:`NODERAWFS`: where :ref:`NODERAWFS` gives direct access to the host
+// filesystem, this gives direct access to host sockets. It only works under
+// node and is ignored elsewhere.
+//
+// It supports full TCP (outgoing connect plus bind, listen and accept for
+// servers) and UDP. TCP clients use the public ``node:net`` API when possible,
+// falling back to the private ``tcp_wrap``/``udp_wrap`` handles on older
+// Node.js.
+//
+// It is event-driven. Socket readiness comes through the same
+// ``emscripten_set_socket_*_callback`` hooks the WebSocket backend uses, so it
+// works with existing readiness reactors. It cannot be combined with the
+// WebSocket emulation, :ref:`PROXY_POSIX_SOCKETS` or :ref:`SOCKET_WEBRTC`.
+//
+// It works under -pthread with :ref:`PROXY_TO_PTHREAD`, where main() and every socket
+// syscall run on a single worker alongside the node handles and their event
+// loop. As with the WebSocket backend, sharing a socket across threads under a
+// plain -pthread build (without PROXY_TO_PTHREAD) is not supported.
+// [link]
+var NODERAWSOCKETS = false;
 
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
@@ -964,21 +990,48 @@ var EXPORTED_RUNTIME_METHODS = [];
 // actually use, can be very useful for reducing code size. By default, the
 // list contains a set of commonly used symbols.
 //
-// FIXME: should this just be  0  if we want everything?
+// In addition to the default symbols, the following are also available:
+//
+// - fetchSettings
+// - logReadFiles
+// - loadSplitModule
+// - onMalloc
+// - onRealloc
+// - onFree
+// - onSbrkGrow
+// - onCOSCacheHit
+// - onCOSCacheMiss
+// - onCOSStore
+// - GL_MAX_TEXTURE_IMAGE_UNITS
+// - SDL_canPlayWithWebAudio
+// - SDL_numSimultaneouslyQueuedBuffers
+// - freePreloadedMediaOnUse
+// - preinitializedWebGLContext
+// - keyboardListeningElement
+// - doNotCaptureKeyboard
+// - extraStackTrace
+// - preloadPlugins
+// - preMainLoop
+// - postMainLoop
+// - forcedAspectRatio
+// - mainScriptUrlOrBlob
+// - onFullScreen
+// - INITIAL_MEMORY
+// - wasmMemory
+// - wasmBinary
+//
 // [link]
 var INCOMING_MODULE_JS_API = [
-  'ENVIRONMENT', 'GL_MAX_TEXTURE_IMAGE_UNITS', 'SDL_canPlayWithWebAudio',
-  'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
-  'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
-  'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
-  'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
-  'locateFile', 'mainScriptUrlOrBlob', 'mem',
+  'ENVIRONMENT', 'arguments',
+  'canvas', 'dynamicLibraries',
+  'elementPointerLock',
+  'instantiateWasm',
+  'locateFile',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
-  'onExit', 'onFullScreen', 'onRuntimeInitialized', 'postMainLoop', 'postRun',
-  'preInit', 'preMainLoop', 'preRun',
-  'preinitializedWebGLContext', 'preloadPlugins',
+  'onExit', 'onRuntimeInitialized', 'postRun',
+  'preInit', 'preRun',
   'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
-  'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
+  'stdin', 'stdout', 'thisProgram', 'wasm', 'websocket'
 ];
 
 // If set to nonzero, the provided virtual filesystem is treated
@@ -1280,8 +1333,34 @@ var SMALL_XHR_CHUNKS = false;
 //   foo();
 //   bar();
 //
+// The ``init`` function exists so the caller can configure the instance (via
+// ``moduleArg``) before it starts. When there is nothing to configure, see
+// ``AUTO_INIT`` to have the module self-initialize on import.
+//
 // [link]
 var MODULARIZE = false;
+
+// When set, an instance ES module (``MODULARIZE=instance`` or
+// ``WASM_ESM_INTEGRATION``) initializes itself via top-level await on import
+// rather than exporting an ``init`` function to be called by the consumer. The
+// named Wasm/runtime exports are ready to use as soon as the module is
+// imported::
+//
+//   import { foo, bar } from "./my_module.mjs"
+//   foo();
+//   bar();
+//
+// Since the module initializes without any caller involvement, there is no
+// opportunity for module-level configuration: ``moduleArg`` cannot be passed
+// and the entire ``INCOMING_MODULE_JS_API`` is disabled (passing a non-empty
+// ``INCOMING_MODULE_JS_API`` is an error).
+//
+// Because no default ``init`` export is emitted, this also frees up the
+// ``default`` export name for the program's own use.
+//
+// Requires ``MODULARIZE=instance`` or ``WASM_ESM_INTEGRATION``.
+// [link]
+var AUTO_INIT = false;
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 // be enabled for ES6 exports and is implicitly enabled if not already set.
@@ -1846,15 +1925,18 @@ var SINGLE_FILE = false;
 // encoding, and will not work with the default legacy Windows-1252 encoding
 // that browsers might use on Windows. To enable UTF-8 encoding in a
 // hand-crafted index.html file, apply any of:
+//
 // 1. Add `<meta charset="utf-8">` inside the <head> section of HTML, or
 // 2. Add `<meta http-equiv="content-type" content="text/html; charset=UTF-8" />`` inside <head>, or
 // 3. Add `<meta http-equiv="content-type" content="application/json; charset=utf-8" />` inside <head>
-// (if using -o foo.js with SINGLE_FILE mode to build HTML+JS), or
+//    (if using -o foo.js with SINGLE_FILE mode to build HTML+JS), or
 // 4. pass the header `Content-Type: text/html; charset=utf-8` and/or header
-// `Content-Type: application/javascript; charset=utf-8` when serving the
-// relevant files that contain binary encoded content.
+//    `Content-Type: application/javascript; charset=utf-8` when serving the
+//    relevant files that contain binary encoded content.
+//
 // If none of these are possible, disable binary encoding with
 // -sSINGLE_FILE_BINARY_ENCODE=0 to fall back to base64 encoding.
+//
 // [link]
 var SINGLE_FILE_BINARY_ENCODE = true;
 
@@ -2119,7 +2201,7 @@ var ALLOW_UNIMPLEMENTED_SYSCALLS = true;
 // Allow calls to Worker(...) and importScripts(...) to be Trusted Types
 // compatible. Trusted Types is a Web Platform feature designed to mitigate DOM
 // XSS by restricting the usage of DOM sink APIs.
-// See https://w3c.github.io/webappsec-trusted-types/.
+// See https://www.w3.org/TR/trusted-types/.
 // [link]
 var TRUSTED_TYPES = false;
 
@@ -2166,6 +2248,10 @@ var LEGACY_RUNTIME = false;
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
+// Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
+// [link]
+var WASM_BINDGEN = 0;
+
 // Experimental support for wasm source phase imports.
 // This is only currently implemented in the pre-release/nightly version of
 // node, and not yet supported by browsers.
@@ -2188,18 +2274,55 @@ var WASM_ESM_INTEGRATION = false;
 // [link]
 var JS_BASE64_API = false;
 
-// Enable support for GrowableSharedArrayBuffer.
-// This feature has only recently become available across major browser engines
-// and Node.js.
-// [experimental]
+// Enable support for growable views of Wasm memory. This is a recent Web
+// platform feature that can make growing the Wasm memory more efficient,
+// especially in multi-threaded builds.
+// Setting this to 1 will auto-detect the presence of this API and use
+// it when available.
+// Setting this to 2 will unconditionally require it. This is the only way
+// to completely remove the overhead of growable memory + pthreads.
+// This settings does nothing unless ALLOW_MEMORY_GROWTH is set.
 // [link]
-var GROWABLE_ARRAYBUFFERS = false;
+var GROWABLE_ARRAYBUFFERS = 0;
 
 // If the emscripten-generated program is hosted on separate origin then
 // starting new pthread worker can violate CSP rules.  Enabling
 // CROSS_ORIGIN uses an inline worker to instead load the worker script
 // indirectly using `importScripts`
 var CROSS_ORIGIN = false;
+
+// Enables Cross-Origin Storage (COS) API support for Wasm loading on the
+// Web target. At link time Emscripten computes the SHA-256 hash of the
+// final ``.wasm`` binary and embeds it in the generated JS. At runtime the
+// COS API is used as a progressive enhancement: the binary is fetched from
+// the shared cross-origin cache on a hit, or stored there after a network
+// fetch on a miss; when the API is absent or errors the runtime falls
+// through to the standard fetch path.
+//
+// Requires the Web environment; using it without ``-sENVIRONMENT=web`` is a
+// hard link-time error. Incompatible with SINGLE_FILE and
+// WASM_ASYNC_COMPILATION=0 (both produce hard link-time errors).
+//
+// See :ref:`CrossOriginStorage` for the full guide.
+//
+// [link]
+// [experimental]
+var CROSS_ORIGIN_STORAGE = false;
+
+// Controls which origins may read the Wasm binary from the COS cache. Only
+// meaningful when ``-sCROSS_ORIGIN_STORAGE`` is set. Applied only during the
+// write (cache-miss) path, not the read (cache-hit) path.
+//
+// ``['*']`` (default) — any origin can retrieve the file.
+// Explicit HTTPS origin list — restricted to those origins only::
+//
+//   -sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com
+//
+// ``[]`` — same-site only (omits the ``origins`` field entirely).
+//
+// Mixing ``'*'`` with explicit origins is a link-time error.
+// [link]
+var CROSS_ORIGIN_STORAGE_ORIGINS = ['*'];
 
 // This setting changes the behaviour of the ``-shared`` flag.  When set to true
 // you get the old emscripten behaviour where the ``-shared`` flag actually

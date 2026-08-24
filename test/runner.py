@@ -40,6 +40,9 @@ from functools import cmp_to_key
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, __rootpath__)
 
+# Let config.py know to parse test config settings
+os.environ['_EM_TEST_RUNNER'] = '1'
+
 import browser_common
 import common
 import jsrun
@@ -127,6 +130,7 @@ misc_test_modes = [
   'browser64',
   'browser64_4gb',
   'browser_2gb',
+  'llvmlibc',
 ]
 
 default_tests = ['jslib', 'other', 'core0']

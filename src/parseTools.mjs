@@ -32,6 +32,35 @@ const FLOAT_TYPES = new Set(['float', 'double']);
 // Represents a browser version that is not supported at all.
 const TARGET_NOT_SUPPORTED = 0x7fffffff;
 
+function mangleUnsupportedSyntax(text) {
+  // Do special keyword replacement after macro processing, so that
+  // macros can generate keywords (easier to read preprocessed code).
+  if (EXPORT_ES6) {
+    // `vm.runInContext` doesn't support module syntax; to allow it, we need to
+    // temporarily replace `import.meta` usages with placeholders.
+    // See also: `writeOutput` in jsifier.mjs.
+    text = text.replaceAll('import.meta', 'EMSCRIPTEN$IMPORT$META');
+  }
+  if (MODULARIZE && USE_CLOSURE_COMPILER) {
+    // Closure doesn't support "top-level await" which is not actually the top
+    // level in case of MODULARIZE. Temporarily replace `await` usages with
+    // placeholders during preprocess phase, and back after all the other ops.
+    // See also: `fix_js_mangling` in link.py.
+    // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
+    if (EXPORT_ES6) {
+      // Use a low-precedence `||` pattern so Closure doesn't strip parentheses.
+      // High-precedence placeholders trick Closure into optimizing `(PLACEHOLDER).y`
+      // into `PLACEHOLDER.y`, breaking execution order once swapped back to `await`.
+      text = text.replaceAll('await import', 'EMSCRIPTEN$AWAIT||import');
+    }
+    text = text.replaceAll('await createWasm()', 'EMSCRIPTEN$AWAIT(createWasm())');
+    text = text.replaceAll('await run()', 'EMSCRIPTEN$AWAIT(run())');
+    text = text.replaceAll('await instantiatePromise', 'EMSCRIPTEN$AWAIT(instantiatePromise)');
+    text = text.replaceAll('await init()', 'EMSCRIPTEN$AWAIT(init())');
+  }
+  return text;
+}
+
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
@@ -41,10 +70,11 @@ export function processMacros(text, filename) {
   // `[\s\S]` works like `.` but include newline.
   pushCurrentFile(filename);
   try {
-    return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
+    text = text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
       const ret = runInMacroContext(str, {filename: filename});
       return ret?.toString() ?? '';
     });
+    return mangleUnsupportedSyntax(text);
   } finally {
     popCurrentFile();
   }
@@ -73,20 +103,6 @@ function findIncludeFile(filename, currentDir) {
 // Also handles #include x.js (similar to C #include <file>)
 export function preprocess(filename) {
   let text = readFile(filename);
-  if (EXPORT_ES6) {
-    // `eval`, Terser and Closure don't support module syntax; to allow it,
-    // we need to temporarily replace `import.meta` and `await import` usages
-    // with placeholders during preprocess phase, and back after all the other ops.
-    // See also: `phase_final_emitting` in emcc.py.
-    text = text
-      .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
-      .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
-  }
-  if (MODULARIZE) {
-    // Same for out use of "top-level-await" which is not actually top level
-    // in the case of MODULARIZE.
-    text = text.replace(/\bawait createWasm\(\)/g, 'EMSCRIPTEN$AWAIT(createWasm())');
-  }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
 
@@ -1065,27 +1081,42 @@ function runtimeKeepalivePop() {
   return 'runtimeKeepalivePop();';
 }
 
-// Some web functions like TextDecoder.decode() may not work with a view of a
-// SharedArrayBuffer, see https://github.com/whatwg/encoding/issues/172
-// To avoid that, this function allows obtaining an unshared copy of an
-// ArrayBuffer.
-function getUnsharedTextDecoderView(heap, start, end) {
-  const shared = `${heap}.slice(${start}, ${end})`;
-  const unshared = `${heap}.subarray(${start}, ${end})`;
+// Some web APIs like TextDecoder.decode() and XMLHttpRequest.send() do not
+// work with a view of a SharedArrayBuffer (see
+// https://github.com/whatwg/encoding/issues/172) or of a resizable ArrayBuffer
+// (see https://github.com/emscripten-core/emscripten/issues/27241).
+// To avoid that, this function allows obtaining a copy in those cases, or a view
+// otherwise.
+function getHeapViewOrCopy(heap, start, end) {
+  const copy = `${heap}.slice(${start}, ${end})`;
+  const view = `${heap}.subarray(${start}, ${end})`;
 
-  // No need to worry about this in non-shared memory builds
-  if (!SHARED_MEMORY) return unshared;
+  // No need to worry about this in builds where the buffer can be neither
+  // shared nor resizable.
+  if (!SHARED_MEMORY && !(ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS)) return view;
 
-  // If asked to get an unshared view to what we know will be a shared view, or
-  // if in -Oz, then unconditionally do a .slice() for smallest code size.
+  // If in -Oz, then unconditionally do a .slice() for smallest code size.
   // This is guaranteed to work but could be slower since it performs a copy.
-  if (SHRINK_LEVEL == 2 || heap.startsWith('HEAP')) return shared;
+  if (SHRINK_LEVEL == 2) return copy;
 
-  // Otherwise, generate a runtime type check: must do a .slice() if looking at
-  // a SAB, or can use .subarray() otherwise.  Note: We compare with
-  // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could be
-  // undefined.
-  return `${heap}.buffer instanceof ArrayBuffer ? ${unshared} : ${shared}`;
+  if (SHARED_MEMORY) {
+    // If asked to get an unshared view to what we know will be a shared view,
+    // then unconditionally do a .slice().
+    if (heap.startsWith('HEAP')) return copy;
+
+    // Otherwise, generate a runtime type check: must do a .slice() if looking
+    // at a SAB, or can use .subarray() otherwise.  Note: We compare with
+    // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could
+    // be undefined.
+    return `${heap}.buffer instanceof ArrayBuffer ? ${view} : ${copy}`;
+  }
+
+  // With GROWABLE_ARRAYBUFFERS == 2 the heap is always resizable; with
+  // GROWABLE_ARRAYBUFFERS == 1 resizability is feature-detected at runtime,
+  // and non-heap views passed to UTF8ArrayToString may not be resizable at
+  // all, so generate a runtime check in those cases.
+  if (GROWABLE_ARRAYBUFFERS == 2 && heap.startsWith('HEAP')) return copy;
+  return `${heap}.buffer.resizable ? ${copy} : ${view}`;
 }
 
 function getEntryFunction() {
@@ -1229,7 +1260,7 @@ addToCompileTimeContext({
   getHeapForType,
   getHeapOffset,
   getNativeTypeSize,
-  getUnsharedTextDecoderView,
+  getHeapViewOrCopy,
   hasExportedSymbol,
   isSymbolNeeded,
   makeDynCall,
