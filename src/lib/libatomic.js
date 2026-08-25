@@ -69,17 +69,22 @@ addToLibrary({
   },
 
 #if ASYNCIFY
-  _emscripten_atomic_wait_promise__deps: ['$polyfillWaitAsync', '$atomicWaitStates', '$addPromise'],
+  _emscripten_atomic_wait_promise__deps: ['$polyfillWaitAsync', '$atomicWaitStates'],
   _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
     var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (wait.async) {
-      // In the async case return the promise ID.
+      // In the async case return [promise, -1].
       var chainedPromise = wait.value.then((value) => atomicWaitStates.indexOf(value));
-      var id = addPromise(chainedPromise);
-      return id;
+#if RUNTIME_DEBUG
+      dbg("returning [promise, -1] pair");
+#endif
+      return [chainedPromise, -1];
     }
-    // In the synchronous case return the negative result code
-    return -atomicWaitStates.indexOf(wait.value);
+#if RUNTIME_DEBUG
+    dbg("_emscripten_atomic_wait_promise returning sync result: " + wait.value);
+#endif
+    // In the synchronous case return [null, result code].
+    return [null, atomicWaitStates.indexOf(wait.value)];
   },
 #else
   _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {

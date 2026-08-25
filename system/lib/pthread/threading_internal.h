@@ -135,12 +135,6 @@ void* _emscripten_init_pthread(void *base, size_t* size, pid_t tid);
 // this method.
 void _emscripten_thread_notify(pthread_t thread);
 
-// Internal, promise-returning API used to implement
-// emscripten_atomic_wait_suspending.
-intptr_t _emscripten_atomic_wait_promise(volatile void *addr,
-                                         uint32_t value,
-                                         double maxWaitMilliseconds);
-
 // Internal function used in wasm worker builds (included here solely for
 // gen_sig_info.py).
 void __do_set_thread_state(void);
