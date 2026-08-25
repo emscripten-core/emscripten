@@ -1,7 +1,7 @@
 {
-  "a.out.js": 270568,
-  "a.out.nodebug.wasm": 588318,
-  "total": 858886,
+  "a.out.js": 270584,
+  "a.out.nodebug.wasm": 588573,
+  "total": 859157,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -2829,6 +2829,7 @@
     "getopt_long",
     "getopt_long_only",
     "getpagesize",
+    "getpass",
     "getpeername",
     "getpgid",
     "getpgrp",
@@ -4671,6 +4672,7 @@
     "$getopt_long",
     "$getopt_long_only",
     "$getpagesize",
+    "$getpass",
     "$getpeername",
     "$getpgid",
     "$getpriority",

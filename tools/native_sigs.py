@@ -1039,6 +1039,7 @@ native_sigs = {
   'getopt': '__pp',
   'getopt_long': '__pppp',
   'getopt_long_only': '__pppp',
+  'getpass': 'pp',
   'getpeername': '__pp',
   'getpwent': 'p',
   'getpwnam': 'pp',
