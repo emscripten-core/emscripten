@@ -191,17 +191,20 @@ When the page loads, the generated JavaScript follows this logic:
 
 2. **Cache hit** — call
    ``navigator.crossOriginStorage.requestFileHandle(cosHash)``.
-   If the handle is returned (the module is already in COS), read it with
-   ``handle.getFile()`` → ``.arrayBuffer()`` and pass the bytes to
-   ``WebAssembly.instantiate()``.
-   Then invoke ``Module['onCOSCacheHit'](hash)`` if defined.
+   If the handle is returned (the module is already in COS), invoke
+   ``Module['onCOSCacheHit'](hash)`` if defined, then wrap
+   ``handle.getFile().stream()`` in a ``Response`` with an ``application/wasm``
+   content type and pass it to ``WebAssembly.instantiateStreaming()``, so
+   compilation overlaps reading the file from disk.
 
 3. **Cache miss** — if a ``NotFoundError`` is thrown, fetch the ``.wasm``
-   over the network as usual, invoke ``Module['onCOSCacheMiss'](hash, url)`` if
-   defined, call ``WebAssembly.instantiate()`` immediately so the page loads
-   without delay, and then write the bytes into COS in the background
-   (fire-and-forget) using the ``origins`` value controlled by
-   :ref:`CROSS_ORIGIN_STORAGE_ORIGINS` (``'*'`` by default).
+   over the network as usual and invoke ``Module['onCOSCacheMiss'](hash, url)``
+   if defined. The response body is split with ``tee()``: one branch is passed
+   to ``WebAssembly.instantiateStreaming()`` immediately so compilation overlaps
+   the download exactly as on the standard path, and the other branch is piped
+   into COS in the background (fire-and-forget) using the ``origins`` value
+   controlled by :ref:`CROSS_ORIGIN_STORAGE_ORIGINS` (``'*'`` by default).
+   COS verifies the hash when the writable closes.
    Once the write completes, invoke ``Module['onCOSStore'](hash)`` if defined.
 
 4. **Fallback** — any unexpected error (``NotAllowedError`` from the browser,
@@ -329,26 +332,30 @@ via a reference to that config object:
        // read the hash via the outer Module reference instead.
        const cosHash = Module['wasmHash'];
        if (cosHash?.value && globalThis.navigator?.crossOriginStorage) {
+         const wasmHeaders = { headers: { 'Content-Type': 'application/wasm' } };
          navigator.crossOriginStorage.requestFileHandle(cosHash)
            .then(handle => handle.getFile())
-           .then(f => f.arrayBuffer())
-           .then(bytes => WebAssembly.instantiate(bytes, imports))
+           // stream from the stored file so compilation overlaps reading
+           .then(f => WebAssembly.instantiateStreaming(
+             new Response(f.stream(), wasmHeaders), imports))
            .then(({instance, module}) => onSuccess(instance, module))
            .catch(err => {
              if (err.name !== 'NotFoundError') throw err;
-             // cache miss — fetch normally and store in the background
-             fetch('hello.wasm')
-               .then(r => r.arrayBuffer())
-               .then(bytes => {
-                 WebAssembly.instantiate(bytes, imports)
-                   .then(({instance, module}) => onSuccess(instance, module));
-                 // fire-and-forget store
-                 navigator.crossOriginStorage
-                   .requestFileHandle(cosHash, { create: true, origins: '*' })
-                   .then(wh => wh.createWritable())
-                   .then(w => w.write(new Blob([bytes], {type:'application/wasm'}))
-                               .then(() => w.close()));
-               });
+             // cache miss — split the body: compile one branch while
+             // streaming the other into COS in the background
+             fetch('hello.wasm').then(r => {
+               const [compileStream, storeStream] = r.body.tee();
+               WebAssembly.instantiateStreaming(
+                 new Response(compileStream, wasmHeaders), imports)
+                 .then(({instance, module}) => onSuccess(instance, module));
+               // fire-and-forget store; pipeTo() closes the writable and COS
+               // verifies the hash on close
+               navigator.crossOriginStorage
+                 .requestFileHandle(cosHash, { create: true, origins: '*' })
+                 .then(wh => wh.createWritable())
+                 .then(w => storeStream.pipeTo(w))
+                 .catch(() => storeStream.cancel());
+             });
            });
          return;  // async; onSuccess called above
        }
