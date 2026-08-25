@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 6.0.9 (in development)
 ----------------------
+- The `-sCROSS_ORIGIN_STORAGE` cache-hit and cache-miss paths now use
+  `WebAssembly.instantiateStreaming()` (via `Blob.stream()` and a `tee()`'d
+  network body respectively), so enabling the flag no longer loses the
+  download/compile overlap of the standard streaming path. (#27609)
 
 6.0.8 - 08/20/26
 ----------------
