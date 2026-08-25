@@ -620,6 +620,19 @@ async function instantiateArrayBuffer(binaryFile, imports) {
   }
 }
 
+#if CROSS_ORIGIN_STORAGE
+// Stream Wasm bytes into the compiler. A fixed `application/wasm` type is
+// used rather than any server-supplied MIME type: on a cache hit the bytes
+// were hash-verified when written into COS, and on a cache miss the store
+// branch is already consuming the body, so the standard path's re-download
+// fallback for a bad MIME type is not available. A wrong file still fails
+// compilation and falls through to the standard path.
+function cosInstantiateStream(stream, imports) {
+  var response = new Response(stream, { headers: { 'Content-Type': 'application/wasm' } });
+  return WebAssembly.instantiateStreaming(response, imports);
+}
+#endif
+
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
 #if CROSS_ORIGIN_STORAGE
@@ -631,16 +644,13 @@ async function instantiateAsync(binary, binaryFile, imports) {
     var cosHash = Module['wasmHash'];
     try {
       var cosHandle = await navigator.crossOriginStorage.requestFileHandle(cosHash);
-      // Cache hit — stream the stored Blob into the compiler rather than
-      // materializing it as an ArrayBuffer first, so compilation overlaps
-      // reading from disk. The bytes were hash-verified when they were
-      // written into COS, so a fixed `application/wasm` type is safe here.
+      // Cache hit. getFile() resolves to a lazy File reference; no bytes are
+      // read until the stream is consumed by the compiler below.
       var cosFile = await cosHandle.getFile();
 #if expectToReceiveOnModule('onCOSCacheHit')
       Module['onCOSCacheHit']?.(cosHash.value);
 #endif
-      var cosResponse = new Response(cosFile.stream(), { headers: { 'Content-Type': 'application/wasm' } });
-      return WebAssembly.instantiateStreaming(cosResponse, imports);
+      return cosInstantiateStream(cosFile.stream(), imports);
     } catch {
       // Any error (not found, not allowed, …) — fetch from the network and
       // attempt to store in COS for future page loads.
@@ -683,12 +693,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
             storeStream.cancel().catch(() => {});
           }
         })();
-        // The server's MIME type is deliberately not forwarded: the standard
-        // path would fall back to a full re-download on a bad MIME type, but
-        // here the store branch is already consuming the body. A wrong file
-        // still fails compilation and falls through to the standard path.
-        var compileResponse = new Response(compileStream, { headers: { 'Content-Type': 'application/wasm' } });
-        return WebAssembly.instantiateStreaming(compileResponse, imports);
+        return cosInstantiateStream(compileStream, imports);
       } catch (fetchErr) {
         // Network fetch failed; fall through to the standard path below.
         err(`COS fallback fetch failed: ${fetchErr}`);
