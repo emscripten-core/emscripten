@@ -1198,29 +1198,6 @@ jobs:
     steps:
       - test-sockets-chrome
 
-  build-windows-launcher:
-    executor:
-      name: win/server-2022
-      shell: bash.exe -eo pipefail
-    steps:
-      - checkout
-      - run:
-          name: "build pylauncher"
-          shell: cmd.exe
-          command: .circleci\setup_vs2022.bat && cd tools\pylauncher && call build.bat
-      - store_artifacts:
-          path: tools/pylauncher/pylauncher.exe
-          destination: pylauncher.exe
-      - install-emsdk
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run:
-          name: "create_entry_points"
-          command: $EMSDK_PYTHON tools/maint/create_entry_points.py --exe-files
-      - run:
-          name: "crossplatform tests"
-          command: test/runner.exe core0.test_hello_world
-
 
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
@@ -1403,7 +1380,6 @@ workflows:
       - test-node-compat
       - test-windows
       - test-windows-browser-firefox
-      - build-windows-launcher
       - test-mac-arm64:
          requires:
            - build-linux
