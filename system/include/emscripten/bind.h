@@ -112,7 +112,9 @@ void _embind_register_value_array(
     const char* constructorSignature,
     GenericFunction constructor,
     const char* destructorSignature,
-    GenericFunction destructor);
+    GenericFunction destructor,
+    size_t valueSize,
+    bool isTrivial);
 
 void _embind_register_value_array_element(
     TYPEID tupleType,
@@ -133,7 +135,9 @@ void _embind_register_value_object(
     const char* constructorSignature,
     GenericFunction constructor,
     const char* destructorSignature,
-    GenericFunction destructor);
+    GenericFunction destructor,
+    size_t valueSize,
+    bool isTrivial);
 
 void _embind_register_value_object_field(
     TYPEID structType,
@@ -798,7 +802,14 @@ public:
             getSignature(constructor),
             reinterpret_cast<GenericFunction>(constructor),
             getSignature(destructor),
-            reinterpret_cast<GenericFunction>(destructor));
+            reinterpret_cast<GenericFunction>(destructor),
+            sizeof(ClassType),
+            // Stack temporaries come from stackAlloc, which guarantees
+            // STACK_ALIGN (== __BIGGEST_ALIGNMENT__) alignment; over-aligned
+            // types keep the heap path.
+            std::is_trivially_constructible<ClassType>::value &&
+                std::is_trivially_destructible<ClassType>::value &&
+                alignof(ClassType) <= __BIGGEST_ALIGNMENT__);
     }
 
     ~value_array() {
@@ -893,7 +904,14 @@ public:
             getSignature(ctor),
             reinterpret_cast<GenericFunction>(ctor),
             getSignature(dtor),
-            reinterpret_cast<GenericFunction>(dtor));
+            reinterpret_cast<GenericFunction>(dtor),
+            sizeof(ClassType),
+            // Stack temporaries come from stackAlloc, which guarantees
+            // STACK_ALIGN (== __BIGGEST_ALIGNMENT__) alignment; over-aligned
+            // types keep the heap path.
+            std::is_trivially_constructible<ClassType>::value &&
+                std::is_trivially_destructible<ClassType>::value &&
+                alignof(ClassType) <= __BIGGEST_ALIGNMENT__);
     }
 
     ~value_object() {
