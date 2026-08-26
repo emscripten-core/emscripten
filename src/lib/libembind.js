@@ -662,6 +662,7 @@ var LibraryEmbind = {
   // craftInvokerFunction generates the JS invoker function for each function exposed to JS through embind.
   $craftInvokerFunction__deps: [
     '$createNamedFunction', '$runDestructors', '$throwBindingError', '$usesDestructorStack',
+    '$argsUseStackAlloc', '$stackSave', '$stackRestore',
 #if DYNAMIC_EXECUTION && !EMBIND_AOT
     '$createJsInvoker',
 #endif
@@ -709,6 +710,18 @@ var LibraryEmbind = {
     // TODO: Remove this completely once all function invokers are being dynamically generated.
     var needsDestructorStack = usesDestructorStack(argTypes);
 
+    // Stack-allocating trivial value types get a stackSave/stackRestore
+    // bracket around the call; see createJsInvoker for the async carve-outs.
+    var argsNeedStack = argsUseStackAlloc(argTypes);
+#if ASYNCIFY == 1
+    var useStackFrame = false;
+#else
+    var useStackFrame = argsNeedStack && !isAsync && !needsDestructorStack;
+#endif
+    if (argsNeedStack && !useStackFrame) {
+      needsDestructorStack = true;
+    }
+
     var returns = !argTypes[0].isVoid;
 
     var expectedArgCount = argCount - 2;
@@ -727,19 +740,36 @@ var LibraryEmbind = {
       Module.emscripten_trace_enter_context(`embind::${humanName}`);
 #endif
       destructors.length = 0;
+      var sp;
+      if (useStackFrame) {
+        sp = stackSave();
+      }
       var thisWired;
-      invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
-      invokerFuncArgs[0] = cppTargetFunc;
-      if (isClassMethodFunc) {
-        thisWired = argTypes[1].toWireType(destructors, this);
-        invokerFuncArgs[1] = thisWired;
-      }
-      for (var i = 0; i < expectedArgCount; ++i) {
-        argsWired[i] = argTypes[i + 2].toWireType(destructors, args[i]);
-        invokerFuncArgs.push(argsWired[i]);
-      }
+      var rv;
+      // The frame must be released on every completion, including a throwing
+      // argument conversion or callee: a skipped stackRestore permanently
+      // leaks wasm stack.
+      try {
+        invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
+        invokerFuncArgs[0] = cppTargetFunc;
+        if (isClassMethodFunc) {
+          thisWired = argTypes[1].toWireType(destructors, this);
+          invokerFuncArgs[1] = thisWired;
+        }
+        for (var i = 0; i < expectedArgCount; ++i) {
+          var argType = argTypes[i + 2];
+          // Stack-allocating types take the stack path only under a frame; a
+          // null destructors argument is that contract.
+          argsWired[i] = argType.toWireType(useStackFrame && argType.argStackAlloc ? null : destructors, args[i]);
+          invokerFuncArgs.push(argsWired[i]);
+        }
 
-      var rv = cppInvokerFunc(...invokerFuncArgs);
+        rv = cppInvokerFunc(...invokerFuncArgs);
+      } finally {
+        if (useStackFrame) {
+          stackRestore(sp);
+        }
+      }
 
       function onDone(rv) {
         if (needsDestructorStack) {
@@ -780,6 +810,10 @@ var LibraryEmbind = {
     var retType = argTypes[0];
     var instType = argTypes[1];
     var closureArgs = [humanName, throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, retType.fromWireType.bind(retType), instType?.toWireType.bind(instType)];
+    if (useStackFrame) {
+      // Must mirror the `args1.push('stackSave', 'stackRestore')` in createJsInvoker.
+      closureArgs.push(stackSave, stackRestore);
+    }
 #if EMSCRIPTEN_TRACING
     closureArgs.push(Module);
 #endif
@@ -887,12 +921,16 @@ var LibraryEmbind = {
     constructorSignature,
     rawConstructor,
     destructorSignature,
-    rawDestructor
+    rawDestructor,
+    valueSize,
+    isTrivial
   ) => {
     tupleRegistrations[rawType] = {
       name: AsciiToString(name),
       rawConstructor: embind__requireFunction(constructorSignature, rawConstructor),
       rawDestructor: embind__requireFunction(destructorSignature, rawDestructor),
+      valueSize,
+      isTrivial: !!isTrivial,
       elements: [],
     };
   },
@@ -922,7 +960,7 @@ var LibraryEmbind = {
 
   _embind_finalize_value_array__deps: [
     '$tupleRegistrations', '$runDestructors',
-    '$readPointer', '$whenDependentTypesAreResolved'],
+    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc'],
   _embind_finalize_value_array: (rawTupleType) => {
     var reg = tupleRegistrations[rawTupleType];
     delete tupleRegistrations[rawTupleType];
@@ -933,6 +971,8 @@ var LibraryEmbind = {
 
     var rawConstructor = reg.rawConstructor;
     var rawDestructor = reg.rawDestructor;
+    var valueSize = reg.valueSize;
+    var isTrivial = reg.isTrivial;
 
     whenDependentTypesAreResolved([rawTupleType], elementTypes, (elementTypes) => {
       for (const [i, elt] of elements.entries()) {
@@ -943,11 +983,19 @@ var LibraryEmbind = {
         const setter = elt.setter;
         const setterContext = elt.setterContext;
         elt.read = (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr));
-        elt.write = (ptr, o) => {
-          var destructors = [];
-          setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
-          runDestructors(destructors);
-        };
+        if (setterArgumentType.destructorFunction === null && !setterArgumentType.argStackAlloc) {
+          // The element type never registers a destructor, so skip the
+          // per-write destructors array. (Stack-allocating types still need
+          // the array here: a null destructors argument means an
+          // invoker-managed stack frame, which a nested write cannot assume.)
+          elt.write = (ptr, o) => setter(setterContext, ptr, setterArgumentType.toWireType(null, o));
+        } else {
+          elt.write = (ptr, o) => {
+            var destructors = [];
+            setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
+            runDestructors(destructors);
+          };
+        }
       }
 
       return [{
@@ -964,17 +1012,33 @@ var LibraryEmbind = {
           if (elementsLength !== o.length) {
             throw new TypeError(`Incorrect number of tuple elements for ${reg.name}: expected=${elementsLength}, actual=${o.length}`);
           }
-          var ptr = rawConstructor();
+          var ptr;
+          if (isTrivial && destructors === null) {
+            // Trivially constructible and destructible, and the invoker
+            // manages a stack frame around this call: the temporary lives on
+            // the wasm stack. No allocation, nothing to destruct. Callers
+            // that defer destruction (emval returns, property setters) pass
+            // a destructors array instead and take the heap path below.
+            // Zero-fill so unregistered fields and padding match the
+            // value-initialization the heap path's `new T()` performs.
+            ptr = stackAlloc(valueSize);
+            HEAPU8.fill(0, ptr, ptr + valueSize);
+          } else {
+            ptr = rawConstructor();
+            if (destructors !== null) {
+              destructors.push(rawDestructor, ptr);
+            }
+          }
           for (var i = 0; i < elementsLength; ++i) {
             elements[i].write(ptr, o[i]);
-          }
-          if (destructors !== null) {
-            destructors.push(rawDestructor, ptr);
           }
           return ptr;
         },
         readValueFromPointer: readPointer,
-        destructorFunction: rawDestructor,
+        // Trivial types have nothing to run after the call: the stack frame
+        // (or the destructors array, on the deferred path) covers cleanup.
+        destructorFunction: isTrivial ? null : rawDestructor,
+        argStackAlloc: isTrivial,
       }];
     });
   },
@@ -987,12 +1051,16 @@ var LibraryEmbind = {
     constructorSignature,
     rawConstructor,
     destructorSignature,
-    rawDestructor
+    rawDestructor,
+    valueSize,
+    isTrivial
   ) => {
     structRegistrations[rawType] = {
       name: AsciiToString(name),
       rawConstructor: embind__requireFunction(constructorSignature, rawConstructor),
       rawDestructor: embind__requireFunction(destructorSignature, rawDestructor),
+      valueSize,
+      isTrivial: !!isTrivial,
       fields: [],
     };
   },
@@ -1024,13 +1092,15 @@ var LibraryEmbind = {
 
   _embind_finalize_value_object__deps: [
     '$structRegistrations', '$runDestructors',
-    '$readPointer', '$whenDependentTypesAreResolved'],
+    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc'],
   _embind_finalize_value_object: (structType) => {
     var reg = structRegistrations[structType];
     delete structRegistrations[structType];
 
     var rawConstructor = reg.rawConstructor;
     var rawDestructor = reg.rawDestructor;
+    var valueSize = reg.valueSize;
+    var isTrivial = reg.isTrivial;
     var fieldRecords = reg.fields;
     var fieldTypes = fieldRecords.map((field) => field.getterReturnType).
               concat(fieldRecords.map((field) => field.setterArgumentType));
@@ -1045,11 +1115,14 @@ var LibraryEmbind = {
         const setterContext = field.setterContext;
         fields[field.fieldName] = {
           read: (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr)),
-          write: (ptr, o) => {
-            var destructors = [];
-            setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
-            runDestructors(destructors);
-          },
+          // See the matching element-write logic in _embind_finalize_value_array.
+          write: (setterArgumentType.destructorFunction === null && !setterArgumentType.argStackAlloc)
+            ? (ptr, o) => setter(setterContext, ptr, setterArgumentType.toWireType(null, o))
+            : (ptr, o) => {
+                var destructors = [];
+                setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
+                runDestructors(destructors);
+              },
           optional: getterReturnType.optional,
         };
       }
@@ -1072,17 +1145,28 @@ var LibraryEmbind = {
               throw new TypeError(`Missing field: "${fieldName}"`);
             }
           }
-          var ptr = rawConstructor();
+          var ptr;
+          if (isTrivial && destructors === null) {
+            // See the matching branch in _embind_finalize_value_array: the
+            // invoker manages a stack frame, so the temporary lives on the
+            // wasm stack with no allocation and no destructor bookkeeping;
+            // zero-filled to match the heap path's value-initialization.
+            ptr = stackAlloc(valueSize);
+            HEAPU8.fill(0, ptr, ptr + valueSize);
+          } else {
+            ptr = rawConstructor();
+            if (destructors !== null) {
+              destructors.push(rawDestructor, ptr);
+            }
+          }
           for (fieldName in fields) {
             fields[fieldName].write(ptr, o[fieldName]);
-          }
-          if (destructors !== null) {
-            destructors.push(rawDestructor, ptr);
           }
           return ptr;
         },
         readValueFromPointer: readPointer,
-        destructorFunction: rawDestructor,
+        destructorFunction: isTrivial ? null : rawDestructor,
+        argStackAlloc: isTrivial,
       }];
     });
   },
