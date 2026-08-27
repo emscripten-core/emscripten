@@ -22,8 +22,10 @@
 // net.BoundSocket when the runtime offers it, else the private tcp_wrap binding
 // as a fallback (net.Server's listen is async and cannot report an assigned
 // ephemeral port up front, so it can't drive bind on its own). connect() goes
-// through net.Socket, adopting the bound handle when one exists so an explicit
-// source address/port is honored, and otherwise letting the kernel assign one.
+// through net.Socket, adopting the bound handle so an explicit source
+// address/port is honored; an unbound client binds an ephemeral port first,
+// since the kernel assigns the source port synchronously at connect() and
+// getsockname() must report it immediately.
 //
 // UDP uses the public node:dgram socket when it exposes a synchronous bindSync
 // (a recent node addition that ships alongside connectSync), giving the
@@ -587,15 +589,16 @@ var NodeSockFSLibrary = {
       sock.dport = port;
       sock.state = {{{ SOCK_STATE_CONNECTING }}};
       var net = nodeSockHelpers.getNet();
-      var conn;
-      if (sock.bound) {
-        // A prior bind() produced a real, already-bound handle; connect through
-        // it so the bound source address/port is honored by the kernel.
-        conn = new net.Socket({ handle: sock.bound, pauseOnCreate: true, allowHalfOpen: true });
-      } else {
-        // Unbound client: let the kernel assign the source address/port.
-        conn = new net.Socket({ allowHalfOpen: true });
+      if (!sock.bound) {
+        // The kernel assigns the ephemeral source port synchronously at
+        // connect(), so an unbound client binds an ephemeral port first (the
+        // same eager bindHandle path an explicit bind() takes) and getsockname()
+        // is correct immediately, not only once the async connect completes.
+        nodeSockHelpers.bindHandle(sock, addr.includes(':') ? '::' : '0.0.0.0', 0);
       }
+      // Connect through the bound handle so the bound source address/port is
+      // honored by the kernel.
+      var conn = new net.Socket({ handle: sock.bound, pauseOnCreate: true, allowHalfOpen: true });
       conn.once('connect', () => {
         sock.state = {{{ SOCK_STATE_CONNECTED }}};
         sock.saddr = conn.localAddress;
