@@ -104,16 +104,3 @@ and freezes the web page.
   (``-sASYNCIFY``) or JavaScript Promise Integration (``-sJSPI``).
 - Offload heavy compute or blocking operations to background workers using
   :doc:`multithreading and pthreads <../porting/pthreads>` (``-pthread``).
-
-Virtual Filesystem and I/O
---------------------------
-
-Standard C/C++ file operations (such as ``fopen`` or ``std::ifstream``) operate
-on Emscripten's virtual in-memory filesystem (``MEMFS`` by default). See the
-:ref:`file-system-overview` for an architectural overview.
-
-- Do not assume direct access to the host file system.
-- For small temporary files, ``MEMFS`` is sufficient.
-- For persistent client-side data storage across browser sessions, use
-  asynchronous storage backends such as :ref:`filesystem-api-idbfs` or the
-  :ref:`Filesystem-API`.
