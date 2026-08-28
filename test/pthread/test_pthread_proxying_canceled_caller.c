@@ -12,6 +12,8 @@
  */
 
 #include <assert.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/eventloop.h>
 #include <emscripten/proxying.h>
 #include <pthread.h>
 #include <stdatomic.h>
@@ -19,24 +21,20 @@
 #include <stdio.h>
 #include <unistd.h>
 
-static em_proxying_queue* q;
-static pthread_t target;
-static _Atomic bool stop_target;
+em_proxying_queue* q;
+pthread_t target;
 
-static void* target_main(void* arg) {
-  while (!stop_target) {
-    emscripten_proxy_execute_queue(q);
-    usleep(1000);
-  }
-  return NULL;
-}
+// The target runs its event loop, which is where proxied work is dispatched.
+void* target_main(void* arg) { emscripten_exit_with_live_runtime(); }
+
+void stop_target(void* arg) { emscripten_runtime_keepalive_pop(); }
 
 // (a) Work in progress on the target when the caller is canceled. The target
 // keeps reading the caller's stack argument until released, so the canceled
 // caller must not have unwound yet.
-static _Atomic bool slow_started, slow_release, slow_done;
+_Atomic bool slow_started, slow_release, slow_done;
 
-static void slow(void* arg) {
+void slow(void* arg) {
   slow_started = true;
   while (!slow_release) {
     usleep(1000);
@@ -45,7 +43,7 @@ static void slow(void* arg) {
   slow_done = true;
 }
 
-static void* sync_caller(void* arg) {
+void* sync_caller(void* arg) {
   int local = 42;
   emscripten_proxy_sync(q, target, slow, &local);
   assert(false && "should have been canceled");
@@ -54,14 +52,14 @@ static void* sync_caller(void* arg) {
 
 // (b) The target returns from the proxied function without finishing the ctx;
 // the canceled caller is held until the ctx is finished.
-static em_proxying_ctx* _Atomic stashed;
-static _Atomic bool ctx_caller_exiting;
+em_proxying_ctx* _Atomic stashed;
+_Atomic bool ctx_caller_exiting;
 
-static void stash(em_proxying_ctx* ctx, void* arg) { stashed = ctx; }
+void stash(em_proxying_ctx* ctx, void* arg) { stashed = ctx; }
 
-static void note_exit(void* arg) { ctx_caller_exiting = true; }
+void note_exit(void* arg) { ctx_caller_exiting = true; }
 
-static void* ctx_caller(void* arg) {
+void* ctx_caller(void* arg) {
   int local = 42;
   pthread_cleanup_push(note_exit, NULL);
   emscripten_proxy_sync_with_ctx(q, target, stash, &local);
@@ -70,9 +68,9 @@ static void* ctx_caller(void* arg) {
   return NULL;
 }
 
-static void finish_stashed(void* arg) { emscripten_proxy_finish(stashed); }
+void finish_stashed(void* arg) { emscripten_proxy_finish(stashed); }
 
-static void noop(void* arg) {}
+void noop(void* arg) {}
 
 int main(void) {
   q = em_proxying_queue_create();
@@ -106,7 +104,7 @@ int main(void) {
   // The queue is still healthy for ordinary work.
   assert(emscripten_proxy_sync(q, target, noop, NULL));
 
-  stop_target = true;
+  assert(emscripten_proxy_async(q, target, stop_target, NULL));
   assert(pthread_join(target, NULL) == 0);
   em_proxying_queue_destroy(q);
   printf("done\n");
