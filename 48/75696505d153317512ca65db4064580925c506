@@ -1,0 +1,23 @@
+test/test_sockets_node.py
+  s_af662fd70043d2::t_591c181ec5219d 103,108,129,135,140,144,166,173,182,188,192,196,201,208,214,222,227-234,241,247,252,257,263,269,278
+test/codesize/test_codesize_minimal_pthreads.json
+  s_af662fd70043d2::t_546a193816e5be 4-7,10-13,26-29,63,66,105,143,149,152-153
+test/codesize/test_codesize_minimal_pthreads_memgrowth.json
+  s_af662fd70043d2::t_9bfbb62b066985 4-7,10-13,26-29,63,66,105,143,149,152-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4875696505d153317512ca65db4064580925c506",
+  "prompts": {},
+  "sessions": {
+    "s_af662fd70043d2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fb58267a6ffecBhe74IQJGT3ws",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
