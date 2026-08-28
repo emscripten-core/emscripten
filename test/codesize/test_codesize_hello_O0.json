@@ -2,9 +2,9 @@
   "a.out.js": 23471,
   "a.out.js.gz": 8555,
   "a.out.nodebug.wasm": 15109,
-  "a.out.nodebug.wasm.gz": 7456,
+  "a.out.nodebug.wasm.gz": 7453,
   "total": 38580,
-  "total_gz": 16011,
+  "total_gz": 16008,
   "sent": [
     "fd_write"
   ],
