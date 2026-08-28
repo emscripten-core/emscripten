@@ -17,6 +17,19 @@ emitting warnings, but that is not always possible.
 General Recommendations
 =======================
 
+- **Avoid high-frequency calls between WebAssembly and JavaScript**; for
+  example, avoid per-pixel or per-sample calls in favor of operations that
+  process entire memory regions or buffers.
+- **Avoid shipping debug information in production**; see below for recommended
+  release build flags.
+
+
+Command-Line Style
+==================
+
+Keeping the command line flag usage minimal and consistent helps with codebase
+understanding and avoids deviating from the well-lit path.
+
 - **Don't pass settings that are enabled by default.** To keep command lines
   clean and concise, omit redundant options that are already default in modern
   Emscripten (such as ``-sWASM=1``).
@@ -26,17 +39,14 @@ General Recommendations
 - **Use simple comma-separated lists** for list-based settings (for example,
   ``-sEXPORTED_FUNCTIONS=_main,_malloc`` rather than JSON arrays like
   ``-sEXPORTED_FUNCTIONS=['_main','_malloc']``).
-- **Avoid long lists on the command line**; Use the ``@filename`` instead (for
-  example, ``-sEXPORTED_FUNCTIONS=@exported_funcs.txt``).
+- **Avoid long lists on the command line**; use a response file (``@filename``)
+  instead (for example, ``-sEXPORTED_FUNCTIONS=@exported_funcs.txt``).
 - **Don't include the "=1" suffix for boolean flags.** For example, write
   ``-sSTRICT`` and ``-sALLOW_MEMORY_GROWTH`` rather than ``-sSTRICT=1`` or
   ``-sALLOW_MEMORY_GROWTH=1``.
 - **Use separate compilation** by compiling ``.cpp`` sources to ``.o`` object
   files before linking rather than combining everything into a single monolithic
   compiler invocation.
-- **Avoid direct usage of C/C++ functions from JavaScript**; prefer higher-level
-  interfaces such as :js:func:`cwrap` and/or :ref:`embind` that support more
-  than purely numeric types.
 
 
 Recommended Flags
@@ -60,31 +70,6 @@ Recommended Flags
   reduction.
 
 
-Separate Compilation Workflows
-==============================
-
-For non-trivial projects, always separate the compilation step (compiling source
-files to object files) from the linking step (combining object files into the
-final WebAssembly and JavaScript outputs). This enables incremental builds and
-matches standard C/C++ development practices.
-
-When using separate compilation, ensure that optimization flags and settings
-that affect code generation (such as ``-flto``, ``-O3``, ``-g``, or
-``-pthread``) are passed at **both** compile and link times.
-
-**Compilation step (producing object files):**
-
-.. code-block:: bash
-
-   em++ -O3 -flto -c main.cpp -o main.o $(CXXFLAGS)
-
-**Linking step (producing the ES6 module and WebAssembly binary):**
-
-.. code-block:: bash
-
-   em++ -O3 -flto -sSTRICT -sEXPORT_ES6 --bind main.o -o module.mjs $(LDFLAGS)
-
-
 Debug vs. Release Profiles
 --------------------------
 
@@ -92,7 +77,8 @@ When configuring build profiles, keep compile and link flags consistent within
 each configuration:
 
 - **Release Builds:** Use ``-Oz`` or ``-Os`` (or ``-O3`` for CPU-bound tasks)
-  combined with ``-flto``.
+  combined with ``-flto``.  Add ``--closure=1`` to get minified JavaScript too,
+  unless you plan to minify with an external tool.
 - **Debug Builds:** Use ``-g`` when compiling and either ``-g``,
   ``-gline-tables-only``, or ``-gsource-map`` when linking. Avoid optimization
   flags (such as ``-O2`` or ``-O3``) or ``-flto`` during debug builds for
@@ -101,14 +87,6 @@ each configuration:
 
 Modern Web Workflows and Common Pitfalls
 ========================================
-
-Interoperability with JavaScript
---------------------------------
-
-When exposing C++ functionality to JavaScript, prefer :ref:`embind` (``--bind``)
-over raw ``extern "C"`` functions. Embind naturally handles C++ classes,
-overloaded functions, smart pointers, ``std::string``, and ``std::vector``
-without requiring manual memory conversions or unsafe casting in JavaScript.
 
 Asynchronous Code Execution and Main Thread Blocking
 ----------------------------------------------------
