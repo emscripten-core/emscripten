@@ -24,6 +24,8 @@ See docs/process.md for more on how version tagging works.
   `WebAssembly.instantiateStreaming()` (via `Blob.stream()` and a `tee()`'d
   network body respectively), so enabling the flag no longer loses the
   download/compile overlap of the standard streaming path. (#27609)
+- npm >= 11.17.0 (included via emsdk) is now required to enable supply-chain
+  attack mitigations. (#27614)
 
 6.0.8 - 08/20/26
 ----------------
