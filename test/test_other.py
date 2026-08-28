@@ -15398,7 +15398,7 @@ addToLibrary({
     ''')
 
     self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
-    self.do_runf('empty.c', '42', cflags=[lib, '-sWASM_BINDGEN', '--post-js=post.js', '-lexports.js'])
+    self.do_runf('empty.c', '42', cflags=[lib, '-sWASM_BINDGEN', '-Wno-experimental', '--post-js=post.js', '-lexports.js'])
 
   @requires_rust
   @requires_dev_dependency('typescript')
@@ -15416,7 +15416,7 @@ addToLibrary({
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     create_file('empty.c', '')
     self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
-    self.run_process([EMCC, 'empty.c', '--emit-tsd', 'test_multi.d.ts', '-sWASM_BINDGEN', '-o', 'test_multi.js'] + [lib] + self.get_cflags())
+    self.run_process([EMCC, 'empty.c', '--emit-tsd', 'test_multi.d.ts', '-sWASM_BINDGEN', '-Wno-experimental', '-o', 'test_multi.js'] + [lib] + self.get_cflags())
     actual = read_file('test_multi.d.ts')
     self.assertContained("multi_value_return(): [number, number, number];", actual)
 
