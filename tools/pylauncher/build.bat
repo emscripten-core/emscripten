@@ -19,4 +19,5 @@ if /i "%~1"=="arm64" (
   set MACHINE=ARM64
 )
 
-cl pylauncher.c /Fe:%OUT% /O1 /GS- /link /NODEFAULTLIB /ENTRY:launcher_main /SUBSYSTEM:CONSOLE /MACHINE:%MACHINE% /Brepro ucrt.lib kernel32.lib
+rc /nologo /fo pylauncher.res pylauncher.rc
+cl pylauncher.c pylauncher.res /Fe:%OUT% /O1 /GS- /link /NODEFAULTLIB /ENTRY:launcher_main /SUBSYSTEM:CONSOLE /MACHINE:%MACHINE% /Brepro ucrt.lib kernel32.lib

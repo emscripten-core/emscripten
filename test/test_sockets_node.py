@@ -126,6 +126,12 @@ class sockets_node(RunnerCore):
       server.server_close()
       thread.join()
 
+  def test_noderawsockets_connect_getsockname(self):
+    # getsockname() immediately after a non-blocking connect() on an unbound
+    # client reports the ephemeral source port synchronously (kernel semantics:
+    # the port is assigned at connect(), not when the connection completes).
+    self.do_runf('sockets/test_tcp_connect_getsockname.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
   def test_noderawsockets_client_semantics(self):
     # EISCONN on a second connect, shutdown(SHUT_WR) leaving reads working,
     # EPIPE on a write after that, and POLLHUP after a full shutdown(SHUT_RDWR).
