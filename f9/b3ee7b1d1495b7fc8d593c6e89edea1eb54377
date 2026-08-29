@@ -1,0 +1,50 @@
+src/settings.js
+  s_64b9c63bf77802::t_0b84e9ea1ba759 2239-2244
+tools/emscripten.py
+  s_da70cfac2791d8::t_99bb4bbf61d8c3 654
+  s_64b9c63bf77802::t_354ed1d3629f64 628-633,648-653
+test/rust/bindgen_greeter/src/main.rs
+  s_64b9c63bf77802::t_943bfd8dc45247 1-23
+tools/link.py
+  s_da70cfac2791d8::t_b0d216ecd70ae5 1921-1926,1928,1930-1952
+tools/settings.py
+  s_64b9c63bf77802::t_eff79902f892a9 418
+test/rust/bindgen_greeter/.cargo/config.toml
+  s_64b9c63bf77802::t_8694c401cf5026 1-10
+.circleci/config.yml
+  s_64b9c63bf77802::t_98f747e9f0d100 79-85,91
+tools/building.py
+  s_da70cfac2791d8::t_8c0ce4f19c90a6 30,65-68,320-325,1331-1338,1353-1354,1361-1382
+test/rust/bindgen_greeter/Cargo.toml
+  s_64b9c63bf77802::t_cabae169a29cba 1-13
+site/source/docs/tools_reference/settings_reference.rst
+  s_64b9c63bf77802::t_c79504691e981b 3374-3379
+test/test_other.py
+  s_64b9c63bf77802::t_5bf035c58be6d4 276-280,15393,15396-15398,15403-15409,15411-15414,15418-15443,15445-15470
+src/postamble.js
+  s_64b9c63bf77802::t_0dad94e442aeab 241-247,249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f9b3ee7b1d1495b7fc8d593c6e89edea1eb54377",
+  "prompts": {},
+  "sessions": {
+    "s_64b9c63bf77802": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_055cd4783ffeF5PucidKb4H7kq",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    },
+    "s_da70cfac2791d8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_02630d879ffeyj13DvHsjOS7D0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
