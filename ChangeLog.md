@@ -35,6 +35,13 @@ See docs/process.md for more on how version tagging works.
 - The `WASM_BINDGEN` setting is now marked experimental, and enabling it
   produces a compiler diagnostic warning, since the integration is still
   evolving and subject to change. (#27616)
+- Embind `value_object` and `value_array` argument temporaries for trivially
+  constructible/destructible types (up to `alignof` 16) are now placed on the
+  wasm stack instead of being heap-allocated per call, and per-field destructor
+  bookkeeping is skipped when the type registers no destructor. This removes
+  the per-call garbage on such calls. The registration ABI gained size and
+  triviality parameters, so object files built against an older `bind.h` need
+  to be rebuilt. (#27610)
 - The `-sCROSS_ORIGIN_STORAGE` cache-hit and cache-miss paths now use
   `WebAssembly.instantiateStreaming()` (via `Blob.stream()` and a `tee()`'d
   network body respectively), so enabling the flag no longer loses the
