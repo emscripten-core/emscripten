@@ -8,7 +8,9 @@
  * work is (a) in progress on the target and (b) handed a ctx the target has
  * not finished yet. The caller must exit with PTHREAD_CANCELED, but only once
  * the target is done with the caller-owned argument (its stack), i.e. when the
- * work completes or the ctx is finished.
+ * work completes or the ctx is finished, or (c) the task releases the argument
+ * with emscripten_proxy_release_arg, letting the canceled caller exit early,
+ * after which emscripten_proxy_acquire_arg must fail.
  */
 
 #include <assert.h>
@@ -70,6 +72,31 @@ void* ctx_caller(void* arg) {
 
 void finish_stashed(void* arg) { emscripten_proxy_finish(stashed); }
 
+// (c) The task releases `arg` early: a canceled caller may then exit before
+// the task is finished, after which `arg` can no longer be reacquired.
+em_proxying_ctx* _Atomic released;
+
+void release_early(em_proxying_ctx* ctx, void* arg) {
+  // The caller is still waiting, so the arg can be acquired and accessed.
+  assert(emscripten_proxy_acquire_arg(ctx));
+  assert(*(int*)arg == 42);
+  emscripten_proxy_release_arg(ctx);
+  released = ctx;
+}
+
+void* release_caller(void* arg) {
+  int local = 42;
+  emscripten_proxy_sync_with_ctx(q, target, release_early, &local);
+  assert(false && "should have been canceled");
+  return NULL;
+}
+
+void finish_released(void* arg) {
+  // The canceled caller has exited, so the arg can no longer be acquired.
+  assert(!emscripten_proxy_acquire_arg(released));
+  emscripten_proxy_finish(released);
+}
+
 void noop(void* arg) {}
 
 int main(void) {
@@ -100,6 +127,15 @@ int main(void) {
   assert(pthread_join(caller, &ret) == 0);
   assert(ret == PTHREAD_CANCELED);
   assert(ctx_caller_exiting);
+
+  assert(pthread_create(&caller, NULL, release_caller, NULL) == 0);
+  while (!released)
+    usleep(1000);
+  assert(pthread_cancel(caller) == 0);
+  // The caller can exit even though the ctx is not yet finished.
+  assert(pthread_join(caller, &ret) == 0);
+  assert(ret == PTHREAD_CANCELED);
+  assert(emscripten_proxy_async(q, target, finish_released, NULL));
 
   // The queue is still healthy for ordinary work.
   assert(emscripten_proxy_sync(q, target, noop, NULL));

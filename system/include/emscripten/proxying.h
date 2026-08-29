@@ -49,6 +49,20 @@ typedef struct em_proxying_ctx em_proxying_ctx;
 // Signal the end of a task proxied with `emscripten_proxy_sync_with_ctx`.
 void emscripten_proxy_finish(em_proxying_ctx* ctx);
 
+// Declare that a task proxied with `emscripten_proxy_sync_with_ctx` will no
+// longer access `arg`. By default a canceled caller cannot exit until the task
+// is finished, since `arg` may be on the caller's stack; after this call it
+// may exit as soon as it is canceled, even though the task is still running.
+// `emscripten_proxy_finish` implies this release.
+void emscripten_proxy_release_arg(em_proxying_ctx* ctx);
+
+// Attempt to reverse `emscripten_proxy_release_arg`, re-pinning the caller so
+// the task may access `arg` again (typically to write results back before
+// finishing). Returns false if the caller has already been canceled and its
+// `arg` is gone, in which case `arg` must not be accessed. After a successful
+// acquire, a canceled caller once again waits for a release or finish.
+bool emscripten_proxy_acquire_arg(em_proxying_ctx* ctx);
+
 // Enqueue `func` on the given queue and thread and return immediately. Returns
 // true if the work was successfully enqueued and the target thread notified or
 // false otherwise.

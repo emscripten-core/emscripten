@@ -209,10 +209,11 @@ struct em_proxying_ctx {
       enum ctx_state state;
       pthread_mutex_t mutex;
       pthread_cond_t cond;
-      // `arg` is caller-owned (typically on its stack). The target sets
-      // `arg_released` under `mutex` once it will no longer read it (implied by
-      // completion); a canceled caller waits for that before marking
-      // `caller_gone`, after which `arg` must not be touched at all.
+      // `arg` is caller-owned (typically on its stack). The task sets
+      // `arg_released` under `mutex` via `emscripten_proxy_release_arg` once
+      // it will no longer access it (implied by completion); a canceled caller
+      // waits for that before marking `caller_gone`, after which the task can
+      // no longer reacquire `arg` with `emscripten_proxy_acquire_arg`.
       bool arg_released;
       bool caller_gone;
       _Atomic int refs;
@@ -385,6 +386,25 @@ static void call_callback_then_free_ctx(void* arg) {
   free_ctx(ctx);
 }
 
+void emscripten_proxy_release_arg(em_proxying_ctx* ctx) {
+  assert(ctx->kind == SYNC);
+  pthread_mutex_lock(&ctx->sync.mutex);
+  ctx->sync.arg_released = true;
+  pthread_cond_signal(&ctx->sync.cond);
+  pthread_mutex_unlock(&ctx->sync.mutex);
+}
+
+bool emscripten_proxy_acquire_arg(em_proxying_ctx* ctx) {
+  assert(ctx->kind == SYNC);
+  pthread_mutex_lock(&ctx->sync.mutex);
+  bool acquired = !ctx->sync.caller_gone;
+  if (acquired) {
+    ctx->sync.arg_released = false;
+  }
+  pthread_mutex_unlock(&ctx->sync.mutex);
+  return acquired;
+}
+
 void emscripten_proxy_finish(em_proxying_ctx* ctx) {
   if (ctx->kind == SYNC) {
     pthread_mutex_lock(&ctx->sync.mutex);
@@ -470,7 +490,7 @@ bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
   }
   pthread_cleanup_pop(0);
   pthread_mutex_unlock(&ctx->sync.mutex);
-  int ret = ctx->sync.state == DONE;
+  bool ret = ctx->sync.state == DONE;
   sync_ctx_unref(ctx);
   return ret;
 }
@@ -701,10 +721,7 @@ static void run_js_func_with_ctx(em_proxying_ctx* ctx, void* arg) {
   // The arguments have been deserialized; the only later access to `f` is the
   // guarded result write in _emscripten_run_js_on_main_thread_done, so a
   // canceled caller may now leave.
-  pthread_mutex_lock(&ctx->sync.mutex);
-  ctx->sync.arg_released = true;
-  pthread_cond_signal(&ctx->sync.cond);
-  pthread_mutex_unlock(&ctx->sync.mutex);
+  emscripten_proxy_release_arg(ctx);
 }
 
 void _emscripten_run_js_on_main_thread_done(void* arg_ctx,
@@ -714,12 +731,10 @@ void _emscripten_run_js_on_main_thread_done(void* arg_ctx,
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
   // `f` lives on the caller's stack; it is gone if the caller was canceled
   // while waiting (e.g. a pthread_cancel of a thread blocked in recv/poll).
-  pthread_mutex_lock(&ctx->sync.mutex);
-  if (!ctx->sync.caller_gone) {
+  if (emscripten_proxy_acquire_arg(ctx)) {
     f->result = result;
   }
-  remove_active_ctx(ctx);
-  sync_ctx_complete_locked(ctx, DONE);
+  emscripten_proxy_finish(ctx);
 }
 
 // PROXY_SYNC: run the JS function to completion on the target thread, then
