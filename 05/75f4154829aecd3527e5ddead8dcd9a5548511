@@ -1,0 +1,19 @@
+test/pthread/test_pthread_proxying_canceled_caller.c
+  s_af662fd70043d2::t_c884e77a3e1e90 15-16,24-25,27-30,35,37,46,55-56,58,60,62,71,73,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0575f4154829aecd3527e5ddead8dcd9a5548511",
+  "prompts": {},
+  "sessions": {
+    "s_af662fd70043d2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fb58267a6ffecBhe74IQJGT3ws",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}

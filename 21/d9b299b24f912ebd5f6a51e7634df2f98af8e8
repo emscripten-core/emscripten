@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "21d9b299b24f912ebd5f6a51e7634df2f98af8e8",
+  "prompts": {},
+  "sessions": {
+    "s_af662fd70043d2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fb58267a6ffecBhe74IQJGT3ws",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
