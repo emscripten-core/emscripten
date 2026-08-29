@@ -3635,6 +3635,18 @@ More info: https://emscripten.org
   def test_embind_return_value_policy(self):
     self.do_runf('embind/test_return_value_policy.cpp', cflags=['-lembind'])
 
+  @parameterized({
+    '': (),
+    'o2': ('-O2',),
+    'aot_js': ('-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT'),
+  })
+  def test_embind_trivial_value_stack(self, *extra_args):
+    # Trivially constructible/destructible value_object and value_array
+    # arguments marshal on the wasm stack; the test overrides malloc/free and
+    # asserts the trivial paths never allocate while the non-trivial and
+    # over-aligned fallbacks still balance the heap.
+    self.do_runf('embind/test_embind_trivial_value_stack.cpp', 'done\n', cflags=['-lembind', *extra_args])
+
   @requires_node_25
   def test_embind_resource_management(self):
     self.node_args.append('--js-explicit-resource-management')
