@@ -237,7 +237,7 @@ def find_config_file():
   # We could remove this special case if emsdk were to write its embedded config
   # file into the emscripten directory itself.
   # See: https://github.com/emscripten-core/emsdk/pull/367
-  emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
+  emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
   emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
 
   if os.path.isfile(emsdk_embedded_config):

@@ -339,7 +339,8 @@ def check_node():
 
 
 def generate_sanity():
-  return f'{utils.EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
+  llvm_root = os.path.normcase(config.LLVM_ROOT)
+  return f'{utils.EMSCRIPTEN_VERSION}|{llvm_root}\n'
 
 
 @memoize

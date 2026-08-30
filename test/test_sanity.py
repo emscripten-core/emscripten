@@ -25,7 +25,7 @@ from common import (
   path_from_root,
   test_file,
 )
-from decorators import no_windows, parameterized, with_env_modify
+from decorators import no_windows, only_windows, parameterized, with_env_modify
 
 from tools import building, cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
@@ -172,8 +172,8 @@ class sanity(RunnerCore):
   def check_working(self, command, expected=None, env=None):
     if type(command) is not list:
       command = [command]
-    if command == [EMCC]:
-      command = [EMCC, '--version']
+    if len(command) == 1 and os.path.normcase(command[0]) == os.path.normcase(EMCC):
+      command = [command[0], '--version']
     if expected is None:
       expected = 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld)'
 
@@ -379,6 +379,29 @@ fi
     output = self.check_working(EMCC)
     self.assertNotContained(SANITY_MESSAGE, output)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+  @only_windows('test windows-specific case insensitivity')
+  def test_windows_path_casing(self):
+    # On windows, that case uses to run the compiler can have knock-on
+    # effects.  This test verifies that C:/PATH/TO/emcc and C:/path/to/emcc
+    # at treated the same, in particular from POV of the sanity checks.
+    restore_and_set_up()
+    self.check_working(EMCC)
+
+    # Calling the compiler via differently-cased paths should not trigger
+    # a sanity check.
+    output = self.check_working(EMCC.lower())
+    self.assertNotContained(SANITY_MESSAGE, output)
+    output = self.check_working(EMCC.upper())
+    self.assertNotContained(SANITY_MESSAGE, output)
+
+    # Calling with a respelled EM_LLVM_ROOT environment override should
+    # also not trigger a sanity check.
+    new_llvm_root = config.LLVM_ROOT.upper()
+    self.assertNotEqual(new_llvm_root, config.LLVM_ROOT)
+    with env_modify({'EM_LLVM_ROOT': new_llvm_root}):
+      output = self.check_working(EMCC)
+    self.assertNotContained(SANITY_MESSAGE, output)
 
   def test_em_config_env_var(self):
     # emcc should be configurable directly from EM_CONFIG without any config file
