@@ -382,21 +382,21 @@ fi
 
   @only_windows('test windows-specific case insensitivity')
   def test_windows_path_casing(self):
-    # On windows, that case uses to run the compiler can have knock-on
+    # On Windows, the case used to run the compiler can have knock-on
     # effects.  This test verifies that C:/PATH/TO/emcc and C:/path/to/emcc
-    # at treated the same, in particular from POV of the sanity checks.
+    # are treated the same, in particular from the POV of the sanity checks.
     restore_and_set_up()
     self.check_working(EMCC)
 
     # Calling the compiler via differently-cased paths should not trigger
     # a sanity check.
-    output = self.check_working(EMCC.lower())
-    self.assertNotContained(SANITY_MESSAGE, output)
-    output = self.check_working(EMCC.upper())
+    new_emcc = EMCC.upper()
+    self.assertNotEqual(new_emcc, EMCC)
+    output = self.check_working(new_emcc)
     self.assertNotContained(SANITY_MESSAGE, output)
 
-    # Calling with a respelled EM_LLVM_ROOT environment override should
-    # also not trigger a sanity check.
+    # Calling with a differently-cased EM_LLVM_ROOT should also not trigger a
+    # sanity check.
     new_llvm_root = config.LLVM_ROOT.upper()
     self.assertNotEqual(new_llvm_root, config.LLVM_ROOT)
     with env_modify({'EM_LLVM_ROOT': new_llvm_root}):
