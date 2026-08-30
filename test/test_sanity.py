@@ -25,7 +25,7 @@ from common import (
   path_from_root,
   test_file,
 )
-from decorators import no_windows, parameterized, with_env_modify
+from decorators import no_windows, only_windows, parameterized, with_env_modify
 
 from tools import building, cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
@@ -379,6 +379,23 @@ fi
     output = self.check_working(EMCC)
     self.assertNotContained(SANITY_MESSAGE, output)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+  @only_windows('only Windows aliases path case and separator style')
+  def test_llvm_root_path_spelling(self):
+    # The same LLVM can reach us spelled differently depending on how the
+    # compiler was invoked -- an IDE that lowercases the compiler path, a build
+    # system that hands over backslashes. Windows resolves all of those to one
+    # directory, so they must not count as a config change: doing so erases the
+    # whole cache, and the reinstalled sysroot headers then force a rebuild of
+    # every object in the user's project.
+    restore_and_set_up()
+    self.check_working(EMCC)
+
+    respelled = config.LLVM_ROOT.replace('/', '\\').upper()
+    self.assertNotEqual(respelled, config.LLVM_ROOT)
+    with env_modify({'EM_LLVM_ROOT': respelled}):
+      output = self.check_working(EMCC)
+    self.assertNotContained(SANITY_MESSAGE, output)
 
   def test_em_config_env_var(self):
     # emcc should be configurable directly from EM_CONFIG without any config file

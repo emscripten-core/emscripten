@@ -339,7 +339,12 @@ def check_node():
 
 
 def generate_sanity():
-  return f'{utils.EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
+  # Spell LLVM_ROOT canonically. It is derived from the path the compiler was
+  # invoked through, so on Windows the same directory reaches us as either
+  # "C:/llvm/bin" or "c:\llvm\bin" depending on the caller. Comparing those
+  # verbatim reports a config change that never happened and erases the cache.
+  # normcase() is a no-op on POSIX, where the two spellings really are distinct.
+  return f'{utils.EMSCRIPTEN_VERSION}|{os.path.normcase(config.LLVM_ROOT)}\n'
 
 
 @memoize
