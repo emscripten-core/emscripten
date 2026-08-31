@@ -1,10 +1,10 @@
 {
   "a.out.js": 23471,
   "a.out.js.gz": 8555,
-  "a.out.nodebug.wasm": 15109,
-  "a.out.nodebug.wasm.gz": 7453,
-  "total": 38580,
-  "total_gz": 16008,
+  "a.out.nodebug.wasm": 15088,
+  "a.out.nodebug.wasm.gz": 7441,
+  "total": 38559,
+  "total_gz": 15996,
   "sent": [
     "fd_write"
   ],
@@ -48,7 +48,6 @@
     "$__vfprintf_internal",
     "$__wasi_syscall_ret",
     "$__wasm_call_ctors",
-    "$_emscripten_memcpy_bulkmem",
     "$_emscripten_stack_alloc",
     "$_emscripten_stack_restore",
     "$emscripten_stack_get_base",

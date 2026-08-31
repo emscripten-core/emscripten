@@ -38,11 +38,6 @@ _Noreturn void _abort_js(void);
 
 void setThrew(uintptr_t threw, int value);
 
-void* _emscripten_memcpy_bulkmem(void* __restrict__ dest,
-                                 const void* __restrict__ src,
-                                 size_t n);
-void* _emscripten_memset_bulkmem(void* ptr, char value, size_t n);
-
 void emscripten_notify_memory_growth(size_t memory_index);
 
 time_t _timegm_js(struct tm* tm);
