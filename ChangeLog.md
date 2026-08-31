@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.9 (in development)
 ----------------------
+- The `WASM_BINDGEN` setting is now marked experimental, and enabling it
+  produces a compiler diagnostic warning, since the integration is still
+  evolving and subject to change. (#27616)
 - The `-sCROSS_ORIGIN_STORAGE` cache-hit and cache-miss paths now use
   `WebAssembly.instantiateStreaming()` (via `Blob.stream()` and a `tee()`'d
   network body respectively), so enabling the flag no longer loses the
