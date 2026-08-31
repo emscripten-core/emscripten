@@ -515,8 +515,23 @@ addToLibrary({
     });
   },
 
-  $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits', '$stackRestore'],
+  $Fibers__deps: ['emscripten_stack_set_limits', '$stackRestore',
+#if ASYNCIFY == 1
+    '$Asyncify',
+#endif
+  ],
   $Fibers: {
+    restoreStack(fiber) {
+      var stack_base = {{{ makeGetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_base,  '*') }}};
+      var stack_max =  {{{ makeGetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_limit, '*') }}};
+      _emscripten_stack_set_limits(stack_base, stack_max);
+#if STACK_OVERFLOW_CHECK >= 2
+      ___set_stack_limits(stack_base, stack_max);
+#endif
+      stackRestore({{{ makeGetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, '*') }}});
+    },
+
+#if ASYNCIFY == 1
     nextFiber: 0,
     trampolineRunning: false,
     trampoline() {
@@ -537,15 +552,7 @@ addToLibrary({
      * NOTE: This function is the asynchronous part of emscripten_fiber_swap.
      */
     finishContextSwitch(newFiber) {
-      var stack_base = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  '*') }}};
-      var stack_max =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, '*') }}};
-      _emscripten_stack_set_limits(stack_base, stack_max);
-
-#if STACK_OVERFLOW_CHECK >= 2
-      ___set_stack_limits(stack_base, stack_max);
-#endif
-
-      stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   '*') }}});
+      Fibers.restoreStack(newFiber);
 
       var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
 
@@ -562,6 +569,10 @@ addToLibrary({
         var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, '*') }}};
         {{{ makeDynCall('vp', 'entryPoint') }}}(userData);
       } else {
+#if ASSERTIONS
+        var newAsyncifyStack = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.asyncify_data + C_STRUCTS.asyncify_data_s.stack_ptr, '*') }}};
+        assert(newAsyncifyStack, 'finishContextSwitch: fiber was initialized with a null asyncify_stack, which is only supported under JSPI (-sJSPI)');
+#endif
         var asyncifyData = newFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
         Asyncify.currData = asyncifyData;
 
@@ -573,12 +584,58 @@ addToLibrary({
         Asyncify.doRewind(asyncifyData);
       }
     },
+#elif ASYNCIFY == 2
+    fiberResolvers: new Map(),
+
+    swap(oldFiber, newFiber) {
+      return new Promise((resolve) => {
+        Fibers.fiberResolvers.set(oldFiber, resolve);
+        var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
+        if (entryPoint) {
+          {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, '*') }}};
+          Fibers.restoreStack(newFiber);
+#if STACK_OVERFLOW_CHECK
+          writeStackCookie();
+#endif
+#if ASYNCIFY_DEBUG
+          dbg('ASYNCIFY/FIBER: entering fiber', newFiber, 'for the first time');
+#endif
+          var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, '*') }}};
+          var start = {{{ makeDynCall('vp', 'entryPoint', true) }}};
+          start(userData).catch((e) => {
+            abort(String(e));
+          });
+        } else {
+          var resume = Fibers.fiberResolvers.get(newFiber);
+#if ASSERTIONS
+          assert(resume, `fiber ${newFiber} is not suspended`);
+#endif
+#if ASYNCIFY_DEBUG
+          dbg('ASYNCIFY/FIBER: resume fiber', newFiber);
+#endif
+          Fibers.fiberResolvers.delete(newFiber);
+          resume();
+        }
+      });
+    },
+#endif
   },
 
-  emscripten_fiber_swap__deps: ['$Asyncify', '$Fibers', '$stackSave'],
+  emscripten_fiber_swap__deps: ['$Fibers', '$stackSave',
+#if ASYNCIFY == 1
+    '$Asyncify',
+#endif
+  ],
   emscripten_fiber_swap__async: true,
+#if ASYNCIFY == 1
   emscripten_fiber_swap: (oldFiber, newFiber) => {
     if (ABORT) return;
+#if ASSERTIONS
+    assert(oldFiber, 'emscripten_fiber_swap: oldFiber must not be null');
+    assert(newFiber, 'emscripten_fiber_swap: newFiber must not be null');
+    var asyncifyStack = {{{ makeGetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.asyncify_data + C_STRUCTS.asyncify_data_s.stack_ptr, '*') }}};
+    assert(asyncifyStack, 'emscripten_fiber_swap: fiber was initialized with a null asyncify_stack, which is only supported under JSPI (-sJSPI)');
+#endif
 #if ASYNCIFY_DEBUG
     dbg('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);
 #endif
@@ -610,6 +667,26 @@ addToLibrary({
       Asyncify.currData = null;
     }
   },
+#elif ASYNCIFY == 2
+  emscripten_fiber_swap: async (oldFiber, newFiber) => {
+    if (ABORT) return;
+#if ASSERTIONS
+    assert(oldFiber, 'emscripten_fiber_swap: oldFiber must not be null');
+    assert(newFiber, 'emscripten_fiber_swap: newFiber must not be null');
+#endif
+#if ASYNCIFY_DEBUG
+    dbg('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber);
+#endif
+    if (oldFiber === newFiber) return;
+
+    var stackTop = stackSave();
+    {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', '*') }}};
+
+    await Fibers.swap(oldFiber, newFiber);
+
+    Fibers.restoreStack(oldFiber);
+  },
+#endif
 #else // ASYNCIFY
   emscripten_sleep: () => {
     abort('Please compile your program with async support in order to use asynchronous operations like emscripten_sleep');

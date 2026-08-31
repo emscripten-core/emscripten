@@ -26,30 +26,38 @@ typedef struct emscripten_fiber_s {
   void *stack_base;             /** Where the C stack starts (NOTE: grows down). */
   void *stack_limit;            /** Where the C stack ends. */
   void *stack_ptr;              /** Current position in the C stack. */
-  em_arg_callback_func entry;   /** Function to call when resuming this context. If NULL, asyncify_data is used to rewind the call stack. */
+  em_arg_callback_func entry;   /** Function to call when resuming this context. If NULL, asyncify_data (under Asyncify) or native stack switching (under JSPI) is used to resume the call stack. */
   void *user_data;              /** Opaque pointer, passed as-is to the entry function. */
-  asyncify_data_t asyncify_data;
+  asyncify_data_t asyncify_data; /** Asyncify data structure (unused under JSPI). */
 } emscripten_fiber_t;
 
+/**
+ * Initializes a fiber context.
+ * Under JSPI (-sJSPI), asyncify_stack may be NULL and asyncify_stack_size 0.
+ */
 void emscripten_fiber_init(
   emscripten_fiber_t * _Nonnull fiber,
   em_arg_callback_func entry_func,
   void *entry_func_arg,
   void * _Nonnull c_stack,
   size_t c_stack_size,
-  void * _Nonnull asyncify_stack,
+  void * _Nullable asyncify_stack,
   size_t asyncify_stack_size
 );
 
+/**
+ * Partially initializes a fiber based on the currently active context.
+ * Under JSPI (-sJSPI), asyncify_stack may be NULL and asyncify_stack_size 0.
+ */
 void emscripten_fiber_init_from_current_context(
   emscripten_fiber_t * _Nonnull fiber,
-  void * _Nonnull asyncify_stack,
+  void * _Nullable asyncify_stack,
   size_t asyncify_stack_size
 );
 
 void emscripten_fiber_swap(
   emscripten_fiber_t * _Nonnull old_fiber,
-  emscripten_fiber_t * _Nonnull new_fibe
+  emscripten_fiber_t * _Nonnull new_fiber
 );
 
 #ifdef __cplusplus

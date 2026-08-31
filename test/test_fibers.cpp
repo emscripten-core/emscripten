@@ -16,7 +16,11 @@ struct Fiber {
     int result = 0;
 
     void init_with_api(em_arg_callback_func entry, void *arg) {
+#ifdef JSPI
+        emscripten_fiber_init(&context, entry, arg, c_stack, sizeof(c_stack), nullptr, 0);
+#else
         emscripten_fiber_init(&context, entry, arg, c_stack, sizeof(c_stack), asyncify_stack, sizeof(asyncify_stack));
+#endif
     }
 
     void init_manually(em_arg_callback_func entry, void *arg) {
@@ -40,7 +44,11 @@ static struct Globals {
     Fiber fibers[2];
 
     Globals() {
+#ifdef JSPI
+        emscripten_fiber_init_from_current_context(&main, nullptr, 0);
+#else
         emscripten_fiber_init_from_current_context(&main, asyncify_stack, sizeof(asyncify_stack));
+#endif
     }
 } G;
 
@@ -87,6 +95,22 @@ static void g(void *arg) {
     abort();
 }
 
+static void h2(void *arg) {
+    int *p = (int*)arg;
+    *p += 10;
+    // Swap directly back to fiber 0 without going through main
+    emscripten_fiber_swap(&G.fibers[1].context, &G.fibers[0].context);
+}
+
+static void h1(void *arg) {
+    int *p = (int*)arg;
+    *p += 5;
+    // Swap directly to fiber 1
+    emscripten_fiber_swap(&G.fibers[0].context, &G.fibers[1].context);
+    *p += 20;
+    emscripten_fiber_swap(&G.fibers[0].context, &G.main);
+}
+
 int main(int argc, char **argv) {
     int i;
     G.fibers[0].init_with_api(f, &i);
@@ -98,7 +122,12 @@ int main(int argc, char **argv) {
         emscripten_fiber_swap(&G.main, &G.fibers[1].context);
         printf("%d-", i);
     }
-    printf("*\n");
+
+    int val = 1000;
+    G.fibers[0].init_with_api(h1, &val);
+    G.fibers[1].init_with_api(h2, &val);
+    emscripten_fiber_swap(&G.main, &G.fibers[0].context);
+    printf("direct-%d-*\n", val);
 
     return 0;
 }
