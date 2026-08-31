@@ -330,6 +330,10 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     unpackAlignment: 4, // default alignment is 4 bytes
     unpackRowLength: 0,
 
+#if INCLUDE_WEBGL1_FALLBACK && MAX_WEBGL_VERSION >= 2
+    packRowLength: 0,
+#endif
+
     // Records a GL error condition that occurred, stored until user calls
     // glGetError() to fetch it. As per GLES2 spec, only the first error is
     // remembered, and subsequent errors are discarded until the user has
@@ -1289,6 +1293,10 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       GL.unpackAlignment = param;
     } else if (pname == {{{ cDefs.GL_UNPACK_ROW_LENGTH }}}) {
       GL.unpackRowLength = param;
+#if INCLUDE_WEBGL1_FALLBACK && MAX_WEBGL_VERSION >= 2
+    } else if (pname == {{{ cDefs.GL_PACK_ROW_LENGTH }}}) {
+      GL.packRowLength = param;
+#endif
     }
     GLctx.pixelStorei(pname, param);
   },
@@ -1773,7 +1781,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
 #endif
 #if INCLUDE_WEBGL1_FALLBACK
-    var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels);
+#if MAX_WEBGL_VERSION >= 2
+    var stride = Math.max(width, GL.packRowLength);
+#else
+    var stride = width; // GL_PACK_ROW_LENGTH does not exist yet in WebGL 1.
+#endif
+    var pixelData = emscriptenWebGLGetTexPixelData(type, format, stride, height, pixels);
     if (!pixelData) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
