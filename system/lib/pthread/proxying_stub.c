@@ -25,6 +25,10 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) { abort(); }
 
 void emscripten_proxy_finish(em_proxying_ctx* ctx) { abort(); }
 
+void emscripten_proxy_release_arg(em_proxying_ctx* ctx) { abort(); }
+
+bool emscripten_proxy_acquire_arg(em_proxying_ctx* ctx) { abort(); }
+
 bool emscripten_proxy_async(em_proxying_queue* q,
                             pthread_t target_thread,
                             void (*func)(void*),
