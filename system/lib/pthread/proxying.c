@@ -192,21 +192,19 @@ bool emscripten_proxy_async(em_proxying_queue* q,
 
 enum ctx_kind { SYNC, CALLBACK };
 
-// Phases of the sync ctx state word. `arg` is caller-owned (typically on its
-// stack), so the task may only access it in the ACTIVE phase, when the caller
-// is pinned in its wait even if canceled. In the PENDING and RELEASED phases a
-// canceled caller instead sets CTX_ORPHANED and exits immediately, handing
-// ownership of the ctx to the target, which then recycles it when it reaches a
-// terminal phase (and can no longer reach ACTIVE via
-// `emscripten_proxy_acquire_arg`).
-#define CTX_PENDING 0u  // Enqueued; the task has not started.
-#define CTX_ACTIVE 1u   // The task may access `arg`; the caller is pinned.
-#define CTX_RELEASED 2u // The task is running but may not access `arg`.
-#define CTX_DONE 3u     // Terminal: finished.
-#define CTX_CANCELED 4u // Terminal: the target died before finishing.
-
-#define CTX_ORPHANED 0x100u
-#define CTX_PHASE(s) ((s) & 0xffu)
+// The sync ctx state word tracks ownership with three flags. `arg` is
+// caller-owned (typically on its stack) and loaned to the task by
+// `emscripten_proxy_acquire_arg` (which is also how the task starts) until
+// `emscripten_proxy_release_arg` or completion. While the loan is outstanding
+// a canceled caller is pinned in its wait; otherwise it sets CTX_ORPHANED and
+// exits immediately, handing ownership of the ctx to the target to recycle at
+// completion (and voiding all future loans, including a task not yet started,
+// which is dropped). CTX_LOANED, CTX_DONE, and CTX_ORPHANED are mutually
+// exclusive.
+#define CTX_LOANED 1u   // The task may access `arg`; the caller is pinned.
+#define CTX_DONE 2u     // The call is over; with CTX_OK unless the target died.
+#define CTX_OK 4u
+#define CTX_ORPHANED 8u // The canceled caller is gone; `arg` with it.
 
 struct em_proxying_ctx {
   // The user-provided function and argument.
@@ -220,7 +218,7 @@ struct em_proxying_ctx {
     // ctx to finish (or cancel) and recycle later.
     struct {
       // Single-word lifecycle for the sync handshake; the caller futex-waits
-      // on it directly. See the CTX_* phases above.
+      // on it directly. See the CTX_* flags above.
       _Atomic uint32_t state;
     } sync;
 
@@ -342,7 +340,7 @@ static void em_proxying_ctx_init_sync(em_proxying_ctx* ctx,
   ctx->arg = arg;
   ctx->kind = SYNC;
   ctx->next = ctx->prev = NULL;
-  atomic_store(&ctx->sync.state, CTX_PENDING);
+  atomic_store(&ctx->sync.state, 0);
 }
 
 static void em_proxying_ctx_init_callback(em_proxying_ctx* ctx,
@@ -371,15 +369,16 @@ static void em_proxying_ctx_init_callback(em_proxying_ctx* ctx,
 // `queue` alive for callback ctxs.
 static void free_ctx(void* arg) { free(arg); }
 
-// Publish a terminal phase and either recycle the ctx of a canceled caller or
-// wake the waiting one. After this the target must not touch the ctx: waking
-// a possibly recycled address is benign (futex waiters recheck), but nothing
-// else would be.
-static void sync_ctx_complete(em_proxying_ctx* ctx, uint32_t phase) {
+// Publish completion (releasing any outstanding loan) and either recycle the
+// ctx of a canceled caller or wake the waiting one. After this the target must
+// not touch the ctx: waking a possibly recycled address is benign (futex
+// waiters recheck), but nothing else would be.
+static void sync_ctx_complete(em_proxying_ctx* ctx, uint32_t flags) {
   uint32_t s = atomic_load(&ctx->sync.state);
   while (!atomic_compare_exchange_weak(
-    &ctx->sync.state, &s, (s & CTX_ORPHANED) | phase)) {
+    &ctx->sync.state, &s, (s & CTX_ORPHANED) | flags)) {
   }
+  assert(!(s & CTX_DONE));
   if (s & CTX_ORPHANED) {
     sync_ctx_free(ctx);
   } else {
@@ -397,34 +396,33 @@ static void call_callback_then_free_ctx(void* arg) {
 
 void emscripten_proxy_release_arg(em_proxying_ctx* ctx) {
   assert(ctx->kind == SYNC);
-  // The orphaned bit cannot be set in the ACTIVE phase, so a plain store
-  // cannot lose it.
-  assert(CTX_PHASE(atomic_load(&ctx->sync.state)) == CTX_ACTIVE);
-  atomic_store(&ctx->sync.state, CTX_RELEASED);
+  // No other flag can be set while the loan is outstanding, so a plain store
+  // cannot lose one.
+  assert(atomic_load(&ctx->sync.state) == CTX_LOANED);
+  atomic_store(&ctx->sync.state, 0);
   emscripten_futex_wake(&ctx->sync.state, 1);
 }
 
 bool emscripten_proxy_acquire_arg(em_proxying_ctx* ctx) {
   assert(ctx->kind == SYNC);
   uint32_t s = atomic_load(&ctx->sync.state);
-  while (1) {
+  do {
+    assert(!(s & CTX_DONE));
     if (s & CTX_ORPHANED) {
       return false;
     }
-    if (CTX_PHASE(s) == CTX_ACTIVE) {
+    if (s & CTX_LOANED) {
       return true;
     }
-    assert(CTX_PHASE(s) == CTX_RELEASED);
-    if (atomic_compare_exchange_weak(&ctx->sync.state, &s, CTX_ACTIVE)) {
-      return true;
-    }
-  }
+  } while (
+    !atomic_compare_exchange_weak(&ctx->sync.state, &s, s | CTX_LOANED));
+  return true;
 }
 
 void emscripten_proxy_finish(em_proxying_ctx* ctx) {
   if (ctx->kind == SYNC) {
     remove_active_ctx(ctx);
-    sync_ctx_complete(ctx, CTX_DONE);
+    sync_ctx_complete(ctx, CTX_DONE | CTX_OK);
   } else {
     // Schedule the callback on the caller thread. If the caller thread has
     // already died or dies before the callback is executed, then at least make
@@ -447,7 +445,7 @@ static void call_cancel_then_free_ctx(void* arg) {
 static void cancel_ctx(void* arg) {
   em_proxying_ctx* ctx = arg;
   if (ctx->kind == SYNC) {
-    sync_ctx_complete(ctx, CTX_CANCELED);
+    sync_ctx_complete(ctx, CTX_DONE);
   } else {
     if (ctx->cb.cancel == NULL ||
         !do_proxy(ctx->cb.queue,
@@ -461,34 +459,28 @@ static void cancel_ctx(void* arg) {
 // Helper for wrapping the call with ctx as a `void (*)(void*)`.
 static void call_with_ctx(void* arg) {
   em_proxying_ctx* ctx = arg;
-  if (ctx->kind == SYNC) {
-    uint32_t expected = CTX_PENDING;
-    if (!atomic_compare_exchange_strong(
-          &ctx->sync.state, &expected, CTX_ACTIVE)) {
-      // The caller was canceled before the task started, so its `arg` is gone
-      // and no one wants the result; drop the work.
-      assert(expected == (CTX_PENDING | CTX_ORPHANED));
-      sync_ctx_free(ctx);
-      return;
-    }
+  // A sync task starts by taking the loan of `arg`; if the caller was already
+  // canceled its `arg` is gone and no one wants the result, so drop the work.
+  if (ctx->kind == SYNC && !emscripten_proxy_acquire_arg(ctx)) {
+    sync_ctx_free(ctx);
+    return;
   }
   add_active_ctx(ctx);
   ctx->func(ctx, ctx->arg);
 }
 
 // Cancellation cleanup for a caller unwound out of the wait below. Hold the
-// caller's stack alive while the task may access `arg` (the ACTIVE phase),
-// then hand the ctx over to the target, or recycle it if the task already
-// reached a terminal phase. Cancellation is disabled during exit, so waiting
-// here cannot recurse.
+// caller's stack alive while the loan of `arg` is outstanding, then hand the
+// ctx over to the target, or recycle it if the call already completed.
+// Cancellation is disabled during exit, so waiting here cannot recurse.
 static void orphan_sync_ctx(void* arg) {
   em_proxying_ctx* ctx = arg;
   uint32_t s = atomic_load(&ctx->sync.state);
   while (1) {
-    if (CTX_PHASE(s) == CTX_ACTIVE) {
+    if (s & CTX_LOANED) {
       emscripten_futex_wait(&ctx->sync.state, s, INFINITY);
       s = atomic_load(&ctx->sync.state);
-    } else if (CTX_PHASE(s) >= CTX_DONE) {
+    } else if (s & CTX_DONE) {
       sync_ctx_free(ctx);
       return;
     } else if (atomic_compare_exchange_weak(
@@ -518,11 +510,11 @@ bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
   // so hand the ctx over to the target rather than leaving it dangling.
   uint32_t s;
   pthread_cleanup_push(orphan_sync_ctx, ctx);
-  while (CTX_PHASE(s = atomic_load(&ctx->sync.state)) < CTX_DONE) {
+  while (!((s = atomic_load(&ctx->sync.state)) & CTX_DONE)) {
     emscripten_futex_wait(&ctx->sync.state, s, INFINITY);
   }
   pthread_cleanup_pop(0);
-  bool ret = CTX_PHASE(s) == CTX_DONE;
+  bool ret = s & CTX_OK;
   sync_ctx_free(ctx);
   return ret;
 }
