@@ -137,6 +137,27 @@ static void on_error(int error, const char *msg) {
 }
 #endif
 
+void test_text_input() {
+  EM_ASM({
+    // Create an input element, add it to the DOM, and focus on it.
+    input = document.createElement("input");
+    document.body.appendChild(input);
+
+    // When sent to an input element, backspace and tab are treated like any
+    // other key. TODO: this is not yet functional, see
+    // https://github.com/emscripten-core/emscripten/pull/22879
+    // After that lands, the two "!" here can be removed.
+    assert( simulateKeyEvent("keydown", 65, 65, 'A', input));
+    assert(!simulateKeyEvent("keydown",  8,  8, "Backspace", input));
+    assert(!simulateKeyEvent("keydown",  9,  9, "Tab", input));
+
+    // When sent anywhere else, backspace and tab are preventDefaulted.
+    assert( simulateKeyEvent("keydown", 65, 65, 'A'));
+    assert(!simulateKeyEvent("keydown",  8,  8, "Backspace"));
+    assert(!simulateKeyEvent("keydown",  9,  9, "Tab"));
+  });
+}
+
 int main() {
   EM_ASM({
     injectKeyEvent = (type, keyCode, options) => {
@@ -209,6 +230,8 @@ int main() {
       }
     }
   }
+
+  test_text_input();
 
   glfwTerminate();
 
