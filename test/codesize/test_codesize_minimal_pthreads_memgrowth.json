@@ -1,10 +1,10 @@
 {
   "a.out.js": 7329,
   "a.out.js.gz": 3634,
-  "a.out.nodebug.wasm": 18129,
-  "a.out.nodebug.wasm.gz": 8401,
-  "total": 25458,
-  "total_gz": 12035,
+  "a.out.nodebug.wasm": 18131,
+  "a.out.nodebug.wasm.gz": 8410,
+  "total": 25460,
+  "total_gz": 12044,
   "sent": [
     "a (memory)",
     "b (_emscripten_receive_on_main_thread_js)",
@@ -58,7 +58,6 @@
     "z (_emscripten_run_js_on_main_thread)"
   ],
   "funcs": [
-    "$__do_cleanup_pop",
     "$__errno_location",
     "$__memcpy",
     "$__pthread_getspecific",
@@ -99,7 +98,6 @@
     "$_emscripten_tls_init",
     "$_emscripten_yield",
     "$_main_thread",
-    "$_pthread_cleanup_push",
     "$a_cas",
     "$a_cas_p",
     "$a_dec",
@@ -138,7 +136,6 @@
     "$init_mparams",
     "$main",
     "$nodtor",
-    "$orphan_sync_ctx",
     "$pthread_setspecific",
     "$receive_notification",
     "$run_js_func",

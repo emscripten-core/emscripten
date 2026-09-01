@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
+#include <errno.h>
 #include <math.h>
 #include <pthread.h>
 #include <stdatomic.h>
@@ -469,12 +470,12 @@ static void call_with_ctx(void* arg) {
   ctx->func(ctx, ctx->arg);
 }
 
-// Cancellation cleanup for a caller unwound out of the wait below. Hold the
-// caller's stack alive while the loan of `arg` is outstanding, then hand the
-// ctx over to the target, or recycle it if the call already completed.
-// Cancellation is disabled during exit, so waiting here cannot recurse.
-static void orphan_sync_ctx(void* arg) {
-  em_proxying_ctx* ctx = arg;
+// Handle cancellation of a caller waiting below. Hold the caller's stack
+// alive while the loan of `arg` is outstanding, then hand the ctx over to the
+// target, or recycle it if the call already completed. Runs after the masked
+// cancel has set the cancel state to disabled, so waiting here cannot itself
+// be canceled.
+static void orphan_sync_ctx(em_proxying_ctx* ctx) {
   uint32_t s = atomic_load(&ctx->sync.state);
   while (1) {
     if (s & CTX_LOANED) {
@@ -506,14 +507,24 @@ bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
     sync_ctx_free(ctx);
     return false;
   }
-  // The wait is a cancellation point: a canceled caller exits from inside it,
-  // so hand the ctx over to the target rather than leaving it dangling.
-  uint32_t s;
-  pthread_cleanup_push(orphan_sync_ctx, ctx);
-  while (!((s = atomic_load(&ctx->sync.state)) & CTX_DONE)) {
-    emscripten_futex_wait(&ctx->sync.state, s, INFINITY);
+  // The wait is a cancellation point. Mask cancellation (as in
+  // pthread_cond_timedwait) so it surfaces as ECANCELED rather than unwinding
+  // the thread from inside the wait, hand the ctx over to the target, then
+  // exit.
+  int cs;
+  __pthread_setcancelstate(PTHREAD_CANCEL_MASKED, &cs);
+  if (cs == PTHREAD_CANCEL_DISABLE) {
+    __pthread_setcancelstate(cs, 0);
   }
-  pthread_cleanup_pop(0);
+  uint32_t s;
+  while (!((s = atomic_load(&ctx->sync.state)) & CTX_DONE)) {
+    if (emscripten_futex_wait(&ctx->sync.state, s, INFINITY) == -ECANCELED) {
+      orphan_sync_ctx(ctx);
+      __pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, 0);
+      __pthread_testcancel();
+    }
+  }
+  __pthread_setcancelstate(cs, 0);
   bool ret = s & CTX_OK;
   sync_ctx_free(ctx);
   return ret;
