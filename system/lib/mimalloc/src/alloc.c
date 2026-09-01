@@ -374,16 +374,24 @@ void* _mi_theap_realloc_zero(mi_theap_t* theap, void* p, size_t newsize, bool ze
     size = _mi_usable_size(p,page);
     if (usable_pre!=NULL) { *usable_pre = mi_page_usable_block_size(page); }
   }
-  if mi_unlikely(newsize<=size && newsize>=(size/2) && newsize>0  // note: newsize must be > 0 or otherwise we return NULL for realloc(NULL,0)
-                  && mi_page_heap(page)==_mi_theap_heap(theap))             // and within the same heap
-  {
-    mi_assert_internal(p!=NULL);
-    // todo: do not track as the usable size is still the same in the free; adjust potential padding?
-    // mi_track_resize(p,size,newsize)
-    // if (newsize < size) { mi_track_mem_noaccess((uint8_t*)p + newsize, size - newsize); }
-    if (usable_post!=NULL) { *usable_post = mi_page_usable_block_size(page); }
-    return p;  // reallocation still fits and not more than 50% waste
+  // check if we can reuse the existing block
+  if mi_unlikely(newsize<=size && newsize>=(size/2) && newsize>0) { // note: newsize must be > 0 or otherwise we return NULL for realloc(NULL,0)                 
+    mi_assert_internal(page!=NULL); // note: page!=NULL (since if p==NULL, we have size=0 and size>=newsize>0
+    #if MI_THEAP_INITASNULL
+    if (theap!=NULL)
+    #endif
+    {
+      if (mi_page_heap(page)==_mi_theap_heap(theap)) {  // and within the same heap
+        mi_assert_internal(p!=NULL);
+        // todo: do not track as the usable size is still the same in the free; adjust potential padding?
+        // mi_track_resize(p,size,newsize)
+        // if (newsize < size) { mi_track_mem_noaccess((uint8_t*)p + newsize, size - newsize); }
+        if (usable_post!=NULL) { *usable_post = mi_page_usable_block_size(page); }
+        return p;  // reallocation still fits and not more than 50% waste
+      }
+    }
   }
+  // otherwise allocate a fresh block
   void* newp = mi_theap_umalloc(theap,newsize,usable_post);
   if mi_likely(newp != NULL) {
     if (zero && newsize > size) {
@@ -837,23 +845,22 @@ mi_decl_restrict void* _mi_theap_malloc_guarded(mi_theap_t* theap, size_t size, 
   mi_block_t* const block = (mi_block_t*)_mi_malloc_generic(theap, req_size, 0 /* don't zero */, NULL);
   if (block==NULL) return NULL;
   void* const p = mi_block_ptr_set_guarded(block, obj_size);
+  if (p == NULL) return p;
   if (zero) { 
     _mi_memzero_aligned(p,obj_size);  // we have to zero here as padding might have written here (if the blocksize > reqsize + os_page_size)
   }
 
   // stats
-  mi_track_malloc(p, obj_size, zero);  
-  if (p != NULL) {
-    if (!mi_theap_is_initialized(theap)) { theap = _mi_theap_default(); }
-    #if MI_STAT>1
-    // adjust stats to only count the allocated size of the block (and not the guard page)
-    mi_theap_stat_adjust_decrease(theap, malloc_requested, req_size);
-    mi_theap_stat_increase(theap, malloc_requested, size);
-    #endif
-    mi_theap_stat_counter_increase(theap, malloc_guarded_count, 1);
-  }
+  mi_track_malloc(p, obj_size, zero);    
+  if (!mi_theap_is_initialized(theap)) { theap = _mi_theap_default(); }
+  mi_theap_stat_counter_increase(theap, malloc_guarded_count, 1);
+  #if MI_STAT>1
+  // adjust stats to only count the allocated size of the block (and not the guard page)
+  mi_theap_stat_adjust_decrease(theap, malloc_requested, req_size);
+  mi_theap_stat_increase(theap, malloc_requested, size);
+  #endif
   #if MI_DEBUG>3
-  if (p != NULL && zero) {
+  if (zero) {
     mi_assert_expensive(mi_mem_is_zero(p, size));
   }
   #endif

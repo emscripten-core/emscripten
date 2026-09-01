@@ -11,29 +11,27 @@ typedef int* (*sidey_data_type)();
 typedef int (*func_t)();
 typedef func_t (*sidey_func_type)();
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-_Atomic int thread_count = 0;
-_Atomic int dso_count = 0;
 void jslib_func();
 
-void* thread_main(void* arg) {
-  int num = (intptr_t)arg;
-  printf("thread_main %d %p\n", num, pthread_self());
-  thread_count++;
+pthread_barrier_t started;
+
+static void* thread_main(void* arg) {
+  int id = (int)(intptr_t)arg;
+
+  printf("thread %d: in thread_main\n", id);
 
   void* func_addr = dlsym(RTLD_DEFAULT, "jslib_func");
   assert(func_addr);
   printf("jslib_func via dlsym: %p\n", func_addr);
 
-  // busy wait until all threads are running
-  while (thread_count != NUM_THREADS) {}
+  // Wait until all threads + main have reached the barrier
+  pthread_barrier_wait(&started);
 
-  char filename[255];
-  sprintf(filename, "libside%d.so", num);
+  char filename[32];
+  snprintf(filename, sizeof(filename), "libside%d.so", id);
   printf("loading %s\n", filename);
   void* handle = dlopen(filename, RTLD_NOW|RTLD_GLOBAL);
-  printf("done loading %s (total=%d)\n", filename, ++dso_count);
+  printf("done loading %s (%d of %d)\n", filename, id + 1, NUM_THREADS);
   if (!handle) {
     printf("dlerror: %s\n", dlerror());
   }
@@ -46,29 +44,30 @@ void* thread_main(void* arg) {
   p_side_func_address = dlsym(handle, "side_func_address");
   printf("p_side_func_address=%p\n", p_side_func_address);
 
-  printf("done thread_main %d\n", num);
+  printf("thread %d: thread_main done\n", id);
   return NULL;
 }
 
 int main() {
-  printf("in main: %p\n", pthread_self());
+  printf("in main\n");
   jslib_func();
 
-  pthread_mutex_lock(&mutex);
-
-  // start a bunch of threads while holding the lock
+  pthread_barrier_init(&started, NULL, NUM_THREADS + 1);
   pthread_t threads[NUM_THREADS];
-  for (int i = 0; i < NUM_THREADS; i++) {
-    pthread_create(&threads[i], NULL, thread_main, (void*)(intptr_t)i);
+
+  // Start a bunch of threads
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    int rc = pthread_create(&threads[i], NULL, thread_main, (void*)(intptr_t)i);
+    assert(rc == 0);
   }
 
-  // busy wait until all threads are running
-  while (thread_count != NUM_THREADS) {}
-
-  for (int i = 0; i < NUM_THREADS; i++) {
-    pthread_join(threads[i], NULL);
+  // Wait until all threads execute their entry points
+  pthread_barrier_wait(&started);
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    int rc = pthread_join(threads[i], NULL);
+    assert(rc == 0);
   }
 
-  printf("main done\n");
+  printf("done\n");
   return 0;
 }

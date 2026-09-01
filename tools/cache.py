@@ -110,6 +110,8 @@ def get_sysroot_dir(*parts):
 
 
 def get_lib_dir(absolute):
+  from .cmdline import options
+
   ensure_setup()
   path = Path(get_sysroot(absolute=absolute), 'lib')
   if settings.MEMORY64:
@@ -118,8 +120,8 @@ def get_lib_dir(absolute):
     path = Path(path, 'wasm32-emscripten')
   # if relevant, use a subdir of the cache
   subdir = []
-  if settings.LTO:
-    if settings.LTO == 'thin':
+  if options.lto:
+    if options.lto == 'thin':
       subdir.append('thinlto')
     else:
       subdir.append('lto')

@@ -115,11 +115,15 @@ no_2gb = skip_if('no_2gb', lambda t: t.get_setting('INITIAL_MEMORY') == '2200mb'
 
 no_4gb = skip_if('no_4gb', lambda t: t.is_4gb())
 
+no_highmem = skip_if('no_highmem', lambda t: t.is_2gb() or t.is_4gb())
+
 only_windows = skip_if('only_windows', lambda _: not WINDOWS)
 
 requires_native_clang = skip_if_simple('native clang tests are disabled', lambda _: common.EMTEST_LACKS_NATIVE_CLANG)
 
 needs_make = skip_if('tool not available on windows bots', lambda _: WINDOWS)
+
+requires_login_tty = skip_if_simple('requires os.login_tty (python 3.11+)', lambda _: not hasattr(os, 'login_tty'))
 
 
 def requires_node(func):
@@ -139,6 +143,17 @@ def requires_node_25(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_node_25()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
+def requires_node_26(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_node_26()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -267,6 +282,21 @@ def also_with_pthreads(f):
   return decorated
 
 
+def also_with_proxy_to_pthread(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, threads, *args, **kwargs):
+    if threads:
+      self.cflags += ['-pthread', '-sPROXY_TO_PTHREAD']
+    f(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'proxy_to_pthread': (True,)})
+
+  return decorated
+
+
 def also_with_wasmfs(func):
   assert callable(func)
 
@@ -388,24 +418,6 @@ def also_with_minimal_runtime(func):
   return metafunc
 
 
-def also_without_bigint(func):
-  assert callable(func)
-
-  @wraps(func)
-  def metafunc(self, no_bigint, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:no_bigint=%s' % no_bigint)
-    if no_bigint:
-      if self.get_setting('WASM_BIGINT') is not None:
-        self.skipTest('redundant in bigint test config')
-      self.set_setting('WASM_BIGINT', 0)
-    return func(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (False,),
-                          'no_bigint': (True,)})
-  return metafunc
-
-
 def also_with_wasm64(func):
   assert callable(func)
 
@@ -415,7 +427,7 @@ def also_with_wasm64(func):
       print('parameterize:wasm64=%s' % with_wasm64)
     if with_wasm64:
       self.require_wasm64()
-      self.set_setting('MEMORY64')
+      self.cflags += ['-m64']
     return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -457,10 +469,10 @@ def also_with_wasm2js(func):
 
 
 def can_do_standalone(self, impure=False):
-  # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
+  # Pure standalone engines don't support wasm64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
   if not impure:
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       return False
     # This is way to detect the core_2gb test mode in test_core.py
     if self.get_setting('INITIAL_MEMORY') == '2200mb':
@@ -551,7 +563,6 @@ def with_all_eh_sjlj(func):
     if DEBUG:
       print('parameterize:eh_mode=%s' % mode)
     if mode in {'wasm', 'wasm_legacy'}:
-      # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
       self.cflags.append('-fwasm-exceptions')
@@ -610,7 +621,9 @@ def parameterize(func, parameters):
   """
   prev = getattr(func, '_parameterize', None)
   assert not any(p.startswith('_') for p in parameters), 'test variant names should not start with _'
+  assert all(isinstance(v, tuple) for v in parameters.values()), f'parameter values must be tuples: {parameters}'
   if prev:
+    assert all(isinstance(v, tuple) for v in prev.values()), f'previous parameter values must be tuples: {prev}'
     # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
     func._parameterize = {
       '_'.join(filter(None, [k1, k2])): v2 + v1 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())

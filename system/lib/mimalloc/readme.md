@@ -15,9 +15,9 @@ is a general purpose allocator with excellent [performance](#performance) charac
 Initially developed by Daan Leijen for the runtime systems of the
 [Koka](https://koka-lang.github.io) and [Lean](https://github.com/leanprover/lean) languages.
 
-Latest release   : `v3.3.1` (2026-04-20) recommended.  
-Latest v2 release: `v2.3.1` (2026-04-20) stable.  
-Latest v1 release: `v1.9.9` (2026-04-20) legacy.
+Latest release   : `v3.4.1`  (2026-07-14) recommended.  
+Latest v2 release: `v2.4.1`  (2026-07-14) stable.  
+Latest v1 release: `v1.9.11` (2026-07-14) legacy.
 
 mimalloc is a drop-in replacement for `malloc` and can be used in other programs
 without code changes, for example, on dynamically linked ELF-based systems (Linux, BSD, etc.) you can use it as:
@@ -88,6 +88,15 @@ New development is mostly on v3, while v1 and v2 are maintained with security an
 - __v1__: legacy version: initial design of mimalloc (release tags: `v1.9.x`, development branch `dev`). Send PR's against this version if possible.
 
 ### Releases
+* 2026-07-14, `v1.9.11`, `v2.4.1`, `v3.4.1`: various bug and security fixes through LLM audit (by @Zoxc). 
+  Fix issue with using OS memory instead of arenas for > 4GiB memory usage (v3), fix concurrency bug in concurrent
+  heap destroy (v3), detect riscV virtual address bits at runtime, add riscV TLS support, reduce spinlock waits (v2),
+  use TLS slots 126/127 on macOS (v3), and other small fixes. All metadata is now separated from heap objects in v3. 
+* 2026-04-29, `v1.9.10`, `v2.3.2`, `v3.3.2`: various bug and security fixes through LLM audit (by @Zoxc). 
+  Only increase minimal purge size automatically if allow_thp is set to 2. Enable large OS alignment
+  on all platforms (fixing OS large pages on Windows). Fix accounting of committed memory on Linux/macOS.
+  Update MSVC atomics implementation when using C mode. Upstream Emscripten fixes. Proper atomic do-once
+  implementation. 
 * 2026-04-20, `v1.9.9`, `v2.3.1`, `v3.3.1`: various bug and security fixes. Special thanks to 
   @jinpzhanAMD, @res2k, and @GoldJohnKing for their help in improving Windows finalization, and 
   @Zoxc for his help in finding various issues.

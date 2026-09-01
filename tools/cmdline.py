@@ -8,7 +8,6 @@ import logging
 import os
 import re
 import shlex
-import sys
 from enum import Enum, auto, unique
 from subprocess import PIPE
 
@@ -18,7 +17,6 @@ from tools import (
   config,
   diagnostics,
   feature_matrix,
-  ports,
   shared,
   utils,
 )
@@ -26,7 +24,7 @@ from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import exit_with_error, read_file
 
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2', '-mfma']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 CLANG_FLAGS_WITH_ARGS = {
     '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
@@ -37,25 +35,14 @@ CLANG_FLAGS_WITH_ARGS = {
     '-current_version', '-I', '-L', '-include-pch', '-u',
     '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
 }
-# These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
-# default set.
-EXTRA_INCOMING_JS_API = [
-  'fetchSettings',
-  'logReadFiles',
-  'loadSplitModule',
-  'onMalloc',
-  'onRealloc',
-  'onFree',
-  'onSbrkGrow',
-]
+
 
 logger = logging.getLogger('args')
 
 
 @unique
 class OFormat(Enum):
-  # Output a relocatable object file.  We use this
-  # today for `-r` and `-shared`.
+  # Output a relocatable object file. i.e. `-r` linker flag
   OBJECT = auto()
   WASM = auto()
   JS = auto()
@@ -65,6 +52,9 @@ class OFormat(Enum):
 
 
 class EmccOptions:
+  check = False
+  clear_cache = False
+  clear_ports = False
   cpu_profiler = False
   dash_E = False
   dash_M = False
@@ -85,10 +75,12 @@ class EmccOptions:
   input_language = None
   js_transform = None
   lib_dirs: list[str] = []
+  lto: str | None = None
   memory_profiler = False
   no_entry = False
   no_minify = False
   nodefaultlibs = False
+  openmp = False
   nolibc = False
   nostartfiles = False
   nostdlib = False
@@ -104,10 +96,11 @@ class EmccOptions:
   pre_js: list[str] = [] # before all js
   preload_files: list[str] = []
   relocatable = False
-  reproduce = None
+  reproduce = os.getenv('EMCC_REPRODUCE')  # None by default.
   requested_debug = None
   sanitize: set[str] = set()
   sanitize_minimal_runtime = False
+  show_ports = False
   s_args: list[str] = []
   save_temps = False
   shared = False
@@ -116,6 +109,7 @@ class EmccOptions:
   syntax_only = False
   target = ''
   use_closure_compiler = None
+  use_ports: list[str] = []
   use_preload_cache = False
   use_preload_plugins = False
   valid_abspaths: list[str] = []
@@ -159,7 +153,7 @@ def is_valid_abspath(path_name):
 
     # return true, if the common prefix of both is equal to directory
     # e.g. /a/b/c/d.rst and directory is /a/b, the common prefix is /a/b
-    return os.path.commonprefix([root, child]) == root
+    return os.path.commonpath([root, child]) == root
 
   for valid_abspath in options.valid_abspaths:
     if in_directory(valid_abspath, path_name):
@@ -205,7 +199,7 @@ def parse_s_args():
     user_settings[key] = value
 
 
-def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
+def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 117 vs 10 recommended.
@@ -214,7 +208,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
-  should_exit = False
   skip = False
   builtin_settings = set(settings.keys())
   LEGACY_ARGS = {'--js-opts', '--llvm-opts', '--llvm-lto', '--memory-init-file'}
@@ -272,7 +265,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     def consume_arg_file():
       name = consume_arg()
       if not os.path.isfile(name):
-        exit_with_error("'%s': file not found: '%s'" % (arg, name))
+        exit_with_error(f"'{arg}': file not found: '{name}'")
       return name
 
     if arg in LEGACY_FLAGS:
@@ -323,11 +316,11 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       settings.OPT_LEVEL = level
     elif arg.startswith('-flto'):
       if '=' in arg:
-        settings.LTO = arg.split('=')[1]
+        options.lto = arg.split('=')[1]
       else:
-        settings.LTO = 'full'
+        options.lto = 'full'
     elif arg == "-fno-lto":
-      settings.LTO = 0
+      options.lto = None
     elif arg == "--save-temps":
       options.save_temps = True
     elif check_arg('--closure-args'):
@@ -390,7 +383,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
             diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
             settings.GENERATE_SOURCE_MAP = 1
           elif debug_level > 4:
-            exit_with_error("unknown argument: '%s'", arg)
+            exit_with_error(f"unknown argument: '{arg}'")
       else:
         if debug_level.startswith('force_dwarf'):
           exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
@@ -467,23 +460,13 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       # libraries)
       os.environ['EM_CACHE'] = config.CACHE
     elif check_flag('--clear-cache'):
-      logger.info('clearing cache as requested by --clear-cache: `%s`', cache.cachedir)
-      cache.erase()
-      shared.perform_sanity_checks() # this is a good time for a sanity check
-      should_exit = True
+      options.clear_cache = True
     elif check_flag('--clear-ports'):
-      logger.info('clearing ports and cache as requested by --clear-ports')
-      ports.clear()
-      cache.erase()
-      shared.perform_sanity_checks() # this is a good time for a sanity check
-      should_exit = True
+      options.clear_ports = True
     elif check_flag('--check'):
-      print(version_string(), file=sys.stderr)
-      shared.check_sanity(force=True)
-      should_exit = True
+      options.check = True
     elif check_flag('--show-ports'):
-      ports.show_ports()
-      should_exit = True
+      options.show_ports = True
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
     elif arg.startswith(('-I', '-L')):
@@ -515,18 +498,12 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
-    elif arg == '-mbulk-memory':
-      feature_matrix.enable_feature(feature_matrix.Feature.BULK_MEMORY,
-                                    '-mbulk-memory',
+    elif arg == '-mextended-const':
+      feature_matrix.enable_feature(feature_matrix.Feature.EXTENDED_CONST,
+                                    '-mextended-const',
                                     override=True)
-    elif arg == '-mno-bulk-memory':
-      feature_matrix.disable_feature(feature_matrix.Feature.BULK_MEMORY)
-    elif arg == '-mnontrapping-fptoint':
-      feature_matrix.enable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT,
-                                    '-mnontrapping-fptoint',
-                                    override=True)
-    elif arg == '-mno-nontrapping-fptoint':
-      feature_matrix.disable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT)
+    elif arg == '-mno-extended-const':
+      feature_matrix.disable_feature(feature_matrix.Feature.EXTENDED_CONST)
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm
@@ -550,14 +527,14 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       else:
         exit_with_error(f'invalid value for --output-eol: `{style}`')
     # Record PTHREADS setting because it controls whether --shared-memory is passed to lld
+    elif arg in {'-fopenmp', '-fopenmp=libomp'}:
+      options.openmp = 1
+      settings.PTHREADS = 1
+      settings.USE_PTHREADS = 1
     elif arg == '-pthread':
       settings.PTHREADS = 1
       # Also set the legacy setting name, in case use JS code depends on it.
       settings.USE_PTHREADS = 1
-    elif arg == '-no-pthread':
-      settings.PTHREADS = 0
-      # Also set the legacy setting name, in case use JS code depends on it.
-      settings.USE_PTHREADS = 0
     elif arg == '-pthreads':
       exit_with_error('unrecognized command-line option `-pthreads`; did you mean `-pthread`?')
     elif arg == '-fno-rtti':
@@ -590,7 +567,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       if options.target not in {'wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'}:
         exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
     elif check_arg('--use-port'):
-      ports.handle_use_port_arg(settings, consume_arg())
+      options.use_ports.append(consume_arg())
     elif arg in {'-c', '--precompile'}:
       options.dash_c = True
     elif arg == '-S':
@@ -627,9 +604,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg and (arg == '-' or not arg.startswith('-')):
       options.input_files.append(arg)
 
-  if should_exit:
-    sys.exit(0)
-
   return [a for a in newargs if a]
 
 
@@ -638,7 +612,7 @@ def expand_byte_size_suffixes(value):
   value = value.strip()
   match = re.match(r'^(\d+)\s*([kmgt]?b)?$', value, re.I)
   if not match:
-    exit_with_error("invalid byte size `%s`.  Valid suffixes are: kb, mb, gb, tb" % value)
+    exit_with_error(f'invalid byte size `{value}`.  Valid suffixes are: kb, mb, gb, tb')
   value, suffix = match.groups()
   value = int(value)
   if suffix:
@@ -750,7 +724,7 @@ def parse_value(text, expected_type):
 def apply_user_settings():
   """Take a map of users settings {NAME: VALUE} and apply them to the global settings object."""
   # Stash a copy of all available incoming APIs before the user can potentially override it
-  settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API + EXTRA_INCOMING_JS_API
+  settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API + settings.EXTRA_INCOMING_JS_API
 
   for key, value in user_settings.items():
     if key in settings.internal_settings:

@@ -132,7 +132,7 @@ size_t        _mi_strlen(const char* s);
 size_t        _mi_strnlen(const char* s, size_t max_len);
 char*         _mi_strnstr(char* s, size_t max_len, const char* pat);
 bool          _mi_streq(const char* s, const char* t);
-bool          _mi_getenv(const char* name, char* result, size_t result_size);
+int           _mi_getenv(const char* name, char* result, size_t result_size);
 
 // "options.c"
 void          _mi_fputs(mi_output_fun* out, void* arg, const char* prefix, const char* message);
@@ -181,7 +181,7 @@ void          _mi_theap_guarded_init(mi_theap_t* theap);
 void          _mi_theap_options_init(mi_theap_t* theap);
 mi_theap_t*   _mi_theap_default_safe(void);             // ensure the returned theap is initialized
 mi_theap_t*   _mi_theap_main_safe(void);
-   
+
 // os.c
 void          _mi_os_init(void);                                            // called from process init
 void*         _mi_os_alloc(size_t size, mi_memid_t* memid);
@@ -297,6 +297,7 @@ void          _mi_theap_page_reclaim(mi_theap_t* theap, mi_page_t* page);
 bool          _mi_theap_free(mi_theap_t* theap, bool acquire_heap_theaps_lock, bool acquire_tld_theaps_lock);
 void          _mi_theap_incref(mi_theap_t* theap);
 void          _mi_theap_decref(mi_theap_t* theap);
+bool          _mi_page_visit_blocks( mi_page_t* page, mi_block_visit_fun* visitor, void* arg );
 
 // "heap.c"
 void          _mi_heap_area_init(mi_heap_area_t* area, mi_page_t* page);
@@ -321,6 +322,9 @@ void*         _mi_theap_malloc_zero_ex(mi_theap_t* theap, size_t size, bool zero
 void*         _mi_theap_realloc_zero(mi_theap_t* theap, void* p, size_t newsize, bool zero, size_t* usable_pre, size_t* usable_post) mi_attr_noexcept;
 mi_block_t*   _mi_page_ptr_unalign(const mi_page_t* page, const void* p);
 void          _mi_padding_shrink(const mi_page_t* page, const mi_block_t* block, const size_t min_size);
+
+// "free.c"
+void          _mi_page_unguard_all(mi_page_t* page);
 
 #if MI_DEBUG>1
 bool          _mi_page_is_valid(mi_page_t* page);
@@ -418,7 +422,7 @@ typedef struct mi_option_desc_s {
   Inlined definitions
 ----------------------------------------------------------- */
 #define MI_UNUSED(x)     (void)(x)
-#ifndef NDEBUG
+#if (MI_DEBUG>1)
 #define MI_UNUSED_RELEASE(x)
 #else
 #define MI_UNUSED_RELEASE(x)  MI_UNUSED(x)
@@ -447,8 +451,7 @@ static inline bool _mi_is_power_of_two(uintptr_t x) {
 
 // Is a pointer aligned?
 static inline bool _mi_is_aligned(const void* p, size_t alignment) {
-  mi_assert_internal(alignment != 0);
-  return (((uintptr_t)p % alignment) == 0);
+  return (alignment==0 || ((uintptr_t)p % alignment) == 0);
 }
 
 // Align upwards
@@ -668,7 +671,7 @@ static inline mi_page_t* _mi_checked_ptr_page(const void* p) {
 
 static inline mi_page_t* _mi_ptr_page(const void* p) {
   mi_assert_internal(p==NULL || mi_is_in_heap_region(p));
-  #if MI_DEBUG || MI_SECURE || defined(__APPLE__)
+  #if MI_DEBUG || MI_SECURE || MI_FREE_IS_CHECKED
   return _mi_checked_ptr_page(p);
   #else
   return _mi_unchecked_ptr_page(p);
@@ -684,7 +687,8 @@ static inline size_t mi_page_block_size(const mi_page_t* page) {
 
 // Page start
 static inline uint8_t* mi_page_start(const mi_page_t* page) {
-  return page->page_start;
+  // multiplication must be done in `size_t`; in a 32-bit multiplication the offset wraps for pages whose blocks start 4 GiB or more after the page meta info
+  return (uint8_t*)page + ((size_t)page->page_woffset * MI_SIZE_SIZE);
 }
 
 static inline size_t mi_page_size(const mi_page_t* page) {
@@ -723,17 +727,17 @@ static inline size_t mi_page_usable_block_size(const mi_page_t* page) {
 static inline bool mi_page_meta_is_separated(const mi_page_t* page) {
   #if MI_PAGE_META_IS_SEPARATED
   // usually separated but can still be in front for direct OS allocations (due to size or alignment) or due to MI_PAGE_META_ALIGNED_FREE_SMALL
-  return (page->memid.memkind == MI_MEM_ARENA && page != _mi_align_down_ptr(page->page_start, MI_ARENA_SLICE_ALIGN));
+  return (page->memid.memkind == MI_MEM_ARENA && page != _mi_align_down_ptr(mi_page_start(page), MI_ARENA_SLICE_ALIGN));
   #else
   MI_UNUSED(page);
-  return false;  
+  return false;
   #endif
 }
 
 static inline uint8_t* mi_page_slice_start(const mi_page_t* page) {
-  if (mi_page_meta_is_separated(page)) {  
+  if (mi_page_meta_is_separated(page)) {
     // page meta info is at a separate location (at `arena->pages`)
-    return (uint8_t*)_mi_align_down_ptr(page->page_start, MI_ARENA_SLICE_ALIGN);
+    return (uint8_t*)_mi_align_down_ptr(mi_page_start(page), MI_ARENA_SLICE_ALIGN);
   }
   else {
     // page meta info is at the start of the page slices
@@ -741,9 +745,9 @@ static inline uint8_t* mi_page_slice_start(const mi_page_t* page) {
   }
 }
 
-// This gives the offset relative to the start slice of a page. 
+// This gives the offset relative to the start slice of a page.
 static inline size_t mi_page_slice_offset_of(const mi_page_t* page, size_t offset_relative_to_page_start) {
-  return (page->page_start - mi_page_slice_start(page)) + offset_relative_to_page_start;
+  return (mi_page_start(page) - mi_page_slice_start(page)) + offset_relative_to_page_start;
 }
 
 // Currently committed part of a page
@@ -968,7 +972,7 @@ static inline bool mi_block_ptr_is_guarded(const mi_block_t* block, const void* 
 #else
   MI_UNUSED(block); MI_UNUSED(p);
   return false;
-#endif  
+#endif
 }
 
 #if MI_GUARDED

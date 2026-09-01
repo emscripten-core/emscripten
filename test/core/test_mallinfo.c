@@ -51,5 +51,5 @@ int main() {
   assert(getTotalMemory() == total_mem);
   assert(getFreeMemory() == free_mem);
 
-  printf("OK.\n");
+  printf("done\n");
 }

@@ -81,5 +81,5 @@ int main() {
   }, utf8String, utf8String2, 0);
   assert(utf8String2[0] == 'X');
 
-  printf("OK.\n");
+  printf("done\n");
 }

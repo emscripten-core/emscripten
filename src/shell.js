@@ -25,8 +25,6 @@
 #if MODULARIZE
 #if MODULARIZE == 'instance'
 var Module = {};
-#else
-var Module = moduleArg;
 #endif
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
@@ -38,13 +36,6 @@ var Module = globalThis.Module || (typeof {{{ EXPORT_NAME }}} != 'undefined' ? {
 #else
 var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #endif // USE_CLOSURE_COMPILER
-
-#if POLYFILL
-#if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
-// See https://caniuse.com/mdn-javascript_builtins_bigint64array
-#include "polyfill/bigint64array.js"
-#endif
-#endif // POLYFILL
 
 #if WASM_WORKERS
 // The way we signal to a worker that it is hosting a pthread is to construct
@@ -130,13 +121,13 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 #endif // PTHREADS || WASM_WORKERS
 }
-#endif // ENVIRONMENT_MAY_BE_NODE
+#endif // ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
 
-var arguments_ = [];
+var programArgs = [];
 var thisProgram = './this.program';
 var quit_ = (status, toThrow) => {
   throw toThrow;
@@ -215,7 +206,7 @@ if (ENVIRONMENT_IS_NODE) {
     thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 
-  arguments_ = process.argv.slice(2);
+  programArgs = process.argv.slice(2);
 
 #if !MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
@@ -255,8 +246,8 @@ if (ENVIRONMENT_IS_SHELL) {
 
   globalThis.clearTimeout ??= (id) => {};
 
-  // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
-  arguments_ = globalThis.arguments || globalThis.scriptArgs;
+  // v8 and jsc both use `arguments`. spidermonkey uses `scriptArgs`
+  programArgs = globalThis.arguments ?? globalThis.scriptArgs;
 
   if (globalThis.quit) {
     quit_ = (status, toThrow) => {

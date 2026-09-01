@@ -1,0 +1,10 @@
+main: creating worker
+Async waiting on address with unexpected value should return 'not-equal'
+Waiting on address with unexpected value should return 'not-equal' also if timeout==0
+Waiting for 0 milliseconds should return 'timed-out'
+Waiting for >0 milliseconds should also timeout
+Waiting for infinitely long should return once we have been notified
+worker running
+worker: addr = 1234
+worker: notify async waiting main thread
+test finished

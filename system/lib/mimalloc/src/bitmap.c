@@ -1355,12 +1355,15 @@ bool mi_bitmap_bsr(mi_bitmap_t* bitmap, size_t* idx) {
     mi_bfield_t cmap = mi_atomic_load_relaxed(&bitmap->chunkmap.bfields[i]);
     size_t cmap_idx;
     if (mi_bsr(cmap,&cmap_idx)) {
-      // highest chunk
-      const size_t chunk_idx = i*MI_BFIELD_BITS + cmap_idx;
-      size_t cidx;
-      if (mi_bchunk_bsr(&bitmap->chunks[chunk_idx], &cidx)) {
-        *idx = (chunk_idx * MI_BCHUNK_BITS) + cidx;
-        return true;
+      // from highest chunk to lowest (scan all in case the cmap entry was stale)
+      for (size_t j = cmap_idx+1; j>0; ) {
+        j--;
+        const size_t chunk_idx = (i*MI_BFIELD_BITS) + j;
+        size_t cidx;
+        if (mi_bchunk_bsr(&bitmap->chunks[chunk_idx], &cidx)) {
+          *idx = (chunk_idx * MI_BCHUNK_BITS) + cidx;
+          return true;
+        }
       }
     }
   }
@@ -1572,27 +1575,15 @@ void mi_bbitmap_unsafe_setN(mi_bbitmap_t* bbitmap, size_t idx, size_t n) {
 }
 
 bool mi_bbitmap_bsr_inv(mi_bbitmap_t* bbitmap, size_t* idx) {
+  // scan for highest zero bit in the bitmap
+  // note: we cannot use the chunkmap since that only conservatively denotes if there might be a set bit in a chuck
   const size_t chunk_count = mi_bbitmap_chunk_count(bbitmap);
-  const size_t chunkmap_max = _mi_divide_up(chunk_count, MI_BFIELD_BITS);
-  size_t skip_at_top = chunk_count % MI_BFIELD_BITS;
-  for (size_t i = chunkmap_max; i > 0; ) {
+  for(size_t i = chunk_count; i > 0; ) {
     i--;
-    mi_bfield_t cmap = mi_atomic_load_relaxed(&bbitmap->chunkmap.bfields[i]);
-    size_t cmap_idx;
-    // don't consider top 0 bits; set those to 1 here
-    if (skip_at_top > 0) {
-      const size_t mask_top = (~mi_bfield_zero()) << (MI_BFIELD_BITS - skip_at_top);
-      skip_at_top = 0;   // only for the first iteration
-      cmap |= mask_top;
-    }
-    if (mi_bsr(~cmap, &cmap_idx)) {
-      // highest chunk
-      const size_t chunk_idx = i*MI_BFIELD_BITS + cmap_idx;
-      size_t cidx;
-      if (mi_bchunk_bsr_inv(&bbitmap->chunks[chunk_idx], &cidx)) {
-        *idx = (chunk_idx * MI_BCHUNK_BITS) + cidx;
-        return true;
-      }
+    size_t cidx;
+    if (mi_bchunk_bsr_inv(&bbitmap->chunks[i], &cidx)) {
+      *idx = (i * MI_BCHUNK_BITS) + cidx;
+      return true;
     }
   }
   return false;

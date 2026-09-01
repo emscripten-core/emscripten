@@ -6,7 +6,7 @@
 
 var LibraryExceptions = {
 #if !WASM_EXCEPTIONS
-  $uncaughtExceptionCount: '0',
+  $uncaughtExceptionCount: 0,
 #if !DISABLE_EXCEPTION_CATCHING
   $exceptionLast: null,
 #endif
@@ -99,6 +99,7 @@ var LibraryExceptions = {
     // 'throw' is used here.
     '$decrementExceptionRefcount', '$incrementExceptionRefcount',
 #endif
+    '_Unwind_RaiseException',
   ],
   __cxa_throw: (ptr, type, destructor) => {
 #if EXCEPTION_DEBUG
@@ -109,10 +110,10 @@ var LibraryExceptions = {
     info.init(type, destructor);
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
-    exceptionLast = new CppException(ptr);
+    ptr = exceptionLast = new CppException(ptr);
 #endif
     uncaughtExceptionCount++;
-    {{{ makeThrow() }}}
+    __Unwind_RaiseException(ptr);
   },
 
   // This exception will be caught twice, but while begin_catch runs twice,
@@ -123,6 +124,7 @@ var LibraryExceptions = {
     '$exceptionLast',
     '__cxa_increment_exception_refcount',
 #endif
+    '_Unwind_RaiseException',
   ],
   __cxa_rethrow: () => {
     if (!exceptionCaught.length) {
@@ -139,9 +141,9 @@ var LibraryExceptions = {
     dbg('__cxa_rethrow: ' +
       [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
 #endif
-    exceptionLast = new CppException(ptr);
+    ptr = exceptionLast = new CppException(ptr);
 #endif
-    {{{ makeThrow() }}}
+    __Unwind_RaiseException(ptr);
   },
 
   llvm_eh_typeid_for: (type) => type,
@@ -217,6 +219,7 @@ var LibraryExceptions = {
     '$exceptionLast',
     '__cxa_increment_exception_refcount',
 #endif
+    '_Unwind_RaiseException',
   ],
   __cxa_rethrow_primary_exception: (ptr) => {
     if (!ptr) return;
@@ -229,9 +232,9 @@ var LibraryExceptions = {
     uncaughtExceptionCount++;
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
-    exceptionLast = new CppException(ptr);
+    ptr = exceptionLast = new CppException(ptr);
 #endif
-    {{{ makeThrow('exceptionLast') }}}
+    __Unwind_RaiseException(ptr);
   },
 
   // Finds a suitable catch clause for when an exception is thrown.
@@ -275,7 +278,7 @@ var LibraryExceptions = {
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
     for (var caughtType of args) {
-      if (caughtType === 0 || caughtType === thrownType) {
+      if (!caughtType || caughtType === thrownType) {
         // Catch all clause matched or exactly the same type is caught
         break;
       }
@@ -293,19 +296,20 @@ var LibraryExceptions = {
 #endif
   },
 
+  __resumeException__deps: [
 #if !DISABLE_EXCEPTION_CATCHING
-  __resumeException__deps: ['$exceptionLast'],
+    '$exceptionLast',
 #endif
+    '_Unwind_Resume',
+  ],
   __resumeException: (ptr) => {
 #if !DISABLE_EXCEPTION_CATCHING
 #if EXCEPTION_DEBUG
     dbg("__resumeException " + [ptrToString(ptr), exceptionLast]);
 #endif
-    if (!exceptionLast) {
-      exceptionLast = new CppException(ptr);
-    }
+    ptr = exceptionLast ??= new CppException(ptr);
 #endif
-    {{{ makeThrow() }}}
+    __Unwind_Resume(ptr);
   },
 
 #endif
@@ -436,7 +440,7 @@ addCxaCatch = (n) => {
     args.push(`arg${i}`);
     sig += 'p';
   }
-  const argString = args.join(',');
+  const argString = args.join();
   LibraryManager.library[`__cxa_find_matching_catch_${n}__sig`] = sig;
   LibraryManager.library[`__cxa_find_matching_catch_${n}__deps`] = ['$findMatchingCatch'];
   LibraryManager.library[`__cxa_find_matching_catch_${n}`] = eval(`(${args}) => findMatchingCatch([${argString}])`);

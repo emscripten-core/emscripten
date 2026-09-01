@@ -83,18 +83,13 @@ static struct dlevent* _Atomic tail = &main_event;
 #ifdef _REENTRANT
 static thread_local struct dlevent* thread_local_tail = &main_event;
 static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
-static thread_local bool skip_dlsync = false;
 
 static void do_write_lock() {
-  // Once we have the lock we want to avoid automatic code sync as that would
-  // result in a deadlock.
-  skip_dlsync = true;
   pthread_mutex_lock(&write_lock);
 }
 
 static void do_write_unlock() {
   pthread_mutex_unlock(&write_lock);
-  skip_dlsync = false;
 }
 #else // _REENTRANT
 #define do_write_unlock()
@@ -366,14 +361,14 @@ static void thread_sync_done(void* arg) {
 // `_emscripten_proxy_dlsync` below, and processed by background threads
 // that call `_emscripten_process_dlopen_queue` during futex_wait (i.e. whenever
 // they block).
-static em_proxying_queue * _Atomic dlopen_proxying_queue = NULL;
+em_proxying_queue* _Atomic _dlopen_proxying_queue = NULL;
 static thread_local bool processing_queue = false;
 
 void _emscripten_process_dlopen_queue() {
-  if (dlopen_proxying_queue && !processing_queue) {
+  if (_dlopen_proxying_queue && !processing_queue) {
     assert(!emscripten_is_main_runtime_thread());
     processing_queue = true;
-    emscripten_proxy_execute_queue(dlopen_proxying_queue);
+    emscripten_proxy_execute_queue(_dlopen_proxying_queue);
     processing_queue = false;
   }
 }
@@ -384,8 +379,8 @@ void _emscripten_process_dlopen_queue() {
 // manages the worker pool.
 int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise) {
   assert(emscripten_is_main_runtime_thread());
-  if (!dlopen_proxying_queue) {
-    dlopen_proxying_queue = em_proxying_queue_create();
+  if (!_dlopen_proxying_queue) {
+    _dlopen_proxying_queue = em_proxying_queue_create();
   }
 
   struct promise_result* info = malloc(sizeof(struct promise_result));
@@ -396,7 +391,7 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
     .promise = promise,
     .result = false,
   };
-  int rtn = emscripten_proxy_callback(dlopen_proxying_queue,
+  int rtn = emscripten_proxy_callback(_dlopen_proxying_queue,
                                       target_thread,
                                       do_thread_sync,
                                       thread_sync_done,
@@ -408,21 +403,18 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
     emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
     emscripten_promise_destroy(promise);
     free(info);
-  } else {
-    // Wake up the target thread in case it's blocked in futex_wait
-    _emscripten_thread_notify(target_thread);
   }
   return rtn;
 }
 
 int _emscripten_proxy_dlsync(pthread_t target_thread) {
   assert(emscripten_is_main_runtime_thread());
-  if (!dlopen_proxying_queue) {
-    dlopen_proxying_queue = em_proxying_queue_create();
+  if (!_dlopen_proxying_queue) {
+    _dlopen_proxying_queue = em_proxying_queue_create();
   }
   int result;
   if (!emscripten_proxy_sync(
-        dlopen_proxying_queue, target_thread, do_thread_sync_out, &result)) {
+        _dlopen_proxying_queue, target_thread, do_thread_sync_out, &result)) {
     return 0;
   }
   return result;
@@ -580,6 +572,7 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
   filename = find_dylib(buf, filename, sizeof buf);
   struct dso* p = find_existing(filename);
   if (p) {
+    do_write_unlock();
     onsuccess(user_data, p);
     return;
   }

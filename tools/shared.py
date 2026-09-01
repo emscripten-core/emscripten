@@ -24,11 +24,20 @@ from .toolchain_profiler import ToolchainProfiler
 assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 from . import colored_logger
+from .utils import (
+  exe_path_from_root,
+  exit_with_error,
+  get_env_bool,
+  get_env_int,
+  memoize,
+  path_from_root,
+  safe_ensure_dirs,
+)
 
 # Configure logging before importing any other local modules so even
 # log message during import are shown as expected.
-DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
-EMCC_LOGGING = int(os.environ.get('EMCC_LOGGING', '1'))
+DEBUG = get_env_int('EMCC_DEBUG')
+EMCC_LOGGING = get_env_bool('EMCC_LOGGING', '1')
 log_level = logging.ERROR
 if DEBUG:
   log_level = logging.DEBUG
@@ -42,20 +51,20 @@ import contextlib
 
 from . import cache, config, diagnostics, filelock, tempfiles, utils
 from .settings import settings
-from .utils import exe_path_from_root, exit_with_error, memoize, path_from_root, safe_ensure_dirs
 
-DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
+DEBUG_SAVE = DEBUG or get_env_bool('EMCC_DEBUG_SAVE')
+PRINT_SUBPROCS = get_env_bool('EMCC_VERBOSE')
 SKIP_SUBPROCS = False
 
 # Minimum node version required to run the emscripten compiler.  This is
 # distinct from the minimum version required to execute the generated code
 # (settings.MIN_NODE_VERSION).
 # This is currently set to v18 since this is the version of node available
-# in debian/stable (bookworm).  We need at least v18.3.0 because we make
-# use of util.parseArg which was added in v18.3.0.
+# in Debian/Bookworm (2023-06-01) and Ubuntu 24.04/Noble.
+# We need at least v18.3.0 specifically because we make use of util.parseArg
+# which was added in v18.3.0.
 MINIMUM_NODE_VERSION = (18, 3, 0)
-EXPECTED_LLVM_VERSION = 23
+EXPECTED_LLVM_VERSION = 24
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -175,17 +184,23 @@ def run_multiple_processes(commands,
     return [x[1] for x in std_outs]
 
 
-def check_call(cmd, *args, **kw):
-  """Like `run_process` above but treat failures as fatal and exit_with_error."""
+def run_process(cmd, *args, **kw):
+  """Wrapper around utils.run_process used to running compiler sub-processes."""
   print_compiler_stage(cmd)
   if SKIP_SUBPROCS:
-    return 0
+    return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
   try:
     return utils.run_process(cmd, *args, **kw)
-  except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%s)", shlex.join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
     exit_with_error("'%s' failed: %s", shlex.join(cmd), e)
+
+
+def check_call(cmd, *args, **kw):
+  """Like `run_process` above but treat failures as fatal and exit_with_error."""
+  try:
+    return run_process(cmd, *args, **kw)
+  except subprocess.CalledProcessError as e:
+    exit_with_error("'%s' failed (%s)", shlex.join(cmd), returncode_to_str(e.returncode))
 
 
 def exec_process(cmd):
@@ -193,13 +208,13 @@ def exec_process(cmd):
   utils.exec(cmd)
 
 
-def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
+def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # ruff: ignore[mutable-argument-default]
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are
   implemented in javascript.
   """
-  command = config.NODE_JS + node_args + [filename] + jsargs
+  command = [*config.NODE_JS, *node_args, filename, *jsargs]
   return check_call(command, **kw).stdout
 
 
@@ -207,7 +222,7 @@ def get_npm_cmd(name, missing_ok=False):
   if utils.WINDOWS:
     cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
   else:
-    cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
+    cmd = [*config.NODE_JS, path_from_root('node_modules/.bin', name)]
   if not os.path.exists(cmd[-1]):
     if missing_ok:
       return None
@@ -277,7 +292,7 @@ def env_with_node_in_path():
 
 
 def _get_node_version_pair(nodejs):
-  actual = utils.run_process(nodejs + ['--version'], stdout=PIPE).stdout.strip()
+  actual = utils.run_process([*nodejs, '--version'], stdout=PIPE).stdout.strip()
   version = actual.removeprefix('v')
   version = version.split('-')[0].split('.')
   version = tuple(int(v) for v in version)
@@ -315,28 +330,18 @@ def node_reference_types_flags(nodejs):
     return []
 
 
-def node_exception_flags(nodejs):
-  node_version = get_node_version(nodejs)
-  # Legacy exception handling was enabled by default in node v17.
-  if node_version and node_version < (17, 0, 0):
-    return ['--experimental-wasm-eh']
-  # Standard exception handling was supported behind flag in node v22.
-  if node_version and node_version >= (22, 0, 0) and not settings.WASM_LEGACY_EXCEPTIONS:
-    return ['--experimental-wasm-exnref']
-  return []
-
-
 @memoize
 @ToolchainProfiler.profile()
 def check_node():
   try:
-    utils.run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
+    utils.run_process([*config.NODE_JS, '-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
     exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, e)
 
 
 def generate_sanity():
-  return f'{utils.EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
+  llvm_root = os.path.normcase(config.LLVM_ROOT)
+  return f'{utils.EMSCRIPTEN_VERSION}|{llvm_root}\n'
 
 
 @memoize
@@ -347,7 +352,7 @@ def perform_sanity_checks(quiet=False):
 
   llvm_ok = check_llvm()
 
-  if os.environ.get('EM_IGNORE_SANITY'):
+  if utils.get_env_bool('EM_IGNORE_SANITY'):
     logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
     return
 
@@ -374,7 +379,7 @@ def check_sanity(force=False, quiet=False):
   EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
   re-check sanity and clear the cache when the version changes.
   """
-  if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+  if not force and utils.get_env_bool('EMCC_SKIP_SANITY_CHECK'):
     return
 
   # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
@@ -391,7 +396,7 @@ def check_sanity(force=False, quiet=False):
       perform_sanity_checks(quiet)
     return
 
-  if os.environ.get('EM_IGNORE_SANITY'):
+  if utils.get_env_bool('EM_IGNORE_SANITY'):
     perform_sanity_checks(quiet)
     return
 
@@ -498,7 +503,7 @@ def setup_temp_dirs():
   global EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, TEMP_DIR
   EMSCRIPTEN_TEMP_DIR = None
 
-  TEMP_DIR = os.environ.get("EMCC_TEMP_DIR", tempfile.gettempdir())
+  TEMP_DIR = os.environ.get('EMCC_TEMP_DIR', tempfile.gettempdir())
   if not os.path.isdir(TEMP_DIR):
     exit_with_error(f'The temporary directory `{TEMP_DIR}` does not exist! Please make sure that the path is correct.')
 
@@ -571,13 +576,13 @@ def is_internal_global(name):
                                  '__start_em_lib_deps', '__stop_em_lib_deps',
                                  '__em_lib_deps'}
   internal_prefixes = ('__em_js__', '__em_lib_deps')
-  return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
+  return name in internal_start_stop_symbols or name.startswith(internal_prefixes)
 
 
-def is_user_export(name):
+def is_internal_symbol(name):
   if is_internal_global(name):
-    return False
-  return name not in {'__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'} and not name.startswith(('dynCall_', 'orig$'))
+    return True
+  return name in {'__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'} or name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):
@@ -590,9 +595,10 @@ def asmjs_mangle(name):
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':
     name = 'main'
-  if is_user_export(name):
-    return '_' + name
-  return name
+  if is_internal_symbol(name):
+    # Don't mangle "internal" symbols.
+    return name
+  return '_' + name
 
 
 def do_replace(input_, pattern, replacement):

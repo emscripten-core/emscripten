@@ -5,6 +5,10 @@
  */
 
 addToLibrary({
+#if FORCE_FILESYSTEM
+  // Include FS even when it is not referenced by compiled code.
+  $FS__force: true,
+#endif
   $MEMFS__deps: ['wasmfs_create_memory_backend'],
   $MEMFS: {
     createBackend(opts) {
@@ -229,7 +233,7 @@ addToLibrary({
     // offset is passed to msync to maintain backwards compatibility with the legacy JS API but is not used by WasmFS.
     msync: (stream, bufferPtr, offset, length, mmapFlags) => {
 #if ASSERTIONS
-      assert(offset === 0);
+      assert(!offset);
 #endif
       // TODO: assert that stream has the fd corresponding to the mapped buffer (bufferPtr).
       return FS.handleError(__wasmfs_msync(bufferPtr, length, mmapFlags));
@@ -251,19 +255,19 @@ addToLibrary({
     statBufToObject(statBuf) {
       // i53/u53 are enough for times and ino in practice.
       return {
-          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
-          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32") }}},
+          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, 'u32') }}},
+          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, 'u32') }}},
           nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, SIZE_TYPE) }}},
-          uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32") }}},
-          gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32") }}},
-          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32") }}},
-          size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53") }}},
-          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "i32") }}},
-          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "i32") }}},
-          atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, "i53") }}},
-          mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, "i53") }}},
-          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, "i53") }}},
-          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
+          uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, 'u32') }}},
+          gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, 'u32') }}},
+          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, 'u32') }}},
+          size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, 'i53') }}},
+          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, 'i32') }}},
+          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, 'i32') }}},
+          atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, 'i53') }}},
+          mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, 'i53') }}},
+          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, 'i53') }}},
+          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, 'u53') }}}
       }
     },
     stat(path) {
@@ -322,7 +326,7 @@ addToLibrary({
       var state = __wasmfs_readdir_start(pathBuffer);
       if (!state) {
         // TODO: The old FS threw an ErrnoError here.
-        throw new Error("No such directory");
+        throw new Error('No such directory');
       }
       var entry;
       while (entry = __wasmfs_readdir_get(state)) {
@@ -391,7 +395,7 @@ addToLibrary({
     createDevice(parent, name, input, output) {
       if (typeof parent != 'string') {
         // The old API allowed parents to be objects, which do not exist in WasmFS.
-        throw new Error("Only string paths are accepted");
+        throw new Error('Only string paths are accepted');
       }
       var path = PATH.join2(parent, name);
       var mode = FS_getMode(!!input, !!output);
@@ -409,7 +413,7 @@ addToLibrary({
             } catch (e) {
               throw new FS.ErrnoError({{{ cDefs.EIO }}});
             }
-            if (result === undefined && bytesRead === 0) {
+            if (result === undefined && !bytesRead) {
               throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
             }
             if (result === null || result === undefined) break;
@@ -440,7 +444,7 @@ addToLibrary({
 
       var deviceBackend = wasmFSDevices[dev];
       if (!deviceBackend) {
-        throw new Error("Invalid device ID.");
+        throw new Error('Invalid device ID.');
       }
 
       return FS.handleError(withStackSave(() => (

@@ -66,6 +66,7 @@ addToLibrary({
   setTempRet0: '$setTempRet0',
   getTempRet0: '$getTempRet0',
 
+
   // Assign a name to a given function. This is mostly useful for debugging
   // purposes in cases where new functions are created at runtime.
   $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
@@ -154,9 +155,6 @@ addToLibrary({
     // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
     if (keepRuntimeAlive() && !implicit) {
       var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
-#if MODULARIZE
-      readyPromiseReject?.(msg);
-#endif // MODULARIZE
       err(msg);
     }
 #endif // ASSERTIONS
@@ -219,7 +217,7 @@ addToLibrary({
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
       wasmMemory.grow({{{ toIndexType('pages') }}}); // .grow() takes a delta compared to the previous size
-#if !GROWABLE_ARRAYBUFFERS
+#if GROWABLE_ARRAYBUFFERS != 2
       updateMemoryViews();
 #endif
 #if MEMORYPROFILER
@@ -233,7 +231,7 @@ addToLibrary({
       err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`);
 #endif
     }
-    // implicit 0 return to save code size (caller will cast "undefined" into 0
+    // implicit 0 return to save code size (caller will cast 'undefined' into 0
     // anyhow)
   },
 
@@ -341,7 +339,7 @@ addToLibrary({
 #endif
 
 #if EMSCRIPTEN_TRACING
-        traceLogMessage("Emscripten", `Enlarging memory arrays from ${oldSize} to ${newSize}`);
+        traceLogMessage('Emscripten', `Enlarging memory arrays from ${oldSize} to ${newSize}`);
         // And now report the new layout
         _emscripten_trace_report_memory_layout();
 #endif
@@ -359,7 +357,7 @@ addToLibrary({
 #endif // ALLOW_MEMORY_GROWTH
   },
 
-#if !GROWABLE_ARRAYBUFFERS
+#if GROWABLE_ARRAYBUFFERS != 2
   // Called after wasm grows memory. At that time we need to update the views.
   // Without this notification, we'd need to check the buffer in JS every time
   // we return from any wasm, which adds overhead. See
@@ -680,25 +678,25 @@ addToLibrary({
     if (!valid6regx.test(str)) {
       return null;
     }
-    if (str === "::") {
+    if (str === '::') {
       return [0, 0, 0, 0, 0, 0, 0, 0];
     }
-    // Z placeholder to keep track of zeros when splitting the string on ":"
-    if (str.startsWith("::")) {
-      str = str.replace("::", "Z:"); // leading zeros case
+    // Z placeholder to keep track of zeros when splitting the string on ':'
+    if (str.startsWith('::')) {
+      str = str.replace('::', 'Z:'); // leading zeros case
     } else {
-      str = str.replace("::", ":Z:");
+      str = str.replace('::', ':Z:');
     }
 
-    if (str.indexOf(".") > 0) {
+    if (str.indexOf('.') > 0) {
       // parse IPv4 embedded address
-      str = str.replace(new RegExp('[.]', 'g'), ":");
-      words = str.split(":");
+      str = str.replace(new RegExp('[.]', 'g'), ':');
+      words = str.split(':');
       words[words.length-4] = Number(words[words.length-4]) + Number(words[words.length-3])*256;
       words[words.length-3] = Number(words[words.length-2]) + Number(words[words.length-1])*256;
       words = words.slice(0, words.length-2);
     } else {
-      words = str.split(":");
+      words = str.split(':');
     }
 
     offset = 0; z = 0;
@@ -742,7 +740,7 @@ addToLibrary({
     //  +--------------------------------------+----+---------------------+
     //  |0000..............................0000|FFFF|    IPv4 ADDRESS     | (mapped)
     //  +--------------------------------------+----+---------------------+
-    var str = "";
+    var str = '';
     var word = 0;
     var longest = 0;
     var lastzero = 0;
@@ -763,10 +761,13 @@ addToLibrary({
     // Handle IPv4-compatible, IPv4-mapped, loopback and any/unspecified addresses
 
     var hasipv4 = true;
-    var v4part = "";
+    var v4part = '';
     // check if the 10 high-order bytes are all zeros (first 5 words)
     for (i = 0; i < 5; i++) {
-      if (parts[i] !== 0) { hasipv4 = false; break; }
+      if (parts[i]) {
+        hasipv4 = false;
+        break;
+      }
     }
 
     if (hasipv4) {
@@ -774,16 +775,16 @@ addToLibrary({
       v4part = inetNtop4(parts[6] | (parts[7] << 16));
       // IPv4-mapped IPv6 address if 16-bit value (bytes 11 and 12) == 0xFFFF (6th word)
       if (parts[5] === -1) {
-        str = "::ffff:";
+        str = '::ffff:';
         str += v4part;
         return str;
       }
       // IPv4-compatible IPv6 address if 16-bit value (bytes 11 and 12) == 0x0000 (6th word)
-      if (parts[5] === 0) {
-        str = "::";
+      if (!parts[5]) {
+        str = '::';
         // special case IPv6 addresses
-        if (v4part === "0.0.0.0") v4part = ""; // any/unspecified address
-        if (v4part === "0.0.0.1") v4part = "1";// loopback address
+        if (v4part === '0.0.0.0') v4part = ''; // any/unspecified address
+        if (v4part === '0.0.0.1') v4part = '1';// loopback address
         str += v4part;
         return str;
       }
@@ -793,7 +794,7 @@ addToLibrary({
 
     // first run to find the longest contiguous zero words
     for (word = 0; word < 8; word++) {
-      if (parts[word] === 0) {
+      if (!parts[word]) {
         if (word - lastzero > 1) {
           len = 0;
         }
@@ -808,23 +809,27 @@ addToLibrary({
 
     for (word = 0; word < 8; word++) {
       if (longest > 1) {
-        // compress contiguous zeros - to produce "::"
-        if (parts[word] === 0 && word >= zstart && word < (zstart + longest) ) {
+        // compress contiguous zeros - to produce '::'
+        if (!parts[word] && word >= zstart && word < (zstart + longest) ) {
           if (word === zstart) {
-            str += ":";
-            if (zstart === 0) str += ":"; //leading zeros case
+            str += ':';
+            if (!zstart) str += ':'; //leading zeros case
           }
           continue;
         }
       }
       // converts 16-bit words from big-endian to little-endian before converting to hex string
       str += Number(_ntohs(parts[word] & 0xffff)).toString(16);
-      str += word < 7 ? ":" : "";
+      str += word < 7 ? ':' : '';
     }
     return str;
   },
 
-  $readSockaddr__deps: ['$inetNtop4', '$inetNtop6', 'ntohs'],
+  $readSockaddr__deps: ['$inetNtop4', '$inetNtop6', 'ntohs'
+#if NODERAWSOCKETS
+    , '$UTF8ToString'
+#endif
+  ],
   $readSockaddr: (sa, salen) => {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -832,6 +837,26 @@ addToLibrary({
     var addr;
 
     switch (family) {
+#if NODERAWSOCKETS
+      case {{{ cDefs.AF_UNIX }}}: {
+        // sun_path runs from offsetof(sun_path) to salen. An address of only the
+        // family (salen <= offset) is the unnamed/autobind case -> empty path. A
+        // leading NUL marks the Linux abstract namespace; keep the NUL so the
+        // path round-trips and never collides with a filesystem path.
+        var pathStart = sa + {{{ C_STRUCTS.sockaddr_un.sun_path }}};
+        var pathLen = salen - {{{ C_STRUCTS.sockaddr_un.sun_path }}};
+        var path = '';
+        if (pathLen > 0) {
+          if (!HEAPU8[pathStart]) {
+            path = '\0' + UTF8ToString(pathStart + 1, pathLen - 1, /*ignoreNul=*/true);
+          } else {
+            // A pathname address is NUL-terminated; stop at the first NUL.
+            path = UTF8ToString(pathStart, pathLen);
+          }
+        }
+        return { family, addr: path, port: 0 };
+      }
+#endif
       case {{{ cDefs.AF_INET }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in.__size__ }}}) {
           return { errno: {{{ cDefs.EINVAL }}} };
@@ -858,11 +883,44 @@ addToLibrary({
     return { family: family, addr: addr, port: port };
   },
   $writeSockaddr__docs: '/** @param {number=} addrlen */',
-  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', 'htons'],
+  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', '$DNS', 'htons'
+#if NODERAWSOCKETS
+    , '$lengthBytesUTF8', '$stringToUTF8'
+#endif
+  ],
   $writeSockaddr: (sa, family, addr, port, addrlen) => {
     switch (family) {
+#if NODERAWSOCKETS
+      case {{{ cDefs.AF_UNIX }}}: {
+        // addr is the JS path string produced by readSockaddr: a leading '\0'
+        // marks the abstract namespace (its bytes are written verbatim, no NUL
+        // terminator), any other path is written NUL-terminated. An empty path
+        // is the unnamed address (family only).
+        addr ||= '';
+        var abstract = !addr.charCodeAt(0);
+        // Pathname addresses include the trailing NUL in the reported length;
+        // abstract addresses do not; an empty address is family-only (unnamed).
+        var bytes = addr ? lengthBytesUTF8(addr) + (abstract ? 0 : 1) : 0;
+        var total = {{{ C_STRUCTS.sockaddr_un.sun_path }}} + bytes;
+        zeroMemory(sa, total);
+        {{{ makeSetValue('sa', C_STRUCTS.sockaddr_un.sun_family, 'family', 'i16') }}};
+        if (addr) {
+          // stringToUTF8 NUL-terminates and needs room for it, so hand it a
+          // budget one past the path bytes; the terminating NUL lands on the
+          // zeroed byte just past the reported length and is harmless.
+          stringToUTF8(addr, sa + {{{ C_STRUCTS.sockaddr_un.sun_path }}}, bytes + 1);
+        }
+        if (addrlen) {
+          {{{ makeSetValue('addrlen', 0, 'total', 'i32') }}};
+        }
+        break;
+      }
+#endif
       case {{{ cDefs.AF_INET }}}:
-        addr = inetPton4(addr);
+        // The address may still be an unresolved hostname (e.g. a peer name
+        // recorded at connect time); map it to its (possibly fake) IP here so
+        // callers can pass names and IPs alike.
+        addr = inetPton4(DNS.lookup_name(addr));
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
@@ -872,7 +930,7 @@ addToLibrary({
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
         break;
       case {{{ cDefs.AF_INET6 }}}:
-        addr = inetPton6(addr);
+        addr = inetPton6(DNS.lookup_name(addr));
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
@@ -1012,10 +1070,10 @@ addToLibrary({
 
     // If type or proto are set to zero in hints we should really be returning multiple addrinfo values, but for
     // now default to a TCP STREAM socket so we can at least return a sensible addrinfo given NULL hints.
-    if (proto === 0) {
+    if (!proto) {
       proto = {{{ cDefs.IPPROTO_TCP }}};
     }
-    if (type === 0) {
+    if (!type) {
       type = {{{ cDefs.SOCK_STREAM }}};
     }
 
@@ -1026,14 +1084,14 @@ addToLibrary({
         {{{ cDefs.AI_NUMERICSERV }}}|{{{ cDefs.AI_V4MAPPED }}}|{{{ cDefs.AI_ALL }}}|{{{ cDefs.AI_ADDRCONFIG }}})) {
       return {{{ cDefs.EAI_BADFLAGS }}};
     }
-    if (hint !== 0 && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefs.AI_CANONNAME }}}) && !node) {
+    if (hint && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefs.AI_CANONNAME }}}) && !node) {
       return {{{ cDefs.EAI_BADFLAGS }}};
     }
     if (flags & {{{ cDefs.AI_ADDRCONFIG }}}) {
       // TODO
       return {{{ cDefs.EAI_NONAME }}};
     }
-    if (type !== 0 && type !== {{{ cDefs.SOCK_STREAM }}} && type !== {{{ cDefs.SOCK_DGRAM }}}) {
+    if (type && type !== {{{ cDefs.SOCK_STREAM }}} && type !== {{{ cDefs.SOCK_DGRAM }}}) {
       return {{{ cDefs.EAI_SOCKTYPE }}};
     }
     if (family !== {{{ cDefs.AF_UNSPEC }}} && family !== {{{ cDefs.AF_INET }}} && family !== {{{ cDefs.AF_INET6 }}}) {
@@ -1058,7 +1116,7 @@ addToLibrary({
       if (family === {{{ cDefs.AF_UNSPEC }}}) {
         family = {{{ cDefs.AF_INET }}};
       }
-      if ((flags & {{{ cDefs.AI_PASSIVE }}}) === 0) {
+      if (!(flags & {{{ cDefs.AI_PASSIVE }}})) {
         if (family === {{{ cDefs.AF_INET }}}) {
           addr = _htonl({{{ cDefs.INADDR_LOOPBACK }}});
         } else {
@@ -1208,7 +1266,7 @@ addToLibrary({
     // to add extra entries from /etc/protocols if desired - though not sure if that'd actually be useful.
     var list = Protocols.list;
     var map  = Protocols.map;
-    if (list.length === 0) {
+    if (!list.length) {
         var entry = allocprotoent('tcp', 6, ['TCP']);
         list.push(entry);
         map['tcp'] = map['6'] = entry;
@@ -1257,12 +1315,6 @@ addToLibrary({
   // sockets. Note that the implementation assumes all sockets are always
   // nonblocking
   // ==========================================================================
-#if SOCKET_WEBRTC
-  $Sockets__deps: [
-    () => 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n',
-    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'
-  ],
-#endif
   $Sockets: {
     BUFFER_SIZE: 10*1024, // initial size
     MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
@@ -1347,7 +1399,7 @@ addToLibrary({
   emscripten_run_script_string__noleakcheck: true,
   emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'realloc'],
   emscripten_run_script_string: (ptr) => {
-    {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
+    {{{ makeEval('var s = eval(UTF8ToString(ptr));') }}}
     if (s == null) {
       return 0;
     }
@@ -1389,7 +1441,7 @@ addToLibrary({
 `,
 #else
   // Modern environment where performance.now() is supported:
-  // N.B. a shorter form "_emscripten_get_now = performance.now;" is
+  // N.B. a shorter form '_emscripten_get_now = performance.now;' is
   // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
   emscripten_get_now: () => performance.now(),
 #endif
@@ -1669,37 +1721,13 @@ addToLibrary({
 #endif
 
   // Parses as much of the given JS string to an integer, with quiet error
-  // handling (returns a NaN on error). E.g. jstoi_q("123abc") returns 123.
-  // Note that "smart" radix handling is employed for input string:
-  // "0314" is parsed as octal, and "0x1234" is parsed as base-16.
+  // handling (returns a NaN on error). E.g. jstoi_q('123abc') returns 123.
+  // Note that 'smart' radix handling is employed for input string:
+  // '0314' is parsed as octal, and '0x1234' is parsed as base-16.
   $jstoi_q__docs: '/** @suppress {checkTypes} */',
   $jstoi_q: (str) => parseInt(str),
 
-#if LINK_AS_CXX
-  // libunwind
 
-  _Unwind_Backtrace__deps: ['$getCallstack'],
-  _Unwind_Backtrace: (func, arg) => {
-    var trace = getCallstack();
-    var parts = trace.split('\n');
-    for (var i = 0; i < parts.length; i++) {
-      var ret = {{{ makeDynCall('iii', 'func') }}}(0, arg);
-      if (ret !== 0) return;
-    }
-  },
-
-  _Unwind_GetIPInfo: (context, ipBefore) => abort('Unwind_GetIPInfo'),
-
-  _Unwind_FindEnclosingFunction: (ip) => 0, // we cannot succeed
-
-  _Unwind_RaiseException__deps: ['__cxa_throw'],
-  _Unwind_RaiseException: (ex) => {
-    err('Warning: _Unwind_RaiseException is not correctly implemented');
-    return ___cxa_throw(ex, 0, 0);
-  },
-
-  _Unwind_DeleteException: (ex) => err('TODO: Unwind_DeleteException'),
-#endif
 
   // special runtime support
 
@@ -1722,10 +1750,10 @@ addToLibrary({
       return process.argv[1].replace(/\\/g, '/');
     }
 #endif
-    return "./this.program";
+    return './this.program';
   },
 #else
-  $getExecutableName: () => thisProgram ?? './this.program',
+  $getExecutableName: () => thisProgram,
 #endif
 
   // Receives a Web Audio context plus a set of elements to listen for user
@@ -1967,44 +1995,17 @@ addToLibrary({
   _emscripten_get_progname__deps: ['$getExecutableName', '$stringToUTF8'],
   _emscripten_get_progname: (str, len) => stringToUTF8(getExecutableName(), str, len),
 
-  emscripten_console_log: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.log(UTF8ToString(str));
-  },
+  // These single-line arrow functions use curly braces since otherwise closure
+  // compiler will inject a extra `return` keyword when inlining.
+  // https://github.com/emscripten-core/emscripten/issues/26922
+  emscripten_console_log: (str) => { console.log(UTF8ToString(str)) },
+  emscripten_console_warn: (str) => { console.warn(UTF8ToString(str)) },
+  emscripten_console_error: (str) => { console.error(UTF8ToString(str)) },
+  emscripten_console_trace: (str) => { console.trace(UTF8ToString(str)) },
 
-  emscripten_console_warn: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.warn(UTF8ToString(str));
-  },
+  emscripten_throw_number: (number) => { throw number; },
 
-  emscripten_console_error: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.error(UTF8ToString(str));
-  },
-
-  emscripten_console_trace: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.trace(UTF8ToString(str));
-  },
-
-  emscripten_throw_number: (number) => {
-    throw number;
-  },
-
-  emscripten_throw_string: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    throw UTF8ToString(str);
-  },
+  emscripten_throw_string: (str) => { throw UTF8ToString(str); },
 
 #if !MINIMAL_RUNTIME
 #if STACK_OVERFLOW_CHECK
@@ -2185,7 +2186,7 @@ addToLibrary({
 
   $alignMemory: (size, alignment) => {
 #if ASSERTIONS
-    assert(alignment, "alignment argument is required");
+    assert(alignment, 'alignment argument is required');
 #endif
     return Math.ceil(size / alignment) * alignment;
   },
@@ -2297,10 +2298,15 @@ addToLibrary({
   // it happens right before run - run will be postponed until
   // the dependencies are met.
   $runDependencies__internal: true,
+  $runDependencies__deps: ['$resolveRunDependencies'],
   $runDependencies: 0,
-  // overridden to take different actions when all run dependencies are fulfilled
-  $dependenciesFulfilled__internal: true,
-  $dependenciesFulfilled: null,
+  $dependenciesPromise__internal: true,
+  $dependenciesPromise: null,
+  $dependenciesPromiseResolve__internal: true,
+  $dependenciesPromiseResolve: null,
+  $resolveRunDependencies__internal: true,
+  $resolveRunDependencies__deps: ['$dependenciesPromise'],
+  $resolveRunDependencies: async () => dependenciesPromise,
 #if ASSERTIONS
   $runDependencyTracking__internal: true,
   $runDependencyTracking: {},
@@ -2308,13 +2314,16 @@ addToLibrary({
   $runDependencyWatcher: null,
 #endif
 
-  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency',
+  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency', '$dependenciesPromise', '$dependenciesPromiseResolve',
 #if ASSERTIONS
     '$runDependencyTracking',
     '$runDependencyWatcher',
 #endif
   ],
   $addRunDependency: (id) => {
+    if (!runDependencies) {
+      dependenciesPromise = new Promise((resolve) => dependenciesPromiseResolve = resolve);
+    }
     runDependencies++;
 
 #if expectToReceiveOnModule('monitorRunDependencies')
@@ -2328,7 +2337,7 @@ addToLibrary({
     assert(id, 'addRunDependency requires an ID')
     assert(!runDependencyTracking[id]);
     runDependencyTracking[id] = 1;
-    if (runDependencyWatcher === null && globalThis.setInterval) {
+    if (!runDependencyWatcher && globalThis.setInterval) {
       // Check for missing dependencies every few seconds
       runDependencyWatcher = setInterval(() => {
         if (ABORT) {
@@ -2357,7 +2366,7 @@ addToLibrary({
 #endif
   },
 
-  $removeRunDependency__deps: ['$runDependencies', '$dependenciesFulfilled',
+  $removeRunDependency__deps: ['$runDependencies', '$dependenciesPromiseResolve',
 #if ASSERTIONS
     '$runDependencyTracking',
     '$runDependencyWatcher',
@@ -2378,18 +2387,14 @@ addToLibrary({
     assert(runDependencyTracking[id]);
     delete runDependencyTracking[id];
 #endif
-    if (runDependencies == 0) {
+    if (!runDependencies) {
 #if ASSERTIONS
       if (runDependencyWatcher !== null) {
         clearInterval(runDependencyWatcher);
         runDependencyWatcher = null;
       }
 #endif
-      if (dependenciesFulfilled) {
-        var callback = dependenciesFulfilled;
-        dependenciesFulfilled = null;
-        callback(); // can add another dependenciesFulfilled
-      }
+      dependenciesPromiseResolve();
     }
   },
 #endif
@@ -2427,7 +2432,12 @@ addToLibrary({
     ATPOSTCTORS.unshift('callRuntimeCallbacks(onPostCtors);');
   },
   $addOnPostCtor__deps: ['$onPostCtors'],
-  $addOnPostCtor: (cb) => onPostCtors.push(cb),
+  $addOnPostCtor: (cb) => {
+#if ASSERTIONS
+    assert(!runtimeInitialized, 'addOnPostCtor called too late: ctors have already run');
+#endif
+    onPostCtors.push(cb);
+  },
   // See ATMAINS in parseTools.mjs for more information.
   $onMains: [],
   $onMains__internal: true,
@@ -2477,12 +2487,9 @@ function autoAddDeps(lib, name) {
 #if LEGACY_RUNTIME
 // Library functions that were previously included as runtime functions are
 // automatically included when `LEGACY_RUNTIME` is set.
-extraLibraryFuncs.push(
+for (const symbol of [
   '$addFunction',
   '$removeFunction',
-  '$allocate',
-  '$ALLOC_NORMAL',
-  '$ALLOC_STACK',
   '$AsciiToString',
   '$stringToAscii',
   '$UTF16ToString',
@@ -2507,7 +2514,9 @@ extraLibraryFuncs.push(
   '$stringToUTF8Array',
   '$stringToUTF8',
   '$lengthBytesUTF8',
-);
+]) {
+  addToLibrary({[symbol + '__force']: true}, {allowMissing: true});
+}
 #endif
 
 function wrapSyscallFunction(x, library, isWasi) {
@@ -2540,7 +2549,7 @@ function wrapSyscallFunction(x, library, isWasi) {
 
   library[x + '__deps'] ??= [];
 
-#if PURE_WASI && !GROWABLE_ARRAYBUFFERS
+#if PURE_WASI && GROWABLE_ARRAYBUFFERS != 2
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
   // and politely notify us on memory growth.  Instead we have to check for
   // possible memory growth on each syscall.
@@ -2563,14 +2572,14 @@ function wrapSyscallFunction(x, library, isWasi) {
     }
   }
   pre += `dbg('syscall! ${x}: [' + Array.prototype.slice.call(arguments) + ']');\n`;
-  pre += "var canWarn = true;\n";
-  pre += "var ret = (() => {";
-  post += "})();\n";
-  post += "if (ret && ret < 0 && canWarn) {\n";
-  post += "  dbg(`error: syscall may have failed with ${-ret} (${strError(-ret)})`);\n";
-  post += "}\n";
-  post += "dbg(`syscall return: ${ret}`);\n";
-  post += "return ret;\n";
+  pre += 'var canWarn = true;\n';
+  pre += 'var ret = (() => {';
+  post += '})();\n';
+  post += 'if (ret && ret < 0 && canWarn) {\n';
+  post += '  dbg(`error: syscall may have failed with ${-ret} (${strError(-ret)})`);\n';
+  post += '}\n';
+  post += 'dbg(`syscall return: ${ret}`);\n';
+  post += 'return ret;\n';
   // Emit dependency to strError() since we added use of it above.
   library[x + '__deps'].push('$strError');
 #endif
@@ -2579,21 +2588,21 @@ function wrapSyscallFunction(x, library, isWasi) {
   if (canThrow) {
     pre += 'try {\n';
     handler +=
-    "} catch (e) {\n" +
+    '} catch (e) {\n' +
     "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
-    "  dbg(`error: syscall failed with ${e.errno} (${strError(e.errno)})`);\n" +
-    "  canWarn = false;\n";
+    '  dbg(`error: syscall failed with ${e.errno} (${strError(e.errno)})`);\n' +
+    '  canWarn = false;\n';
 #endif
     // Musl syscalls are negated.
     if (isWasi) {
-      handler += "  return e.errno;\n";
+      handler += '  return e.errno;\n';
     } else {
       // Musl syscalls are negated.
-      handler += "  return -e.errno;\n";
+      handler += '  return -e.errno;\n';
     }
-    handler += "}\n";
+    handler += '}\n';
   }
   post = handler + post;
 

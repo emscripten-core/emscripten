@@ -64,7 +64,7 @@ def check_file(dirpath, filename):
     return
 
   # .out files are live if and only if they live alongside a live source file
-  if ext == '.out' and os.path.exists(stem + '.cpp') or os.path.exists(stem + '.c'):
+  if ext == '.out' and (os.path.exists(stem + '.cpp') or os.path.exists(stem + '.c')):
     return
 
   # Files under 'core' can be live if they are find in a `do_core_test` call.

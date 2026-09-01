@@ -16,7 +16,8 @@
 
 // The asm hack only works with GCC and Clang.
 // XXX Emscripten This does not work in Wasm.
-#    if !defined(_WIN32) && !defined(_AIX) && !defined(__wasm__)
+#    if !defined(_WIN32) && !defined(_AIX) && !defined(__APPLE__) && \
+        !defined(__wasm__)
 
 asm(R"(
     .set memcpy, __sanitizer_internal_memcpy

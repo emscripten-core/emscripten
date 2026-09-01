@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 #include <assert.h>
+#include <stdalign.h>
+#include <stddef.h>
 #include <string.h>
 #include <emscripten/html5.h>
 
@@ -16,7 +18,10 @@ typedef struct callback_args_t {
   event_callback callback;
   int event_type;
   void *user_data;
-  uint8_t event_data[];
+  // Since we cast this to various event types it needs to be at aligned to the
+  // to the same level as any the event types.   The simplest way to achieve
+  // this is with max_align-t.
+  alignas(max_align_t) uint8_t event_data[];
 } callback_args_t;
 
 static void do_callback(void* arg) {

@@ -7,6 +7,7 @@
 #include <sys/select.h>
 #include <time.h>
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -211,12 +212,37 @@ void test_ready_fds() {
   close(pipe_d[0]); close(pipe_d[1]);
 }
 
+// Check if select handles error returns and errno correctly
+void test_errors() {
+  printf("test_errors\n");
+  struct timeval tv = {0, 0};
+  fd_set readfds;
+
+  // Negative nfds should fail with EINVAL
+  FD_ZERO(&readfds);
+  errno = 0;
+  assert(select(-1, &readfds, NULL, NULL, &tv) == -1);
+  assert(errno == EINVAL);
+
+  // Closed / invalid fd should fail with EBADF
+  int pipe_fds[2];
+  assert(pipe(pipe_fds) == 0);
+  close(pipe_fds[0]); // close read end
+  FD_ZERO(&readfds);
+  FD_SET(pipe_fds[0], &readfds);
+  errno = 0;
+  assert(select(pipe_fds[0] + 1, &readfds, NULL, NULL, &tv) == -1);
+  assert(errno == EBADF);
+  close(pipe_fds[1]);
+}
+
 int main() {
   test_select_in_threads();
   test_timeout_without_fds();
   test_timeout_with_fds_without_events();
   test_unblock_select();
   test_ready_fds();
+  test_errors();
   printf("done\n");
   return 0;
 }

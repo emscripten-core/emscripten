@@ -117,7 +117,7 @@ function run() {
 #endif
 
 function initRuntime(wasmExports) {
-#if ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE || PTHREADS
   runtimeInitialized = true;
 #endif
 
@@ -148,6 +148,10 @@ function initRuntime(wasmExports) {
 }
 
 // Initialize wasm (asynchronous)
+
+#if MODULARIZE || AUDIO_WORKLET
+var instantiatePromise;
+#endif
 
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
 Module['wasm'] = binaryDecode("<<< WASM_BINARY_DATA >>>");
@@ -192,24 +196,26 @@ const moduleUrl = `ENVIRONMENT_IS_AUDIO_WORKLET ? '${TARGET_BASENAME}.wasm' : ne
 #endif
 }}}
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
-#if AUDIO_WORKLET
+#if MODULARIZE || AUDIO_WORKLET
 instantiatePromise =
 #endif
 (WebAssembly.instantiateStreaming
 #if ENVIRONMENT_MAY_BE_NODE
-  // Node's fetch API cannot be used for local files, so we cannot use instantiateStreaming
+  // Avoid using instantiateStreaming() on Node.js since the `fetch()` API
+  // does not support `file://` URLs.
+  // See: https://github.com/emscripten-core/emscripten/pull/16917
   && !ENVIRONMENT_IS_NODE
 #endif
   ? WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
-#if AUDIO_WORKLET
+#if MODULARIZE || AUDIO_WORKLET
 instantiatePromise =
 #endif
 WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports).then((output) => {
@@ -228,7 +234,7 @@ assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm 
 
 // Add missingProperties supression here because closure compiler doesn't know that
 // WebAssembly.instantiate is polymorphic in its return value.
-#if AUDIO_WORKLET
+#if MODULARIZE || AUDIO_WORKLET
 instantiatePromise =
 #endif
 WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProperties} */ (output) => {
@@ -303,7 +309,7 @@ null;
   PThread.loadWasmModuleToAllWorkers();
 #endif
 
-{{{ waitOnStartupPromisesAndEmitReady(); }}}
+  return {{{ waitOnStartupPromisesAndEmitReady(); }}}
 
 }
 
@@ -333,4 +339,8 @@ null;
 
 // When running in a background thread we delay module loading until we have
 {{{ runIfMainThread('loadModule();') }}}
+#endif
+
+#if MODULARIZE
+await instantiatePromise;
 #endif

@@ -30,6 +30,7 @@ import {
   debugLog,
   error,
   errorOccured,
+  extraLibraryFuncs,
   isDecorator,
   isJsOnlySymbol,
   compileTimeContext,
@@ -41,11 +42,9 @@ import {
   localFile,
   timer,
 } from './utility.mjs';
-import {LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
+import {extraExports, LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
 
 const addedLibraryItems = {};
-
-const extraLibraryFuncs = [];
 
 // Experimental feature to check for invalid __deps entries.
 // See `EMCC_CHECK_DEPS` in in the environment to try it out.
@@ -247,10 +246,33 @@ function addImplicitDeps(snippet, deps) {
     'runtimeKeepalivePush',
     'runtimeKeepalivePop',
     'UTF8ToString',
+    // TODO: Consider removing getValue and setValue if they are rarely used implicitly.
+    'getValue',
+    'setValue',
   ];
   for (const dep of autoDeps) {
     if (snippet.includes(dep + '(')) {
       deps.push('$' + dep);
+    }
+  }
+  // If the snippet contains eval(), it may dynamically evaluate code loaded from memory at runtime
+  // (for example, in emscripten_run_script where the snippet is eval(UTF8ToString(ptr))).
+  // Because static string matching cannot inspect what strings are stored in memory or evaluated
+  // at runtime, we must conservatively include all heap views whenever a snippet uses eval().
+  if (snippet.includes('eval(')) {
+    deps.push('$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16', '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64');
+    if (WASM_BIGINT || MEMORY64) {
+      deps.push('$HEAP64', '$HEAPU64');
+    }
+  }
+  const heapDeps = [
+    'HEAP8', 'HEAP16', 'HEAPU8', 'HEAPU16',
+    'HEAP32', 'HEAPU32', 'HEAPF32', 'HEAPF64',
+    'HEAP64', 'HEAPU64',
+  ];
+  for (const heap of heapDeps) {
+    if (snippet.includes(heap)) {
+      deps.push('$' + heap);
     }
   }
 }
@@ -359,11 +381,18 @@ ${body};
   });
 }
 
-function handleAsyncFunction(snippet, sig) {
+function handleAsyncFunction(snippet, sig, proxied) {
   const return64 = sig && (MEMORY64 && sig.startsWith('p') || sig.startsWith('j'))
   let handleAsync = 'Asyncify.handleAsync(innerFunc)'
   if (return64 && ASYNCIFY == 1) {
     handleAsync = makeReturn64(handleAsync);
+  }
+  // When dispatching on behalf of a proxied caller (PROXY_SYNC_ASYNC), the
+  // caller awaits the returned promise, so return it directly rather than
+  // suspending the main thread.
+  let proxiedDispatch = '';
+  if (ASYNCIFY == 1 && PTHREADS && proxied) {
+    proxiedDispatch = 'if (PThread.currentProxiedOperationCallerThread) return innerFunc();\n  ';
   }
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     if (!oneliner) {
@@ -372,7 +401,7 @@ function handleAsyncFunction(snippet, sig) {
     return `\
 function(${args}) {
   let innerFunc = ${async_} () => ${body};
-  return ${handleAsync};
+  ${proxiedDispatch}return ${handleAsync};
 }\n`;
   });
 }
@@ -397,11 +426,25 @@ export async function runJSify(outputFile, symbolsOnly) {
   }
 
   async function writeOutput(str) {
+    // Unmangle previously mangled `import.meta` references.
+    // See also: `mangleUnsupportedSyntax` in parseTools.mjs.
+    if (EXPORT_ES6) {
+      str = str.replaceAll('EMSCRIPTEN$IMPORT$META', 'import.meta');
+    }
+
     await outputHandle.write(str + '\n');
   }
 
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
   symbolsNeeded.push(...extraLibraryFuncs);
+
+  for (const fileName of [...PRE_JS_FILES, ...POST_JS_FILES]) {
+    const content = readFile(fileName);
+    addImplicitDeps(content, symbolsNeeded);
+  }
+  for (const snippet of EM_JS_SNIPPETS) {
+    addImplicitDeps(snippet, symbolsNeeded);
+  }
   for (const sym of EXPORTED_RUNTIME_METHODS) {
     if ('$' + sym in LibraryManager.library) {
       symbolsNeeded.push('$' + sym);
@@ -473,11 +516,12 @@ function(${args}) {
       compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
     }
 
+    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+
     if (ASYNCIFY && isAsyncFunction == 'auto') {
-      snippet = handleAsyncFunction(snippet, sig);
+      snippet = handleAsyncFunction(snippet, sig, proxyingMode == 'sync');
     }
 
-    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
     if (proxyingMode) {
       if (!['sync', 'async', 'none'].includes(proxyingMode)) {
         error(`JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`);
@@ -535,9 +579,7 @@ function(${args}) {
     // of argument.
     if (LINK_AS_CXX && !WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
-        error(
-          'DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.',
-        );
+        error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
       }
       if (!(symbol in LibraryManager.library)) {
@@ -655,6 +697,10 @@ function(${args}) {
 
       librarySymbols.push(mangled);
 
+      if (!isStub && LibraryManager.library[symbol + '__export']) {
+        extraExports.add(mangled);
+      }
+
       const original = LibraryManager.library[symbol];
       let snippet = original;
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
@@ -732,9 +778,7 @@ function(${args}) {
         // in libcore.js and libpthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
         if (dep === '$noExitRuntime') {
-          error(
-            'noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS',
-          );
+          error('noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS');
         }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`);
       }
@@ -793,7 +837,7 @@ function(${args}) {
         contentText = `var ${mangled} = ${snippet};`;
       }
 
-      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
+      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled) || extraExports.has(mangled)) && !isStub) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;
@@ -928,6 +972,7 @@ var proxiedFunctionTable = [
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
+          extraExports: Array.from(extraExports),
           nativeAliases,
           warnings: warningOccured(),
           asyncFuncs,

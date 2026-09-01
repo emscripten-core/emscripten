@@ -45,7 +45,7 @@ var LibraryWebAudio = {
   $emAudioExpectContext: (handle, methodName) => {
     var obj = _emAudioExpectHandle(handle, methodName);
 #if ASSERTIONS
-    assert(obj instanceof (window.AudioContext || window.webkitAudioContext), `${methodName}() called with ${handle} that is not an AudioContext, but of type ${typeof obj}`);
+    assert(obj instanceof window.AudioContext, `${methodName}() called with ${handle} that is not an AudioContext, but of type ${typeof obj}`);
 #endif
   },
 
@@ -61,7 +61,7 @@ var LibraryWebAudio = {
   $emAudioExpectNodeOrContext: (handle, methodName) => {
     var obj = _emAudioExpectHandle(handle, methodName);
 #if ASSERTIONS
-    assert(obj instanceof window.AudioNode || obj instanceof (window.AudioContext || window.webkitAudioContext), `${methodName}() called with a handle ${handle} that is not an AudioContext or AudioNode, but of type ${typeof obj}`);
+    assert(obj instanceof window.AudioNode || obj instanceof window.AudioContext, `${methodName}() called with a handle ${handle} that is not an AudioContext or AudioNode, but of type ${typeof obj}`);
 #endif
   },
 #endif
@@ -88,11 +88,8 @@ var LibraryWebAudio = {
   emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject', '$emscriptenGetAudioObject'],
   emscripten_create_audio_context: (options) => {
     // Safari added unprefixed AudioContext support in Safari 14.5 on iOS: https://caniuse.com/audio-api
-#if MIN_SAFARI_VERSION < 140500 || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    var ctx = window.AudioContext || window.webkitAudioContext;
 #if ASSERTIONS
-    if (!ctx) console.error('emscripten_create_audio_context failed! Web Audio is not supported.');
-#endif
+    if (!globalThis.AudioContext) console.error('emscripten_create_audio_context failed! Web Audio is not supported.');
 #endif
 
     // Converts AUDIO_CONTEXT_RENDER_SIZE_* into AudioContextRenderSizeCategory
@@ -111,12 +108,7 @@ var LibraryWebAudio = {
     console.dir(opts);
 #endif
 
-#if MIN_SAFARI_VERSION < 140500 || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    return ctx && emscriptenRegisterAudioObject(new ctx(opts));
-#else
-    // We are targeting an environment where we assume that AudioContext() API unconditionally exists.
     return emscriptenRegisterAudioObject(new AudioContext(opts));
-#endif
   },
 
   emscripten_resume_audio_context_async: (contextHandle, callback, userData) => {
@@ -165,11 +157,15 @@ var LibraryWebAudio = {
   },
 
 #if AUDIO_WORKLET
-  // _emscripten_create_audio_worklet() doesn't use stackAlloc,
+  // _emscripten_create_audio_worklet() doesn't use stackAlloc, HEAPs,
   // etc., but the created worklet does.
   _emscripten_create_audio_worklet__deps: [
     '$_emAudioDispatchProcessorCallback',
-    '$stackAlloc', '$stackRestore', '$stackSave'],
+    '$stackAlloc', '$stackRestore', '$stackSave', '$HEAP32', '$HEAPU32', '$HEAPF32',
+#if WASM_BIGINT || MEMORY64
+    '$HEAP64', '$HEAPU64',
+#endif
+  ],
   _emscripten_create_audio_worklet: (wwID, contextHandle, stackLowestAddress, stackSize, pthreadPtr, callback, userData) => {
 
 #if ASSERTIONS || WEBAUDIO_DEBUG
@@ -186,6 +182,11 @@ var LibraryWebAudio = {
     assert(stackSize % 16 == 0, `AudioWorklet stack size should be a multiple of 16 bytes! (was ${stackSize} == ${stackSize%16} mod 16)`);
     assert(!audioContext.audioWorkletInitialized, `emscripten_create_wasm_audio_worklet() was already called for AudioContext ${contextHandle}! Only call this function once per AudioContext`);
     audioContext.audioWorkletInitialized = 1;
+#if PTHREADS
+    assert(pthreadPtr);
+#else
+    assert(!pthreadPtr);
+#endif
 #endif
 
 #if WEBAUDIO_DEBUG
@@ -299,7 +300,7 @@ var LibraryWebAudio = {
     }
 #elif ASSERTIONS
     var numAudioParams = {{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.numAudioParams, 'i32') }}};
-    assert(numAudioParams == 0 && "Rebuild with -sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS to utilize AudioParams");
+    assert(numAudioParams == 0 && 'Rebuild with -sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS to utilize AudioParams');
 #endif
 
 #if WEBAUDIO_DEBUG

@@ -74,8 +74,6 @@
       var spinnerElement = document.getElementById('spinner');
 
       var Module = {
-        preRun: [],
-        postRun: [],
         print: (() => {
           var element = document.getElementById('output');
           if (element) element.value = ''; // clear browser cache
@@ -94,7 +92,7 @@
           };
         })(),
         printErr: (...args) => {
-          var text = args.join(' '); 
+          var text = args.join(' ');
           if (0) { // XXX disabled for safety typeof dump == 'function') {
             dump(text + '\n'); // fast, straight to the real console
           } else {
@@ -165,25 +163,19 @@
       // exports object of the instantiated Module, or an empty dictionary
       // object {} if the instantiation is performed asynchronously, or false
       // if instantiation failed.
-      Module.instantiateWasm = (imports, successCallback) => {
-        console.log('instantiateWasm: instantiating asynchronously');
-        wasm.then((bytes) => {
+      Module.instantiateWasm = async (imports, successCallback) => {
+        try {
+          console.log('instantiateWasm: instantiating asynchronously');
+          const bytes = await wasm;
           console.log('wasm download finished, begin instantiating');
-          var wasmInstantiate = WebAssembly.instantiate(bytes, imports).then((output) => {
-            // When overriding instantiateWasm, in asan builds, we also need
-            // to take care of creating the WasmOffsetConverter
-            if (typeof WasmOffsetConverter != "undefined") {
-              wasmOffsetConverter = new WasmOffsetConverter(bytes, output.module);
-            }
-            console.log('wasm instantiation succeeded');
-            Module.testWasmInstantiationSucceeded = 1;
-            successCallback(output.instance);
-          }).catch((e) => {
-            console.log('wasm instantiation failed! ' + e);
-          });
-        });
-        return {}; // Compiling asynchronously, no exports.
-      }
+          const {instance, module} = await WebAssembly.instantiate(bytes, imports);
+          console.log('wasm instantiation succeeded');
+          Module.testWasmInstantiationSucceeded = 1;
+          successCallback(instance, module);
+        } catch (e) {
+          console.log('wasm instantiation failed! ' + e);
+        }
+      };
 
       var script = document.createElement('script');
       script.src = "manual_wasm_instantiate.js";

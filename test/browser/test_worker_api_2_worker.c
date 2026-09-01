@@ -1,0 +1,44 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
+#include <assert.h>
+#include <emscripten.h>
+
+typedef struct Info {
+  int i;
+  float f;
+  char c;
+  double d;
+} Info;
+
+int calls = 0; // global state that is not in all workers
+
+EMSCRIPTEN_KEEPALIVE void one(char *data, int size) {
+  calls++;
+  emscripten_worker_respond(data, size);
+}
+
+EMSCRIPTEN_KEEPALIVE void two(char *data, int size) {
+  calls++;
+  Info *x = (Info*)data;
+  x[0].i++;
+  x[0].f--;
+  x[0].c++;
+  x[0].d--;
+  emscripten_worker_respond(data, size);
+}
+
+EMSCRIPTEN_KEEPALIVE void three(char *data, int size) {
+  assert(data == 0);
+  assert(size == 0);
+  calls++;
+  // no response
+}
+
+EMSCRIPTEN_KEEPALIVE void four(char *data, int size) {
+  assert(data == 0);
+  assert(size == 0);
+  emscripten_worker_respond((char*)&calls, sizeof(calls));
+}

@@ -1596,7 +1596,7 @@ def parse_args(args):
   return parser.parse_args(args)
 
 
-def run(args):  # noqa: C901, PLR0912, PLR0915
+def run(args):  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
   """Future modifications should consider refactoring to reduce complexity.
 
   * The McCabe cyclomatiic complexity is currently 74 vs 10 recommended.
@@ -1608,6 +1608,10 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
   global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed
 
   options = emrun_options = parse_args(args)
+
+  if MACOS and options.browser and options.browser.endswith('.app') and not options.browser.startswith('open'):
+    options.browser_args = f'--new --fresh --background -a {options.browser} {options.browser_args}'
+    options.browser = 'open'
 
   if options.android_tunnel:
     options.android = True

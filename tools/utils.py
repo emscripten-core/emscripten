@@ -41,11 +41,23 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   sys.stdout.flush()
   sys.stderr.flush()
   kw.setdefault('text', True)
-  kw.setdefault('encoding', 'utf-8')
+  if kw['text']:
+    kw.setdefault('encoding', 'utf-8')
   ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex.join(cmd))
   logger.debug(debug_text)
   return ret
+
+
+def get_env_bool(name, default='0'):
+  env_var = os.getenv(name, default)
+  assert env_var in {'true', 'false', '1', '0'}, f'invalid environment variable setting {env_var} for {name}'
+  return env_var in {'1', 'true'}
+
+
+def get_env_int(name, default=0):
+  env_var = os.getenv(name, default)
+  return int(env_var)
 
 
 def exec(cmd):
@@ -221,7 +233,7 @@ def get_num_cores():
     cpu_count = len(os.sched_getaffinity(0))
   else:
     cpu_count = os.cpu_count()
-  return int(os.environ.get('EMCC_CORES', cpu_count))
+  return get_env_int('EMCC_CORES', cpu_count)
 
 
 memoize = functools.cache

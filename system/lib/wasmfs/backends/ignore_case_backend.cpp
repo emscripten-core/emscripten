@@ -225,6 +225,10 @@ public:
   std::shared_ptr<Symlink> createSymlink(std::string target) override {
     return virtualize(backend->createSymlink(target), this);
   }
+
+  void populateRoot(Directory::Handle& lockedRoot) override {
+    backend->populateRoot(lockedRoot);
+  }
 };
 
 // Create an ignore case backend by supplying another backend.

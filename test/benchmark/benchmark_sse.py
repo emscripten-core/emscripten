@@ -20,7 +20,7 @@ sys.path.insert(0, __testdir__)
 import clang_native
 from common import EMRUN, test_file
 
-from tools.config import V8_ENGINE
+from tools import config
 from tools.shared import CLANG_CXX, EMCC
 from tools.utils import WINDOWS, run_process, write_file
 
@@ -56,14 +56,14 @@ def run_benchmark(benchmark_file, results_file, build_args):
     print(' '.join(cmd))
     run_process(cmd)
 
-    cmd = V8_ENGINE + [os.path.basename(out_file)]
+    cmd = config.V8_ENGINE + [os.path.basename(out_file)]
     print(' '.join(cmd))
     wasm_results = subprocess.check_output(cmd, cwd=out_dir, text=True)
 
     print('wasm_results', wasm_results)
 
     def strip_comments(text):
-        return re.sub(r'//.*?\n|/\*.*?\*/', '', text, flags=re.S) # noqa
+        return re.sub(r'//.*?\n|/\*.*?\*/', '', text, flags=re.S)
 
     benchmark_results = strip_comments(wasm_results)
     print('stripped', benchmark_results)

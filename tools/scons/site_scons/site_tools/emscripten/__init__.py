@@ -4,4 +4,5 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from .emscripten import exists, generate
+from .emscripten import exists as exists
+from .emscripten import generate as generate

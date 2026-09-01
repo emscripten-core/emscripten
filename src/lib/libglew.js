@@ -49,19 +49,19 @@ var LibraryGLEW = {
     errorStringConstantFromCode(error) {
       if (GLEW.isLinaroFork) {
         switch (error) {
-          case 4:return "OpenGL ES lib expected, found OpenGL lib"; // GLEW_ERROR_NOT_GLES_VERSION
-          case 5:return "OpenGL lib expected, found OpenGL ES lib"; // GLEW_ERROR_GLES_VERSION
-          case 6:return "Missing EGL version"; // GLEW_ERROR_NO_EGL_VERSION
-          case 7:return "EGL 1.1 and up are supported"; // GLEW_ERROR_EGL_VERSION_10_ONLY
+          case 4:return 'OpenGL ES lib expected, found OpenGL lib'; // GLEW_ERROR_NOT_GLES_VERSION
+          case 5:return 'OpenGL lib expected, found OpenGL ES lib'; // GLEW_ERROR_GLES_VERSION
+          case 6:return 'Missing EGL version'; // GLEW_ERROR_NO_EGL_VERSION
+          case 7:return 'EGL 1.1 and up are supported'; // GLEW_ERROR_EGL_VERSION_10_ONLY
           default:break;
         }
       }
 
       switch (error) {
-        case 0:return "No error"; // GLEW_OK || GLEW_NO_ERROR
-        case 1:return "Missing GL version"; // GLEW_ERROR_NO_GL_VERSION
-        case 2:return "GL 1.1 and up are supported"; // GLEW_ERROR_GL_VERSION_10_ONLY
-        case 3:return "GLX 1.2 and up are supported"; // GLEW_ERROR_GLX_VERSION_11_ONLY
+        case 0:return 'No error'; // GLEW_OK || GLEW_NO_ERROR
+        case 1:return 'Missing GL version'; // GLEW_ERROR_NO_GL_VERSION
+        case 2:return 'GL 1.1 and up are supported'; // GLEW_ERROR_GL_VERSION_10_ONLY
+        case 3:return 'GLX 1.2 and up are supported'; // GLEW_ERROR_GLX_VERSION_11_ONLY
         default:return null;
       }
     },
@@ -70,7 +70,7 @@ var LibraryGLEW = {
       if (!GLEW.error[error]) {
         var string = GLEW.errorStringConstantFromCode(error);
         if (!string) {
-          string = "Unknown error";
+          string = 'Unknown error';
           error = 8; // prevent array from growing more than this
         }
         GLEW.error[error] = stringToNewUTF8(string);
@@ -80,10 +80,10 @@ var LibraryGLEW = {
 
     versionStringConstantFromCode(name) {
       switch (name) {
-        case 1:return "1.10.0"; // GLEW_VERSION
-        case 2:return "1"; // GLEW_VERSION_MAJOR
-        case 3:return "10"; // GLEW_VERSION_MINOR
-        case 4:return "0"; // GLEW_VERSION_MICRO
+        case 1:return '1.10.0'; // GLEW_VERSION
+        case 2:return '1'; // GLEW_VERSION_MAJOR
+        case 3:return '10'; // GLEW_VERSION_MINOR
+        case 4:return '0'; // GLEW_VERSION_MICRO
         default:return null;
       }
     },
@@ -106,7 +106,7 @@ var LibraryGLEW = {
 
       // extensions from GLEmulations do not come unprefixed
       // so, try with prefix
-      return (GLEW.extensions.includes("GL_" + name));
+      return (GLEW.extensions.includes('GL_' + name));
     },
   },
 

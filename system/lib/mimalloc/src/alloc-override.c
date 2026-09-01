@@ -329,7 +329,7 @@ extern "C" {
   // Forward Posix/Unix calls as well
   void*  reallocf(void* p, size_t newsize) MI_FORWARD2(mi_reallocf,p,newsize)
   size_t malloc_size(const void* p)        MI_FORWARD1(mi_usable_size,p)
-  #if !defined(__ANDROID__) && !defined(__FreeBSD__) && !defined(__DragonFly__)
+  #if !defined(__ANDROID__) && !defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__EMSCRIPTEN__)
   size_t malloc_usable_size(void *p)       MI_FORWARD1(mi_usable_size,p)
   #else
   size_t malloc_usable_size(const void *p) MI_FORWARD1(mi_usable_size,p)
@@ -381,7 +381,7 @@ mi_decl_weak int reallocarr(void* p, size_t count, size_t size)    { return mi_r
 #ifdef __EMSCRIPTEN__ // emscripten adds some more on top of WASI
   void* emscripten_builtin_malloc(size_t size)                      MI_FORWARD1(mi_malloc, size)
   void* emscripten_builtin_realloc(void* p, size_t size)            MI_FORWARD2(mi_realloc, p, size)
-  void* emscripten_builtin_free(void* p)                            MI_FORWARD0(mi_free, p)
+  void  emscripten_builtin_free(void* p)                            MI_FORWARD0(mi_free, p)
   void* emscripten_builtin_memalign(size_t alignment, size_t size)  { return mi_memalign(alignment, size); }
   void* emscripten_builtin_calloc(size_t nmemb, size_t size)        MI_FORWARD2(mi_calloc, nmemb, size)
 #endif

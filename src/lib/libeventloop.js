@@ -60,24 +60,29 @@ LibraryJSEventLoop = {
     } else if (globalThis.addEventListener) {
       var __setImmediate_id_counter = 0;
       var __setImmediate_queue = [];
-      var __setImmediate_message_id = "_si";
+      var __setImmediate_message_id = '_si';
       /** @param {Event} e */
       var __setImmediate_cb = (e) => {
         if (e.data === __setImmediate_message_id) {
           e.stopPropagation();
-          __setImmediate_queue.shift()();
+          __setImmediate_queue.shift()?.();
           ++__setImmediate_id_counter;
         }
       }
-      addEventListener("message", __setImmediate_cb, true);
+      addEventListener('message', __setImmediate_cb, true);
       emSetImmediate = (func) => {
-        postMessage(__setImmediate_message_id, "*");
+#if PTHREADS
+        if (ENVIRONMENT_IS_WORKER) {
+          postMessage(__setImmediate_message_id);
+        } else
+#endif
+        postMessage(__setImmediate_message_id, '*');
         return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;
       }
       emClearImmediate = /**@type{function(number=)}*/((id) => {
         var index = id - __setImmediate_id_counter;
         // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
-        if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = () => {};
+        if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = null;
       })
     }`,
   $emSetImmediate: undefined,
@@ -199,7 +204,11 @@ LibraryJSEventLoop = {
     Module['resumeMainLoop'] = MainLoop.resume;
     MainLoop.init();`,
   $MainLoop: {
-    running: false,
+    // The main loop tick function that will be called at each iteration.
+    // This will be non-null whenever a loop function is registered.
+    func: null,
+    // This will be non-null whenever a loop function is both registered and
+    // currently running.
     scheduler: null,
     // Each main loop is numbered with a ID in sequence order. Only one main
     // loop can run at a time. This variable stores the ordinal number of the
@@ -207,8 +216,6 @@ LibraryJSEventLoop = {
     // will quit themselves. This is incremented whenever a new main loop is
     // created.
     currentlyRunningMainloop: 0,
-    // The main loop tick function that will be called at each iteration.
-    func: null,
     // The argument that will be passed to the main loop. (of type void*)
     arg: 0,
     timingMode: 0,
@@ -219,9 +226,12 @@ LibraryJSEventLoop = {
     postMainLoop: [],
 
     pause() {
-      MainLoop.scheduler = null;
-      // Incrementing this signals the previous main loop that it's now become old, and it must return.
-      MainLoop.currentlyRunningMainloop++;
+      if (MainLoop.scheduler) {
+        MainLoop.scheduler = null;
+        // Incrementing this signals the previous main loop that it's now become old, and it must return.
+        MainLoop.currentlyRunningMainloop++;
+        {{{ runtimeKeepalivePop() }}}
+      }
     },
 
     resume() {
@@ -285,7 +295,7 @@ LibraryJSEventLoop = {
     fakeRequestAnimationFrame(func) {
       // try to keep 60fps between calls to here
       var now = Date.now();
-      if (MainLoop.nextRAF === 0) {
+      if (!MainLoop.nextRAF) {
         MainLoop.nextRAF = now + 1000/60;
       } else {
         while (now + 2 >= MainLoop.nextRAF) { // fudge a little, to avoid timer jitter causing us to do lots of delay:0
@@ -323,10 +333,13 @@ LibraryJSEventLoop = {
       return 1; // Return non-zero on failure, can't set timing mode when there is no main loop.
     }
 
-    if (!MainLoop.running) {
-      {{{ runtimeKeepalivePush() }}}
-      MainLoop.running = true;
+#if useRuntimeKeepaliveStack()
+    // If there is no existing scheduler then we are transitioning from
+    // inactive to active and we add to runtime keepalive counter.
+    if (!MainLoop.scheduler) {
+      runtimeKeepalivePush();
     }
+#endif
     if (mode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
       MainLoop.scheduler = function MainLoop_scheduler_setTimeout() {
         var timeUntilNextTick = Math.max(0, MainLoop.tickStartTime + value - _emscripten_get_now())|0;
@@ -341,29 +354,40 @@ LibraryJSEventLoop = {
       assert(mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}});
 #endif
       if (!MainLoop.setImmediate) {
-        if (globalThis.setImmediate) {
+        if (globalThis.scheduler) {
+          // Some modern browsers implement scheduler.postTask, but not all.
+#if RUNTIME_DEBUG
+          dbg('setImmediate: using scheduler.postTask');
+#endif
+          MainLoop.setImmediate = scheduler.postTask.bind(scheduler);
+#if ENVIRONMENT_MAY_BE_NODE
+        } else if (globalThis.setImmediate) {
           MainLoop.setImmediate = setImmediate;
+#endif
         } else {
+#if RUNTIME_DEBUG
+          dbg('setImmediate: using polyfill');
+#endif
           // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
           var setImmediates = [];
           var emscriptenMainLoopMessageId = 'setimmediate';
           /** @param {Event} event */
           var MainLoop_setImmediate_messageHandler = (event) => {
-            // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
-            // so check for both cases.
-            if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
+            if (event.data === emscriptenMainLoopMessageId) {
               event.stopPropagation();
               setImmediates.shift()();
             }
           };
-          addEventListener("message", MainLoop_setImmediate_messageHandler, true);
+          addEventListener('message', MainLoop_setImmediate_messageHandler, true);
           MainLoop.setImmediate = /** @type{function(function(): ?, ...?): number} */((func) => {
             setImmediates.push(func);
             if (ENVIRONMENT_IS_WORKER) {
-              Module['setImmediates'] ??= [];
-              Module['setImmediates'].push(func);
-              postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
-            } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
+              // The postMessge API in a Worker, sends message to the main
+              // thread and does not support the `targetOrigin` (*) argument.
+              postMessage(emscriptenMainLoopMessageId);
+            } else {
+              postMessage(emscriptenMainLoopMessageId, '*');
+            }
           });
         }
       }
@@ -406,7 +430,6 @@ LibraryJSEventLoop = {
 #if RUNTIME_DEBUG
         dbg('main loop exiting');
 #endif
-        {{{ runtimeKeepalivePop() }}}
 #if !MINIMAL_RUNTIME
         maybeExit();
 #endif
@@ -417,10 +440,7 @@ LibraryJSEventLoop = {
 
     // We create the loop runner here but it is not actually running until
     // _emscripten_set_main_loop_timing is called (which might happen at a
-    // later time).  This member signifies that the current runner has not
-    // yet been started so that we can call runtimeKeepalivePush when it
-    // gets its timing set for the first time.
-    MainLoop.running = false;
+    // later time).
     MainLoop.runner = function MainLoop_runner() {
       if (ABORT) return;
       if (MainLoop.queue.length > 0) {
@@ -439,7 +459,7 @@ LibraryJSEventLoop = {
           }
         }
 #if RUNTIME_DEBUG
-        dbg(`main loop blocker "${blocker.name}" took '${Date.now() - start} ms`); //, left: ' + MainLoop.remainingBlockers);
+        dbg(`main loop blocker '${blocker.name}' took ${Date.now() - start} ms`); //, left: ' + MainLoop.remainingBlockers);
 #endif
         MainLoop.updateStatus();
 

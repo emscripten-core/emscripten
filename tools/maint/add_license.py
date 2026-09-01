@@ -59,7 +59,7 @@ exclude_contents = ['Copyright', 'LICENSE.TXT', 'PUBLIC DOMAIN']
 
 
 def process_file(filename):
-  if any(filename.startswith(ex) for ex in exclude_filenames):
+  if filename.startswith(exclude_filenames):
     return
   ext = os.path.splitext(filename)[1]
   if ext not in {'.py', '.c', '.cpp', '.h', '.js'}:

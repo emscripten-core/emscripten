@@ -30,6 +30,17 @@ const MAX_PTR = Number((2n ** 64n) - 1n);
 const MAX_PTR = (2 ** 32) - 1
 #endif
 
+// Message IDs used when communicating with workers via postMessage.
+const CMD_LOAD = 1;
+const CMD_RUN = 2;
+const CMD_LOADED = 3;
+const CMD_CHECK_MAILBOX = 4;
+const CMD_SPAWN_THREAD = 5;
+const CMD_CLEANUP_THREAD = 6;
+const CMD_MARK_AS_FINISHED = 7;
+const CMD_UNCAUGHT_EXN = 8;
+const CMD_CALL_HANDLER = 9;
+
 #if WASM_ESM_INTEGRATION
 const pthreadWorkerScript = TARGET_BASENAME + '.pthread.mjs';
 #else
@@ -97,15 +108,25 @@ var LibraryPThread = {
     // terminated, but is returned to this pool as an optimization so that
     // starting the next thread is faster.
     unusedWorkers: [],
-    // Contains all Workers that are currently hosting an active pthread.
-    runningWorkers: [],
     tlsInitFunctions: [],
     // Maps pthread_t pointers to the workers on which they are running.  For
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.
     pthreads: {},
+#if MAIN_MODULE
+    outstandingPromises: {},
+    // Finished threads are threads that have finished running but we are not yet
+    // joined.
+    finishedThreads: new Set(),
+#endif
 #if ASSERTIONS
     nextWorkerID: 1,
+#endif
+#if TRUSTED_TYPES
+    // Cached Trusted Types policy for pthread Worker creation. Per the
+    // Trusted Types spec, createPolicy() with the same name throws on the
+    // second call unless CSP uses 'allow-duplicates'.
+    trustedWorkerPolicy: null,
 #endif
     init() {
       if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
@@ -119,8 +140,7 @@ var LibraryPThread = {
       while (pthreadPoolSize--) {
         PThread.allocateUnusedWorker();
       }
-#endif
-#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
+#if !MINIMAL_RUNTIME
       // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
       // in postamble_minimal.js
       addOnPreRun(async () => {
@@ -131,32 +151,27 @@ var LibraryPThread = {
         removeRunDependency('loading-workers');
 #endif // PTHREAD_POOL_DELAY_LOAD
       });
-#endif // !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
-#if MAIN_MODULE
-      PThread.outstandingPromises = {};
-      // Finished threads are threads that have finished running but we are not yet
-      // joined.
-      PThread.finishedThreads = new Set();
-#endif
+#endif // !MINIMAL_RUNTIME
+#endif // PTHREAD_POOL_SIZE
     },
 
 #if PTHREADS_PROFILING
     getThreadName(pthreadPtr) {
       var profilerBlock = {{{ makeGetValue('pthreadPtr', C_STRUCTS.pthread.profilerBlock, '*') }}};
-      if (!profilerBlock) return "";
+      if (!profilerBlock) return '';
       return UTF8ToString(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}});
     },
 
     threadStatusToString(threadStatus) {
       switch (threadStatus) {
-        case 0: return "not yet started";
-        case 1: return "running";
-        case 2: return "sleeping";
-        case 3: return "waiting for a futex";
-        case 4: return "waiting for a mutex";
-        case 5: return "waiting for a proxied operation";
-        case 6: return "finished execution";
-        default: return "unknown (corrupt?!)";
+        case 0: return 'not yet started';
+        case 1: return 'running';
+        case 2: return 'sleeping';
+        case 3: return 'waiting for a futex';
+        case 4: return 'waiting for a mutex';
+        case 5: return 'waiting for a proxied operation';
+        case 6: return 'finished execution';
+        default: return 'unknown (corrupt?!)';
       }
     },
 
@@ -180,15 +195,20 @@ var LibraryPThread = {
       // pthreads will continue to be executing after `worker.terminate` has
       // returned.  For this reason, we don't call `returnWorkerToPool` here or
       // free the underlying pthread data structures.
-      for (var worker of PThread.runningWorkers) {
+      for (var worker of Object.values(PThread.pthreads)) {
         terminateWorker(worker);
       }
       for (var worker of PThread.unusedWorkers) {
         terminateWorker(worker);
       }
       PThread.unusedWorkers = [];
-      PThread.runningWorkers = [];
       PThread.pthreads = {};
+    },
+
+    clearMailboxAwait: (pthread_ptr) => {
+      if (!waitAsyncPolyfilled) {
+        Atomics.notify(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}});
+      }
     },
 
     terminateRuntime: () => {
@@ -198,12 +218,7 @@ var LibraryPThread = {
       PThread.terminateAllThreads();
       var pthread_ptr = _pthread_self();
       ___set_thread_state(0, 0, 0, 1);
-      if (!waitAsyncPolyfilled) {
-        // Break the waitAsync loop.  Note that checkMailbox will not
-        // re-register since the `___set_thread_state` above causes _pthread_self
-        // to return 0.
-        Atomics.notify(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}});
-      }
+      PThread.clearMailboxAwait(pthread_ptr);
     },
 
     returnWorkerToPool: (worker) => {
@@ -218,7 +233,6 @@ var LibraryPThread = {
       // Note: worker is intentionally not terminated so the pool can
       // dynamically grow.
       PThread.unusedWorkers.push(worker);
-      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
       // Not a running Worker anymore
       // Detach the worker from the pthread object, and return it to the
       // worker pool as an unused worker.
@@ -233,6 +247,11 @@ var LibraryPThread = {
         worker.unref();
       }
 #endif
+
+      // Clear any pending waitAsync waiter armed on this thread's struct
+      // BEFORE freeing the memory so that memory recycled by malloc in another
+      // thread will not have a window where a stale async waiter is still active.
+      PThread.clearMailboxAwait(pthread_ptr);
 
       // Finally, free the underlying (and now-unused) pthread structure in
       // linear memory.
@@ -264,67 +283,76 @@ var LibraryPThread = {
     //                    ready to host pthreads.
     loadWasmModuleToWorker: (worker) => new Promise((onFinishedLoading) => {
       worker.onmessage = (e) => {
-        var d = e['data'];
+        var d = e.data;
         var cmd = d.cmd;
 #if PTHREADS_DEBUG
         dbg(`main thread: received message '${cmd}' from worker. ${d}`);
 #endif
 
         // If this message is intended to a recipient that is not the main
-        // thread, forward it to the target thread.
+        // thread, forward it to the target thread. This is currently only
+        // used by `CMD_CHECK_MAILBOX`.
         if (d.targetThread && d.targetThread != _pthread_self()) {
           var targetWorker = PThread.pthreads[d.targetThread];
-          if (targetWorker) {
-            targetWorker.postMessage(d, d.transferList);
-          } else {
-            err(`worker sent message (${cmd}) to pthread (${d.targetThread}) that no longer exists`);
-          }
+#if ASSERTIONS
+          if (!targetWorker) err(`worker sent message (${cmd}) to pthread (${d.targetThread}) that no longer exists`);
+#endif
+          targetWorker?.postMessage(d);
           return;
         }
 
-        if (cmd === 'checkMailbox') {
-          checkMailbox();
-        } else if (cmd === 'spawnThread') {
-          spawnThread(d);
-        } else if (cmd === 'cleanupThread') {
-          // cleanupThread needs to be run via callUserCallback since it calls
-          // back into user code to free thread data. Without this it's possible
-          // the unwind or ExitStatus exception could escape here.
-          callUserCallback(() => cleanupThread(d.thread));
-#if MAIN_MODULE
-        } else if (cmd === 'markAsFinished') {
-          markAsFinished(d.thread);
-#endif
-        } else if (cmd === 'loaded') {
-          worker.loaded = true;
-#if ENVIRONMENT_MAY_BE_NODE && PTHREAD_POOL_SIZE
-          // Check that this worker doesn't have an associated pthread.
-          if (ENVIRONMENT_IS_NODE && !worker.pthread_ptr) {
-            // Once worker is loaded & idle, mark it as weakly referenced,
-            // so that mere existence of a Worker in the pool does not prevent
-            // Node.js from exiting the app.
-            worker.unref();
-          }
-#endif
-          onFinishedLoading(worker);
-        } else if (d.target === 'setimmediate') {
+        if (d === 'setimmediate' || d === '_si') {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
           worker.postMessage(d);
-#if ENVIRONMENT_MAY_BE_NODE
-        } else if (cmd === 'uncaughtException') {
-          // Message handler for Node.js specific out-of-order behavior:
-          // https://github.com/nodejs/node/issues/59617
-          // A pthread sent an uncaught exception event. Re-raise it on the main thread.
-          worker.onerror(d.error);
+          return;
+        }
+
+        switch (cmd) {
+          case {{{ CMD_CHECK_MAILBOX }}}:
+            checkMailbox();
+            break;
+          case {{{ CMD_SPAWN_THREAD }}}:
+            spawnThread(d);
+            break;
+          case {{{ CMD_CLEANUP_THREAD }}}:
+            // cleanupThread needs to be run via callUserCallback since it calls
+            // back into user code to free thread data. Without this it's possible
+            // the unwind or ExitStatus exception could escape here.
+            callUserCallback(() => cleanupThread(d.thread));
+            break;
+#if MAIN_MODULE
+          case {{{ CMD_MARK_AS_FINISHED }}}:
+            markAsFinished(d.thread);
+            break;
 #endif
-        } else if (cmd === 'callHandler') {
-          Module[d.handler](...d.args);
-        } else if (cmd) {
-          // The received message looks like something that should be handled by this message
-          // handler, (since there is a e.data.cmd field present), but is not one of the
-          // recognized commands:
-          err(`worker sent an unknown command ${cmd}`);
+          case {{{ CMD_LOADED }}}:
+#if ENVIRONMENT_MAY_BE_NODE
+            if (ENVIRONMENT_IS_NODE && !worker.strongref) {
+              // Once worker is loaded & idle, mark it as weakly referenced,
+              // so that mere existence of a Worker in the pool does not prevent
+              // Node.js from exiting the app.
+              worker.unref();
+            }
+#endif
+            onFinishedLoading(worker);
+            break;
+#if ENVIRONMENT_MAY_BE_NODE
+          case {{{ CMD_UNCAUGHT_EXN }}}:
+            // Message handler for Node.js specific out-of-order behavior:
+            // https://github.com/nodejs/node/issues/59617
+            // A pthread sent an uncaught exception event. Re-raise it on the main thread.
+            worker.onerror(d.error);
+            break;
+#endif
+          case {{{ CMD_CALL_HANDLER }}}:
+            Module[d.handler](...d.args);
+            break;
+          default:
+            // The received message looks like something that should be handled by this message
+            // handler, (since there is a e.data.cmd field present), but is not one of the
+            // recognized commands:
+            if (cmd) err(`worker sent an unknown command ${cmd}`);
         }
       };
 
@@ -397,7 +425,7 @@ var LibraryPThread = {
 
       // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
       worker.postMessage({
-        cmd: 'load',
+        cmd: {{{ CMD_LOAD }}},
         handlers: handlers,
 #if WASM2JS
         // the polyfill WebAssembly.Memory instance has function properties,
@@ -413,6 +441,9 @@ var LibraryPThread = {
 #if LOAD_SOURCE_MAP
         wasmSourceMap,
 #endif
+#if SHARED_WASMGC
+        sharedHeapRootVal: wasmExports['_shared_heap_root'].value,
+#endif
 #if MAIN_MODULE
         dynamicLibraries,
         // Share all modules that have been loaded so far.  New workers
@@ -420,7 +451,7 @@ var LibraryPThread = {
         sharedModules,
 #endif
 #if ASSERTIONS
-        'workerID': worker.workerID,
+        workerID: worker.workerID,
 #endif
       });
     }),
@@ -462,8 +493,8 @@ var LibraryPThread = {
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (globalThis.trustedTypes?.createPolicy) {
-        var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => new URL('{{{ pthreadWorkerScript }}}', import.meta.url) });
-        worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
+        PThread.trustedWorkerPolicy ??= trustedTypes.createPolicy('emscripten#workerPolicy', { createScriptURL: (url) => url });
+        worker = new Worker(PThread.trustedWorkerPolicy.createScriptURL(new URL('{{{ pthreadWorkerScript }}}', import.meta.url)), {{{ pthreadWorkerOptions }}});
       } else
 #endif
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
@@ -519,8 +550,8 @@ var LibraryPThread = {
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (globalThis.trustedTypes?.createPolicy) {
-        var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
-        worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
+        PThread.trustedWorkerPolicy ??= trustedTypes.createPolicy('emscripten#workerPolicy', { createScriptURL: (url) => url });
+        worker = new Worker(PThread.trustedWorkerPolicy.createScriptURL(pthreadMainJs), {{{ pthreadWorkerOptions }}});
       } else
 #endif
       worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
@@ -529,6 +560,7 @@ var LibraryPThread = {
       worker.workerID = PThread.nextWorkerID++;
 #endif
       PThread.unusedWorkers.push(worker);
+      return worker;
     },
 
     getNewWorker() {
@@ -557,8 +589,8 @@ var LibraryPThread = {
 #endif
 #endif // PTHREAD_POOL_SIZE_STRICT
 #if PTHREAD_POOL_SIZE_STRICT < 2 || ENVIRONMENT_MAY_BE_NODE
-        PThread.allocateUnusedWorker();
-        PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
+        var newWorker = PThread.allocateUnusedWorker();
+        PThread.loadWasmModuleToWorker(newWorker);
 #endif
       }
       return PThread.unusedWorkers.pop();
@@ -577,7 +609,7 @@ var LibraryPThread = {
     // the onmessage handlers if the message was coming from a valid worker.
     worker.onmessage = (e) => {
 #if ASSERTIONS
-      var cmd = e['data'].cmd;
+      var cmd = e.data.cmd;
       err(`received "${cmd}" command from terminated worker: ${worker.workerID}`);
 #endif
     };
@@ -593,7 +625,7 @@ var LibraryPThread = {
     dbg(`_emscripten_thread_cleanup: ${ptrToString(thread)}`)
 #endif
     if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
-    else postMessage({ cmd: 'cleanupThread', thread });
+    else postMessage({ cmd: {{{ CMD_CLEANUP_THREAD }}}, thread });
   },
 
   _emscripten_thread_set_strongref: (thread) => {
@@ -604,7 +636,12 @@ var LibraryPThread = {
     //   back to the main thread.
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
-      PThread.pthreads[thread].ref();
+      var worker = PThread.pthreads[thread];
+      worker.ref();
+      // Also, record that we called strongref, in case this function is called
+      // bafore the 'loaded' callback from the thread (where we would normally
+      // `unref` it.
+      worker.strongref = 1;
     }
 #endif
   },
@@ -685,14 +722,12 @@ var LibraryPThread = {
     assert(!worker.pthread_ptr);
 #endif
 
-    PThread.runningWorkers.push(worker);
-
     // Add to pthreads map
     PThread.pthreads[threadParams.pthread_ptr] = worker;
 
     worker.pthread_ptr = threadParams.pthread_ptr;
     var msg = {
-        cmd: 'run',
+        cmd: {{{ CMD_RUN }}},
         start_routine: threadParams.startRoutine,
         arg: threadParams.arg,
         pthread_ptr: threadParams.pthread_ptr,
@@ -702,15 +737,6 @@ var LibraryPThread = {
     // in this file, and not from the external worker.js.
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
-#endif
-#if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE) {
-      // Mark worker as weakly referenced once we start executing a pthread,
-      // so that its existence does not prevent Node.js from exiting.  This
-      // has no effect if the worker is already weakly referenced (e.g. if
-      // this worker was previously idle/unused).
-      worker.unref();
-    }
 #endif
     // Ask the worker to start executing its pthread entry point function.
     worker.postMessage(msg, threadParams.transferList);
@@ -773,7 +799,7 @@ var LibraryPThread = {
       return {{{ cDefs.EAGAIN }}};
     }
 #if PTHREADS_DEBUG
-    dbg("createThread: " + ptrToString(pthread_ptr));
+    dbg('createThread: ' + ptrToString(pthread_ptr));
 #endif
 
     // List of JS objects that will transfer ownership to the Worker hosting the thread
@@ -884,7 +910,7 @@ var LibraryPThread = {
     // Synchronously proxy the thread creation to main thread if possible. If we
     // need to transfer ownership of objects, then proxy asynchronously via
     // postMessage.
-    if (ENVIRONMENT_IS_PTHREAD && (transferList.length === 0 || error)) {
+    if (ENVIRONMENT_IS_PTHREAD && (!transferList.length || error)) {
       return pthreadCreateProxied(pthread_ptr, attr, startRoutine, arg);
     }
 
@@ -916,7 +942,7 @@ var LibraryPThread = {
       // The prepopulated pool of web workers that can host pthreads is stored
       // in the main JS thread. Therefore if a pthread is attempting to spawn a
       // new thread, the thread creation must be deferred to the main JS thread.
-      threadParams.cmd = 'spawnThread';
+      threadParams.cmd = {{{ CMD_SPAWN_THREAD }}};
       postMessage(threadParams, transferList);
       // When we defer thread creation this way, we have no way to detect thread
       // creation synchronously today, so we have to assume success and return 0.
@@ -1070,7 +1096,7 @@ var LibraryPThread = {
 #if MEMORY64
     // In memory64 mode some proxied functions return bigint/pointer but
     // our return type is i53/double.
-    if (typeof rtn == "bigint") {
+    if (typeof rtn == 'bigint') {
       rtn = bigintToI53Checked(rtn);
     }
 #endif
@@ -1078,7 +1104,7 @@ var LibraryPThread = {
     // Proxied functions can return any type except bigint.  All other types
     // coerce to f64/double (the return type of this function in C) but not
     // bigint.
-    assert(typeof rtn != "bigint");
+    assert(typeof rtn != 'bigint');
 #endif
     return rtn;
   },
@@ -1189,7 +1215,7 @@ var LibraryPThread = {
     // running, but remain around waiting to be joined.  In this state they
     // cannot run any more proxied work.
     if (!ENVIRONMENT_IS_PTHREAD) markAsFinished(thread);
-    else postMessage({ cmd: 'markAsFinished', thread });
+    else postMessage({ cmd: {{{ CMD_MARK_AS_FINISHED }}}, thread });
   },
 
   $markAsFinished: (pthread_ptr) => {
@@ -1208,11 +1234,11 @@ var LibraryPThread = {
   $dlsyncThreadsAsync: async () => {
     const caller = PThread.currentProxiedOperationCallerThread;
 #if PTHREADS_DEBUG
-    dbg("dlsyncThreadsAsync caller=" + ptrToString(caller));
+    dbg('dlsyncThreadsAsync caller=' + ptrToString(caller));
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'dlsyncThreadsAsync() should only be called from the main thread');
-    assert(Object.keys(PThread.outstandingPromises).length === 0);
+    assert(!Object.keys(PThread.outstandingPromises).length);
 #endif
 
     const promises = [];
@@ -1326,7 +1352,7 @@ var LibraryPThread = {
     if (targetThread == currThreadId) {
       setTimeout(checkMailbox);
     } else if (ENVIRONMENT_IS_PTHREAD) {
-      postMessage({targetThread, cmd: 'checkMailbox'});
+      postMessage({targetThread, cmd: {{{ CMD_CHECK_MAILBOX }}}});
     } else {
       var worker = PThread.pthreads[targetThread];
       if (!worker) {
@@ -1335,9 +1361,22 @@ var LibraryPThread = {
 #endif
         return;
       }
-      worker.postMessage({cmd: 'checkMailbox'});
+      worker.postMessage({cmd: {{{ CMD_CHECK_MAILBOX }}}});
     }
-  }
+  },
+
+#if SHARED_WASMGC
+  _shared_heap_root__deps: ['$makeSharedHeapRootGlobal'],
+  _shared_heap_root: "makeSharedHeapRootGlobal()",
+  $makeSharedHeapRootGlobal: () => {
+    // Wasm module for acquiring a shared anyref WebAssembly.Global:
+    // (module (global (export "g") (mut (ref null (shared any))) (ref.null (shared any))))
+    var bytes = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 6, 9, 1, 99, 101, 110, 1, 208, 101, 113, 11, 7, 5, 1, 1, 103, 3, 0]);
+    var module = new WebAssembly.Module(bytes);
+    var instance = new WebAssembly.Instance(module, {});
+    return instance.exports.g;
+  },
+#endif // SHARED_WASMGC
 };
 
 autoAddDeps(LibraryPThread, '$PThread');

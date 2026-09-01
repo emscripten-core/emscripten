@@ -5,6 +5,9 @@
 
 int getrusage(int who, struct rusage *ru)
 {
+#ifdef __EMSCRIPTEN__ // XXX Emscripten revert musl commit 5850546e9669f793aab61dfc7c4f2c1ff35c4b29
+	return syscall(SYS_getrusage, who, ru);
+#else
 	int r;
 #ifdef SYS_getrusage_time64
 	long long kru64[18];
@@ -32,4 +35,5 @@ int getrusage(int who, struct rusage *ru)
 			{ .tv_sec = kru[2], .tv_usec = kru[3] };
 	}
 	return __syscall_ret(r);
+#endif // __EMSCRIPTEN__
 }

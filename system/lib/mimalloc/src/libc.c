@@ -64,7 +64,7 @@ void _mi_strlcat(char* dest, const char* src, size_t dest_size) {
 size_t _mi_strnlen(const char* s, size_t max_len) {
   if (s==NULL) return 0;
   size_t len = 0;
-  while(s[len] != 0 && len < max_len) { len++; }
+  while(len < max_len && s[len] != 0) { len++; }
   return len;
 }
 
@@ -88,16 +88,18 @@ char* _mi_strnstr(char* s, size_t max_len, const char* pat) {
 }
 
 #ifdef MI_NO_GETENV
-bool _mi_getenv(const char* name, char* result, size_t result_size) {
+int _mi_getenv(const char* name, char* result, size_t result_size) {
   MI_UNUSED(name);
   MI_UNUSED(result);
   MI_UNUSED(result_size);
-  return false;
+  return ENOENT;
 }
 #else
-bool _mi_getenv(const char* name, char* result, size_t result_size) {
+int _mi_getenv(const char* name, char* result, size_t result_size) {
   if (name==NULL || result == NULL || result_size < 64) return false;
-  return _mi_prim_getenv(name,result,result_size);
+  // change the result of _mi_prim_getenv to an errno result
+  const int res = _mi_prim_getenv(name,result,result_size);
+  return (res > 0 ? 0 : (res == 0 ? ENOENT : EAGAIN));
 }
 #endif
 
@@ -117,13 +119,13 @@ bool _mi_atomic_once_enter(mi_atomic_once_t* once) {
   const mi_threadid_t current_tid = _mi_thread_id();
   if (once_tid == current_tid) {
     return false; // recursive invocation; we need this for process_init for example
-  }  
+  }
 
   mi_lock_acquire(&once->lock);
   uintptr_t expected = 0;
   if (mi_atomic_cas_strong_acq_rel(&once->tid, &expected, current_tid)) {  // could use atomic_load/store as well
     return true;  // should execute and release
-  } 
+  }
   else {
     mi_lock_release(&once->lock);
     return false; // already another thread entered and released
@@ -134,7 +136,7 @@ void _mi_atomic_once_release(mi_atomic_once_t* once) {
   if (mi_atomic_load_acquire(&once->tid)>1) {  // paranoia
     mi_atomic_store_release(&once->tid,1);     // done executing
     mi_lock_release(&once->lock);
-  }  
+  }
 }
 
 

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-assert(!STANDALONE_WASM, "library_time.js should not be included in standalone mode");
+assert(!STANDALONE_WASM, 'library_time.js should not be included in standalone mode');
 
 addToLibrary({
   _mktime_js__i53abi: true,
@@ -32,14 +32,18 @@ addToLibrary({
     var dstOffset = Math.min(winterOffset, summerOffset); // DST is in December in South
     if (dst < 0) {
       // Attention: some regions don't have DST at all.
-      {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'Number(summerOffset != winterOffset && dstOffset == guessedOffset)', 'i32') }}};
+      dst = Number(summerOffset != winterOffset && dstOffset == guessedOffset);
     } else if ((dst > 0) != (dstOffset == guessedOffset)) {
       var nonDstOffset = Math.max(winterOffset, summerOffset);
       var trueOffset = dst > 0 ? dstOffset : nonDstOffset;
       // Don't try setMinutes(date.getMinutes() + ...) -- it's messed up.
       date.setTime(date.getTime() + (trueOffset - guessedOffset)*60000);
+      if (isNaN(date.getTime())) {
+        return -1;
+      }
     }
 
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
     var yday = ydayFromDate(date)|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
@@ -58,6 +62,9 @@ addToLibrary({
   _gmtime_js__i53abi: true,
   _gmtime_js: (time, tmPtr) => {
     var date = new Date(time * 1000);
+    if (isNaN(date.getTime())) {
+      return 1;
+    }
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getUTCHours()', 'i32') }}};
@@ -68,6 +75,7 @@ addToLibrary({
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
+    return 0;
   },
 
   _timegm_js__i53abi: true,
@@ -80,6 +88,9 @@ addToLibrary({
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
                         0);
     var date = new Date(time);
+    if (isNaN(date.getTime())) {
+      return -1;
+    }
 
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
@@ -93,6 +104,9 @@ addToLibrary({
   _localtime_js__deps: ['$ydayFromDate'],
   _localtime_js: (time, tmPtr) => {
     var date = new Date(time*1000);
+    if (isNaN(date.getTime())) {
+      return 1;
+    }
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getHours()', 'i32') }}};
@@ -111,6 +125,7 @@ addToLibrary({
     var winterOffset = start.getTimezoneOffset();
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
+    return 0;
   },
 
   // musl-internal function used to implement both `asctime` and `asctime_r`
@@ -124,15 +139,15 @@ addToLibrary({
       tm_year: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}},
       tm_wday: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'i32') }}}
     };
-    var days = [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ];
-    var months = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
+    var days = [ 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat' ];
+    var months = [ 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ];
     var s = days[date.tm_wday] + ' ' + months[date.tm_mon] +
         (date.tm_mday < 10 ? '  ' : ' ') + date.tm_mday +
         (date.tm_hour < 10 ? ' 0' : ' ') + date.tm_hour +
         (date.tm_min < 10 ? ':0' : ':') + date.tm_min +
         (date.tm_sec < 10 ? ':0' : ':') + date.tm_sec +
-        ' ' + (1900 + date.tm_year) + "\n";
+        ' ' + (1900 + date.tm_year) + '\n';
 
     // asctime_r is specced to behave in an undefined manner if the algorithm would attempt
     // to write out more than 26 bytes (including the null terminator).
@@ -176,11 +191,11 @@ addToLibrary({
     var extractZone = (timezoneOffset) => {
       // Why inverse sign?
       // Read here https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/getTimezoneOffset
-      var sign = timezoneOffset >= 0 ? "-" : "+";
+      var sign = timezoneOffset >= 0 ? '-' : '+';
 
       var absOffset = Math.abs(timezoneOffset)
-      var hours = String(Math.floor(absOffset / 60)).padStart(2, "0");
-      var minutes = String(absOffset % 60).padStart(2, "0");
+      var hours = String(Math.floor(absOffset / 60)).padStart(2, '0');
+      var minutes = String(absOffset % 60).padStart(2, '0');
 
       return `UTC${sign}${hours}${minutes}`;
     }
@@ -328,7 +343,7 @@ addToLibrary({
         /\s+/g,'\\s*'
       );
 
-    var matches = new RegExp('^'+pattern_out, "i").exec(UTF8ToString(buf))
+    var matches = new RegExp('^'+pattern_out, 'i').exec(UTF8ToString(buf))
 
     function initDate() {
       function fixup(value, min, max) {

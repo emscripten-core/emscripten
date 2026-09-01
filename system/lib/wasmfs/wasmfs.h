@@ -29,8 +29,6 @@ class WasmFS {
   std::mutex mutex;
 
   // Private method to initialize root directory once.
-  // Initializes default directories including dev/stdin, dev/stdout,
-  // dev/stderr. Refers to the same std streams in the open file table.
   std::shared_ptr<Directory> initRootDirectory();
 
   // Initialize files specified by --preload-file option.

@@ -311,9 +311,13 @@ The "architecture" to compile for. 0 means the default wasm32, 1 is
 the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
 wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
 using i64 pointers).
+Nowadays we recommend using the more standard `-m64` or `--target=wasm64`
+flags, which do the same thing.
 Assumes WASM_BIGINT.
 
 .. note:: Applicable during both linking and compilation
+
+.. note:: This setting is deprecated
 
 Default value: 0
 
@@ -545,22 +549,6 @@ Register file system callbacks using trackingDelegate in library_fs.js
 
 Default value: false
 
-.. _socket_webrtc:
-
-SOCKET_WEBRTC
-=============
-
-As well as being configurable at compile time via the "-s" option the
-WEBSOCKET_URL and WEBSOCKET_SUBPROTOCOL
-settings may be configured at run time via the Module object e.g.
-Module['websocket'] = {subprotocol: 'base64, binary, text'};
-Module['websocket'] = {url: 'wss://', subprotocol: 'base64'};
-You can set 'subprotocol' to null, if you don't want to specify it.
-Run time configuration may be useful as it lets an application select
-multiple different services.
-
-Default value: false
-
 .. _websocket_url:
 
 WEBSOCKET_URL
@@ -581,6 +569,35 @@ PROXY_POSIX_SOCKETS
 
 If 1, the POSIX sockets API uses a native bridge process server to proxy
 sockets calls from browser to native world.
+
+Default value: false
+
+.. _noderawsockets:
+
+NODERAWSOCKETS
+==============
+
+If enabled, the POSIX sockets API is backed by Node.js's ``node:net``
+module, giving real non-blocking outgoing TCP sockets with no WebSockets,
+proxy process or pthreads. This is the sockets counterpart to
+:ref:`NODERAWFS`: where :ref:`NODERAWFS` gives direct access to the host
+filesystem, this gives direct access to host sockets. It only works under
+node and is ignored elsewhere.
+
+It supports full TCP (outgoing connect plus bind, listen and accept for
+servers) and UDP. TCP clients use the public ``node:net`` API when possible,
+falling back to the private ``tcp_wrap``/``udp_wrap`` handles on older
+Node.js.
+
+It is event-driven. Socket readiness comes through the same
+``emscripten_set_socket_*_callback`` hooks the WebSocket backend uses, so it
+works with existing readiness reactors. It cannot be combined with the
+WebSocket emulation or :ref:`PROXY_POSIX_SOCKETS`.
+
+It works under -pthread with :ref:`PROXY_TO_PTHREAD`, where main() and every socket
+syscall run on a single worker alongside the node handles and their event
+loop. As with the WebSocket backend, sharing a socket across threads under a
+plain -pthread build (without PROXY_TO_PTHREAD) is not supported.
 
 Default value: false
 
@@ -1339,11 +1356,10 @@ JSPI
 ====
 
 Use VM support for the JavaScript Promise Integration proposal. This allows
-async operations to happen without the overhead of modifying the wasm. This
-is experimental at the moment while spec discussion is ongoing, see
-https://github.com/WebAssembly/js-promise-integration/ TODO: document which
-of the following flags are still relevant in this mode (e.g. IGNORE_INDIRECT
-etc. are not needed)
+async operations to happen without the overhead of modifying the wasm.
+See https://github.com/WebAssembly/js-promise-integration/
+TODO: document which of the following flags are still relevant in this mode
+(e.g. IGNORE_INDIRECT etc. are not needed)
 
 Default value: 0
 
@@ -1414,7 +1430,35 @@ Setting this list to [], or at least a short and concise set of names you
 actually use, can be very useful for reducing code size. By default, the
 list contains a set of commonly used symbols.
 
-FIXME: should this just be  0  if we want everything?
+In addition to the default symbols, the following are also available:
+
+- fetchSettings
+- logReadFiles
+- loadSplitModule
+- onMalloc
+- onRealloc
+- onFree
+- onSbrkGrow
+- onCOSCacheHit
+- onCOSCacheMiss
+- onCOSStore
+- GL_MAX_TEXTURE_IMAGE_UNITS
+- SDL_canPlayWithWebAudio
+- SDL_numSimultaneouslyQueuedBuffers
+- freePreloadedMediaOnUse
+- preinitializedWebGLContext
+- keyboardListeningElement
+- doNotCaptureKeyboard
+- extraStackTrace
+- preloadPlugins
+- preMainLoop
+- postMainLoop
+- forcedAspectRatio
+- mainScriptUrlOrBlob
+- onFullScreen
+- INITIAL_MEMORY
+- wasmMemory
+- wasmBinary
 
 Default value: (multi-line value, see settings.js)
 
@@ -1707,7 +1751,6 @@ Changes enabled by this:
   - IGNORE_MISSING_MAIN is disabled.
   - AUTO_JS_LIBRARIES is disabled.
   - AUTO_NATIVE_LIBRARIES is disabled.
-  - DEFAULT_TO_CXX is disabled.
   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
   - INCOMING_MODULE_JS_API is set to empty by default.
 
@@ -1851,6 +1894,37 @@ used. An example of using the module is below.
   await init(optionalArguments);
   foo();
   bar();
+
+The ``init`` function exists so the caller can configure the instance (via
+``moduleArg``) before it starts. When there is nothing to configure, see
+``AUTO_INIT`` to have the module self-initialize on import.
+
+Default value: false
+
+.. _auto_init:
+
+AUTO_INIT
+=========
+
+When set, an instance ES module (``MODULARIZE=instance`` or
+``WASM_ESM_INTEGRATION``) initializes itself via top-level await on import
+rather than exporting an ``init`` function to be called by the consumer. The
+named Wasm/runtime exports are ready to use as soon as the module is
+imported::
+
+  import { foo, bar } from "./my_module.mjs"
+  foo();
+  bar();
+
+Since the module initializes without any caller involvement, there is no
+opportunity for module-level configuration: ``moduleArg`` cannot be passed
+and the entire ``INCOMING_MODULE_JS_API`` is disabled (passing a non-empty
+``INCOMING_MODULE_JS_API`` is an error).
+
+Because no default ``init`` export is emitted, this also frees up the
+``default`` export name for the program's own use.
+
+Requires ``MODULARIZE=instance`` or ``WASM_ESM_INTEGRATION``.
 
 Default value: false
 
@@ -2065,6 +2139,8 @@ WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
 i64 is used.
 
+.. note:: This setting is deprecated
+
 Default value: true
 
 .. _emit_producers_section:
@@ -2090,20 +2166,6 @@ EMIT_EMSCRIPTEN_LICENSE
 Emits emscripten license info in the JS output.
 
 Default value: false
-
-.. _legalize_js_ffi:
-
-LEGALIZE_JS_FFI
-===============
-
-Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
-to automatically demote i64 to i32 and promote f32 to f64. This is necessary
-in order to interface with JavaScript.  For non-web/non-JS embeddings,
-setting this to 0 may be desirable.
-
-.. note:: This setting is deprecated
-
-Default value: true
 
 .. _use_sdl:
 
@@ -2412,6 +2474,26 @@ SHARED_MEMORY
 If 1, target compiling a shared Wasm Memory.
 
 .. note:: Applicable during both linking and compilation
+
+Default value: false
+
+.. _shared_wasmgc:
+
+SHARED_WASMGC
+=============
+
+If true, enables support for experimental shared Wasm GC. Expects the
+module to contain a mutable shared anyref global to be imported as "env"
+"_shared_heap_root" and exported as "_shared_heap_root". The import will be
+provided a null value on the main thread, where the user code is expected to
+initialize it with some shared object during the start function. This shared
+object will then be provided as the import when instantiating the module on
+additional Workers. This shared anyref global can be used to bootstrap
+arbitrary shared Wasm GC state. Since LLVM cannot emit Wasm GC instructions
+or shared anyref globals, users are expected to use wasm-merge to add the
+_shared_heap_root global and additional Wasm GC code post-link.
+
+.. note:: This is an experimental setting
 
 Default value: false
 
@@ -2808,13 +2890,15 @@ NOTE: Binary encoding requires that the HTML/JS files are served with UTF-8
 encoding, and will not work with the default legacy Windows-1252 encoding
 that browsers might use on Windows. To enable UTF-8 encoding in a
 hand-crafted index.html file, apply any of:
+
 1. Add `<meta charset="utf-8">` inside the <head> section of HTML, or
 2. Add `<meta http-equiv="content-type" content="text/html; charset=UTF-8" />`` inside <head>, or
 3. Add `<meta http-equiv="content-type" content="application/json; charset=utf-8" />` inside <head>
-(if using -o foo.js with SINGLE_FILE mode to build HTML+JS), or
+   (if using -o foo.js with SINGLE_FILE mode to build HTML+JS), or
 4. pass the header `Content-Type: text/html; charset=utf-8` and/or header
-`Content-Type: application/javascript; charset=utf-8` when serving the
-relevant files that contain binary encoded content.
+   `Content-Type: application/javascript; charset=utf-8` when serving the
+   relevant files that contain binary encoded content.
+
 If none of these are possible, disable binary encoding with
 -sSINGLE_FILE_BINARY_ENCODE=0 to fall back to base64 encoding.
 
@@ -2872,7 +2956,7 @@ NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 140100 which was released on 2021-04-26 (see
+Minimum supported value is 150000 which was released on 2021-09-20 (see
 feature_matrix.py).
 
 Default value: 150000
@@ -3064,11 +3148,10 @@ Default value: []
 DEFAULT_TO_CXX
 ==============
 
-Default to c++ mode even when run as ``emcc`` rather than ``emc++``.
-When this is disabled ``em++`` is required when linking C++ programs.
-Disabling this will match the behaviour of gcc/g++ and clang/clang++.
+Default to c++ mode even when run as ``emcc`` rather than ``em++``.
+By default, ``em++`` is required when linking C++ programs.
 
-Default value: true
+Default value: false
 
 .. _printf_long_double:
 
@@ -3107,10 +3190,9 @@ DWARF info from LLVM is preserved (wasm-opt can rewrite it in some cases, but
 not in others like split-dwarf).
 When this flag is turned on, we error at link time if the build requires any
 changes to the wasm after link. This can be useful in testing, for example.
-Some example of features that require post-link wasm changes are:
+Some examples of features that require post-link wasm changes are:
 
 - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
-- Lowering nontrapping-float-to-int operations when targeting older browsers.
 
 Default value: false
 
@@ -3216,7 +3298,7 @@ TRUSTED_TYPES
 Allow calls to Worker(...) and importScripts(...) to be Trusted Types
 compatible. Trusted Types is a Web Platform feature designed to mitigate DOM
 XSS by restricting the usage of DOM sink APIs.
-See https://w3c.github.io/webappsec-trusted-types/.
+See https://www.w3.org/TR/trusted-types/.
 
 Default value: false
 
@@ -3229,8 +3311,8 @@ When targeting older browsers emscripten will sometimes require that
 polyfills be included in the output.  If you would prefer to take care of
 polyfilling yourself via some other mechanism you can prevent emscripten
 from generating these by passing ``-sNO_POLYFILL`` or ``-sPOLYFILL=0``
-With default browser targets emscripten does not need any polyfills so this
-settings is *only* needed when also explicitly targeting older browsers.
+Currently emscripten does not support targeting any browsers that require
+polyfills so this setting does nothing right now.
 
 Default value: true
 
@@ -3284,6 +3366,17 @@ Example use ``-sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p``
 
 Default value: []
 
+.. _wasm_bindgen:
+
+WASM_BINDGEN
+============
+
+Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
+
+.. note:: This is an experimental setting
+
+Default value: 0
+
 .. _source_phase_imports:
 
 SOURCE_PHASE_IMPORTS
@@ -3329,13 +3422,16 @@ Default value: false
 GROWABLE_ARRAYBUFFERS
 =====================
 
-Enable support for GrowableSharedArrayBuffer.
-This features is only available behind a flag in recent versions of
-node/chrome.
+Enable support for growable views of Wasm memory. This is a recent Web
+platform feature that can make growing the Wasm memory more efficient,
+especially in multi-threaded builds.
+Setting this to 1 will auto-detect the presence of this API and use
+it when available.
+Setting this to 2 will unconditionally require it. This is the only way
+to completely remove the overhead of growable memory + pthreads.
+This settings does nothing unless ALLOW_MEMORY_GROWTH is set.
 
-.. note:: This is an experimental setting
-
-Default value: false
+Default value: 0
 
 .. _cross_origin:
 
@@ -3349,18 +3445,61 @@ indirectly using `importScripts`
 
 Default value: false
 
+.. _cross_origin_storage:
+
+CROSS_ORIGIN_STORAGE
+====================
+
+Enables Cross-Origin Storage (COS) API support for Wasm loading on the
+Web target. At link time Emscripten computes the SHA-256 hash of the
+final ``.wasm`` binary and embeds it in the generated JS. At runtime the
+COS API is used as a progressive enhancement: the binary is fetched from
+the shared cross-origin cache on a hit, or stored there after a network
+fetch on a miss; when the API is absent or errors the runtime falls
+through to the standard fetch path.
+
+Requires the Web environment; using it without ``-sENVIRONMENT=web`` is a
+hard link-time error. Incompatible with SINGLE_FILE and
+WASM_ASYNC_COMPILATION=0 (both produce hard link-time errors).
+
+See :ref:`CrossOriginStorage` for the full guide.
+
+.. note:: This is an experimental setting
+
+Default value: false
+
+.. _cross_origin_storage_origins:
+
+CROSS_ORIGIN_STORAGE_ORIGINS
+============================
+
+Controls which origins may read the Wasm binary from the COS cache. Only
+meaningful when ``-sCROSS_ORIGIN_STORAGE`` is set. Applied only during the
+write (cache-miss) path, not the read (cache-hit) path.
+
+``['*']`` (default) — any origin can retrieve the file.
+Explicit HTTPS origin list — restricted to those origins only::
+
+  -sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com
+
+``[]`` — same-site only (omits the ``origins`` field entirely).
+
+Mixing ``'*'`` with explicit origins is a link-time error.
+
+Default value: ['*']
+
 .. _fake_dylibs:
 
 FAKE_DYLIBS
 ===========
 
-This setting changes the behaviour of the ``-shared`` flag.  The default
-setting of ``true`` means the ``-shared`` flag actually produces a normal
-object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
-to behave like :ref:`SIDE_MODULE` and produce a dynamically linked
-library.
+This setting changes the behaviour of the ``-shared`` flag.  When set to true
+you get the old emscripten behaviour where the ``-shared`` flag actually
+produces a normal object file (i.e. ``ld -r``).  When set to true (the
+default) the ``-shared`` flag is equivelent to :ref:`SIDE_MODULE` and will
+produce a Wasn dynamic library.
 
-Default value: true
+Default value: false
 
 .. _executable:
 
@@ -3386,11 +3525,14 @@ these settings please open a bug (or reply to one of the existing bugs).
 
  - ``RUNTIME_LINKED_LIBS``: you can simply list the libraries directly on the commandline now
  - ``CLOSURE_WARNINGS``: use -Wclosure/-Wno-closure instead
- - ``LEGALIZE_JS_FFI``: to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`
+ - ``WASM_BIGINT``: no longer needed. Should only ever be implicitly disabled by -sWASM=0
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
  - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.
  - ``DETERMINISTIC``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)
+ - ``USE_PTHREADS``: prefer the standard -pthread flag
+ - ``MEMORY64``: prefer the standard -m64 or --target=wasm64 flags
+ - ``SOCKET_WEBRTC``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27366)
 
 .. _legacy-settings:
 
@@ -3483,3 +3625,5 @@ for backwards compatibility with older versions:
  - ``RELOCATABLE``: No longer supported (Valid values: [0])
  - ``WASM_JS_TYPES``: No longer supported (Valid values: [0])
  - ``DETERMINISTIC``: No longer supported (Valid values: [0])
+ - ``LEGALIZE_JS_FFI``: legacy JS FFI legalization is no longer supported (Valid values: [0])
+ - ``SOCKET_WEBRTC``: No longer supported (Valid values: [0])

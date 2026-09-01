@@ -65,6 +65,7 @@ int main() {
     free(str);
   }
   double t3 = emscripten_get_now();
-  printf("OK. Time: %f (%f).\n", t, t3-t2);
+  printf("Time: %f (%f).\n", t, t3-t2);
+  printf("done\n");
   return 0;
 }

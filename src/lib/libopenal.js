@@ -143,7 +143,7 @@ var LibraryOpenAL = {
 
         var buf = src.bufQueue[bufCursor % src.bufQueue.length];
         // If the buffer contains no data, skip it
-        if (buf.length === 0) {
+        if (!buf.length) {
           skipCount++;
           // If we've gone through the whole queue and everything is 0 length, just give up
           if (skipCount === src.bufQueue.length) {
@@ -249,7 +249,7 @@ var LibraryOpenAL = {
       } else if (src.type === {{{ cDefs.AL_STATIC }}} && src.looping) {
         // If the source is a looping static buffer, determine the buffer offset based on the loop points
         var buf = src.bufQueue[0];
-        if (buf.length === 0) {
+        if (!buf.length) {
           src.bufOffset = 0.0;
         } else {
           var delta = (currentTime - src.bufStartTime) * src.playbackRate;
@@ -331,8 +331,8 @@ var LibraryOpenAL = {
     },
 
     stopSourceAudio: (src) => {
-      for (var i = 0; i < src.audioQueue.length; i++) {
-        src.audioQueue[i].stop();
+      for (var audioSrc of src.audioQueue) {
+        audioSrc.stop();
       }
       src.audioQueue.length = 0;
     },
@@ -399,9 +399,9 @@ var LibraryOpenAL = {
 
       // Find the first non-zero buffer in the queue to determine the proper format
       var templateBuf = AL.buffers[0];
-      for (var i = 0; i < src.bufQueue.length; i++) {
-        if (src.bufQueue[i].id !== 0) {
-          templateBuf = src.bufQueue[i];
+      for (var buf of src.bufQueue) {
+        if (buf.id) {
+          templateBuf = buf;
           break;
         }
       }
@@ -697,9 +697,8 @@ var LibraryOpenAL = {
 
     sourceDuration: (src) => {
       var length = 0.0;
-      for (var i = 0; i < src.bufQueue.length; i++) {
-        var audioBuf = src.bufQueue[i].audioBuf;
-        length += audioBuf ? audioBuf.duration : 0.0;
+      for (var buf of src.bufQueue) {
+        length += buf.audioBuf?.duration ?? 0.0;
       }
       return length;
     },
@@ -709,9 +708,7 @@ var LibraryOpenAL = {
 
       var offset = 0.0;
       for (var i = 0; i < src.bufsProcessed; i++) {
-        if (src.bufQueue[i].audioBuf) {
-          offset += src.bufQueue[i].audioBuf.duration;
-        }
+        offset += src.bufQueue[i].audioBuf?.duration ?? 0.0;
       }
       offset += src.bufOffset;
 
@@ -724,15 +721,17 @@ var LibraryOpenAL = {
         AL.setSourceState(src, {{{ cDefs.AL_INITIAL }}});
       }
 
-      if (src.bufQueue[src.bufsProcessed].audioBuf !== null) {
-        src.bufsProcessed = 0;
-        while (offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
-          offset -= src.bufQueue[src.bufsProcessed].audioBuf.duration;
-          src.bufsProcessed++;
+      src.bufsProcessed = 0;
+      for (var buf of src.bufQueue) {
+        var duration = buf.audioBuf?.duration ?? 0.0;
+        if (offset < duration) {
+          break;
         }
-
-        src.bufOffset = offset;
+        offset -= duration;
+        src.bufsProcessed++;
       }
+      // 'offset' is now the intra-buffer offset within the target buffer.
+      src.bufOffset = offset;
 
       if (playing) {
         AL.setSourceState(src, {{{ cDefs.AL_PLAYING }}});
@@ -947,7 +946,7 @@ var LibraryOpenAL = {
         return;
       }
       var buf = AL.buffers[bufferId];
-      if (!buf || bufferId === 0) {
+      if (!buf || !bufferId) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called with an invalid buffer`);
 #endif
@@ -965,7 +964,7 @@ var LibraryOpenAL = {
       case 0x2004 /* AL_SIZE */:
         return buf.length * buf.bytesPerSample * buf.channels;
       case 0x2015 /* AL_LOOP_POINTS_SOFT */:
-        if (buf.length === 0) {
+        if (!buf.length) {
           return [0, 0];
         }
         return [
@@ -989,7 +988,7 @@ var LibraryOpenAL = {
         return;
       }
       var buf = AL.buffers[bufferId];
-      if (!buf || bufferId === 0) {
+      if (!buf || !bufferId) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called with an invalid buffer`);
 #endif
@@ -1006,7 +1005,7 @@ var LibraryOpenAL = {
 
       switch (param) {
       case 0x2004 /* AL_SIZE */:
-        if (value !== 0) {
+        if (value) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_SIZE value ${value} is out of range`);
 #endif
@@ -1093,12 +1092,12 @@ var LibraryOpenAL = {
       case 0x1010 /* AL_SOURCE_STATE */:
         return src.state;
       case 0x1015 /* AL_BUFFERS_QUEUED */:
-        if (src.bufQueue.length === 1 && src.bufQueue[0].id === 0) {
+        if (src.bufQueue.length === 1 && !src.bufQueue[0].id) {
           return 0;
         }
         return src.bufQueue.length;
       case 0x1016 /* AL_BUFFERS_PROCESSED */:
-        if ((src.bufQueue.length === 1 && src.bufQueue[0].id === 0) || src.looping) {
+        if ((src.bufQueue.length === 1 && !src.bufQueue[0].id) || src.looping) {
           return 0;
         }
         return src.bufsProcessed;
@@ -1131,17 +1130,17 @@ var LibraryOpenAL = {
       case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
         var length = 0;
         var bytesPerFrame = 0;
-        for (var i = 0; i < src.bufQueue.length; i++) {
-          length += src.bufQueue[i].length;
-          if (src.bufQueue[i].id !== 0) {
-            bytesPerFrame = src.bufQueue[i].bytesPerSample * src.bufQueue[i].channels;
+        for (var buf of src.bufQueue) {
+          length += buf.length;
+          if (buf.id) {
+            bytesPerFrame = buf.bytesPerSample * buf.channels;
           }
         }
         return length * bytesPerFrame;
       case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
         var length = 0;
-        for (var i = 0; i < src.bufQueue.length; i++) {
-          length += src.bufQueue[i].length;
+        for (var buf of src.bufQueue) {
+          length += buf.length;
         }
         return length;
       case 0x200B /* AL_SEC_LENGTH_SOFT */:
@@ -1317,33 +1316,26 @@ var LibraryOpenAL = {
           return;
         }
 
-        if (value === 0) {
-          for (var i in src.bufQueue) {
-            src.bufQueue[i].refCount--;
-          }
-          src.bufQueue.length = 1;
-          src.bufQueue[0] = AL.buffers[0];
+        var buf = AL.buffers[value];
+        if (!buf) {
+#if OPENAL_DEBUG
+          dbg('alSourcei(AL_BUFFER) called with an invalid buffer');
+#endif
+          AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
+          return;
+        }
 
-          src.bufsProcessed = 0;
+        for (var oldBuf of src.bufQueue) {
+          oldBuf.refCount--;
+        }
+
+        src.bufQueue = [buf];
+        src.bufsProcessed = 0;
+
+        if (!value) {
           src.type = 0x1030 /* AL_UNDETERMINED */;
         } else {
-          var buf = AL.buffers[value];
-          if (!buf) {
-#if OPENAL_DEBUG
-            dbg('alSourcei(AL_BUFFER) called with an invalid buffer');
-#endif
-            AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
-            return;
-          }
-
-          for (var i in src.bufQueue) {
-            src.bufQueue[i].refCount--;
-          }
-          src.bufQueue.length = 0;
-
           buf.refCount++;
-          src.bufQueue = [buf];
-          src.bufsProcessed = 0;
           src.type = {{{ cDefs.AL_STATIC }}};
         }
 
@@ -1453,9 +1445,9 @@ var LibraryOpenAL = {
         var srcLen = AL.sourceDuration(src);
         if (srcLen > 0.0) {
           var frequency;
-          for (var bufId in src.bufQueue) {
-            if (bufId) {
-              frequency = src.bufQueue[bufId].frequency;
+          for (var buf of src.bufQueue) {
+            if (buf.id) {
+              frequency = buf.frequency;
               break;
             }
           }
@@ -1475,9 +1467,8 @@ var LibraryOpenAL = {
         var srcLen = AL.sourceDuration(src);
         if (srcLen > 0.0) {
           var bytesPerSec;
-          for (var bufId in src.bufQueue) {
-            if (bufId) {
-              var buf = src.bufQueue[bufId];
+          for (var buf of src.bufQueue) {
+            if (buf.id) {
               bytesPerSec = buf.frequency * buf.bytesPerSample * buf.channels;
               break;
             }
@@ -1562,7 +1553,7 @@ var LibraryOpenAL = {
     // people might assume that most alcCapture functions
     // accept NULL as a 'use the default' device.
     requireValidCaptureDevice: (deviceId, funcname) => {
-      if (deviceId === 0) {
+      if (!deviceId) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() on a NULL device is an error`);
 #endif
@@ -1617,7 +1608,7 @@ var LibraryOpenAL = {
     var resolvedDeviceName = AL.CAPTURE_DEVICE_NAME;
 
     // NULL is a valid device name here (resolves to default);
-    if (pDeviceName !== 0) {
+    if (pDeviceName) {
       resolvedDeviceName = UTF8ToString(pDeviceName);
       if (resolvedDeviceName !== AL.CAPTURE_DEVICE_NAME) {
 #if OPENAL_DEBUG
@@ -1642,15 +1633,7 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    navigator.getUserMedia = navigator.getUserMedia
-      || navigator.webkitGetUserMedia
-      || navigator.mozGetUserMedia
-      || navigator.msGetUserMedia;
-    var has_getUserMedia = navigator.getUserMedia
-      || (navigator.mediaDevices
-      &&  navigator.mediaDevices.getUserMedia);
-
-    if (!has_getUserMedia) {
+    if (!navigator.mediaDevices?.getUserMedia) {
 #if OPENAL_DEBUG
       dbg('alcCaptureOpenDevice() cannot capture audio, because your browser lacks a `getUserMedia()` implementation');
 #endif
@@ -1658,8 +1641,6 @@ var LibraryOpenAL = {
       AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
       return 0;
     }
-
-    var AudioContext = window.AudioContext || window.webkitAudioContext;
 
     if (!AL.sharedCaptureAudioCtx) {
       try {
@@ -1767,7 +1748,7 @@ var LibraryOpenAL = {
     var onError = (mediaStreamError) => {
       newCapture.mediaStreamError = mediaStreamError;
 #if OPENAL_DEBUG
-      dbg(`navigator.getUserMedia() errored with: ${mediaStreamError}`);
+      dbg(`getUserMedia() errored with: ${mediaStreamError}`);
 #endif
     };
     var onSuccess = (mediaStream) => {
@@ -1886,15 +1867,7 @@ var LibraryOpenAL = {
       };
     };
 
-    // The latest way to call getUserMedia()
-    if (navigator.mediaDevices?.getUserMedia) {
-      navigator.mediaDevices
-           .getUserMedia({audio: true})
-           .then(onSuccess)
-           .catch(onError);
-    } else { // The usual (now deprecated) way
-      navigator.getUserMedia({audio: true}, onSuccess, onError);
-    }
+    navigator.mediaDevices.getUserMedia({audio: true}).then(onSuccess).catch(onError);
 
     var id = AL.newId();
     AL.captures[id] = newCapture;
@@ -2065,12 +2038,13 @@ var LibraryOpenAL = {
       }
     }
 
-    if (globalThis.AudioContext || globalThis.webkitAudioContext) {
-      var deviceId = AL.newId();
-      AL.deviceRefCounts[deviceId] = 0;
-      return deviceId;
+    if (!globalThis.AudioContext) {
+      return 0;
     }
-    return 0;
+
+    var deviceId = AL.newId();
+    AL.deviceRefCounts[deviceId] = 0;
+    return deviceId;
   },
 
   alcCloseDevice__proxy: 'sync',
@@ -2095,7 +2069,7 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    var options = null;
+    var options = {};
     var attrs = [];
     var hrtf = null;
     pAttrList >>= 2;
@@ -2105,7 +2079,7 @@ var LibraryOpenAL = {
       while (true) {
         attr = HEAP32[pAttrList++];
         attrs.push(attr);
-        if (attr === 0) {
+        if (!attr) {
           break;
         }
         val = HEAP32[pAttrList++];
@@ -2113,10 +2087,6 @@ var LibraryOpenAL = {
 
         switch (attr) {
         case 0x1007 /* ALC_FREQUENCY */:
-          if (!options) {
-            options = {};
-          }
-
           options.sampleRate = val;
           break;
         case 0x1010 /* ALC_MONO_SOURCES */: // fallthrough
@@ -2142,7 +2112,7 @@ var LibraryOpenAL = {
           }
           break;
         case 0x1996 /* ALC_HRTF_ID_SOFT */:
-          if (val !== 0) {
+          if (val) {
 #if OPENAL_DEBUG
             dbg(`Invalid ALC_HRTF_ID_SOFT index ${val}`);
 #endif
@@ -2160,15 +2130,9 @@ var LibraryOpenAL = {
       }
     }
 
-    var AudioContext = window.AudioContext || window.webkitAudioContext;
-    var ac = null;
+    var ac;
     try {
-      // Only try to pass options if there are any, for compat with browsers that don't support this
-      if (options) {
-        ac = new AudioContext(options);
-      } else {
-        ac = new AudioContext();
-      }
+      ac = new AudioContext(options);
     } catch (e) {
       if (e.name === 'NotSupportedError') {
 #if OPENAL_DEBUG
@@ -2271,20 +2235,11 @@ var LibraryOpenAL = {
   },
 
   alcGetCurrentContext__proxy: 'sync',
-  alcGetCurrentContext: () => {
-    if (AL.currentCtx !== null) {
-      return AL.currentCtx.id;
-    }
-    return 0;
-  },
+  alcGetCurrentContext: () => AL.currentCtx ? AL.currentCtx.id : 0,
 
   alcMakeContextCurrent__proxy: 'sync',
   alcMakeContextCurrent: (contextId) => {
-    if (contextId === 0) {
-      AL.currentCtx = null;
-    } else {
-      AL.currentCtx = AL.contexts[contextId];
-    }
+    AL.currentCtx = AL.contexts[contextId];
     return {{{ cDefs.ALC_TRUE }}};
   },
 
@@ -2312,7 +2267,7 @@ var LibraryOpenAL = {
     // Spec says :
     // Using a NULL handle is legal, but only the
     // tokens defined by the AL core are guaranteed.
-    if (deviceId !== 0 && !(deviceId in AL.deviceRefCounts)) {
+    if (deviceId && !(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
       dbg('alcGetEnumValue() called with an invalid device');
 #endif
@@ -2399,14 +2354,14 @@ var LibraryOpenAL = {
       ret = 'Out of Memory';
       break;
     case 0x1004 /* ALC_DEFAULT_DEVICE_SPECIFIER */:
-      if (globalThis.AudioContext || globalThis.webkitAudioContext) {
+      if (globalThis.AudioContext) {
         ret = AL.DEVICE_NAME;
       } else {
         return 0;
       }
       break;
     case 0x1005 /* ALC_DEVICE_SPECIFIER */:
-      if (globalThis.AudioContext || globalThis.webkitAudioContext) {
+      if (globalThis.AudioContext) {
         ret = AL.DEVICE_NAME + '\0';
       } else {
         ret = '\0';
@@ -2416,7 +2371,7 @@ var LibraryOpenAL = {
       ret = AL.CAPTURE_DEVICE_NAME;
       break;
     case 0x310 /* ALC_CAPTURE_DEVICE_SPECIFIER */:
-      if (deviceId === 0) {
+      if (!deviceId) {
         ret = AL.CAPTURE_DEVICE_NAME + '\0';
       } else {
         var c = AL.requireValidCaptureDevice(deviceId, 'alcGetString');
@@ -2446,7 +2401,7 @@ var LibraryOpenAL = {
 
   alcGetIntegerv__proxy: 'sync',
   alcGetIntegerv: (deviceId, param, size, pValues) => {
-    if (size === 0 || !pValues) {
+    if (!size || !pValues) {
       // Ignore the query, per the spec
       return;
     }
@@ -2637,7 +2592,7 @@ var LibraryOpenAL = {
     var ret;
     switch (param) {
     case 0x1995 /* ALC_HRTF_SPECIFIER_SOFT */:
-      if (index === 0) {
+      if (!index) {
         ret = 'Web Audio HRTF';
       } else {
 #if OPENAL_DEBUG
@@ -2648,7 +2603,7 @@ var LibraryOpenAL = {
       }
       break;
     default:
-      if (index !== 0) {
+      if (index) {
 #if OPENAL_DEBUG
         dbg(`alcGetStringiSOFT() with param ${ptrToString(param)} not implemented yet`);
 #endif
@@ -2681,7 +2636,7 @@ var LibraryOpenAL = {
       var val = 0;
       while (true) {
         attr = HEAP32[pAttrList++];
-        if (attr === 0) {
+        if (!attr) {
           break;
         }
         val = HEAP32[pAttrList++];
@@ -2757,8 +2712,8 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var bufId = {{{ makeGetValue('pBufferIds', 'i*4', 'i32') }}};
-      /// Deleting the zero buffer is a legal NOP, so ignore it
-      if (bufId === 0) {
+      // Deleting the zero buffer is a legal NOP, so ignore it
+      if (!bufId) {
         continue;
       }
 
@@ -2783,7 +2738,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var bufId = {{{ makeGetValue('pBufferIds', 'i*4', 'i32') }}};
-      if (bufId === 0) {
+      if (!bufId) {
         continue;
       }
 
@@ -3267,7 +3222,7 @@ var LibraryOpenAL = {
     case {{{ cDefs.AL_DOPPLER_FACTOR }}}:
     case {{{ cDefs.AL_SPEED_OF_SOUND }}}:
     case {{{ cDefs.AL_DISTANCE_MODEL }}}:
-      return val !== 0 ? {{{ cDefs.AL_TRUE }}} : {{{ cDefs.AL_FALSE }}};
+      return val ? {{{ cDefs.AL_TRUE }}} : {{{ cDefs.AL_FALSE }}};
     default:
 #if OPENAL_DEBUG
       dbg(`alGetBoolean(): param ${ptrToString(param)} has wrong signature`);
@@ -4049,14 +4004,14 @@ var LibraryOpenAL = {
       return;
     }
 
-    if (count === 0) {
+    if (!count) {
       return;
     }
 
     // Find the first non-zero buffer in the queue to determine the proper format
     var templateBuf = AL.buffers[0];
     for (var buf of src.bufQueue) {
-      if (buf.id !== 0) {
+      if (buf.id) {
         templateBuf = buf;
         break;
       }
@@ -4074,7 +4029,7 @@ var LibraryOpenAL = {
       }
 
       // Check that the added buffer has the correct format. If the template is the zero buffer, any format is valid.
-      if (templateBuf.id !== 0 && (
+      if (templateBuf.id && (
         buf.frequency !== templateBuf.frequency
         || buf.bytesPerSample !== templateBuf.bytesPerSample
         || buf.channels !== templateBuf.channels)
@@ -4087,7 +4042,7 @@ var LibraryOpenAL = {
     }
 
     // If the only buffer in the queue is the zero buffer, clear the queue before we add anything.
-    if (src.bufQueue.length === 1 && src.bufQueue[0].id === 0) {
+    if (src.bufQueue.length === 1 && !src.bufQueue[0].id) {
       src.bufQueue.length = 0;
     }
 
@@ -4124,12 +4079,12 @@ var LibraryOpenAL = {
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_NAME }}};
       return;
     }
-    if (count > (src.bufQueue.length === 1 && src.bufQueue[0].id === 0 ? 0 : src.bufsProcessed)) {
+    if (count > (src.bufQueue.length === 1 && !src.bufQueue[0].id ? 0 : src.bufsProcessed)) {
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
     }
 
-    if (count === 0) {
+    if (!count) {
       return;
     }
 
@@ -4142,7 +4097,7 @@ var LibraryOpenAL = {
     }
 
     /// If the queue is empty, put the zero buffer back in
-    if (src.bufQueue.length === 0) {
+    if (!src.bufQueue.length) {
       src.bufQueue.push(AL.buffers[0]);
     }
 

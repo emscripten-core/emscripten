@@ -1,3 +1,5 @@
+#define _GNU_SOURCE // for gettid
+#include <emscripten/console.h>
 #include <emscripten/webaudio.h>
 #include <emscripten/threading.h>
 #include <assert.h>
@@ -31,6 +33,9 @@ _Thread_local int testTlsVariable = 1;
 int lastTlsVariableValueInAudioThread = 1;
 #endif
 
+bool worklet_started = false;
+pid_t main_tid = 0;
+
 // This function will be called for every fixed-size buffer of audio samples to be processed.
 bool ProcessAudio(int numInputs,
                   const AudioSampleFrame* inputs,
@@ -41,6 +46,17 @@ bool ProcessAudio(int numInputs,
                   void* userData) {
   assert(!emscripten_is_main_browser_thread());
   assert(emscripten_current_thread_is_audio_worklet());
+  if (!worklet_started) {
+    worklet_started = true;
+    pid_t worklet_tid = gettid();
+    emscripten_outf("worklet thread tid: %d\n", worklet_tid);
+    assert(worklet_tid && worklet_tid > main_tid);
+#ifdef __EMSCRIPTEN_PTHREADS__
+    emscripten_outf("worklet thread pthread_self: %p\n", pthread_self());
+    assert(pthread_self());
+#endif
+  }
+
 #ifdef TEST_AND_EXIT
   // Only running in the test harness, see main_thread_tls_access()
   assert(testTlsVariable == lastTlsVariableValueInAudioThread);
@@ -150,6 +166,14 @@ uint8_t wasmAudioWorkletStack[4096];
 int main() {
   assert(emscripten_is_main_browser_thread());
   assert(!emscripten_current_thread_is_audio_worklet());
+  main_tid = gettid();
+  emscripten_outf("main thread tid: %d\n", main_tid);
+  emscripten_outf("wasmAudioWorkletStack: %p\n", wasmAudioWorkletStack);
+  assert(main_tid);
+#ifdef __EMSCRIPTEN_PTHREADS__
+  emscripten_outf("main thread pthread_self: %p\n", pthread_self());
+  assert(pthread_self());
+#endif
 
   // Create an audio context
   context = emscripten_create_audio_context(0 /* use default constructor options */);

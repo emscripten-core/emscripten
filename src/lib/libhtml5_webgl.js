@@ -82,6 +82,7 @@ var LibraryHtml5WebGL = {
       'preserveDrawingBuffer': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}],
       'powerPreference': webglPowerPreferences[powerPreference],
       'failIfMajorPerformanceCaveat': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}],
+      'desynchronized': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.desynchronized }}}],
       // The following are not predefined WebGL context attributes in the WebGL specification, so the property names can be minified by Closure.
       majorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)],
       minorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)],
@@ -318,6 +319,7 @@ var LibraryHtml5WebGL = {
     var power = t['powerPreference'] && webglPowerPreferences.indexOf(t['powerPreference']);
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference, 'power', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 't.failIfMajorPerformanceCaveat', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.desynchronized, 't.desynchronized', 'i8') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'c.version', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
@@ -431,7 +433,7 @@ var LibraryHtml5WebGL = {
 
     var webGlEventHandlerFunc = (e) => {
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, 0, userData);
       else
 #endif
       if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, 0, userData)) e.preventDefault();
@@ -452,14 +454,14 @@ var LibraryHtml5WebGL = {
   emscripten_set_webglcontextlost_callback_on_thread__proxy: 'sync',
   emscripten_set_webglcontextlost_callback_on_thread__deps: ['$registerWebGlEventCallback'],
   emscripten_set_webglcontextlost_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST }}}, "webglcontextlost", targetThread);
+    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST }}}, 'webglcontextlost', targetThread);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
   emscripten_set_webglcontextrestored_callback_on_thread__proxy: 'sync',
   emscripten_set_webglcontextrestored_callback_on_thread__deps: ['$registerWebGlEventCallback'],
   emscripten_set_webglcontextrestored_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED }}}, "webglcontextrestored", targetThread);
+    registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED }}}, 'webglcontextrestored', targetThread);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
@@ -514,14 +516,14 @@ var LibraryHtml5WebGL = {
     writeGLArray(GLctx.getVertexAttrib(index, param), dst, dstLength, dstType),
 
   emscripten_webgl_get_uniform_d__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_uniform_d__deps: ['$webglGetUniformLocation'],
+  emscripten_webgl_get_uniform_d__deps: ['$webglGetProgramUniformLocation'],
   emscripten_webgl_get_uniform_d: (program, location) =>
-    GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)),
+    GLctx.getUniform(GL.programs[program], webglGetProgramUniformLocation(GL.programs[program], location)),
 
   emscripten_webgl_get_uniform_v__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_uniform_v__deps: ['$writeGLArray', '$webglGetUniformLocation'],
+  emscripten_webgl_get_uniform_v__deps: ['$writeGLArray', '$webglGetProgramUniformLocation'],
   emscripten_webgl_get_uniform_v: (program, location, dst, dstLength, dstType) =>
-    writeGLArray(GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)), dst, dstLength, dstType),
+    writeGLArray(GLctx.getUniform(GL.programs[program], webglGetProgramUniformLocation(GL.programs[program], location)), dst, dstLength, dstType),
 
   emscripten_webgl_get_parameter_v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_v__deps: ['$writeGLArray'],
@@ -596,7 +598,7 @@ function handleWebGLProxying(funcs) {
       funcs[i + '__deps'].push(i + '_main_thread');
       delete funcs[i + '__proxy'];
       const funcArgs = listOfNFunctionArgs(funcs[i]);
-      const funcArgsString = funcArgs.join(',');
+      const funcArgsString = funcArgs.join();
       const retStatement = sig[0] != 'v' ? 'return' : '';
       const contextCheck = proxyContextHandle ? 'GL.contexts[p0]' : 'GLctx';
       var funcBody = `${retStatement} ${contextCheck} ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;

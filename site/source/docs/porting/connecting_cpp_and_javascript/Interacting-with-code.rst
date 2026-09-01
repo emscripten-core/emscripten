@@ -598,6 +598,9 @@ See the `library_*.js`_ files for other examples.
      by ``_``. In other words ``my_func: function() {},`` becomes
      ``function _my_func() {}``, as all C methods in emscripten have a ``_`` prefix. Keys starting with ``$`` have the ``$``
      stripped and no underscore added.
+   - A library symbol can use ``__force: true`` to be included even when it is
+     not referenced, and ``__export: true`` to be exported when included. Use
+     both decorators to unconditionally include and export a symbol.
 
 
 .. _interacting-with-code-call-function-pointers-from-c:

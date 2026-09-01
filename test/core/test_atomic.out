@@ -3,3 +3,4 @@
 *6,10*
 *10,0*
 *7,1*
+__sync_val_compare_and_swap: 0 42

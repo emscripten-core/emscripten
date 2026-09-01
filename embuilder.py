@@ -21,16 +21,17 @@ import time
 from contextlib import contextmanager
 
 from tools import cache, ports, shared, system_libs, utils
+from tools.cmdline import options
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libcompiler_rt',
-    'libcompiler_rt-mt',
-    'libcompiler_rt-legacysjlj',
-    'libcompiler_rt-wasmsjlj',
-    'libcompiler_rt-ww',
+    'libclang_rt.builtins',
+    'libclang_rt.builtins-mt',
+    'libclang_rt.builtins-legacysjlj',
+    'libclang_rt.builtins-wasmsjlj',
+    'libclang_rt.builtins-ww',
     'libc',
     'libc-debug',
     'libc-mt-debug',
@@ -81,6 +82,7 @@ MINIMAL_TASKS = [
     'libGL-emu-getprocaddr',
     'libGL-emu-webgl2-ofb-getprocaddr',
     'libGL-webgl2-ofb-getprocaddr',
+    'libGL-webgl2-ofb-full_es3-getprocaddr',
     'libGL-ww-getprocaddr',
     'libhtml5',
     'libsockets',
@@ -96,11 +98,16 @@ MINIMAL_TASKS = [
     'libunwind-wasmexcept',
     'libnoexit',
     'bullet',
+    'libstb_image',
+    'libwasmfs_no_fs',
+    'libwasmfs-debug',
+    'libwasm_workers-debug',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
 # CI (which has slightly more tests than other modes that want to use MINIMAL)
-MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
+MINIMAL_PIC_TASKS = [
+    *MINIMAL_TASKS,
     'libc-mt',
     'libc_optz-mt',
     'libc_optz-mt-debug',
@@ -117,17 +124,16 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libGL-mt-emu-webgl2-getprocaddr',
     'libGL-mt-emu-webgl2-ofb-getprocaddr',
     'libsockets_proxy',
-    'crtbegin-mt',
-    'libsanitizer_common_rt',
-    'libubsan_rt',
-    'libwasm_workers-debug',
+    'libclang_rt.sanitizer_common',
+    'libclang_rt.ubsan',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
-    'libwasmfs-debug',
-    'libwasmfs_no_fs',
     'giflib',
     'sdl2',
+    'sdl2_image',
+    'sdl2_image-legacysjlj',
+    'sdl2_image-wasmsjlj',
     'sdl2_gfx',
     'sdl3',
 ]
@@ -164,10 +170,11 @@ def get_port_variant(name):
   else:
     old_settings = None
 
-  yield name
-
-  if old_settings:
-    settings.dict().update(old_settings)
+  try:
+    yield name
+  finally:
+    if old_settings:
+      settings.dict().update(old_settings)
 
 
 def clear_port(port_name):
@@ -229,7 +236,7 @@ def main():
   shared.check_sanity()
 
   if args.lto:
-    settings.LTO = args.lto
+    options.lto = args.lto
 
   if args.verbose:
     shared.PRINT_SUBPROCS = True

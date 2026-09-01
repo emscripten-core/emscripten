@@ -29,7 +29,7 @@ def run():
         continue
     new_args.append(arg)
 
-  shared.exec_process([llvm_strip] + new_args)
+  shared.exec_process([llvm_strip, *new_args])
 
 
 if __name__ == '__main__':

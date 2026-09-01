@@ -5,6 +5,7 @@
 
 import glob
 import hashlib
+import http.client
 import importlib.util
 import logging
 import os
@@ -19,15 +20,15 @@ from tools import cache, config, shared, system_libs, utils
 from tools.settings import settings
 from tools.toolchain_profiler import ToolchainProfiler
 
-ports = []
+ports: list[dict] = []
 
 ports_by_name: dict[str, object] = {}
 
-ports_needed = set()
+ports_needed: set[str] = set()
 
 # Variant builds that we want to support for certain ports
 # {variant_name: (port_name, extra_settings)}
-port_variants = {}
+port_variants: dict[str, tuple] = {}
 
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -223,7 +224,7 @@ class Ports:
       maybe_copy(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # ruff: ignore[mutable-argument-default]
     mangled_name = str(Path(output_path).relative_to(Path(cache.get_sysroot(True)) / 'lib'))
     mangled_name = mangled_name.replace(os.sep, '_').replace('.a', '').replace('-emscripten', '')
     build_dir = os.path.join(Ports.get_build_dir(), port_name, mangled_name)
@@ -241,7 +242,7 @@ class Ports:
           if ext in {'.c', '.cpp'} and not any((excluded in f) for excluded in exclude_files):
             srcs.append(os.path.join(root, f))
 
-    cflags = system_libs.get_base_cflags(build_dir) + ['-O2', '-I' + src_dir] + flags
+    cflags = [*system_libs.get_base_cflags(build_dir), '-O2', '-I' + src_dir, *flags]
     for include in includes:
       cflags.append('-I' + include)
 
@@ -260,7 +261,7 @@ class Ports:
         obj = os.path.join(build_dir, relpath) + '.o'
         dirname = os.path.dirname(obj)
         os.makedirs(dirname, exist_ok=True)
-        cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
+        cmd = [shared.EMCC, '-c', src, '-o', obj, *cflags]
         if utils.suffix(src) in {'.cc', '.cxx', '.cpp'}:
           cmd[0] = shared.EMXX
           cmd += cxxflags
@@ -351,16 +352,20 @@ class Ports:
       # retrieve from remote server
       logger.info(f'retrieving port: {name} from {url}')
 
-      if utils.MACOS:
-        # Use `curl` over `urllib` on macOS to avoid issues with
-        # certificate verification.
-        # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
-        # Unlike on Windows or Linux, curl is guaranteed to always be
-        # available on macOS.
-        data = subprocess.check_output(['curl', '-sSL', url])
-      else:
-        f = urlopen(url)
-        data = f.read()
+      try:
+        if utils.MACOS or os.environ.get('EMCC_USE_CURL'):
+          # Use `curl` over `urllib` on macOS to avoid issues with
+          # certificate verification.
+          # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
+          # Unlike on Windows or Linux, curl is guaranteed to always be
+          # available on macOS.
+          # EMCC_USE_CURL here is purely for testing and undocumented.
+          data = utils.run_process(['curl', '-sSL', url], stdout=subprocess.PIPE, text=False).stdout
+        else:
+          with urlopen(url) as f:
+            data = f.read()
+      except (subprocess.CalledProcessError, OSError, http.client.HTTPException) as e:
+        utils.exit_with_error(f'failed to download port "{name}" from {url}: {e}')
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
@@ -373,9 +378,22 @@ class Ports:
 
     def unpack():
       logger.info(f'unpacking port: {name}')
-      utils.safe_ensure_dirs(fullname)
-      shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
-      utils.write_file(marker, url + '\n')
+      unpack_dir = fullname + '.tmp'
+      # We unpack to a temporary directory and then atomically rename it to the
+      # final destination. This ensures that the destination directory either
+      # does not exist or is 100% complete, avoiding races where other processes
+      # might see a partially unpacked directory (lacking the marker) and
+      # incorrectly assume it is invalid or needs to be cleared.
+      utils.delete_dir(unpack_dir)
+      utils.safe_ensure_dirs(unpack_dir)
+
+      shutil.unpack_archive(filename=fullpath, extract_dir=unpack_dir)
+      tmp_marker = os.path.join(unpack_dir, '.emscripten_url')
+      utils.write_file(tmp_marker, url + '\n')
+
+      # Atomically replace the target directory
+      utils.delete_dir(fullname)
+      os.replace(unpack_dir, fullname)
 
     def up_to_date():
       return os.path.exists(marker) and utils.read_file(marker).strip() == url

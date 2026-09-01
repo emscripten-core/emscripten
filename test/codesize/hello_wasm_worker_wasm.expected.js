@@ -1,80 +1,77 @@
-var c = Module, d = !!globalThis.WorkerGlobalScope, e = "em-ww" == globalThis.name, f, g, C, r, D, n, E, v;
+var c = Module, d = !!globalThis.WorkerGlobalScope, e = globalThis.name == "em-ww", f, g, B, p, C, l, D, u;
 
 e && (onmessage = a => {
     onmessage = null;
     f = a = a.data;
     g = a.o;
-    h();
     c ||= {};
     c.wasm = a.m;
-    k();
+    h();
     a.m = a.o = 0;
 });
 
-function h() {}
-
-e || (g = c.mem || new WebAssembly.Memory({
+e || (g = new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
-}), h());
+}));
 
-var m = [], p = a => {
+var k = [], m = a => {
     a = a.data;
-    let b = a._wsc;
-    b && n.get(b)(...a.x);
-}, q = a => {
-    m.push(a);
-}, t = () => {
-    r(0, !d, !e, d && 1);
-}, u = {}, w = (a, b, z) => {
-    let l = u[a] = new Worker(c.js, {
+    var b = a._wsc;
+    b && l.get(b)(...a.x);
+}, n = a => {
+    k.push(a);
+}, q = () => {
+    p(0, !d, !e, d && 1);
+}, t = {}, v = (a, b, y) => {
+    var r = t[a] = new Worker(c.js, {
         name: "em-ww"
     });
-    l.postMessage({
-        v: a,
-        m: v,
+    r.postMessage({
+        A: a,
+        m: u,
         o: g,
-        s: b,
-        u: z
+        u: b,
+        v: y
     });
-    l.onmessage = p;
+    r.onmessage = m;
     return !0;
-}, x = () => performance.now(), y = () => !1, A = (a, b) => {
-    u[a].postMessage({
+}, w = () => performance.now(), x = () => !1, z = (a, b) => {
+    t[a].postMessage({
         _wsc: b,
         x: []
     });
 };
 
-e && (u[0] = globalThis, addEventListener("message", q));
+e && (t[0] = globalThis, addEventListener("message", n));
 
-function B() {
+function A() {
     console.log("Hello from wasm worker!");
 }
 
-function k() {
-    E = {
-        d: t,
-        c: w,
-        b: x,
-        e: y,
-        f: A,
-        g: B,
+function h() {
+    D = {
+        d: q,
+        c: v,
+        b: w,
+        e: x,
+        f: z,
+        g: A,
         a: g
     };
     WebAssembly.instantiate(c.wasm, {
-        a: E
+        a: D
     }).then((a => {
         var b = (a.instance || a).exports;
-        v = a.module || c.wasm;
-        C = b.i;
-        r = b.k;
-        D = b.l;
-        n = b.j;
-        e ? (D(f.v, f.s, f.u), removeEventListener("message", q), m = m.forEach(p), addEventListener("message", p)) : b.h();
-        e || C();
+        u = a.module || c.wasm;
+        B = b.i;
+        p = b.k;
+        C = b.l;
+        l = b.j;
+        e ? (C(f.A, f.u, f.v), removeEventListener("message", n), k = k.forEach(m), addEventListener("message", m)) : b.h();
+        e || B();
     }));
 }
 
-e || k();
+e || h();

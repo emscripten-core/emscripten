@@ -321,7 +321,7 @@ var LibraryEmbind = {
       fromWireType: fromWireType,
       toWireType: (destructors, value) => {
 #if ASSERTIONS
-        if (typeof value != "number" && typeof value != "boolean") {
+        if (typeof value != 'number' && typeof value != 'boolean') {
           throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${name}`);
         }
         assertIntegerRange(name, value, minRange, maxRange);
@@ -370,11 +370,11 @@ var LibraryEmbind = {
       name,
       fromWireType: fromWireType,
       toWireType: (destructors, value) => {
-        if (typeof value == "number") {
+        if (typeof value == 'number') {
           value = BigInt(value);
         }
 #if ASSERTIONS
-        else if (typeof value != "bigint") {
+        else if (typeof value != 'bigint') {
           throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${name}`);
         }
         assertIntegerRange(name, value, minRange, maxRange);
@@ -403,7 +403,7 @@ var LibraryEmbind = {
       fromWireType: (value) => value,
       toWireType: (destructors, value) => {
 #if ASSERTIONS
-        if (typeof value != "number" && typeof value != "boolean") {
+        if (typeof value != 'number' && typeof value != 'boolean') {
           throw new TypeError(`Cannot convert ${embindRepr(value)} to ${name}`);
         }
 #endif
@@ -690,7 +690,7 @@ var LibraryEmbind = {
     var argCount = argTypes.length;
 
     if (argCount < 2) {
-      throwBindingError("argTypes array size mismatch! Must at least get return value and 'this' types!");
+      throwBindingError('argTypes array size mismatch! Must at least get return value and receiver (this) types!');
     }
 
 #if ASSERTIONS && ASYNCIFY != 2
@@ -700,7 +700,7 @@ var LibraryEmbind = {
 
     // Free functions with signature "void function()" do not need an invoker that marshalls between wire types.
     // TODO: This omits argument count check - enable only at -O3 or similar.
-    //    if (ENABLE_UNSAFE_OPTS && argCount == 2 && argTypes[0].name == "void" && !isClassMethodFunc) {
+    //    if (ENABLE_UNSAFE_OPTS && argCount == 2 && argTypes[0].name == 'void' && !isClassMethodFunc) {
     //       return FUNCTION_TABLE[fn];
     //    }
 
@@ -1436,10 +1436,10 @@ var LibraryEmbind = {
         // This is more useful than the empty stacktrace of `FinalizationRegistry`
         // callback.
         var cls = $$.ptrType.registeredClass;
-        var err = new Error(`Embind found a leaked C++ instance ${cls.name} <${ptrToString($$.ptr)}>.\n` +
-        "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
-        "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
-        "Originally allocated"); // `.stack` will add "at ..." after this sentence
+        var err = new Error(`Embind found a leaked C++ instance ${cls.name} <${ptrToString($$.ptr)}>.
+We'll free it automatically in this case, but this functionality is not reliable across various environments.
+Make sure to invoke .delete() manually once you're done with the instance instead.
+Originally allocated`); // `.stack` will add "at ..." after this sentence
         if ('captureStackTrace' in Error) {
           Error.captureStackTrace(err, RegisteredPointer_fromWireType);
         }
@@ -1487,7 +1487,7 @@ var LibraryEmbind = {
     let proto = ClassHandle.prototype;
 
     Object.assign(proto, {
-      "isAliasOf"(other) {
+      'isAliasOf'(other) {
         if (!(this instanceof ClassHandle)) {
           return false;
         }
@@ -1514,7 +1514,7 @@ var LibraryEmbind = {
         return leftClass === rightClass && left === right;
       },
 
-      "clone"() {
+      'clone'() {
         if (!this.$$.ptr) {
           throwInstanceAlreadyDeleted(this);
         }
@@ -1535,7 +1535,7 @@ var LibraryEmbind = {
         }
       },
 
-      "delete"() {
+      'delete'() {
         if (!this.$$.ptr) {
           throwInstanceAlreadyDeleted(this);
         }
@@ -1553,11 +1553,11 @@ var LibraryEmbind = {
         }
       },
 
-      "isDeleted"() {
+      'isDeleted'() {
         return !this.$$.ptr;
       },
 
-      "deleteLater"() {
+      'deleteLater'() {
         if (!this.$$.ptr) {
           throwInstanceAlreadyDeleted(this);
         }
@@ -1886,7 +1886,7 @@ var LibraryEmbind = {
       classType = classType[0];
       var humanName = `${classType.name}.${methodName}`;
 
-      if (methodName.startsWith("@@")) {
+      if (methodName.startsWith('@@')) {
         methodName = Symbol[methodName.substring(2)];
       }
 
@@ -2166,7 +2166,7 @@ var LibraryEmbind = {
 
     wrapperPrototype['__construct'] = function __construct(...args) {
       if (this === wrapperPrototype) {
-        throwBindingError("Pass correct 'this' to __construct");
+        throwBindingError('Pass correct "this" to __construct');
       }
 
       var inner = baseConstructor['implement'](this, ...args);
@@ -2183,7 +2183,7 @@ var LibraryEmbind = {
 
     wrapperPrototype['__destruct'] = function __destruct() {
       if (this === wrapperPrototype) {
-        throwBindingError("Pass correct 'this' to __destruct");
+        throwBindingError('Pass correct "this" to __destruct');
       }
 
       detachFinalizer(this);

@@ -22,7 +22,7 @@ api_reference_directory = './docs/api_reference/'
 # if you change here, change everywhere.
 api_item_filename = 'api_items.py'
 
-api_reference_items = {}
+api_reference_items: dict[str, str] = {}
 
 
 def parseFiles():
@@ -87,7 +87,7 @@ def exportItems():
 def main():
     parser = optparse.OptionParser(usage="Usage: %prog [options] version")
     parser.add_option("-s", "--siteapi", dest="siteapi", default="http://www.developer.nokia.com/Community/Wiki/api.php", help="Location of API")
-    (options, args) = parser.parse_args()
+    _options, _args = parser.parse_args()
     # print 'Site: %s' % options.siteapi
     parseFiles()
     exportItems()

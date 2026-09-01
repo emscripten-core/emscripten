@@ -7,6 +7,9 @@
 
 #pragma once
 
+#include <emscripten/proxying.h>
+
+#include <inttypes.h>
 #include <pthread.h>
 #include <stdbool.h>
 
@@ -81,6 +84,7 @@ int _emscripten_thread_is_valid(pthread_t thread);
 void _emscripten_thread_exit_joinable(pthread_t thread);
 void _emscripten_thread_exit(void* result);
 void _emscripten_process_dlopen_queue(void);
+extern em_proxying_queue* _Atomic _dlopen_proxying_queue;
 
 #if !defined(__EMSCRIPTEN_PTHREADS__) || defined(NDEBUG)
 #define emscripten_set_current_thread_status(newStatus)
@@ -106,7 +110,6 @@ void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedS
 
 int __pthread_kill_js(pthread_t t, int sig);
 int __pthread_create_js(pthread_t thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-int _emscripten_default_pthread_stack_size();
 void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 
 double _emscripten_receive_on_main_thread_js(int funcIndex, void* emAsmAddr, pthread_t callingThread, int numCallArgs, double* args, void* ctx, void* ctxArgs);
@@ -131,3 +134,13 @@ void* _emscripten_init_pthread(void *base, size_t* size, pid_t tid);
 // __builtin_wasm_memory_atomic_waitXX then they will not be woken by
 // this method.
 void _emscripten_thread_notify(pthread_t thread);
+
+// Internal, promise-returning API used to implement
+// emscripten_atomic_wait_suspending.
+intptr_t _emscripten_atomic_wait_promise(volatile void *addr,
+                                         uint32_t value,
+                                         double maxWaitMilliseconds);
+
+// Internal function used in wasm worker builds (included here solely for
+// gen_sig_info.py).
+void __do_set_thread_state(void);

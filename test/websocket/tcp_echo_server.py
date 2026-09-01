@@ -8,7 +8,7 @@ def listen():
   s.bind(('0.0.0.0', int(sys.argv[1])))
   s.listen(10)
   while True:
-    conn, address = s.accept()
+    conn, _address = s.accept()
     while True:
       data = conn.recv(2048)
       if not data:

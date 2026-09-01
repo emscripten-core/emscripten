@@ -10,8 +10,8 @@
  * The binary will look for a python script that matches its own name and run
  * that using python.exe.
  *
- * Built with /NODEFAULTLIB linking only against ucrt.lib (ucrtbase.dll) to
- * avoid any dependency on a specific Visual C++ Redistributable version.
+ * Built with /MT dynamically linking ucrt.lib (ucrtbase.dll) to avoid any
+ * dependency on a specific Visual C++ Redistributable version.
  */
 
 // Define _WIN32_WINNT to Windows 7 for max portability
@@ -23,11 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
-
-// ZeroMemory expands to memset which lives in vcruntime, not ucrt.
-// SecureZeroMemory is an inline in <winnt.h> with no runtime dependency.
-#undef ZeroMemory
-#define ZeroMemory SecureZeroMemory
 
 #define WLEN(lit) (sizeof(lit) / sizeof(wchar_t) - 1)
 
@@ -175,9 +170,9 @@ int main() {
 
   const wchar_t* application_name = get_python_executable();
   wchar_t* script_path_w = get_script_path();
-  size_t command_line_len = wcslen(ccache_prefix) + wcslen(application_name) + wcslen(script_path_w) + 9;
+  size_t command_line_len = wcslen(ccache_prefix) + wcslen(application_name) + wcslen(script_path_w) + 17;
   wchar_t* command_line = malloc(sizeof(wchar_t) * command_line_len);
-  swprintf(command_line, command_line_len, L"%ls\"%ls\" -E \"%ls\"", ccache_prefix, application_name, script_path_w);
+  swprintf(command_line, command_line_len, L"%ls\"%ls\" -E -X utf8 \"%ls\"", ccache_prefix, application_name, script_path_w);
   free(script_path_w);
 
   // -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal

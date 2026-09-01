@@ -5,7 +5,6 @@
 
 import copy
 import difflib
-import os
 import re
 from typing import Any
 
@@ -96,7 +95,6 @@ COMPILE_TIME_SETTINGS = {
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',
     'WASM_EXCEPTIONS',
-    'LTO',
     'OPT_LEVEL',
     'DEBUG_LEVEL',
 }.union(PORTS_SETTINGS)
@@ -111,11 +109,14 @@ COMPILE_TIME_SETTINGS = {
 DEPRECATED_SETTINGS = {
     'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
     'CLOSURE_WARNINGS': 'use -Wclosure/-Wno-closure instead',
-    'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
+    'WASM_BIGINT': 'no longer needed. Should only ever be implicitly disabled by -sWASM=0',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'LINKABLE': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
     'EXPORT_EXCEPTION_HANDLING_HELPERS': 'getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.',
     'DETERMINISTIC': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)',
+    'USE_PTHREADS': 'prefer the standard -pthread flag',
+    'MEMORY64': 'prefer the standard -m64 or --target=wasm64 flags',
+    'SOCKET_WEBRTC': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27366)',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
@@ -130,6 +131,8 @@ INCOMPATIBLE_SETTINGS = [
     ('WASM_WORKERS', 'MAIN_MODULE', 'dynamic linking is not supported with -sWASM_WORKERS'),
     ('WASM2JS', 'MAIN_MODULE', 'wasm2js does not support dynamic linking'),
     ('WASM2JS', 'SIDE_MODULE', 'wasm2js does not support dynamic linking'),
+    ('WASM2JS', 'GROWABLE_ARRAYBUFFERS',  None),
+    ('MAIN_MODULE', 'NO_WASM_ASYNC_COMPILATION', 'dynamic linking requires async wasm compilation'),
     ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
     ('EVAL_CTORS', 'WASM2JS', None),
     # In Asyncify exports can be called more than once, and this seems to not
@@ -147,15 +150,23 @@ INCOMPATIBLE_SETTINGS = [
     ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
     ('CROSS_ORIGIN', 'NO_DYNAMIC_EXECUTION', None),
     ('CROSS_ORIGIN', 'NO_PTHREADS', None),
+    ('CROSS_ORIGIN_STORAGE', 'SINGLE_FILE', 'the .wasm binary is inlined directly into the JS output and has no fetchable URL to key the hash on'),
+    ('CROSS_ORIGIN_STORAGE', 'NO_WASM_ASYNC_COMPILATION', 'synchronous instantiation does not use the COS fetch path'),
+    ('CROSS_ORIGIN_STORAGE', 'SIDE_MODULE', 'no JS glue is emitted to carry the hash or perform the COS lookup'),
+    ('NODERAWSOCKETS', 'WASMFS', 'the node:net backend is not wired into WASMFS sockets'),
+    ('NODERAWSOCKETS', 'PROXY_POSIX_SOCKETS', 'they are alternative socket backends'),
+    ('SHARED_WASMGC', 'NO_PTHREADS', 'SHARED_WASMGC requires threads to be enabled'),
 ]
 
 EXPERIMENTAL_SETTINGS = {
     'SPLIT_MODULE': '-sSPLIT_MODULE is experimental and subject to change',
     'SOURCE_PHASE_IMPORTS': '-sSOURCE_PHASE_IMPORTS is experimental and not yet supported in browsers',
     'JS_BASE64_API': '-sJS_BASE64_API is experimental and not yet supported in browsers',
-    'GROWABLE_ARRAYBUFFERS': '-sGROWABLE_ARRAYBUFFERS is experimental and not yet supported in browsers',
+    'CROSS_ORIGIN_STORAGE': '-sCROSS_ORIGIN_STORAGE is experimental; the underlying browser API is not yet shipped in any browser',
     'SUPPORT_BIG_ENDIAN': '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.',
     'WASM_ESM_INTEGRATION': '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers',
+    'SHARED_WASMGC': '-sSHARED_WASMGC is experimental and subject to change',
+    'WASM_BINDGEN': '-sWASM_BINDGEN is experimental and subject to change',
 }
 
 # For renamed settings the format is:
@@ -254,6 +265,8 @@ LEGACY_SETTINGS = [
     ['RELOCATABLE', [0], 'No longer supported'],
     ['WASM_JS_TYPES', [0], 'No longer supported'],
     ['DETERMINISTIC', [0], 'No longer supported'],
+    ['LEGALIZE_JS_FFI', [0], 'legacy JS FFI legalization is no longer supported'],
+    ['SOCKET_WEBRTC', [0], 'No longer supported'],
 ]
 
 user_settings: dict[str, str] = {}
@@ -300,9 +313,7 @@ class SettingsManager:
     self.attrs.update(internal_attrs)
     self.infer_types()
 
-    strict_override = False
-    if 'EMCC_STRICT' in os.environ:
-      strict_override = int(os.environ.get('EMCC_STRICT'))
+    strict_override = utils.get_env_bool('EMCC_STRICT')
 
     # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
     # details
@@ -336,11 +347,11 @@ class SettingsManager:
   def dict(self):
     return self.attrs
 
-  def external_dict(self, skip_keys={}): # noqa
+  def external_dict(self, skip_keys={}): # ruff: ignore[mutable-argument-default]
     external_settings = {}
     for key, value in self.dict().items():
       if value != self.defaults.get(key) and key not in INTERNAL_SETTINGS and key not in skip_keys:
-        external_settings[key] = value # noqa: PERF403
+        external_settings[key] = value # ruff: ignore[manual-dict-comprehension]
     if not self.attrs['STRICT']:
       # When not running in strict mode we also externalize all legacy settings
       # (Since the external tools do process LEGACY_SETTINGS themselves)
@@ -410,10 +421,10 @@ class SettingsManager:
     if not expected_type:
       return
     # Allow integers 1 and 0 for type `bool`
-    if expected_type == bool:
-      if value in (1, 0):  # noqa: PLR6201
+    if expected_type == bool and type(value) is not list:
+      if value in {1, 0}:
         value = bool(value)
-      if value in ('True', 'False', 'true', 'false'):  # noqa: PLR6201
+      if value in {'True', 'False', 'true', 'false'}:
         exit_with_error(f'attempt to set `{name}` to `{value}`; use 1/0 to set boolean settings')
     if type(value) is not expected_type:
       exit_with_error(f'setting `{name}` expects `{expected_type.__name__}` but got `{type(value).__name__}`')

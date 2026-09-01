@@ -20,8 +20,7 @@ EMSCRIPTEN_KEEPALIVE void set(int x) {
 void load2() {
   printf("load2\n");
 
-  char buffer[10];
-  memset(buffer, 0, 10);
+  char buffer[10] = {0};
   FILE *f = fopen("file1.txt", "r");
   assert(f);
   fread(buffer, 1, 5, f);

@@ -420,6 +420,20 @@ ${functionBody}
   },
 #endif
 
+  _emval_is_catchable_cpp_exception_object__deps: [
+    '$Emval',
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    '$isCppExceptionObject',
+#endif
+  ],
+  _emval_is_catchable_cpp_exception_object: (object) => {
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    return isCppExceptionObject(Emval.toValue(object));
+#else
+    return false;
+#endif
+  },
+
   _emval_throw__deps: ['$Emval',
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
 #if !DISABLE_EXCEPTION_CATCHING

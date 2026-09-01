@@ -16,7 +16,11 @@ int cfsetospeed(struct termios *tio, speed_t speed)
 
 int cfsetispeed(struct termios *tio, speed_t speed)
 {
-	return speed ? cfsetospeed(tio, speed) : 0;
+	if (speed & ~CBAUD) {
+		errno = EINVAL;
+		return -1;
+	}
+	tio->c_cflag &= ~CIBAUD;
+	tio->c_cflag |= speed * (CIBAUD/CBAUD);
+	return 0;
 }
-
-weak_alias(cfsetospeed, cfsetspeed);

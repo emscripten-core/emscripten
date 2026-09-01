@@ -66,6 +66,16 @@ EMTEST_BROWSER_AUTO_CONFIG = None
 EMTEST_HEADLESS = None
 EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 
+# Path to an unpacked Chrome extension implementing the Cross-Origin Storage
+# polyfill.  When set, the extension is loaded via --load-extension when
+# launching a Chromium-based browser, enabling the COS browser test paths.
+# Point this at a local clone of:
+#   https://github.com/web-ai-community/cross-origin-storage-extension
+# (the directory that contains manifest.json).
+# TODO: Remove this once Chromium ships COS natively (even behind a flag),
+# and update the browser test to use that flag instead.
+EMTEST_COS_EXTENSION_PATH = os.getenv('EMTEST_COS_EXTENSION_PATH', '')
+
 # Triggers the browser to restart after every given number of tests.
 # 0: Disabled (reuse the browser instance to run all tests. Default)
 # 1: Restart a fresh browser instance for every browser test.
@@ -231,7 +241,7 @@ class ChromeConfig:
   default_flags = (
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
-    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
+    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-features=JavaScriptSourcePhaseImports',
     '--enable-experimental-webassembly-features',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
@@ -339,8 +349,18 @@ def configure_test_browser():
     if not shutil.which(EMTEST_BROWSER):
       EMTEST_BROWSER = 'firefox'
       if not shutil.which(EMTEST_BROWSER):
-        # FIXME: This should really be and error, but this code currently also runs for non-browser tests.
+        # FIXME: This should really be an error, but this code currently also runs for non-browser tests.
         EMTEST_BROWSER = 'default-browser-not-found'
+
+        if MACOS and os.path.isdir('/Applications/Safari.app'):
+          EMTEST_BROWSER = '/Applications/Safari.app'
+        elif WINDOWS:
+          for browser in [
+            f'{os.getenv("ProgramFiles(x86)", "")}\\Microsoft\\Edge\\Application\\msedge.exe',
+            f'{os.getenv("ProgramFiles", "")}\\Mozilla Firefox\\firefox.exe',
+            f'{os.getenv("LOCALAPPDATA", "")}\\Google\\Chrome SxS\\Application\\chrome.exe']:
+            if os.path.isfile(browser):
+              EMTEST_BROWSER = browser
 
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
@@ -355,6 +375,8 @@ def configure_test_browser():
       EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
       if EMTEST_HEADLESS == 1:
         EMTEST_BROWSER += f" {config.headless_flags}"
+      if EMTEST_COS_EXTENSION_PATH and is_chrome():
+        EMTEST_BROWSER += f' --load-extension="{EMTEST_COS_EXTENSION_PATH}"'
 
 
 # Create a server and a web page. When a test runs, we tell the server about it,
@@ -719,7 +741,7 @@ class BrowserCore(RunnerCore):
     if hasattr(config, 'launch_prefix'):
       browser_args = list(config.launch_prefix) + browser_args
 
-    logger.info('Launching browser: %s', str(browser_args))
+    logger.info(f'Launching browser: {browser_args}')
 
     if (WINDOWS and is_firefox()) or is_safari():
       cls.launch_browser_harness_with_proc_snapshot_workaround(parallel_harness, config, browser_args, url)
@@ -862,7 +884,7 @@ class BrowserCore(RunnerCore):
           output = self.harness_out_queue.get(block=True, timeout=timeout)
         except queue.Empty:
           BrowserCore.unresponsive_tests += 1
-          print(f'[unresponsive test: {self.id()} total unresponsive={str(BrowserCore.unresponsive_tests)}]')
+          print(f'[unresponsive test: {self.id()} total unresponsive={BrowserCore.unresponsive_tests}]')
           self.browser_restart()
           # Rather than fail the test here, let fail on the `assertContained` so
           # that the test can be retried via `extra_tries`

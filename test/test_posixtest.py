@@ -28,19 +28,17 @@ class posixtest(RunnerCore):
   This class get populated dynamically below.
   """
 
-  pass  # noqa: PIE790
-
 
 def filter_tests(all_tests):
-  prefixes = [
+  prefixes = (
     'pthread_',
     'strftime',
     'asctime',
     'gmtime',
-  ]
+  )
 
   def enable_test(t):
-    return any(t.startswith(p) for p in prefixes)
+    return t.startswith(prefixes)
 
   return [t for t in all_tests if enable_test(t)]
 
@@ -72,9 +70,11 @@ unsupported_noreturn = {
 unsupported = {
   'test_pthread_cond_init_4_2': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_barrierattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_barrierattr_getpshared_2_1': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_condattr_getpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_mutexattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_rwlockattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_rwlockattr_getpshared_2_1': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_condattr_setpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_mutexattr_getpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_mutexattr_setpshared_2_2': 'PTHREAD_PROCESS_SHARED not supported',
@@ -86,13 +86,14 @@ unsupported = {
   'test_pthread_atfork_3_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_4_1': 'fork() and multiple processes are not supported',
   'test_pthread_create_1_5': 'fork() and multiple processes are not supported',
+  'test_pthread_spin_init_2_1': 'fork() and multiple processes are not supported',
+  'test_pthread_spin_init_2_2': 'fork() and multiple processes are not supported',
   'test_pthread_attr_setinheritsched_2_2': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setschedparam_1_3': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setschedparam_1_4': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setschedpolicy_4_1': 'scheduling policy/parameters are not supported',
-  'test_pthread_barrierattr_getpshared_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_barrier_wait_3_1': 'signals are not supported',
   'test_pthread_cond_init_1_2': 'clock_settime() is not supported',
   'test_pthread_cond_init_1_3': 'lacking necessary mmap() support',
@@ -112,7 +113,6 @@ unsupported = {
   'test_pthread_mutexattr_setprotocol_1_1': 'setting pthread_mutexattr_setprotocol to a nonzero value is not supported',
   'test_pthread_mutex_getprioceiling_1_1': 'pthread_mutex_getprioceiling is not supported',
   'test_pthread_mutex_init_5_1': 'fork() and multiple processes are not supported',
-  'test_pthread_rwlockattr_getpshared_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_rwlock_rdlock_2_1': 'thread priorities not supported, cannot test rwlocking in priority order',
   'test_pthread_rwlock_rdlock_2_2': 'thread priorities not supported, cannot test rwlocking in priority order',
   'test_pthread_rwlock_rdlock_4_1': 'signals are not supported',
@@ -125,8 +125,6 @@ unsupported = {
   'test_pthread_setschedparam_1_2': 'scheduling policy/parameters are not supported',
   'test_pthread_setschedparam_4_1': 'scheduling policy/parameters are not supported',
   'test_pthread_setschedprio_1_1': 'scheduling policy/parameters are not supported',
-  'test_pthread_spin_init_2_1': 'shm_open and shm_unlink are not supported',
-  'test_pthread_spin_init_2_2': 'shm_open and shm_unlink are not supported',
 }
 
 # Mark certain tests as flaky, which may sometimes fail.
@@ -181,11 +179,11 @@ def make_test(name, testfile, browser):
             # of log messages on CI runs.
             '--profiling-funcs',
             '-sEXIT_RUNTIME',
-            '-sTOTAL_MEMORY=256mb',
-            '-sPTHREAD_POOL_SIZE=40']
+            '-sTOTAL_MEMORY=256mb']
     if name in no_assert_tests:
       args.append('-sASSERTIONS=0')
     if browser:
+      args.append('-sPTHREAD_POOL_SIZE=40')
       self.btest_exit(testfile, cflags=args)
     else:
       self.do_runf(testfile, cflags=args, output_basename=name)

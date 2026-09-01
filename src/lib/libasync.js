@@ -20,6 +20,7 @@ addToLibrary({
   },
 
 #if ASYNCIFY
+  $Asyncify__force: true,
   $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
 #if ASSERTIONS
     '$createNamedFunction',
@@ -232,7 +233,7 @@ addToLibrary({
 #endif
       if (Asyncify.currData &&
           Asyncify.state === Asyncify.State.Unwinding &&
-          Asyncify.exportCallStack.length === 0) {
+          !Asyncify.exportCallStack.length) {
         // We just finished unwinding.
         // Be sure to set the state before calling any other functions to avoid
         // possible infinite recursion here (For example in debug pthread builds
@@ -525,7 +526,7 @@ addToLibrary({
           var fiber = Fibers.nextFiber;
           Fibers.nextFiber = 0;
 #if ASYNCIFY_DEBUG >= 2
-          dbg("ASYNCIFY/FIBER: trampoline jump into fiber", fiber, new Error().stack);
+          dbg('ASYNCIFY/FIBER: trampoline jump into fiber', fiber, new Error().stack);
 #endif
           Fibers.finishContextSwitch(fiber);
         } while (Fibers.nextFiber);
@@ -548,7 +549,7 @@ addToLibrary({
 
       var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
 
-      if (entryPoint !== 0) {
+      if (entryPoint) {
 #if STACK_OVERFLOW_CHECK
         writeStackCookie();
 #endif
@@ -574,7 +575,7 @@ addToLibrary({
     },
   },
 
-  emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers", '$stackSave'],
+  emscripten_fiber_swap__deps: ['$Asyncify', '$Fibers', '$stackSave'],
   emscripten_fiber_swap__async: true,
   emscripten_fiber_swap: (oldFiber, newFiber) => {
     if (ABORT) return;
@@ -627,7 +628,3 @@ addToLibrary({
   },
 #endif // ASYNCIFY
 });
-
-if (ASYNCIFY) {
-  extraLibraryFuncs.push('$Asyncify');
-}

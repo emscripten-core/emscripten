@@ -1,0 +1,9 @@
+#!/bin/sh
+#
+# Git pre-push script that runs some quick/simple tests.
+#
+# This script is normally installed by `bootstrap.py`.
+
+set -o errexit
+
+ruff check -q

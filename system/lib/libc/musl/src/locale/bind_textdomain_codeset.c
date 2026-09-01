@@ -5,7 +5,9 @@
 
 char *bind_textdomain_codeset(const char *domainname, const char *codeset)
 {
-	if (codeset && strcasecmp(codeset, "UTF-8"))
+	if (codeset && strcasecmp(codeset, "UTF-8")) {
 		errno = EINVAL;
-	return NULL;
+		return 0;
+	}
+	return "UTF-8";
 }

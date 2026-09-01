@@ -9,9 +9,9 @@ import shlex
 import tempfile
 
 from . import shared
-from .utils import WINDOWS
+from .utils import WINDOWS, get_env_int
 
-DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+DEBUG = get_env_int('EMCC_DEBUG')
 
 
 def create_response_file_contents(args):
@@ -99,7 +99,7 @@ def expand_response_file(arg):
     if DEBUG:
       logging.warning(f'failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...')
     # If that fails, try with the Python default locale.getpreferredencoding()
-    with open(response_filename) as f:  # noqa: PLW1514
+    with open(response_filename, encoding=None) as f:
       args = f.read()
 
   args = shlex.split(args)

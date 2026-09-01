@@ -13,6 +13,7 @@ launcher but don't have symlink support.
 """
 
 import os
+import platform
 import shutil
 import stat
 import sys
@@ -26,7 +27,6 @@ em++
 '''.split()
 
 entry_points = '''
-bootstrap
 emar
 embuilder
 emcmake
@@ -62,6 +62,8 @@ entry_remap = {
 
 
 windows_exe = os.path.join(__rootdir__, 'tools/pylauncher/pylauncher.exe')
+if platform.machine().lower() in {'arm64', 'aarch64'}:
+  windows_exe = os.path.join(__rootdir__, 'tools/pylauncher/pylauncher-arm64.exe')
 
 
 def make_executable(filename):
@@ -70,7 +72,7 @@ def make_executable(filename):
 
 
 def maybe_remove(filename):
-  if os.path.exists(filename):
+  if os.path.lexists(filename):
     os.remove(filename)
 
 
@@ -80,11 +82,14 @@ def read_file(filename):
 
 
 def write_file(filename, content):
+  maybe_remove(filename)
   with open(filename, 'w', encoding='utf-8') as f:
     f.write(content)
 
 
-def main(all_platforms, use_exe_files):
+def main(all_platforms, use_bat_file):
+  if 'EM_USE_BAT_FILES' in os.environ:
+    use_bat_file = True
   is_windows = sys.platform.startswith('win')
   is_msys2 = 'MSYSTEM' in os.environ
   do_unix = all_platforms or not is_windows or is_msys2
@@ -113,18 +118,17 @@ def main(all_platforms, use_exe_files):
         make_executable(launcher)
 
       if do_windows:
-        maybe_remove(launcher + '.bat')
         maybe_remove(launcher + '.ps1')
         maybe_remove(launcher + '.exe')
-        if use_exe_files:
-          shutil.copyfile(windows_exe, launcher + '.exe')
-        else:
+        if use_bat_file:
           write_file(launcher + '.bat', bat_data)
           write_file(launcher + '.ps1', ps1_data)
+        else:
+          shutil.copyfile(windows_exe, launcher + '.exe')
 
   generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(__scriptdir__, 'run_python_compiler'))
 
 
 if __name__ == '__main__':
-  sys.exit(main('--all' in sys.argv, '--exe-files' in sys.argv))
+  sys.exit(main('--all' in sys.argv, '--bat-files' in sys.argv))

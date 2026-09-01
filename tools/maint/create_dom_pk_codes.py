@@ -30,8 +30,6 @@
 
 # Use #include <emscripten/dom_pk_codes.h> in your code to access these IDs.
 
-# ruff: noqa: E241
-
 import os
 import random
 import sys

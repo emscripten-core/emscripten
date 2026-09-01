@@ -107,7 +107,9 @@ void _mi_prim_out_stderr( const char* msg );
 
 // Get an environment variable. (only for options)
 // name != NULL, result != NULL, result_size >= 64
-bool _mi_prim_getenv(const char* name, char* result, size_t result_size);
+// Return 1 for success, 0 if not found,
+// and -1 on error (for example, if `getenv` cannot be called yet during preloading).
+int _mi_prim_getenv(const char* name, char* result, size_t result_size);
 
 
 // Fill a buffer with strong randomness; return `false` on error or if
@@ -147,7 +149,7 @@ void _mi_prim_thread_yield(void);
 // We also use it on Apple OS as we use a TLS slot for the default theap there.
 #if (defined(_WIN32)) || \
     (defined(__GNUC__) && ( \
-           (defined(__GLIBC__)   && (defined(__x86_64__) || defined(__i386__) || (defined(__arm__) && __ARM_ARCH >= 7) || defined(__aarch64__))) \
+           (defined(__GLIBC__)   && (defined(__x86_64__) || defined(__i386__) || (defined(__arm__) && __ARM_ARCH >= 7) || defined(__aarch64__) || defined(__riscv))) \
         || (defined(__APPLE__)   && (defined(__x86_64__) || defined(__aarch64__) || defined(__POWERPC__))) \
         || (defined(__BIONIC__)  && (defined(__x86_64__) || defined(__i386__) || (defined(__arm__) && __ARM_ARCH >= 7) || defined(__aarch64__))) \
         || (defined(__FreeBSD__) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__))) \
@@ -184,6 +186,10 @@ static inline void* mi_prim_tls_slot(size_t slot) mi_attr_noexcept {
     #else
     __asm__ volatile ("mrs %0, tpidr_el0" : "=r" (tcb));
     #endif
+    res = tcb[slot];
+  #elif defined(__riscv)
+    void** tcb; MI_UNUSED(ofs);
+    __asm__ volatile ("mv %0, tp" : "=r" (tcb));
     res = tcb[slot];
   #elif defined(__APPLE__) && defined(__POWERPC__) // ppc, issue #781
     MI_UNUSED(ofs);
@@ -225,6 +231,10 @@ static inline void mi_prim_tls_slot_set(size_t slot, void* value) mi_attr_noexce
     __asm__ volatile ("mrs %0, tpidr_el0" : "=r" (tcb));
     #endif
     tcb[slot] = value;
+  #elif defined(__riscv)
+    void** tcb; MI_UNUSED(ofs);
+    __asm__ volatile ("mv %0, tp" : "=r" (tcb));
+    tcb[slot] = value;
   #elif defined(__APPLE__) && defined(__POWERPC__) // ppc, issue #781
     MI_UNUSED(ofs);
     pthread_setspecific(slot, value);
@@ -248,9 +258,8 @@ extern mi_decl_hidden bool _mi_process_is_initialized;                // has mi_
 // fast path of `_mi_free` and we specialize for various platforms as
 // inlined definitions. Regular code should call `init.c:_mi_thread_id()`.
 // We only require _mi_prim_thread_id() to return a unique id
-// for each thread (unequal to zero).
+// for each thread (unequal to zero) with the bottom 2 bits clear.
 //-------------------------------------------------------------------
-
 
 // Do we have __builtin_thread_pointer? This would be the preferred way to get a unique thread id
 // but unfortunately, it seems we cannot test for this reliably at this time (see issue #883)
@@ -262,6 +271,7 @@ extern mi_decl_hidden bool _mi_process_is_initialized;                // has mi_
       && !defined(MI_LIBC_MUSL) \
       && (!defined(__clang_major__) || __clang_major__ >= 14)  /* older clang versions emit bad code; fall back to using the TLS slot (<https://lore.kernel.org/linux-arm-kernel/202110280952.352F66D8@keescook/T/>) */
     #if    (defined(__GNUC__) && (__GNUC__ >= 7)  && defined(__aarch64__)) /* aarch64 for older gcc versions (issue #851) */ \
+        || (defined(__GNUC__) && (__GNUC__ >= 7)  && defined(__riscv)) \
         || (defined(__GNUC__) && (__GNUC__ >= 11) && defined(__x86_64__)) \
         || (defined(__clang_major__) && (__clang_major__ >= 14) && (defined(__aarch64__) || defined(__x86_64__)))
       #define MI_USE_BUILTIN_THREAD_POINTER  1
@@ -281,8 +291,10 @@ static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
 // Get a unique id for the current thread.
 #if defined(MI_PRIM_THREAD_ID)
 
-static inline mi_threadid_t __mi_prim_thread_id(void) mi_attr_noexcept {
-  return MI_PRIM_THREAD_ID();  // used for example by CPython for a free threaded build (see python/cpython#115488)
+static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
+  const mi_threadid_t tid = MI_PRIM_THREAD_ID();  // used for example by CPython for a free threaded build (see python/cpython#115488)
+  mi_assert_internal( (tid & 0x03) == 0 );        // mimalloc reserves the bottom 2 bits
+  return tid;
 }
 
 #elif defined(_WIN32)
@@ -366,20 +378,28 @@ This incurs an extra check in the fast path (but can often be combined in an exi
 static inline mi_theap_t* _mi_theap_default(void);
 static inline mi_theap_t* _mi_theap_cached(void);
 
-#if defined(_WIN32)
-  #define MI_TLS_MODEL_DYNAMIC_WIN32        1    
-#elif defined(__APPLE__) && MI_HAS_TLS_SLOT && !defined(__POWERPC__)  // macOS on arm64 or x64
-  // #define MI_TLS_MODEL_DYNAMIC_PTHREADS  1    // also works but a bit slower
-  #define MI_TLS_MODEL_FIXED_SLOT           1
-  #define MI_TLS_MODEL_FIXED_SLOT_DEFAULT   108  // seems unused. @apple: it would be great to get 2 official slots for custom allocators :-)
-  #define MI_TLS_MODEL_FIXED_SLOT_CACHED    109
-  // we used before __PTK_FRAMEWORK_OLDGC_KEY9 (89) but that seems used now.
-  // see <https://github.com/rweichler/substrate/blob/master/include/pthread_machdep.h>
-#elif defined(__APPLE__) || defined(__OpenBSD__) || defined(__ANDROID__)
-  #define MI_TLS_MODEL_DYNAMIC_PTHREADS     1
-  // #define MI_TLS_MODEL_DYNAMIC_PTHREADS_DEFAULT_ENTRY_IS_NULL  1
-#else
-  #define MI_TLS_MODEL_THREAD_LOCAL         1
+// Default TLS model
+#if !defined(MI_TLS_MODEL_THREAD_LOCAL) && !defined(MI_TLS_MODEL_DYNAMIC_PTHREADS)
+  #if defined(_WIN32)
+    #define MI_TLS_MODEL_DYNAMIC_WIN32        1    
+  #elif defined(__APPLE__) && MI_HAS_TLS_SLOT && !defined(__POWERPC__)  // macOS on arm64 or x64
+    // #define MI_TLS_MODEL_DYNAMIC_PTHREADS  1    // also works but a tad slower
+    #define MI_TLS_MODEL_FIXED_SLOT           1
+    // we use the last 2 7-bit slots which seem unused. 
+    // @apple: it would be great to get 2 official slots for custom allocators :-)
+    #define MI_TLS_MODEL_FIXED_SLOT_DEFAULT   126  
+    #define MI_TLS_MODEL_FIXED_SLOT_CACHED    127
+    // see <https://github.com/apple/darwin-libpthread/blob/main/private/pthread/tsd_private.h#L99> for assigned slots
+  #elif defined(__APPLE__) || defined(__OpenBSD__) || defined(__ANDROID__)
+    #define MI_TLS_MODEL_DYNAMIC_PTHREADS     1
+    // #define MI_TLS_MODEL_DYNAMIC_PTHREADS_DEFAULT_ENTRY_IS_NULL  1
+  #else
+    #define MI_TLS_MODEL_THREAD_LOCAL         1
+  #endif
+#endif
+
+#if !defined(MI_TLS_RECURSE_GUARD) && MI_TLS_MODEL_THREAD_LOCAL && defined(__APPLE__)
+#define MI_TLS_RECURSE_GUARD 1     // macOS can allocate on thread-local initialization
 #endif
 
 // Declared this way to optimize register spills and branches
@@ -444,9 +464,10 @@ static inline mi_theap_t* _mi_theap_default(void) {
   const size_t slot = _mi_theap_default_slot;
   mi_theap_t* theap  = (mi_theap_t*)mi_prim_tls_slot(slot);
   #if !MI_WIN_DIRECT_TLS
-  if mi_unlikely(slot==MI_TLS_EXPANSION_SLOT) { // in TlsExpansionSlots ?
-    if mi_likely(theap!=NULL) {                 // initialized (on this thread)?
-      theap = ((mi_theap_t**)theap)[_mi_theap_default_expansion_slot];
+  if mi_unlikely(slot==MI_TLS_EXPANSION_SLOT) {       // in TlsExpansionSlots ?
+    mi_theap_t** const eslots = (mi_theap_t**)theap;  // theap is the expansion slot entry
+    if mi_likely(eslots!=NULL) {                      // is it initialized? (on this thread)
+      theap = eslots[_mi_theap_default_expansion_slot];
     }
   }
   #endif
@@ -457,9 +478,10 @@ static inline mi_theap_t* _mi_theap_cached(void) {
   const size_t slot = _mi_theap_cached_slot;
   mi_theap_t* theap = (mi_theap_t*)mi_prim_tls_slot(slot);
   #if !MI_WIN_DIRECT_TLS
-  if mi_unlikely(slot==MI_TLS_EXPANSION_SLOT) { // in TlsExpansionSlots ?
-    if mi_likely(theap!=NULL) {                 // initialized (on this thread)?
-      theap = ((mi_theap_t**)theap)[_mi_theap_cached_expansion_slot];
+  if mi_unlikely(slot==MI_TLS_EXPANSION_SLOT) {       // in TlsExpansionSlots ?
+    mi_theap_t** const eslots = (mi_theap_t**)theap;  // theap is the expansion slot entry
+    if mi_likely(eslots!=NULL) {                      // is it initialized? (on this thread)
+      theap = eslots[_mi_theap_cached_expansion_slot];
     }
   }
   #endif
@@ -511,7 +533,7 @@ static inline mi_theap_t* _mi_heap_theap(const mi_heap_t* heap) {
   return _mi_heap_theap_get_or_init(heap);
 }
 
-// Get the theap belonging to a heap without creating in if it is not yet initialized.
+// Get the theap belonging to a heap without creating it if it is not yet initialized.
 static inline mi_theap_t* _mi_heap_theap_peek(const mi_heap_t* heap) {
   mi_theap_t* theap = _mi_theap_cached();
   #if MI_THEAP_INITASNULL

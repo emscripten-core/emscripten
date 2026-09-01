@@ -117,6 +117,34 @@ void assert_all_lanes_eq(v128_t v, float value) {
     v, value, value, value, value, value, value, value, value);
 }
 
+void assert_lanes_eq_f32x4(v128_t v,
+                           float l0,
+                           float l1,
+                           float l2,
+                           float l3) {
+  float actual;
+  actual = wasm_f32x4_extract_lane(v, 0);
+  assert(isnan(l0) ? isnan(actual) : actual == l0);
+  actual = wasm_f32x4_extract_lane(v, 1);
+  assert(isnan(l1) ? isnan(actual) : actual == l1);
+  actual = wasm_f32x4_extract_lane(v, 2);
+  assert(isnan(l2) ? isnan(actual) : actual == l2);
+  actual = wasm_f32x4_extract_lane(v, 3);
+  assert(isnan(l3) ? isnan(actual) : actual == l3);
+}
+
+v128_t create_f32x4(float l0,
+                    float l1,
+                    float l2,
+                    float l3) {
+  v128_t v;
+  v = wasm_f32x4_replace_lane(v, 0, l0);
+  v = wasm_f32x4_replace_lane(v, 1, l1);
+  v = wasm_f32x4_replace_lane(v, 2, l2);
+  v = wasm_f32x4_replace_lane(v, 3, l3);
+  return v;
+}
+
 v128_t create_f16x8(float l0,
                     float l1,
                     float l2,
@@ -267,11 +295,6 @@ int main() {
                       create_f16x8( 1.0f, -1.0f, 1.0f, 0.0f,     1.0f, INFINITY, 1.0f, NAN));
   assert_lanes_eq_float(a,          1.0f,  1.0f, 1.0f, 1.0f, INFINITY, INFINITY,  NAN, NAN);
 
-  // TODO needed in binaryen
-  // wasm_i16x8_trunc_sat_f16x8;
-  // wasm_u16x8_trunc_sat_f16x8
-  // wasm_f16x8_convert_i16x8
-  // wasm_f16x8_convert_u16x8
 
   // Lane 0 illustrates the difference between fused/unfused. e.g.
   // fused: (positive overflow) + -inf = -inf
@@ -302,4 +325,13 @@ int main() {
   // Another tricky one below is 65535, FP16 can't represent the max of uint16 so it becomes INFINITY.
   a = wasm_f16x8_convert_u16x8(create_u16x8(0,    1,    65535,   65504U,   0, 0, 0, 0));
   assert_lanes_eq_float(a,                  0, 1.0f, INFINITY, 65504.0f,   0, 0, 0, 0);
+
+  a = wasm_f32x4_promote_low_f16x8(create_f16x8(1.5f, -2.0f, INFINITY, NAN, 99.0f, 99.0f, 99.0f, 99.0f));
+  assert_lanes_eq_f32x4(a, 1.5f, -2.0f, INFINITY, NAN);
+
+  a = wasm_f16x8_demote_f32x4_zero(create_f32x4(1.5f, -2.0f, INFINITY, NAN));
+  assert_lanes_eq_float(a, 1.5f, -2.0f, INFINITY, NAN, 0.0f, 0.0f, 0.0f, 0.0f);
+
+  a = wasm_f16x8_demote_f32x4_zero(create_f32x4(65504.0f, 65535.0f, -65535.0f, 0.0f));
+  assert_lanes_eq_float(a, 65504.0f, INFINITY, -INFINITY, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 }

@@ -42,8 +42,14 @@ mi_decl_thread mi_thread_locals_t* mi_thread_locals = &mi_thread_locals_empty;  
   a value, we also set the version of the key.
 ----------------------------------------------------------- */
 
-#define MI_TLS_IDX_BITS  (MI_SIZE_BITS/2)
-#define MI_TLS_IDX_MASK  ((MI_ZU(1)<<MI_TLS_IDX_BITS)-1)
+#if MI_SIZE_BITS < 64
+#define MI_TLS_IDX_BITS     (MI_SIZE_BITS/2)      // half for the index, half for the version
+#else
+#define MI_TLS_IDX_BITS     (MI_SIZE_BITS/4)      // 16 bits for the index, 48 bits for the version
+#endif
+#define MI_TLS_IDX_MASK     ((MI_ZU(1)<<MI_TLS_IDX_BITS)-1)
+#define MI_TLS_IDX_MAX      MI_TLS_IDX_MASK
+#define MI_TLS_VERSION_MAX  ((MI_ZU(1)<<(MI_SIZE_BITS - MI_TLS_IDX_BITS))-1)
 
 static size_t mi_key_index( size_t key ) {
   return (key & MI_TLS_IDX_MASK);
@@ -54,8 +60,8 @@ static size_t mi_key_version( size_t key ) {
 }
 
 static mi_thread_local_t mi_key_create( size_t index, size_t version ) {
-  mi_assert_internal(version != 0);
-  mi_assert_internal(index <= MI_TLS_IDX_MASK);
+  mi_assert_internal(version != 0 && version <= MI_TLS_VERSION_MAX);
+  mi_assert_internal(index <= MI_TLS_IDX_MAX);
   const mi_thread_local_t key = ((version << MI_TLS_IDX_BITS) | index);
   mi_assert_internal(key != 0);
   return key;
@@ -71,18 +77,16 @@ static mi_thread_locals_t* mi_thread_locals_expand(size_t least_idx) {
     tls_old = NULL; // so we allocate fresh from mi_thread_locals_empty
     count = 16;     // start with 16 slots
   } 
-  else if (count_old >= MI_TLS_IDX_MASK - 1024) {
-    return NULL;    // too large
-  }
   else if (count_old >= 1024) {
     count = count_old + 1024;  // at some point increase linearly
   }
   else {
     count = 2*count_old;       // and double initially
   }
-  if (count <= least_idx) {
+  if (count <= least_idx) {   
     count = least_idx + 1;
   }
+  if (count > MI_TLS_IDX_MAX) { return NULL; }  // too large
   mi_thread_locals_t* tls = (mi_thread_locals_t*)mi_rezalloc(tls_old, sizeof(mi_thread_locals_t) + count*sizeof(mi_tls_slot_t));
   if mi_unlikely(tls==NULL) return NULL;
   tls->count = count;
@@ -175,7 +179,7 @@ static mi_thread_local_t mi_thread_local_claim(void) {
   size_t idx = 0;
   if (mi_thread_locals_free != NULL && mi_bitmap_try_find_and_claim(mi_thread_locals_free,0,&idx,&mi_thread_local_claim_fun,NULL)) {
     mi_thread_locals_version++;
-    if (mi_thread_locals_version == SIZE_MAX/2) { mi_thread_locals_version = 1; }
+    if (mi_thread_locals_version >= MI_TLS_VERSION_MAX) { mi_thread_locals_version = 1; }  /* wrap around the version */
     return mi_key_create( idx, mi_thread_locals_version);
   }
   else {
@@ -184,17 +188,22 @@ static mi_thread_local_t mi_thread_local_claim(void) {
 }
 
 static bool mi_thread_local_create_expand(void) {
-  mi_bitmap_t* slots = mi_thread_locals_free;
+  mi_bitmap_t* const slots = mi_thread_locals_free;
   // 1024 bits at a time
   const size_t oldcount = (slots==NULL ? 0 : mi_bitmap_max_bits(slots));
   const size_t newcount = 1024 + oldcount;
-  if (newcount > MI_TLS_IDX_MASK) { return false; }
+  if (newcount > MI_TLS_IDX_MAX) { return false; }
   const size_t newsize = mi_bitmap_size( newcount, NULL );
-  slots = (mi_bitmap_t*)mi_realloc_aligned(slots, newsize, MI_BCHUNK_SIZE);
-  if (slots == NULL) { return false; }
-  mi_bitmap_init(slots, newcount, true /* or otherwise we would zero all old entries */);
-  mi_bitmap_unsafe_setN(slots, oldcount, newcount - oldcount);
-  mi_thread_locals_free = slots;
+  mi_bitmap_t* newslots = (mi_bitmap_t*)mi_zalloc_aligned(newsize, MI_BCHUNK_SIZE);
+  if (newslots==NULL) { return false; }
+  if (slots!=NULL) {
+    // copy over the previous bitmap
+    _mi_memcpy_aligned(newslots, slots, mi_bitmap_size(oldcount, NULL)); 
+    mi_free(slots);
+  }
+  mi_bitmap_init(newslots, newcount, true /* pretend already zero'd so we do not zero out the copied old entries */);
+  mi_bitmap_unsafe_setN(newslots, oldcount, newcount - oldcount);  /* set the new expanded slots as available */
+  mi_thread_locals_free = newslots;
   return true;
 }
 
