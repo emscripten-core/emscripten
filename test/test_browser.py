@@ -2905,17 +2905,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_key.c', 37182145, cflags=['-sUSE_SDL=2', '--pre-js', test_file('browser/fake_events.js')])
 
   def test_sdl2_text(self):
-    create_file('pre.js', '''
-      Module.postRun = () => {
-        function doOne() {
-          Module._one();
-          setTimeout(doOne, 1000/60);
-        }
-        setTimeout(doOne, 1000/60);
-      }
-    ''')
-
-    self.btest_exit('test_sdl2_text.c', cflags=['--pre-js', 'pre.js', '--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_text.c', cflags=['--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_mouse(self):
@@ -3175,18 +3165,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl3_canvas_write.c', cflags=['-sUSE_SDL=3'])
 
   def test_sdl3_text(self):
-    create_file('pre.js', '''
-      Module.postRun = () => {
-        function doOne() {
-          Module._one();
-          setTimeout(doOne, 1000/60);
-        }
-        setTimeout(doOne, 1000/60);
-      }
-    ''')
-
-    self.cflags.append('-Wno-experimental')
-    self.btest_exit('test_sdl3_text.c', cflags=['--pre-js', 'pre.js', '--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=3'])
+    self.btest_exit('test_sdl3_text.c', cflags=['--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=3', '-Wno-experimental'])
 
   @requires_graphics_hardware
   @no_wasm64('cocos2d ports does not compile with wasm64')

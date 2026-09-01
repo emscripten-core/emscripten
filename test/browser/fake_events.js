@@ -2,13 +2,14 @@
  * Helper function used in browser tests to simulate HTML5 events
  */
 
+// Derive `event.key` when not explicitly provided. For named keys (e.g.
+// 'ArrowUp', 'Enter'), `key` matches `code`. For letter keys ('KeyA'..'KeyZ')
+// or when `code` is omitted, derive `key` from `keyCode`.
 function deriveKey(code, keyCode) {
-  if (code && !code.startsWith('Key') && !code.startsWith('Digit')) {
+  if (code && !code.startsWith('Key')) {
     return code;
   }
-  if (keyCode) {
-    return String.fromCharCode(keyCode);
-  }
+  return String.fromCharCode(keyCode);
 }
 
 function simulateKeyEvent(eventType, keyCode, code = undefined, key = undefined, target = undefined) {
