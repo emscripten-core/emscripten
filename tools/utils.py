@@ -21,12 +21,7 @@ from pathlib import Path
 
 from . import diagnostics
 
-# On Windows, the command line used (argv[0]) can affect the value of `__file__`
-# here.  e.g. `python.exe c:/path/to/emcc.py` and `python.exe C:/PATH/TO/emcc.py`
-# yield different results.  Use `normcase` so we get consistent values whatever
-# case was used to run the compiler.
-normalized_file = os.path.abspath(os.path.normcase(__file__))
-__rootpath__ = os.path.dirname(os.path.dirname(normalized_file))
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 WINDOWS = sys.platform.startswith('win')
 MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
