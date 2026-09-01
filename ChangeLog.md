@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.9 (in development)
+6.0.10 (in development)
 ----------------------
+
+6.0.9 - 09/01/26
+----------------
 - The `WASM_BINDGEN` setting is now marked experimental, and enabling it
   produces a compiler diagnostic warning, since the integration is still
   evolving and subject to change. (#27616)
