@@ -16,8 +16,10 @@ LICENSE = 'MIT License'
 port_name = 'contrib.lua'
 variants = {'contrib.lua-mt': {'PTHREADS': 1}}
 
+
 def get_lib_name(settings):
   return 'liblua' + ('-mt' if settings.PTHREADS else '') + '.a'
+
 
 def get(ports, settings, shared):
   # get the port
@@ -38,7 +40,7 @@ def get(ports, settings, shared):
        ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c
        '''.split()
 
-    flags=[]
+    flags = []
 
     if settings.PTHREADS:
       flags += ['-pthread']
