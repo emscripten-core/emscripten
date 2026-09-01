@@ -1255,6 +1255,10 @@ jobs:
           command: "test/runner sockets_node.test_nodejs_sockets_echo*"
       - upload-test-results
       - run:
+          name: "sanity tests"
+          command: test/runner sanity.test_windows_path_casing
+      - upload-test-results
+      - run:
           name: "check clean"
           command: |
             git checkout tools/pylauncher
