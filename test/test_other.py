@@ -1125,6 +1125,7 @@ f.close()
     self.run_process([EMCC, test_file('hello_world.c'), '-sUSE_ZLIB'])
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_stuff')])
 
+  @crossplatform
   def test_cmake_install(self):
     # Build and install a library `foo`
     os.mkdir('build1')
