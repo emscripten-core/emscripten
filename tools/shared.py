@@ -60,8 +60,9 @@ SKIP_SUBPROCS = False
 # distinct from the minimum version required to execute the generated code
 # (settings.MIN_NODE_VERSION).
 # This is currently set to v18 since this is the version of node available
-# in debian/stable (bookworm).  We need at least v18.3.0 because we make
-# use of util.parseArg which was added in v18.3.0.
+# in Debian/Bookworm (2023-06-01) and Ubuntu 24.04/Noble.
+# We need at least v18.3.0 specifically because we make use of util.parseArg
+# which was added in v18.3.0.
 MINIMUM_NODE_VERSION = (18, 3, 0)
 EXPECTED_LLVM_VERSION = 24
 
