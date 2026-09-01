@@ -65,10 +65,15 @@ addToLibrary({
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams() {
-      FS.createStream({ nfd: 0, position: 0, path: '/dev/stdin', flags: 0 }, 0);
-      var paths = [,'/dev/stdout', '/dev/stderr'];
-      for (var i = 1; i < 3; i++) {
-        FS.createStream({ nfd: i, position: 0, path: paths[i], flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}} }, i);
+      var paths = ['/dev/stdin', '/dev/stdout', '/dev/stderr'];
+      for (var i = 0; i < 3; i++) {
+        // Like open() below, give the stream a node carrying the identity of
+        // whatever the inherited descriptor refers to (tty, pipe, file, ...):
+        // every stream has a node.
+        var st = fs.fstatSync(i);
+        var node = { id: st.ino, mode: st.mode, node_ops: NODERAWFS, path: paths[i] };
+        var flags = i ? {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}} : 0;
+        FS.createStream({ nfd: i, position: 0, path: paths[i], flags, node }, i);
       }
     },
     // generic function for all node creation
