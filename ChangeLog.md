@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.10 (in development)
 ----------------------
+- The fiber API (`emscripten/fiber.h`) is now supported under JSPI (`-sJSPI`).
+  When compiling with JSPI, the `asyncify_stack` argument to `emscripten_fiber_init`
+  and `emscripten_fiber_init_from_current_context` is optional and can be `NULL`.
 
 6.0.9 - 09/01/26
 ----------------

@@ -8469,11 +8469,33 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
-  def test_fibers_asyncify(self):
-    self.set_setting('ASYNCIFY')
+  @with_asyncify_and_jspi
+  def test_fibers(self):
     self.maybe_closure()
-    self.do_runf('test_fibers.cpp', '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+    if self.get_setting('JSPI'):
+      self.cflags += ['-DJSPI']
+    self.do_runf('test_fibers.cpp', '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-direct-1035-*\n')
+
+  def test_fibers_asyncify_null_stack(self):
+    self.set_setting('ASYNCIFY')
+    self.set_setting('ASSERTIONS')
+    self.maybe_closure()
+    self.do_run('''
+#include <stdio.h>
+#include <emscripten/fiber.h>
+
+static emscripten_fiber_t main_fiber;
+
+int main() {
+  emscripten_fiber_init_from_current_context(&main_fiber, NULL, 0);
+  emscripten_fiber_t child;
+  alignas(16) char c_stack[4096];
+  emscripten_fiber_init(&child, NULL, NULL, c_stack, sizeof(c_stack), NULL, 0);
+  emscripten_fiber_swap(&main_fiber, &child);
+  return 0;
+}
+''', 'Assertion failed: emscripten_fiber_swap: fiber was initialized with a null asyncify_stack, which is only supported under JSPI (-sJSPI)',
+                assert_returncode=NON_ZERO)
 
   @with_asyncify_and_jspi
   def test_asyncify_unused(self):

@@ -8,8 +8,8 @@ fiber.h
 co-operative threads of execution. The `fiber.h
 <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/fiber.h>`_
 header defines a low-level API for manipulating Fibers in Emscripten. Fibers are
-implemented with :ref:`asyncify section`, so you must link your program with
-:ref:`ASYNCIFY` if you intend to use them.
+implemented with :ref:`asyncify section` or JSPI, so you must link your program with
+:ref:`ASYNCIFY` or ``-sJSPI`` if you intend to use them.
 
 Fibers are intended as a building block for asynchronous control flow
 constructs, such as coroutines. They supersede the legacy coroutine API that was
@@ -53,8 +53,8 @@ Types
   .. c:member:: em_arg_callback_func entry
 
     Entry point. If not NULL, this function will be called when the fiber is
-    switched into. Otherwise, :c:member:`emscripten_fiber_t.asyncify_data` is
-    used to rewind the call stack.
+    switched into. Otherwise, :c:member:`emscripten_fiber_t.asyncify_data` (under
+    Asyncify) or native stack switching (under JSPI) is used to resume the call stack.
 
   .. c:member:: void *user_data
 
@@ -62,7 +62,7 @@ Types
 
   .. c:member:: asyncify_data_t asyncify_data
 
-    Asyncify data structure. Used to unwind and rewind the call stack when switching fibers.
+    Asyncify data structure. Used to unwind and rewind the call stack when switching fibers under Asyncify (unused under JSPI).
 
 .. c:type:: asyncify_data_t
 
@@ -98,8 +98,8 @@ Functions
   :param void* entry_func_arg: Opaque pointer passed to `entry_func`.
   :param void* c_stack: Pointer to memory region to use for the C stack. Must be at least 16-byte aligned. This points to the lower bound of the stack, regardless of growth direction.
   :param size_t c_stack_size: Size of the C stack memory region, in bytes.
-  :param void* asyncify_stack: Pointer to memory region to use for the Asyncify stack. No special alignment requirements.
-  :param size_t asyncify_stack_size: Size of the Asyncify stack memory region, in bytes.
+  :param void* asyncify_stack: Pointer to memory region to use for the Asyncify stack. No special alignment requirements. Under JSPI, this parameter may be `NULL`.
+  :param size_t asyncify_stack_size: Size of the Asyncify stack memory region, in bytes. Under JSPI, this parameter may be `0`.
 
   .. note:: If `entry_func` returns, the entire program will end, as if `main` had returned. To avoid this, you can use :c:func:`emscripten_fiber_swap` to jump to another fiber.
 
@@ -122,8 +122,10 @@ Functions
 
   :param emscripten_fiber_t* fiber: Pointer to the fiber structure.
   :param void* asyncify_stack: Pointer to memory region to use for the Asyncify
-                               stack. No special alignment requirements.
+                               stack. No special alignment requirements. Under JSPI,
+                               this parameter may be `NULL`.
   :param size_t asyncify_stack_size: Size of the Asyncify stack memory region, in bytes.
+                                     Under JSPI, this parameter may be `0`.
 
 .. c:function:: void emscripten_fiber_swap(emscripten_fiber_t *old_fiber, emscripten_fiber_t *new_fiber)
 
@@ -137,8 +139,9 @@ Functions
   :param emscripten_fiber_t* new_fiber: Fiber representing the target context.
                                         If the fiber has an entry point, it will
                                         be called in the new context and set
-                                        to `NULL`. Otherwise,
+                                        to `NULL`. Otherwise, the call stack is
+                                        resumed (using
                                         :c:member:`emscripten_fiber_t.asyncify_data`
-                                        is used to rewind the call stack. If the
-                                        fiber is invalid or incomplete, the
-                                        behavior is undefined.
+                                        under Asyncify or native stack switching
+                                        under JSPI). If the fiber is invalid or
+                                        incomplete, the behavior is undefined.
