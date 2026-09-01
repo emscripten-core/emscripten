@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 6.0.10 (in development)
 ----------------------
+- The SDL3 port is no longer considered experimental, and the compiler
+  diagnostic warning has been removed. (#27646)
 
 6.0.9 - 09/01/26
 ----------------
