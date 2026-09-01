@@ -123,6 +123,7 @@ int main(int argc, char **argv) {
         printf("%d-", i);
     }
 
+    // Test swapping directly between two child fibers without returning to main.
     int val = 1000;
     G.fibers[0].init_with_api(h1, &val);
     G.fibers[1].init_with_api(h2, &val);

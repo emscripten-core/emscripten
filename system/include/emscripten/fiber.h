@@ -33,7 +33,7 @@ typedef struct emscripten_fiber_s {
 
 /**
  * Initializes a fiber context.
- * Under JSPI (-sJSPI), asyncify_stack may be NULL and asyncify_stack_size 0.
+ * Under JSPI (-sJSPI), asyncify_stack and asyncify_stack_size are ignored.
  */
 void emscripten_fiber_init(
   emscripten_fiber_t * _Nonnull fiber,
@@ -41,17 +41,17 @@ void emscripten_fiber_init(
   void *entry_func_arg,
   void * _Nonnull c_stack,
   size_t c_stack_size,
-  void * _Nullable asyncify_stack,
+  void *asyncify_stack,
   size_t asyncify_stack_size
 );
 
 /**
  * Partially initializes a fiber based on the currently active context.
- * Under JSPI (-sJSPI), asyncify_stack may be NULL and asyncify_stack_size 0.
+ * Under JSPI (-sJSPI), asyncify_stack and asyncify_stack_size are ignored.
  */
 void emscripten_fiber_init_from_current_context(
   emscripten_fiber_t * _Nonnull fiber,
-  void * _Nullable asyncify_stack,
+  void *asyncify_stack,
   size_t asyncify_stack_size
 );
 

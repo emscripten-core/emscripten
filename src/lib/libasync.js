@@ -598,9 +598,11 @@ addToLibrary({
           writeStackCookie();
 #endif
 #if ASYNCIFY_DEBUG
-          dbg('ASYNCIFY/FIBER: entering fiber', newFiber, 'for the first time');
+          dbg(`ASYNCIFY/FIBER: entering fiber ${newFiber} for the first time`);
 #endif
           var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, '*') }}};
+          // makeDynCall with promising=true wraps entryPoint in WebAssembly.promising,
+          // guaranteeing that start() returns a Promise.
           var start = {{{ makeDynCall('vp', 'entryPoint', true) }}};
           start(userData).catch((e) => {
             abort(String(e));
@@ -611,7 +613,7 @@ addToLibrary({
           assert(resume, `fiber ${newFiber} is not suspended`);
 #endif
 #if ASYNCIFY_DEBUG
-          dbg('ASYNCIFY/FIBER: resume fiber', newFiber);
+          dbg(`ASYNCIFY/FIBER: resume fiber ${newFiber}`);
 #endif
           Fibers.fiberResolvers.delete(newFiber);
           resume();
@@ -675,7 +677,7 @@ addToLibrary({
     assert(newFiber, 'emscripten_fiber_swap: newFiber must not be null');
 #endif
 #if ASYNCIFY_DEBUG
-    dbg('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber);
+    dbg(`ASYNCIFY/FIBER: swap ${oldFiber} -> ${newFiber}`);
 #endif
     if (oldFiber === newFiber) return;
 
