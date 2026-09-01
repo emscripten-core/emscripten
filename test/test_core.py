@@ -6119,6 +6119,11 @@ Module.onRuntimeInitialized = () => {
   def test_fs_stat_unnamed_file_descriptor(self):
     self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'done\n')
 
+  @crossplatform
+  @with_all_fs
+  def test_fs_fstat_stdio(self):
+    self.do_runf('fs/test_fstat_stdio.c', 'done\n')
+
   @requires_node
   @crossplatform
   @with_all_fs
