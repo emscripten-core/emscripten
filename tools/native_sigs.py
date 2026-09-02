@@ -303,7 +303,6 @@ native_sigs = {
   '__map_file': 'ppp',
   '__math_invalidl': '_p__',
   '__memrchr': 'pp_p',
-  '__memset': 'pp_p',
   '__mkostemps': '_p__',
   '__mmap': 'ppp____',
   '__mo_lookup': 'pppp',
