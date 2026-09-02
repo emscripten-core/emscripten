@@ -17,8 +17,9 @@ from enum import IntEnum, auto
 from glob import iglob
 from time import time
 
-from . import building, cache, diagnostics, settings, shared, utils
+from . import building, cache, diagnostics, shared, utils
 from .cmdline import options
+from .settings import settings
 from .toolchain_profiler import ToolchainProfiler
 from .utils import get_env_bool, read_file
 
@@ -63,7 +64,7 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   flags = ['-g', '-sSTRICT', '-Werror']
   if options.lto and not force_object_files:
     flags += ['-flto=' + options.lto]
-  if settings.settings.MAIN_MODULE or settings.settings.SIDE_MODULE:
+  if settings.MAIN_MODULE or settings.SIDE_MODULE:
     # Explicitly include `-sMAIN_MODULE` when building system libraries.
     # `-fPIC` alone is not enough to configure trigger the building and
     # caching of `pic` libraries (see `get_lib_dir` in `cache.py`)
@@ -71,7 +72,7 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
     flags += ['-fPIC', '-sMAIN_MODULE']
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
-  if settings.settings.MEMORY64:
+  if settings.MEMORY64:
     flags += ['-m64']
 
   source_dir = utils.path_from_root()
@@ -411,7 +412,7 @@ class Library:
     if not self.name:
       raise NotImplementedError('Cannot instantiate an abstract library')
 
-  def can_use(self, settings):
+  def can_use(self):
     """Whether this library can be used in the current environment.
 
     For example, libmalloc would override this and return False
@@ -419,7 +420,7 @@ class Library:
     """
     return True
 
-  def can_build(self, settings=None):
+  def can_build(self):
     """Whether this library can be built in the current environment.
 
     Override this if, for example, the library can only be built on WASM backend.
@@ -648,7 +649,7 @@ class Library:
             itertools.product([False, True], repeat=len(vary_on))]
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
+  def get_default_variation(cls, **kwargs):
     """Construct the variation suitable for the current invocation of emscripten.
 
     Subclasses should pass the keyword arguments they introduce to the
@@ -681,18 +682,19 @@ class Library:
     return result
 
   @classmethod
-  def get_usable_variations(cls, settings=settings.settings):
+  def get_usable_variations(cls):
     """Get all libraries suitable for the current invocation of emscripten.
 
     This returns a dictionary of simple names to Library objects.
     """
-    usable_variations = {}
-    for subclass in cls.get_inheritance_tree():
-      if subclass.name:
-        library = subclass.get_default_variation(settings)
-        if library.can_build(settings) and library.can_use(settings):
-          usable_variations[subclass.name] = library
-    return usable_variations
+    if not hasattr(cls, 'usable_variations'):
+      cls.usable_variations = {}
+      for subclass in cls.get_inheritance_tree():
+        if subclass.name:
+          library = subclass.get_default_variation()
+          if library.can_build() and library.can_use():
+            cls.usable_variations[subclass.name] = library
+    return cls.usable_variations
 
 
 class MTLibrary(Library):
@@ -722,13 +724,10 @@ class MTLibrary(Library):
     return super().vary_on() + ['is_mt', 'is_ww']
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
-    is_mt = kwargs.pop('is_mt', settings.PTHREADS)
-    is_ww = kwargs.pop('is_ww', settings.SHARED_MEMORY and not settings.PTHREADS)
+  def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
-      settings,
-      is_mt=is_mt,
-      is_ww=is_ww,
+      is_mt=settings.PTHREADS,
+      is_ww=settings.SHARED_MEMORY and not settings.PTHREADS,
       **kwargs,
     )
 
@@ -739,11 +738,9 @@ class MTLibrary(Library):
     # These are mutually exclusive, only one flag will be set at any give time.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
 
-  def can_build(self, settings=None):
+  def can_build(self):
     # Wasm workers do not support dynamic linking.
-    if settings is not None and settings.MAIN_MODULE and self.is_ww:
-      return False
-    return super().can_build(settings)
+    return super().can_build() and not (settings.MAIN_MODULE and self.is_ww)
 
 
 class DebugLibrary(Library):
@@ -768,9 +765,8 @@ class DebugLibrary(Library):
     return super().vary_on() + ['is_debug']
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
-    is_debug = kwargs.pop('is_debug', settings.ASSERTIONS)
-    return super().get_default_variation(settings, is_debug=is_debug, **kwargs)
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(is_debug=settings.ASSERTIONS, **kwargs)
 
 
 class Exceptions(IntEnum):
@@ -833,10 +829,8 @@ class ExceptionLibrary(Library):
             [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos])
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
-    if 'eh_mode' in kwargs:
-      eh_mode = kwargs.pop('eh_mode')
-    elif settings.WASM_EXCEPTIONS:
+  def get_default_variation(cls, **kwargs):
+    if settings.WASM_EXCEPTIONS:
       if settings.WASM_LEGACY_EXCEPTIONS:
         eh_mode = Exceptions.WASM_LEGACY
       else:
@@ -845,7 +839,7 @@ class ExceptionLibrary(Library):
       eh_mode = Exceptions.NONE
     else:
       eh_mode = Exceptions.EMSCRIPTEN
-    return super().get_default_variation(settings, eh_mode=eh_mode, **kwargs)
+    return super().get_default_variation(eh_mode=eh_mode, **kwargs)
 
 
 class SjLjLibrary(Library):
@@ -891,17 +885,15 @@ class SjLjLibrary(Library):
             [dict(eh_mode=Exceptions.WASM, **combo) for combo in combos])
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
-    if 'eh_mode' in kwargs:
-      eh_mode = kwargs.pop('eh_mode')
-    elif settings.SUPPORT_LONGJMP == 'wasm':
+  def get_default_variation(cls, **kwargs):
+    if settings.SUPPORT_LONGJMP == 'wasm':
       if settings.WASM_LEGACY_EXCEPTIONS:
         eh_mode = Exceptions.WASM_LEGACY
       else:
         eh_mode = Exceptions.WASM
     else:
       eh_mode = Exceptions.EMSCRIPTEN
-    return super().get_default_variation(settings, eh_mode=eh_mode, **kwargs)
+    return super().get_default_variation(eh_mode=eh_mode, **kwargs)
 
 
 class MuslInternalLibrary(Library):
@@ -947,9 +939,8 @@ class AsanInstrumentedLibrary(Library):
     return super().vary_on() + ['is_asan']
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
-    is_asan = kwargs.pop('is_asan', settings.USE_ASAN)
-    return super().get_default_variation(settings, is_asan=is_asan, **kwargs)
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(is_asan=settings.USE_ASAN, **kwargs)
 
 
 # Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
@@ -1413,7 +1404,7 @@ class libc(MuslInternalLibrary,
           'system.c',
         ])
 
-    if settings.settings.MAIN_MODULE:
+    if settings.MAIN_MODULE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
@@ -1486,13 +1477,13 @@ class libc_optz(libc):
       cmd += ['-O2']
     return cmd
 
-  def can_use(self, settings):
+  def can_use(self):
     # Because libc_optz overrides parts of libc, it is not compatible with
     # dynamic linking which uses --whole-archive. In addition,
     # EMCC_FORCE_STDLIBS can have a similar effect of forcing all libraries.
     # In both cases, the build is not one that is hyper-focused on code size,
     # and so optz is not that important.
-    return super().can_use(settings) and settings.SHRINK_LEVEL >= 2 and \
+    return super().can_use() and settings.SHRINK_LEVEL >= 2 and \
         not settings.LINKABLE and 'EMCC_FORCE_STDLIBS' not in os.environ
 
 
@@ -1507,8 +1498,8 @@ class libprintf_long_double(libc):
         path='system/lib/libc/musl/src/stdio',
         filenames=['vfprintf.c'])
 
-  def can_use(self, settings):
-    return super().can_use(settings) and settings.PRINTF_LONG_DOUBLE
+  def can_use(self):
+    return super().can_use() and settings.PRINTF_LONG_DOUBLE
 
 
 class libwasm_workers(MuslInternalLibrary, DebugLibrary):
@@ -1548,16 +1539,15 @@ class libwasm_workers(MuslInternalLibrary, DebugLibrary):
     return super().vary_on() + ['is_mt']
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
+  def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
-      settings,
       is_mt=settings.PTHREADS,
       **kwargs,
     )
 
-  def can_use(self, settings):
+  def can_use(self):
     # see src/library_wasm_worker.js
-    return super().can_use(settings) and not settings.SINGLE_FILE and not settings.MAIN_MODULE and settings.WASM_WORKERS
+    return super().can_use() and not settings.SINGLE_FILE and not settings.MAIN_MODULE and settings.WASM_WORKERS
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
@@ -1566,8 +1556,8 @@ class libsockets(MuslInternalLibrary, MTLibrary):
   src_files = LIBC_SOCKETS
   cflags = ['-Os', '-fno-builtin', '-Wno-shift-op-parentheses']
 
-  def can_use(self, settings):
-    return super().can_use(settings) and not settings.PROXY_POSIX_SOCKETS
+  def can_use(self):
+    return super().can_use() and not settings.PROXY_POSIX_SOCKETS
 
 
 class libsockets_proxy(MTLibrary):
@@ -1576,8 +1566,8 @@ class libsockets_proxy(MTLibrary):
   src_files = ['websocket_to_posix_socket.c']
   cflags = ['-Os']
 
-  def can_use(self, settings):
-    return super().can_use(settings) and settings.PROXY_POSIX_SOCKETS
+  def can_use(self):
+    return super().can_use() and settings.PROXY_POSIX_SOCKETS
 
 
 class crt1(MuslInternalLibrary):
@@ -1590,8 +1580,8 @@ class crt1(MuslInternalLibrary):
   def get_ext(self):
     return '.o'
 
-  def can_use(self, settings):
-    return super().can_use(settings) and settings.STANDALONE_WASM
+  def can_use(self):
+    return super().can_use() and settings.STANDALONE_WASM
 
 
 class crt1_reactor(MuslInternalLibrary):
@@ -1604,8 +1594,8 @@ class crt1_reactor(MuslInternalLibrary):
   def get_ext(self):
     return '.o'
 
-  def can_use(self, settings):
-    return super().can_use(settings) and settings.STANDALONE_WASM
+  def can_use(self):
+    return super().can_use() and settings.STANDALONE_WASM
 
 
 class crt1_proxy_main(MuslInternalLibrary):
@@ -1618,8 +1608,8 @@ class crt1_proxy_main(MuslInternalLibrary):
   def get_ext(self):
     return '.o'
 
-  def can_use(self, settings):
-    return super().can_use(settings) and settings.PROXY_TO_PTHREAD
+  def can_use(self):
+    return super().can_use() and settings.PROXY_TO_PTHREAD
 
 
 class crtbegin_mt(MuslInternalLibrary):
@@ -1635,8 +1625,8 @@ class crtbegin_mt(MuslInternalLibrary):
   def get_ext(self):
     return '.o'
 
-  def can_use(self, settings):
-    return super().can_use(settings) and settings.PTHREADS
+  def can_use(self):
+    return super().can_use() and settings.PTHREADS
 
 
 class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
@@ -1652,18 +1642,14 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
     ]
   includes = ['system/lib/libcxx/src', 'system/lib/libunwind/include']
 
-  @classmethod
-  def get_default_variation(cls, settings, **kwargs):
+  def __init__(self, **kwargs):
+    super().__init__(**kwargs)
     # TODO EXCEPTION_STACK_TRACES currently requires the debug version of
     # libc++abi, causing the debug version of libc++abi to be linked, which
     # increases code size. libc++abi is not a big library to begin with, but if
     # this becomes a problem, consider making EXCEPTION_STACK_TRACES work with
     # the non-debug version of libc++abi.
-    return super().get_default_variation(
-      settings,
-      is_debug=settings.ASSERTIONS or settings.EXCEPTION_STACK_TRACES,
-      **kwargs,
-    )
+    self.is_debug |= settings.EXCEPTION_STACK_TRACES
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1775,8 +1761,8 @@ class libunwind(ExceptionLibrary, MTLibrary):
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
 
-  def can_use(self, settings):
-    return super().can_use(settings) and self.eh_mode in {Exceptions.WASM_LEGACY, Exceptions.WASM}
+  def can_use(self):
+    return super().can_use() and self.eh_mode in {Exceptions.WASM_LEGACY, Exceptions.WASM}
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1845,17 +1831,16 @@ class libmalloc(MTLibrary):
       name += '-tracing'
     return name
 
-  def can_use(self, settings):
-    return super().can_use(settings) and settings.MALLOC not in {'none', 'mimalloc'}
+  def can_use(self):
+    return super().can_use() and settings.MALLOC not in {'none', 'mimalloc'}
 
   @classmethod
   def vary_on(cls):
     return super().vary_on() + ['is_debug', 'is_tracing', 'memvalidate', 'verbose']
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
+  def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
-      settings,
       malloc=settings.MALLOC,
       is_debug=settings.ASSERTIONS,
       is_tracing=settings.EMSCRIPTEN_TRACING,
@@ -1930,8 +1915,8 @@ class libmimalloc(MTLibrary):
   # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
   src_files += [utils.path_from_root('system/lib/libc/sbrk.c')]
 
-  def can_use(self, settings):
-    return super().can_use(settings) and settings.MALLOC == 'mimalloc'
+  def can_use(self):
+    return super().can_use() and settings.MALLOC == 'mimalloc'
 
 
 class libal(Library):
@@ -1990,9 +1975,8 @@ class libGL(MTLibrary):
     return super().vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3', 'is_enable_get_proc_address']
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
+  def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
-      settings,
       is_legacy=settings.LEGACY_GL_EMULATION,
       is_webgl2=settings.MAX_WEBGL_VERSION >= 2,
       is_ofb=settings.OFFSCREEN_FRAMEBUFFER,
@@ -2031,8 +2015,8 @@ class libembind(MTLibrary):
     return [utils.path_from_root('system/lib/embind/bind.cpp')]
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
-    return super().get_default_variation(settings, with_rtti=settings.USE_RTTI, **kwargs)
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(with_rtti=settings.USE_RTTI, **kwargs)
 
 
 class libfetch(MTLibrary):
@@ -2081,8 +2065,8 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     return super().vary_on() + ['ignore_case']
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
-    return super().get_default_variation(settings, ignore_case=settings.CASE_INSENSITIVE_FS, **kwargs)
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(ignore_case=settings.CASE_INSENSITIVE_FS, **kwargs)
 
   def get_files(self):
     backends = files_in_path(
@@ -2105,7 +2089,7 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
                    'syscalls.cpp',
                    'wasmfs.cpp'])
 
-  def can_use(self, settings):
+  def can_use(self):
     return settings.WASMFS
 
 
@@ -2118,7 +2102,7 @@ class libwasmfs_no_fs(Library):
   src_dir = 'system/lib/wasmfs'
   src_files = ['no_fs.c']
 
-  def can_use(self, settings):
+  def can_use(self):
     # If the filesystem is forced then we definitely do not need this library.
     return settings.WASMFS and not settings.FORCE_FILESYSTEM
 
@@ -2135,7 +2119,7 @@ class libwasmfs_noderawfs(Library):
         path='system/lib/wasmfs/backends',
         filenames=['noderawfs_root.cpp'])
 
-  def can_use(self, settings):
+  def can_use(self):
     return settings.WASMFS and settings.NODERAWFS
 
 
@@ -2267,9 +2251,8 @@ class libstandalonewasm(MuslInternalLibrary, MTLibrary):
     return super().vary_on() + ['is_mem_grow', 'is_pure', 'nocatch']
 
   @classmethod
-  def get_default_variation(cls, settings, **kwargs):
+  def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
-      settings,
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
       is_pure=settings.PURE_WASI or settings.GROWABLE_ARRAYBUFFERS == 2,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
@@ -2302,8 +2285,8 @@ class libstandalonewasm(MuslInternalLibrary, MTLibrary):
         filenames=['assert.c', 'exit.c'])
     return files
 
-  def can_use(self, settings):
-    return super().can_use(settings) and settings.STANDALONE_WASM
+  def can_use(self):
+    return super().can_use() and settings.STANDALONE_WASM
 
 
 class libjsmath(Library):
@@ -2312,8 +2295,8 @@ class libjsmath(Library):
   src_dir = 'system/lib'
   src_files = ['jsmath.c']
 
-  def can_use(self, settings):
-    return super().can_use(settings) and settings.JS_MATH
+  def can_use(self):
+    return super().can_use() and settings.JS_MATH
 
 
 class libstubs(DebugLibrary):
@@ -2358,14 +2341,14 @@ class libopenmp(Library):
   ]
 
 
-def get_libs_to_link(settings=settings.settings, options=options):
+def get_libs_to_link():
   libs_to_link = []
 
   if options.nostdlib:
     return libs_to_link
 
   already_included = set()
-  system_libs_map = Library.get_usable_variations(settings=settings)
+  system_libs_map = Library.get_usable_variations()
 
   # Setting this in the environment will avoid checking dependencies and make
   # building big projects a little faster 1 means include everything; otherwise
@@ -2533,8 +2516,8 @@ def ensure_libraries(libs):
     lib.build()
 
 
-def calculate(settings=settings.settings, options=options):
-  libs_to_link = get_libs_to_link(settings=settings, options=options)
+def calculate():
+  libs_to_link = get_libs_to_link()
   ensure_libraries([lib for lib, _ in libs_to_link])
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
