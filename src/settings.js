@@ -1406,12 +1406,12 @@ var EMSCRIPTEN_TRACING = false;
 var USE_GLFW = 0;
 
 // Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
-// instead of wasm.
+// instead of wasm (deprecated).
 //
-// Specify -sWASM=2 to target both WebAssembly and JavaScript at the same time.
-// In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
-// the WebAssembly file is loaded if browser/shell supports it. Otherwise the
-// .wasm.js fallback will be used.
+// Specify -sWASM=2 to target both WebAssembly and JavaScript at the same time
+// (deprecated). In that build mode, two files a.wasm and a.wasm.js are produced,
+// and at runtime the WebAssembly file is loaded if browser/shell supports it.
+// Otherwise the .wasm.js fallback will be used.
 //
 // If WASM=2 is enabled and the browser fails to compile the WebAssembly module,
 // the page will be reloaded in Wasm2JS mode.

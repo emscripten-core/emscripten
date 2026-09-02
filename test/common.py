@@ -672,6 +672,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.skipTest('wasm2js does not support over 2gb of memory')
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('wasm2js is not compatible with WASM_ESM_INTEGRATION')
+    if '-Wno-deprecated' not in self.cflags:
+      self.cflags.append('-Wno-deprecated')
 
   def setup_nodefs_test(self):
     self.require_node()

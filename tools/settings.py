@@ -117,6 +117,8 @@ DEPRECATED_SETTINGS = {
     'USE_PTHREADS': 'prefer the standard -pthread flag',
     'MEMORY64': 'prefer the standard -m64 or --target=wasm64 flags',
     'SOCKET_WEBRTC': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27366)',
+    'WASM=0': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27608)',
+    'WASM=2': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27608)',
 }
 
 # Settings that don't need to be externalized when serializing to json because they

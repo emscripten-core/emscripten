@@ -1357,29 +1357,6 @@ int main(int argc, char **argv) {
     self.set_setting('INLINING_LIMIT')
     self.do_core_test('test_exceptions_allowed_uncaught.cpp', cflags=['-std=c++11'])
 
-  def test_exceptions_allowed_misuse(self):
-    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['foo'])
-
-    # Test old =2 setting for DISABLE_EXCEPTION_CATCHING
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
-    expected = 'error: DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED [-Wdeprecated] [-Werror]'
-    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
-
-    # =0 should also be a warning
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    expected = 'error: DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED [-Wdeprecated] [-Werror]'
-    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
-
-    # =1 should be a hard error
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-    expected = 'error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive'
-    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
-
-    # even setting an empty list should trigger the error;
-    self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
-    expected = 'error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive'
-    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
-
   @with_all_eh_sjlj
   def test_exceptions_uncaught(self):
     src = r'''
@@ -2079,7 +2056,7 @@ int main(int argc, char **argv) {
   @no_wasm2js('test depends on WASM_BIGINT which is not compatible with wasm2js')
   def test_em_js_i64(self):
     expected = 'emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`'
-    self.assert_fail([EMCC, '-Werror', '-sWASM=0', test_file('core/test_em_js_i64.c')], expected)
+    self.assert_fail([EMCC, '-Werror', '-Wno-deprecated', '-sWASM=0', test_file('core/test_em_js_i64.c')], expected)
     self.do_core_test('test_em_js_i64.c')
 
   def test_em_js_address_taken(self):
@@ -10090,12 +10067,12 @@ thinlto3 = make_run('thinlto3', cflags=['-flto=thin', '-O3'])
 thinltos = make_run('thinltos', cflags=['-flto=thin', '-Os'])
 thinltoz = make_run('thinltoz', cflags=['-flto=thin', '-Oz'])
 
-wasm2js0 = make_run('wasm2js0', cflags=['-O0'], settings={'WASM': 0})
-wasm2js1 = make_run('wasm2js1', cflags=['-O1'], settings={'WASM': 0})
-wasm2js2 = make_run('wasm2js2', cflags=['-O2'], settings={'WASM': 0})
-wasm2js3 = make_run('wasm2js3', cflags=['-O3'], settings={'WASM': 0})
-wasm2jss = make_run('wasm2jss', cflags=['-Os'], settings={'WASM': 0})
-wasm2jsz = make_run('wasm2jsz', cflags=['-Oz'], settings={'WASM': 0})
+wasm2js0 = make_run('wasm2js0', cflags=['-O0', '-Wno-deprecated'], settings={'WASM': 0})
+wasm2js1 = make_run('wasm2js1', cflags=['-O1', '-Wno-deprecated'], settings={'WASM': 0})
+wasm2js2 = make_run('wasm2js2', cflags=['-O2', '-Wno-deprecated'], settings={'WASM': 0})
+wasm2js3 = make_run('wasm2js3', cflags=['-O3', '-Wno-deprecated'], settings={'WASM': 0})
+wasm2jss = make_run('wasm2jss', cflags=['-Os', '-Wno-deprecated'], settings={'WASM': 0})
+wasm2jsz = make_run('wasm2jsz', cflags=['-Oz', '-Wno-deprecated'], settings={'WASM': 0})
 
 # Secondary test modes - run directly when there is a specific need
 

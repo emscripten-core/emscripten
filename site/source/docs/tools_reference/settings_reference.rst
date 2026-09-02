@@ -2025,12 +2025,12 @@ WASM
 ====
 
 Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
-instead of wasm.
+instead of wasm (deprecated).
 
-Specify -sWASM=2 to target both WebAssembly and JavaScript at the same time.
-In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
-the WebAssembly file is loaded if browser/shell supports it. Otherwise the
-.wasm.js fallback will be used.
+Specify -sWASM=2 to target both WebAssembly and JavaScript at the same time
+(deprecated). In that build mode, two files a.wasm and a.wasm.js are produced,
+and at runtime the WebAssembly file is loaded if browser/shell supports it.
+Otherwise the .wasm.js fallback will be used.
 
 If WASM=2 is enabled and the browser fails to compile the WebAssembly module,
 the page will be reloaded in Wasm2JS mode.
@@ -3514,6 +3514,8 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``USE_PTHREADS``: prefer the standard -pthread flag
  - ``MEMORY64``: prefer the standard -m64 or --target=wasm64 flags
  - ``SOCKET_WEBRTC``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27366)
+ - ``WASM=0``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27608)
+ - ``WASM=2``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27608)
 
 .. _legacy-settings:
 
