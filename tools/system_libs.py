@@ -444,16 +444,12 @@ class Library:
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def get_link_flag(self):
-    """Get the link flags needed to use the library.
-
-    This will trigger a build if this library is not in the cache.
-    """
-    fullpath = self.build()
+    """Get the link flags needed to use the library."""
     # For non-libraries (e.g. crt1.o) we pass the entire path to the linker
     if self.get_ext() != '.a':
-      return fullpath
+      return self.get_path(absolute=True)
     # For libraries (.a) files, we pass the abbreviated `-l` form.
-    base = utils.unsuffixed_basename(fullpath)
+    base = utils.unsuffixed_basename(self.get_filename())
     return '-l' + base.removeprefix('lib')
 
   def get_files(self):
@@ -2383,7 +2379,7 @@ def get_libs_to_link():
     logger.debug('including %s (%s)' % (lib.name, lib.get_filename()))
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
-    libs_to_link.append((lib.get_link_flag(), whole_archive or need_whole_archive))
+    libs_to_link.append((lib, whole_archive or need_whole_archive))
 
   if not options.nostartfiles:
     if settings.PTHREADS:
@@ -2511,27 +2507,34 @@ def get_libs_to_link():
   return libs_to_link
 
 
+def ensure_libraries(libs):
+  """Ensure all required system libraries in `libs` exist in the cache."""
+  for lib in libs:
+    lib.build()
+
+
 def calculate():
   libs_to_link = get_libs_to_link()
+  ensure_libraries([lib for lib, _ in libs_to_link])
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
   # shouldn't add any extra `--no-whole-archive` or we will undo the intent of building.link_ldd.
   if settings.LINKABLE or settings.SIDE_MODULE:
-    return [l[0] for l in libs_to_link]
+    return [lib.get_link_flag() for lib, _ in libs_to_link]
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
   ret = []
   in_group = False
-  for name, need_whole_archive in libs_to_link:
+  for lib, need_whole_archive in libs_to_link:
     if need_whole_archive and not in_group:
       ret.append('--whole-archive')
       in_group = True
     if in_group and not need_whole_archive:
       ret.append('--no-whole-archive')
       in_group = False
-    ret.append(name)
+    ret.append(lib.get_link_flag())
   if in_group:
     ret.append('--no-whole-archive')
 

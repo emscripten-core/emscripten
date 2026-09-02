@@ -2741,8 +2741,9 @@ def process_libraries(flags):
     # let wasm-ld handle that.  However, we do want to map to the correct variant.
     # For example we map `-lc` to `-lc-mt` if we are building with threading support.
     if 'lib' + lib in system_libs_map:
-      lib = system_libs_map['lib' + lib].get_link_flag()
-      new_flags.append(lib)
+      lib_obj = system_libs_map['lib' + lib]
+      lib_obj.build()
+      new_flags.append(lib_obj.get_link_flag())
       continue
 
     if js_libs is not None:
