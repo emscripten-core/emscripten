@@ -5,6 +5,9 @@
  */
 
 {{{
+  // Under PTHREADS the wasmfs_opfs_* functions never suspend since they are
+  // proxied to a dedicated worker, with completion signalled via
+  // emscripten_proxy_finish rather than by awaiting the returned promise.
   globalThis.ASYNCIFY_NEEDED = PTHREADS ? 'false' : "'auto'";
   null;
 }}}
