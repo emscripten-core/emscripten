@@ -21,8 +21,11 @@ static void *__memcpy(void *dest, const void *src, size_t n) {
 #elif defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ)
 
 static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
-  // TODO: Ensure this is inlined with Binaryen or inline asm
-  return _emscripten_memcpy_bulkmem(dest, src, n);
+  // memory.copy traps on OOB zero-length copies, but memcpy must not.
+  if (n) {
+    __builtin_wasm_memory_copy(0, 0, dest, src, n);
+  }
+  return dest;
 }
 
 #else
@@ -37,7 +40,8 @@ static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
 
   if (n >= 512) {
     // TODO: Re-investigate the size threshold to enable this
-    return _emscripten_memcpy_bulkmem(dest, src, n);
+    __builtin_wasm_memory_copy(0, 0, dest, src, n);
+    return dest;
   }
 
   d_end = d + n;

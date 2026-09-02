@@ -1,7 +1,7 @@
 {
   "a.out.js": 270584,
-  "a.out.nodebug.wasm": 588753,
-  "total": 859337,
+  "a.out.nodebug.wasm": 588647,
+  "total": 859231,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -2307,8 +2307,6 @@
     "__year_to_secs",
     "_emscripten_check_timers",
     "_emscripten_find_dylib",
-    "_emscripten_memcpy_bulkmem",
-    "_emscripten_memset_bulkmem",
     "_emscripten_next_timer",
     "_emscripten_run_callback_on_thread",
     "_emscripten_set_offscreencanvas_size_on_thread",
@@ -4179,8 +4177,6 @@
     "$_crypt_extended_r_uut",
     "$_emscripten_check_timers",
     "$_emscripten_find_dylib",
-    "$_emscripten_memcpy_bulkmem",
-    "$_emscripten_memset_bulkmem",
     "$_emscripten_next_timer",
     "$_emscripten_run_callback_on_thread",
     "$_emscripten_set_offscreencanvas_size_on_thread",

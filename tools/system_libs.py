@@ -1143,7 +1143,6 @@ class libc(MuslInternalLibrary,
     other_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-                 'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S',
                  'emscripten_scan_stack.c',
                  'emscripten_get_heap_size.c',  # needed by malloc
                  'emscripten_memmove.c'])
@@ -1392,8 +1391,6 @@ class libc(MuslInternalLibrary,
           'emscripten_memcpy.c',
           'emscripten_memmove.c',
           'emscripten_memset.c',
-          'emscripten_memcpy_bulkmem.S',
-          'emscripten_memset_bulkmem.S',
           'emscripten_mmap.c',
           'emscripten_scan_stack.c',
           'emscripten_time.c',

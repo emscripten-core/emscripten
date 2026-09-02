@@ -531,8 +531,6 @@ native_sigs = {
   '_embind_register_bindings': '_p',
   '_emscripten_dlsync_self_async': '_p',
   '_emscripten_find_dylib': 'ppppp',
-  '_emscripten_memcpy_bulkmem': 'pppp',
-  '_emscripten_memset_bulkmem': 'pp_p',
   '_emscripten_proxy_dlsync': '_p',
   '_emscripten_proxy_dlsync_async': '_pp',
   '_emscripten_run_callback_on_thread': '_pp_ppp',

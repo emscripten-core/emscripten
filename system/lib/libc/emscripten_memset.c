@@ -12,7 +12,11 @@ __attribute__((__weak__)) void *__memset(void *str, int c, size_t n);
 #if defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ)
 
 void *__memset(void *str, int c, size_t n) {
-  return _emscripten_memset_bulkmem(str, c, n);
+  // memory.fill traps on OOB zero-length sets, but memset must not.
+  if (n) {
+    __builtin_wasm_memory_fill(0, str, c, n);
+  }
+  return str;
 }
 
 #else
