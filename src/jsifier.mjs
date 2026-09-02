@@ -406,17 +406,6 @@ function(${args}) {
   });
 }
 
-// Returns the effective `__async` mode for a symbol.  The 'nonthreaded' mode
-// means 'auto', but only in non-threaded builds; under PTHREADS such functions
-// are proxied to a dedicated worker and never suspend, so it maps to false.
-function getAsyncMode(symbol) {
-  const mode = LibraryManager.library[symbol + '__async'];
-  if (mode === 'nonthreaded') {
-    return PTHREADS ? false : 'auto';
-  }
-  return mode;
-}
-
 // The three different inter-thread proxying methods.
 // See system/lib/pthread/proxying.c
 const PROXY_ASYNC = 0;
@@ -508,7 +497,7 @@ function(${args}) {
     }
 
     const sig = LibraryManager.library[symbol + '__sig'];
-    const isAsyncFunction = ASYNCIFY && getAsyncMode(symbol);
+    const isAsyncFunction = ASYNCIFY && LibraryManager.library[symbol + '__async'];
 
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
     if (i53abi) {
@@ -545,7 +534,7 @@ function(${args}) {
             }
             let proxyMode = PROXY_ASYNC;
             if (proxyingMode === 'sync') {
-              const isAsyncFunction = getAsyncMode(symbol);
+              const isAsyncFunction = LibraryManager.library[symbol + '__async'];
               if (isAsyncFunction) {
                 proxyMode = PROXY_SYNC_ASYNC;
               } else {
@@ -629,7 +618,7 @@ function(${args}) {
         deps.push('setTempRet0');
       }
 
-      const isAsyncFunction = getAsyncMode(symbol);
+      const isAsyncFunction = LibraryManager.library[symbol + '__async'];
       if (ASYNCIFY && isAsyncFunction) {
         asyncFuncs.push(symbol);
       }

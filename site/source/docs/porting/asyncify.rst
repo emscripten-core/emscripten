@@ -200,10 +200,6 @@ You can use ``__async: 1`` if you just want to include the function in
 :ref:`ASYNCIFY_IMPORTS` or ``__async: 'auto'`` if you also want the function to
 wrapper in ``Asyncify.handleAsync``.
 
-``__async: 'nonthreaded'`` behaves like ``'auto'`` in non-threaded builds but
-is ignored under ``-pthread``.  This is useful for functions that are proxied
-to a dedicated worker in threaded builds and therefore never suspend.
-
 
 Ways to use Asyncify APIs in older engines
 ##########################################
