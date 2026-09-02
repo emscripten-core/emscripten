@@ -7,8 +7,6 @@ import glob
 import os
 import shutil
 
-from tools import diagnostics
-
 VERSION = '3.4.2'
 TAG = f'release-{VERSION}'
 HASH = 'a17fe538993a3956e0b85fda21e7b431244e803a5facb35bb7a2bfd9ee23f1aac65838ed3225f526b81410cae7c23da7c40693c2e791385281f0764239116bce'
@@ -26,8 +24,6 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  diagnostics.warning('experimental', 'sdl3 port is still experimental')
-
   # get the port
   ports.fetch_project('sdl3', f'https://github.com/libsdl-org/SDL/archive/{TAG}.zip', sha512hash=HASH)
 
