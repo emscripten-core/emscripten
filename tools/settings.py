@@ -155,7 +155,6 @@ INCOMPATIBLE_SETTINGS = [
     ('CROSS_ORIGIN_STORAGE', 'SIDE_MODULE', 'no JS glue is emitted to carry the hash or perform the COS lookup'),
     ('NODERAWSOCKETS', 'WASMFS', 'the node:net backend is not wired into WASMFS sockets'),
     ('NODERAWSOCKETS', 'PROXY_POSIX_SOCKETS', 'they are alternative socket backends'),
-    ('SHARED_WASMGC', 'NO_PTHREADS', 'SHARED_WASMGC requires threads to be enabled'),
 ]
 
 EXPERIMENTAL_SETTINGS = {
@@ -165,7 +164,6 @@ EXPERIMENTAL_SETTINGS = {
     'CROSS_ORIGIN_STORAGE': '-sCROSS_ORIGIN_STORAGE is experimental; the underlying browser API is not yet shipped in any browser',
     'SUPPORT_BIG_ENDIAN': '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.',
     'WASM_ESM_INTEGRATION': '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers',
-    'SHARED_WASMGC': '-sSHARED_WASMGC is experimental and subject to change',
     'WASM_BINDGEN': '-sWASM_BINDGEN is experimental and subject to change',
 }
 
