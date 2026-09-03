@@ -27,7 +27,7 @@ from . import (
   utils,
   webassembly,
 )
-from .settings import settings, user_settings
+from .settings import settings
 from .shared import (
   CLANG_CC,
   CLANG_CXX,
@@ -311,20 +311,11 @@ def get_wasm_bindgen_exported_symbols(input_files):
   return symbols
 
 
-def lld_flags(args, linker_inputs=None):
+def lld_flags(args):
   # lld doesn't currently support --start-group/--end-group since the
   # semantics are more like the windows linker where there is no need for
   # grouping.
   args = [a for a in args if a not in {'--start-group', '--end-group'}]
-
-  # Retain the wasm exports wasm-bindgen's glue reaches by name. This is the
-  # emcc-driven staticlib flow (explicit -sWASM_BINDGEN), where nobody else
-  # computed the export set, so we discover it here. The cargo/rustc-driven flow
-  # (-sWASM_BINDGEN=auto, still unresolved at link time) supplies EXPORTED_FUNCTIONS
-  # itself and never needs this.
-  if settings.WASM_BINDGEN == 1 and 'EXPORTED_FUNCTIONS' not in user_settings:
-    exported_symbols = get_wasm_bindgen_exported_symbols(linker_inputs)
-    args.extend(f'--export={e}' for e in exported_symbols)
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
@@ -354,7 +345,7 @@ def lld_flags(args, linker_inputs=None):
   return args
 
 
-def link_lld(args, target, external_symbols=None, linker_inputs=None):
+def link_lld(args, target, external_symbols=None):
   # runs lld to link things.
   if not os.path.exists(WASM_LD):
     exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
@@ -363,7 +354,7 @@ def link_lld(args, target, external_symbols=None, linker_inputs=None):
   # normal linker flags that are used when building and executable
   if '--relocatable' not in args and '-r' not in args:
     cmd += lld_flags_for_executable(external_symbols)
-  cmd += lld_flags(args, linker_inputs)
+  cmd += lld_flags(args)
   cmd = get_command_with_possible_response_file(cmd)
   if settings.LINK_AS_CXX:
     check_call(cmd)

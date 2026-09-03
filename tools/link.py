@@ -1890,12 +1890,29 @@ def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
     # TODO(sbc): Remove this double execution of wasm-ld if we ever find a way to
     # distinguish EMSCRIPTEN_KEEPALIVE exports from `--export-dynamic` exports.
     settings.LINKABLE = False
-    building.link_lld(linker_args, wasm_target, external_symbols=js_syms,
-                      linker_inputs=linker_inputs)
+    building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
     settings.LINKABLE = True
     rtn = extract_metadata.extract_metadata(wasm_target)
 
-  building.link_lld(linker_args, wasm_target, external_symbols=js_syms, linker_inputs=linker_inputs)
+  building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
+
+  # -sWASM_BINDGEN=auto runs wasm-bindgen only when the linked wasm carries
+  # wasm-bindgen's marker section (e.g. cargo/rustc linking via emcc);
+  # otherwise it is a no-op. This lets rustc opt in without emcc guessing for
+  # ordinary builds.
+  if settings.WASM_BINDGEN == 'auto':
+    settings.WASM_BINDGEN = 1 if building.is_wasm_bindgen_module(wasm_target) else 0
+
+  # wasm-bindgen reaches its exports by name, so they all have to be retained.
+  # When the link driver supplied EXPORTED_FUNCTIONS (rustc lists them all
+  # when driving the link) that is authoritative. Otherwise (e.g. a C/C++ build
+  # linking a Rust staticlib) discover them from the linker inputs and re-link.
+  # They are passed straight to the linker rather than via EXPORTED_FUNCTIONS
+  # so they are not mistaken for user-requested exports.
+  if settings.WASM_BINDGEN and 'EXPORTED_FUNCTIONS' not in user_settings:
+    exports = building.get_wasm_bindgen_exported_symbols(linker_inputs)
+    building.link_lld(linker_args + [f'--export={e}' for e in exports], wasm_target, external_symbols=js_syms)
+
   return rtn
 
 
@@ -1916,12 +1933,6 @@ def phase_post_link(in_wasm, wasm_target, target, js_syms, base_metadata=None):
     js_target = get_secondary_target(target, '.js')
 
   settings.TARGET_JS_NAME = os.path.basename(js_target)
-
-  # -sWASM_BINDGEN=auto runs wasm-bindgen only when the linked wasm carries
-  # wasm-bindgen's marker section (cargo/rustc linking via emcc); otherwise it is
-  # a no-op. This lets rustc opt in without emcc guessing for ordinary builds.
-  if settings.WASM_BINDGEN == 'auto':
-    settings.WASM_BINDGEN = 1 if building.is_wasm_bindgen_module(in_wasm) else 0
 
   if settings.WASM_BINDGEN:
     bindgen_jslib, removed_exports, added_exports, extern_pre_js, snippets_dir = building.run_wasm_bindgen(in_wasm)
