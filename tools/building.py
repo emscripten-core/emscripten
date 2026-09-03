@@ -62,9 +62,7 @@ _is_ar_cache: dict[str, bool] = {}
 user_requested_exports: set[str] = set()
 # JS library symbols exported via the `__export` decorator.
 extra_js_exports: set[str] = set()
-# The raw wasm exports wasm-bindgen's generated bindings reach by name (the
-# supplied/expansion glue), mangled. These are suppressed from the public
-# surface; EMSCRIPTEN_KEEPALIVE exports are not in this set and remain.
+# Mangled wasm exports wasm-bindgen's glue reaches by name, kept off the public surface.
 wasm_bindgen_internal_exports: set[str] = set()
 # A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
 # etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
@@ -1320,9 +1318,6 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # ruff: ignore[mutab
 
 
 def is_wasm_bindgen_module(wasm_file):
-  # wasm-bindgen marks modules built for the emscripten target with this custom
-  # section so emcc, when used as the linker (e.g. by cargo/rustc), can detect
-  # under `-sWASM_BINDGEN=auto` that wasm-bindgen needs to run as a post-link step.
   with webassembly.Module(wasm_file) as module:
     return module.get_custom_section('__wasm_bindgen_emscripten_marker') is not None
 
@@ -1352,17 +1347,12 @@ def run_wasm_bindgen(infile):
   new_wasm_path = os.path.join(bindgen_out_dir, new_wasm_file)
 
   exports_after = {e.name for e in webassembly.get_exports(new_wasm_path)}
-  # Report which placeholder exports wasm-bindgen consumed so the caller can
-  # drop them from EXPORTED_FUNCTIONS, and which exports its expansion added so
-  # the caller can keep them off the public surface.
   removed_exports = exports_before - exports_after
   added_exports = exports_after - exports_before
 
   shutil.copyfile(new_wasm_path, infile)
 
-  # wasm-bindgen emits imported JS snippets into `snippets/` and the `import`
-  # statements referencing them into `library_bindgen.extern-pre.js`, only when
-  # the crate actually imports JS.
+  # Only emitted when the crate imports JS snippets.
   extern_pre_js = os.path.join(bindgen_out_dir, 'library_bindgen.extern-pre.js')
   if not os.path.exists(extern_pre_js):
     extern_pre_js = None

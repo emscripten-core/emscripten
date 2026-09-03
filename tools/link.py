@@ -1000,6 +1000,9 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.MODULARIZE and settings.MODULARIZE not in {1, 'instance'}:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
+  if settings.WASM_BINDGEN not in {0, 1, 'auto'}:
+    exit_with_error(f'Invalid setting "{settings.WASM_BINDGEN}" for WASM_BINDGEN.')
+
   def limit_incoming_module_api():
     if options.oformat == OFormat.HTML and options.shell_html == DEFAULT_SHELL_HTML:
       # Our default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
@@ -1896,19 +1899,13 @@ def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
 
   building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
 
-  # -sWASM_BINDGEN=auto runs wasm-bindgen only when the linked wasm carries
-  # wasm-bindgen's marker section (e.g. cargo/rustc linking via emcc);
-  # otherwise it is a no-op. This lets rustc opt in without emcc guessing for
-  # ordinary builds.
   if settings.WASM_BINDGEN == 'auto':
     settings.WASM_BINDGEN = 1 if building.is_wasm_bindgen_module(wasm_target) else 0
 
-  # wasm-bindgen reaches its exports by name, so they all have to be retained.
-  # When the link driver supplied EXPORTED_FUNCTIONS (rustc lists them all
-  # when driving the link) that is authoritative. Otherwise (e.g. a C/C++ build
-  # linking a Rust staticlib) discover them from the linker inputs and re-link.
-  # They are passed straight to the linker rather than via EXPORTED_FUNCTIONS
-  # so they are not mistaken for user-requested exports.
+  # wasm-bindgen reaches its exports by name. A supplied EXPORTED_FUNCTIONS
+  # lists them (rustc does this when driving the link); otherwise discover them
+  # from the linker inputs and re-link, passing them straight to the linker so
+  # they are not mistaken for user-requested exports.
   if settings.WASM_BINDGEN and 'EXPORTED_FUNCTIONS' not in user_settings:
     exports = building.get_wasm_bindgen_exported_symbols(linker_inputs)
     building.link_lld(linker_args + [f'--export={e}' for e in exports], wasm_target, external_symbols=js_syms)
@@ -1937,25 +1934,18 @@ def phase_post_link(in_wasm, wasm_target, target, js_syms, base_metadata=None):
   if settings.WASM_BINDGEN:
     bindgen_jslib, removed_exports, added_exports, extern_pre_js, snippets_dir = building.run_wasm_bindgen(in_wasm)
     settings.JS_LIBRARIES.append(bindgen_jslib)
-    # The exports the wasm-bindgen expansion reaches by name (the supplied
-    # EXPORTED_FUNCTIONS - method shims, the __wbindgen_* runtime, the marker,
-    # main - plus anything its expansion added) are internal, not a user-facing
-    # API: wasm-bindgen self-registers the real API via its JS library. Capture
-    # that set so it can be kept off every export layer - the ESM wrapper
-    # (user_requested_exports), the factory Module attachment (EXPORTED_FUNCTIONS,
-    # via should_export), and the keepalive pass in finalize_wasm. A genuine
-    # EMSCRIPTEN_KEEPALIVE C/C++ export is not in this set and is still surfaced.
+    # The exports wasm-bindgen reaches by name (the supplied EXPORTED_FUNCTIONS
+    # plus anything its expansion added) are internal glue; wasm-bindgen's JS
+    # library registers the user-facing API itself. Keep them off every export
+    # layer, and drop the placeholder exports it consumed (__wbindgen_describe*,
+    # ...) so they aren't reported as undefined.
     removed = {shared.asmjs_mangle(e) for e in removed_exports}
     building.wasm_bindgen_internal_exports = (
       set(settings.USER_EXPORTS) | {shared.asmjs_mangle(e) for e in added_exports})
-    # Also drop the placeholder symbols wasm-bindgen consumed (__wbindgen_describe*,
-    # __externref_*, ...) so they aren't reported as undefined exports.
     drop = removed | building.wasm_bindgen_internal_exports
     settings.EXPORTED_FUNCTIONS = [e for e in settings.EXPORTED_FUNCTIONS if e not in drop]
-    settings.USER_EXPORTS = []
+    settings.USER_EXPORTS = [e for e in settings.USER_EXPORTS if e not in removed]
     building.user_requested_exports.clear()
-    # Imported JS: emit wasm-bindgen's `import` statements as extern-pre-js and
-    # place the snippet files alongside the output so relative imports resolve.
     if extern_pre_js:
       options.extern_pre_js.append(extern_pre_js)
     if snippets_dir:

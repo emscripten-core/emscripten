@@ -3361,9 +3361,10 @@ installed). cargo/rustc builds that use emcc as the linker can pass 'auto'
 unconditionally via `-Clink-arg`. When a C/C++ build links a Rust
 staticlib, nothing guarantees the object carrying that section is pulled
 into the link, so use 1 there.
-Unless the link driver supplies EXPORTED_FUNCTIONS (as rustc does when
-driving the link), the wasm exports wasm-bindgen reaches by name are
-discovered from the linker inputs and the module is re-linked to retain them.
+If EXPORTED_FUNCTIONS is set it is taken as the complete export list and
+must include every export wasm-bindgen reaches by name (rustc supplies this
+when driving the link). Otherwise those exports are discovered from the
+linker inputs and the module is re-linked to retain them.
 
 .. note:: This is an experimental setting
 

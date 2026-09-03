@@ -77,18 +77,16 @@ commands:
     steps:
       - run:
           name: install rust and wasm-bindgen
-          # rust and wasm-bindgen are always installed together so there is no
-          # CI environment with one but not the other. The wasm-bindgen-cli
-          # version is pinned to match the library the test crates depend on;
-          # wasm-bindgen requires the CLI and the library to be the exact same
-          # version. 0.2.127 is the first release with the emscripten
-          # __export/__force attribute support (wasm-bindgen/wasm-bindgen#5253).
+          # The wasm-bindgen CLI must exactly match the library version the
+          # test crates pin.
           command: |
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
             export PATH=${HOME}/.cargo/bin:${PATH}
             rustup target add wasm32-unknown-emscripten
             echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> $BASH_ENV
-            cargo install wasm-bindgen-cli --version 0.2.127 --locked
+            WB=wasm-bindgen-0.2.127-x86_64-unknown-linux-musl
+            curl -sSfL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.127/$WB.tar.gz | tar xz -C /tmp
+            mv /tmp/$WB/wasm-bindgen ${HOME}/.cargo/bin/
   install-node-version:
     description: "install a specific version of node"
     parameters:

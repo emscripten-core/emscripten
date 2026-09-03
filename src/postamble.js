@@ -239,15 +239,11 @@ function checkUnflushedContent() {
 #endif // ASSERTIONS
 
 #if WASM_ESM_INTEGRATION && WASM_BINDGEN
-// wasm-bindgen 0.2.127's glue reaches the wasm exports by name on an aggregate
-// exports object, so provide it via a namespace import. Only under
-// WASM_BINDGEN - plain ESM integration keeps per-symbol named imports so
-// bundlers can tree-shake unused wasm exports.
-// TODO: Remove once the minimum wasm-bindgen version references the per-export
-// receiving bindings instead (wasm-bindgen/wasm-bindgen#5270, unreleased),
-// which no longer needs this.
+// wasm-bindgen's glue reaches the wasm exports by name on an aggregate object.
+// TODO: Remove once the minimum wasm-bindgen version uses the per-export
+// receiving bindings instead (wasm-bindgen/wasm-bindgen#5270).
 import * as wasmExports from './{{{ WASM_BINARY_FILE }}}';
-#elif !WASM_ESM_INTEGRATION
+#else
 var wasmExports;
 #endif
 #if SPLIT_MODULE
