@@ -610,6 +610,10 @@ def check_settings():
         # Don't warn about -sMEMORY64=2 (since its the only way to enable the lowering pass)
         continue
       diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
+    elif '=' in s:
+      setting, val = s.split('=', 1)
+      if user_settings.get(setting) == val:
+        diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
   for name, msg in EXPERIMENTAL_SETTINGS.items():
     if getattr(settings, name):

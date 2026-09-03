@@ -461,6 +461,7 @@ def also_with_wasm2js(func):
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
+      self.cflags.append('-Wno-deprecated')
     return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
