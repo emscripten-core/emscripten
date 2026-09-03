@@ -1902,10 +1902,9 @@ def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
   if settings.WASM_BINDGEN == 'auto':
     settings.WASM_BINDGEN = 1 if building.is_wasm_bindgen_module(wasm_target) else 0
 
-  # wasm-bindgen reaches its exports by name. A supplied EXPORTED_FUNCTIONS
-  # lists them (rustc does this when driving the link); otherwise discover them
-  # from the linker inputs and re-link, passing them straight to the linker so
-  # they are not mistaken for user-requested exports.
+  # If EXPORTED_FUNCTIONS is provided for WASM_BINDGEN, it forms the authoritative
+  # list of exports of the Wasm module (per rustc linking semantics).
+  # Otherwise, discover the symbols directly if not set for e.g. static linking Rust.
   if settings.WASM_BINDGEN and 'EXPORTED_FUNCTIONS' not in user_settings:
     exports = building.get_wasm_bindgen_exported_symbols(linker_inputs)
     building.link_lld(linker_args + [f'--export={e}' for e in exports], wasm_target, external_symbols=js_syms)
@@ -1935,10 +1934,10 @@ def phase_post_link(in_wasm, wasm_target, target, js_syms, base_metadata=None):
     bindgen_jslib, removed_exports, added_exports, extern_pre_js, snippets_dir = building.run_wasm_bindgen(in_wasm)
     settings.JS_LIBRARIES.append(bindgen_jslib)
     # The exports wasm-bindgen reaches by name (the supplied EXPORTED_FUNCTIONS
-    # plus anything its expansion added) are internal glue; wasm-bindgen's JS
-    # library registers the user-facing API itself. Keep them off every export
-    # layer, and drop the placeholder exports it consumed (__wbindgen_describe*,
-    # ...) so they aren't reported as undefined.
+    # plus anything its expansion added) are internal glue only on the Wasm module,
+    # while wasm-bindgen's JS library registers the final user-facing API itself.
+    # Keep EXPORTED_FUNCTIONS off every export layer, and drop the placeholder exports it consumed
+    # (__wbindgen_describe*, etc.) so they aren't reported as undefined.
     removed = {shared.asmjs_mangle(e) for e in removed_exports}
     building.wasm_bindgen_internal_exports = (
       set(settings.USER_EXPORTS) | {shared.asmjs_mangle(e) for e in added_exports})

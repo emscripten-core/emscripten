@@ -24,6 +24,10 @@ See docs/process.md for more on how version tagging works.
   diagnostic warning has been removed. (#27646)
 - `WASM=0` and `WASM=2` (wasm2js) were marked as deprecated. (See #27608)
 - mimalloc was updated to 3.5.1. (#27662)
+- `-sWASM_BINDGEN` supports emcc usage as a post-link step, where
+  `EXPORTED_FUNCTIONS` is authoritative. `-sWASM_BINDGEN=auto` also supports
+  automatically determining `WASM_BINDGEN` mode handling based on detecting
+  the wasm-bindgen marker section. (#27208)
 
 6.0.9 - 09/01/26
 ----------------
@@ -72,13 +76,6 @@ See docs/process.md for more on how version tagging works.
   (`JS_BIGINT_INTEGRATION`) are universally available across all supported
   engines, and removes legacy JS polyfills and Binaryen lowering passes.
   (#27542)
-- `-sWASM_BINDGEN` now runs wasm-bindgen (0.2.127 or later) as a post-link
-  step, unifying its output with emscripten's: wasm-bindgen's bindings are
-  surfaced as the user-facing API across the standard output modes (including
-  `-sMODULARIZE` and `-sWASM_ESM_INTEGRATION`) and its raw wasm exports are no
-  longer leaked. `-sWASM_BINDGEN=auto` enables this automatically when the
-  linked wasm was built with wasm-bindgen, so cargo/rustc builds that link via
-  emcc work without extra flags. (#27208)
 
 6.0.6 - 08/05/26
 ----------------
