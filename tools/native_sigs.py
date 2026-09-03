@@ -785,6 +785,7 @@ native_sigs = {
   'emscripten_builtin_malloc': 'pp',
   'emscripten_builtin_memalign': 'ppp',
   'emscripten_builtin_memcpy': 'pppp',
+  'emscripten_builtin_memmove': 'pppp',
   'emscripten_builtin_memset': 'pp_p',
   'emscripten_builtin_mmap': 'ppp____',
   'emscripten_builtin_munmap': '_pp',

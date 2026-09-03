@@ -1,7 +1,7 @@
 {
   "a.out.js": 270584,
-  "a.out.nodebug.wasm": 588865,
-  "total": 859449,
+  "a.out.nodebug.wasm": 588564,
+  "total": 859148,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -2549,6 +2549,7 @@
     "emscripten_builtin_malloc",
     "emscripten_builtin_memalign",
     "emscripten_builtin_memcpy",
+    "emscripten_builtin_memmove",
     "emscripten_builtin_memset",
     "emscripten_builtin_mmap",
     "emscripten_builtin_munmap",
@@ -4846,7 +4847,6 @@
     "$memchr",
     "$memcmp",
     "$memmem",
-    "$memmove",
     "$mempcpy",
     "$mincore",
     "$mkdir",

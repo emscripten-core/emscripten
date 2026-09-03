@@ -1446,8 +1446,7 @@ class libc_optz(libc):
     # some files also appear in libc, and a #define affects them
     mem_files = files_in_path(
       path='system/lib/libc',
-      filenames=['emscripten_memset.c',
-                 'emscripten_memmove.c'])
+      filenames=['emscripten_memset.c'])
 
     # some functions have separate files
     math_files = files_in_path(
