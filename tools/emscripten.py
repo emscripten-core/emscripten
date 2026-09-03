@@ -626,9 +626,9 @@ def finalize_wasm(infile, outfile, js_syms):
 
   if (not settings.STANDALONE_WASM and 'main' in metadata.all_exports) or '__main_argc_argv' in metadata.all_exports:
     if settings.WASM_BINDGEN:
-      # Under WASM_BINDGEN, `main` stays a wasm export so it runs automatically
-      # on init, but `_main` is internal (part of wasm-bindgen's internal export
-      # set, see below) and is not surfaced as a public export.
+      # rustc drives the link with an EXPORTED_FUNCTIONS list that never
+      # includes `_main`, so skip the unused-main handling: `main` stays a wasm
+      # export and runs on init. It is kept off the public surface below.
       pass
     elif 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
       # If `_main` was unexpectedly exported we assume it was added to
@@ -645,9 +645,10 @@ def finalize_wasm(infile, outfile, js_syms):
     else:
       unexpected_exports.append('_main')
 
-  # Keep wasm-bindgen's internal glue exports (the raw symbols its generated
-  # bindings reach by name, including `_main`) off the public surface. Genuine
-  # EMSCRIPTEN_KEEPALIVE exports are not in this set and remain.
+  # Under WASM_BINDGEN, keep wasm-bindgen's internal glue exports (the raw
+  # symbols its generated bindings reach by name, and `_main`) off the public
+  # surface; wasm-bindgen surfaces the user-facing API itself via its JS
+  # library. Genuine EMSCRIPTEN_KEEPALIVE exports are not in this set and remain.
   if settings.WASM_BINDGEN:
     unexpected_exports = [e for e in unexpected_exports
                           if e not in building.wasm_bindgen_internal_exports]

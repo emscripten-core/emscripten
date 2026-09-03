@@ -3354,10 +3354,15 @@ WASM_BINDGEN
 
 Run wasm-bindgen and integrate the rust-exported symbols into the rest of
 Emscripten's JS output.
-Set to 1 to always run wasm-bindgen (e.g. a C/C++ build linking a Rust
-staticlib). Set to 'auto' to run it only when the linked wasm carries
-wasm-bindgen's marker section, which is how cargo/rustc opts in when driving
-emcc as the linker; otherwise 'auto' is a no-op.
+Set to 1 to always run wasm-bindgen. This is required when a C/C++ build
+links a Rust staticlib: nothing references wasm-bindgen's objects in the
+archive, so emcc must force-export them for wasm-bindgen to find.
+Set to 'auto' to run wasm-bindgen only when the linked wasm carries the
+custom section wasm-bindgen emits for this target. That is the case when
+cargo/rustc drives the link using emcc as the linker (rustc exports
+wasm-bindgen's symbols itself), so 'auto' can be passed unconditionally via
+`-Clink-arg`; for any other link it is a no-op and wasm-bindgen need not be
+installed.
 
 .. note:: This is an experimental setting
 

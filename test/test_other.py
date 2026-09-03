@@ -15357,31 +15357,38 @@ addToLibrary({
     self.assertContained('rs_add=42', output)
     self.assertContained('em_double=40', output)
 
-  # ESM-integration and factory (MODULARIZE) surface the clean wasm-bindgen API
+  # ESM integration and ES6 MODULARIZE surface the clean wasm-bindgen API
   # differently (named ESM exports vs `Module.<name>`). Both must expose exactly
   # the `Greeter` class and none of the raw wasm exports rustc lists.
   @requires_rust
   @requires_wasm_bindgen
   @parameterized({
-    'esm': (['-sWASM_ESM_INTEGRATION'], '''
+    'esm_integration': (['-sWASM_ESM_INTEGRATION'], '''
       import init, * as mod from './bindgen_greeter.js';
       await init();
     '''),
-    'factory': (['-sMODULARIZE', '-sEXPORT_ES6'], '''
+    'es6': (['-sMODULARIZE', '-sEXPORT_ES6'], '''
       import Module from './bindgen_greeter.js';
       const mod = await Module();
     '''),
   })
-  def test_wasm_bindgen_rustc_driven(self, cflags, prelude):
+  def test_wasm_bindgen_rustc_driven(self, ldflags, prelude):
     # cargo/rustc links via emcc; pass -sWASM_BINDGEN=auto (plus the output-mode
-    # settings) through so emcc detects wasm-bindgen's marker section in the
-    # linked wasm and runs wasm-bindgen as a post-link step.
+    # settings) through as link args so emcc detects wasm-bindgen's marker
+    # section in the linked wasm and runs wasm-bindgen as a post-link step.
     copytree(test_file('rust/bindgen_greeter'), '.')
-    # rustc invokes emcc as the linker; ensure it uses *this* emcc and pass the
-    # link settings through.
-    with env_modify({'CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER': EMCC,
-                     'EMCC_CFLAGS': ' '.join(['-sWASM_BINDGEN=auto', '-Wno-experimental'] + cflags)}):
-      self.run_process(['cargo', 'build'])
+    link_args = ['-sWASM_BINDGEN=auto', '-Wno-experimental'] + ldflags
+    rustflags = ', '.join(f'"-Clink-arg={a}"' for a in link_args)
+    ensure_dir('.cargo')
+    create_file('.cargo/config.toml', f'''
+      [build]
+      target = "wasm32-unknown-emscripten"
+      rustflags = [{rustflags}]
+
+      [target.wasm32-unknown-emscripten]
+      linker = "{EMCC}"
+    ''')
+    self.run_process(['cargo', 'build'])
 
     # cargo copies only the .js and .wasm; the ESM support module and snippets
     # stay in deps/, so run from there.
@@ -15396,7 +15403,10 @@ addToLibrary({
       }
       console.log(greeting);
     ''')
-    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
+    # Importing wasm modules is stable from node 25.
+    if not self.try_require_node_version(25):
+      self.node_args += ['--experimental-wasm-modules']
+    self.node_args += ['--no-warnings']
     output = self.run_js(os.path.join(out_dir, 'run.mjs'))
     self.assertContained('Hello, world!', output)
     # `main` runs automatically on init (matching the emscripten C++ idiom),
