@@ -1,5 +1,8 @@
 {
   "private": true,
+  "engines": {
+    "npm": ">=11.17.0"
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
@@ -26,5 +29,8 @@
     "lint": "eslint .",
     "fmt": "prettier --write src/*.mjs tools/*.mjs --ignore-path src/pthread_esm_startup.mjs",
     "check": "prettier --check src/*.mjs tools/*.mjs --ignore-path src/pthread_esm_startup.mjs"
+  },
+  "allowScripts": {
+    "esbuild": false
   }
 }
