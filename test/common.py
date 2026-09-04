@@ -31,7 +31,7 @@ from retryable_unittest import RetryableTestCase
 from tools import building, config, shared, utils
 from tools.feature_matrix import Feature
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools.shared import EMCC, EMXX, get_canonical_temp_dir
+from tools.shared import get_canonical_temp_dir
 from tools.utils import (
   WINDOWS,
   exe_path_from_root,
@@ -76,8 +76,16 @@ EMCMAKE = exe_path_from_root('emcmake')
 EMCONFIGURE = exe_path_from_root('emconfigure')
 EMCONFIG = exe_path_from_root('em-config')
 EMRUN = exe_path_from_root('emrun')
+EMCC = exe_path_from_root('emcc')
+EMXX = exe_path_from_root('em++')
+EMAR = exe_path_from_root('emar')
+EMRANLIB = exe_path_from_root('emranlib')
+FILE_PACKAGER = exe_path_from_root('tools/file_packager')
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
+WASM_LD = shared.llvm_tool_path('wasm-ld')
+LLVM_COV = shared.llvm_tool_path('llvm-cov')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
+LLVM_PROFDATA = shared.llvm_tool_path('llvm-profdata')
 PYTHON = sys.executable
 
 

@@ -17,6 +17,7 @@ import unittest
 import zlib
 from abc import ABC, abstractmethod
 from pathlib import Path
+from subprocess import PIPE
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py benchmark')
@@ -24,11 +25,11 @@ if __name__ == '__main__':
 import clang_native
 import common
 import jsrun
-from common import compiler_for, copy_asset, read_binary, read_file, test_file
+from common import EMCC, compiler_for, copy_asset, read_binary, read_file, test_file
 from decorators import needs_make, parameterized
 
 from tools import utils
-from tools.shared import CLANG_CC, CLANG_CXX, EMCC, PIPE, config
+from tools.shared import CLANG_CC, CLANG_CXX, config
 from tools.utils import run_process
 
 # standard arguments for timing:

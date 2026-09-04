@@ -15,7 +15,9 @@ from subprocess import PIPE, STDOUT
 
 from common import (
   EMBUILDER,
+  EMCC,
   EMCONFIG,
+  EMXX,
   RunnerCore,
   create_file,
   ensure_dir,
@@ -27,9 +29,8 @@ from common import (
 )
 from decorators import no_windows, only_windows, parameterized, with_env_modify
 
-from tools import building, cache, ports, response_file, shared, utils
+from tools import building, cache, config, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
-from tools.shared import EMCC, EMXX, config
 from tools.utils import delete_dir, delete_file
 
 SANITY_FILE = cache.get_path('sanity.txt')
