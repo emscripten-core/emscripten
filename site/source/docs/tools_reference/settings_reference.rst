@@ -3354,12 +3354,15 @@ WASM_BINDGEN
 
 Run wasm-bindgen and integrate the rust-exported symbols into the rest of
 Emscripten's JS output.
-wasm-bindgen is only run when the linked Wasm carries the wasm-bindgen
-marker section, so this is a no-op for non wasm-bindgen binaries.
+Even with this setting enabled, wasm-bindgen processing is only performed
+when the linked Wasm carries the wasm-bindgen Emscripten marker section
+(emitted by the wasm-bindgen crate). When the marker is absent the build is
+unchanged, so -sWASM_BINDGEN can safely be passed unconditionally to
+non-wasm-bindgen builds, and by toolchains that link via emcc.
 If EXPORTED_FUNCTIONS is set it is taken as the complete export list and
 must include every export wasm-bindgen reaches by name (rustc supplies this
 when driving the link). Otherwise those exports are discovered from the
-linker inputs and the module is re-linked to retain them.
+linker inputs.
 
 .. note:: This is an experimental setting
 
