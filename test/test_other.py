@@ -15419,6 +15419,7 @@ addToLibrary({
     self.do_runf('hello_world.c', 'Hello, world!', cflags=['-sWASM_BINDGEN', '-Wno-experimental'])
 
   @requires_rust
+  @requires_wasm_bindgen
   @requires_dev_dependency('typescript')
   def test_wasm_bindgen_tsd_multi_return(self):
     copytree(test_file('rust/bindgen_integration'), '.')
@@ -15429,11 +15430,10 @@ addToLibrary({
           Ok(42)
       }
     ''')
-    self.run_process(['cargo', 'add', 'wasm-bindgen'])
+    self.run_process(['cargo', 'add', 'wasm-bindgen@0.2.127'])
     self.run_process(['cargo', 'build'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     create_file('empty.c', '')
-    self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
     self.run_process([EMCC, 'empty.c', '--emit-tsd', 'test_multi.d.ts', '-sWASM_BINDGEN', '-Wno-experimental', '-o', 'test_multi.js'] + [lib] + self.get_cflags())
     actual = read_file('test_multi.d.ts')
     self.assertContained("multi_value_return(): [number, number, number];", actual)
