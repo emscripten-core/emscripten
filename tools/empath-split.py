@@ -285,7 +285,7 @@ def parse_paths_file(paths_file_content):
     else:
       path = normalize_path(line)
       if path in path_to_module:
-        exit_with_error("Path '{path}' cannot be assigned to module '{cur_module}; it is already assigned to module '{path_to_module[path]}'")
+        exit_with_error(f"Path '{path}' cannot be assigned to module '{cur_module}; it is already assigned to module '{path_to_module[path]}'")
       cur_paths.append(path)
       path_to_module[path] = cur_module
 

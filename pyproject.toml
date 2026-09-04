@@ -46,15 +46,13 @@ lint.ignore = [
   "undocumented-magic-method",
   "undocumented-public-nested-class",
   "undocumented-public-init",
-  "incorrect-blank-line-before-class",
-  "multi-line-summary-second-line",
+  "incorrect-blank-line-before-class", # Superceeded by no-blank-line-before-class
+  "multi-line-summary-second-line", # Superceeded by multi-line-summary-first-line
   "non-imperative-mood",
   "assert-false", # See https://github.com/PyCQA/flake8-bugbear/issues/66
   "function-uses-loop-variable",
   "star-arg-unpacking-after-keyword-arg",
-  "multiple-spaces-before-keyword",
   "module-import-not-at-top-of-file",
-  "multiple-spaces-after-comma",
   "multiple-leading-hashes-for-block-comment",
   "line-too-long",
   "type-comparison",
@@ -79,17 +77,16 @@ lint.ignore = [
   "redefined-loop-name",
   "mutable-class-default",
   "unnecessary-iterable-allocation-for-first-element",
-  "missing-f-string-syntax",
   "unraw-re-pattern",
   "non-empty-init-module",
-  "format-literals", # TODO
 ]
 lint.per-file-ignores."tools/ports/*.py" = [ "unused-function-argument", "unused-lambda-argument" ]
 lint.per-file-ignores."tools/webidl_binder.py" = [ "printf-string-formatting", "f-string" ]
 lint.per-file-ignores."test/other/ports/*.py" = [ "unused-function-argument" ]
 lint.per-file-ignores."test/parallel_testsuite.py" = [ "unused-method-argument" ]
 lint.per-file-ignores."test/test_benchmark.py" = [ "unused-method-argument" ]
-lint.per-file-ignores."test/*.py" = [ "collection-literal-concatenation", "printf-string-formatting" ]
+lint.per-file-ignores."test/*.py" = [ "collection-literal-concatenation", "printf-string-formatting", "multiple-spaces-after-comma" ]
+lint.per-file-ignores."system/lib/update_*.py" = [ "multiple-spaces-after-comma" ]
 lint.mccabe.max-complexity = 51 # Recommended: 10
 lint.pylint.allow-magic-value-types = [
   "bytes",
