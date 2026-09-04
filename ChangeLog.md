@@ -28,6 +28,9 @@ See docs/process.md for more on how version tagging works.
   `EXPORTED_FUNCTIONS` is authoritative. `-sWASM_BINDGEN=auto` also supports
   automatically determining `WASM_BINDGEN` mode handling based on detecting
   the wasm-bindgen marker section. (#27208)
+  `EXPORTED_FUNCTIONS` is authoritative. It is now a no-op unless the linked
+  Wasm carries the wasm-bindgen marker section. (#27208)
+- mimalloc was updated to 3.5.1. (#27662)
 
 6.0.9 - 09/01/26
 ----------------

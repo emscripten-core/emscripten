@@ -1000,9 +1000,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.MODULARIZE and settings.MODULARIZE not in {1, 'instance'}:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
-  if settings.WASM_BINDGEN not in {0, 1, 'auto'}:
-    exit_with_error(f'Invalid setting "{settings.WASM_BINDGEN}" for WASM_BINDGEN.')
-
   def limit_incoming_module_api():
     if options.oformat == OFormat.HTML and options.shell_html == DEFAULT_SHELL_HTML:
       # Our default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
@@ -1897,17 +1894,20 @@ def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
     settings.LINKABLE = True
     rtn = extract_metadata.extract_metadata(wasm_target)
 
-  building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
-
-  if settings.WASM_BINDGEN == 'auto':
-    settings.WASM_BINDGEN = 1 if building.is_wasm_bindgen_module(wasm_target) else 0
-
   # If EXPORTED_FUNCTIONS is provided for WASM_BINDGEN, it forms the authoritative
   # list of exports of the Wasm module (per rustc linking semantics).
-  # Otherwise, discover the symbols directly if not set for e.g. static linking Rust.
+  # Otherwise, discover the symbols directly from the linker inputs for e.g. static
+  # linking Rust. This also pulls in wasm-bindgen's marker object from a staticlib.
+  bindgen_exports = []
   if settings.WASM_BINDGEN and 'EXPORTED_FUNCTIONS' not in user_settings:
-    exports = building.get_wasm_bindgen_exported_symbols(linker_inputs)
-    building.link_lld(linker_args + [f'--export={e}' for e in exports], wasm_target, external_symbols=js_syms)
+    bindgen_exports = [f'--export={e}' for e in building.get_wasm_bindgen_exported_symbols(linker_inputs)]
+
+  building.link_lld(linker_args + bindgen_exports, wasm_target, external_symbols=js_syms)
+
+  if settings.WASM_BINDGEN and not building.is_wasm_bindgen_module(wasm_target):
+    settings.WASM_BINDGEN = 0
+    if bindgen_exports:
+      building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
 
   return rtn
 

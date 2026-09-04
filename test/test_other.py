@@ -15373,11 +15373,10 @@ addToLibrary({
     '''),
   })
   def test_wasm_bindgen_rustc_driven(self, ldflags, prelude):
-    # cargo/rustc links via emcc; pass -sWASM_BINDGEN=auto (plus the output-mode
-    # settings) through as link args so emcc detects wasm-bindgen's marker
-    # section in the linked wasm and runs wasm-bindgen as a post-link step.
+    # cargo/rustc links via emcc; pass -sWASM_BINDGEN (plus the output-mode
+    # settings) through as link args so emcc runs wasm-bindgen as a post-link step.
     copytree(test_file('rust/bindgen_greeter'), '.')
-    link_args = ['-sWASM_BINDGEN=auto', '-Wno-experimental'] + ldflags
+    link_args = ['-sWASM_BINDGEN', '-Wno-experimental'] + ldflags
     rustflags = ', '.join(f'"-Clink-arg={a}"' for a in link_args)
     ensure_dir('.cargo')
     create_file('.cargo/config.toml', f'''
@@ -15413,11 +15412,11 @@ addToLibrary({
     # even though `_main` is not surfaced as a user-facing export.
     self.assertContained('main ran', output)
 
-  def test_wasm_bindgen_auto_no_marker(self):
-    # -sWASM_BINDGEN=auto is a no-op for an ordinary build with no wasm-bindgen
+  def test_wasm_bindgen_no_marker(self):
+    # -sWASM_BINDGEN is a no-op for an ordinary build with no wasm-bindgen
     # marker section: wasm-bindgen is never invoked (so it need not be installed)
     # and the program builds and runs normally.
-    self.do_runf('hello_world.c', 'Hello, world!', cflags=['-sWASM_BINDGEN=auto', '-Wno-experimental'])
+    self.do_runf('hello_world.c', 'Hello, world!', cflags=['-sWASM_BINDGEN', '-Wno-experimental'])
 
   @requires_rust
   @requires_dev_dependency('typescript')
