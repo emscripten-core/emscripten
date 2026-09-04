@@ -1442,18 +1442,9 @@ class libc_optz(libc):
 
   def get_libcall_files(self):
     # see comments in libc.customize_build_cmd
-
-    # some files also appear in libc, and a #define affects them
-    mem_files = files_in_path(
-      path='system/lib/libc',
-      filenames=['emscripten_memset.c'])
-
-    # some functions have separate files
-    math_files = files_in_path(
+    return files_in_path(
       path='system/lib/libc/musl/src/math',
       filenames=['pow_small.c', 'log_small.c', 'log2_small.c'])
-
-    return mem_files + math_files
 
   def get_files(self):
     libcall_files = self.get_libcall_files()

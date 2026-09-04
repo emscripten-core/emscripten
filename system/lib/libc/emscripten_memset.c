@@ -1,29 +1,36 @@
-#include "emscripten_internal.h" // for emscripten_memset_big
+/*
+ * Copyright 2019 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
 
-#if defined(__has_feature) && __has_feature(address_sanitizer)
-// build an uninstrumented version of memset
-__attribute__((no_sanitize("address"))) void *__musl_memset(void *str, int c, size_t n);
-__attribute__((no_sanitize("address"))) void *__memset(void *str, int c, size_t n);
-#endif
 
-__attribute__((__weak__)) void *__musl_memset(void *str, int c, size_t n);
-__attribute__((__weak__)) void *__memset(void *str, int c, size_t n);
+#include <stdint.h>
+#include <string.h>
+#include "libc.h"
 
-#if defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ)
+// Use the simple/naive version of memset when building with asan.
+// Note: ASan's shadow memory poisoner calls REAL(memset) directly on shadow
+// memory, so this must remain uninstrumented to prevent ASan from checking
+// the shadow memory of the shadow memory itself.
+#if __has_feature(address_sanitizer)
 
-void *__memset(void *str, int c, size_t n) {
-  // memory.fill traps on OOB zero-length sets, but memset must not.
-  if (n) {
-    __builtin_wasm_memory_fill(0, str, c, n);
-  }
-  return str;
+static __attribute__((no_sanitize("address"))) void *__memset(void *dest, int c, size_t n) {
+  unsigned char *d = (unsigned char *)dest;
+  while (n--) *d++ = (unsigned char)c;
+  return dest;
 }
 
 #else
 
-#define memset __memset
-#include "musl/src/string/memset.c"
-#undef memset
+static void *__memset(void *dest, int c, size_t n) {
+  // memory.fill traps on OOB zero-length sets, but memset must not.
+  if (n) {
+    __builtin_wasm_memory_fill(0, dest, c, n);
+  }
+  return dest;
+}
 
 #endif
 
