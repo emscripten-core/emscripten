@@ -38,7 +38,7 @@ def skip_if_simple(name, condition, note=''):
       if condition(self):
         explanation_str = name
         if note:
-          explanation_str += ': %s' % note
+          explanation_str += f': {note}'
         self.skipTest(explanation_str)
       return func(self, *args, **kwargs)
 
@@ -303,7 +303,7 @@ def also_with_wasmfs(func):
   @wraps(func)
   def metafunc(self, wasmfs, *args, **kwargs):
     if DEBUG:
-      print('parameterize:wasmfs=%d' % wasmfs)
+      print(f'parameterize:wasmfs={wasmfs}')
     if wasmfs:
       self.setup_wasmfs_test()
     else:
@@ -319,7 +319,7 @@ def also_with_nodefs(func):
   @wraps(func)
   def metafunc(self, fs, *args, **kwargs):
     if DEBUG:
-      print('parameterize:fs=%s' % (fs))
+      print(f'parameterize:fs={fs}')
     if fs == 'nodefs':
       self.setup_nodefs_test()
     else:
@@ -336,7 +336,7 @@ def also_with_nodefs_both(func):
   @wraps(func)
   def metafunc(self, fs, *args, **kwargs):
     if DEBUG:
-      print('parameterize:fs=%s' % (fs))
+      print(f'parameterize:fs={fs}')
     if fs == 'nodefs':
       self.setup_nodefs_test()
     elif fs == 'rawfs':
@@ -356,7 +356,7 @@ def with_all_fs(func):
   @wraps(func)
   def metafunc(self, wasmfs, fs, *args, **kwargs):
     if DEBUG:
-      print('parameterize:fs=%s' % (fs))
+      print(f'parameterize:fs={fs}')
     if wasmfs:
       self.setup_wasmfs_test()
     if fs == 'nodefs':
@@ -383,7 +383,7 @@ def also_with_noderawfs(func):
   @wraps(func)
   def metafunc(self, rawfs, *args, **kwargs):
     if DEBUG:
-      print('parameterize:rawfs=%d' % rawfs)
+      print(f'parameterize:rawfs={rawfs}')
     if rawfs:
       self.setup_noderawfs_test()
     else:
@@ -401,7 +401,7 @@ def also_with_minimal_runtime(func):
   @wraps(func)
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
     if DEBUG:
-      print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
+      print(f'parameterize:minimal_runtime={with_minimal_runtime}')
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('MINIMAL_RUNTIME already enabled in test config')
     if with_minimal_runtime:
@@ -424,7 +424,7 @@ def also_with_wasm64(func):
   @wraps(func)
   def metafunc(self, with_wasm64, *args, **kwargs):
     if DEBUG:
-      print('parameterize:wasm64=%s' % with_wasm64)
+      print(f'parameterize:wasm64={with_wasm64}')
     if with_wasm64:
       self.require_wasm64()
       self.cflags += ['-m64']
@@ -457,7 +457,7 @@ def also_with_wasm2js(func):
   def metafunc(self, with_wasm2js, *args, **kwargs):
     assert self.get_setting('WASM') is None
     if DEBUG:
-      print('parameterize:wasm2js=%s' % with_wasm2js)
+      print(f'parameterize:wasm2js={with_wasm2js}')
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
@@ -493,7 +493,7 @@ def also_with_standalone_wasm(impure=False):
     @wraps(func)
     def metafunc(self, standalone, *args, **kwargs):
       if DEBUG:
-        print('parameterize:standalone=%s' % standalone)
+        print(f'parameterize:standalone={standalone}')
       if standalone:
         if not can_do_standalone(self, impure):
           self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
@@ -562,7 +562,7 @@ def with_all_eh_sjlj(func):
   @wraps(func)
   def metafunc(self, mode, *args, **kwargs):
     if DEBUG:
-      print('parameterize:eh_mode=%s' % mode)
+      print(f'parameterize:eh_mode={mode}')
     if mode in {'wasm', 'wasm_legacy'}:
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')

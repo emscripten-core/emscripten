@@ -181,19 +181,19 @@ def generate_config(path):
   # write
   utils.write_file(path, config_data)
 
-  print('''\
+  print(f'''\
 An Emscripten settings file has been generated at:
 
-  %s
+  {path}
 
 It contains our best guesses for the important paths, which are:
 
-  LLVM_ROOT       = %s
-  BINARYEN_ROOT   = %s
-  NODE_JS         = %s
+  LLVM_ROOT       = {llvm_root}
+  BINARYEN_ROOT   = {binaryen_root}
+  NODE_JS         = {node}
 
 Please edit the file if any of those are incorrect.\
-''' % (path, llvm_root, binaryen_root, node), file=sys.stderr)
+''', file=sys.stderr)
 
 
 def find_config_file():

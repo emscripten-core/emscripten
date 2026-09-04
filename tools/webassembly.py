@@ -260,7 +260,7 @@ class Module:
         case OpCode.END | OpCode.I32_ADD | OpCode.I64_ADD:
           pass
         case _:
-          raise Exception('unexpected opcode %s' % opcode)
+          raise Exception(f'unexpected opcode {opcode}')
       code.append((opcode, args))
       if opcode == OpCode.END:
         break

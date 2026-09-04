@@ -91,7 +91,7 @@ def run_cmd(cmd):
     cmd[0] = shutil.which(orig_exe)
     if not cmd[0]:
       utils.exit_with_error(f'command not found: {orig_exe}')
-  print(' -> %s' % ' '.join(cmd))
+  print(f" -> {' '.join(cmd)}")
   subprocess.run(cmd, check=True, text=True, encoding='utf-8', cwd=utils.path_from_root())
 
 
@@ -148,9 +148,9 @@ def main(args):
   for name, deps, action in actions:
     if not args.force:
       if check_deps(name, deps):
-        print('Up-to-date: %s' % name)
+        print(f'Up-to-date: {name}')
         continue
-      print('Out-of-date: %s' % name)
+      print(f'Out-of-date: {name}')
     if args.dry_run:
       if type(action) == list:
         action_str = ' '.join(action)

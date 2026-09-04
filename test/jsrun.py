@@ -57,7 +57,7 @@ def check_engine(engine):
     engine_path = engine
   global WORKING_ENGINES
   if engine_path not in WORKING_ENGINES:
-    logging.debug('Checking JS engine %s' % engine)
+    logging.debug(f'Checking JS engine {engine}')
     try:
       output = run_js(utils.path_from_root('test/hello_world.js'), engine, skip_check=True)
       if 'Hello, world!' in output:
@@ -65,7 +65,7 @@ def check_engine(engine):
       else:
         WORKING_ENGINES[engine_path] = False
     except Exception as e:
-      logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
+      logging.info(f'Checking JS engine {engine} failed. Check your config file. Details: {e}')
       WORKING_ENGINES[engine_path] = False
   return WORKING_ENGINES[engine_path]
 
@@ -79,7 +79,7 @@ def require_engine(engine):
   if engine_path not in WORKING_ENGINES:
     check_engine(engine)
   if not WORKING_ENGINES[engine_path]:
-    logging.critical('The engine (%s) does not seem to work, check the paths in the config file' % engine)
+    logging.critical(f'The engine ({engine}) does not seem to work, check the paths in the config file')
     sys.exit(1)
 
 

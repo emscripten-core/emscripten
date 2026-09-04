@@ -248,7 +248,7 @@ def inspect_headers(headers, cflags):
   try:
     subprocess.check_call(cmd, env=system_libs.clean_env())
   except subprocess.CalledProcessError as e:
-    sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
+    sys.stderr.write(f'FAIL: Compilation failed!: {e.cmd}\n')
     sys.exit(1)
 
   # Run the compiled program.
@@ -271,12 +271,12 @@ def inspect_headers(headers, cflags):
 def merge_info(target, src):
   for key, value in src['defines'].items():
     if key in target['defines']:
-      raise Exception('duplicate define: %s' % key)
+      raise Exception(f'duplicate define: {key}')
     target['defines'][key] = value
 
   for key, value in src['structs'].items():
     if key in target['structs']:
-      raise Exception('duplicate struct: %s' % key)
+      raise Exception(f'duplicate struct: {key}')
     target['structs'][key] = value
 
 
@@ -303,7 +303,7 @@ def parse_json(path):
   for item in data:
     for key in item:
       if key not in {'file', 'defines', 'structs'}:
-        raise 'Unexpected key in json file: %s' % key
+        raise f'Unexpected key in json file: {key}'
 
     header = {'name': item['file'], 'structs': {}, 'defines': {}}
     for name, data in item.get('structs', {}).items():

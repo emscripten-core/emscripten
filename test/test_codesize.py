@@ -222,7 +222,7 @@ class codesize(RunnerCore):
 
   def run_codesize_test(self, filename, cflags, check_funcs=True, check_full_js=False, skip_gz=False):
     # in -Os, -Oz, we remove imports wasm doesn't need
-    print('Running codesize test: %s:' % filename, cflags, check_funcs, check_full_js)
+    print(f'Running codesize test: {filename}:', cflags, check_funcs, check_full_js)
     filename = test_file('codesize', filename)
     expected_basename = test_file('codesize', self.id().split('.')[-1])
 

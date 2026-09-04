@@ -163,7 +163,7 @@ def run_on_file(filename, passes):
     end_funcs = js.rfind(end_funcs_marker)
 
     if start_funcs < 0 or end_funcs < start_funcs:
-      utils.exit_with_error('invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s' % (start_funcs, end_funcs))
+      utils.exit_with_error(f'invalid input file. Did not contain appropriate markers. (start_funcs: {start_funcs}, end_funcs: {end_funcs}')
 
     minify_globals = 'minifyNames' in passes
     if minify_globals:
@@ -256,7 +256,7 @@ EMSCRIPTEN_FUNCS();
       serialized_minify_info += '// EXTRA_INFO:' + json.dumps(minify_info)
     with ToolchainProfiler.profile_block('js_optimizer.write_chunks'):
       def write_chunk(chunk, i):
-        temp_file = temp_files.get('.jsfunc_%d.js' % i).name
+        temp_file = temp_files.get(f'.jsfunc_{i}.js').name
         utils.write_file(temp_file, chunk + serialized_minify_info)
         return temp_file
       filenames = [write_chunk(chunk, i) for i, chunk in enumerate(chunks)]

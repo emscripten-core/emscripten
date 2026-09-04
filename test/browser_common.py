@@ -506,7 +506,7 @@ def make_test_server(in_queue, out_queue, port):
           # raise an error in here, it is just swallowed in python's webserver code - we want
           # the test to actually fail, which a webserver response can't do).
           out_queue.put(None)
-          raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
+          raise Exception(f'browser harness error, excessive response to server - test must be fixed! "{self.path}"')
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.send_header('Connection', 'close')
@@ -842,7 +842,8 @@ class BrowserCore(RunnerCore):
       responses = []
       while not self.harness_out_queue.empty():
         responses += [self.harness_out_queue.get()]
-      raise Exception('excessive responses from %s: %s' % (who, '\n'.join(responses)))
+      responses_str = '\n'.join(responses)
+      raise Exception(f'excessive responses from {who}: {responses_str}')
 
   # @param extra_tries: how many more times to try this test, if it fails. browser tests have
   #                     many more causes of flakiness (in particular, they do not run
@@ -875,7 +876,7 @@ class BrowserCore(RunnerCore):
     if expected is not None:
       try:
         self.harness_in_queue.put((
-          'http://localhost:%s/%s' % (self.PORT, url),
+          f'http://localhost:{self.PORT}/{url}',
           self.get_dir(),
         ))
         if timeout is None:
@@ -953,7 +954,7 @@ class BrowserCore(RunnerCore):
     assert 'reporting' not in kwargs
     assert 'expected' not in kwargs
     kwargs['reporting'] = Reporting.JS_ONLY
-    kwargs['expected'] = 'exit:%d' % assert_returncode
+    kwargs['expected'] = f'exit:{assert_returncode}'
     return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None,

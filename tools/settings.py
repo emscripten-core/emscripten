@@ -328,7 +328,7 @@ class SettingsManager:
         name, fixed_values, err = legacy
         self.legacy_settings[name] = (fixed_values, err)
         default_value = fixed_values[0]
-      assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
+      assert name not in self.attrs, f'legacy setting ({name}) cannot also be a regular setting'
       if not strict_override:
         self.attrs[name] = default_value
 
@@ -399,13 +399,13 @@ class SettingsManager:
       self.attrs[alt_name] = value
 
     if name not in self.attrs:
-      msg = "Attempt to set a non-existent setting: '%s'\n" % name
+      msg = f"Attempt to set a non-existent setting: '{name}'\n"
       valid_keys = set(self.attrs.keys()).difference(self.internal_settings)
       suggestions = difflib.get_close_matches(name, valid_keys)
       suggestions = [s for s in suggestions if s not in self.legacy_settings]
       suggestions = ', '.join(suggestions)
       if suggestions:
-        msg += ' - did you mean one of %s?\n' % suggestions
+        msg += f' - did you mean one of {suggestions}?\n'
       msg += " - perhaps a typo in emcc's  -sX=Y  notation?\n"
       msg += ' - (see src/settings.js for valid values)'
       exit_with_error(msg)

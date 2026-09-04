@@ -70,7 +70,7 @@ def create_release_pr(release_version, dry_run):
   # Create auto-generated changes to the new git branch
   subprocess.check_call(['git', 'add', '-u', '.'], cwd=root_dir)
   subprocess.check_call(['git', 'commit', '-m', f'Mark {release_version} as released'], cwd=root_dir)
-  print('New release created in branch: `%s`' % branch_name)
+  print(f'New release created in branch: `{branch_name}`')
 
   if not dry_run:
     # Push the new branch to emscripten repo and create PR
@@ -131,7 +131,7 @@ def main():
   update_version_txt(release_version, new_dev_version)
   update_changelog(release_version, new_dev_version)
 
-  print('Creating new release: %s' % release_version)
+  print(f'Creating new release: {release_version}')
 
   create_release_pr(release_version, args.dry_run)
 

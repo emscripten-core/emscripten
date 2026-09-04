@@ -1808,7 +1808,7 @@ class libmalloc(MTLibrary):
     return cflags
 
   def get_base_name_prefix(self):
-    return 'lib%s' % self.malloc
+    return f'lib{self.malloc}'
 
   def get_base_name(self):
     name = super().get_base_name()
@@ -2367,7 +2367,7 @@ def get_libs_to_link():
       return
     already_included.add(lib.name)
 
-    logger.debug('including %s (%s)' % (lib.name, lib.get_filename()))
+    logger.debug(f'including {lib.name} ({lib.get_filename()})')
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
     libs_to_link.append((lib, whole_archive or need_whole_archive))
