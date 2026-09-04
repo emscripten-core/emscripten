@@ -195,7 +195,7 @@ def also_with_llvm_libc(func):
 
   @wraps(func)
   def metafunc(self, llvm_libc, *args, **kwargs):
-    if shared.DEBUG:
+    if common.EMTEST_VERBOSE:
       print('parameterize:llvm_libc=%d' % llvm_libc)
     if llvm_libc:
       self.cflags += ['-lllvmlibc']
@@ -9076,7 +9076,7 @@ int main() {
 
   @with_all_eh_sjlj
   def test_multi_inheritance_exception_message(self):
-    # Regression test for a bug that getting exception message in the DEBUG mode
+    # Regression test for a bug that getting exception message in the debug mode
     # did not retrieve the correct thrown object pointer in case of multiple
     # inheritance
     create_file('src.cpp', r'''

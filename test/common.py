@@ -31,7 +31,7 @@ from retryable_unittest import RetryableTestCase
 from tools import building, config, shared, utils
 from tools.feature_matrix import Feature
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir
+from tools.shared import EMCC, EMXX, get_canonical_temp_dir
 from tools.utils import (
   WINDOWS,
   exe_path_from_root,
@@ -439,10 +439,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   # override these
   temp_dir = shared.TEMP_DIR
   canonical_temp_dir = get_canonical_temp_dir(shared.TEMP_DIR)
-
-  # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
-  # Change this to None to get stderr reporting, for debugging purposes
-  stderr_redirect = STDOUT
 
   library_cache: dict[str, tuple[str, object]] = {}
 
@@ -956,7 +952,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if includes:
       cmd += ['-I' + str(include) for include in includes]
 
-    self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
+    self.run_process(cmd)
     self.assertExists(output)
 
     if output_suffix in {'.js', '.mjs'}:

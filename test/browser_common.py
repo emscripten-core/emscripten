@@ -37,7 +37,7 @@ from common import (
 
 from tools import feature_matrix, utils
 from tools.feature_matrix import OLDEST_SUPPORTED_FIREFOX, UNSUPPORTED
-from tools.shared import DEBUG, EMCC, exit_with_error
+from tools.shared import EMCC, exit_with_error
 from tools.utils import LINUX, MACOS, WINDOWS, memoize, path_from_root, read_binary
 
 logger = logging.getLogger('common')
@@ -465,7 +465,7 @@ def make_test_server(in_queue, out_queue, port):
     def do_GET(self):
       info = urlparse(self.path)
       if info.path == '/run_harness':
-        if DEBUG:
+        if common.EMTEST_VERBOSE:
           print('[server startup]')
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -493,7 +493,7 @@ def make_test_server(in_queue, out_queue, port):
         else:
           path = self.path
           url = '?'
-        if DEBUG:
+        if common.EMTEST_VERBOSE:
           print('[server response:', path, url, ']')
         if out_queue.empty():
           out_queue.put(path)
@@ -520,7 +520,7 @@ def make_test_server(in_queue, out_queue, port):
         if not in_queue.empty():
           # there is a new test ready to be served
           url, dir = in_queue.get()
-          if DEBUG:
+          if common.EMTEST_VERBOSE:
             print('[queue command:', url, dir, ']')
           assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
           assert out_queue.empty(), 'the single response from the last test was read'
@@ -531,7 +531,7 @@ def make_test_server(in_queue, out_queue, port):
           self.wfile.write(b'(wait)')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
-        if DEBUG:
+        if common.EMTEST_VERBOSE:
           print('[simple HTTP serving:', unquote_plus(self.path), ']')
         if self.headers.get('Range'):
           self.send_response(206)
@@ -869,7 +869,7 @@ class BrowserCore(RunnerCore):
     BrowserCore.num_tests_ran += 1
 
     self.assert_out_queue_empty('previous test')
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print('[browser launch:', html_file, ']')
     assert not (message and expected), 'run_browser expects `expected` or `message`, but not both'
 

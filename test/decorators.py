@@ -18,7 +18,6 @@ from functools import wraps
 import common
 from common import test_file
 
-from tools.shared import DEBUG
 from tools.utils import MACOS, WINDOWS
 
 requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This test requires network access')
@@ -302,7 +301,7 @@ def also_with_wasmfs(func):
 
   @wraps(func)
   def metafunc(self, wasmfs, *args, **kwargs):
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print(f'parameterize:wasmfs={wasmfs}')
     if wasmfs:
       self.setup_wasmfs_test()
@@ -318,7 +317,7 @@ def also_with_wasmfs(func):
 def also_with_nodefs(func):
   @wraps(func)
   def metafunc(self, fs, *args, **kwargs):
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print(f'parameterize:fs={fs}')
     if fs == 'nodefs':
       self.setup_nodefs_test()
@@ -335,7 +334,7 @@ def also_with_nodefs(func):
 def also_with_nodefs_both(func):
   @wraps(func)
   def metafunc(self, fs, *args, **kwargs):
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print(f'parameterize:fs={fs}')
     if fs == 'nodefs':
       self.setup_nodefs_test()
@@ -355,7 +354,7 @@ def also_with_nodefs_both(func):
 def with_all_fs(func):
   @wraps(func)
   def metafunc(self, wasmfs, fs, *args, **kwargs):
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print(f'parameterize:fs={fs}')
     if wasmfs:
       self.setup_wasmfs_test()
@@ -382,7 +381,7 @@ def also_with_noderawfs(func):
 
   @wraps(func)
   def metafunc(self, rawfs, *args, **kwargs):
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print(f'parameterize:rawfs={rawfs}')
     if rawfs:
       self.setup_noderawfs_test()
@@ -400,7 +399,7 @@ def also_with_minimal_runtime(func):
 
   @wraps(func)
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print(f'parameterize:minimal_runtime={with_minimal_runtime}')
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('MINIMAL_RUNTIME already enabled in test config')
@@ -423,7 +422,7 @@ def also_with_wasm64(func):
 
   @wraps(func)
   def metafunc(self, with_wasm64, *args, **kwargs):
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print(f'parameterize:wasm64={with_wasm64}')
     if with_wasm64:
       self.require_wasm64()
@@ -456,7 +455,7 @@ def also_with_wasm2js(func):
   @wraps(func)
   def metafunc(self, with_wasm2js, *args, **kwargs):
     assert self.get_setting('WASM') is None
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print(f'parameterize:wasm2js={with_wasm2js}')
     if with_wasm2js:
       self.require_wasm2js()
@@ -492,7 +491,7 @@ def also_with_standalone_wasm(impure=False):
   def decorated(func):
     @wraps(func)
     def metafunc(self, standalone, *args, **kwargs):
-      if DEBUG:
+      if common.EMTEST_VERBOSE:
         print(f'parameterize:standalone={standalone}')
       if standalone:
         if not can_do_standalone(self, impure):
@@ -561,7 +560,7 @@ def with_all_eh_sjlj(func):
 
   @wraps(func)
   def metafunc(self, mode, *args, **kwargs):
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print(f'parameterize:eh_mode={mode}')
     if mode in {'wasm', 'wasm_legacy'}:
       if self.is_wasm2js():
