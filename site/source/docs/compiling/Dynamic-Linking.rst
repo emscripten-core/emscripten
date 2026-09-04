@@ -136,15 +136,31 @@ modules linked together.
 Runtime Dynamic Linking with ``dlopen()``
 -----------------------------------------
 
-Runtime dynamic linking can be performed by the calling the ``dlopen()``
-function to load side modules after the program is already running. The
-procedure begins in the same way, with the same flags used to build the main and
-side modules.  The difference is that you do not specify the side modules on the
-command line when linking the main module; instead, you must load the side
-module into the filesystem, so that ``dlopen`` (or ``fopen``, etc.) can access
-it (except for ``dlopen(NULL)`` which means to open the current executable,
-which just works without filesystem integration). That’s basically it - you can
-then use ``dlopen(), dlsym()``, etc. normally.
+Runtime dynamic linking can be performed by calling the ``dlopen()`` function
+to load side modules after the program is already running. The procedure begins
+in the same way, with the same flags used to build the main and side modules.
+
+Side modules loaded dynamically at runtime must be placed in the virtual
+filesystem so that ``dlopen()`` (or ``fopen()``, etc.) can access them (except
+for ``dlopen(NULL)`` which means to open the current executable, which works
+without filesystem integration). That’s basically it - you can then use
+``dlopen()``, ``dlsym()``, etc. normally.
+
+When building the main module with ``-sMAIN_MODULE=1``, all symbols are
+exported so that any side module loaded at runtime can find them. However, when
+building with ``-sMAIN_MODULE=2`` (for reduced code size), dead code
+elimination is performed. If the side modules are available at build time, you
+can pass them on the command line when linking the main module along with
+``-sAUTOLOAD_DYLIBS=0``:
+
+::
+
+     emcc -sMAIN_MODULE=2 -sAUTOLOAD_DYLIBS=0 main.c libsomething.wasm
+
+This allows the linker to inspect ``libsomething.wasm`` at link time and
+automatically keep alive and export all the symbols that it requires, while
+preventing it from being automatically loaded at startup so that it can be
+loaded on demand via ``dlopen()``.
 
 Building Dynamic Libraries using ``-shared``
 ============================================
@@ -165,23 +181,49 @@ setting.
 Code Size
 =========
 
-By default, main modules disable dead code elimination. That means that
-all the code compiled remains in the output, including all system
-libraries linked in, and also all the JS library code.
+By default, main modules disable dead code elimination (``-sMAIN_MODULE=1``).
+That means that all the code compiled remains in the output, including all
+system libraries linked in, and also all the JS library code.
 
 That is the default behavior since it is the least surprising. But it is also
 possible to use normal dead code elimination, by building with
 ``-sMAIN_MODULE=2`` (instead of 1). In that mode, the main module is built
-normally, with no special behavior for keeping code alive. It is then your
-responsibility to make sure that code that side modules need is kept alive. You
-can do this either by adding to :ref:`EXPORTED_FUNCTIONS` or tagging the symbol
-``EMSCRIPTEN_KEEPALIVE`` in the source code. See ``other.test_minimal_dynamic``
-for an example of this in action.
+normally, with no special behavior for keeping code alive.
 
-If you are doing load time dynamic linking then any symbols needed by
-the side modules specified on the command line will be kept alive
-automatically. For this reason we strongly recommend using ``MAIN_MODULE=2``
-when doing load time dynamic linking.
+When building with ``-sMAIN_MODULE=2``, any symbols needed by side modules
+specified on the command line will be kept alive automatically: the linker
+inspects those side modules and ensures their required imports (both native
+symbols and JS library functions) are preserved and exported from the main
+module.
+
+- **Load-time dynamic linking**: Side modules are passed on the command line,
+  so their needed symbols are automatically kept alive. For this reason we
+  strongly recommend using ``-sMAIN_MODULE=2`` when doing load-time dynamic
+  linking. In fact, if dynamic libraries are passed on the command line and no
+  ``-sMAIN_MODULE`` option is specified, Emscripten defaults to
+  ``-sMAIN_MODULE=2`` automatically.
+
+- **Runtime dynamic linking (dlopen)**: If side modules are known at build
+  time, you can pass them on the command line when linking the main module
+  along with ``-sAUTOLOAD_DYLIBS=0``:
+
+  ::
+
+       emcc -sMAIN_MODULE=2 -sAUTOLOAD_DYLIBS=0 main.c libsomething.wasm
+
+  This enables dead code elimination while automatically keeping alive only the
+  symbols needed by ``libsomething.wasm``, but prevents ``libsomething.wasm``
+  from being loaded at startup so it can be loaded on demand via ``dlopen()``.
+
+- **Manual symbol exports**: If side modules cannot be passed on the command
+  line (for example, plugins that are unknown at compile time or built
+  separately), it is your responsibility to make sure that symbols required by
+  those side modules are kept alive. You can do this by adding functions to
+  :ref:`EXPORTED_FUNCTIONS` or tagging them with ``EMSCRIPTEN_KEEPALIVE`` in the
+  source code. For JavaScript library dependencies, see
+  :ref:`DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` and :ref:`INCLUDE_FULL_LIBRARY`.
+  See ``other.test_minimal_dynamic`` in the test suite for an example of this
+  in action.
 
 There is also the corresponding ``-sSIDE_MODULE=2`` for side modules.
 
