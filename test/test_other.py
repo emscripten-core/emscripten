@@ -6388,6 +6388,23 @@ int main(void) {
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
+  def test_esm_integration_incompatible_settings(self):
+    base_cmd = [EMCC, test_file('hello_world.c'), '-sWASM_ESM_INTEGRATION']
+    self.assert_fail(base_cmd + ['-sMAIN_MODULE'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with MAIN_MODULE (dynamic linking is not supported)')
+    self.assert_fail(base_cmd + ['-sSIDE_MODULE'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with SIDE_MODULE (dynamic linking is not supported)')
+    self.assert_fail(base_cmd + ['-sASYNCIFY'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    self.assert_fail(base_cmd + ['-sWASM_WORKERS'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+    self.assert_fail(base_cmd + ['-sWASM_ASYNC_COMPILATION=0'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
+    self.assert_fail(base_cmd + ['-sWASM=0'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with WASM2JS')
+    self.assert_fail(base_cmd + ['-sABORT_ON_WASM_EXCEPTIONS'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
+
   def test_modularize_instantiation_error(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_cflags())
     create_file('run.mjs', '''
@@ -9760,6 +9777,10 @@ end
     self.assertEqual(read_binary(get_cached()).count(b'waka'), 0)
     self.assertNotContained(ERROR, self.run_js('a.out.js'))
 
+  def test_node_code_caching_incompatible_settings(self):
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sNODE_CODE_CACHING', '-sWASM_ASYNC_COMPILATION=0', '-sSINGLE_FILE'],
+                     'emcc: error: NODE_CODE_CACHING is not compatible with SINGLE_FILE (saves a file on the side)')
+
   @with_env_modify({'LC_ALL': 'C'})
   def test_autotools_shared_check(self):
     expected = ': supported targets:.* elf'
@@ -12730,6 +12751,15 @@ exec "$@"
       err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM=0', arg])
       self.assertContained(r'emcc: error: WASM2JS is not compatible with .*_MODULE \(wasm2js does not support dynamic linking\)', err, regex=True)
 
+  def test_wasm2js_incompatible_settings(self):
+    base_cmd = [EMCC, test_file('hello_world.c'), '-sWASM=0']
+    self.assert_fail(base_cmd + ['-sSUPPORT_BIG_ENDIAN'],
+                     'emcc: error: WASM2JS is not compatible with SUPPORT_BIG_ENDIAN')
+    self.assert_fail(base_cmd + ['-sMEMORY64'],
+                     'emcc: error: WASM2JS is not compatible with MEMORY64')
+    self.assert_fail(base_cmd + ['-sWASM_BIGINT'],
+                     'emcc: error: WASM_BIGINT=1 is not compatible with wasm2js')
+
   def test_wasm2js_standalone(self):
     self.do_runf_out_file('hello_world.c', cflags=['-sSTANDALONE_WASM', '-sWASM=0', '-Wno-deprecated'])
 
@@ -15020,7 +15050,7 @@ addToLibrary({
     self.do_other_test('test_stdint_limits.c', cflags=['-iwithsysroot/include'])
 
   def test_force_filesystem_error(self):
-    expected = 'emcc: error: `-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`'
+    expected = 'emcc: error: FORCE_FILESYSTEM is not compatible with FILESYSTEM=0'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sFILESYSTEM=0', '-sFORCE_FILESYSTEM'], expected)
 
   def test_aligned_alloc(self):

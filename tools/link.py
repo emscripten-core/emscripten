@@ -975,27 +975,12 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
   settings.OUTPUT_FORMAT = options.oformat.name
 
-  if settings.SUPPORT_BIG_ENDIAN and settings.WASM2JS:
-    exit_with_error('WASM2JS is currently not compatible with SUPPORT_BIG_ENDIAN')
-
   if settings.WASM_ESM_INTEGRATION:
     default_setting('MODULARIZE', 'instance')
     if not settings.EXPORT_ES6:
       exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6')
     if settings.MODULARIZE != 'instance':
       exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
-    if settings.MAIN_MODULE:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
-    if settings.ASYNCIFY:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY')
-    if settings.WASM_WORKERS:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
-    if not settings.WASM_ASYNC_COMPILATION:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
-    if not settings.WASM:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
-    if settings.ABORT_ON_WASM_EXCEPTIONS:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
 
   if settings.MODULARIZE and settings.MODULARIZE not in {1, 'instance'}:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -1430,9 +1415,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # File preloading uses `Module['preRun']`.
     settings.INCOMING_MODULE_JS_API.append('preRun')
 
-  if settings.FORCE_FILESYSTEM and not settings.FILESYSTEM:
-    exit_with_error('`-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`')
-
   if settings.WASMFS:
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
@@ -1748,10 +1730,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
-    if settings.MEMORY64:
-      exit_with_error('wasm2js does not support MEMORY64')
-    if settings.WASM_BIGINT:
-      exit_with_error('wasm2js does not support WASM_BIGINT')
     if settings.CAN_ADDRESS_2GB:
       exit_with_error('wasm2js does not support >2gb address space')
     # WASM2JS does not support GROWABLE_ARRAYBUFFERS at all
@@ -1762,8 +1740,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
     if not settings.ENVIRONMENT_MAY_BE_NODE:
       exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
-    if settings.SINGLE_FILE:
-      exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
 
   if not js_manipulation.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
