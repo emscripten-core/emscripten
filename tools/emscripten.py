@@ -459,7 +459,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   building.extra_js_exports.update(forwarded_json['extraExports'])
 
-  asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
+  asm_const_pairs = [f'{key}: {value}' for key, value in asm_consts]
   if asm_const_pairs or settings.MAIN_MODULE:
     pre += 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   if em_js_funcs:
@@ -1117,13 +1117,13 @@ def create_module(metadata, function_exports, other_exports, library_symbols, al
   else:
     if settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):
       sending = textwrap.indent(sending, '  ').strip()
-      module.append('''\
+      module.append(f'''\
   var wasmImports;
-  function assignWasmImports() {
-    wasmImports = %s;
-  }''' % sending)
+  function assignWasmImports() {{
+    wasmImports = {sending};
+  }}''')
     else:
-      module.append('var wasmImports = %s;' % sending)
+      module.append(f'var wasmImports = {sending};')
 
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
     module += create_invoke_wrappers(metadata)

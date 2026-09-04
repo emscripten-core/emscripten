@@ -273,7 +273,7 @@ def choose_random_tests(base, num_tests, relevant_modes):
     else:
       # we may have hit the limit
       if len(chosen) == len(tests) * len(relevant_modes):
-        print('(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes)))
+        print(f'(all possible tests chosen! {len(chosen)} = {len(tests)}*{len(relevant_modes)})')
         break
   return list(chosen)
 
@@ -282,15 +282,13 @@ def print_random_test_statistics(num_tests):
   std = 0.5 / math.sqrt(num_tests)
   expected = 100.0 * (1.0 - std)
   print()
-  print('running those %d randomly-selected tests. if they all pass, then there is a '
-        'greater than 95%% chance that at least %.2f%% of the test suite will pass'
-        % (num_tests, expected))
+  print(f'running those {num_tests} randomly-selected tests. if they all pass, then there is a '
+        f'greater than 95% chance that at least {expected:.2f}% of the test suite will pass')
   print()
 
   def show():
-    print('if all tests passed then there is a greater than 95%% chance that at least '
-          '%.2f%% of the test suite will pass'
-          % (expected))
+    print('if all tests passed then there is a greater than 95% chance that at least '
+          f'{expected:.2f}% of the test suite will pass')
   atexit.register(show)
 
 
@@ -482,13 +480,13 @@ def run_tests(options, suite):
 
   run_start_time = time.perf_counter()
 
-  errlog('Running %s tests' % suite.countTestCases())
+  errlog(f'Running {suite.countTestCases()} tests')
   res = testRunner.run(suite)
   num_failures = len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
 
   total_run_time = time.perf_counter() - run_start_time
   if hasattr(res, 'core_time'):
-    errlog('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (res.core_time, total_run_time, res.core_time / total_run_time))
+    errlog(f'Total core time: {res.core_time:.3f}s. Wallclock time: {total_run_time:.3f}s. Parallelization: {res.core_time / total_run_time:.2f}x.')
 
   if options.bell:
     sys.stdout.write('\a')

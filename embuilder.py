@@ -160,14 +160,15 @@ legacy_prefixes = {
 def get_help():
   all_tasks = get_all_tasks()
   all_tasks.sort()
-  return '''
+  tasks_str = '\n        '.join(all_tasks)
+  return f'''
 Available targets:
 
   build / clear
-        %s
+        {tasks_str}
 
 Issuing 'embuilder build ALL' causes each task to be built.
-''' % '\n        '.join(all_tasks)
+'''
 
 
 @contextmanager
@@ -306,7 +307,7 @@ def main():
       tasks.extend(targets)
 
   if auto_tasks:
-    print('Building targets: %s' % ' '.join(tasks))
+    print(f"Building targets: {' '.join(tasks)}")
 
   if USE_NINJA:
     os.environ['EMBUILDER_PORT_BUILD_DEFERRED'] = '1'
@@ -350,14 +351,16 @@ def main():
       return 1
 
     time_taken = time.time() - start_time
-    logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
+    mins = f'{int(time_taken // 60):02d}:{int(time_taken % 60):02d} mins ' if time_taken >= 60 else ''
+    logger.info(f'...success. Took {mins}({time_taken:.2f}s)')
 
   if USE_NINJA and args.operation != 'clear':
     system_libs.build_deferred()
 
   if len(tasks) > 1 or USE_NINJA:
     all_build_time_taken = time.time() - all_build_start_time
-    logger.info('Built %d targets in %s(%.2fs)' % (len(tasks), ('%02d:%02d mins ' % (all_build_time_taken // 60, all_build_time_taken % 60) if all_build_time_taken >= 60 else ''), all_build_time_taken))
+    mins = f'{int(all_build_time_taken // 60):02d}:{int(all_build_time_taken % 60):02d} mins ' if all_build_time_taken >= 60 else ''
+    logger.info(f'Built {len(tasks)} targets in {mins}({all_build_time_taken:.2f}s)')
 
   return 0
 

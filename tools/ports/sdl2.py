@@ -83,7 +83,7 @@ def get(ports, settings, shared):
     misc/emscripten/SDL_sysurl.c'''.split()
     thread_srcs = ['SDL_syscond.c', 'SDL_sysmutex.c', 'SDL_syssem.c', 'SDL_systhread.c', 'SDL_systls.c']
     thread_backend = 'generic' if not settings.PTHREADS else 'pthread'
-    srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
+    srcs += [f'thread/{thread_backend}/{s}' for s in thread_srcs]
 
     srcs = [os.path.join(src_dir, 'src', s) for s in srcs]
     flags = []

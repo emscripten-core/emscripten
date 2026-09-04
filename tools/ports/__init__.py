@@ -78,7 +78,7 @@ def init_local_port(name, port):
 
   for variant, extra_settings in port.variants.items():
     if variant in port_variants:
-      utils.exit_with_error('duplicate port variant: `%s`' % variant)
+      utils.exit_with_error(f'duplicate port variant: `{variant}`')
     port_variants[variant] = (port.name, extra_settings)
 
   validate_port(port)
@@ -106,7 +106,7 @@ def load_external_port(external_port):
 def init_external_port(name, port):
   expected_attrs = ['SHA512', 'PORT_FILE', 'URL', 'DESCRIPTION', 'LICENSE']
   for a in expected_attrs:
-    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+    assert hasattr(port, a), f'port {port} is missing {a}'
   port.needed = lambda s: name in ports_needed
   port.show = lambda: f'{port.name} (--use-port={port.name}; {port.LICENSE})'
   port.clear = lambda *args: None
@@ -129,7 +129,7 @@ def validate_port(port):
   if hasattr(port, 'handle_options'):
     expected_attrs += ['OPTIONS']
   for a in expected_attrs:
-    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+    assert hasattr(port, a), f'port {port} is missing {a}'
 
 
 @ToolchainProfiler.profile()
@@ -314,13 +314,13 @@ class Ports:
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
-      logger.warning('using local ports: %s' % local_ports)
+      logger.warning(f'using local ports: {local_ports}')
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
       for local_name, path in local_ports:
         if name == local_name:
           port = ports_by_name.get(name)
           if not port:
-            utils.exit_with_error('%s is not a known port' % name)
+            utils.exit_with_error(f'{name} is not a known port')
           if not hasattr(port, 'SUBDIR'):
             utils.exit_with_error(f'port {name} lacks .SUBDIR attribute, which we need in order to override it locally, please update it')
           subdir = port.SUBDIR

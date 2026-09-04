@@ -363,7 +363,7 @@ def get_binaryen_passes():
       passes += ['--pass-arg=asyncify-ignore-indirect']
     if settings.ASYNCIFY_PROPAGATE_ADD:
       passes += ['--pass-arg=asyncify-propagate-addlist']
-    passes += ['--pass-arg=asyncify-imports@%s' % ','.join(settings.ASYNCIFY_IMPORTS)]
+    passes += [f"--pass-arg=asyncify-imports@{','.join(settings.ASYNCIFY_IMPORTS)}"]
 
     # shell escaping can be confusing; try to emit useful warnings
     def check_human_readable_list(items):
@@ -378,13 +378,13 @@ def get_binaryen_passes():
 
     if settings.ASYNCIFY_REMOVE:
       check_human_readable_list(settings.ASYNCIFY_REMOVE)
-      passes += ['--pass-arg=asyncify-removelist@%s' % ','.join(settings.ASYNCIFY_REMOVE)]
+      passes += [f"--pass-arg=asyncify-removelist@{','.join(settings.ASYNCIFY_REMOVE)}"]
     if settings.ASYNCIFY_ADD:
       check_human_readable_list(settings.ASYNCIFY_ADD)
-      passes += ['--pass-arg=asyncify-addlist@%s' % ','.join(settings.ASYNCIFY_ADD)]
+      passes += [f"--pass-arg=asyncify-addlist@{','.join(settings.ASYNCIFY_ADD)}"]
     if settings.ASYNCIFY_ONLY:
       check_human_readable_list(settings.ASYNCIFY_ONLY)
-      passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(settings.ASYNCIFY_ONLY)]
+      passes += [f"--pass-arg=asyncify-onlylist@{','.join(settings.ASYNCIFY_ONLY)}"]
 
   if settings.MEMORY64 == 2:
     passes += ['--memory64-lowering', '--table64-lowering']
@@ -918,7 +918,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # IOError and python backtrace that users would otherwise see.
     dirname = os.path.dirname(target)
     if dirname and not os.path.isdir(dirname):
-      exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
+      exit_with_error(f"specified output file ({target}) is in a directory that does not exist")
   elif autoconf:
     # Autoconf expects the executable output file to be called `a.out`
     target = 'a.out'
@@ -940,7 +940,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # With FAKE_DYLIBS we generate an normal object file rather than an shared object.
     # This is linked with `wasm-ld --relocatable` or (`llvm-link` in the case of LTO).
     if final_suffix in EXECUTABLE_EXTENSIONS:
-      diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
+      diagnostics.warning('emcc', f'-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix ({final_suffix}) when building object files.')
     else:
       options.oformat = OFormat.OBJECT
 
@@ -1255,7 +1255,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
   if 'CLOSURE_WARNINGS' in user_settings:
     if settings.CLOSURE_WARNINGS not in {'quiet', 'warn', 'error'}:
-      exit_with_error('invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
+      exit_with_error(f'invalid option -sCLOSURE_WARNINGS={settings.CLOSURE_WARNINGS} specified! Allowed values are "quiet", "warn" or "error".')
     closure_warnings = diagnostics.manager.warnings['closure']
     if settings.CLOSURE_WARNINGS == 'error':
       closure_warnings['error'] = True
@@ -1350,7 +1350,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.DYNCALLS = 1
 
   if options.oformat != OFormat.OBJECT and final_suffix in {'.o', '.bc', '.so', '.dylib'} and not settings.SIDE_MODULE:
-    diagnostics.warning('emcc', 'object file output extension (%s) used for non-object output.  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
+    diagnostics.warning('emcc', f'object file output extension ({final_suffix}) used for non-object output.  If you meant to build an object file please use `-c, `-r`, or `-shared`')
 
   if settings.SUPPORT_BIG_ENDIAN:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
@@ -2495,7 +2495,7 @@ def module_export_name_substitution():
     # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
-    replacement = "typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
+    replacement = f"typeof {settings.EXPORT_NAME} != 'undefined' ? {settings.EXPORT_NAME} : {{}}"
   new_src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
   assert new_src != src, 'Unable to find Closure syntax __EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__ in source!'
   write_file(final_js, new_src)
@@ -2526,34 +2526,35 @@ def generate_traditional_runtime_html(target, js_target, wasm_target):
       # We need to load the wasm file before anything else, since it
       # has be synchronously ready.
       script.un_src()
-      script.inline = '''
-          fetch(%s).then((result) => result.arrayBuffer())
-                     .then((buf) => {
+      script.inline = f'''
+          fetch({get_subresource_location(wasm_target)}).then((result) => result.arrayBuffer())
+                     .then((buf) => {{
                              Module.wasmBinary = buf;
-                             %s;
-                           });
-''' % (get_subresource_location(wasm_target), script.inline)
+                             {script.inline};
+                           }});
+'''
 
     if settings.WASM == 2:
       # If target browser does not support WebAssembly, we need to load
       # the .wasm.js file before the main .js file.
       script.un_src()
-      script.inline = '''
-          function loadMainJs() {
-%s
-          }
-          if (!window.WebAssembly || location.search.indexOf('_rwasm=0') > 0) {
+      wasm2js_src = get_subresource_location_js(wasm_target + '.js')
+      script.inline = f'''
+          function loadMainJs() {{
+{script.inline}
+          }}
+          if (!window.WebAssembly || location.search.indexOf('_rwasm=0') > 0) {{
             // Current browser does not support WebAssembly, load the .wasm.js JavaScript fallback
             // before the main JS runtime.
             var wasm2js = document.createElement('script');
-            wasm2js.src = %s;
+            wasm2js.src = {wasm2js_src};
             wasm2js.onload = loadMainJs;
             document.body.appendChild(wasm2js);
-          } else {
+          }} else {{
             // Current browser supports Wasm, proceed with loading the main JS runtime.
             loadMainJs();
-          }
-''' % (script.inline, get_subresource_location_js(wasm_target + '.js'))
+          }}
+'''
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)
@@ -2713,7 +2714,7 @@ def map_to_js_libs(library_name):
 
   if library_name in library_map:
     libs = library_map[library_name]
-    logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
+    logger.debug(f'Mapping library `{library_name}` to JS libraries: {libs}')
     return libs
 
   return None

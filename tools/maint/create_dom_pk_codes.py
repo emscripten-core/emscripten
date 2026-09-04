@@ -230,9 +230,9 @@ def hash_all(k1, k2):
   str_to_hash = {}
   for s in input_strings:
     h = hash(s[1], k1, k2)
-    print('String "' + s[1] + '" hashes to %s ' % hex(h), file=sys.stderr)
+    print('String "' + s[1] + f'" hashes to {hex(h)} ', file=sys.stderr)
     if h in hashes:
-      print('Collision! Earlier string ' + hashes[h] + ' also hashed to %s!' % hex(h), file=sys.stderr)
+      print('Collision! Earlier string ' + hashes[h] + f' also hashed to {hex(h)}!', file=sys.stderr)
       return None
     else:
       hashes[h] = s[1]
@@ -259,7 +259,7 @@ while not str_to_hash:
   str_to_hash = hash_all(k1, k2)
 
 print('Found collision-free hash function!', file=sys.stderr)
-print('h_i = ((h_(i-1) ^ %s) << %s) ^ s_i' % (hex(k1), hex(k2)), file=sys.stderr)
+print(f'h_i = ((h_(i-1) ^ {hex(k1)}) << {hex(k2)}) ^ s_i', file=sys.stderr)
 
 
 def pad_to_length(s, length):
@@ -324,7 +324,9 @@ c_file.write('''\
 ''')
 
 for s in input_strings:
-  h_file.write('#define ' + pad_to_length(s[2], longest_dom_pk_code_length()) + ' 0x%04X /* "%s */' % (s[0], pad_to_length(s[1] + '"', longest_key_code_length() + 1)) + '\n')
+  def_name = pad_to_length(s[2], longest_dom_pk_code_length())
+  comment_name = pad_to_length(s[1] + '"', longest_key_code_length() + 1)
+  h_file.write(f'#define {def_name} 0x{s[0]:04X} /* "{comment_name} */\n')
 
 h_file.write('''
 #ifdef __cplusplus
@@ -340,13 +342,13 @@ const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code);
 #endif
 ''')
 
-c_file.write('''
-DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString) {
+c_file.write(f'''
+DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString) {{
   if (!keyCodeString) return 0;
 
   /* Compute the collision free hash. */
   unsigned int hash = 0;
-  while (*keyCodeString) hash = ((hash ^ 0x%04XU) << %d) ^ (unsigned int)*keyCodeString++;
+  while (*keyCodeString) hash = ((hash ^ 0x{k1:04X}U) << {k2}) ^ (unsigned int)*keyCodeString++;
 
   /*
    * Don't expose the hash values out to the application, but map to fixed IDs.
@@ -354,11 +356,13 @@ DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString) {
    *
    *   https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
    */
-  switch (hash) {
-''' % (k1, k2))
+  switch (hash) {{
+''')
 
 for s in input_strings:
-  c_file.write('    case 0x%08XU /* %s */: return %s /* 0x%04X */' % (str_to_hash[s[1]], pad_to_length(s[1], longest_key_code_length()), pad_to_length(s[2] + ';', longest_dom_pk_code_length() + 1), s[0]) + '\n')
+  code_name = pad_to_length(s[1], longest_key_code_length())
+  ret_val = pad_to_length(s[2] + ';', longest_dom_pk_code_length() + 1)
+  c_file.write(f'    case 0x{str_to_hash[s[1]]:08X}U /* {code_name} */: return {ret_val} /* 0x{s[0]:04X} */\n')
 
 c_file.write('''    default: return DOM_PK_UNKNOWN;
   }
@@ -370,7 +374,8 @@ const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code) {
 
 for s in input_strings:
   if len(s) == 3:
-    c_file.write('    case %s return "%s";' % (pad_to_length(s[2] + ':', longest_dom_pk_code_length() + 1), s[2]) + '\n')
+    case_label = pad_to_length(s[2] + ':', longest_dom_pk_code_length() + 1)
+    c_file.write(f'    case {case_label} return "{s[2]}";\n')
 
 c_file.write('''    default: return "Unknown DOM_PK code";
   }

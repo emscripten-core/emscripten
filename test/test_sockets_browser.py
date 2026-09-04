@@ -119,7 +119,7 @@ class sockets_browser(BrowserCore):
 
     # re-write the client test with this literal (it's too big to pass via command line)
     src = read_file(test_file('sockets/test_sockets_echo_client.c'))
-    create_file('test_sockets_echo_bigdata.c', src.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message))
+    create_file('test_sockets_echo_bigdata.c', src.replace('#define MESSAGE "pingtothepong"', f'#define MESSAGE "{message}"'))
 
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
       self.btest_exit('test_sockets_echo_bigdata.c', cflags=[sockets_include, f'-DSOCKK={harness.listen_port}', *args])
@@ -144,7 +144,7 @@ class sockets_browser(BrowserCore):
       CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191, do_server_check=False),
     ]:
       with harness:
-        self.btest_exit('sockets/test_sockets_select_server_down_client.c', cflags=['-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit('sockets/test_sockets_select_server_down_client.c', cflags=[f'-DSOCKK={harness.listen_port}'])
 
   @no_windows('This test is Unix-specific.')
   @requires_python_dev_packages
@@ -155,7 +155,7 @@ class sockets_browser(BrowserCore):
       CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49201),
     ]:
       with harness:
-        self.btest_exit('sockets/test_sockets_select_server_closes_connection_client_rw.c', cflags=['-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit('sockets/test_sockets_select_server_closes_connection_client_rw.c', cflags=[f'-DSOCKK={harness.listen_port}'])
 
   @no_windows('This test uses Unix-specific build architecture.')
   @requires_dev_dependency('ws')
