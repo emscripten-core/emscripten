@@ -2226,7 +2226,7 @@ var SIGNATURE_CONVERSIONS = [];
 // Run wasm-bindgen and integrate the rust-exported symbols into the rest of
 // Emscripten's JS output.
 // Even with this setting enabled, wasm-bindgen processing is only performed
-// when the linked Wasm carries the wasm-bindgen Emscripten marker section
+// when the linker inputs carry the wasm-bindgen Emscripten marker section
 // (emitted by the wasm-bindgen crate). When the marker is absent the build is
 // unchanged, so -sWASM_BINDGEN can safely be passed unconditionally to
 // non-wasm-bindgen builds, and by toolchains that link via emcc.

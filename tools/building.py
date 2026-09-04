@@ -39,6 +39,7 @@ from .shared import (
   LLVM_DWARFDUMP,
   LLVM_NM,
   LLVM_OBJCOPY,
+  LLVM_OBJDUMP,
   WASM_LD,
   asmjs_mangle,
   check_call,
@@ -1317,9 +1318,11 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # ruff: ignore[mutab
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
-def is_wasm_bindgen_module(wasm_file):
-  with webassembly.Module(wasm_file) as module:
-    return module.get_custom_section('__wasm_bindgen_emscripten_marker') is not None
+def has_wasm_bindgen_marker(input_files):
+  if not input_files:
+    return False
+  result = check_call([LLVM_OBJDUMP, '--section-headers'] + input_files, stdout=PIPE)
+  return '__wasm_bindgen_emscripten_marker' in result.stdout
 
 
 def run_wasm_bindgen(infile):

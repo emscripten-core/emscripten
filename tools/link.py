@@ -1894,21 +1894,18 @@ def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
     settings.LINKABLE = True
     rtn = extract_metadata.extract_metadata(wasm_target)
 
+  # WASM_BINDGEN is a no-op unless the inputs carry the wasm-bindgen marker section.
+  if settings.WASM_BINDGEN and not building.has_wasm_bindgen_marker(linker_inputs):
+    settings.WASM_BINDGEN = 0
+
   # If EXPORTED_FUNCTIONS is provided for WASM_BINDGEN, it forms the authoritative
   # list of exports of the Wasm module (per rustc linking semantics).
   # Otherwise, discover the symbols directly from the linker inputs for e.g. static
-  # linking Rust. This also pulls in wasm-bindgen's marker object from a staticlib.
-  bindgen_exports = []
+  # linking Rust.
   if settings.WASM_BINDGEN and 'EXPORTED_FUNCTIONS' not in user_settings:
-    bindgen_exports = [f'--export={e}' for e in building.get_wasm_bindgen_exported_symbols(linker_inputs)]
+    linker_args = linker_args + [f'--export={e}' for e in building.get_wasm_bindgen_exported_symbols(linker_inputs)]
 
-  building.link_lld(linker_args + bindgen_exports, wasm_target, external_symbols=js_syms)
-
-  if settings.WASM_BINDGEN and not building.is_wasm_bindgen_module(wasm_target):
-    settings.WASM_BINDGEN = 0
-    if bindgen_exports:
-      building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
-
+  building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
   return rtn
 
 
