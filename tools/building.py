@@ -1321,7 +1321,7 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # ruff: ignore[mutab
 def has_wasm_bindgen_marker(input_files):
   if not input_files:
     return False
-  result = check_call([LLVM_OBJDUMP, '--section-headers'] + input_files, stdout=PIPE)
+  result = check_call([LLVM_OBJDUMP, '--section-headers', *input_files], stdout=PIPE)
   return '__wasm_bindgen_emscripten_marker' in result.stdout
 
 

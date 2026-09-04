@@ -1903,7 +1903,7 @@ def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
   # Otherwise, discover the symbols directly from the linker inputs for e.g. static
   # linking Rust.
   if settings.WASM_BINDGEN and 'EXPORTED_FUNCTIONS' not in user_settings:
-    linker_args = linker_args + [f'--export={e}' for e in building.get_wasm_bindgen_exported_symbols(linker_inputs)]
+    linker_args += [f'--export={e}' for e in building.get_wasm_bindgen_exported_symbols(linker_inputs)]
 
   building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
   return rtn
