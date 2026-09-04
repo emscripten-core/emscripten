@@ -95,11 +95,11 @@ def create_draft_release(version, base_commit):
 
   # Create the draft release
   cmd = [
-      'gh', 'release', 'create', version,
-      '--draft',
-      '--title', version,
-      '--notes-file', notes_file,
-      '-R', REPO,
+    'gh', 'release', 'create', version,
+    '--draft',
+    '--title', version,
+    '--notes-file', notes_file,
+    '-R', REPO,
   ]
   if base_commit:
     cmd.extend(['--target', base_commit])

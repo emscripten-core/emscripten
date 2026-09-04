@@ -1326,12 +1326,12 @@ def run_wasm_bindgen(infile):
   if not wasm_bindgen_bin:
     exit_with_error('wasm-bindgen executable not found in $PATH')
   cmd = [
-      wasm_bindgen_bin,
-      infile,
-      '--keep-lld-exports',
-      '--keep-debug',
-      '--out-dir',
-      bindgen_out_dir,
+    wasm_bindgen_bin,
+    infile,
+    '--keep-lld-exports',
+    '--keep-debug',
+    '--out-dir',
+    bindgen_out_dir,
   ]
   check_call(cmd)
 

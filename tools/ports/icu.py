@@ -32,23 +32,23 @@ def get(ports, settings, shared):
 
   def build_lib(lib_output, lib_src, other_includes, build_flags):
     additional_build_flags = [
-        # TODO: investigate why this is needed and remove
-        '-Wno-macro-redefined',
-        '-Wno-deprecated-declarations',
-        '-Wno-array-compare',
-        '-Wno-unknown-warning-option',
-        '-Wno-unnecessary-virtual-specifier',
-        # usage of 'using namespace icu' is deprecated: icu v61
-        '-DU_USING_ICU_NAMESPACE=0',
-        # make explicit inclusion of utf header: ref utf.h
-        '-DU_NO_DEFAULT_INCLUDE_UTF_HEADERS=1',
-        # mark UnicodeString constructors explicit : ref unistr.h
-        '-DUNISTR_FROM_CHAR_EXPLICIT=explicit',
-        '-DUNISTR_FROM_STRING_EXPLICIT=explicit',
-        # generate static
-        '-DU_STATIC_IMPLEMENTATION',
-        # CXXFLAGS
-        '-std=c++11',
+      # TODO: investigate why this is needed and remove
+      '-Wno-macro-redefined',
+      '-Wno-deprecated-declarations',
+      '-Wno-array-compare',
+      '-Wno-unknown-warning-option',
+      '-Wno-unnecessary-virtual-specifier',
+      # usage of 'using namespace icu' is deprecated: icu v61
+      '-DU_USING_ICU_NAMESPACE=0',
+      # make explicit inclusion of utf header: ref utf.h
+      '-DU_NO_DEFAULT_INCLUDE_UTF_HEADERS=1',
+      # mark UnicodeString constructors explicit : ref unistr.h
+      '-DUNISTR_FROM_CHAR_EXPLICIT=explicit',
+      '-DUNISTR_FROM_STRING_EXPLICIT=explicit',
+      # generate static
+      '-DU_STATIC_IMPLEMENTATION',
+      # CXXFLAGS
+      '-std=c++11',
     ]
     if settings.PTHREADS:
       additional_build_flags.append('-pthread')
@@ -83,10 +83,10 @@ def get(ports, settings, shared):
     build_lib(lib_output, lib_src, other_includes, ['-DU_IO_IMPLEMENTATION=1'])
 
   return [
-      shared.cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
-      shared.cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
-      shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n),
-      shared.cache.get_lib(get_lib_name(libname_libicu_io, settings), create_libicu_io),
+    shared.cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
+    shared.cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
+    shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n),
+    shared.cache.get_lib(get_lib_name(libname_libicu_io, settings), create_libicu_io),
   ]
 
 

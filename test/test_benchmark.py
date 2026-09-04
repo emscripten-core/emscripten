@@ -1119,14 +1119,14 @@ class benchmark(common.RunnerCore):
   def test_zzz_bullet(self):
     self.cflags.remove('-Werror')
     bullet_cflags = [
-        '-Wno-int-to-void-pointer-cast',
-        '-Wno-c++11-narrowing',
-        '-Wno-deprecated-register',
-        '-Wno-writable-strings',
-        '-Wno-shift-negative-value',
-        '-Wno-format',
-        '-Wno-nontrivial-memcall',
-        '-Wno-single-bit-bitfield-constant-conversion',
+      '-Wno-int-to-void-pointer-cast',
+      '-Wno-c++11-narrowing',
+      '-Wno-deprecated-register',
+      '-Wno-writable-strings',
+      '-Wno-shift-negative-value',
+      '-Wno-format',
+      '-Wno-nontrivial-memcall',
+      '-Wno-single-bit-bitfield-constant-conversion',
     ]
     src = read_file(test_file('third_party/bullet/Demos/Benchmarks/BenchmarkDemo.cpp'))
     src += read_file(test_file('third_party/bullet/Demos/Benchmarks/main.cpp'))

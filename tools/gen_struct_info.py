@@ -73,28 +73,28 @@ QUIET = (__name__ != '__main__')
 DEBUG = False
 
 CFLAGS = [
-    # Avoid parsing problems due to gcc specific syntax.
-    '-D_GNU_SOURCE',
+  # Avoid parsing problems due to gcc specific syntax.
+  '-D_GNU_SOURCE',
 ]
 
 INTERNAL_CFLAGS = [
-    '-I' + utils.path_from_root('system/lib/libc/musl/arch/emscripten'),
-    '-I' + utils.path_from_root('system/lib/libc/musl/arch/generic'),
-    '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
-    '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
-    '-I' + utils.path_from_root('system/lib/pthread/'),
+  '-I' + utils.path_from_root('system/lib/libc/musl/arch/emscripten'),
+  '-I' + utils.path_from_root('system/lib/libc/musl/arch/generic'),
+  '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
+  '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
+  '-I' + utils.path_from_root('system/lib/pthread/'),
 ]
 
 CXXFLAGS = [
-    '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
-    '-D__EMSCRIPTEN_EXCEPTIONS__',
-    '-I' + utils.path_from_root('system/lib/wasmfs/'),
+  '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
+  '-D__EMSCRIPTEN_EXCEPTIONS__',
+  '-I' + utils.path_from_root('system/lib/wasmfs/'),
 ]
 
 DEFAULT_JSON_FILES = [
-    utils.path_from_root('src/struct_info.json'),
-    utils.path_from_root('src/struct_info_internal.json'),
-    utils.path_from_root('src/struct_info_cxx.json'),
+  utils.path_from_root('src/struct_info.json'),
+  utils.path_from_root('src/struct_info_internal.json'),
+  utils.path_from_root('src/struct_info_cxx.json'),
 ]
 
 

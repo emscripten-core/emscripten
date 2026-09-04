@@ -27,13 +27,13 @@ from tools.utils import exit_with_error, read_file
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2', '-mfma']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 CLANG_FLAGS_WITH_ARGS = {
-    '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-    '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-    '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-    '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-    '-install_name', '-compatibility_version', '-mllvm',
-    '-current_version', '-I', '-L', '-include-pch', '-u',
-    '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
+  '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
+  '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+  '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+  '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+  '-install_name', '-compatibility_version', '-mllvm',
+  '-current_version', '-I', '-L', '-include-pch', '-u',
+  '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
 }
 
 

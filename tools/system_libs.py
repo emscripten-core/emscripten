@@ -951,13 +951,13 @@ class libclang_rt_builtins(MTLibrary, SjLjLibrary):
   force_object_files = True
 
   cflags = [
-      '-fno-builtin',
-      '-DNDEBUG',
-      '-DCOMPILER_RT_HAS_ATOMICS=1',
-      # TODO: Remove this if the emutls_key_created variable in emutls.c is
-      # fixed or if the scope of the warning is modified again (see
-      # https://github.com/llvm/llvm-project/pull/178342)
-      '-Wno-unused-but-set-variable',
+    '-fno-builtin',
+    '-DNDEBUG',
+    '-DCOMPILER_RT_HAS_ATOMICS=1',
+    # TODO: Remove this if the emutls_key_created variable in emutls.c is
+    # fixed or if the scope of the warning is modified again (see
+    # https://github.com/llvm/llvm-project/pull/178342)
+    '-Wno-unused-but-set-variable',
   ]
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   profile_src_dir = 'system/lib/compiler-rt/lib/profile'
@@ -1019,28 +1019,28 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   never_force = True
   includes = ['system/lib/llvm-libc']
   cflags = [
-      '-Os',
-      '-DLIBC_NAMESPACE=__llvm_libc',
-      '-DLLVM_LIBC',
-      '-DLIBC_COPT_PUBLIC_PACKAGING',
-      # Disable accurate pass to speed up certain math operations
-      '-DLIBC_MATH=LIBC_MATH_FAST',
-      '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
-      # Reduce size bloats from string conversions.
-      '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
-      # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
-      # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
-      '-Wno-unused-variable',
-      '-mrelaxed-simd',
-      '-ffp-contract=fast',
+    '-Os',
+    '-DLIBC_NAMESPACE=__llvm_libc',
+    '-DLLVM_LIBC',
+    '-DLIBC_COPT_PUBLIC_PACKAGING',
+    # Disable accurate pass to speed up certain math operations
+    '-DLIBC_MATH=LIBC_MATH_FAST',
+    '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
+    # Reduce size bloats from string conversions.
+    '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
+    # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
+    # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
+    '-Wno-unused-variable',
+    '-mrelaxed-simd',
+    '-ffp-contract=fast',
   ]
 
   def get_files(self):
     # Overlay mode doesn't support mbstate_t which is used by these sources.
     mbstate_t_excludes = {
-        'wcrtomb.cpp', 'mbrtowc.cpp', 'mbrlen.cpp', 'mbsinit.cpp',
-        'mbsnrtowcs.cpp', 'mbsrtowcs.cpp', 'wcsnrtombs.cpp', 'wcsrtombs.cpp',
-        'mblen.cpp', 'mbtowc.cpp', 'wctomb.cpp', 'mbstowcs.cpp', 'wcstombs.cpp',
+      'wcrtomb.cpp', 'mbrtowc.cpp', 'mbrlen.cpp', 'mbsinit.cpp',
+      'mbsnrtowcs.cpp', 'mbsrtowcs.cpp', 'wcsnrtombs.cpp', 'wcsrtombs.cpp',
+      'mblen.cpp', 'mbtowc.cpp', 'wctomb.cpp', 'mbstowcs.cpp', 'wcstombs.cpp',
     }
 
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
@@ -1173,27 +1173,27 @@ class libc(MuslInternalLibrary,
 
     # musl modules
     ignore = [
-        'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'legacy', 'mq', 'setjmp',
-        'ldso', 'malloc',
+      'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
+      'aio', 'legacy', 'mq', 'setjmp',
+      'ldso', 'malloc',
     ]
 
     # individual files
     ignore += [
-        'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'res_query.c', 'res_querydomain.c',
-        'proto.c',
-        'syscall.c', 'popen.c', 'pclose.c',
-        'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
-        'getauxval.c',
-        'lookup_name.c',
-        # 'process' exclusions
-        'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
-        '_Fork.c',
-        # 'env' exclusions
-        '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
-        # 'exit' exclusions
-        'assert.c', 'exit.c',
+      'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
+      'res_query.c', 'res_querydomain.c',
+      'proto.c',
+      'syscall.c', 'popen.c', 'pclose.c',
+      'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
+      'getauxval.c',
+      'lookup_name.c',
+      # 'process' exclusions
+      'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
+      '_Fork.c',
+      # 'env' exclusions
+      '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
+      # 'exit' exclusions
+      'assert.c', 'exit.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -1628,14 +1628,14 @@ class crtbegin_mt(MuslInternalLibrary):
 class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
-      '-Oz',
-      '-D_LIBCXXABI_USE_FUTEX',
-      '-D_LIBCPP_BUILDING_LIBRARY',
-      '-D_LIBCXXABI_BUILDING_LIBRARY',
-      '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
-      '-std=c++23',
-      '-Wno-unused-but-set-variable',
-    ]
+    '-Oz',
+    '-D_LIBCXXABI_USE_FUTEX',
+    '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCXXABI_BUILDING_LIBRARY',
+    '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
+    '-std=c++23',
+    '-Wno-unused-but-set-variable',
+  ]
   includes = ['system/lib/libcxx/src', 'system/lib/libunwind/include']
 
   def __init__(self, **kwargs):
@@ -1734,7 +1734,7 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     'time_zone.cpp',
     'tzdb.cpp',
     'tzdb_list.cpp',
-    }
+  }
 
 
 class libunwind(ExceptionLibrary, MTLibrary):

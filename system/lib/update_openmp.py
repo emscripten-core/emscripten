@@ -26,13 +26,13 @@ local_prebuilt = os.path.join(local_root, 'prebuilt')
 
 # Files to ignore during copy_tree
 excludes = (
-    'doc',
-    'build',
-    'tests',
-    'CMakeFiles',
-    'libgomp.a',
-    'libiomp5.a',
-    'libomp.a',
+  'doc',
+  'build',
+  'tests',
+  'CMakeFiles',
+  'libgomp.a',
+  'libiomp5.a',
+  'libomp.a',
 )
 
 
@@ -62,21 +62,21 @@ def main():
 
   # Generates header files for OpenMP library build
   subprocess.run([
-      os.path.join(emscripten_root, 'emcmake'), 'cmake',
-      '-S', upstream_runtimes,
-      '-B', build_dir,
-      '-G', 'Ninja',
-      '-DLLVM_ENABLE_RUNTIMES=openmp',
-      '-DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-unknown-emscripten',
-      '-DOPENMP_ENABLE_LIBOMPTARGET=OFF',
-      '-DLIBOMP_HAVE_OMPT_SUPPORT=OFF',
-      '-DLIBOMP_OMPT_SUPPORT=OFF',
-      '-DLIBOMP_OMPD_SUPPORT=OFF',
-      '-DLIBOMP_USE_DEBUGGER=OFF',
-      '-DLIBOMP_FORTRAN_MODULES=OFF',
-      '-DLIBOMP_ENABLE_SHARED=OFF',
-      '-DLIBOMP_ARCH=wasm32',
-      '-DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF',
+    os.path.join(emscripten_root, 'emcmake'), 'cmake',
+    '-S', upstream_runtimes,
+    '-B', build_dir,
+    '-G', 'Ninja',
+    '-DLLVM_ENABLE_RUNTIMES=openmp',
+    '-DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-unknown-emscripten',
+    '-DOPENMP_ENABLE_LIBOMPTARGET=OFF',
+    '-DLIBOMP_HAVE_OMPT_SUPPORT=OFF',
+    '-DLIBOMP_OMPT_SUPPORT=OFF',
+    '-DLIBOMP_OMPD_SUPPORT=OFF',
+    '-DLIBOMP_USE_DEBUGGER=OFF',
+    '-DLIBOMP_FORTRAN_MODULES=OFF',
+    '-DLIBOMP_ENABLE_SHARED=OFF',
+    '-DLIBOMP_ARCH=wasm32',
+    '-DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF',
   ], check=True)
   subprocess.run(['cmake', '--build', '.'], cwd=build_dir, check=True)
 
