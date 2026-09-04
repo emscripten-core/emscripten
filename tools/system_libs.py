@@ -803,7 +803,7 @@ class ExceptionLibrary(Library):
       case Exceptions.WASM_LEGACY:
         cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
       case Exceptions.WASM:
-        cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']
+        cflags += ['-fwasm-exceptions']
 
     return cflags
 
@@ -861,7 +861,6 @@ class SjLjLibrary(Library):
                    '-D__WASM_SJLJ__']
       case Exceptions.WASM:
         cflags += ['-sSUPPORT_LONGJMP=wasm',
-                   '-sWASM_LEGACY_EXCEPTIONS=0',
                    '-sDISABLE_EXCEPTION_THROWING',
                    '-D__WASM_SJLJ__']
     return cflags

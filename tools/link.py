@@ -1566,7 +1566,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$_wasmWorkerInitializeRuntime']
 
   # Set min browser versions based on certain settings such as WASM_BIGINT,
-  # PTHREADS, AUDIO_WORKLET
+  # PTHREADS, AUDIO_WORKLET, WASM_EXCEPTIONS.
   # Such setting must be set before this point
   feature_matrix.apply_min_browser_versions()
 
