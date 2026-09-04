@@ -25,16 +25,16 @@ def get_native_triple():
     return native_compilation_triple
 
   arch = {
-      'aarch64': 'arm64',
-      'arm64': 'arm64', # Python on Apple Silicon ARM64 reports lowercase arm64
-      'ARM64': 'arm64', # Python on Windows-on-ARM reports uppercase ARM64
-      'x86_64': 'x86_64',
-      'AMD64': 'x86_64',
+    'aarch64': 'arm64',
+    'arm64': 'arm64', # Python on Apple Silicon ARM64 reports lowercase arm64
+    'ARM64': 'arm64', # Python on Windows-on-ARM reports uppercase ARM64
+    'x86_64': 'x86_64',
+    'AMD64': 'x86_64',
   }[platform.machine()]
   OS = {
-      'linux': 'linux',
-      'darwin': 'darwin',
-      'win32': 'windows-msvc',
+    'linux': 'linux',
+    'darwin': 'darwin',
+    'win32': 'windows-msvc',
   }[sys.platform]
   return f'{arch}-{OS}'
 

@@ -46,13 +46,13 @@ c_license_base = '''\
 '''
 
 exclude_filenames = [
-    'system/include/',
-    'system/lib/libc/musl/',
-    'system/lib/html5/dom_pk_codes.c',
-    'system/lib/dlmalloc.c',
-    'third_party/',
-    'test/optimizer/',
-    'site/source/_themes/',
+  'system/include/',
+  'system/lib/libc/musl/',
+  'system/lib/html5/dom_pk_codes.c',
+  'system/lib/dlmalloc.c',
+  'third_party/',
+  'test/optimizer/',
+  'site/source/_themes/',
 ]
 
 exclude_contents = ['Copyright', 'LICENSE.TXT', 'PUBLIC DOMAIN']

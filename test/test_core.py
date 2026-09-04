@@ -7220,9 +7220,9 @@ void* operator new(size_t size) {
       # more without them - we don't need to legalize)
       self.cflags += ['-sDYNCALLS', '-DWASM_BIGINT']
     cases = [
-        ('DIRECT', []),
-        ('DYNAMIC_SIG', ['-sDYNCALLS']),
-      ]
+      ('DIRECT', []),
+      ('DYNAMIC_SIG', ['-sDYNCALLS']),
+    ]
     if self.get_setting('MINIMAL_RUNTIME') == 0:
       cases += [
         ('EXPORTED', []),

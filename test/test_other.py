@@ -1575,8 +1575,8 @@ f.close()
     self.run_process([EMAR, 'rc', 'libfoo.a', 'foo.o'])
     self.run_process([EMAR, 'rc', 'libmain.a', 'main.o'])
     self.run_process([
-        EMXX, test_file('test_whole_archive_init.cpp'),
-        '-O1', 'libfoo.a', '-Wl,--whole-archive', 'libmain.a', '-Wl,--no-whole-archive'])
+      EMXX, test_file('test_whole_archive_init.cpp'),
+      '-O1', 'libfoo.a', '-Wl,--whole-archive', 'libmain.a', '-Wl,--no-whole-archive'])
     self.assertContained('Result: 11', self.run_js('a.out.js'))
 
   def test_link_group_bitcode(self):
@@ -4938,14 +4938,14 @@ int main() {
   def test_oz_size(self):
     sizes = {}
     for name, args in [
-        ('0', []),
-        ('1', ['-O1']),
-        ('2', ['-O2']),
-        ('s', ['-Os']),
-        ('z', ['-Oz']),
-        ('3', ['-O3']),
-        ('g', ['-Og']),
-      ]:
+      ('0', []),
+      ('1', ['-O1']),
+      ('2', ['-O2']),
+      ('s', ['-Os']),
+      ('z', ['-Oz']),
+      ('3', ['-O3']),
+      ('g', ['-Og']),
+    ]:
       print(name, args)
       self.clear()
       self.run_process([EMCC, '-c', path_from_root('system/lib/dlmalloc.c')] + args)
@@ -8460,10 +8460,10 @@ int main() {
 
   def test_memory_size(self):
     for args, expect_initial, expect_max in [
-        ([], 320, 320),
-        (['-sALLOW_MEMORY_GROWTH'], 320, 32768),
-        (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=40MB'], 320, 640),
-      ]:
+      ([], 320, 320),
+      (['-sALLOW_MEMORY_GROWTH'], 320, 32768),
+      (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=40MB'], 320, 640),
+    ]:
       cmd = [EMCC, test_file('hello_world.c'), '-O2', '-sINITIAL_MEMORY=20MB'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
@@ -8540,25 +8540,25 @@ int main() {
   @crossplatform
   def test_binaryen_debug(self):
     for args, expect_clean_js, expect_whitespace_js, expect_closured in [
-        (['-O0'], False, True, False),
-        (['-O0', '-g1'], False, True, False),
-        (['-O0', '-g2'], False, True, False),
-        (['-O0', '-g'], False, True, False),
-        (['-O0', '--profiling-funcs'], False, True, False),
-        (['-O0', '-gline-tables-only'], False, True, False),
-        (['-O1'], False, True, False),
-        (['-O3'], True, False, False),
-        (['-Oz', '-gsource-map'], True, False, False),
-        (['-O2'], True,  False, False),
-        (['-O2', '-gz'], True,  False, False), # -gz means debug compression, it should not enable debugging
-        (['-O2', '-g1'], False, True, False),
-        (['-O2', '-g'],  False, True, False),
-        (['-O2', '--closure=1'], True, False, True),
-        (['-O2', '--closure=1', '-g1'], True, True,  True),
-        (['-O2', '--minify=0'], False, True, False),
-        (['-O2', '--profiling-funcs'], True, False, False),
-        (['-O2', '--profiling'], False, True, False),
-      ]:
+      (['-O0'], False, True, False),
+      (['-O0', '-g1'], False, True, False),
+      (['-O0', '-g2'], False, True, False),
+      (['-O0', '-g'], False, True, False),
+      (['-O0', '--profiling-funcs'], False, True, False),
+      (['-O0', '-gline-tables-only'], False, True, False),
+      (['-O1'], False, True, False),
+      (['-O3'], True, False, False),
+      (['-Oz', '-gsource-map'], True, False, False),
+      (['-O2'], True,  False, False),
+      (['-O2', '-gz'], True,  False, False), # -gz means debug compression, it should not enable debugging
+      (['-O2', '-g1'], False, True, False),
+      (['-O2', '-g'],  False, True, False),
+      (['-O2', '--closure=1'], True, False, True),
+      (['-O2', '--closure=1', '-g1'], True, True,  True),
+      (['-O2', '--minify=0'], False, True, False),
+      (['-O2', '--profiling-funcs'], True, False, False),
+      (['-O2', '--profiling'], False, True, False),
+    ]:
       print(args, expect_clean_js, expect_whitespace_js, expect_closured)
       delete_file('a.out.wat')
       cmd = [EMCC, test_file('hello_world.c')] + args
@@ -8574,9 +8574,9 @@ int main() {
     sizes = []
     with env_modify({'EMCC_DEBUG': '1'}):
       for args, expect in [
-          ([], False),
-          (['-sBINARYEN_IGNORE_IMPLICIT_TRAPS'], True),
-        ]:
+        ([], False),
+        (['-sBINARYEN_IGNORE_IMPLICIT_TRAPS'], True),
+      ]:
         print(args, expect)
         cmd = [EMXX, test_file('hello_libcxx.cpp'), '-O3'] + args
         print(' '.join(cmd))
@@ -16040,8 +16040,8 @@ console.log('OK');'''
   def test_dead_code_esm(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-O2', '-o', 'hello.mjs'])
     rollup_cmd = shared.get_npm_cmd('rollup') + [
-        'hello.mjs', '--format', 'es', '--file', 'hello.rolled.mjs',
-        '--external', 'node:module',
+      'hello.mjs', '--format', 'es', '--file', 'hello.rolled.mjs',
+      '--external', 'node:module',
     ]
     self.run_process(rollup_cmd)
     prettier_cmd = shared.get_npm_cmd('prettier')

@@ -72,25 +72,25 @@ VALID_ENVIRONMENTS = {'web', 'webview', 'worker', 'node', 'shell', 'worklet'}
 EXECUTABLE_EXTENSIONS = ['.wasm', '.html', '.js', '.mjs', '.out', '']
 
 # Supported LLD flags which we will pass through to the linker.
-SUPPORTED_LINKER_FLAGS = (
-    '--start-group', '--end-group',
-    '-(', '-)',
-    '--whole-archive', '--no-whole-archive',
-    '-whole-archive', '-no-whole-archive',
-    '-rpath',
-)
+SUPPORTED_LINKER_FLAGS = {
+  '--start-group', '--end-group',
+  '-(', '-)',
+  '--whole-archive', '--no-whole-archive',
+  '-whole-archive', '-no-whole-archive',
+  '-rpath',
+}
 
 # Unsupported LLD flags which we will ignore.
 # Maps to true if the flag takes an argument.
 UNSUPPORTED_LLD_FLAGS = {
-    # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
-    '-bind_at_load': False,
-    # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
-    # in order to aid build systems that want to pass these flags.
-    '-allow-shlib-undefined': False,
-    '-rpath-link': True,
-    '-version-script': True,
-    '-install_name': True,
+  # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
+  '-bind_at_load': False,
+  # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
+  # in order to aid build systems that want to pass these flags.
+  '-allow-shlib-undefined': False,
+  '-rpath-link': True,
+  '-version-script': True,
+  '-install_name': True,
 }
 
 UBSAN_SANITIZERS = {

@@ -78,13 +78,13 @@ SOURCE_EXTENSIONS = {
 } | PREPROCESSED_EXTENSIONS
 
 LINK_ONLY_FLAGS = {
-    '--bind', '--closure', '--cpuprofiler', '--embed-file',
-    '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
-    '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
-    '--js-transform', '--oformat', '--output_eol', '--output-eol',
-    '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
-    '--proxy-to-worker', '--shell-file', '--source-map-base',
-    '--threadprofiler', '--use-preload-plugins',
+  '--bind', '--closure', '--cpuprofiler', '--embed-file',
+  '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
+  '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
+  '--js-transform', '--oformat', '--output_eol', '--output-eol',
+  '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
+  '--proxy-to-worker', '--shell-file', '--source-map-base',
+  '--threadprofiler', '--use-preload-plugins',
 }
 
 PASSTHROUGH_FLAGS = {
