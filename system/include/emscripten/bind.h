@@ -477,6 +477,17 @@ void raw_destructor(ClassType* ptr) {
     delete ptr;
 }
 
+// Argument temporaries of trivial value types are placed on the wasm stack.
+// Stack temporaries come from stackAlloc, which guarantees STACK_ALIGN
+// (== __BIGGEST_ALIGNMENT__) alignment; over-aligned types keep the heap path.
+template<typename ClassType>
+struct is_trivial_value_type {
+    static constexpr bool value =
+        std::is_trivially_constructible<ClassType>::value &&
+        std::is_trivially_destructible<ClassType>::value &&
+        alignof(ClassType) <= __BIGGEST_ALIGNMENT__;
+};
+
 template<typename ReturnPolicy, typename FunctionPointerType, typename ReturnType, typename ThisType, typename... Args>
 struct FunctionInvoker {
     static typename internal::BindingType<ReturnType>::WireType invoke(
@@ -804,12 +815,7 @@ public:
             getSignature(destructor),
             reinterpret_cast<GenericFunction>(destructor),
             sizeof(ClassType),
-            // Stack temporaries come from stackAlloc, which guarantees
-            // STACK_ALIGN (== __BIGGEST_ALIGNMENT__) alignment; over-aligned
-            // types keep the heap path.
-            std::is_trivially_constructible<ClassType>::value &&
-                std::is_trivially_destructible<ClassType>::value &&
-                alignof(ClassType) <= __BIGGEST_ALIGNMENT__);
+            is_trivial_value_type<ClassType>::value);
     }
 
     ~value_array() {
@@ -906,12 +912,7 @@ public:
             getSignature(dtor),
             reinterpret_cast<GenericFunction>(dtor),
             sizeof(ClassType),
-            // Stack temporaries come from stackAlloc, which guarantees
-            // STACK_ALIGN (== __BIGGEST_ALIGNMENT__) alignment; over-aligned
-            // types keep the heap path.
-            std::is_trivially_constructible<ClassType>::value &&
-                std::is_trivially_destructible<ClassType>::value &&
-                alignof(ClassType) <= __BIGGEST_ALIGNMENT__);
+            is_trivial_value_type<ClassType>::value);
     }
 
     ~value_object() {

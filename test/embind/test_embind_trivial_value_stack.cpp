@@ -99,8 +99,10 @@ float useBig(BigAligned b) {
   return b.x + b.y + b.z + b.w;
 }
 
-uintptr_t bigAddr(const BigAligned& b) {
-  return (uintptr_t)&b;
+// The low 32 bits are enough for the alignment check and keep the return a
+// plain JS number under wasm64.
+uint32_t bigAddr(const BigAligned& b) {
+  return (uint32_t)(uintptr_t)&b;
 }
 
 EMSCRIPTEN_BINDINGS(trivial_value_stack) {

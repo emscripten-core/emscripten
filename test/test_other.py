@@ -3637,14 +3637,17 @@ More info: https://emscripten.org
 
   @parameterized({
     '': (),
-    'o2': ('-O2',),
+    'no_dynamic': ('-sDYNAMIC_EXECUTION=0',),
     'aot_js': ('-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT'),
+    'wasm64': ('-m64', '-sDYNAMIC_EXECUTION=0'),
   })
   def test_embind_trivial_value_stack(self, *extra_args):
     # Trivially constructible/destructible value_object and value_array
     # arguments marshal on the wasm stack; the test overrides malloc/free and
     # asserts the trivial paths never allocate while the non-trivial and
     # over-aligned fallbacks still balance the heap.
+    if '-m64' in extra_args:
+      self.require_wasm64()
     self.do_runf('embind/test_embind_trivial_value_stack.cpp', 'done\n', cflags=['-lembind', *extra_args])
 
   @requires_node_25

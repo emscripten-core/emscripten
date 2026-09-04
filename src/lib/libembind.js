@@ -1113,16 +1113,20 @@ var LibraryEmbind = {
         const setterArgumentType = fieldTypes[i + fieldRecords.length];
         const setter = field.setter;
         const setterContext = field.setterContext;
+        var write;
+        if (setterArgumentType.destructorFunction === null && !setterArgumentType.argStackAlloc) {
+          // See the matching element-write logic in _embind_finalize_value_array.
+          write = (ptr, o) => setter(setterContext, ptr, setterArgumentType.toWireType(null, o));
+        } else {
+          write = (ptr, o) => {
+            var destructors = [];
+            setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
+            runDestructors(destructors);
+          };
+        }
         fields[field.fieldName] = {
           read: (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr)),
-          // See the matching element-write logic in _embind_finalize_value_array.
-          write: (setterArgumentType.destructorFunction === null && !setterArgumentType.argStackAlloc)
-            ? (ptr, o) => setter(setterContext, ptr, setterArgumentType.toWireType(null, o))
-            : (ptr, o) => {
-                var destructors = [];
-                setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
-                runDestructors(destructors);
-              },
+          write,
           optional: getterReturnType.optional,
         };
       }
