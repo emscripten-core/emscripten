@@ -1661,14 +1661,12 @@ def run(args):  # ruff: ignore[complex-structure, too-many-branches, too-many-st
 
   if options.serve_root:
     serve_dir = os.path.abspath(options.serve_root)
+  elif file_to_serve == '.' or file_to_serve_is_url:
+    serve_dir = os.path.abspath('.')
+  elif file_to_serve.endswith(('/', '\\')) or os.path.isdir(file_to_serve):
+    serve_dir = file_to_serve
   else:
-    if file_to_serve == '.' or file_to_serve_is_url:
-      serve_dir = os.path.abspath('.')
-    else:
-      if file_to_serve.endswith(('/', '\\')) or os.path.isdir(file_to_serve):
-        serve_dir = file_to_serve
-      else:
-        serve_dir = os.path.dirname(os.path.abspath(file_to_serve))
+    serve_dir = os.path.dirname(os.path.abspath(file_to_serve))
   if file_to_serve_is_url:
     url = file_to_serve
   else:
