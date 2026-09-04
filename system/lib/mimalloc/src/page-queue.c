@@ -61,7 +61,7 @@ static inline size_t mi_page_queue_count(const mi_page_queue_t* pq) {
 // Returns MI_BIN_HUGE if the size is too large.
 // We use `wsize` for the size in "machine word sizes",
 // i.e. byte size == `wsize*sizeof(void*)`.
-static mi_decl_noinline size_t mi_bin(size_t size) {
+static size_t mi_bin(size_t size) {
   size_t wsize = _mi_wsize_from_size(size);
 #if defined(MI_ALIGN4W)
   if mi_likely(wsize <= 4) {
@@ -212,7 +212,7 @@ static inline void mi_theap_queue_first_update(mi_theap_t* theap, const mi_page_
   if (size > MI_SMALL_SIZE_MAX) return;
 
   mi_page_t* page = pq->first;
-  if (pq->first == NULL) page = (mi_page_t*)&_mi_page_empty;
+  if (pq->first == NULL) page = _mi_page_empty_get();
 
   // find index in the right direct page array
   const size_t idx = _mi_wsize_from_size(size);
@@ -420,39 +420,4 @@ static void mi_page_queue_enqueue_from(mi_page_queue_t* to, mi_page_queue_t* fro
 static void mi_page_queue_enqueue_from_full(mi_page_queue_t* to, mi_page_queue_t* from, mi_page_t* page) {
   // note: we could insert at the front to increase reuse, but it slows down certain benchmarks (like `alloc-test`)
   mi_page_queue_enqueue_from_ex(to, from, true /* enqueue at the end of the `to` queue? */, page);
-}
-
-// Only called from `mi_theap_absorb`.
-size_t _mi_page_queue_append(mi_theap_t* theap, mi_page_queue_t* pq, mi_page_queue_t* append) {
-  mi_assert_internal(mi_theap_contains_queue(theap,pq));
-  mi_assert_internal(pq->block_size == append->block_size);
-
-  if (append->first==NULL) return 0;
-
-  // set append pages to new theap and count
-  size_t count = 0;
-  for (mi_page_t* page = append->first; page != NULL; page = page->next) {
-    mi_page_set_theap(page, theap);
-    count++;
-  }
-  mi_assert_internal(count == append->count);
-
-  if (pq->last==NULL) {
-    // take over afresh
-    mi_assert_internal(pq->first==NULL);
-    pq->first = append->first;
-    pq->last = append->last;
-    mi_theap_queue_first_update(theap, pq);
-  }
-  else {
-    // append to end
-    mi_assert_internal(pq->last!=NULL);
-    mi_assert_internal(append->first!=NULL);
-    pq->last->next = append->first;
-    append->first->prev = pq->last;
-    pq->last = append->last;
-  }
-  pq->count += append->count;
-
-  return count;
 }

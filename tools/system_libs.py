@@ -1898,6 +1898,7 @@ class libmimalloc(MTLibrary):
     excludes={'alloc-override.c', 'free.c', 'page-queue.c', 'static.c'},
   )
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
+  src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim-tls.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
   # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
   src_files += [utils.path_from_root('system/lib/libc/sbrk.c')]
