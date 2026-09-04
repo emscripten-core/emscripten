@@ -247,7 +247,7 @@ class Module:
 
   def read_init(self):
     code = []
-    while 1:
+    while True:
       opcode = OpCode(self.read_byte())
       args = []
       match opcode:
