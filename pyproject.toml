@@ -59,8 +59,8 @@ lint.ignore = [
   "line-too-long",
   "type-comparison",
   "ambiguous-variable-name",
-  "indentation-with-invalid-multiple", # Does not seem to honor `indent-width = 2` above
-  "indentation-with-invalid-multiple-comment", # Does not seem to honor `indent-width = 2` above
+  "indentation-with-invalid-multiple", # Does not honor `indent-width`. See https://github.com/astral-sh/ruff/issues/8705
+  "indentation-with-invalid-multiple-comment", # Does not honor `indent-width`. See https://github.com/astral-sh/ruff/issues/8705
   "too-few-spaces-before-inline-comment",
   "try-except-in-loop",
   "manual-list-comprehension",
