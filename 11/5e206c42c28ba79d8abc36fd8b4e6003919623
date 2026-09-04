@@ -1,0 +1,23 @@
+ChangeLog.md
+  s_dd1ce219c49121::t_26d4d01597b1bc 28
+site/source/docs/tools_reference/settings_reference.rst
+  s_dd1ce219c49121::t_1872c9408099bb 3358
+src/settings.js
+  s_dd1ce219c49121::t_098b25af3d5201 2229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "115e206c42c28ba79d8abc36fd8b4e6003919623",
+  "prompts": {},
+  "sessions": {
+    "s_dd1ce219c49121": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f91d492c5ffek2DGECN6JH0RN1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Guy Bedford <gbedford@cloudflare.com>"
+    }
+  }
+}
