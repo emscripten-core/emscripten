@@ -2138,7 +2138,9 @@ addToLibrary({
           // exit the current thread, but only if there is one active.
           // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
           // Unify this check with the runtimeExited check above
-          if (_pthread_self()) __emscripten_thread_exit(EXITSTATUS);
+          // `EXITSTATUS` holds the thread result if the entry point has already
+          // returned, but is unset if the thread unwound to the event loop.
+          if (_pthread_self()) __emscripten_thread_exit(EXITSTATUS ?? 0);
           return;
         }
 #endif

@@ -49,6 +49,20 @@ typedef struct em_proxying_ctx em_proxying_ctx;
 // Signal the end of a task proxied with `emscripten_proxy_sync_with_ctx`.
 void emscripten_proxy_finish(em_proxying_ctx* ctx);
 
+// Declare that a task proxied with `emscripten_proxy_sync_with_ctx` will no
+// longer access `arg`. By default a canceled caller cannot exit while the task
+// is running, since `arg` may be on the caller's stack; after this call it may
+// exit as soon as it is canceled, even though the task has not finished.
+// `emscripten_proxy_finish` implies this release.
+void emscripten_proxy_release_arg(em_proxying_ctx* ctx);
+
+// Attempt to reverse `emscripten_proxy_release_arg`, re-pinning the caller so
+// the task may access `arg` again (typically to write results back before
+// finishing). Returns false if the caller has already been canceled and its
+// `arg` is gone, in which case `arg` must not be accessed. After a successful
+// acquire, a canceled caller once again waits for a release or finish.
+bool emscripten_proxy_acquire_arg(em_proxying_ctx* ctx);
+
 // Enqueue `func` on the given queue and thread and return immediately. Returns
 // true if the work was successfully enqueued and the target thread notified or
 // false otherwise.
@@ -60,7 +74,10 @@ bool emscripten_proxy_async(em_proxying_queue* q,
 // Enqueue `func` on the given queue and thread and wait for it to finish
 // executing before returning. Returns true if the task was successfully
 // completed and false otherwise, including if the target thread is canceled or
-// exits before the work is completed.
+// exits before the work is completed. The wait is a cancellation point: a
+// canceled caller exits with PTHREAD_CANCELED once `func` has completed (or
+// immediately if `func` has not yet started, in which case it is dropped),
+// since `arg` may be on the caller's stack.
 bool emscripten_proxy_sync(em_proxying_queue* q,
                            pthread_t target_thread,
                            void (*func)(void*),
@@ -72,7 +89,11 @@ bool emscripten_proxy_sync(em_proxying_queue* q,
 // instead store the context pointer and call `emscripten_proxy_finish` at an
 // arbitrary later time. Returns true if the task was successfully completed and
 // false otherwise, including if the target thread is canceled or exits before
-// the work is completed.
+// the work is completed. The wait is a cancellation point: a canceled caller
+// exits with PTHREAD_CANCELED once the task is finished (or canceled), or
+// earlier if the task has not started or has called
+// `emscripten_proxy_release_arg`, since `arg` may be on the caller's stack. If
+// the caller is canceled before the task starts, the task is dropped.
 bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
                                     pthread_t target_thread,
                                     void (*func)(em_proxying_ctx*, void*),

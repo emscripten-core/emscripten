@@ -8,8 +8,11 @@
 #include <assert.h>
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
+#include <errno.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -190,7 +193,19 @@ bool emscripten_proxy_async(em_proxying_queue* q,
 
 enum ctx_kind { SYNC, CALLBACK };
 
-enum ctx_state { PENDING, DONE, CANCELED };
+// The sync ctx state word tracks ownership with three flags. `arg` is
+// caller-owned (typically on its stack) and loaned to the task by
+// `emscripten_proxy_acquire_arg` (which is also how the task starts) until
+// `emscripten_proxy_release_arg` or completion. While the loan is outstanding
+// a canceled caller is pinned in its wait; otherwise it sets CTX_ORPHANED and
+// exits immediately, handing ownership of the ctx to the target to recycle at
+// completion (and voiding all future loans, including a task not yet started,
+// which is dropped). CTX_LOANED, CTX_DONE, and CTX_ORPHANED are mutually
+// exclusive.
+#define CTX_LOANED 1u   // The task may access `arg`; the caller is pinned.
+#define CTX_DONE 2u     // The call is over; with CTX_OK unless the target died.
+#define CTX_OK 4u
+#define CTX_ORPHANED 8u // The canceled caller is gone; `arg` with it.
 
 struct em_proxying_ctx {
   // The user-provided function and argument.
@@ -199,13 +214,13 @@ struct em_proxying_ctx {
 
   enum ctx_kind kind;
   union {
-    // Context for synchronous proxying.
+    // Context for synchronous proxying. Allocated from a per-thread pool so
+    // that a caller canceled and exiting mid-wait leaves the target a valid
+    // ctx to finish (or cancel) and recycle later.
     struct {
-      // Update `state` and signal the condition variable once the proxied task
-      // is done or canceled.
-      enum ctx_state state;
-      pthread_mutex_t mutex;
-      pthread_cond_t cond;
+      // Single-word lifecycle for the sync handshake; the caller futex-waits
+      // on it directly. See the CTX_* flags above.
+      _Atomic uint32_t state;
     } sync;
 
     // Context for proxying with callbacks.
@@ -229,13 +244,44 @@ struct em_proxying_ctx {
 static pthread_key_t active_ctxs;
 static pthread_once_t active_ctxs_once = PTHREAD_ONCE_INIT;
 
+// A per-thread free list of sync ctxs, freed to the heap on thread exit. Sync
+// ctxs cannot live on the caller's stack since a canceled caller may exit
+// while the target still holds its ctx, and pooling avoids a heap allocation
+// per proxied call.
+static pthread_key_t ctx_pool;
+
 static void cancel_ctx(void* arg);
 static void cancel_active_ctxs(void* arg);
+
+static void free_ctx_pool(void* head) {
+  em_proxying_ctx* ctx = head;
+  while (ctx) {
+    em_proxying_ctx* next = ctx->next;
+    free(ctx);
+    ctx = next;
+  }
+}
 
 static void init_active_ctxs(void) {
   int ret = pthread_key_create(&active_ctxs, cancel_active_ctxs);
   assert(ret == 0);
+  ret = pthread_key_create(&ctx_pool, free_ctx_pool);
+  assert(ret == 0);
   (void)ret;
+}
+
+static em_proxying_ctx* sync_ctx_alloc(void) {
+  em_proxying_ctx* ctx = pthread_getspecific(ctx_pool);
+  if (ctx) {
+    pthread_setspecific(ctx_pool, ctx->next);
+    return ctx;
+  }
+  return malloc(sizeof(em_proxying_ctx));
+}
+
+static void sync_ctx_free(em_proxying_ctx* ctx) {
+  ctx->next = pthread_getspecific(ctx_pool);
+  pthread_setspecific(ctx_pool, ctx);
 }
 
 static void add_active_ctx(em_proxying_ctx* ctx) {
@@ -291,18 +337,11 @@ static void cancel_active_ctxs(void* arg) {
 static void em_proxying_ctx_init_sync(em_proxying_ctx* ctx,
                                       void (*func)(em_proxying_ctx*, void*),
                                       void* arg) {
-  pthread_once(&active_ctxs_once, init_active_ctxs);
-  *ctx = (em_proxying_ctx){
-    .func = func,
-    .arg = arg,
-    .kind = SYNC,
-    .sync =
-      {
-        .state = PENDING,
-        .mutex = PTHREAD_MUTEX_INITIALIZER,
-        .cond = PTHREAD_COND_INITIALIZER,
-      },
-  };
+  ctx->func = func;
+  ctx->arg = arg;
+  ctx->kind = SYNC;
+  ctx->next = ctx->prev = NULL;
+  atomic_store(&ctx->sync.state, 0);
 }
 
 static void em_proxying_ctx_init_callback(em_proxying_ctx* ctx,
@@ -327,19 +366,25 @@ static void em_proxying_ctx_init_callback(em_proxying_ctx* ctx,
   };
 }
 
-static void em_proxying_ctx_deinit(em_proxying_ctx* ctx) {
-  if (ctx->kind == SYNC) {
-    pthread_mutex_destroy(&ctx->sync.mutex);
-    pthread_cond_destroy(&ctx->sync.cond);
-  }
-  // TODO: We should probably have some kind of refcounting scheme to keep
-  // `queue` alive for callback ctxs.
-}
+// TODO: We should probably have some kind of refcounting scheme to keep
+// `queue` alive for callback ctxs.
+static void free_ctx(void* arg) { free(arg); }
 
-static void free_ctx(void* arg) {
-  em_proxying_ctx* ctx = arg;
-  em_proxying_ctx_deinit(ctx);
-  free(ctx);
+// Publish completion (releasing any outstanding loan) and either recycle the
+// ctx of a canceled caller or wake the waiting one. After this the target must
+// not touch the ctx: waking a possibly recycled address is benign (futex
+// waiters recheck), but nothing else would be.
+static void sync_ctx_complete(em_proxying_ctx* ctx, uint32_t flags) {
+  uint32_t s = atomic_load(&ctx->sync.state);
+  while (!atomic_compare_exchange_weak(
+    &ctx->sync.state, &s, (s & CTX_ORPHANED) | flags)) {
+  }
+  assert(!(s & CTX_DONE));
+  if (s & CTX_ORPHANED) {
+    sync_ctx_free(ctx);
+  } else {
+    emscripten_futex_wake(&ctx->sync.state, 1);
+  }
 }
 
 // Free the callback info on the same thread it was originally allocated on.
@@ -350,16 +395,35 @@ static void call_callback_then_free_ctx(void* arg) {
   free_ctx(ctx);
 }
 
+void emscripten_proxy_release_arg(em_proxying_ctx* ctx) {
+  assert(ctx->kind == SYNC);
+  // No other flag can be set while the loan is outstanding, so a plain store
+  // cannot lose one.
+  assert(atomic_load(&ctx->sync.state) == CTX_LOANED);
+  atomic_store(&ctx->sync.state, 0);
+  emscripten_futex_wake(&ctx->sync.state, 1);
+}
+
+bool emscripten_proxy_acquire_arg(em_proxying_ctx* ctx) {
+  assert(ctx->kind == SYNC);
+  uint32_t s = atomic_load(&ctx->sync.state);
+  do {
+    assert(!(s & CTX_DONE));
+    if (s & CTX_ORPHANED) {
+      return false;
+    }
+    if (s & CTX_LOANED) {
+      return true;
+    }
+  } while (
+    !atomic_compare_exchange_weak(&ctx->sync.state, &s, s | CTX_LOANED));
+  return true;
+}
+
 void emscripten_proxy_finish(em_proxying_ctx* ctx) {
   if (ctx->kind == SYNC) {
-    pthread_mutex_lock(&ctx->sync.mutex);
-    ctx->sync.state = DONE;
     remove_active_ctx(ctx);
-    // Signal must come before unlock to avoid emscripten_proxy_sync_with ctx
-    // seeing the state as DONE and freeing the ctx before we call unlock.
-    // See https://github.com/emscripten-core/emscripten/pull/26582
-    pthread_cond_signal(&ctx->sync.cond);
-    pthread_mutex_unlock(&ctx->sync.mutex);
+    sync_ctx_complete(ctx, CTX_DONE | CTX_OK);
   } else {
     // Schedule the callback on the caller thread. If the caller thread has
     // already died or dies before the callback is executed, then at least make
@@ -382,11 +446,7 @@ static void call_cancel_then_free_ctx(void* arg) {
 static void cancel_ctx(void* arg) {
   em_proxying_ctx* ctx = arg;
   if (ctx->kind == SYNC) {
-    pthread_mutex_lock(&ctx->sync.mutex);
-    ctx->sync.state = CANCELED;
-    // Signal must be first, see comment in emscripten_proxy_finish.
-    pthread_cond_signal(&ctx->sync.cond);
-    pthread_mutex_unlock(&ctx->sync.mutex);
+    sync_ctx_complete(ctx, CTX_DONE);
   } else {
     if (ctx->cb.cancel == NULL ||
         !do_proxy(ctx->cb.queue,
@@ -400,8 +460,35 @@ static void cancel_ctx(void* arg) {
 // Helper for wrapping the call with ctx as a `void (*)(void*)`.
 static void call_with_ctx(void* arg) {
   em_proxying_ctx* ctx = arg;
+  // A sync task starts by taking the loan of `arg`; if the caller was already
+  // canceled its `arg` is gone and no one wants the result, so drop the work.
+  if (ctx->kind == SYNC && !emscripten_proxy_acquire_arg(ctx)) {
+    sync_ctx_free(ctx);
+    return;
+  }
   add_active_ctx(ctx);
   ctx->func(ctx, ctx->arg);
+}
+
+// Handle cancellation of a caller waiting below. Hold the caller's stack
+// alive while the loan of `arg` is outstanding, then hand the ctx over to the
+// target, or recycle it if the call already completed. Runs after the masked
+// cancel has set the cancel state to disabled, so waiting here cannot itself
+// be canceled.
+static void orphan_sync_ctx(em_proxying_ctx* ctx) {
+  uint32_t s = atomic_load(&ctx->sync.state);
+  while (1) {
+    if (s & CTX_LOANED) {
+      emscripten_futex_wait(&ctx->sync.state, s, INFINITY);
+      s = atomic_load(&ctx->sync.state);
+    } else if (s & CTX_DONE) {
+      sync_ctx_free(ctx);
+      return;
+    } else if (atomic_compare_exchange_weak(
+                 &ctx->sync.state, &s, s | CTX_ORPHANED)) {
+      return;
+    }
+  }
 }
 
 bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
@@ -410,19 +497,36 @@ bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
                                    void* arg) {
   assert(!pthread_equal(target_thread, pthread_self()) &&
          "Cannot synchronously wait for work proxied to the current thread");
-  em_proxying_ctx ctx;
-  em_proxying_ctx_init_sync(&ctx, func, arg);
-  if (!do_proxy(q, target_thread, (task){call_with_ctx, cancel_ctx, &ctx})) {
-    em_proxying_ctx_deinit(&ctx);
+  pthread_once(&active_ctxs_once, init_active_ctxs);
+  em_proxying_ctx* ctx = sync_ctx_alloc();
+  if (!ctx) {
     return false;
   }
-  pthread_mutex_lock(&ctx.sync.mutex);
-  while (ctx.sync.state == PENDING) {
-    pthread_cond_wait(&ctx.sync.cond, &ctx.sync.mutex);
+  em_proxying_ctx_init_sync(ctx, func, arg);
+  if (!do_proxy(q, target_thread, (task){call_with_ctx, cancel_ctx, ctx})) {
+    sync_ctx_free(ctx);
+    return false;
   }
-  pthread_mutex_unlock(&ctx.sync.mutex);
-  int ret = ctx.sync.state == DONE;
-  em_proxying_ctx_deinit(&ctx);
+  // The wait is a cancellation point. Mask cancellation (as in
+  // pthread_cond_timedwait) so it surfaces as ECANCELED rather than unwinding
+  // the thread from inside the wait, hand the ctx over to the target, then
+  // exit.
+  int cs;
+  __pthread_setcancelstate(PTHREAD_CANCEL_MASKED, &cs);
+  if (cs == PTHREAD_CANCEL_DISABLE) {
+    __pthread_setcancelstate(cs, 0);
+  }
+  uint32_t s;
+  while (!((s = atomic_load(&ctx->sync.state)) & CTX_DONE)) {
+    if (emscripten_futex_wait(&ctx->sync.state, s, INFINITY) == -ECANCELED) {
+      orphan_sync_ctx(ctx);
+      __pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, 0);
+      __pthread_testcancel();
+    }
+  }
+  __pthread_setcancelstate(cs, 0);
+  bool ret = s & CTX_OK;
+  sync_ctx_free(ctx);
   return ret;
 }
 
@@ -648,12 +752,38 @@ static void run_js_func_with_ctx(em_proxying_ctx* ctx, void* arg) {
   // should never be owned on the main thread (i.e. the argument here always
   // exists on the stack of the calling thread, it's never copied/malloced).
   assert(!f->owned);
+
+  // The arguments have been deserialized; the only later access to `f` is the
+  // guarded result write in _emscripten_run_js_on_main_thread_done, so a
+  // canceled caller may now leave.
+  emscripten_proxy_release_arg(ctx);
 }
 
-void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result) {
+void _emscripten_run_js_on_main_thread_done(void* arg_ctx,
+                                            void* arg,
+                                            double result) {
+  em_proxying_ctx* ctx = arg_ctx;
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
-  f->result = result;
+  // `f` lives on the caller's stack; it is gone if the caller was canceled
+  // while waiting (e.g. a pthread_cancel of a thread blocked in recv/poll).
+  if (emscripten_proxy_acquire_arg(ctx)) {
+    f->result = result;
+  }
   emscripten_proxy_finish(ctx);
+}
+
+// PROXY_SYNC: run the JS function to completion on the target thread, then
+// hand the result back through the same caller-gone guard as the async case.
+static void run_js_func_sync_with_ctx(em_proxying_ctx* ctx, void* arg) {
+  proxied_js_func_t* f = (proxied_js_func_t*)arg;
+  double result = _emscripten_receive_on_main_thread_js(f->funcIndex,
+                                                        f->emAsmAddr,
+                                                        f->callingThread,
+                                                        f->bufSize,
+                                                        f->argBuffer,
+                                                        NULL,
+                                                        NULL);
+  _emscripten_run_js_on_main_thread_done(ctx, arg, result);
 }
 
 /*
@@ -694,7 +824,8 @@ double _emscripten_run_js_on_main_thread(int func_index,
     if (proxyMode == PROXY_SYNC_ASYNC) {
       rtn = emscripten_proxy_sync_with_ctx(q, target, run_js_func_with_ctx, &f);
     } else {
-      rtn = emscripten_proxy_sync(q, target, run_js_func, &f);
+      rtn = emscripten_proxy_sync_with_ctx(
+        q, target, run_js_func_sync_with_ctx, &f);
     }
     if (!rtn) {
       assert(false && "emscripten_proxy_sync_with_ctx failed");
