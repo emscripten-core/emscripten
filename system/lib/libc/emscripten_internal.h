@@ -97,6 +97,9 @@ void* _dlsym_catchup_js(struct dso* handle, int sym_index);
 
 int _setitimer_js(int which, double timeout);
 
+// Blocking wait for fd readiness; see _emscripten_fd_wait in libsyscall.js.
+int _emscripten_fd_wait(int fd, int events);
+
 // Synchronize loaded modules across threads.
 // Runs _emscripten_dlsync_self on each of the threads that are running at
 // the time of the call.
