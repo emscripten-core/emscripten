@@ -19,7 +19,7 @@ addToLibrary({
   // function $writeI53ToU64(): the implementation would be identical, and it is up to the
   // C/C++ side code to interpret the resulting number as signed or unsigned as is desirable.
   $writeI53ToI64: (ptr, num) => {
-    {{{ makeSetValue('ptr', 0, 'num', 'u32') }}};
+    {{{ makeSetValue('ptr', 0, 'num&0xFFFFFFFF', 'u32') }}};
     var lower = {{{ makeGetValue('ptr', 0, 'u32') }}};
     {{{ makeSetValue('ptr', 4, '(num - lower)/4294967296', 'u32') }}};
 #if ASSERTIONS
