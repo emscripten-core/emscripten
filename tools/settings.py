@@ -134,6 +134,8 @@ INCOMPATIBLE_SETTINGS = [
   ('WASM2JS', 'MAIN_MODULE', 'wasm2js does not support dynamic linking'),
   ('WASM2JS', 'SIDE_MODULE', 'wasm2js does not support dynamic linking'),
   ('WASM2JS', 'GROWABLE_ARRAYBUFFERS',  None),
+  ('WASM2JS', 'SUPPORT_BIG_ENDIAN', None),
+  ('WASM2JS', 'MEMORY64', None),
   ('MAIN_MODULE', 'NO_WASM_ASYNC_COMPILATION', 'dynamic linking requires async wasm compilation'),
   ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
   ('EVAL_CTORS', 'WASM2JS', None),
@@ -157,6 +159,15 @@ INCOMPATIBLE_SETTINGS = [
   ('CROSS_ORIGIN_STORAGE', 'SIDE_MODULE', 'no JS glue is emitted to carry the hash or perform the COS lookup'),
   ('NODERAWSOCKETS', 'WASMFS', 'the node:net backend is not wired into WASMFS sockets'),
   ('NODERAWSOCKETS', 'PROXY_POSIX_SOCKETS', 'they are alternative socket backends'),
+  ('WASM_ESM_INTEGRATION', 'MAIN_MODULE', 'dynamic linking is not supported'),
+  ('WASM_ESM_INTEGRATION', 'SIDE_MODULE', 'dynamic linking is not supported'),
+  ('WASM_ESM_INTEGRATION', 'ASYNCIFY', None),
+  ('WASM_ESM_INTEGRATION', 'WASM_WORKERS', None),
+  ('WASM_ESM_INTEGRATION', 'NO_WASM_ASYNC_COMPILATION', None),
+  ('WASM_ESM_INTEGRATION', 'WASM2JS', None),
+  ('WASM_ESM_INTEGRATION', 'ABORT_ON_WASM_EXCEPTIONS', None),
+  ('FORCE_FILESYSTEM', 'NO_FILESYSTEM', None),
+  ('NODE_CODE_CACHING', 'SINGLE_FILE', 'saves a file on the side'),
 ]
 
 EXPERIMENTAL_SETTINGS = {
