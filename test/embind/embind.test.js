@@ -880,18 +880,47 @@ module({
             assert.equal(b.WhichCtorCalled(), 2);
             var c = new cm.MultipleCtors(30, 30, 30);
             assert.equal(c.WhichCtorCalled(), 3);
+            var d = new cm.MultipleCtors("dummy");
+            assert.equal(d.WhichCtorCalled(), 4);
+            var base = new cm.Base();
+            var e = new cm.MultipleCtors(base);
+            assert.equal(e.WhichCtorCalled(), 5);
+            var derived = new cm.Derived();
+            var f = new cm.MultipleCtors(derived);
+            assert.equal(f.WhichCtorCalled(), 5);
             a.delete();
             b.delete();
             c.delete();
+            d.delete();
+            e.delete();
+            f.delete();
+            base.delete();
+            derived.delete();
         });
 
         test("access multiple smart ptr ctors", function() {
             var a = new cm.MultipleSmartCtors(10);
             assert.equal(a.WhichCtorCalled(), 1);
-            var b = new cm.MultipleCtors(20, 20);
+            var b = new cm.MultipleSmartCtors(20, 20);
             assert.equal(b.WhichCtorCalled(), 2);
+            var c = new cm.MultipleSmartCtors("dummy");
+            assert.equal(c.WhichCtorCalled(), 3);
+            var base = new cm.Base();
+            var d = new cm.MultipleSmartCtors(base);
+            assert.equal(d.WhichCtorCalled(), 4);
+            var derived = new cm.Derived();
+            var e = new cm.MultipleSmartCtors(derived);
+            assert.equal(e.WhichCtorCalled(), 4);
+            var f = new cm.MultipleSmartCtors(a);
+            assert.equal(f.WhichCtorCalled(), 5);
             a.delete();
             b.delete();
+            c.delete();
+            d.delete();
+            e.delete();
+            f.delete();
+            base.delete();
+            derived.delete();
         });
 
         test("wrong number of constructor arguments throws", function() {
@@ -899,16 +928,27 @@ module({
             assert.throws(cm.BindingError, function() { new cm.MultipleCtors(1,2,3,4); });
         });
 
+        test("wrong argument throws", function() {
+            assert.throws(cm.BindingError, function() { new cm.MultipleCtors(true); });
+            assert.throws(cm.BindingError, function() { new cm.MultipleCtors(new cm.SecondBase()); });
+        });
+
         test("overloading of free functions", function() {
             var a = cm.overloaded_function(10);
             assert.equal(a, 1);
             var b = cm.overloaded_function(20, 20);
             assert.equal(b, 2);
+            var c = cm.overloaded_function("dummy");
+            assert.equal(c, 3);
         });
 
         test("wrong number of arguments to an overloaded free function", function() {
             assert.throws(cm.BindingError, function() { cm.overloaded_function(); });
             assert.throws(cm.BindingError, function() { cm.overloaded_function(30, 30, 30); });
+        });
+
+        test("wrong type to an overloaded free function", function() {
+            assert.throws(cm.BindingError, function() { cm.overloaded_function(true); });
         });
 
         test("overloading of class member functions", function() {
@@ -917,6 +957,9 @@ module({
             assert.equal(foo.WhichFuncCalled(), 1);
             assert.equal(foo.Func(20, 20), 2);
             assert.equal(foo.WhichFuncCalled(), 2);
+            assert.equal(foo.Func("dummy"), 3);
+            assert.equal(foo.WhichFuncCalled(), 3);
+
             foo.delete();
         });
 
@@ -932,6 +975,16 @@ module({
             assert.throws(cm.BindingError, function() { cm.MultipleOverloads.StaticFunc(30, 30, 30); });
         });
 
+        test("wrong type to an overloaded class member function", function() {
+            var foo = new cm.MultipleOverloads();
+            assert.throws(cm.BindingError, function() { foo.Func(true); });
+            foo.delete();
+        });
+
+        test("wrong type to an overloaded class static function", function() {
+            assert.throws(cm.BindingError, function() { cm.MultipleOverloads.StaticFunc(true); });
+        });
+
         test("overloading of derived class member functions", function() {
             var foo = new cm.MultipleOverloadsDerived();
 
@@ -942,6 +995,9 @@ module({
             assert.equal(foo.WhichFuncCalled(), 1);
             assert.equal(foo.Func(20, 20), 2);
             assert.equal(foo.WhichFuncCalled(), 2);
+
+            assert.equal(foo.Func("dummy"), 3);
+            assert.equal(foo.WhichFuncCalled(), 3);
 
             assert.equal(foo.Func(30, 30, 30), 3);
             assert.equal(foo.WhichFuncCalled(), 3);
@@ -955,6 +1011,8 @@ module({
             assert.equal(cm.MultipleOverloads.WhichStaticFuncCalled(), 1);
             assert.equal(cm.MultipleOverloads.StaticFunc(20, 20), 2);
             assert.equal(cm.MultipleOverloads.WhichStaticFuncCalled(), 2);
+            assert.equal(cm.MultipleOverloads.StaticFunc("dummy"), 3);
+            assert.equal(cm.MultipleOverloads.WhichStaticFuncCalled(), 3);
         });
 
         test("overloading of derived class static functions", function() {
