@@ -53,17 +53,19 @@ def is_orig_main_wrapper(module, function):
 
 
 def get_const_expr_value(expr):
-  assert len(expr) == 2
-  assert expr[1][0] == OpCode.END
-  opcode, immediates = expr[0]
-  match opcode:
-    case OpCode.I32_CONST | OpCode.I64_CONST:
-      assert len(immediates) == 1
-      return immediates[0]
-    case OpCode.GLOBAL_GET:
-      return 0
-    case _:
-      exit_with_error('unexpected opcode in const expr: %s', opcode)
+  assert expr[-1][0] == OpCode.END
+  for inst in expr:
+    opcode, immediates = inst
+    match opcode:
+      case OpCode.I32_CONST | OpCode.I64_CONST:
+        assert len(immediates) == 1
+        return immediates[0]
+      case OpCode.GLOBAL_GET:
+        continue
+      case OpCode.END:
+        return 0
+      case _:
+        exit_with_error('unexpected opcode in const expr: %s', opcode)
 
 
 def get_global_value(globl):
@@ -117,7 +119,7 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
           case MemoryOpCode.MEMORY_DROP:
             segment = module.read_uleb()
           case _:
-            assert False, "unknown: %s" % opcode
+            assert False, f"unknown: {opcode}"
       case OpCode.ATOMIC_PREFIX:
         opcode = AtomicOpCode(module.read_byte())
         if opcode in {AtomicOpCode.ATOMIC_I32_RMW_CMPXCHG, AtomicOpCode.ATOMIC_I32_STORE,
@@ -126,14 +128,14 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
           module.read_uleb()
           module.read_uleb()
         else:
-          assert False, "unknown: %s" % opcode
+          assert False, f"unknown: {opcode}"
       case OpCode.BR_TABLE:
         count = module.read_uleb()
         for _ in range(count):
           _depth = module.read_uleb()
         _default = module.read_uleb()
       case _:
-        assert False, "unknown: %s" % opcode
+        assert False, f"unknown: {opcode}"
 
   # Recursion is safe here because the layout of the wasm-ld-generated
   # start function has a specific structure and has at most on level
@@ -176,7 +178,7 @@ def find_segment_with_address(module, address):
       if address >= offset and address < offset + seg.size:
         return (seg, address - offset)
 
-  raise AssertionError('unable to find segment for address: %s' % address)
+  raise AssertionError(f'unable to find segment for address: {address}')
 
 
 def data_to_string(data):

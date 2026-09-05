@@ -17,6 +17,14 @@ executors:
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
+  linux-arm64:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: arm.medium
+    environment:
+      LANG: "C.UTF-8"
+      EMSDK_NOTTY: "1"
+      EMTEST_DETECT_TEMPFILE_LEAKS: "1"
   mac-arm64:
     environment:
       EMSDK_NOTTY: "1"
@@ -68,12 +76,17 @@ commands:
   install-rust:
     steps:
       - run:
-          name: install rust
+          name: install rust and wasm-bindgen
+          # The wasm-bindgen CLI must exactly match the library version the
+          # test crates pin.
           command: |
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
             export PATH=${HOME}/.cargo/bin:${PATH}
             rustup target add wasm32-unknown-emscripten
             echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> $BASH_ENV
+            WB=wasm-bindgen-0.2.127-x86_64-unknown-linux-musl
+            curl -sSfL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.127/$WB.tar.gz | tar xz -C /tmp
+            mv /tmp/$WB/wasm-bindgen ${HOME}/.cargo/bin/
   install-node-version:
     description: "install a specific version of node"
     parameters:
@@ -443,7 +456,7 @@ commands:
             EMTEST_HEADLESS: "1"
             EMTEST_CORES: "2"
           command: |
-            test/runner sockets
+            test/runner sockets_node sockets_browser
       - upload-test-results
 
 jobs:
@@ -741,8 +754,6 @@ jobs:
       - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64-4gb:
-    environment:
-      LANG: "C.UTF-8"
     executor: ubuntu-lts
     steps:
       - prepare-for-tests
@@ -759,7 +770,6 @@ jobs:
       - upload-test-results
   test-wasm64-misc:
     environment:
-      LANG: "C.UTF-8"
       EMTEST_SKIP_NINJA: "1"
     executor: ubuntu-lts
     steps:
@@ -800,7 +810,10 @@ jobs:
       - run:
           name: install bun
           command: |
-            curl -fsSL https://bun.com/install | bash
+            # Temporally pin to 1.3.14 (the last non-rust version) until we
+            # can investigate the breakages:
+            # https://github.com/emscripten-core/emscripten/issues/27580
+            curl -fsSL https://bun.com/install | bash -s "bun-v1.3.14"
             echo "BUN = '~/.bun/bin/bun'" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [BUN]" >> ~/emsdk/.emscripten
       - run-tests:
@@ -871,7 +884,6 @@ jobs:
   test-node-compat:
     executor: ubuntu-lts
     environment:
-      LANG: "C.UTF-8"
       EMTEST_SKIP_V8: "1"
     steps:
       - checkout
@@ -966,8 +978,6 @@ jobs:
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
-            other.test_exceptions_stack_trace*
-            other.test_exceptions_rethrow_stack_trace*
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
             core2.test_sse2
@@ -993,6 +1003,9 @@ jobs:
             other.test_js_base64_api
             other.test_pthread_growth*
             other.test_memory_growth
+            other.test_exceptions_stack_trace*
+            other.test_exceptions_rethrow_stack_trace*
+            core2.test_*exception*_wasm
             core2.test_hello_world
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
@@ -1015,7 +1028,6 @@ jobs:
     environment:
       EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_RUST: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
       - install-rust
@@ -1154,6 +1166,11 @@ jobs:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja
+            # Choco can return 0 even if package installation/resolution fails (e.g. 504 Gateway Timeout).
+            # See: https://github.com/chocolatey/choco/issues/1609
+            # Explicitly check version commands to ensure executables exist in PATH.
+            cmake --version
+            ninja --version
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
@@ -1185,29 +1202,6 @@ jobs:
     steps:
       - test-sockets-chrome
 
-  build-windows-launcher:
-    executor:
-      name: win/server-2022
-      shell: bash.exe -eo pipefail
-    steps:
-      - checkout
-      - run:
-          name: "build pylauncher"
-          shell: cmd.exe
-          command: .circleci\setup_vs2022.bat && cd tools\pylauncher && call build.bat
-      - store_artifacts:
-          path: tools/pylauncher/pylauncher.exe
-          destination: pylauncher.exe
-      - install-emsdk
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run:
-          name: "create_entry_points"
-          command: $EMSDK_PYTHON tools/maint/create_entry_points.py --exe-files
-      - run:
-          name: "crossplatform tests"
-          command: test/runner.exe core0.test_hello_world
-
 
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
@@ -1226,9 +1220,6 @@ jobs:
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_WASM_LEGACY_EH: "1"
-      EMTEST_SKIP_WASM_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_25: "1"
@@ -1245,6 +1236,11 @@ jobs:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja
+            # Choco can return 0 even if package installation/resolution fails (e.g. 504 Gateway Timeout).
+            # See: https://github.com/chocolatey/choco/issues/1609
+            # Explicitly check version commands to ensure executables exist in PATH.
+            cmake --version
+            ninja --version
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - install-emsdk
@@ -1256,8 +1252,12 @@ jobs:
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run:
-          name: "sockets.test_nodejs_sockets_echo*"
-          command: "test/runner sockets.test_nodejs_sockets_echo*"
+          name: "sockets_node.test_nodejs_sockets_echo*"
+          command: "test/runner sockets_node.test_nodejs_sockets_echo*"
+      - upload-test-results
+      - run:
+          name: "sanity tests"
+          command: test/runner sanity.test_windows_path_casing
       - upload-test-results
       - run:
           name: "check clean"
@@ -1271,9 +1271,6 @@ jobs:
       # We don't install d8 or modern node on the mac runner so we skip any
       # tests that depend on those.
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_WASM_LEGACY_EH: "1"
-      EMTEST_SKIP_WASM_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_MESON: "1"
       EMTEST_SKIP_RUST: "1"
@@ -1291,6 +1288,29 @@ jobs:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
       - upload-test-results
+
+  test-linux-arm64:
+    executor: linux-arm64
+    environment:
+      EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_WASM_LEGACY_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_NODE_25: "1"
+      # Some native clang tests assume x86 clang (e.g. -sse2)
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMCC_SKIP_SANITY_CHECK: "1"
+    steps:
+      - checkout
+      - install-emsdk
+      - pip-install
+      - run: sudo apt-get install -q -y ninja-build scons cmake make
+      - run-tests-linux:
+          title: "crossplatform tests"
+          frozen_cache: false
+          test_targets: "--crossplatform-only"
 
 workflows:
   build-test:
@@ -1362,7 +1382,7 @@ workflows:
       - test-node-compat
       - test-windows
       - test-windows-browser-firefox
-      - build-windows-launcher
       - test-mac-arm64:
          requires:
            - build-linux
+      - test-linux-arm64

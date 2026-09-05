@@ -2130,14 +2130,13 @@ void *getBindBuffer() {
     self.reftest('test_sdl_canvas_palette_2.c', 'test_sdl_canvas_palette_b.png', cflags=['--pre-js', 'pre.js', '--pre-js', 'args-b.js', '-lSDL', '-lGL'])
 
   def test_sdl_ttf_render_text_solid(self):
-    self.reftest('test_sdl_ttf_render_text_solid.c', cflags=['-O2', '-lSDL', '-lGL', '-Wno-experimental'])
+    self.reftest('test_sdl_ttf_render_text_solid.c', cflags=['-O2', '-lSDL', '-lGL'])
 
   def test_sdl3_ttf_render_text_solid(self):
-    self.cflags.append('-Wno-experimental')
     copy_asset('freetype/LiberationSansBold.ttf')
     self.reftest('test_sdl3_ttf_render_text_solid.c', 'test_sdl3_ttf_render_text_solid.png',
                  cflags=[
-                  '-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '-lGL', '-Wno-experimental',
+                  '-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '-lGL',
                   '--embed-file', 'LiberationSansBold.ttf'])
 
   def test_sdl_alloctext(self):
@@ -2664,7 +2663,7 @@ Module["preRun"] = () => {
   def test_webgl_preprocessor_variables(self, opts):
     if '-DWEBGL_VERSION=2' in opts and webgl2_disabled():
       self.skipTest('This test requires WebGL2 to be available')
-    self.btest_exit('webgl_preprocessor_variables.c', cflags=['-lGL'] + opts)
+    self.btest_exit('webgl_preprocessor_variables.c', cflags=['-lGL', '-sGL_DEBUG'] + opts)
 
   @requires_graphics_hardware
   def test_webgl2_ubos(self):
@@ -2905,17 +2904,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_key.c', 37182145, cflags=['-sUSE_SDL=2', '--pre-js', test_file('browser/fake_events.js')])
 
   def test_sdl2_text(self):
-    create_file('pre.js', '''
-      Module.postRun = () => {
-        function doOne() {
-          Module._one();
-          setTimeout(doOne, 1000/60);
-        }
-        setTimeout(doOne, 1000/60);
-      }
-    ''')
-
-    self.btest_exit('test_sdl2_text.c', cflags=['--pre-js', 'pre.js', '--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_text.c', cflags=['--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_mouse(self):
@@ -3110,7 +3099,7 @@ Module["preRun"] = () => {
   def test_sdl3_ttf(self):
     copy_asset('freetype/LiberationSansBold.ttf')
     self.reftest('test_sdl3_ttf.c', 'test_sdl3_ttf.png',
-                 cflags=['-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '--embed-file', 'LiberationSansBold.ttf', '-Wno-experimental'])
+                 cflags=['-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '--embed-file', 'LiberationSansBold.ttf'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf_rtl(self):
@@ -3167,12 +3156,13 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_mixer_music.c', cflags=args)
 
   def test_sdl3_misc(self):
-    self.cflags.append('-Wno-experimental')
     self.btest_exit('test_sdl3_misc.c', cflags=['-sUSE_SDL=3'])
 
   def test_sdl3_canvas_write(self):
-    self.cflags.append('-Wno-experimental')
     self.btest_exit('test_sdl3_canvas_write.c', cflags=['-sUSE_SDL=3'])
+
+  def test_sdl3_text(self):
+    self.btest_exit('test_sdl3_text.c', cflags=['--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=3', '-Wno-experimental'])
 
   @requires_graphics_hardware
   @no_wasm64('cocos2d ports does not compile with wasm64')
@@ -3202,9 +3192,7 @@ Module["preRun"] = () => {
   @parameterized({
     'asyncify': (['-sASYNCIFY'],),
     'asyncify_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY'],),
-    'jspi': (['-sJSPI', '-Wno-experimental'],),
-    'jspi_wasm_bigint': (['-sJSPI', '-sWASM_BIGINT', '-Wno-experimental'],),
-    'jspi_wasm_bigint_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sJSPI', '-sWASM_BIGINT', '-Wno-experimental'],),
+    'jspi': (['-sJSPI'],),
   })
   def test_async(self, opt, args):
     if is_jspi(args) and not is_chrome():
@@ -3873,8 +3861,8 @@ Module["preRun"] = () => {
   def test_pthread_iostream(self):
     self.btest_exit('pthread/test_pthread_iostream.cpp', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
-  def test_pthread_unistd_io_bigint(self):
-    self.btest_exit('unistd/io.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD', '-sWASM_BIGINT'])
+  def test_pthread_unistd_io(self):
+    self.btest_exit('unistd/io.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test that the main thread is able to use pthread_set/getspecific.
   @also_with_wasm2js
@@ -4883,7 +4871,7 @@ Module["preRun"] = () => {
 
   @parameterized({
     'asyncify': (['-sASYNCIFY'],),
-    'jspi': (['-sJSPI', '-Wno-experimental'],),
+    'jspi': (['-sJSPI'],),
   })
   def test_embind(self, args):
     if is_jspi(args) and not is_chrome():
@@ -5264,17 +5252,16 @@ Module["preRun"] = () => {
       self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.btest_exit('alloc_3gb.c', cflags=['-sMALLOC=dlmalloc', '-sALLOW_MEMORY_GROWTH=1'])
 
+  # under wasm2js we disable BigInt support which affects the ABI
+  @also_with_wasm2js
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait
     # this test requires one thread per fetch backend, so updates to the test
     # will require bumping this
-    'main_thread': (['-sPTHREAD_POOL_SIZE=5'],),
+    '': (['-sPTHREAD_POOL_SIZE=5'],),
     # using proxy_to_pthread also works, of course
     'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-DPROXYING'],),
-    # using BigInt support affects the ABI, and should not break things. (this
-    # could be tested on either thread; do the main thread for simplicity)
-    'bigint': (['-sPTHREAD_POOL_SIZE=5', '-sWASM_BIGINT'],),
   })
   def test_wasmfs_fetch_backend_threaded(self, args):
     create_file('data.dat', 'hello, fetch')
@@ -5290,10 +5277,11 @@ Module["preRun"] = () => {
                             '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
+  @also_with_wasm2js
   @parameterized({
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-    'jspi': (['-Wno-experimental', '-sJSPI'],),
-    'jspi_wasm_bigint': (['-Wno-experimental', '-sJSPI', '-sWASM_BIGINT'],),
+    'jspi': (['-sJSPI'],),
+    'pthread_jspi': (['-pthread', '-sPROXY_TO_PTHREAD', '-sJSPI'],),
     'asyncify': (['-sASYNCIFY=1'],),
   })
   @no_safari('TODO: Fails with abort:Assertion failed: err == 0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)

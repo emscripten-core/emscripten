@@ -32,7 +32,6 @@ from . import (
   webassembly,
 )
 from .cmdline import OFormat, options
-from .feature_matrix import Feature
 from .minimal_runtime_shell import generate_minimal_runtime_html
 from .settings import (
   DEPRECATED_SETTINGS,
@@ -73,25 +72,25 @@ VALID_ENVIRONMENTS = {'web', 'webview', 'worker', 'node', 'shell', 'worklet'}
 EXECUTABLE_EXTENSIONS = ['.wasm', '.html', '.js', '.mjs', '.out', '']
 
 # Supported LLD flags which we will pass through to the linker.
-SUPPORTED_LINKER_FLAGS = (
-    '--start-group', '--end-group',
-    '-(', '-)',
-    '--whole-archive', '--no-whole-archive',
-    '-whole-archive', '-no-whole-archive',
-    '-rpath',
-)
+SUPPORTED_LINKER_FLAGS = {
+  '--start-group', '--end-group',
+  '-(', '-)',
+  '--whole-archive', '--no-whole-archive',
+  '-whole-archive', '-no-whole-archive',
+  '-rpath',
+}
 
 # Unsupported LLD flags which we will ignore.
 # Maps to true if the flag takes an argument.
 UNSUPPORTED_LLD_FLAGS = {
-    # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
-    '-bind_at_load': False,
-    # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
-    # in order to aid build systems that want to pass these flags.
-    '-allow-shlib-undefined': False,
-    '-rpath-link': True,
-    '-version-script': True,
-    '-install_name': True,
+  # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
+  '-bind_at_load': False,
+  # wasm-ld doesn't support soname or other dynamic linking flags (yet).   Ignore them
+  # in order to aid build systems that want to pass these flags.
+  '-allow-shlib-undefined': False,
+  '-rpath-link': True,
+  '-version-script': True,
+  '-install_name': True,
 }
 
 UBSAN_SANITIZERS = {
@@ -310,37 +309,8 @@ def should_run_binaryen_optimizer():
   return settings.OPT_LEVEL >= 2
 
 
-def get_binaryen_lowering_passes():
-  passes = []
-
-  # The following features are all enabled in llvm by default and therefore
-  # enabled in the emscripten system libraries.  This means that we need to
-  # lower them away using binaryen passes, if they are not enabled in the
-  # feature matrix.
-  # This can happen if the feature is explicitly disabled on the command line,
-  # or when targeting an VM/engine that does not support the feature.
-
-  # List of [<feature_name>, <lowering_flag>, <feature_flags>] triples.
-  features = [
-    [Feature.NON_TRAPPING_FPTOINT, '--llvm-nontrapping-fptoint-lowering', ['--enable-nontrapping-float-to-int']],
-    [Feature.BULK_MEMORY, '--llvm-memory-copy-fill-lowering', ['--enable-bulk-memory', '--enable-bulk-memory-opt']],
-  ]
-
-  for feature, lowering_flag, feature_flags in features:
-    if not feature_matrix.caniuse(feature):
-      logger.debug(f'lowering {feature.name} feature due to incompatible target browser engines')
-      for f in feature_flags:
-        # Remove features from binaryen_features, otherwise future runs of binaryen
-        # could re-introduce the feature.
-        if f in building.binaryen_features:
-          building.binaryen_features.remove(f)
-      passes.append(lowering_flag)
-
-  return passes
-
-
 def get_binaryen_passes():
-  passes = get_binaryen_lowering_passes()
+  passes = []
   optimizing = should_run_binaryen_optimizer()
 
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
@@ -375,7 +345,7 @@ def get_binaryen_passes():
     passes += ['--instrument-locals']
     passes += ['--log-execution']
     passes += ['--instrument-memory']
-    if settings.LEGALIZE_JS_FFI:
+    if not settings.WASM_BIGINT:
       # legalize it again now, as the instrumentation may need it
       passes += ['--legalize-js-interface']
       passes += building.js_legalization_pass_flags()
@@ -393,7 +363,7 @@ def get_binaryen_passes():
       passes += ['--pass-arg=asyncify-ignore-indirect']
     if settings.ASYNCIFY_PROPAGATE_ADD:
       passes += ['--pass-arg=asyncify-propagate-addlist']
-    passes += ['--pass-arg=asyncify-imports@%s' % ','.join(settings.ASYNCIFY_IMPORTS)]
+    passes += [f"--pass-arg=asyncify-imports@{','.join(settings.ASYNCIFY_IMPORTS)}"]
 
     # shell escaping can be confusing; try to emit useful warnings
     def check_human_readable_list(items):
@@ -408,13 +378,13 @@ def get_binaryen_passes():
 
     if settings.ASYNCIFY_REMOVE:
       check_human_readable_list(settings.ASYNCIFY_REMOVE)
-      passes += ['--pass-arg=asyncify-removelist@%s' % ','.join(settings.ASYNCIFY_REMOVE)]
+      passes += [f"--pass-arg=asyncify-removelist@{','.join(settings.ASYNCIFY_REMOVE)}"]
     if settings.ASYNCIFY_ADD:
       check_human_readable_list(settings.ASYNCIFY_ADD)
-      passes += ['--pass-arg=asyncify-addlist@%s' % ','.join(settings.ASYNCIFY_ADD)]
+      passes += [f"--pass-arg=asyncify-addlist@{','.join(settings.ASYNCIFY_ADD)}"]
     if settings.ASYNCIFY_ONLY:
       check_human_readable_list(settings.ASYNCIFY_ONLY)
-      passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(settings.ASYNCIFY_ONLY)]
+      passes += [f"--pass-arg=asyncify-onlylist@{','.join(settings.ASYNCIFY_ONLY)}"]
 
   if settings.MEMORY64 == 2:
     passes += ['--memory64-lowering', '--table64-lowering']
@@ -516,11 +486,6 @@ def setup_pthreads():
     '$establishStackSpace',
     '$invokeEntryPoint',
   ]
-
-  # This import should come from user code merged into the module with
-  # wasm-merge post-link.
-  if settings.SHARED_WASMGC:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_shared_heap_root']
 
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
@@ -645,6 +610,10 @@ def check_settings():
         # Don't warn about -sMEMORY64=2 (since its the only way to enable the lowering pass)
         continue
       diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
+    elif '=' in s:
+      setting, val = s.split('=', 1)
+      if user_settings.get(setting) == val:
+        diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
   for name, msg in EXPERIMENTAL_SETTINGS.items():
     if getattr(settings, name):
@@ -949,7 +918,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # IOError and python backtrace that users would otherwise see.
     dirname = os.path.dirname(target)
     if dirname and not os.path.isdir(dirname):
-      exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
+      exit_with_error(f"specified output file ({target}) is in a directory that does not exist")
   elif autoconf:
     # Autoconf expects the executable output file to be called `a.out`
     target = 'a.out'
@@ -971,7 +940,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # With FAKE_DYLIBS we generate an normal object file rather than an shared object.
     # This is linked with `wasm-ld --relocatable` or (`llvm-link` in the case of LTO).
     if final_suffix in EXECUTABLE_EXTENSIONS:
-      diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
+      diagnostics.warning('emcc', f'-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix ({final_suffix}) when building object files.')
     else:
       options.oformat = OFormat.OBJECT
 
@@ -1006,27 +975,12 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
   settings.OUTPUT_FORMAT = options.oformat.name
 
-  if settings.SUPPORT_BIG_ENDIAN and settings.WASM2JS:
-    exit_with_error('WASM2JS is currently not compatible with SUPPORT_BIG_ENDIAN')
-
   if settings.WASM_ESM_INTEGRATION:
     default_setting('MODULARIZE', 'instance')
     if not settings.EXPORT_ES6:
       exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6')
     if settings.MODULARIZE != 'instance':
       exit_with_error('WASM_ESM_INTEGRATION requires MODULARIZE=instance')
-    if settings.MAIN_MODULE:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with dynamic linking')
-    if settings.ASYNCIFY:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY')
-    if settings.WASM_WORKERS:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
-    if not settings.WASM_ASYNC_COMPILATION:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
-    if not settings.WASM:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
-    if settings.ABORT_ON_WASM_EXCEPTIONS:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
 
   if settings.MODULARIZE and settings.MODULARIZE not in {1, 'instance'}:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -1098,7 +1052,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
       exit_with_error('WASM_BIGINT=1 is not compatible with wasm2js')
     settings.WASM_BIGINT = 0
-    feature_matrix.disable_feature(Feature.JS_BIGINT_INTEGRATION)
 
   if options.oformat == OFormat.WASM and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
@@ -1151,9 +1104,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       exit_with_error('explicitly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
     settings.EXIT_RUNTIME = settings.EXPECT_MAIN
     settings.IGNORE_MISSING_MAIN = 0
-    # the wasm must be runnable without the JS, so there cannot be anything that
-    # requires JS legalization
-    default_setting('LEGALIZE_JS_FFI', 0)
     if 'MEMORY_GROWTH_LINEAR_STEP' in user_settings:
       exit_with_error('MEMORY_GROWTH_LINEAR_STEP is not compatible with STANDALONE_WASM')
     if 'MEMORY_GROWTH_GEOMETRIC_CAP' in user_settings:
@@ -1290,7 +1240,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
   if 'CLOSURE_WARNINGS' in user_settings:
     if settings.CLOSURE_WARNINGS not in {'quiet', 'warn', 'error'}:
-      exit_with_error('invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
+      exit_with_error(f'invalid option -sCLOSURE_WARNINGS={settings.CLOSURE_WARNINGS} specified! Allowed values are "quiet", "warn" or "error".')
     closure_warnings = diagnostics.manager.warnings['closure']
     if settings.CLOSURE_WARNINGS == 'error':
       closure_warnings['error'] = True
@@ -1331,9 +1281,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
-
-  if settings.LINKABLE and settings.USER_EXPORTS:
-    diagnostics.warning('unused-command-line-argument', 'EXPORTED_FUNCTIONS is not valid with LINKABLE set (normally due to SIDE_MODULE=1/MAIN_MODULE=1) since all functions are exported this mode.  To export only a subset use SIDE_MODULE=2/MAIN_MODULE=2')
 
   if settings.MAIN_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
@@ -1388,7 +1335,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.DYNCALLS = 1
 
   if options.oformat != OFormat.OBJECT and final_suffix in {'.o', '.bc', '.so', '.dylib'} and not settings.SIDE_MODULE:
-    diagnostics.warning('emcc', 'object file output extension (%s) used for non-object output.  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
+    diagnostics.warning('emcc', f'object file output extension ({final_suffix}) used for non-object output.  If you meant to build an object file please use `-c, `-r`, or `-shared`')
 
   if settings.SUPPORT_BIG_ENDIAN:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
@@ -1467,9 +1414,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if options.preload_files:
     # File preloading uses `Module['preRun']`.
     settings.INCOMING_MODULE_JS_API.append('preRun')
-
-  if settings.FORCE_FILESYSTEM and not settings.FILESYSTEM:
-    exit_with_error('`-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`')
 
   if settings.WASMFS:
     settings.FILESYSTEM = 1
@@ -1676,9 +1620,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # module names buys nothing and would break that rewrite.
     settings.MINIFY_WASM_IMPORTED_MODULES = not settings.WASM_ESM_INTEGRATION
 
-  if settings.WASM_BIGINT:
-    settings.LEGALIZE_JS_FFI = 0
-
   if settings.SINGLE_FILE and settings.GENERATE_SOURCE_MAP:
     diagnostics.warning('emcc', 'SINGLE_FILE disables source map support (which requires a .map file)')
     settings.GENERATE_SOURCE_MAP = 0
@@ -1689,7 +1630,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.AUTODEBUG:
     settings.REQUIRED_EXPORTS += ['_emscripten_tempret_set']
 
-  if settings.LEGALIZE_JS_FFI:
+  if not settings.WASM_BIGINT:
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
 
   if settings.SPLIT_MODULE:
@@ -1786,16 +1727,9 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
 
-    if settings.ASYNCIFY == 2:
-      diagnostics.warning('experimental', '-sJSPI (ASYNCIFY=2) is still experimental')
-
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
-    if settings.MEMORY64:
-      exit_with_error('wasm2js does not support MEMORY64')
-    if settings.WASM_BIGINT:
-      exit_with_error('wasm2js does not support WASM_BIGINT')
     if settings.CAN_ADDRESS_2GB:
       exit_with_error('wasm2js does not support >2gb address space')
     # WASM2JS does not support GROWABLE_ARRAYBUFFERS at all
@@ -1806,8 +1740,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
     if not settings.ENVIRONMENT_MAY_BE_NODE:
       exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
-    if settings.SINGLE_FILE:
-      exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
 
   if not js_manipulation.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
@@ -1934,12 +1866,22 @@ def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
     # TODO(sbc): Remove this double execution of wasm-ld if we ever find a way to
     # distinguish EMSCRIPTEN_KEEPALIVE exports from `--export-dynamic` exports.
     settings.LINKABLE = False
-    building.link_lld(linker_args, wasm_target, external_symbols=js_syms,
-                      linker_inputs=linker_inputs)
+    building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
     settings.LINKABLE = True
     rtn = extract_metadata.extract_metadata(wasm_target)
 
-  building.link_lld(linker_args, wasm_target, external_symbols=js_syms, linker_inputs=linker_inputs)
+  # WASM_BINDGEN is a no-op unless the inputs carry the wasm-bindgen marker section.
+  if settings.WASM_BINDGEN and not building.has_wasm_bindgen_marker(linker_inputs):
+    settings.WASM_BINDGEN = 0
+
+  # If EXPORTED_FUNCTIONS is provided for WASM_BINDGEN, it forms the authoritative
+  # list of exports of the Wasm module (per rustc linking semantics).
+  # Otherwise, discover the symbols directly from the linker inputs for e.g. static
+  # linking Rust.
+  if settings.WASM_BINDGEN and 'EXPORTED_FUNCTIONS' not in user_settings:
+    linker_args += [f'--export={e}' for e in building.get_wasm_bindgen_exported_symbols(linker_inputs)]
+
+  building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
   return rtn
 
 
@@ -1962,8 +1904,24 @@ def phase_post_link(in_wasm, wasm_target, target, js_syms, base_metadata=None):
   settings.TARGET_JS_NAME = os.path.basename(js_target)
 
   if settings.WASM_BINDGEN:
-    bindgen_jslib = building.run_wasm_bindgen(in_wasm)
+    bindgen_jslib, removed_exports, added_exports, extern_pre_js, snippets_dir = building.run_wasm_bindgen(in_wasm)
     settings.JS_LIBRARIES.append(bindgen_jslib)
+    # The exports wasm-bindgen reaches by name (the supplied EXPORTED_FUNCTIONS
+    # plus anything its expansion added) are internal glue only on the Wasm module,
+    # while wasm-bindgen's JS library registers the final user-facing API itself.
+    # Keep EXPORTED_FUNCTIONS off every export layer, and drop the placeholder exports it consumed
+    # (__wbindgen_describe*, etc.) so they aren't reported as undefined.
+    removed = {shared.asmjs_mangle(e) for e in removed_exports}
+    building.wasm_bindgen_internal_exports = (
+      set(settings.USER_EXPORTS) | {shared.asmjs_mangle(e) for e in added_exports})
+    drop = removed | building.wasm_bindgen_internal_exports
+    settings.EXPORTED_FUNCTIONS = [e for e in settings.EXPORTED_FUNCTIONS if e not in drop]
+    settings.USER_EXPORTS = [e for e in settings.USER_EXPORTS if e not in removed]
+    building.user_requested_exports.clear()
+    if extern_pre_js:
+      options.extern_pre_js.append(extern_pre_js)
+    if snippets_dir:
+      shutil.copytree(snippets_dir, os.path.join(os.path.dirname(js_target), 'snippets'), dirs_exist_ok=True)
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
@@ -2087,13 +2045,9 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   if wasm_opt_args:
     building.run_wasm_opt(outfile_wasm, outfile_wasm, wasm_opt_args)
 
-  # Build the flags needed by Node.js to properly run the output file.
-  node_args = []
-  if settings.WASM_EXCEPTIONS:
-    node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
   output_file = in_temp('embind_generated_output.js')
-  shared.run_js_tool(outfile_js, [output_file], node_args)
+  shared.run_js_tool(outfile_js, [output_file])
   settings.restore(original_settings)
   return read_file(output_file)
 
@@ -2543,7 +2497,7 @@ def module_export_name_substitution():
     # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
-    replacement = "typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
+    replacement = f"typeof {settings.EXPORT_NAME} != 'undefined' ? {settings.EXPORT_NAME} : {{}}"
   new_src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
   assert new_src != src, 'Unable to find Closure syntax __EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__ in source!'
   write_file(final_js, new_src)
@@ -2574,34 +2528,35 @@ def generate_traditional_runtime_html(target, js_target, wasm_target):
       # We need to load the wasm file before anything else, since it
       # has be synchronously ready.
       script.un_src()
-      script.inline = '''
-          fetch(%s).then((result) => result.arrayBuffer())
-                     .then((buf) => {
+      script.inline = f'''
+          fetch({get_subresource_location(wasm_target)}).then((result) => result.arrayBuffer())
+                     .then((buf) => {{
                              Module.wasmBinary = buf;
-                             %s;
-                           });
-''' % (get_subresource_location(wasm_target), script.inline)
+                             {script.inline};
+                           }});
+'''
 
     if settings.WASM == 2:
       # If target browser does not support WebAssembly, we need to load
       # the .wasm.js file before the main .js file.
       script.un_src()
-      script.inline = '''
-          function loadMainJs() {
-%s
-          }
-          if (!window.WebAssembly || location.search.indexOf('_rwasm=0') > 0) {
+      wasm2js_src = get_subresource_location_js(wasm_target + '.js')
+      script.inline = f'''
+          function loadMainJs() {{
+{script.inline}
+          }}
+          if (!window.WebAssembly || location.search.indexOf('_rwasm=0') > 0) {{
             // Current browser does not support WebAssembly, load the .wasm.js JavaScript fallback
             // before the main JS runtime.
             var wasm2js = document.createElement('script');
-            wasm2js.src = %s;
+            wasm2js.src = {wasm2js_src};
             wasm2js.onload = loadMainJs;
             document.body.appendChild(wasm2js);
-          } else {
+          }} else {{
             // Current browser supports Wasm, proceed with loading the main JS runtime.
             loadMainJs();
-          }
-''' % (script.inline, get_subresource_location_js(wasm_target + '.js'))
+          }}
+'''
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)
@@ -2637,7 +2592,11 @@ def minify_html(filename):
              '--remove-style-link-type-attributes',
              '--use-short-doctype',
              '--minify-css', 'true',
-             '--minify-js', 'true']
+             '--minify-js', 'true',
+             # Disable default PHP/ASP fragment regexes (<?...?> and <%...%>)
+             # which can match raw byte sequences in embedded WASM binary
+             # data in SINGLE_FILE builds and corrupt surrounding whitespace.
+             '--ignore-custom-fragments', '[]']
 
   # html-minifier also has the following options, but they look unsafe for use:
   # '--collapse-inline-tag-whitespace': removes whitespace between inline tags in visible text,
@@ -2757,7 +2716,7 @@ def map_to_js_libs(library_name):
 
   if library_name in library_map:
     libs = library_map[library_name]
-    logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
+    logger.debug(f'Mapping library `{library_name}` to JS libraries: {libs}')
     return libs
 
   return None
@@ -2789,8 +2748,9 @@ def process_libraries(flags):
     # let wasm-ld handle that.  However, we do want to map to the correct variant.
     # For example we map `-lc` to `-lc-mt` if we are building with threading support.
     if 'lib' + lib in system_libs_map:
-      lib = system_libs_map['lib' + lib].get_link_flag()
-      new_flags.append(lib)
+      lib_obj = system_libs_map['lib' + lib]
+      lib_obj.build()
+      new_flags.append(lib_obj.get_link_flag())
       continue
 
     if js_libs is not None:

@@ -37,13 +37,6 @@ var Module = globalThis.Module || (typeof {{{ EXPORT_NAME }}} != 'undefined' ? {
 var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #endif // USE_CLOSURE_COMPILER
 
-#if POLYFILL
-#if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
-// See https://caniuse.com/mdn-javascript_builtins_bigint64array
-#include "polyfill/bigint64array.js"
-#endif
-#endif // POLYFILL
-
 #if WASM_WORKERS
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.

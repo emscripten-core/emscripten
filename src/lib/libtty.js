@@ -77,6 +77,9 @@ addToLibrary({
           if (result === null || result === undefined) break;
           bytesRead++;
           buffer[offset+i] = result;
+          // We currently only support canonical mode (ICANON), where
+          // read(2) returns as soon as a line delimiter is read.
+          if (result === {{{ charCode('\n') }}}) break;
         }
         if (bytesRead) {
           stream.node.atime = Date.now();

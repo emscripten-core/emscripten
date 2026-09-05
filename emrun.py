@@ -514,7 +514,8 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     global page_exit_code, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
-    logi('Now listening at http://%s/' % ':'.join(map(str, self.socket.getsockname())))
+    host, port = self.socket.getsockname()
+    logi(f'Now listening at http://{host}:{port}/')
     logv("Entering web server loop.")
     while self.is_running:
       now = tick()
@@ -659,7 +660,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       SimpleHTTPRequestHandler.log_request(self, code)
 
   def log_message(self, format, *args):  # noqa: DC04
-    msg = '%s - - [%s] %s\n' % (self.address_string(), self.log_date_time_string(), format % args)
+    msg = f'{self.address_string()} - - [{self.log_date_time_string()}] {format % args}\n'
     # Filter out 404 messages on favicon.ico not being found to remove noise.
     if 'favicon.ico' not in msg:
       sys.stderr.write(msg)
@@ -1015,10 +1016,12 @@ def win_get_file_properties(fname):
   # backslash as param returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struct
   fixedInfo = win32api.GetFileVersionInfo(fname, '\\')
   props['FixedFileInfo'] = fixedInfo
-  props['FileVersion'] = "%d.%d.%d.%d" % (fixedInfo['FileVersionMS'] / 65536,
-                                          fixedInfo['FileVersionMS'] % 65536,
-                                          fixedInfo['FileVersionLS'] / 65536,
-                                          fixedInfo['FileVersionLS'] % 65536)
+  props['FileVersion'] = '{}.{}.{}.{}'.format(
+    fixedInfo['FileVersionMS'] // 65536,
+    fixedInfo['FileVersionMS'] % 65536,
+    fixedInfo['FileVersionLS'] // 65536,
+    fixedInfo['FileVersionLS'] % 65536,
+  )
 
   # \VarFileInfo\Translation returns list of available (language, codepage)
   # pairs that can be used to retrieve string info. We are using only the first pair.
@@ -1029,7 +1032,7 @@ def win_get_file_properties(fname):
 
   strInfo = {}
   for propName in propNames:
-    strInfoPath = '\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
+    strInfoPath = f'\\StringFileInfo\\{lang:04X}{codepage:04X}\\{propName}'
     # print str_info
     strInfo[propName] = win32api.GetFileVersionInfo(fname, strInfoPath)
 
@@ -1677,7 +1680,7 @@ def run(args):  # ruff: ignore[complex-structure, too-many-branches, too-many-st
       logv('Web server root directory: ' + os.path.abspath('.'))
     else:
       logi('Web server root directory: ' + os.path.abspath('.'))
-    logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))
+    logv(f'Starting web server: http://{options.hostname}:{options.port}/')
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
     # to support binding to port zero we must allow the server to open to socket then retrieve the final port number
     options.port = httpd.socket.getsockname()[1]
@@ -1842,7 +1845,7 @@ def run(args):  # ruff: ignore[complex-structure, too-many-branches, too-many-st
     else:
       browser_stderr_handle = open(options.log_stderr, 'a', encoding='utf-8')
   if options.run_browser:
-    logv("Starting browser: %s" % ' '.join(browser))
+    logv(f"Starting browser: {' '.join(browser)}")
     # if browser[0] == 'cmd':
     #   Workaround an issue where passing 'cmd /C start' is not able to detect
     #   when the user closes the page.

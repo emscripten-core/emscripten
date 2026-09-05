@@ -196,7 +196,7 @@ const moduleUrl = `ENVIRONMENT_IS_AUDIO_WORKLET ? '${TARGET_BASENAME}.wasm' : ne
 #endif
 }}}
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
@@ -207,7 +207,9 @@ instantiatePromise =
 #endif
 (WebAssembly.instantiateStreaming
 #if ENVIRONMENT_MAY_BE_NODE
-  // Node's fetch API cannot be used for local files, so we cannot use instantiateStreaming
+  // Avoid using instantiateStreaming() on Node.js since the `fetch()` API
+  // does not support `file://` URLs.
+  // See: https://github.com/emscripten-core/emscripten/pull/16917
   && !ENVIRONMENT_IS_NODE
 #endif
   ? WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports)

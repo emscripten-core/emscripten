@@ -59,8 +59,8 @@ lint.ignore = [
   "line-too-long",
   "type-comparison",
   "ambiguous-variable-name",
-  "indentation-with-invalid-multiple", # Does not seem to honor `indent-width = 2` above
-  "indentation-with-invalid-multiple-comment", # Does not seem to honor `indent-width = 2` above
+  "indentation-with-invalid-multiple", # Does not honor `indent-width`. See https://github.com/astral-sh/ruff/issues/8705
+  "indentation-with-invalid-multiple-comment", # Does not honor `indent-width`. See https://github.com/astral-sh/ruff/issues/8705
   "too-few-spaces-before-inline-comment",
   "try-except-in-loop",
   "manual-list-comprehension",
@@ -83,14 +83,13 @@ lint.ignore = [
   "unraw-re-pattern",
   "non-empty-init-module",
   "format-literals", # TODO
-  "printf-string-formatting", # TODO
-  "f-string", # TODO
 ]
 lint.per-file-ignores."tools/ports/*.py" = [ "unused-function-argument", "unused-lambda-argument" ]
+lint.per-file-ignores."tools/webidl_binder.py" = [ "printf-string-formatting", "f-string" ]
 lint.per-file-ignores."test/other/ports/*.py" = [ "unused-function-argument" ]
 lint.per-file-ignores."test/parallel_testsuite.py" = [ "unused-method-argument" ]
 lint.per-file-ignores."test/test_benchmark.py" = [ "unused-method-argument" ]
-lint.per-file-ignores."test/*.py" = [ "collection-literal-concatenation" ]
+lint.per-file-ignores."test/*.py" = [ "collection-literal-concatenation", "printf-string-formatting" ]
 lint.mccabe.max-complexity = 51 # Recommended: 10
 lint.pylint.allow-magic-value-types = [
   "bytes",

@@ -91,7 +91,7 @@ def run_cmd(cmd):
     cmd[0] = shutil.which(orig_exe)
     if not cmd[0]:
       utils.exit_with_error(f'command not found: {orig_exe}')
-  print(' -> %s' % ' '.join(cmd))
+  print(f" -> {' '.join(cmd)}")
   subprocess.run(cmd, check=True, text=True, encoding='utf-8', cwd=utils.path_from_root())
 
 
@@ -119,6 +119,19 @@ actions = [
 ]
 
 
+def enable_emsdk_node():
+  # By default emsdk avoids prepending its node binary to PATH if another node
+  # is already present. For running bootstrap actions (like `npm ci`), however,
+  # we prefer the emsdk-provided node (and npm) because the system node might
+  # be an incompatible version or lack npm.
+  # Other emscripten tools can rely on the config file to find node so do not
+  # need to do this.
+  emsdk_node = os.environ.get('EMSDK_NODE')
+  if emsdk_node:
+    node_dir = os.path.dirname(emsdk_node)
+    os.environ['PATH'] = node_dir + os.pathsep + os.environ['PATH']
+
+
 def main(args):
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument('-v', '--verbose', action='store_true', help='verbose', default=False)
@@ -130,12 +143,14 @@ def main(args):
   if args.install_git_hooks:
     return install_hooks()
 
+  enable_emsdk_node()
+
   for name, deps, action in actions:
     if not args.force:
       if check_deps(name, deps):
-        print('Up-to-date: %s' % name)
+        print(f'Up-to-date: {name}')
         continue
-      print('Out-of-date: %s' % name)
+      print(f'Out-of-date: {name}')
     if args.dry_run:
       if type(action) == list:
         action_str = ' '.join(action)

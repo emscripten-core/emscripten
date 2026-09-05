@@ -48,7 +48,6 @@ from decorators import (
   also_with_pthreads,
   also_with_standalone_wasm,
   also_with_wasmfs,
-  also_without_bigint,
   can_do_standalone,
   crossplatform,
   disabled,
@@ -398,6 +397,17 @@ def no_wasmfs(note):
       return func(self, *args, **kwargs)
     return decorated
   return decorator
+
+
+def needs_epoll(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if self.get_setting('WASMFS'):
+      self.skipTest('epoll is implemented in the JS (non-WASMFS) syscall layer')
+    return func(self, *args, **kwargs)
+  return decorated
 
 
 def make_no_decorator_for_setting(name):
@@ -1347,29 +1357,6 @@ int main(int argc, char **argv) {
     self.set_setting('INLINING_LIMIT')
     self.do_core_test('test_exceptions_allowed_uncaught.cpp', cflags=['-std=c++11'])
 
-  def test_exceptions_allowed_misuse(self):
-    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['foo'])
-
-    # Test old =2 setting for DISABLE_EXCEPTION_CATCHING
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
-    expected = 'error: DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED [-Wdeprecated] [-Werror]'
-    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
-
-    # =0 should also be a warning
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    expected = 'error: DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED [-Wdeprecated] [-Werror]'
-    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
-
-    # =1 should be a hard error
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-    expected = 'error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive'
-    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
-
-    # even setting an empty list should trigger the error;
-    self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
-    expected = 'error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive'
-    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
-
   @with_all_eh_sjlj
   def test_exceptions_uncaught(self):
     src = r'''
@@ -2069,7 +2056,7 @@ int main(int argc, char **argv) {
   @no_wasm2js('test depends on WASM_BIGINT which is not compatible with wasm2js')
   def test_em_js_i64(self):
     expected = 'emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`'
-    self.assert_fail([EMCC, '-Werror', '-sWASM_BIGINT=0', test_file('core/test_em_js_i64.c')], expected)
+    self.assert_fail([EMCC, '-Werror', '-Wno-deprecated', '-sWASM=0', test_file('core/test_em_js_i64.c')], expected)
     self.do_core_test('test_em_js_i64.c')
 
   def test_em_js_address_taken(self):
@@ -4408,7 +4395,6 @@ caught outer int: 123
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True)
 
   @with_dylink_reversed
-  @also_without_bigint
   def test_dylink_i64_c(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4460,7 +4446,6 @@ res64 - external 64\n''', header='''\
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
     ''', force_c=True)
 
-  @also_without_bigint
   @parameterized({
     '': (False,),
     'rtld_local': (True,),
@@ -5717,7 +5702,6 @@ got: 10
       self.cflags += ['-DWASMFS_NODERAWFS']
     self.do_runf_out_file('dirent/test_readdir.c')
 
-  @also_without_bigint
   def test_readdir_empty(self):
     self.do_runf_out_file('dirent/test_readdir_empty.c')
 
@@ -5771,7 +5755,6 @@ got: 10
       self.skipTest('noderawfs fails here under non-linux')
     self.do_runf_out_file('fcntl/test_fcntl_open.c')
 
-  @also_without_bigint
   def test_fcntl_misc(self):
     if self.get_setting('WASMFS'):
       self.cflags += ['-sFORCE_FILESYSTEM']
@@ -5782,6 +5765,32 @@ got: 10
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     self.do_core_test('test_poll.c')
+
+  @needs_epoll
+  def test_epoll(self):
+    self.do_runf('core/test_epoll.c', 'done\n')
+
+  @needs_epoll
+  def test_epoll_advanced(self):
+    self.do_runf('core/test_epoll_advanced.c', 'done\n')
+
+  @needs_epoll
+  @requires_pthreads
+  def test_epoll_pthread_shared(self):
+    # Two threads block in epoll_wait() on one shared epoll fd: per-edge
+    # exactly-once wakeups under EPOLLET, herd wakeup under level triggering,
+    # EPOLLONESHOT disarm/re-arm delivery across threads, and exactly-once
+    # oneshot delivery over rounds of events against racing harvesters.
+    self.do_runf('core/test_epoll_pthread_shared.c',
+                 'done\n',
+                 cflags=['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  @needs_epoll
+  @requires_node
+  def test_epoll_noderawfs(self):
+    # Regular-file streams under NODERAWFS carry no stream_ops; the readiness
+    # layer must not dereference a missing poll handler (poll/epoll on a file).
+    self.do_runf('core/test_epoll_noderawfs.c', 'done\n', cflags=['-sNODERAWFS'])
 
   @no_wasmfs('st.f_ffree > st.f_files, same issue than in wasmfs.test_fs_nodefs_statvfs. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_statvfs(self):
@@ -5823,7 +5832,6 @@ got: 10
     self.do_runf('core/test_utf8.c', 'done\n')
 
   @with_both_text_decoder
-  @also_without_bigint
   def test_utf8_bench(self):
     self.cflags += ['--embed-file', test_file('test_utf8_bench.txt') + '@/utf8_corpus.txt']
     self.do_runf('test_utf8_bench.c', 'done\n')
@@ -6088,6 +6096,11 @@ Module.onRuntimeInitialized = () => {
   def test_fs_stat_unnamed_file_descriptor(self):
     self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'done\n')
 
+  @crossplatform
+  @with_all_fs
+  def test_fs_fstat_stdio(self):
+    self.do_runf('fs/test_fstat_stdio.c', 'done\n')
+
   @requires_node
   @crossplatform
   @with_all_fs
@@ -6267,7 +6280,6 @@ Module.onRuntimeInitialized = () => {
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
     self.do_runf_out_file('unistd/symlink_on_nodefs.c', cflags=['-lnodefs.js'])
 
-  @also_without_bigint
   @also_with_nodefs
   def test_unistd_io(self):
     if self.get_setting('WASMFS'):
@@ -7208,9 +7220,9 @@ void* operator new(size_t size) {
       # more without them - we don't need to legalize)
       self.cflags += ['-sDYNCALLS', '-DWASM_BIGINT']
     cases = [
-        ('DIRECT', []),
-        ('DYNAMIC_SIG', ['-sDYNCALLS']),
-      ]
+      ('DIRECT', []),
+      ('DYNAMIC_SIG', ['-sDYNCALLS']),
+    ]
     if self.get_setting('MINIMAL_RUNTIME') == 0:
       cases += [
         ('EXPORTED', []),
@@ -7232,7 +7244,6 @@ void* operator new(size_t size) {
   def test_dyncall_pointers(self, args):
     self.do_core_test('test_dyncall_pointers.c', cflags=args)
 
-  @also_without_bigint
   @no_modularize_instance('uses Module object directly')
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
@@ -7667,7 +7678,6 @@ void* operator new(size_t size) {
   def test_embind_negative_constants(self):
     self.do_runf_out_file('embind/test_negative_constants.cpp', cflags=['-lembind'])
 
-  @also_without_bigint
   def test_embind_unsigned(self):
     self.do_runf_out_file('embind/test_unsigned.cpp', cflags=['-lembind'])
 
@@ -8205,7 +8215,6 @@ void* operator new(size_t size) {
 
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @no_modularize_instance('assumes .js output filename')
-  @also_without_bigint
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_emscripten_log(self):
     self.cflags += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
@@ -9732,6 +9741,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
+  @with_asyncify_and_jspi
+  @needs_epoll
+  def test_epoll_blocking_asyncify(self):
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_epoll_blocking_asyncify.c', 'done\n')
+
   @parameterized({
     '': ([],),
     'pthread': (['-pthread'],),
@@ -9744,7 +9760,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pipe_pollhup(self):
     self.do_runf('core/test_pipe_pollhup.c', 'done\n')
 
-  @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to receive i64 argument in syscalls.
@@ -10052,12 +10067,12 @@ thinlto3 = make_run('thinlto3', cflags=['-flto=thin', '-O3'])
 thinltos = make_run('thinltos', cflags=['-flto=thin', '-Os'])
 thinltoz = make_run('thinltoz', cflags=['-flto=thin', '-Oz'])
 
-wasm2js0 = make_run('wasm2js0', cflags=['-O0'], settings={'WASM': 0})
-wasm2js1 = make_run('wasm2js1', cflags=['-O1'], settings={'WASM': 0})
-wasm2js2 = make_run('wasm2js2', cflags=['-O2'], settings={'WASM': 0})
-wasm2js3 = make_run('wasm2js3', cflags=['-O3'], settings={'WASM': 0})
-wasm2jss = make_run('wasm2jss', cflags=['-Os'], settings={'WASM': 0})
-wasm2jsz = make_run('wasm2jsz', cflags=['-Oz'], settings={'WASM': 0})
+wasm2js0 = make_run('wasm2js0', cflags=['-O0', '-Wno-deprecated'], settings={'WASM': 0})
+wasm2js1 = make_run('wasm2js1', cflags=['-O1', '-Wno-deprecated'], settings={'WASM': 0})
+wasm2js2 = make_run('wasm2js2', cflags=['-O2', '-Wno-deprecated'], settings={'WASM': 0})
+wasm2js3 = make_run('wasm2js3', cflags=['-O3', '-Wno-deprecated'], settings={'WASM': 0})
+wasm2jss = make_run('wasm2jss', cflags=['-Os', '-Wno-deprecated'], settings={'WASM': 0})
+wasm2jsz = make_run('wasm2jsz', cflags=['-Oz', '-Wno-deprecated'], settings={'WASM': 0})
 
 # Secondary test modes - run directly when there is a specific need
 

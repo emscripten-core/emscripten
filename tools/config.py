@@ -181,19 +181,19 @@ def generate_config(path):
   # write
   utils.write_file(path, config_data)
 
-  print('''\
+  print(f'''\
 An Emscripten settings file has been generated at:
 
-  %s
+  {path}
 
 It contains our best guesses for the important paths, which are:
 
-  LLVM_ROOT       = %s
-  BINARYEN_ROOT   = %s
-  NODE_JS         = %s
+  LLVM_ROOT       = {llvm_root}
+  BINARYEN_ROOT   = {binaryen_root}
+  NODE_JS         = {node}
 
 Please edit the file if any of those are incorrect.\
-''' % (path, llvm_root, binaryen_root, node), file=sys.stderr)
+''', file=sys.stderr)
 
 
 def find_config_file():
@@ -237,7 +237,7 @@ def find_config_file():
   # We could remove this special case if emsdk were to write its embedded config
   # file into the emscripten directory itself.
   # See: https://github.com/emscripten-core/emsdk/pull/367
-  emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
+  emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
   emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
 
   if os.path.isfile(emsdk_embedded_config):

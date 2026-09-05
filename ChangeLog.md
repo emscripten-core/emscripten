@@ -18,13 +18,65 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.7 (in development)
+6.0.10 (in development)
 ----------------------
+- The SDL3 port is no longer considered experimental, and the compiler
+  diagnostic warning has been removed. (#27646)
+- `WASM=0` and `WASM=2` (wasm2js) were marked as deprecated. (See #27608)
+- mimalloc was updated to 3.5.1. (#27662)
+- `-sWASM_BINDGEN` supports emcc usage as a post-link step, where
+  `EXPORTED_FUNCTIONS` is authoritative. wasm-bindgen processing is only
+  performed when the linker inputs carry the wasm-bindgen Emscripten marker
+  section, so `-sWASM_BINDGEN` can safely be passed to non-wasm-bindgen builds.
+  (#27208)
+
+6.0.9 - 09/01/26
+----------------
+- The `WASM_BINDGEN` setting is now marked experimental, and enabling it
+  produces a compiler diagnostic warning, since the integration is still
+  evolving and subject to change. (#27616)
+- The `-sCROSS_ORIGIN_STORAGE` cache-hit and cache-miss paths now use
+  `WebAssembly.instantiateStreaming()` (via `Blob.stream()` and a `tee()`'d
+  network body respectively), so enabling the flag no longer loses the
+  download/compile overlap of the standard streaming path. (#27609)
+
+6.0.8 - 08/20/26
+----------------
+- The `JSPI` setting is no longer considered experimental, and the compiler
+  diagnostic warning has been removed. (#27559)
+- Added support for `epoll` (`epoll_create1`/`epoll_ctl`/`epoll_wait`/
+  `epoll_pwait`) on the legacy (non-WASMFS) JS filesystem, including
+  level- and edge-triggered modes, `EPOLLONESHOT`, `EPOLLEXCLUSIVE`,
+  `EPOLLRDHUP`, nesting, and blocking waits under `PROXY_TO_PTHREAD`,
+  `ASYNCIFY`, and `JSPI`. (#27207)
+- The deprecated `LEGALIZE_JS_FFI` setting was completely removed and moved to
+  legacy settings.  This behaviour of lowering away i64 values at the
+  Wasm bounary is still used when `WASM_BIGINT` is disabled.  However
+  disabling of `WASM_BIGINT` itself should only be needed under `-sWASM=0`
+  (where it is automatically disabled). (#27568)
+- The `SOCKET_WEBRTC` setting was removed (#27367)
+- `WASM_BIGINT` was deprecated. BigInt integration is standard and enabled by
+  default across all supported engines; it should now only ever be disabled
+  implicitly when targeting JavaScript via `-sWASM=0`. (#27558)
+
+6.0.7 - 08/17/26
+----------------
 
 - JavaScript library symbols can now use the `__force` and `__export`
   decorators to control inclusion and export visibility. (#27436)
 - contrib.glfw3 port upgraded to use the latest version of GLFW 3.5.1
   (#27508)
+- `-fwasm-exceptions` now links the Wasm EH runtime (libunwind and the
+  `__cpp_exception` tag) independently of C++ linking, so Wasm EH objects from
+  non-C++ frontends (e.g. rustc, which links via `emcc`) link without
+  requiring `em++` or `-sDEFAULT_TO_CXX`. (#27496)
+- FreeType was updated to 2.14.3 (#27518)
+- The oldest supported Safari version (`MIN_SAFARI_VERSION`) was raised from
+  14.1 to 15.0, making 15.0 the minimum version that can be targeted. This
+  allows assuming `bulk-memory`, `nontrapping-fptoint`, and `WASM_BIGINT`
+  (`JS_BIGINT_INTEGRATION`) are universally available across all supported
+  engines, and removes legacy JS polyfills and Binaryen lowering passes.
+  (#27542)
 
 6.0.6 - 08/05/26
 ----------------
@@ -57,6 +109,7 @@ See docs/process.md for more on how version tagging works.
 - Backport fix for musl's qsort (CVE-2026-40200) (#27029)
 - `recvmmsg` and `sendmmsg` are now implemented in terms of `recvmsg` and
   `sendmsg`. (#27395)
+- The `SOCKET_WEBRTC` marked as deprecated (#27371)
 
 6.0.3 - 07/13/26
 ----------------

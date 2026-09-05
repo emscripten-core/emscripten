@@ -27,13 +27,13 @@ from tools.utils import exit_with_error, read_file
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2', '-mfma']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 CLANG_FLAGS_WITH_ARGS = {
-    '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-    '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-    '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-    '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-    '-install_name', '-compatibility_version', '-mllvm',
-    '-current_version', '-I', '-L', '-include-pch', '-u',
-    '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
+  '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
+  '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+  '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+  '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+  '-install_name', '-compatibility_version', '-mllvm',
+  '-current_version', '-I', '-L', '-include-pch', '-u',
+  '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
 }
 
 
@@ -134,10 +134,10 @@ def version_string():
     git_rev = utils.run_process(
       ['git', 'rev-parse', 'HEAD'],
       stdout=PIPE, stderr=PIPE, cwd=utils.path_from_root()).stdout.strip()
-    revision_suffix = ' (%s)' % git_rev
+    revision_suffix = f' ({git_rev})'
   elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
     rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
-    revision_suffix = ' (%s)' % rev
+    revision_suffix = f' ({rev})'
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {utils.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
@@ -348,7 +348,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       formats = [f.lower() for f in OFormat.__members__]
       fmt = consume_arg()
       if fmt not in formats:
-        exit_with_error('invalid output format: `%s` (must be one of %s)' % (fmt, formats))
+        exit_with_error(f'invalid output format: `{fmt}` (must be one of {formats})')
       options.oformat = getattr(OFormat, fmt.upper())
     elif check_arg('--minify'):
       arg = consume_arg()
@@ -498,18 +498,12 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
-    elif arg == '-mbulk-memory':
-      feature_matrix.enable_feature(feature_matrix.Feature.BULK_MEMORY,
-                                    '-mbulk-memory',
+    elif arg == '-mextended-const':
+      feature_matrix.enable_feature(feature_matrix.Feature.EXTENDED_CONST,
+                                    '-mextended-const',
                                     override=True)
-    elif arg == '-mno-bulk-memory':
-      feature_matrix.disable_feature(feature_matrix.Feature.BULK_MEMORY)
-    elif arg == '-mnontrapping-fptoint':
-      feature_matrix.enable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT,
-                                    '-mnontrapping-fptoint',
-                                    override=True)
-    elif arg == '-mno-nontrapping-fptoint':
-      feature_matrix.disable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT)
+    elif arg == '-mno-extended-const':
+      feature_matrix.disable_feature(feature_matrix.Feature.EXTENDED_CONST)
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm
@@ -541,10 +535,6 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       settings.PTHREADS = 1
       # Also set the legacy setting name, in case use JS code depends on it.
       settings.USE_PTHREADS = 1
-    elif arg == '-no-pthread':
-      settings.PTHREADS = 0
-      # Also set the legacy setting name, in case use JS code depends on it.
-      settings.USE_PTHREADS = 0
     elif arg == '-pthreads':
       exit_with_error('unrecognized command-line option `-pthreads`; did you mean `-pthread`?')
     elif arg == '-fno-rtti':
@@ -754,7 +744,7 @@ def apply_user_settings():
     if value and value[0] == '@':
       filename = value.removeprefix('@')
       if not os.path.isfile(filename):
-        exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
+        exit_with_error(f'{filename}: file not found parsing argument: {key}={value}')
       value = read_file(filename).strip()
     else:
       value = value.replace('\\', '\\\\')

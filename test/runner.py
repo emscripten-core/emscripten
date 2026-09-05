@@ -67,6 +67,9 @@ else:
   # For git checkouts the bootstrap.py script would take care of creating this.
   os.makedirs('out', exist_ok=True)
 
+EMCC_DEBUG = utils.get_env_bool('EMCC_DEBUG')
+RUNNING_IN_CI = utils.get_env_bool('CI')
+
 
 # Test modes from 'core' that fully pass all tests. When running a random
 # selection of tests (e.g. "random100" runs 100 random tests) they will be
@@ -116,7 +119,8 @@ misc_test_modes = [
   'jslib',
   'browser',
   'sanity',
-  'sockets',
+  'sockets_node',
+  'sockets_browser',
   'interactive',
   'benchmark',
   'wasm2ss',
@@ -272,7 +276,7 @@ def choose_random_tests(base, num_tests, relevant_modes):
     else:
       # we may have hit the limit
       if len(chosen) == len(tests) * len(relevant_modes):
-        print('(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes)))
+        print(f'(all possible tests chosen! {len(chosen)} = {len(tests)}*{len(relevant_modes)})')
         break
   return list(chosen)
 
@@ -281,15 +285,13 @@ def print_random_test_statistics(num_tests):
   std = 0.5 / math.sqrt(num_tests)
   expected = 100.0 * (1.0 - std)
   print()
-  print('running those %d randomly-selected tests. if they all pass, then there is a '
-        'greater than 95%% chance that at least %.2f%% of the test suite will pass'
-        % (num_tests, expected))
+  print(f'running those {num_tests} randomly-selected tests. if they all pass, then there is a '
+        f'greater than 95% chance that at least {expected:.2f}% of the test suite will pass')
   print()
 
   def show():
-    print('if all tests passed then there is a greater than 95%% chance that at least '
-          '%.2f%% of the test suite will pass'
-          % (expected))
+    print('if all tests passed then there is a greater than 95% chance that at least '
+          f'{expected:.2f}% of the test suite will pass')
   atexit.register(show)
 
 
@@ -377,8 +379,8 @@ def create_test_run_sorter(sort_failing_tests_at_front):
 
 
 def use_parallel_suite(module):
-  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress', 'test_emrun'}
-  if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
+  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets_node', 'test_sockets_browser', 'test_interactive', 'test_stress', 'test_emrun'}
+  if not common.EMTEST_SAVE_DIR and not EMCC_DEBUG:
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_cores:
       return True
@@ -461,7 +463,7 @@ def flattened_tests(loaded_tests):
 
 def run_tests(options, suite):
   # Run the discovered tests
-  if utils.get_env_bool('CI'):
+  if RUNNING_IN_CI:
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
     import xmlrunner  # type: ignore
@@ -481,13 +483,13 @@ def run_tests(options, suite):
 
   run_start_time = time.perf_counter()
 
-  errlog('Running %s tests' % suite.countTestCases())
+  errlog(f'Running {suite.countTestCases()} tests')
   res = testRunner.run(suite)
   num_failures = len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
 
   total_run_time = time.perf_counter() - run_start_time
   if hasattr(res, 'core_time'):
-    errlog('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (res.core_time, total_run_time, res.core_time / total_run_time))
+    errlog(f'Total core time: {res.core_time:.3f}s. Wallclock time: {total_run_time:.3f}s. Parallelization: {res.core_time / total_run_time:.2f}x.')
 
   if options.bell:
     sys.stdout.write('\a')
@@ -565,7 +567,7 @@ def configure():
   common.EMTEST_RETRY_FLAKY = utils.get_env_int('EMTEST_RETRY_FLAKY')
   common.EMTEST_LACKS_NATIVE_CLANG = utils.get_env_bool('EMTEST_LACKS_NATIVE_CLANG')
   common.EMTEST_REBASELINE = utils.get_env_bool('EMTEST_REBASELINE')
-  common.EMTEST_VERBOSE = utils.get_env_bool('EMTEST_VERBOSE') or shared.DEBUG
+  common.EMTEST_VERBOSE = utils.get_env_bool('EMTEST_VERBOSE') or EMCC_DEBUG
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 
@@ -709,7 +711,7 @@ def main():
   set_env('EMTEST_CORES', options.cores)
 
   if common.EMTEST_DETECT_TEMPFILE_LEAKS:
-    if shared.DEBUG:
+    if EMCC_DEBUG:
       # In EMCC_DEBUG mode emscripten explicitly leaves stuff in the tmp directory
       utils.exit_with_error('EMTEST_DETECT_TEMPFILE_LEAKS is not compatible with EMCC_DEBUG')
     if common.EMTEST_SAVE_DIR:
@@ -725,13 +727,13 @@ def main():
   # emscripten.lock from shared.py).
   # Note: We only do this in the CI environment, since it prevents multiple
   # emscripten checkouts from running tests at the same time.
-  if os.getenv('CI') and not (shared.DEBUG or common.EMTEST_SAVE_DIR):
+  if RUNNING_IN_CI and not (EMCC_DEBUG or common.EMTEST_SAVE_DIR):
     cleanup_temp_directory()
   utils.delete_file(common.flaky_tests_log_filename)
 
   browser_common.init(options.force_browser_process_termination)
 
-  if options.log_test_environment or os.getenv('CI'):
+  if options.log_test_environment or RUNNING_IN_CI:
     log_test_environment()
 
   def prepend_default(arg):

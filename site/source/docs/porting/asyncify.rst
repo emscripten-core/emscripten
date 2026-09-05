@@ -20,9 +20,8 @@ mechanisms to work.
     you, so that it is asynchronous (hence the name "Asyncify") even though you
     wrote it in a normal synchronous way. This works in most environments, but
     can cause the Wasm output to be much larger.
-  * `JSPI` (experimental) - Uses the VM's support for JavaScript Promise
-    Integration (JSPI) for interacting with async JavaScript. The code size will
-    remain the same, but support for this feature is still experimental.
+  * `JSPI` - Uses the VM's support for JavaScript Promise Integration (JSPI)
+    for interacting with async JavaScript. The code size will remain the same.
 
 For more on Asyncify see the
 `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_

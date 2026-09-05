@@ -239,6 +239,7 @@ sigs = {
   __syscall_epoll_create1__sig: 'ii',
   __syscall_epoll_ctl__sig: 'iiiip',
   __syscall_epoll_pwait__sig: 'iipiipp',
+  __syscall_epoll_pwait_nonblocking__sig: 'iipi',
   __syscall_faccessat__sig: 'iipii',
   __syscall_fadvise64__sig: 'iijji',
   __syscall_fallocate__sig: 'iiijj',

@@ -9,10 +9,6 @@
 #endif
 
 var LibraryUnwind = {
-  $uncaughtExceptionCount: '0',
-#if !DISABLE_EXCEPTION_CATCHING
-  $exceptionLast: null,
-#endif
 
   _Unwind_Backtrace__deps: ['$getCallstack'],
   _Unwind_Backtrace: (func, arg) => {
@@ -28,26 +24,11 @@ var LibraryUnwind = {
 
   _Unwind_FindEnclosingFunction: (ip) => 0, // we cannot succeed
 
-  _Unwind_RaiseException__deps: ['$uncaughtExceptionCount',
-#if !DISABLE_EXCEPTION_CATCHING
-    '$exceptionLast',
-#endif
-  ],
   _Unwind_RaiseException: (ex) => {
-#if !DISABLE_EXCEPTION_CATCHING
-    exceptionLast = ex;
-    uncaughtExceptionCount++;
-#endif
     {{{ makeThrow('ex') }}}
   },
 
-#if !DISABLE_EXCEPTION_CATCHING
-  _Unwind_Resume__deps: ['$exceptionLast'],
-#endif
   _Unwind_Resume: (ex) => {
-#if !DISABLE_EXCEPTION_CATCHING
-    exceptionLast = ex;
-#endif
     {{{ makeThrow('ex') }}}
   },
 

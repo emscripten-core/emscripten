@@ -25,7 +25,7 @@ from common import (
   path_from_root,
   test_file,
 )
-from decorators import no_windows, parameterized, with_env_modify
+from decorators import no_windows, only_windows, parameterized, with_env_modify
 
 from tools import building, cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
@@ -52,7 +52,7 @@ def for_all_files(dir, callback):
 def restore_and_set_up():
   restore()
   # make LLVM_ROOT sensitive to the LLVM env var, as we test that
-  add_to_config('LLVM_ROOT = "%s"' % config.LLVM_ROOT)
+  add_to_config(f'LLVM_ROOT = "{config.LLVM_ROOT}"')
   add_to_config('FROZEN_CACHE = False')
 
 
@@ -68,24 +68,24 @@ def add_to_config(content):
 
 
 def get_basic_config():
-  return '''\
-LLVM_ROOT = "%s"
-BINARYEN_ROOT = "%s"
-NODE_JS = %s
-''' % (config.LLVM_ROOT, config.BINARYEN_ROOT, config.NODE_JS)
+  return f'''\
+LLVM_ROOT = "{config.LLVM_ROOT}"
+BINARYEN_ROOT = "{config.BINARYEN_ROOT}"
+NODE_JS = {config.NODE_JS}
+'''
 
 
 def make_fake_tool(filename, version, report_name=None, extra_output=None):
   if not report_name:
     report_name = os.path.basename(filename)
-  print('make_fake_tool: %s' % filename)
+  print(f'make_fake_tool: {filename}')
   ensure_dir(os.path.dirname(filename))
   with open(filename, 'w', encoding='utf-8') as f:
     f.write('#!/bin/sh\n')
-    f.write('echo "%s version %s"\n' % (report_name, version))
+    f.write(f'echo "{report_name} version {version}"\n')
     f.write('echo "..."\n')
     if extra_output:
-      f.write('echo "%s"' % extra_output)
+      f.write(f'echo "{extra_output}"')
     f.write('exit 0\n')
   make_executable(filename)
 
@@ -95,7 +95,7 @@ def make_fake_clang(filename, version, targets='wasm32 - WebAssembly 32-bit'):
 
   --version writes to stdout (unlike -v which writes to stderr)
   """
-  output = 'clang fake output\nRegistered Targets:\n%s' % targets
+  output = f'clang fake output\nRegistered Targets:\n{targets}'
   make_fake_tool(filename, version, output)
   make_fake_tool(filename + '++', version, output)
 
@@ -134,12 +134,12 @@ class sanity(RunnerCore):
     # the sanity checks here
     del os.environ['EMCC_SKIP_SANITY_CHECK']
 
-    assert os.path.exists(EM_CONFIG), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
+    assert os.path.exists(EM_CONFIG), f'To run these tests, we need a (working!) {EM_CONFIG} file to already exist'
     shutil.copyfile(EM_CONFIG, EM_CONFIG + '_backup')
 
     print()
     print('Running sanity checks.')
-    print('WARNING: This will modify %s, and in theory can break it although it should be restored properly. A backup will be saved in %s_backup' % (EM_CONFIG, EM_CONFIG))
+    print(f'WARNING: This will modify {EM_CONFIG}, and in theory can break it although it should be restored properly. A backup will be saved in {EM_CONFIG}_backup')
     print()
     print('>>> the original settings file is:')
     print(utils.read_file(EM_CONFIG).strip())
@@ -172,8 +172,8 @@ class sanity(RunnerCore):
   def check_working(self, command, expected=None, env=None):
     if type(command) is not list:
       command = [command]
-    if command == [EMCC]:
-      command = [EMCC, '--version']
+    if len(command) == 1 and os.path.normcase(command[0]) == os.path.normcase(EMCC):
+      command = [command[0], '--version']
     if expected is None:
       expected = 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld)'
 
@@ -196,7 +196,7 @@ class sanity(RunnerCore):
 
     default_config = path_from_root('.emscripten')
     output = self.do([EMCC, '-v'], env=env)
-    self.assertContained('emcc: warning: config file not found: %s.  You can create one by hand or run `emcc --generate-config`' % default_config, output)
+    self.assertContained(f'emcc: warning: config file not found: {default_config}.  You can create one by hand or run `emcc --generate-config`', output)
 
     temp_bin = os.path.abspath('bin')
     os.mkdir(temp_bin)
@@ -247,7 +247,7 @@ class sanity(RunnerCore):
         output = self.do(EMCC)
 
         if 'blah' in settings:
-          self.assertContained('error: error in evaluating config file (%s)' % default_config, output)
+          self.assertContained(f'error: error in evaluating config file ({default_config})', output)
         else:
           self.assertContained('error: NODE_JS is set to empty value', output) # sanity check should fail
       finally:
@@ -280,10 +280,10 @@ class sanity(RunnerCore):
         expected_y = real_version_y + inc_y
         if expected_x < 0 or expected_y < 0:
           continue # must be a valid llvm version
-        print("mod LLVM version: %d %d -> %d %d" % (real_version_x, real_version_y, expected_x, expected_y))
-        make_fake_clang(self.in_dir('fake', 'clang'), '%s.%s' % (expected_x, expected_y))
-        make_fake_tool(self.in_dir('fake', 'llvm-ar'), '%s.%s' % (expected_x, expected_y))
-        make_fake_tool(self.in_dir('fake', 'llvm-nm'), '%s.%s' % (expected_x, expected_y))
+        print(f'mod LLVM version: {real_version_x} {real_version_y} -> {expected_x} {expected_y}')
+        make_fake_clang(self.in_dir('fake', 'clang'), f'{expected_x}.{expected_y}')
+        make_fake_tool(self.in_dir('fake', 'llvm-ar'), f'{expected_x}.{expected_y}')
+        make_fake_tool(self.in_dir('fake', 'llvm-nm'), f'{expected_x}.{expected_y}')
         expect_warning = inc_x != 0
         # We have a special exception for the emscripten-release buildbot where we also allow EXPECTED_LLVM_VERSION + 1
         if 'BUILDBOT_BUILDNUMBER' in os.environ and inc_x == 1:
@@ -321,13 +321,14 @@ class sanity(RunnerCore):
                              ('cheez', False)):
       print(version, succeed)
       delete_file(SANITY_FILE)
-      utils.write_file(self.in_dir('fake', 'nodejs'), '''#!/bin/sh
+      node_cmd = ' '.join(config.NODE_JS)
+      utils.write_file(self.in_dir('fake', 'nodejs'), f'''#!/bin/sh
 if [ $1 = "--version" ]; then
-echo "%s"
+echo "{version}"
 else
-%s $@
+{node_cmd} $@
 fi
-''' % (version, ' '.join(config.NODE_JS)))
+''')
       make_executable(self.in_dir('fake', 'nodejs'))
       if not succeed:
         if version[0] == 'v':
@@ -379,6 +380,29 @@ fi
     output = self.check_working(EMCC)
     self.assertNotContained(SANITY_MESSAGE, output)
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+  @only_windows('test windows-specific case insensitivity')
+  def test_windows_path_casing(self):
+    # On Windows, the case used to run the compiler can have knock-on
+    # effects.  This test verifies that C:/PATH/TO/emcc and C:/path/to/emcc
+    # are treated the same, in particular from the POV of the sanity checks.
+    restore_and_set_up()
+    self.check_working(EMCC)
+
+    # Calling the compiler via differently-cased paths should not trigger
+    # a sanity check.
+    new_emcc = EMCC.upper()
+    self.assertNotEqual(new_emcc, EMCC)
+    output = self.check_working(new_emcc)
+    self.assertNotContained(SANITY_MESSAGE, output)
+
+    # Calling with a differently-cased EM_LLVM_ROOT should also not trigger a
+    # sanity check.
+    new_llvm_root = config.LLVM_ROOT.upper()
+    self.assertNotEqual(new_llvm_root, config.LLVM_ROOT)
+    with env_modify({'EM_LLVM_ROOT': new_llvm_root}):
+      output = self.check_working(EMCC)
+    self.assertNotContained(SANITY_MESSAGE, output)
 
   def test_em_config_env_var(self):
     # emcc should be configurable directly from EM_CONFIG without any config file
@@ -479,7 +503,7 @@ fi
       tasks = []
       num_times_libc_was_built = 0
       for i in range(3):
-        p = self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+        p = self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-o', f'{i}.js'], stderr=STDOUT, stdout=PIPE)
         tasks += [p]
       for p in tasks:
         print('stdout:\n', p.stdout)
@@ -673,7 +697,7 @@ CLOSURE_COMPILER = ['/path/to/closure', '--legacy-flag']
       test_engine_path = os.path.join(test_path, filename)
       with open(test_engine_path, 'w', encoding='utf-8') as f:
         f.write('#!/bin/sh\n')
-        f.write('exec %s $@\n' % (engine))
+        f.write(f'exec {engine} $@\n')
       make_executable(test_engine_path)
 
       out = self.run_js(sample_script, engine=[test_engine_path], args=['--foo'])
@@ -707,10 +731,10 @@ CLOSURE_COMPILER = ['/path/to/closure', '--legacy-flag']
     self.clear_cache()
 
     def make_fake(report):
-      add_to_config('LLVM_ROOT = "%s"' % self.in_dir('fake', 'bin'))
+      add_to_config(f'LLVM_ROOT = "{self.in_dir("fake", "bin")}"')
       # BINARYEN_ROOT needs to exist in the config, even though this test
       # doesn't actually use it.
-      add_to_config('BINARYEN_ROOT = "%s"' % self.in_dir('fake', 'bin'))
+      add_to_config(f'BINARYEN_ROOT = "{self.in_dir("fake", "bin")}"')
 
       make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version, report)
       make_fake_tool(self.in_dir('fake', 'bin', 'wasm-ld'), expected_llvm_version)
@@ -732,7 +756,7 @@ CLOSURE_COMPILER = ['/path/to/closure', '--legacy-flag']
     add_to_config(f'LLVM_ROOT = "{self.in_dir("fake")}"')
 
     def make_fake(version):
-      print("fake LLVM version: %s" % (version))
+      print(f"fake LLVM version: {version}")
       make_fake_clang(self.in_dir('fake', f'clang-{version}'), expected_llvm_version)
       make_fake_tool(self.in_dir('fake', f'llvm-ar-{version}'), expected_llvm_version)
       make_fake_tool(self.in_dir('fake', f'llvm-nm-{version}'), expected_llvm_version)
@@ -752,10 +776,10 @@ CLOSURE_COMPILER = ['/path/to/closure', '--legacy-flag']
     env['PATH'] = path_without_tool(env['PATH'], 'wasm-opt')
 
     add_to_config('BINARYEN_ROOT = ""')
-    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % EM_CONFIG, env=env)
+    self.check_working([EMCC, test_file('hello_world.c')], f'BINARYEN_ROOT is set to empty value in {EM_CONFIG}', env=env)
 
     add_to_config('del BINARYEN_ROOT')
-    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT not set in config (%s), and `wasm-opt` not found in PATH' % EM_CONFIG, env=env)
+    self.check_working([EMCC, test_file('hello_world.c')], f'BINARYEN_ROOT not set in config ({EM_CONFIG}), and `wasm-opt` not found in PATH', env=env)
 
   @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_empty_config(self):

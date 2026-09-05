@@ -20,6 +20,7 @@ from . import (
   colored_logger,
   config,
   diagnostics,
+  feature_matrix,
   js_optimizer,
   response_file,
   shared,
@@ -38,6 +39,7 @@ from .shared import (
   LLVM_DWARFDUMP,
   LLVM_NM,
   LLVM_OBJCOPY,
+  LLVM_OBJDUMP,
   WASM_LD,
   asmjs_mangle,
   check_call,
@@ -54,13 +56,15 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 131
+EXPECTED_BINARYEN_VERSION = 132
 
 _is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: set[str] = set()
 # JS library symbols exported via the `__export` decorator.
 extra_js_exports: set[str] = set()
+# Mangled wasm exports wasm-bindgen's glue reaches by name, kept off the public surface.
+wasm_bindgen_internal_exports: set[str] = set()
 # A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
 # etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
 # which reads it using `--detect-features`.
@@ -149,7 +153,7 @@ def create_stub_object(external_symbols):
   stubs = ['#STUB']
   for name, deps in external_symbols.items():
     if not name.startswith('$'):
-      stubs.append('%s: %s' % (name, ','.join(deps)))
+      stubs.append(f"{name}: {','.join(deps)}")
   utils.write_file(stubfile, '\n'.join(stubs))
   return stubfile
 
@@ -194,14 +198,19 @@ def lld_flags_for_executable(external_symbols):
       not settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
-  if cmdline.options.lto and not settings.EXIT_RUNTIME:
-    # The WebAssembly backend can generate new references to `__cxa_atexit` at
-    # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
-    # included at LTO time.  For other such symbols we exclude them from LTO
-    # and always build them as normal object files, but that would inhibit the
-    # LowerGlobalDtors optimization which allows destructors to be completely
-    # removed when __cxa_atexit is a no-op.
-    cmd.append('-u__cxa_atexit')
+  if cmdline.options.lto:
+    if not settings.EXIT_RUNTIME:
+      # The WebAssembly backend can generate new references to `__cxa_atexit` at
+      # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
+      # included at LTO time.  For other such symbols we exclude them from LTO
+      # and always build them as normal object files, but that would inhibit the
+      # LowerGlobalDtors optimization which allows destructors to be completely
+      # removed when __cxa_atexit is a no-op.
+      cmd.append('-u__cxa_atexit')
+    if not settings.DISABLE_EXCEPTION_CATCHING:
+      # The WebAssembly backend can generate new references to `__cxa_find_matching_catch_N`
+      # at LTO time, which depends on `__cxa_can_catch` in libc++abi.
+      cmd.append('-u__cxa_can_catch')
 
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores
@@ -240,17 +249,17 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('--growable-table')
 
   if not settings.SIDE_MODULE:
-    cmd += ['-z', 'stack-size=%s' % settings.STACK_SIZE]
+    cmd += ['-z', f'stack-size={settings.STACK_SIZE}']
 
     if settings.ALLOW_MEMORY_GROWTH:
-      cmd += ['--max-memory=%d' % settings.MAXIMUM_MEMORY]
+      cmd += [f'--max-memory={settings.MAXIMUM_MEMORY}']
     else:
       cmd += ['--no-growable-memory']
 
     if settings.INITIAL_HEAP != -1:
-      cmd += ['--initial-heap=%d' % settings.INITIAL_HEAP]
+      cmd += [f'--initial-heap={settings.INITIAL_HEAP}']
     if settings.INITIAL_MEMORY != -1:
-      cmd += ['--initial-memory=%d' % settings.INITIAL_MEMORY]
+      cmd += [f'--initial-memory={settings.INITIAL_MEMORY}']
 
     if settings.STANDALONE_WASM:
       # when settings.EXPECT_MAIN is set we fall back to wasm-ld default of _start
@@ -274,9 +283,12 @@ def lld_flags_for_executable(external_symbols):
     cmd.append('--no-stack-first')
 
   if not settings.SIDE_MODULE:
-    cmd.append('--table-base=%s' % settings.TABLE_BASE)
+    cmd.append(f'--table-base={settings.TABLE_BASE}')
     if not settings.STACK_FIRST:
-      cmd.append('--global-base=%s' % settings.GLOBAL_BASE)
+      cmd.append(f'--global-base={settings.GLOBAL_BASE}')
+
+  if feature_matrix.caniuse(feature_matrix.Feature.EXTENDED_CONST):
+    cmd.append('--extra-features=extended-const')
 
   return cmd
 
@@ -298,15 +310,11 @@ def get_wasm_bindgen_exported_symbols(input_files):
   return symbols
 
 
-def lld_flags(args, linker_inputs=None):
+def lld_flags(args):
   # lld doesn't currently support --start-group/--end-group since the
   # semantics are more like the windows linker where there is no need for
   # grouping.
   args = [a for a in args if a not in {'--start-group', '--end-group'}]
-
-  if settings.WASM_BINDGEN:
-    exported_symbols = get_wasm_bindgen_exported_symbols(linker_inputs)
-    args.extend(f'--export={e}' for e in exported_symbols)
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
@@ -336,7 +344,7 @@ def lld_flags(args, linker_inputs=None):
   return args
 
 
-def link_lld(args, target, external_symbols=None, linker_inputs=None):
+def link_lld(args, target, external_symbols=None):
   # runs lld to link things.
   if not os.path.exists(WASM_LD):
     exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
@@ -345,7 +353,7 @@ def link_lld(args, target, external_symbols=None, linker_inputs=None):
   # normal linker flags that are used when building and executable
   if '--relocatable' not in args and '-r' not in args:
     cmd += lld_flags_for_executable(external_symbols)
-  cmd += lld_flags(args, linker_inputs)
+  cmd += lld_flags(args)
   cmd = get_command_with_possible_response_file(cmd)
   if settings.LINK_AS_CXX:
     check_call(cmd)
@@ -385,7 +393,7 @@ def get_command_with_possible_response_file(cmd):
   if (len(shlex.join(cmd)) <= 7000 and force_response_files != '1') or force_response_files == '0':
     return cmd
 
-  logger.debug('using response file for %s' % cmd[0])
+  logger.debug(f'using response file for {cmd[0]}')
   filename = response_file.create_response_file(cmd[1:], shared.TEMP_DIR)
   new_cmd = [cmd[0], "@" + filename]
   return new_cmd
@@ -441,14 +449,14 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
   basename = utils.unsuffixed(original_filename)
   if '.jso' in basename:
     basename = utils.unsuffixed(basename)
-  output_file = basename + '.jso%d.js' % acorn_optimizer.counter
+  output_file = basename + f'.jso{acorn_optimizer.counter}.js'
   shared.get_temp_files().note(output_file)
   cmd += ['-o', output_file]
   if shared.SKIP_SUBPROCS:
     shared.print_compiler_stage(cmd)
     return output_file
   check_call(cmd)
-  save_intermediate(output_file, '%s.js' % passes[0])
+  save_intermediate(output_file, f'{passes[0]}.js')
   return output_file
 
 
@@ -512,13 +520,7 @@ def get_closure_compiler():
     return config.CLOSURE_COMPILER
 
   # Otherwise use the one installed via npm
-  cmd = shared.get_npm_cmd('google-closure-compiler')
-  if not WINDOWS:
-    # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
-    # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap
-    # out of memory"
-    cmd.insert(-1, '--max_old_space_size=8192')
-  return cmd
+  return shared.get_npm_cmd('google-closure-compiler')
 
 
 def check_closure_compiler(cmd, args, env, allowed_to_fail):
@@ -531,18 +533,22 @@ def check_closure_compiler(cmd, args, env, allowed_to_fail):
     if isinstance(e, subprocess.CalledProcessError):
       sys.stderr.write(e.stdout)
     sys.stderr.write(str(e) + '\n')
-    exit_with_error('closure compiler (%s) did not execute properly!' % shlex.join(cmd))
+    exit_with_error(f'closure compiler ({shlex.join(cmd)}) did not execute properly!')
 
   if 'Version:' not in output:
     if allowed_to_fail:
       return False
-    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shlex.join(cmd), output))
+    exit_with_error(f'unrecognized closure compiler --version output ({shlex.join(cmd)}):\n{output}')
 
   return True
 
 
 def get_closure_compiler_and_env(user_args):
   env = shared.env_with_node_in_path()
+  # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
+  # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap
+  # out of memory"
+  env['NODE_OPTIONS'] = '--max_old_space_size=8192'
   closure_cmd = get_closure_compiler()
 
   native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
@@ -592,7 +598,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if settings.WASM_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # Generate an exports file that records all the exported symbols from the wasm module.
     exports = [asmjs_mangle(i) for i in settings.WASM_EXPORTS] + settings.ALIASES
-    module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % e for e in exports])
+    module_exports_suppressions = '\n'.join([f'/**\n * @suppress {{duplicate, undefinedVars}}\n */\nvar {e};\n' for e in exports])
     exports_file = shared.get_temp_files().get('.js', prefix='emcc_module_exports_')
     exports_file.write(module_exports_suppressions.encode())
     exports_file.close()
@@ -999,7 +1005,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
   if opt_level > 0:
     args += ['-O']
   if symbols_file:
-    args += ['--symbols-file=%s' % symbols_file]
+    args += [f'--symbols-file={symbols_file}']
   wasm2js_js = run_binaryen_command('wasm2js', wasm_file,
                                     args=args,
                                     debug=debug_info,
@@ -1012,7 +1018,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
     if not debug_info and not settings.PTHREADS:
       passes += ['minifyNames']
       if symbols_file_js:
-        passes += ['symbolMap=%s' % symbols_file_js]
+        passes += [f'symbolMap={symbols_file_js}']
     if settings.MINIFY_WHITESPACE:
       passes += ['--minify-whitespace']
     if passes:
@@ -1166,7 +1172,7 @@ def is_ar(filename):
   try:
     header = open(filename, 'rb').read(8)
   except Exception as e:
-    logger.debug('is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e))
+    logger.debug(f'is_ar failed to test whether file \'{filename}\' is a llvm archive file! Failed on exception: {e}')
     return False
 
   return header in {b'!<arch>\n', b'!<thin>\n'}
@@ -1229,11 +1235,11 @@ def get_binaryen_feature_flags():
 def get_binaryen_version(bindir):
   opt = utils.find_exe(bindir, 'wasm-opt')
   if not os.path.exists(opt):
-    exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % opt)
+    exit_with_error(f'binaryen executable not found ({opt}). Please check your binaryen installation')
   try:
     return run_process([opt, '--version'], stdout=PIPE).stdout
   except subprocess.CalledProcessError:
-    exit_with_error('error running binaryen executable (%s). Please check your binaryen installation' % opt)
+    exit_with_error(f'error running binaryen executable ({opt}). Please check your binaryen installation')
 
 
 def check_binaryen(bindir):
@@ -1283,11 +1289,6 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
     if settings.ERROR_ON_WASM_CHANGES_AFTER_LINK:
       # emit some extra helpful text for common issues
       extra = ''
-      # a plain -O0 build *almost* doesn't need post-link changes, except for
-      # legalization. show a clear error for those (as the flags the user passed
-      # in are not enough to see what went wrong)
-      if settings.LEGALIZE_JS_FFI:
-        extra += '\nnote: to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
       if settings.OPT_LEVEL > 1:
         extra += '\nnote: -O2+ optimizations always require changes, build with -O0 or -O1 instead'
       exit_with_error(f'changes to the wasm are required after link, but disallowed by ERROR_ON_WASM_CHANGES_AFTER_LINK: {cmd}{extra}')
@@ -1307,7 +1308,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
     return ''
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:
-    save_intermediate(outfile, '%s.wasm' % tool)
+    save_intermediate(outfile, f'{tool}.wasm')
     global binaryen_kept_debug_info
     binaryen_kept_debug_info = '-g' in cmd
   return ret
@@ -1317,6 +1318,13 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # ruff: ignore[mutab
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
+def has_wasm_bindgen_marker(input_files):
+  if not input_files:
+    return False
+  result = check_call([LLVM_OBJDUMP, '--section-headers', *input_files], stdout=PIPE)
+  return '__wasm_bindgen_emscripten_marker' in result.stdout
+
+
 def run_wasm_bindgen(infile):
   bindgen_out_dir = os.path.join(get_emscripten_temp_dir(), 'bindgen_out')
 
@@ -1324,23 +1332,38 @@ def run_wasm_bindgen(infile):
   if not wasm_bindgen_bin:
     exit_with_error('wasm-bindgen executable not found in $PATH')
   cmd = [
-      wasm_bindgen_bin,
-      infile,
-      '--keep-lld-exports',
-      '--keep-debug',
-      '--out-dir',
-      bindgen_out_dir,
+    wasm_bindgen_bin,
+    infile,
+    '--keep-lld-exports',
+    '--keep-debug',
+    '--out-dir',
+    bindgen_out_dir,
   ]
+  exports_before = {e.name for e in webassembly.get_exports(infile)}
+
   check_call(cmd)
 
   # Don't try to predict the .wasm filename that wasm-bindgen outputs. Instead
   # just grab the .wasm file itself.
   all_output_files = os.listdir(bindgen_out_dir)
   new_wasm_file = [x for x in all_output_files if x.endswith('.wasm')][0]
+  new_wasm_path = os.path.join(bindgen_out_dir, new_wasm_file)
 
-  shutil.copyfile(os.path.join(bindgen_out_dir, new_wasm_file), infile)
+  exports_after = {e.name for e in webassembly.get_exports(new_wasm_path)}
+  removed_exports = exports_before - exports_after
+  added_exports = exports_after - exports_before
 
-  return os.path.join(bindgen_out_dir, 'library_bindgen.js')
+  shutil.copyfile(new_wasm_path, infile)
+
+  # Only emitted when the crate imports JS snippets.
+  extern_pre_js = os.path.join(bindgen_out_dir, 'library_bindgen.extern-pre.js')
+  if not os.path.exists(extern_pre_js):
+    extern_pre_js = None
+  snippets_dir = os.path.join(bindgen_out_dir, 'snippets')
+  if not os.path.isdir(snippets_dir):
+    snippets_dir = None
+
+  return os.path.join(bindgen_out_dir, 'library_bindgen.js'), removed_exports, added_exports, extern_pre_js, snippets_dir
 
 
 intermediate_counter = 0
@@ -1349,10 +1372,10 @@ intermediate_counter = 0
 def new_intermediate_filename(name):
   assert DEBUG
   global intermediate_counter
-  basename = 'emcc-%02d-%s' % (intermediate_counter, name)
+  basename = f'emcc-{intermediate_counter:02d}-{name}'
   intermediate_counter += 1
   filename = os.path.join(shared.CANONICAL_TEMP_DIR, basename)
-  logger.debug('saving intermediate file %s' % filename)
+  logger.debug(f'saving intermediate file {filename}')
   return filename
 
 

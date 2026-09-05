@@ -60,8 +60,9 @@ SKIP_SUBPROCS = False
 # distinct from the minimum version required to execute the generated code
 # (settings.MIN_NODE_VERSION).
 # This is currently set to v18 since this is the version of node available
-# in debian/stable (bookworm).  We need at least v18.3.0 because we make
-# use of util.parseArg which was added in v18.3.0.
+# in Debian/Bookworm (2023-06-01) and Ubuntu 24.04/Noble.
+# We need at least v18.3.0 specifically because we make use of util.parseArg
+# which was added in v18.3.0.
 MINIMUM_NODE_VERSION = (18, 3, 0)
 EXPECTED_LLVM_VERSION = 24
 
@@ -161,7 +162,7 @@ def run_multiple_processes(commands,
       else:
         stdout = None
       if DEBUG:
-        logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
+        logger.debug(f"Running subprocess {i + 1}/{len(commands)}: {' '.join(commands[i])}")
       print_compiler_stage(commands[i])
       proc = subprocess.Popen(commands[i], stdout=stdout, stderr=None, env=env, cwd=cwd)
       processes[i] = proc
@@ -174,7 +175,7 @@ def run_multiple_processes(commands,
       idx = get_finished_process()
       finished_process = processes.pop(idx)
       if finished_process.returncode != 0:
-        exit_with_error('subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex.join(commands[idx])))
+        exit_with_error(f'subprocess {idx + 1}/{len(commands)} failed ({returncode_to_str(finished_process.returncode)})! (cmdline: {shlex.join(commands[idx])})')
       num_completed += 1
 
   if route_stdout_to_temp_files_suffix:
@@ -233,7 +234,7 @@ def get_npm_cmd(name, missing_ok=False):
 @memoize
 def get_clang_version():
   if not os.path.exists(CLANG_CC):
-    exit_with_error('clang executable not found at `%s`' % CLANG_CC)
+    exit_with_error(f'clang executable not found at `{CLANG_CC}`')
   proc = check_call([CLANG_CC, '--version'], stdout=PIPE)
   m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
   return m and m.group(1)
@@ -241,13 +242,13 @@ def get_clang_version():
 
 def check_llvm_version():
   actual = get_clang_version()
-  if actual.startswith('%d.' % EXPECTED_LLVM_VERSION):
+  if actual.startswith(f'{EXPECTED_LLVM_VERSION}.'):
     return True
   # When running in CI environment we also silently allow the next major
   # version of LLVM here so that new versions of LLVM can be rolled in
   # without disruption.
   if 'BUILDBOT_BUILDNUMBER' in os.environ:
-    if actual.startswith('%d.' % (EXPECTED_LLVM_VERSION + 1)):
+    if actual.startswith(f'{EXPECTED_LLVM_VERSION + 1}.'):
       return True
   diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', CLANG_CC, actual, EXPECTED_LLVM_VERSION)
   return False
@@ -255,13 +256,13 @@ def check_llvm_version():
 
 def get_clang_targets():
   if not os.path.exists(CLANG_CC):
-    exit_with_error('clang executable not found at `%s`' % CLANG_CC)
+    exit_with_error(f'clang executable not found at `{CLANG_CC}`')
   try:
     target_info = utils.run_process([CLANG_CC, '-print-targets'], stdout=PIPE).stdout
   except subprocess.CalledProcessError:
-    exit_with_error('error running `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
+    exit_with_error(f'error running `clang -print-targets`.  Check your llvm installation ({CLANG_CC})')
   if 'Registered Targets:' not in target_info:
-    exit_with_error('error parsing output of `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
+    exit_with_error(f'error parsing output of `clang -print-targets`.  Check your llvm installation ({CLANG_CC})')
   return target_info.split('Registered Targets:')[1]
 
 
@@ -329,17 +330,6 @@ def node_reference_types_flags(nodejs):
     return []
 
 
-def node_exception_flags(nodejs):
-  node_version = get_node_version(nodejs)
-  # Legacy exception handling was enabled by default in node v17.
-  if node_version and node_version < (17, 0, 0):
-    return ['--experimental-wasm-eh']
-  # Standard exception handling was supported behind flag in node v22.
-  if node_version and node_version >= (22, 0, 0) and not settings.WASM_LEGACY_EXCEPTIONS:
-    return ['--experimental-wasm-exnref']
-  return []
-
-
 @memoize
 @ToolchainProfiler.profile()
 def check_node():
@@ -350,7 +340,8 @@ def check_node():
 
 
 def generate_sanity():
-  return f'{utils.EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
+  llvm_root = os.path.normcase(config.LLVM_ROOT)
+  return f'{utils.EMSCRIPTEN_VERSION}|{llvm_root}\n'
 
 
 @memoize
@@ -565,7 +556,7 @@ def print_compiler_stage(cmd):
     print(' ' + ' '.join([maybe_quote(a) for a in cmd]), file=sys.stderr)
     sys.stderr.flush()
   elif PRINT_SUBPROCS:
-    print(' %s %s' % (maybe_quote(cmd[0]), shlex.join(cmd[1:])), file=sys.stderr)
+    print(f' {maybe_quote(cmd[0])} {shlex.join(cmd[1:])}', file=sys.stderr)
     sys.stderr.flush()
 
 
@@ -612,7 +603,7 @@ def asmjs_mangle(name):
 
 def do_replace(input_, pattern, replacement):
   if pattern not in input_:
-    exit_with_error('expected to find pattern in input JS: %s' % pattern)
+    exit_with_error(f'expected to find pattern in input JS: {pattern}')
   return input_.replace(pattern, replacement)
 
 
@@ -645,6 +636,7 @@ LLVM_RANLIB = llvm_tool_path('llvm-ranlib')
 LLVM_NM = llvm_tool_path('llvm-nm')
 LLVM_DWARFDUMP = llvm_tool_path('llvm-dwarfdump')
 LLVM_OBJCOPY = llvm_tool_path('llvm-objcopy')
+LLVM_OBJDUMP = llvm_tool_path('llvm-objdump')
 WASM_LD = llvm_tool_path('wasm-ld')
 LLVM_PROFDATA = llvm_tool_path('llvm-profdata')
 LLVM_COV = llvm_tool_path('llvm-cov')

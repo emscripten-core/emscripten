@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
-Copyright (c) 2024-2025, Microsoft Research, Daan Leijen
+Copyright (c) 2024-2026, Microsoft Research, Daan Leijen
 This is free software; you can redistribute it and/or modify it under the
 terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
@@ -22,7 +22,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #elif __cplusplus >= 201103L
 #define mi_decl_align(a)        alignas(a)
 #else
-#define mi_decl_align(a)
+#define mi_decl_align(a)        _Alignas(a)
 #endif
 
 
@@ -139,6 +139,9 @@ extern "C" {
 mi_decl_export bool    mi_heap_stats_get(mi_heap_t* heap, mi_stats_t* stats) mi_attr_noexcept;
 mi_decl_export char*   mi_heap_stats_get_json(mi_heap_t* heap, size_t buf_size, char* buf) mi_attr_noexcept;      // use mi_free to free the result if the input buf == NULL
 mi_decl_export void    mi_heap_stats_print_out(mi_heap_t* heap, mi_output_fun* out, void* arg) mi_attr_noexcept;
+
+// stats from a theap
+mi_decl_export bool    mi_theap_stats_get(mi_theap_t* theap, mi_stats_t* stats) mi_attr_noexcept;
 
 // stats from a subprocess and its heaps aggregated
 mi_decl_export bool    mi_subproc_stats_get(mi_subproc_id_t subproc_id, mi_stats_t* stats) mi_attr_noexcept;

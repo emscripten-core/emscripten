@@ -27,112 +27,125 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libclang_rt.builtins',
-    'libclang_rt.builtins-mt',
-    'libclang_rt.builtins-legacysjlj',
-    'libclang_rt.builtins-wasmsjlj',
-    'libclang_rt.builtins-ww',
-    'libc',
-    'libc-debug',
-    'libc-mt-debug',
-    'libc-ww-debug',
-    'libc_optz',
-    'libc_optz-debug',
-    'libc++abi',
-    'libc++abi-legacyexcept',
-    'libc++abi-wasmexcept',
-    'libc++abi-noexcept',
-    'libc++abi-debug',
-    'libc++abi-debug-legacyexcept',
-    'libc++abi-debug-wasmexcept',
-    'libc++abi-debug-noexcept',
-    'libc++abi-debug-mt-noexcept',
-    'libc++abi-debug-ww-noexcept',
-    'libc++',
-    'libc++-legacyexcept',
-    'libc++-wasmexcept',
-    'libc++-noexcept',
-    'libc++-ww-noexcept',
-    'libc++-debug',
-    'libc++-debug-wasmexcept',
-    'libc++-debug-legacyexcept',
-    'libc++-debug-noexcept',
-    'libc++-debug-mt-noexcept',
-    'libc++-debug-ww-noexcept',
-    'libal',
-    'libdlmalloc',
-    'libdlmalloc-tracing',
-    'libdlmalloc-debug',
-    'libdlmalloc-mt-debug',
-    'libdlmalloc-ww',
-    'libdlmalloc-ww-debug',
-    'libembind',
-    'libembind-rtti',
-    'libembind-mt-rtti',
-    'libemmalloc',
-    'libemmalloc-debug',
-    'libemmalloc-memvalidate',
-    'libemmalloc-verbose',
-    'libemmalloc-memvalidate-verbose',
-    'libmimalloc',
-    'libmimalloc-mt',
-    'libGL',
-    'libGL-getprocaddr',
-    'libGL-mt-getprocaddr',
-    'libGL-emu-getprocaddr',
-    'libGL-emu-webgl2-ofb-getprocaddr',
-    'libGL-webgl2-ofb-getprocaddr',
-    'libGL-webgl2-ofb-full_es3-getprocaddr',
-    'libGL-ww-getprocaddr',
-    'libhtml5',
-    'libsockets',
-    'libsockets-mt',
-    'libsockets-ww',
-    'libstubs',
-    'libstubs-debug',
-    'libstandalonewasm-nocatch',
-    'crt1',
-    'crt1_proxy_main',
-    'crtbegin-mt',
-    'libunwind-legacyexcept',
-    'libunwind-wasmexcept',
-    'libnoexit',
-    'bullet',
-    'libstb_image',
-    'libwasmfs_no_fs',
-    'libwasmfs-debug',
-    'libwasm_workers-debug',
+  'libclang_rt.builtins',
+  'libclang_rt.builtins-mt',
+  'libclang_rt.builtins-legacysjlj',
+  'libclang_rt.builtins-wasmsjlj',
+  'libclang_rt.builtins-ww',
+  'libclang_rt.asan',
+  'libclang_rt.asan-mt',
+  'libclang_rt.lsan',
+  'libclang_rt.lsan-mt',
+  'libclang_rt.lsan_common',
+  'libclang_rt.lsan_common-mt',
+  'libclang_rt.sanitizer_common',
+  'libclang_rt.sanitizer_common-mt',
+  'libclang_rt.ubsan',
+  'libclang_rt.ubsan-mt',
+  'libc',
+  'libc-asan-debug',
+  'libc-debug',
+  'libc-mt-debug',
+  'libc-mt-asan-debug',
+  'libc-ww-debug',
+  'libc_optz',
+  'libc_optz-debug',
+  'libc++abi',
+  'libc++abi-legacyexcept',
+  'libc++abi-wasmexcept',
+  'libc++abi-noexcept',
+  'libc++abi-debug',
+  'libc++abi-debug-legacyexcept',
+  'libc++abi-debug-wasmexcept',
+  'libc++abi-debug-noexcept',
+  'libc++abi-debug-mt-noexcept',
+  'libc++abi-debug-ww-noexcept',
+  'libc++',
+  'libc++-legacyexcept',
+  'libc++-wasmexcept',
+  'libc++-noexcept',
+  'libc++-ww-noexcept',
+  'libc++-debug',
+  'libc++-debug-wasmexcept',
+  'libc++-debug-legacyexcept',
+  'libc++-debug-noexcept',
+  'libc++-debug-mt-noexcept',
+  'libc++-debug-ww-noexcept',
+  'libal',
+  'libdlmalloc',
+  'libdlmalloc-tracing',
+  'libdlmalloc-debug',
+  'libdlmalloc-mt-debug',
+  'libdlmalloc-ww',
+  'libdlmalloc-ww-debug',
+  'libembind',
+  'libembind-rtti',
+  'libembind-mt-rtti',
+  'libemmalloc',
+  'libemmalloc-debug',
+  'libemmalloc-memvalidate',
+  'libemmalloc-verbose',
+  'libemmalloc-memvalidate-verbose',
+  'libmimalloc',
+  'libmimalloc-mt',
+  'libGL',
+  'libGL-getprocaddr',
+  'libGL-mt-getprocaddr',
+  'libGL-emu-getprocaddr',
+  'libGL-emu-webgl2-ofb-getprocaddr',
+  'libGL-webgl2-ofb-getprocaddr',
+  'libGL-webgl2-ofb-full_es3-getprocaddr',
+  'libGL-ww-getprocaddr',
+  'libhtml5',
+  'libsockets',
+  'libsockets-mt',
+  'libsockets-ww',
+  'libstubs',
+  'libstubs-debug',
+  'libstandalonewasm-nocatch',
+  'crt1',
+  'crt1_proxy_main',
+  'crtbegin-mt',
+  'libunwind-legacyexcept',
+  'libunwind-wasmexcept',
+  'libnoexit',
+  'bullet',
+  'libstb_image',
+  'libwasmfs_no_fs',
+  'libwasmfs-debug',
+  'libwasm_workers-debug',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
 # CI (which has slightly more tests than other modes that want to use MINIMAL)
 MINIMAL_PIC_TASKS = [
-    *MINIMAL_TASKS,
-    'libc-mt',
-    'libc_optz-mt',
-    'libc_optz-mt-debug',
-    'libc++abi-mt',
-    'libc++abi-mt-noexcept',
-    'libc++abi-debug-mt',
-    'libc++-mt',
-    'libc++-mt-noexcept',
-    'libc++-debug-mt',
-    'libdlmalloc-mt',
-    'libGL-emu',
-    'libGL-emu-webgl2-getprocaddr',
-    'libGL-mt-emu',
-    'libGL-mt-emu-webgl2-getprocaddr',
-    'libGL-mt-emu-webgl2-ofb-getprocaddr',
-    'libsockets_proxy',
-    'libclang_rt.sanitizer_common',
-    'libclang_rt.ubsan',
-    'libfetch',
-    'libfetch-mt',
-    'libwasmfs',
-    'giflib',
-    'sdl2',
-    'sdl2_gfx',
-    'sdl3',
+  *MINIMAL_TASKS,
+  'libc-mt',
+  'libc_optz-mt',
+  'libc_optz-mt-debug',
+  'libc++abi-mt',
+  'libc++abi-mt-noexcept',
+  'libc++abi-debug-mt',
+  'libc++-mt',
+  'libc++-mt-noexcept',
+  'libc++-debug-mt',
+  'libdlmalloc-mt',
+  'libGL-emu',
+  'libGL-emu-webgl2-getprocaddr',
+  'libGL-mt-emu',
+  'libGL-mt-emu-webgl2-getprocaddr',
+  'libGL-mt-emu-webgl2-ofb-getprocaddr',
+  'libsockets_proxy',
+  'libfetch',
+  'libfetch-mt',
+  'libwasmfs',
+  'giflib',
+  'sdl2',
+  'sdl2_image',
+  'sdl2_image-legacysjlj',
+  'sdl2_image-wasmsjlj',
+  'sdl2_gfx',
+  'sdl3',
 ]
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
@@ -147,14 +160,15 @@ legacy_prefixes = {
 def get_help():
   all_tasks = get_all_tasks()
   all_tasks.sort()
-  return '''
+  tasks_str = '\n        '.join(all_tasks)
+  return f'''
 Available targets:
 
   build / clear
-        %s
+        {tasks_str}
 
 Issuing 'embuilder build ALL' causes each task to be built.
-''' % '\n        '.join(all_tasks)
+'''
 
 
 @contextmanager
@@ -293,7 +307,7 @@ def main():
       tasks.extend(targets)
 
   if auto_tasks:
-    print('Building targets: %s' % ' '.join(tasks))
+    print(f"Building targets: {' '.join(tasks)}")
 
   if USE_NINJA:
     os.environ['EMBUILDER_PORT_BUILD_DEFERRED'] = '1'
@@ -337,14 +351,16 @@ def main():
       return 1
 
     time_taken = time.time() - start_time
-    logger.info('...success. Took %s(%.2fs)' % (('%02d:%02d mins ' % (time_taken // 60, time_taken % 60) if time_taken >= 60 else ''), time_taken))
+    mins = f'{int(time_taken // 60):02d}:{int(time_taken % 60):02d} mins ' if time_taken >= 60 else ''
+    logger.info(f'...success. Took {mins}({time_taken:.2f}s)')
 
   if USE_NINJA and args.operation != 'clear':
     system_libs.build_deferred()
 
   if len(tasks) > 1 or USE_NINJA:
     all_build_time_taken = time.time() - all_build_start_time
-    logger.info('Built %d targets in %s(%.2fs)' % (len(tasks), ('%02d:%02d mins ' % (all_build_time_taken // 60, all_build_time_taken % 60) if all_build_time_taken >= 60 else ''), all_build_time_taken))
+    mins = f'{int(all_build_time_taken // 60):02d}:{int(all_build_time_taken % 60):02d} mins ' if all_build_time_taken >= 60 else ''
+    logger.info(f'Built {len(tasks)} targets in {mins}({all_build_time_taken:.2f}s)')
 
   return 0
 

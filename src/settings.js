@@ -392,21 +392,6 @@ var DYLINK_DEBUG = 0;
 // [link]
 var FS_DEBUG = false;
 
-// Select socket backend, either webrtc or websockets. XXX webrtc is not
-// currently tested, may be broken
-
-// As well as being configurable at compile time via the "-s" option the
-// WEBSOCKET_URL and WEBSOCKET_SUBPROTOCOL
-// settings may be configured at run time via the Module object e.g.
-// Module['websocket'] = {subprotocol: 'base64, binary, text'};
-// Module['websocket'] = {url: 'wss://', subprotocol: 'base64'};
-// You can set 'subprotocol' to null, if you don't want to specify it.
-// Run time configuration may be useful as it lets an application select
-// multiple different services.
-// [link]
-// [deprecated]
-var SOCKET_WEBRTC = false;
-
 // A string containing either a WebSocket URL prefix (ws:// or wss://) or a
 // complete RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
 // In the (default) case of only a prefix being specified the URL will be
@@ -435,7 +420,7 @@ var PROXY_POSIX_SOCKETS = false;
 // It is event-driven. Socket readiness comes through the same
 // ``emscripten_set_socket_*_callback`` hooks the WebSocket backend uses, so it
 // works with existing readiness reactors. It cannot be combined with the
-// WebSocket emulation, :ref:`PROXY_POSIX_SOCKETS` or :ref:`SOCKET_WEBRTC`.
+// WebSocket emulation or :ref:`PROXY_POSIX_SOCKETS`.
 //
 // It works under -pthread with :ref:`PROXY_TO_PTHREAD`, where main() and every socket
 // syscall run on a single worker alongside the node handles and their event
@@ -933,11 +918,10 @@ var ASYNCIFY_DEBUG = 0;
 var ASYNCIFY_EXPORTS = [];
 
 // Use VM support for the JavaScript Promise Integration proposal. This allows
-// async operations to happen without the overhead of modifying the wasm. This
-// is experimental at the moment while spec discussion is ongoing, see
-// https://github.com/WebAssembly/js-promise-integration/ TODO: document which
-// of the following flags are still relevant in this mode (e.g. IGNORE_INDIRECT
-// etc. are not needed)
+// async operations to happen without the overhead of modifying the wasm.
+// See https://github.com/WebAssembly/js-promise-integration/
+// TODO: document which of the following flags are still relevant in this mode
+// (e.g. IGNORE_INDIRECT etc. are not needed)
 //
 // [link]
 var JSPI = 0;
@@ -1422,12 +1406,12 @@ var EMSCRIPTEN_TRACING = false;
 var USE_GLFW = 0;
 
 // Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
-// instead of wasm.
+// instead of wasm (deprecated).
 //
-// Specify -sWASM=2 to target both WebAssembly and JavaScript at the same time.
-// In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
-// the WebAssembly file is loaded if browser/shell supports it. Otherwise the
-// .wasm.js fallback will be used.
+// Specify -sWASM=2 to target both WebAssembly and JavaScript at the same time
+// (deprecated). In that build mode, two files a.wasm and a.wasm.js are produced,
+// and at runtime the WebAssembly file is loaded if browser/shell supports it.
+// Otherwise the .wasm.js fallback will be used.
 //
 // If WASM=2 is enabled and the browser fails to compile the WebAssembly module,
 // the page will be reloaded in Wasm2JS mode.
@@ -1506,6 +1490,7 @@ var DYNCALLS = false;
 // legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
 // i64 is used.
 // [link]
+// [deprecated]
 var WASM_BIGINT = true;
 
 // WebAssembly defines a "producers section" which compilers and tools can
@@ -1522,22 +1507,15 @@ var EMIT_PRODUCERS_SECTION = false;
 // [link]
 var EMIT_EMSCRIPTEN_LICENSE = false;
 
-// Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
-// to automatically demote i64 to i32 and promote f32 to f64. This is necessary
-// in order to interface with JavaScript.  For non-web/non-JS embeddings,
-// setting this to 0 may be desirable.
-// [link]
-// [deprecated]
-var LEGALIZE_JS_FFI = true;
-
 // Ports
 
 // Specify the SDL version that is being linked against.
 // 1, the default, is 1.3, which is implemented in JS
 // 2 is a port of the SDL C code on emscripten-ports
+// 3 is a port of SDL3 on emscripten-ports
 // When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
 // is not linked in.
-// Alternate syntax for using the port: --use-port=sdl2
+// Alternate syntax for using the port: --use-port=sdl3
 // [compile+link]
 var USE_SDL = 0;
 
@@ -1659,20 +1637,6 @@ var USE_SQLITE3 = false;
 // If 1, target compiling a shared Wasm Memory.
 // [compile+link]
 var SHARED_MEMORY = false;
-
-// If true, enables support for experimental shared Wasm GC. Expects the
-// module to contain a mutable shared anyref global to be imported as "env"
-// "_shared_heap_root" and exported as "_shared_heap_root". The import will be
-// provided a null value on the main thread, where the user code is expected to
-// initialize it with some shared object during the start function. This shared
-// object will then be provided as the import when instantiating the module on
-// additional Workers. This shared anyref global can be used to bootstrap
-// arbitrary shared Wasm GC state. Since LLVM cannot emit Wasm GC instructions
-// or shared anyref globals, users are expected to use wasm-merge to add the
-// _shared_heap_root global and additional Wasm GC code post-link.
-// [link]
-// [experimental]
-var SHARED_WASMGC = false;
 
 // Enables support for Wasm Workers.  Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
@@ -1985,7 +1949,7 @@ var MIN_FIREFOX_VERSION = 79;
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 140100 which was released on 2021-04-26 (see
+// Minimum supported value is 150000 which was released on 2021-09-20 (see
 // feature_matrix.py).
 // [link]
 var MIN_SAFARI_VERSION = 150000;
@@ -2142,10 +2106,9 @@ var SEPARATE_DWARF_URL = '';
 // not in others like split-dwarf).
 // When this flag is turned on, we error at link time if the build requires any
 // changes to the wasm after link. This can be useful in testing, for example.
-// Some example of features that require post-link wasm changes are:
+// Some examples of features that require post-link wasm changes are:
 //
 // - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
-// - Lowering nontrapping-float-to-int operations when targeting older browsers.
 var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
 
 // Abort on unhandled exceptions that occur when calling exported WebAssembly
@@ -2221,8 +2184,8 @@ var TRUSTED_TYPES = false;
 // polyfills be included in the output.  If you would prefer to take care of
 // polyfilling yourself via some other mechanism you can prevent emscripten
 // from generating these by passing ``-sNO_POLYFILL`` or ``-sPOLYFILL=0``
-// With default browser targets emscripten does not need any polyfills so this
-// settings is *only* needed when also explicitly targeting older browsers.
+// Currently emscripten does not support targeting any browsers that require
+// polyfills so this setting does nothing right now.
 var POLYFILL = true;
 
 // If non-zero, add tracing to core runtime functions.  Can be set to 2 for
@@ -2260,8 +2223,19 @@ var LEGACY_RUNTIME = false;
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
-// Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
+// Run wasm-bindgen and integrate the rust-exported symbols into the rest of
+// Emscripten's JS output.
+// Even with this setting enabled, wasm-bindgen processing is only performed
+// when the linker inputs carry the wasm-bindgen Emscripten marker section
+// (emitted by the wasm-bindgen crate). When the marker is absent the build is
+// unchanged, so -sWASM_BINDGEN can safely be passed unconditionally to
+// non-wasm-bindgen builds, and by toolchains that link via emcc.
+// If EXPORTED_FUNCTIONS is set it is taken as the complete export list and
+// must include every export wasm-bindgen reaches by name (rustc supplies this
+// when driving the link). Otherwise those exports are discovered from the
+// linker inputs.
 // [link]
+// [experimental]
 var WASM_BINDGEN = 0;
 
 // Experimental support for wasm source phase imports.

@@ -1,14 +1,14 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
-declare namespace RuntimeExports {
-    function FS_createPath(...args: any[]): any;
-    function FS_createDataFile(...args: any[]): any;
-    function FS_preloadFile(parent: any, name: any, url: any, canRead: any, canWrite: any, dontCreateFile: any, canOwn: any, preFinish: any): Promise<void>;
-    function FS_unlink(...args: any[]): any;
-    function FS_createLazyFile(...args: any[]): any;
-    function FS_createDevice(...args: any[]): any;
-    function addRunDependency(id: any): void;
-    function removeRunDependency(id: any): void;
-}
+declare var RuntimeExports: {
+    FS_createPath: (...args: any[]) => any;
+    FS_createDataFile: (...args: any[]) => any;
+    FS_preloadFile: (parent: any, name: any, url: any, canRead: any, canWrite: any, dontCreateFile: any, canOwn: any, preFinish: any) => Promise<void>;
+    FS_unlink: (...args: any[]) => any;
+    FS_createLazyFile: (...args: any[]) => any;
+    FS_createDevice: (...args: any[]) => any;
+    addRunDependency: (id: any) => void;
+    removeRunDependency: (id: any) => void;
+};
 interface WasmModule {
   _main(_0: number, _1: number): number;
   __emscripten_proxy_main(_0: number, _1: number): number;

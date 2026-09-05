@@ -37,7 +37,7 @@ from common import (
 
 from tools import feature_matrix, utils
 from tools.feature_matrix import OLDEST_SUPPORTED_FIREFOX, UNSUPPORTED
-from tools.shared import DEBUG, EMCC, exit_with_error
+from tools.shared import EMCC, exit_with_error
 from tools.utils import LINUX, MACOS, WINDOWS, memoize, path_from_root, read_binary
 
 logger = logging.getLogger('common')
@@ -241,7 +241,7 @@ class ChromeConfig:
   default_flags = (
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
-    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
+    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-features=JavaScriptSourcePhaseImports',
     '--enable-experimental-webassembly-features',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
@@ -465,7 +465,7 @@ def make_test_server(in_queue, out_queue, port):
     def do_GET(self):
       info = urlparse(self.path)
       if info.path == '/run_harness':
-        if DEBUG:
+        if common.EMTEST_VERBOSE:
           print('[server startup]')
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -493,7 +493,7 @@ def make_test_server(in_queue, out_queue, port):
         else:
           path = self.path
           url = '?'
-        if DEBUG:
+        if common.EMTEST_VERBOSE:
           print('[server response:', path, url, ']')
         if out_queue.empty():
           out_queue.put(path)
@@ -506,7 +506,7 @@ def make_test_server(in_queue, out_queue, port):
           # raise an error in here, it is just swallowed in python's webserver code - we want
           # the test to actually fail, which a webserver response can't do).
           out_queue.put(None)
-          raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
+          raise Exception(f'browser harness error, excessive response to server - test must be fixed! "{self.path}"')
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.send_header('Connection', 'close')
@@ -520,7 +520,7 @@ def make_test_server(in_queue, out_queue, port):
         if not in_queue.empty():
           # there is a new test ready to be served
           url, dir = in_queue.get()
-          if DEBUG:
+          if common.EMTEST_VERBOSE:
             print('[queue command:', url, dir, ']')
           assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
           assert out_queue.empty(), 'the single response from the last test was read'
@@ -531,7 +531,7 @@ def make_test_server(in_queue, out_queue, port):
           self.wfile.write(b'(wait)')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
-        if DEBUG:
+        if common.EMTEST_VERBOSE:
           print('[simple HTTP serving:', unquote_plus(self.path), ']')
         if self.headers.get('Range'):
           self.send_response(206)
@@ -842,7 +842,8 @@ class BrowserCore(RunnerCore):
       responses = []
       while not self.harness_out_queue.empty():
         responses += [self.harness_out_queue.get()]
-      raise Exception('excessive responses from %s: %s' % (who, '\n'.join(responses)))
+      responses_str = '\n'.join(responses)
+      raise Exception(f'excessive responses from {who}: {responses_str}')
 
   # @param extra_tries: how many more times to try this test, if it fails. browser tests have
   #                     many more causes of flakiness (in particular, they do not run
@@ -868,14 +869,14 @@ class BrowserCore(RunnerCore):
     BrowserCore.num_tests_ran += 1
 
     self.assert_out_queue_empty('previous test')
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print('[browser launch:', html_file, ']')
     assert not (message and expected), 'run_browser expects `expected` or `message`, but not both'
 
     if expected is not None:
       try:
         self.harness_in_queue.put((
-          'http://localhost:%s/%s' % (self.PORT, url),
+          f'http://localhost:{self.PORT}/{url}',
           self.get_dir(),
         ))
         if timeout is None:
@@ -953,7 +954,7 @@ class BrowserCore(RunnerCore):
     assert 'reporting' not in kwargs
     assert 'expected' not in kwargs
     kwargs['reporting'] = Reporting.JS_ONLY
-    kwargs['expected'] = 'exit:%d' % assert_returncode
+    kwargs['expected'] = f'exit:{assert_returncode}'
     return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None,

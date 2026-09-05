@@ -78,13 +78,13 @@ SOURCE_EXTENSIONS = {
 } | PREPROCESSED_EXTENSIONS
 
 LINK_ONLY_FLAGS = {
-    '--bind', '--closure', '--cpuprofiler', '--embed-file',
-    '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
-    '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
-    '--js-transform', '--oformat', '--output_eol', '--output-eol',
-    '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
-    '--proxy-to-worker', '--shell-file', '--source-map-base',
-    '--threadprofiler', '--use-preload-plugins',
+  '--bind', '--closure', '--cpuprofiler', '--embed-file',
+  '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
+  '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
+  '--js-transform', '--oformat', '--output_eol', '--output-eol',
+  '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
+  '--proxy-to-worker', '--shell-file', '--source-map-base',
+  '--threadprofiler', '--use-preload-plugins',
 }
 
 PASSTHROUGH_FLAGS = {
@@ -445,12 +445,12 @@ def phase_setup(state):
       if key not in COMPILE_TIME_SETTINGS:
         diagnostics.warning(
             'unused-command-line-argument',
-            "linker setting ignored during compilation: '%s'" % key)
+            f"linker setting ignored during compilation: '{key}'")
     for arg in state.orig_args:
       if arg.split('=')[0] in LINK_ONLY_FLAGS:
         diagnostics.warning(
             'unused-command-line-argument',
-            "linker flag ignored during compilation: '%s'" % arg)
+            f"linker flag ignored during compilation: '{arg}'")
 
   if 'USE_PTHREADS' in user_settings:
     settings.PTHREADS = settings.USE_PTHREADS
@@ -565,7 +565,7 @@ def phase_compile_inputs(state, newargs):
       seen_names[name] = 1
       return name
 
-    unique_suffix = '_%d' % seen_names[name]
+    unique_suffix = f'_{seen_names[name]}'
     seen_names[name] += 1
     base, ext = os.path.splitext(name)
     return base + unique_suffix + ext

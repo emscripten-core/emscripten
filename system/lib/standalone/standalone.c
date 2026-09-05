@@ -74,6 +74,25 @@ weak int __syscall_poll_nonblocking(struct pollfd *fds, nfds_t nfds) {
   return -ENOSYS;
 }
 
+weak int __syscall_epoll_create1(int flags) {
+  return -ENOSYS;
+}
+
+weak int __syscall_epoll_ctl(int epfd, int op, int fd, struct epoll_event *ev) {
+  return -ENOSYS;
+}
+
+weak int __syscall_epoll_pwait(int epfd, struct epoll_event *ev, int maxevents,
+                               int timeout, const sigset_t *sigmask,
+                               size_t sigsetsize) {
+  return -ENOSYS;
+}
+
+weak int __syscall_epoll_pwait_nonblocking(int epfd, struct epoll_event *ev,
+                                           int maxevents) {
+  return -ENOSYS;
+}
+
 // open(), etc. - we just support the standard streams, with no
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it

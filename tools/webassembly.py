@@ -247,7 +247,7 @@ class Module:
 
   def read_init(self):
     code = []
-    while 1:
+    while True:
       opcode = OpCode(self.read_byte())
       args = []
       match opcode:
@@ -260,7 +260,7 @@ class Module:
         case OpCode.END | OpCode.I32_ADD | OpCode.I64_ADD:
           pass
         case _:
-          raise Exception('unexpected opcode %s' % opcode)
+          raise Exception(f'unexpected opcode {opcode}')
       code.append((opcode, args))
       if opcode == OpCode.END:
         break
