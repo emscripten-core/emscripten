@@ -72,6 +72,7 @@ def run_test(args):
     result._mirrorOutput = False
   finally:
     result.elapsed = time.perf_counter() - start_time
+    result.test_duration = result.elapsed
 
   # Before attempting to delete the tmp dir make sure the current
   # working directory is not within it.
