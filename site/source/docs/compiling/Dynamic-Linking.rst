@@ -111,7 +111,7 @@ before your application starts to run.
 -  Build one part of your code as the main module, linking it using
    ``-sMAIN_MODULE`` (See :ref:`MAIN_MODULE`).
 -  Build other parts of your code as side modules, linking it using
-   ``-shared``.  You can also used the emscripten-specific :ref:`SIDE_MODULE`
+   ``-shared``.  You can also use the emscripten-specific :ref:`SIDE_MODULE`
    setting which does the same thing by default.
 
 For the main module the output suffix should be ``.js`` (the WebAssembly
@@ -136,7 +136,7 @@ modules linked together.
 Runtime Dynamic Linking with ``dlopen()``
 -----------------------------------------
 
-Runtime dynamic linking can be performed by the calling the ``dlopen()``
+Runtime dynamic linking can be performed by calling the ``dlopen()``
 function to load side modules after the program is already running. The
 procedure begins in the same way, with the same flags used to build the main and
 side modules.  The difference is that you do not specify the side modules on the
@@ -251,7 +251,7 @@ order to make this synchronization as seamless as possible, we hook into the
 low level primitives of `emscripten_futex_wait` and `emscripten_yield`.
 
 For most use cases all this happens under hood and no special action is needed.
-However, there there is one class of application that currently may require
+However, there is one class of application that currently may require
 modification.  If your applications busy waits, or directly uses the
 ``atomic.waitXX`` instructions (or the clang
 ``__builtin_wasm_memory_atomic_waitXX`` builtins) you maybe need to switch it
