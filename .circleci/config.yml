@@ -84,8 +84,8 @@ commands:
             export PATH=${HOME}/.cargo/bin:${PATH}
             rustup target add wasm32-unknown-emscripten
             echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> $BASH_ENV
-            WB=wasm-bindgen-0.2.127-x86_64-unknown-linux-musl
-            curl -sSfL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.127/$WB.tar.gz | tar xz -C /tmp
+            WB=wasm-bindgen-0.2.128-x86_64-unknown-linux-musl
+            curl -sSfL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.128/$WB.tar.gz | tar xz -C /tmp
             mv /tmp/$WB/wasm-bindgen ${HOME}/.cargo/bin/
   install-node-version:
     description: "install a specific version of node"
