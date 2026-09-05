@@ -15073,8 +15073,8 @@ addToLibrary({
     self.assertNotIn(b'hello from dtor', read_binary('test_unused_destructor.wasm'))
 
   def test_strip_all(self):
-    def has_debug_section(wasm):
-      with webassembly.Module('hello_world.wasm') as wasm:
+    def has_debug_section(wasm_file):
+      with webassembly.Module(wasm_file) as wasm:
         return wasm.get_custom_section('.debug_info') is not None
 
     # Use -O2 to ensure wasm-opt gets run

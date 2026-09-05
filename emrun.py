@@ -476,7 +476,6 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   # queued message, ignoring the proper order.  This ensures that if any
   # messages are actually lost, that the message queue will be orderly flushed.
   def print_timed_out_messages(self):
-    global last_message_time
     with http_mutex:
       now = tick()
       max_message_queue_time = 5
