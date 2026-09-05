@@ -238,14 +238,7 @@ function checkUnflushedContent() {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
-#if WASM_ESM_INTEGRATION && WASM_BINDGEN
-// wasm-bindgen's glue reaches the wasm exports by name on an aggregate object.
-// TODO: Remove once the minimum wasm-bindgen version uses the per-export
-// receiving bindings instead (wasm-bindgen/wasm-bindgen#5270).
-import * as wasmExports from './{{{ WASM_BINARY_FILE }}}';
-#else
 var wasmExports;
-#endif
 #if SPLIT_MODULE
 var wasmRawExports;
 #endif

@@ -15364,7 +15364,7 @@ addToLibrary({
     copytree(test_file('rust/bindgen_integration'), '.')
     # Pin the library to the (managed) wasm-bindgen-cli version on PATH;
     # wasm-bindgen requires the CLI and the library to match exactly.
-    self.run_process(['cargo', 'add', 'wasm-bindgen@0.2.127'])
+    self.run_process(['cargo', 'add', 'wasm-bindgen@0.2.128'])
     self.run_process(['cargo', 'build'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     self.assertExists(lib)
@@ -15460,13 +15460,16 @@ addToLibrary({
           Ok(42)
       }
     ''')
-    self.run_process(['cargo', 'add', 'wasm-bindgen@0.2.127'])
+    self.run_process(['cargo', 'add', 'wasm-bindgen@0.2.128'])
     self.run_process(['cargo', 'build'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     create_file('empty.c', '')
     self.run_process([EMCC, 'empty.c', '--emit-tsd', 'test_multi.d.ts', '-sWASM_BINDGEN', '-Wno-experimental', '-o', 'test_multi.js'] + [lib] + self.get_cflags())
     actual = read_file('test_multi.d.ts')
-    self.assertContained("multi_value_return(): [number, number, number];", actual)
+    # Only wasm-bindgen's unwrapping wrapper is surfaced; the raw multi-value
+    # `Result` ABI export stays internal.
+    self.assertContained("multi_value_return(): number;", actual)
+    self.assertNotContained("_multi_value_return(", actual)
 
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):
