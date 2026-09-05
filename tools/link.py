@@ -1529,7 +1529,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.PTHREADS:
     setup_pthreads()
     add_system_js_lib('libpthread.js')
-    if settings.PROXY_TO_PTHREAD:
+    if settings.PROXY_TO_PTHREAD or settings.PTHREAD_MANAGER:
       settings.PTHREAD_POOL_SIZE_STRICT = 0
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$runtimeKeepalivePush']
   else:
