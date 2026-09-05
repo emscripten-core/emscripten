@@ -317,7 +317,7 @@ def lld_flags(args):
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
-  if settings.LINKABLE and (settings.FAKE_DYLIBS or not settings.SIDE_MODULE):
+  if settings.LINKABLE and (settings.FAKE_DYLIBS or settings.SIDE_MODULE != 2):
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
 
