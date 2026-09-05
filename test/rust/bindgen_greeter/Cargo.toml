@@ -10,4 +10,4 @@ path = "src/main.rs"
 # 0.2.128 is the first release whose emscripten glue does not need an aggregate
 # `wasmExports` object (wasm-bindgen/wasm-bindgen#5270); must match the wasm-bindgen-cli
 # version exactly.
-wasm-bindgen = "0.2.128"
+wasm-bindgen = "=0.2.128"
