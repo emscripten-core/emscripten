@@ -30,6 +30,8 @@
 
 # Use #include <emscripten/dom_pk_codes.h> in your code to access these IDs.
 
+# ruff: file-ignore[multiple-spaces-after-comma]
+
 import os
 import random
 import sys
