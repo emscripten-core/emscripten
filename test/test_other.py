@@ -13608,6 +13608,42 @@ void foo() {}
   def test_pthread_join_interrupted(self):
     self.do_runf('pthread/test_pthread_join_interrupted.c', cflags=['-pthread'])
 
+  @requires_pthreads
+  def test_pthread_proxied_join_and_exit(self):
+    # Check that expected lifecycle messages coming from terminated workers do
+    # not log warnings.
+    create_file('test_pthread_proxied_join_and_exit.c', r'''
+    #include <pthread.h>
+    #include <emscripten/console.h>
+
+    void* thread_main(void* arg) {
+      emscripten_console_log("worker");
+      return NULL;
+    }
+
+    int main() {
+      pthread_t t1, t2, t3;
+      pthread_create(&t1, NULL, thread_main, NULL);
+      pthread_create(&t2, NULL, thread_main, NULL);
+      pthread_create(&t3, NULL, thread_main, NULL);
+
+      pthread_join(t1, NULL);
+      pthread_join(t2, NULL);
+      pthread_join(t3, NULL);
+
+      return 0;
+    }
+    ''')
+
+    out_js = self.in_dir('test_pthread_proxied_join_and_exit.js')
+    self.run_process([
+      EMCC, '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sASSERTIONS',
+      'test_pthread_proxied_join_and_exit.c', '-o', out_js,
+    ])
+
+    output = self.run_js(out_js)
+    self.assertEqual(output.splitlines(), ['worker', 'worker', 'worker'])
+
   @requires_node_26
   def test_growable_arraybuffers(self):
     self.do_runf('hello_world.c',
