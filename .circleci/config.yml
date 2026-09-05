@@ -1165,10 +1165,11 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install -y cmake.portable ninja
-            # Choco can return 0 even if package installation/resolution fails (e.g. 504 Gateway Timeout).
-            # See: https://github.com/chocolatey/choco/issues/1609
-            # Explicitly check version commands to ensure executables exist in PATH.
+            # Use pip to install cmake and ninja wheels rather than chocolatey.
+            # Chocolatey's community repository is prone to rate-limiting, 503
+            # Service Unavailable, and gateway timeouts in CI environments,
+            # whereas PyPI / wheels are much faster and more reliable.
+            pip install cmake ninja
             cmake --version
             ninja --version
       - install-emsdk
@@ -1235,10 +1236,11 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install -y cmake.portable ninja
-            # Choco can return 0 even if package installation/resolution fails (e.g. 504 Gateway Timeout).
-            # See: https://github.com/chocolatey/choco/issues/1609
-            # Explicitly check version commands to ensure executables exist in PATH.
+            # Use pip to install cmake and ninja wheels rather than chocolatey.
+            # Chocolatey's community repository is prone to rate-limiting, 503
+            # Service Unavailable, and gateway timeouts in CI environments,
+            # whereas PyPI / wheels are much faster and more reliable.
+            pip install cmake ninja
             cmake --version
             ninja --version
       # note we do *not* build all libraries and freeze the cache; as we run
