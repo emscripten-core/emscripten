@@ -68,6 +68,7 @@ else:
   os.makedirs('out', exist_ok=True)
 
 EMCC_DEBUG = utils.get_env_bool('EMCC_DEBUG')
+RUNNING_IN_CI = utils.get_env_bool('CI')
 
 
 # Test modes from 'core' that fully pass all tests. When running a random
@@ -462,7 +463,7 @@ def flattened_tests(loaded_tests):
 
 def run_tests(options, suite):
   # Run the discovered tests
-  if utils.get_env_bool('CI'):
+  if RUNNING_IN_CI:
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
     import xmlrunner  # type: ignore
@@ -726,13 +727,13 @@ def main():
   # emscripten.lock from shared.py).
   # Note: We only do this in the CI environment, since it prevents multiple
   # emscripten checkouts from running tests at the same time.
-  if os.getenv('CI') and not (EMCC_DEBUG or common.EMTEST_SAVE_DIR):
+  if RUNNING_IN_CI and not (EMCC_DEBUG or common.EMTEST_SAVE_DIR):
     cleanup_temp_directory()
   utils.delete_file(common.flaky_tests_log_filename)
 
   browser_common.init(options.force_browser_process_termination)
 
-  if options.log_test_environment or os.getenv('CI'):
+  if options.log_test_environment or RUNNING_IN_CI:
     log_test_environment()
 
   def prepend_default(arg):
