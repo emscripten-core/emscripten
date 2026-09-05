@@ -13,6 +13,7 @@ import shutil
 import time
 from functools import wraps
 from pathlib import Path
+from subprocess import PIPE
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
@@ -20,7 +21,13 @@ if __name__ == '__main__':
 import clang_native
 import common
 from common import (
+  EMAR,
   EMBUILDER,
+  EMCC,
+  EMXX,
+  FILE_PACKAGER,
+  LLVM_COV,
+  LLVM_PROFDATA,
   NON_ZERO,
   PYTHON,
   WEBIDL_BINDER,
@@ -79,7 +86,6 @@ from decorators import (
 )
 
 from tools import building, config, shared, utils, webassembly
-from tools.shared import EMAR, EMCC, EMXX, FILE_PACKAGER, LLVM_COV, LLVM_PROFDATA, PIPE
 from tools.utils import LINUX, MACOS, WINDOWS, delete_file, write_file
 
 # decorators for limiting which modes a test can run in
@@ -6866,9 +6872,7 @@ void* operator new(size_t size) {
     self.cflags.remove('-Werror')
     src = test_file('sse/test_sse_diagnostic.cpp')
 
-    p = self.run_process(
-      [shared.EMXX, src, '-msse', '-DWASM_SIMD_COMPAT_SLOW'] + self.get_cflags(),
-      stderr=PIPE)
+    p = self.run_process([EMXX, src, '-msse', '-DWASM_SIMD_COMPAT_SLOW'] + self.get_cflags(), stderr=PIPE)
     self.assertContained('Instruction emulated via slow path.', p.stderr)
 
   @wasm_relaxed_simd

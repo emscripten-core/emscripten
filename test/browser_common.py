@@ -22,6 +22,7 @@ from urllib.parse import parse_qs, unquote, unquote_plus, urlparse
 import common
 import psutil
 from common import (
+  EMCC,
   TEST_ROOT,
   RunnerCore,
   compiler_for,
@@ -37,8 +38,7 @@ from common import (
 
 from tools import feature_matrix, utils
 from tools.feature_matrix import OLDEST_SUPPORTED_FIREFOX, UNSUPPORTED
-from tools.shared import EMCC, exit_with_error
-from tools.utils import LINUX, MACOS, WINDOWS, memoize, path_from_root, read_binary
+from tools.utils import LINUX, MACOS, WINDOWS, exit_with_error, memoize, path_from_root, read_binary
 
 logger = logging.getLogger('common')
 

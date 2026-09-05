@@ -40,7 +40,6 @@ from .shared import (
   LLVM_NM,
   LLVM_OBJCOPY,
   LLVM_OBJDUMP,
-  WASM_LD,
   asmjs_mangle,
   check_call,
   demangle_c_symbol_name,
@@ -57,8 +56,8 @@ logger = logging.getLogger('building')
 #  Building
 binaryen_checked = False
 EXPECTED_BINARYEN_VERSION = 132
+WASM_LD = shared.llvm_tool_path('wasm-ld')
 
-_is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: set[str] = set()
 # JS library symbols exported via the `__export` decorator.

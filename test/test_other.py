@@ -35,14 +35,20 @@ import common
 import jsrun
 import line_endings
 from common import (
+  EMAR,
   EMBUILDER,
+  EMCC,
   EMCMAKE,
   EMCONFIG,
   EMCONFIGURE,
   EMMAKE,
+  EMRANLIB,
+  EMXX,
+  FILE_PACKAGER,
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
+  WASM_LD,
   WEBIDL_BINDER,
   RunnerCore,
   check_node_version,
@@ -107,16 +113,10 @@ from tools.settings import settings
 from tools.shared import (
   CLANG_CC,
   CLANG_CXX,
-  EMAR,
-  EMCC,
-  EMRANLIB,
-  EMXX,
-  FILE_PACKAGER,
   LLVM_AR,
   LLVM_DWARFDUMP,
   LLVM_DWP,
   LLVM_NM,
-  WASM_LD,
   config,
 )
 from tools.system_libs import DETERMINISTIC_PREFIX

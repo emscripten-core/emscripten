@@ -12,7 +12,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner sockets_node')
 
 import common
-from common import NON_ZERO, RunnerCore, create_file
+from common import EMCC, NON_ZERO, RunnerCore, create_file
 from decorators import (
   also_with_proxy_to_pthread,
   crossplatform,
@@ -29,8 +29,6 @@ from sockets_common import (
   WebsockifyServerHarness,
   requires_python_dev_packages,
 )
-
-from tools.shared import EMCC
 
 
 def requires_jspi_node(func):

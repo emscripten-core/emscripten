@@ -7,12 +7,11 @@ import argparse
 import os
 import shlex
 import subprocess
+from subprocess import PIPE
 
 from browser_common import BrowserCore, get_browser, has_browser
-from common import EMRUN, RunnerCore, path_from_root, read_file, test_file
+from common import EMCC, EMRUN, RunnerCore, path_from_root, read_file, test_file
 from decorators import also_with_pthreads
-
-from tools.shared import EMCC, PIPE
 
 
 class emrun(RunnerCore):

@@ -5,10 +5,9 @@
 
 from subprocess import PIPE
 
-from common import RunnerCore, copy_asset, create_file, read_file, test_file
+from common import EMCC, RunnerCore, copy_asset, create_file, read_file, test_file
 from decorators import also_with_wasm2js, also_with_wasm64, parameterized, requires_node_25
 
-from tools.shared import EMCC
 from tools.utils import delete_file
 
 

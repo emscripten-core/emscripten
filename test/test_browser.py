@@ -38,6 +38,8 @@ from browser_common import (
   is_safari,
 )
 from common import (
+  EMCC,
+  FILE_PACKAGER,
   WEBIDL_BINDER,
   copy_asset,
   copytree,
@@ -72,7 +74,6 @@ from decorators import (
 from tools import ports, shared, utils
 from tools.feature_matrix import Feature
 from tools.link import binary_encode
-from tools.shared import EMCC, FILE_PACKAGER
 from tools.utils import WINDOWS, delete_dir, write_binary, write_file
 
 
