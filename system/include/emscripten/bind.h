@@ -112,7 +112,9 @@ void _embind_register_value_array(
     const char* constructorSignature,
     GenericFunction constructor,
     const char* destructorSignature,
-    GenericFunction destructor);
+    GenericFunction destructor,
+    size_t valueSize,
+    bool isTrivial);
 
 void _embind_register_value_array_element(
     TYPEID tupleType,
@@ -133,7 +135,9 @@ void _embind_register_value_object(
     const char* constructorSignature,
     GenericFunction constructor,
     const char* destructorSignature,
-    GenericFunction destructor);
+    GenericFunction destructor,
+    size_t valueSize,
+    bool isTrivial);
 
 void _embind_register_value_object_field(
     TYPEID structType,
@@ -473,6 +477,17 @@ void raw_destructor(ClassType* ptr) {
     delete ptr;
 }
 
+// Argument temporaries of trivial value types are placed on the wasm stack.
+// Stack temporaries come from stackAlloc, which guarantees STACK_ALIGN
+// (== __BIGGEST_ALIGNMENT__) alignment; over-aligned types keep the heap path.
+template<typename ClassType>
+struct is_trivial_value_type {
+    static constexpr bool value =
+        std::is_trivially_constructible<ClassType>::value &&
+        std::is_trivially_destructible<ClassType>::value &&
+        alignof(ClassType) <= __BIGGEST_ALIGNMENT__;
+};
+
 template<typename ReturnPolicy, typename FunctionPointerType, typename ReturnType, typename ThisType, typename... Args>
 struct FunctionInvoker {
     static typename internal::BindingType<ReturnType>::WireType invoke(
@@ -798,7 +813,9 @@ public:
             getSignature(constructor),
             reinterpret_cast<GenericFunction>(constructor),
             getSignature(destructor),
-            reinterpret_cast<GenericFunction>(destructor));
+            reinterpret_cast<GenericFunction>(destructor),
+            sizeof(ClassType),
+            is_trivial_value_type<ClassType>::value);
     }
 
     ~value_array() {
@@ -893,7 +910,9 @@ public:
             getSignature(ctor),
             reinterpret_cast<GenericFunction>(ctor),
             getSignature(dtor),
-            reinterpret_cast<GenericFunction>(dtor));
+            reinterpret_cast<GenericFunction>(dtor),
+            sizeof(ClassType),
+            is_trivial_value_type<ClassType>::value);
     }
 
     ~value_object() {
