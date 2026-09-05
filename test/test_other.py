@@ -107,9 +107,7 @@ from decorators import (
 
 from tools import building, cache, response_file, shared, utils, webassembly
 from tools.building import get_building_env
-from tools.cmdline import options
 from tools.link import binary_encode
-from tools.settings import settings
 from tools.shared import (
   CLANG_CC,
   CLANG_CXX,
@@ -768,6 +766,14 @@ f.close()
     self.run_process([EMCC, 'out.o'] + self.get_cflags())
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
+  def get_expected_lib_dir(self, args):
+    target = 'wasm64-emscripten' if '-m64' in args else 'wasm32-emscripten'
+    cache_dir = Path(self.run_process([EMCONFIG, 'CACHE'], stdout=PIPE).stdout.strip())
+    libdir = cache_dir / 'sysroot' / 'lib' / target
+    if '-flto' in args:
+      libdir /= 'lto'
+    return libdir
+
   @crossplatform
   @parameterized({
     '': ([],),
@@ -783,9 +789,7 @@ f.close()
     libpath = output.split('libraries: =', 1)[1].strip()
     libpath = libpath.split(os.pathsep)
     libpath = [Path(p) for p in libpath]
-    options.lto = 'full' if '-flto' in args else None
-    settings.MEMORY64 = int('-m64' in args)
-    expected = cache.get_lib_dir(absolute=True)
+    expected = self.get_expected_lib_dir(args)
     self.assertIn(expected, libpath)
 
   @crossplatform
@@ -798,11 +802,8 @@ f.close()
     output = self.run_process([EMCC, '-print-libgcc-file-name'] + args, stdout=PIPE).stdout
     output2 = self.run_process([EMCC, '--print-libgcc-file-name'] + args, stdout=PIPE).stdout
     self.assertEqual(output, output2)
-    options.lto = 'full' if '-flto' in args else None
-    settings.MEMORY64 = int('-m64' in args)
-    libdir = cache.get_lib_dir(absolute=True)
-    expected = os.path.join(libdir, 'libclang_rt.builtins.a')
-    self.assertEqual(output.strip(), expected)
+    expected = self.get_expected_lib_dir(args) / 'libclang_rt.builtins.a'
+    self.assertEqual(Path(output.strip()), expected)
 
   @crossplatform
   def test_print_resource_dir(self):
@@ -834,10 +835,8 @@ f.close()
     output = self.run_process([EMCC, '-print-file-name=libc.a'] + args, stdout=PIPE).stdout.rstrip()
     output2 = self.run_process([EMCC, '--print-file-name=libc.a'] + args, stdout=PIPE).stdout.rstrip()
     self.assertEqual(output, output2)
-    filename = Path(output)
-    options.lto = 'full' if '-flto' in args else None
-    settings.MEMORY64 = int('-m64' in args)
-    self.assertContained(cache.get_lib_name('libc.a'), str(filename))
+    expected = self.get_expected_lib_dir(args) / 'libc.a'
+    self.assertEqual(Path(output), expected)
 
   @crossplatform
   def test_print_file_name_resdir(self):
@@ -16071,6 +16070,7 @@ console.log('OK');'''
       INTERNAL_SETTINGS,
       JS_ONLY_SETTINGS,
       MEM_SIZE_SETTINGS,
+      settings,
     )
     setting_names = (
       COMPILE_TIME_SETTINGS
