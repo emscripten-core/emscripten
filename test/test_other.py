@@ -272,6 +272,11 @@ def requires_rust(func):
   return requires_tool('cargo', 'RUST')(func)
 
 
+def requires_wasm_bindgen(func):
+  assert callable(func)
+  return requires_tool('wasm-bindgen', 'WASM_BINDGEN')(func)
+
+
 def requires_pkg_config(func):
   assert callable(func)
 
@@ -15354,22 +15359,97 @@ addToLibrary({
     self.do_runf('main.cpp', 'Hello from rust!', cflags=[lib])
 
   @requires_rust
+  @requires_wasm_bindgen
   def test_wasm_bindgen_integration(self):
     copytree(test_file('rust/bindgen_integration'), '.')
-    self.run_process(['cargo', 'add', 'wasm-bindgen'])
+    # Pin the library to the (managed) wasm-bindgen-cli version on PATH;
+    # wasm-bindgen requires the CLI and the library to match exactly.
+    self.run_process(['cargo', 'add', 'wasm-bindgen@0.2.127'])
     self.run_process(['cargo', 'build'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     self.assertExists(lib)
 
-    create_file('empty.c', '')
+    # A hand-written EMSCRIPTEN_KEEPALIVE C export must remain surfaced
+    # alongside wasm-bindgen's self-registered API; the wasm-bindgen glue
+    # suppression must not drop it.
+    create_file('native.c', '''
+      #include <emscripten.h>
+      EMSCRIPTEN_KEEPALIVE int em_double(int x) { return x * 2; }
+    ''')
     create_file('post.js', '''
-      Module.onRuntimeInitialized = () => out(Module.rs_add(17, 25));
+      Module.onRuntimeInitialized = () => {
+        out('rs_add=' + Module.rs_add(17, 25));
+        out('em_double=' + Module._em_double(20));
+      };
     ''')
 
-    self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
-    self.do_runf('empty.c', '42', cflags=[lib, '-sWASM_BINDGEN', '-Wno-experimental', '--post-js=post.js', '-lexports.js'])
+    output = self.do_runf('native.c', cflags=[lib, '-sWASM_BINDGEN', '-Wno-experimental', '--post-js=post.js', '-lexports.js'])
+    self.assertContained('rs_add=42', output)
+    self.assertContained('em_double=40', output)
+
+  # ESM integration and ES6 MODULARIZE surface the clean wasm-bindgen API
+  # differently (named ESM exports vs `Module.<name>`). Both must expose exactly
+  # the `Greeter` class and none of the raw wasm exports rustc lists.
+  @requires_rust
+  @requires_wasm_bindgen
+  @parameterized({
+    'esm_integration': (['-sWASM_ESM_INTEGRATION'], '''
+      import init, * as mod from './bindgen_greeter.js';
+      await init();
+    '''),
+    'es6': (['-sMODULARIZE', '-sEXPORT_ES6'], '''
+      import Module from './bindgen_greeter.js';
+      const mod = await Module();
+    '''),
+  })
+  def test_wasm_bindgen_rustc_driven(self, ldflags, prelude):
+    # cargo/rustc links via emcc; pass -sWASM_BINDGEN (plus the output-mode
+    # settings) through as link args so emcc runs wasm-bindgen as a post-link step.
+    copytree(test_file('rust/bindgen_greeter'), '.')
+    link_args = ['-sWASM_BINDGEN', '-Wno-experimental'] + ldflags
+    rustflags = ', '.join(f'"-Clink-arg={a}"' for a in link_args)
+    ensure_dir('.cargo')
+    create_file('.cargo/config.toml', f'''
+      [build]
+      target = "wasm32-unknown-emscripten"
+      rustflags = [{rustflags}]
+
+      [target.wasm32-unknown-emscripten]
+      linker = "{EMCC}"
+    ''')
+    self.run_process(['cargo', 'build'])
+
+    # cargo copies only the .js and .wasm; the ESM support module and snippets
+    # stay in deps/, so run from there.
+    out_dir = 'target/wasm32-unknown-emscripten/debug/deps'
+    create_file(os.path.join(out_dir, 'run.mjs'), prelude + '''
+      const greeting = new mod.Greeter('Hello').greet('world');
+      if (greeting !== 'Hello, world!') throw new Error('unexpected greeting: ' + greeting);
+      // None of the raw wasm exports leak into the user-facing API.
+      for (const name of ['_main', 'greeter_greet', '_greeter_greet',
+                          '__wbindgen_malloc', '___wbindgen_malloc']) {
+        if (mod[name] !== undefined) throw new Error('leaked export: ' + name);
+      }
+      console.log(greeting);
+    ''')
+    # Importing wasm modules is stable from node 25.
+    if not self.try_require_node_version(25):
+      self.node_args += ['--experimental-wasm-modules']
+    self.node_args += ['--no-warnings']
+    output = self.run_js(os.path.join(out_dir, 'run.mjs'))
+    self.assertContained('Hello, world!', output)
+    # `main` runs automatically on init (matching the emscripten C++ idiom),
+    # even though `_main` is not surfaced as a user-facing export.
+    self.assertContained('main ran', output)
+
+  def test_wasm_bindgen_no_marker(self):
+    # -sWASM_BINDGEN is a no-op for an ordinary build with no wasm-bindgen
+    # marker section: wasm-bindgen is never invoked (so it need not be installed)
+    # and the program builds and runs normally.
+    self.do_runf('hello_world.c', 'Hello, world!', cflags=['-sWASM_BINDGEN', '-Wno-experimental'])
 
   @requires_rust
+  @requires_wasm_bindgen
   @requires_dev_dependency('typescript')
   def test_wasm_bindgen_tsd_multi_return(self):
     copytree(test_file('rust/bindgen_integration'), '.')
@@ -15380,11 +15460,10 @@ addToLibrary({
           Ok(42)
       }
     ''')
-    self.run_process(['cargo', 'add', 'wasm-bindgen'])
+    self.run_process(['cargo', 'add', 'wasm-bindgen@0.2.127'])
     self.run_process(['cargo', 'build'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     create_file('empty.c', '')
-    self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
     self.run_process([EMCC, 'empty.c', '--emit-tsd', 'test_multi.d.ts', '-sWASM_BINDGEN', '-Wno-experimental', '-o', 'test_multi.js'] + [lib] + self.get_cflags())
     actual = read_file('test_multi.d.ts')
     self.assertContained("multi_value_return(): [number, number, number];", actual)

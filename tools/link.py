@@ -1866,12 +1866,22 @@ def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
     # TODO(sbc): Remove this double execution of wasm-ld if we ever find a way to
     # distinguish EMSCRIPTEN_KEEPALIVE exports from `--export-dynamic` exports.
     settings.LINKABLE = False
-    building.link_lld(linker_args, wasm_target, external_symbols=js_syms,
-                      linker_inputs=linker_inputs)
+    building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
     settings.LINKABLE = True
     rtn = extract_metadata.extract_metadata(wasm_target)
 
-  building.link_lld(linker_args, wasm_target, external_symbols=js_syms, linker_inputs=linker_inputs)
+  # WASM_BINDGEN is a no-op unless the inputs carry the wasm-bindgen marker section.
+  if settings.WASM_BINDGEN and not building.has_wasm_bindgen_marker(linker_inputs):
+    settings.WASM_BINDGEN = 0
+
+  # If EXPORTED_FUNCTIONS is provided for WASM_BINDGEN, it forms the authoritative
+  # list of exports of the Wasm module (per rustc linking semantics).
+  # Otherwise, discover the symbols directly from the linker inputs for e.g. static
+  # linking Rust.
+  if settings.WASM_BINDGEN and 'EXPORTED_FUNCTIONS' not in user_settings:
+    linker_args += [f'--export={e}' for e in building.get_wasm_bindgen_exported_symbols(linker_inputs)]
+
+  building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
   return rtn
 
 
@@ -1894,8 +1904,24 @@ def phase_post_link(in_wasm, wasm_target, target, js_syms, base_metadata=None):
   settings.TARGET_JS_NAME = os.path.basename(js_target)
 
   if settings.WASM_BINDGEN:
-    bindgen_jslib = building.run_wasm_bindgen(in_wasm)
+    bindgen_jslib, removed_exports, added_exports, extern_pre_js, snippets_dir = building.run_wasm_bindgen(in_wasm)
     settings.JS_LIBRARIES.append(bindgen_jslib)
+    # The exports wasm-bindgen reaches by name (the supplied EXPORTED_FUNCTIONS
+    # plus anything its expansion added) are internal glue only on the Wasm module,
+    # while wasm-bindgen's JS library registers the final user-facing API itself.
+    # Keep EXPORTED_FUNCTIONS off every export layer, and drop the placeholder exports it consumed
+    # (__wbindgen_describe*, etc.) so they aren't reported as undefined.
+    removed = {shared.asmjs_mangle(e) for e in removed_exports}
+    building.wasm_bindgen_internal_exports = (
+      set(settings.USER_EXPORTS) | {shared.asmjs_mangle(e) for e in added_exports})
+    drop = removed | building.wasm_bindgen_internal_exports
+    settings.EXPORTED_FUNCTIONS = [e for e in settings.EXPORTED_FUNCTIONS if e not in drop]
+    settings.USER_EXPORTS = [e for e in settings.USER_EXPORTS if e not in removed]
+    building.user_requested_exports.clear()
+    if extern_pre_js:
+      options.extern_pre_js.append(extern_pre_js)
+    if snippets_dir:
+      shutil.copytree(snippets_dir, os.path.join(os.path.dirname(js_target), 'snippets'), dirs_exist_ok=True)
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 

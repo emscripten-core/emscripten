@@ -39,6 +39,7 @@ from .shared import (
   LLVM_DWARFDUMP,
   LLVM_NM,
   LLVM_OBJCOPY,
+  LLVM_OBJDUMP,
   WASM_LD,
   asmjs_mangle,
   check_call,
@@ -62,6 +63,8 @@ _is_ar_cache: dict[str, bool] = {}
 user_requested_exports: set[str] = set()
 # JS library symbols exported via the `__export` decorator.
 extra_js_exports: set[str] = set()
+# Mangled wasm exports wasm-bindgen's glue reaches by name, kept off the public surface.
+wasm_bindgen_internal_exports: set[str] = set()
 # A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
 # etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
 # which reads it using `--detect-features`.
@@ -307,15 +310,11 @@ def get_wasm_bindgen_exported_symbols(input_files):
   return symbols
 
 
-def lld_flags(args, linker_inputs=None):
+def lld_flags(args):
   # lld doesn't currently support --start-group/--end-group since the
   # semantics are more like the windows linker where there is no need for
   # grouping.
   args = [a for a in args if a not in {'--start-group', '--end-group'}]
-
-  if settings.WASM_BINDGEN:
-    exported_symbols = get_wasm_bindgen_exported_symbols(linker_inputs)
-    args.extend(f'--export={e}' for e in exported_symbols)
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
@@ -345,7 +344,7 @@ def lld_flags(args, linker_inputs=None):
   return args
 
 
-def link_lld(args, target, external_symbols=None, linker_inputs=None):
+def link_lld(args, target, external_symbols=None):
   # runs lld to link things.
   if not os.path.exists(WASM_LD):
     exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
@@ -354,7 +353,7 @@ def link_lld(args, target, external_symbols=None, linker_inputs=None):
   # normal linker flags that are used when building and executable
   if '--relocatable' not in args and '-r' not in args:
     cmd += lld_flags_for_executable(external_symbols)
-  cmd += lld_flags(args, linker_inputs)
+  cmd += lld_flags(args)
   cmd = get_command_with_possible_response_file(cmd)
   if settings.LINK_AS_CXX:
     check_call(cmd)
@@ -1319,6 +1318,13 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # ruff: ignore[mutab
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
+def has_wasm_bindgen_marker(input_files):
+  if not input_files:
+    return False
+  result = check_call([LLVM_OBJDUMP, '--section-headers', *input_files], stdout=PIPE)
+  return '__wasm_bindgen_emscripten_marker' in result.stdout
+
+
 def run_wasm_bindgen(infile):
   bindgen_out_dir = os.path.join(get_emscripten_temp_dir(), 'bindgen_out')
 
@@ -1333,16 +1339,31 @@ def run_wasm_bindgen(infile):
     '--out-dir',
     bindgen_out_dir,
   ]
+  exports_before = {e.name for e in webassembly.get_exports(infile)}
+
   check_call(cmd)
 
   # Don't try to predict the .wasm filename that wasm-bindgen outputs. Instead
   # just grab the .wasm file itself.
   all_output_files = os.listdir(bindgen_out_dir)
   new_wasm_file = [x for x in all_output_files if x.endswith('.wasm')][0]
+  new_wasm_path = os.path.join(bindgen_out_dir, new_wasm_file)
 
-  shutil.copyfile(os.path.join(bindgen_out_dir, new_wasm_file), infile)
+  exports_after = {e.name for e in webassembly.get_exports(new_wasm_path)}
+  removed_exports = exports_before - exports_after
+  added_exports = exports_after - exports_before
 
-  return os.path.join(bindgen_out_dir, 'library_bindgen.js')
+  shutil.copyfile(new_wasm_path, infile)
+
+  # Only emitted when the crate imports JS snippets.
+  extern_pre_js = os.path.join(bindgen_out_dir, 'library_bindgen.extern-pre.js')
+  if not os.path.exists(extern_pre_js):
+    extern_pre_js = None
+  snippets_dir = os.path.join(bindgen_out_dir, 'snippets')
+  if not os.path.isdir(snippets_dir):
+    snippets_dir = None
+
+  return os.path.join(bindgen_out_dir, 'library_bindgen.js'), removed_exports, added_exports, extern_pre_js, snippets_dir
 
 
 intermediate_counter = 0

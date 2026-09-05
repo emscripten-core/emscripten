@@ -1,0 +1,13 @@
+[package]
+name = "bindgen_greeter"
+edition = "2021"
+
+[[bin]]
+name = "bindgen_greeter"
+path = "src/main.rs"
+
+[dependencies]
+# 0.2.127 is the first release with the emscripten __export/__force attribute
+# support (wasm-bindgen/wasm-bindgen#5253); must match the wasm-bindgen-cli
+# version exactly.
+wasm-bindgen = "0.2.127"

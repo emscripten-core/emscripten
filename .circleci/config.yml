@@ -76,12 +76,17 @@ commands:
   install-rust:
     steps:
       - run:
-          name: install rust
+          name: install rust and wasm-bindgen
+          # The wasm-bindgen CLI must exactly match the library version the
+          # test crates pin.
           command: |
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
             export PATH=${HOME}/.cargo/bin:${PATH}
             rustup target add wasm32-unknown-emscripten
             echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> $BASH_ENV
+            WB=wasm-bindgen-0.2.127-x86_64-unknown-linux-musl
+            curl -sSfL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.127/$WB.tar.gz | tar xz -C /tmp
+            mv /tmp/$WB/wasm-bindgen ${HOME}/.cargo/bin/
   install-node-version:
     description: "install a specific version of node"
     parameters:

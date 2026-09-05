@@ -610,6 +610,7 @@ def finalize_wasm(infile, outfile, js_syms):
   expected_exports = set(settings.EXPORTED_FUNCTIONS)
   expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
   expected_exports.update(asmjs_mangle(s) for s in settings.EXPORT_IF_DEFINED)
+  expected_exports.update(building.wasm_bindgen_internal_exports)
   # Assume that when JS symbol dependencies are exported it is because they
   # are needed by by a JS symbol and are not being explicitly exported due
   # to EMSCRIPTEN_KEEPALIVE (llvm.used).
@@ -637,7 +638,7 @@ def finalize_wasm(infile, outfile, js_syms):
         metadata.all_exports.remove('main')
       else:
         metadata.all_exports.remove('__main_argc_argv')
-    else:
+    elif '_main' not in building.wasm_bindgen_internal_exports:
       unexpected_exports.append('_main')
 
   building.user_requested_exports.update(unexpected_exports)
