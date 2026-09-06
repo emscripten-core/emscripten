@@ -6,10 +6,8 @@
 
 """Tool for creating/maintaining the python launcher scripts for emscripten tools.
 
-This tool makes copies or `run_python.sh/.bat` and `run_python_compiler.sh/.bat`
-script for each entry point. On UNIX we previously used symbolic links for
-simplicity but this breaks MINGW users on windows who want to use the shell script
-launcher but don't have symlink support.
+This tool creates symbolic links (on UNIX) or executables/batch scripts (on Windows)
+for each entry point.
 """
 
 import os
@@ -95,13 +93,13 @@ def main(all_platforms, use_bat_file):
   do_unix = all_platforms or not is_windows or is_msys2
   do_windows = all_platforms or is_windows
 
-  def generate_entry_points(cmd, path):
-    sh_file = path + '.sh'
-    bat_file = path + '.bat'
-    ps1_file = path + '.ps1'
-    sh_file = read_file(sh_file)
-    bat_file = read_file(bat_file)
-    ps1_file = read_file(ps1_file)
+  def generate_entry_points(cmd, name):
+    sh_file_path = os.path.join(__rootdir__, 'tools', name + '.sh')
+    bat_file_path = os.path.join(__scriptdir__, name + '.bat')
+    ps1_file_path = os.path.join(__scriptdir__, name + '.ps1')
+    sh_file = read_file(sh_file_path)
+    bat_file = read_file(bat_file_path)
+    ps1_file = read_file(ps1_file_path)
 
     for entry_point in cmd:
       sh_data = sh_file
@@ -114,8 +112,13 @@ def main(all_platforms, use_bat_file):
 
       launcher = os.path.join(__rootdir__, entry_point)
       if do_unix:
-        write_file(launcher, sh_data)
-        make_executable(launcher)
+        if entry_point in entry_remap:
+          write_file(launcher, sh_data)
+          make_executable(launcher)
+        else:
+          target = os.path.relpath(sh_file_path, os.path.dirname(launcher))
+          maybe_remove(launcher)
+          os.symlink(target, launcher)
 
       if do_windows:
         maybe_remove(launcher + '.ps1')
@@ -126,8 +129,8 @@ def main(all_platforms, use_bat_file):
         else:
           shutil.copyfile(windows_exe, launcher + '.exe')
 
-  generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
-  generate_entry_points(compiler_entry_points, os.path.join(__scriptdir__, 'run_python_compiler'))
+  generate_entry_points(entry_points, 'run_python')
+  generate_entry_points(compiler_entry_points, 'run_python_compiler')
 
 
 if __name__ == '__main__':
