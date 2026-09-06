@@ -37,7 +37,6 @@ from subprocess import PIPE
 assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 from tools import (
-  building,
   cache,
   cmdline,
   compile,
@@ -612,7 +611,7 @@ def phase_compile_inputs(state, newargs):
       arg.value = compile_source_file(input_file)
     elif file_suffix in DYLIB_EXTENSIONS:
       logger.debug(f'using shared library: {input_file}')
-    elif building.is_ar(input_file):
+    elif utils.is_ar(input_file):
       logger.debug(f'using static library: {input_file}')
     elif options.input_language:
       arg.value = compile_source_file(input_file)

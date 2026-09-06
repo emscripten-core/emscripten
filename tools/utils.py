@@ -179,6 +179,18 @@ def read_binary(file_path):
     return fh.read()
 
 
+def is_ar(filename):
+  """Return True if the given filename is an ar archive, False otherwise."""
+  try:
+    with open(filename, 'rb') as f:
+      header = f.read(8)
+  except Exception as e:
+    logger.debug(f'is_ar failed to test whether file \'{filename}\' is a llvm archive file! Failed on exception: {e}')
+    return False
+
+  return header in {b'!<arch>\n', b'!<thin>\n'}
+
+
 def write_file(file_path, text, line_endings=None):
   """Write to a file opened in text mode."""
   if line_endings and line_endings != os.linesep:
