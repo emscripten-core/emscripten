@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <emscripten/fiber.h>
 
 struct Fiber {
@@ -111,6 +112,17 @@ static void h1(void *arg) {
     emscripten_fiber_swap(&G.fibers[0].context, &G.main);
 }
 
+static Fiber *dyn_fiber_ptr = nullptr;
+
+static void relocate_test(void *arg) {
+    int *p = (int*)arg;
+    *p += 100;
+    // Swap back to main
+    emscripten_fiber_swap(&dyn_fiber_ptr->context, &G.main);
+    *p += 200;
+    emscripten_fiber_swap(&dyn_fiber_ptr->context, &G.main);
+}
+
 int main(int argc, char **argv) {
     int i;
     G.fibers[0].init_with_api(f, &i);
@@ -129,6 +141,20 @@ int main(int argc, char **argv) {
     G.fibers[1].init_with_api(h2, &val);
     emscripten_fiber_swap(&G.main, &G.fibers[0].context);
     printf("direct-%d-*\n", val);
+
+    // Test moving/reallocating a suspended fiber context structure.
+    dyn_fiber_ptr = (Fiber*)malloc(sizeof(Fiber));
+    int move_val = 42;
+    dyn_fiber_ptr->init_with_api(relocate_test, &move_val);
+    emscripten_fiber_swap(&G.main, &dyn_fiber_ptr->context);
+    // Relocate to a new address while suspended.
+    Fiber *new_ptr = (Fiber*)malloc(sizeof(Fiber) * 4);
+    memcpy(&new_ptr[2], dyn_fiber_ptr, sizeof(Fiber));
+    free(dyn_fiber_ptr);
+    dyn_fiber_ptr = &new_ptr[2];
+    emscripten_fiber_swap(&G.main, &dyn_fiber_ptr->context);
+    printf("move-%d-*\n", move_val);
+    free(new_ptr);
 
     return 0;
 }

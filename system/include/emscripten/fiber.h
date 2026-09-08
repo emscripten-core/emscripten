@@ -28,7 +28,7 @@ typedef struct emscripten_fiber_s {
   void *stack_ptr;              /** Current position in the C stack. */
   em_arg_callback_func entry;   /** Function to call when resuming this context. If NULL, asyncify_data (under Asyncify) or native stack switching (under JSPI) is used to resume the call stack. */
   void *user_data;              /** Opaque pointer, passed as-is to the entry function. */
-  asyncify_data_t asyncify_data; /** Asyncify data structure (unused under JSPI). */
+  asyncify_data_t asyncify_data; /** Asyncify data structure (under JSPI, only rewind_id is used). */
 } emscripten_fiber_t;
 
 /**

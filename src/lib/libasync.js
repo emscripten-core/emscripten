@@ -586,10 +586,21 @@ addToLibrary({
     },
 #elif ASYNCIFY == 2
     fiberResolvers: new Map(),
+    nextFiberId: 0,
+
+    allocateFiberId() {
+      do {
+        // Keep IDs positive and non-zero (fits in signed i32 rewind_id, with 0 reserved).
+        Fibers.nextFiberId = (Fibers.nextFiberId + 1) & 0x7fffffff || 1;
+      } while (Fibers.fiberResolvers.has(Fibers.nextFiberId));
+      return Fibers.nextFiberId;
+    },
 
     swap(oldFiber, newFiber) {
       return new Promise((resolve) => {
-        Fibers.fiberResolvers.set(oldFiber, resolve);
+        var oldId = Fibers.allocateFiberId();
+        {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.asyncify_data + C_STRUCTS.asyncify_data_s.rewind_id, 'oldId', 'i32') }}};
+        Fibers.fiberResolvers.set(oldId, resolve);
         var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
         if (entryPoint) {
           {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, '*') }}};
@@ -608,15 +619,17 @@ addToLibrary({
             abort(String(e));
           });
         } else {
-          var resume = Fibers.fiberResolvers.get(newFiber);
+          var newId = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.asyncify_data + C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
+          var resume = Fibers.fiberResolvers.get(newId);
 #if ASSERTIONS
-          assert(resume, `fiber ${newFiber} is not suspended`);
+          assert(resume, `fiber ${newFiber} (id ${newId}) is not suspended`);
 #endif
 #if ASYNCIFY_DEBUG
-          dbg(`ASYNCIFY/FIBER: resume fiber ${newFiber}`);
+          dbg(`ASYNCIFY/FIBER: resume fiber ${newFiber} (id ${newId})`);
 #endif
-          Fibers.fiberResolvers.delete(newFiber);
-          resume();
+          Fibers.fiberResolvers.delete(newId);
+          {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.asyncify_data + C_STRUCTS.asyncify_data_s.rewind_id, 0, 'i32') }}};
+          resume(newFiber);
         }
       });
     },
@@ -684,9 +697,9 @@ addToLibrary({
     var stackTop = stackSave();
     {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', '*') }}};
 
-    await Fibers.swap(oldFiber, newFiber);
+    var resumedFiber = await Fibers.swap(oldFiber, newFiber);
 
-    Fibers.restoreStack(oldFiber);
+    Fibers.restoreStack(resumedFiber);
   },
 #endif
 #else // ASYNCIFY

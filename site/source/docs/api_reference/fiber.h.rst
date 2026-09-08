@@ -62,7 +62,7 @@ Types
 
   .. c:member:: asyncify_data_t asyncify_data
 
-    Asyncify data structure. Used to unwind and rewind the call stack when switching fibers under Asyncify (unused under JSPI).
+    Asyncify data structure. Used to unwind and rewind the call stack when switching fibers under Asyncify (under JSPI, only rewind_id is used).
 
 .. c:type:: asyncify_data_t
 

@@ -23,6 +23,7 @@ void emscripten_fiber_init(
     fiber->user_data = entry_func_arg;
     fiber->asyncify_data.stack_ptr = asyncify_stack;
     fiber->asyncify_data.stack_limit = asyncify_stack ? (char*)asyncify_stack + asyncify_stack_size : NULL;
+    fiber->asyncify_data.rewind_id = 0;
 }
 
 void emscripten_fiber_init_from_current_context(
@@ -35,4 +36,5 @@ void emscripten_fiber_init_from_current_context(
     fiber->entry = NULL;
     fiber->asyncify_data.stack_ptr = asyncify_stack;
     fiber->asyncify_data.stack_limit = asyncify_stack ? (char*)asyncify_stack + asyncify_stack_size : NULL;
+    fiber->asyncify_data.rewind_id = 0;
 }

@@ -8455,7 +8455,7 @@ Module.onRuntimeInitialized = () => {
     self.maybe_closure()
     if self.get_setting('JSPI'):
       self.cflags += ['-DJSPI']
-    self.do_runf('test_fibers.cpp', '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-direct-1035-*\n')
+    self.do_runf('test_fibers.cpp', '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-direct-1035-*\nmove-342-*\n')
 
   def test_fibers_asyncify_null_stack(self):
     self.set_setting('ASYNCIFY')
