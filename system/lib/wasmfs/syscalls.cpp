@@ -1018,9 +1018,54 @@ int __syscall_renameat(int olddirfd,
     return -ENAMETOOLONG;
   }
 
-  // Lock both directories.
-  auto lockedOldParent = oldParent->locked();
-  auto lockedNewParent = newParent->locked();
+  auto root = wasmFS.getRootDirectory();
+
+  // Every other path operation takes directory locks parent-before-child, so
+  // this function must never hold a directory's lock while acquiring an
+  // ancestor's. The ancestor walk below therefore runs before either parent
+  // is locked, holding one lock at a time, and the two parent locks are then
+  // taken ancestor-first. Renames are serialized above and nothing else
+  // re-parents a directory, so the ancestry cannot change under the walk.
+  std::shared_ptr<File> oldFileForWalk;
+  {
+    auto lockedOldParent = oldParent->locked();
+    oldFileForWalk = lockedOldParent.getChild(oldFileName);
+  }
+  if (!oldFileForWalk) {
+    return -ENOENT;
+  }
+  if (oldFileForWalk == root) {
+    return -EBUSY;
+  }
+
+  // Check that oldDir is not an ancestor of newDir, and whether oldParent is
+  // an ancestor of newParent.
+  bool oldParentAboveNew = false;
+  for (auto curr = newParent; curr && curr != root;
+       curr = curr->locked().getParent()) {
+    if (curr == oldFileForWalk) {
+      return -EINVAL;
+    }
+    if (curr == oldParent) {
+      oldParentAboveNew = true;
+    }
+  }
+  bool newParentAboveOld = false;
+  if (!oldParentAboveNew) {
+    for (auto curr = oldParent; curr && curr != root;
+         curr = curr->locked().getParent()) {
+      if (curr == newParent) {
+        newParentAboveOld = true;
+        break;
+      }
+    }
+  }
+
+  // Lock both directories, ancestor first.
+  auto lockedFirst = (newParentAboveOld ? newParent : oldParent)->locked();
+  auto lockedSecond = (newParentAboveOld ? oldParent : newParent)->locked();
+  auto& lockedOldParent = newParentAboveOld ? lockedSecond : lockedFirst;
+  auto& lockedNewParent = newParentAboveOld ? lockedFirst : lockedSecond;
 
   // Get the source and destination files.
   auto oldFile = lockedOldParent.getChild(oldFileName);
@@ -1036,7 +1081,6 @@ int __syscall_renameat(int olddirfd,
   }
 
   // Never allow renaming or overwriting the root.
-  auto root = wasmFS.getRootDirectory();
   if (oldFile == root || newFile == root) {
     return -EBUSY;
   }
@@ -1050,13 +1094,6 @@ int __syscall_renameat(int olddirfd,
   // Both parents must have the same backend.
   if (oldParent->getBackend() != newParent->getBackend()) {
     return -EXDEV;
-  }
-
-  // Check that oldDir is not an ancestor of newDir.
-  for (auto curr = newParent; curr != root; curr = curr->locked().getParent()) {
-    if (curr == oldFile) {
-      return -EINVAL;
-    }
   }
 
   // The new file will be removed if it already exists.
