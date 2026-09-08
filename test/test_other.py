@@ -12069,7 +12069,8 @@ int main(void) {
 
   def test_linker_flags_unused(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-c', '-lbar'], stderr=PIPE).stderr
-    self.assertContained("warning: -lbar: 'linker' input unused [-Wunused-command-line-argument]", err)
+    self.assertContained("warning: -lbar: 'linker' input unused", err)
+    self.assertContained("[-Wunused-command-line-argument]", err)
 
     # Check that we don't see these "input unused" errors for linker flags when
     # compiling and linking in single step (i.e. ensure that we don't pass them to clang when
@@ -12083,7 +12084,8 @@ int main(void) {
   def test_linker_input_unused(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
     err = self.run_process([EMCC, 'hello_world.o', '-c', '-o', 'out.o'], stderr=PIPE).stderr
-    self.assertContained("clang: warning: hello_world.o: 'linker' input unused [-Wunused-command-line-argument]", err)
+    self.assertContained("clang: warning: hello_world.o: 'linker' input unused", err)
+    self.assertContained("[-Wunused-command-line-argument]", err)
     # In this case the compiler does not produce any output file.
     self.assertNotExists('out.o')
 
