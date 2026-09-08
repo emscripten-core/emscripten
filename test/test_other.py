@@ -3932,6 +3932,17 @@ More info: https://emscripten.org
     self.assertContained("    HEAPF32: Float32Array;", actual)
     self.assertContained("    HEAPF64: Float64Array;", actual)
 
+  @requires_dev_dependency('typescript')
+  def test_emit_tsd_callmain(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd.d.ts',
+                      '-sEXPORT_ES6', '-sMODULARIZE',
+                      '-sEXPORTED_RUNTIME_METHODS=callMain',
+                      '-o', 'test_emit_tsd.js'] +
+                     self.get_cflags())
+    actual = read_file('test_emit_tsd.d.ts')
+    self.assertContained("    callMain: any;", actual)
+
   def test_emconfig(self):
     output = self.run_process([EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
