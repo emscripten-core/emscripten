@@ -769,7 +769,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // version field in above check.
       if (!canvas.getContextSafariWebGL2Fixed) {
         canvas.getContextSafariWebGL2Fixed = canvas.getContext;
-        /** @type {function(this:HTMLCanvasElement, string, (Object|null)=): (Object|null)} */
+        /** @type {function(this:HTMLCanvasElement, string, (Object|null)=): (RenderingContext|null)} */
         function fixedGetContext(ver, attrs) {
           var gl = canvas.getContextSafariWebGL2Fixed(ver, attrs);
           return ((ver == 'webgl') == (gl instanceof WebGLRenderingContext)) ? gl : null;
