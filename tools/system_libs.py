@@ -2329,6 +2329,8 @@ class libopenmp(Library):
   ]
 
   def can_build(self):
+    # OpenMP currently doesn't support Wasm64, see
+    # https://github.com/emscripten-core/emscripten/issues/27221
     return super().can_build() and not settings.MEMORY64
 
 
