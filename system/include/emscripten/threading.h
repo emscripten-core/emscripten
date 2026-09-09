@@ -87,6 +87,20 @@ int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t * _Nonnu
 // The special value "#canvas" denotes the element stored in Module.canvas.
 int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t * _Nonnull a, const char * _Nonnull str);
 
+// Specifies a comma-delimited list of canvas DOM element IDs to transfer to
+// the next thread created by the current thread when no explicit
+// pthread_attr_t::_a_transferredcanvases value is provided.
+//
+// This is intended for creation paths such as std::thread, boost::thread, or
+// C11 threads where the caller cannot provide a pthread_attr_t before the
+// underlying pthread is launched.
+//
+// The next pthread creation on the current thread consumes this value and
+// clears it automatically. Pass 0 or "" to clear any pending setting manually.
+// The pointer is weakly stored and must remain valid until the next
+// pthread_create() call returns.
+int emscripten_set_next_thread_transferredcanvases(const char * _Nonnull str);
+
 // Called when blocking on the main thread. This will error if main thread
 // blocking is not enabled, see ALLOW_BLOCKING_ON_MAIN_THREAD.
 void emscripten_check_blocking_allowed(void);
