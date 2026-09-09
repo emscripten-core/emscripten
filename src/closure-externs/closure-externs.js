@@ -69,10 +69,6 @@ WebAssembly.Exception.stack;
  * {function(!WebAssembly.Module, Object=):!Promise<!WebAssembly.Instance>}
  */
 /**
- * @returns {ArrayBuffer}
- */
-WebAssembly.Memory.prototype.toResizableBuffer = function() {};
-/**
  * @param {!Function} func
  * @returns {Function}
  */

@@ -22,6 +22,7 @@ from . import (
   diagnostics,
   feature_matrix,
   js_optimizer,
+  ports,
   response_file,
   shared,
   utils,
@@ -570,6 +571,13 @@ def version_split(v):
   return f'{int(major)}.{int(minor)}.{int(rev)}'
 
 
+def filter_closure_args(args):
+  # Closure compiler includes WebGPU externs natively (w3c_webgpu.js).
+  # Exclude webgpu-externs.js (provided by emdawnwebgpu) to avoid duplicate definition errors.
+  # TODO: Remove this after https://g-issues.chromium.org/issues/562078433 is resolved.
+  return [a for a in args if not (a.startswith('--externs=') and a.endswith('webgpu-externs.js'))]
+
+
 @ToolchainProfiler.profile()
 def closure_compiler(filename, advanced=True, extra_closure_args=None):
   user_args = []
@@ -578,6 +586,8 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     user_args += shlex.split(env_args)
   if extra_closure_args:
     user_args += extra_closure_args
+  if any('emdawnwebgpu' in p.name for p in ports.get_needed_ports(settings)):
+    user_args = filter_closure_args(user_args)
 
   closure_cmd, env = get_closure_compiler_and_env(user_args)
 
