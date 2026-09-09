@@ -13,3 +13,7 @@ export { _main };
 var HEAP32;
 
 export { HEAP32 };
+
+var $default = {};
+
+export { $default as default };

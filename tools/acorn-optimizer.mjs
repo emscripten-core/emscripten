@@ -727,14 +727,19 @@ function emitDCEGraph(ast) {
         //   (a) JS functions sent to wasm:  export { _fd_write as fd_write };
         //   (b) re-exports of wasm exports: export { _main };
         //   (c) runtime/library exports:    export { HEAP32, baz };
+        //   (d) reserved-name runtime export: export { $default as default };
         // Only (a) are wasm import edges (recorded and removed here). (b) and
         // (c) are ordinary top-level uses left in place to root in the second
         // pass. (a) is the only form written with an alias (`x as y`), which
         // acorn represents with distinct local/exported nodes; bare specifiers
-        // reuse a single node for both sides.
+        // reuse a single node for both sides. (d) is also aliased but is a JS
+        // runtime export, not a wasm import: a wasm import name is a C symbol
+        // and can never be a JS reserved word like `default`.
         const importEdges = node.specifiers.filter(
           (spec) =>
-            spec.local !== spec.exported && !wasmExportLocals.has(spec.local.name),
+            spec.local !== spec.exported &&
+            spec.exported.name !== 'default' &&
+            !wasmExportLocals.has(spec.local.name),
         );
         if (importEdges.length) {
           // (a) `export { jsName as nativeName }` - jsName implements the import.
@@ -1000,8 +1005,10 @@ function applyDCEGraphRemovals(ast) {
     } else if (isExportSpecifierList(node)) {
       // WASM_ESM_INTEGRATION: drop unused wasm imports from
       //   export { _fd_write as fd_write, .. };
+      // Never drop `export { $default as default }`: it is a JS runtime export,
+      // not a wasm import (a wasm import name can never be `default`).
       node.specifiers = node.specifiers.filter((spec) => {
-        if (unusedImports.has(spec.exported.name)) {
+        if (spec.exported.name !== 'default' && unusedImports.has(spec.exported.name)) {
           foundUnusedImports.add(spec.exported.name);
           return false;
         }
