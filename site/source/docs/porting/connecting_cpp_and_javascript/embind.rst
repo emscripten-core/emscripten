@@ -1342,7 +1342,7 @@ While there is room for further optimisation, so far its performance in
 real-world applications has proved to be more than acceptable.
 
 .. _Test Suite: https://github.com/emscripten-core/emscripten/tree/main/test/embind
-.. _Connecting C++ and JavaScript on the Web with Embind: http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/
+.. _Connecting C++ and JavaScript on the Web with Embind: https://web.archive.org/web/20150523023456/http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/
 .. _Boost.Python: http://www.boost.org/doc/libs/1_56_0/libs/python/doc/
 .. _finalizers: http://en.wikipedia.org/wiki/Finalizer
 .. _FinalizationRegistry: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/FinalizationRegistry
