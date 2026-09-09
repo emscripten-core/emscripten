@@ -31,6 +31,7 @@ from browser_common import (
   browser_should_skip_feature,
   find_browser_test_file,
   get_browser,
+  get_chrome_version,
   get_firefox_version,
   get_safari_version,
   is_chrome,
@@ -181,6 +182,7 @@ def requires_version(name, version_getter):
 
 requires_safari_version = requires_version('safari', get_safari_version)
 requires_firefox_version = requires_version('firefox', get_firefox_version)
+requires_chrome_version = requires_version('chrome', get_chrome_version)
 
 
 def is_jspi(args):
@@ -5433,6 +5435,15 @@ Module["preRun"] = () => {
     if '-sEXPORT_ES6' in args and es6_module_workers_disabled():
       self.skipTest('This test requires a browser with ES6 Module Workers support')
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
+
+  # Tests that AudioWorklet.port (spec-defined shared MessagePort) can be used
+  # without falling back to the em-bootstrap AudioWorkletProcessor.
+  @requires_sound_hardware
+  @no_safari('https://bugs.webkit.org/show_bug.cgi?id=299386')
+  @requires_firefox_version(138)
+  @requires_chrome_version(155, 'https://crbug.com/40210558')
+  def test_audio_worklet_port(self):
+    self.btest_exit('webaudio/test_audio_worklet_port.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
   # Tests that audioworklets and workers can be used at the same time
   # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
