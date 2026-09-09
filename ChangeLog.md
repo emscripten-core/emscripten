@@ -154,6 +154,12 @@ See docs/process.md for more on how version tagging works.
   process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
   and `-pthread` with `PROXY_TO_PTHREAD`. Uses the public node APIs where
   available, falling back to `tcp_wrap`/`udp_wrap` on older Node.js. (#27080)
+- Under `-sNODERAWSOCKETS`, `getaddrinfo` now performs real name resolution:
+  `/etc/hosts` entries (read through the emscripten FS) resolve synchronously,
+  and other hostnames resolve via `node:dns`, blocking the caller where its
+  stack can wait (a proxied pthread, `ASYNCIFY`/`JSPI`) and returning
+  `EAI_AGAIN` otherwise. Results may now be a linked list, which `freeaddrinfo`
+  frees in full.
 - The following symbols are no longer included in `INCOMING_MODULE_JS_API`
   by default:
   - GL_MAX_TEXTURE_IMAGE_UNITS

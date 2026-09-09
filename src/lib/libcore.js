@@ -1007,9 +1007,17 @@ addToLibrary({
     return inetPton4(DNS.lookup_name(nameString));
   },
 
-  getaddrinfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl'],
-  getaddrinfo__proxy: 'sync',
-  getaddrinfo: (node, service, hint, out) => {
+  // Returns an EAI_* code (0 on success, having written the addrinfo list to
+  // *out), or - under NODERAWSOCKETS, for a hostname needing a real DNS lookup -
+  // a thunk producing a Promise of that code, for getaddrinfo to wait on where
+  // the calling stack can suspend.
+  $doGetAddrInfo__internal: true,
+  $doGetAddrInfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl',
+#if NODERAWSOCKETS
+    '$nodeSockHelpers',
+#endif
+  ],
+  $doGetAddrInfo: (node, service, hint, out) => {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
     // really should provide a linked list of suitable addrinfo values.
@@ -1054,6 +1062,23 @@ addToLibrary({
 
       return ai;
     }
+
+#if NODERAWSOCKETS
+    // Chain one addrinfo per {family, addr} entry, returning the head.
+    function allocaddrinfos(entries) {
+      var head = 0, prev = 0;
+      for (var entry of entries) {
+        var ai = allocaddrinfo(entry.family, type, proto, null, entry.addr, port);
+        if (prev) {
+          {{{ makeSetValue('prev', C_STRUCTS.addrinfo.ai_next, 'ai', '*') }}};
+        } else {
+          head = ai;
+        }
+        prev = ai;
+      }
+      return head;
+    }
+#endif
 
     if (hint) {
       flags = {{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}};
@@ -1167,6 +1192,21 @@ addToLibrary({
     //
     // try as a hostname
     //
+#if NODERAWSOCKETS
+    // /etc/hosts first (read through emscripten's FS), then a real node:dns
+    // lookup, which is asynchronous: hand the caller a thunk to wait on.
+    var hosts = nodeSockHelpers.readHosts(node).filter((e) =>
+      family === {{{ cDefs.AF_UNSPEC }}} || e.family === family);
+    if (hosts.length) {
+      {{{ makeSetValue('out', '0', 'allocaddrinfos(hosts)', '*') }}};
+      return 0;
+    }
+    return () => nodeSockHelpers.lookupHost(node, family).then((entries) => {
+      if (typeof entries == 'number') return entries;
+      {{{ makeSetValue('out', '0', 'allocaddrinfos(entries)', '*') }}};
+      return 0;
+    });
+#else
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
     addr = inetPton4(node);
@@ -1178,6 +1218,41 @@ addToLibrary({
     ai = allocaddrinfo(family, type, proto, null, addr, port);
     {{{ makeSetValue('out', '0', 'ai', '*') }}};
     return 0;
+#endif
+  },
+
+  getaddrinfo__deps: ['$doGetAddrInfo',
+#if NODERAWSOCKETS && ASYNCIFY
+    '$Asyncify',
+#endif
+  ],
+  getaddrinfo__proxy: 'sync',
+#if NODERAWSOCKETS && (PTHREADS || ASYNCIFY)
+  // A hostname needing a real DNS lookup blocks by returning a Promise, which
+  // a proxied pthread awaits (PROXY_SYNC_ASYNC) and ASYNCIFY/JSPI suspends on.
+  // Every other outcome still returns synchronously.
+  getaddrinfo__async: true,
+#endif
+  getaddrinfo: (node, service, hint, out) => {
+    var ret = doGetAddrInfo(node, service, hint, out);
+#if NODERAWSOCKETS
+    if (typeof ret == 'function') {
+#if PTHREADS
+      if (PThread.currentProxiedOperationCallerThread) return ret();
+#endif
+#if ASYNCIFY
+      return Asyncify.handleAsync(ret);
+#else
+      // No stack that can wait on the lookup (the event-loop thread itself).
+      return {{{ cDefs.EAI_AGAIN }}};
+#endif
+    }
+#if PTHREADS
+    // A sync-proxied caller awaits a thenable even for an immediate result.
+    if (PThread.currentProxiedOperationCallerThread) return Promise.resolve(ret);
+#endif
+#endif
+    return ret;
   },
 
   getnameinfo__deps: ['$DNS', '$readSockaddr', '$stringToUTF8'],
