@@ -130,6 +130,12 @@ See docs/process.md for more on how version tagging works.
   FS-backend handler signature changed from `poll(stream, timeout)` to
   `poll(stream)` returning the current readiness mask; out-of-tree custom FS
   backends with a `poll` handler must update. (#27226)
+- Blocking `accept`, `recv`, `recvfrom` and `recvmsg` on sockets are now
+  supported under `-pthread` with `PROXY_TO_PTHREAD`: a blocking call whose
+  socket would-block suspends the proxied worker on the inode readiness queue
+  and retries when woken, instead of returning `EAGAIN`. (`send`/`write` never
+  block, as the Node.js backend buffers.) This covers the socket calls only,
+  not a blocking `read()`/`write()` on a socket fd. (#27342)
 - compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245, #27246)
 - `-fcoverage-mapping` is currently broken due to a mismatch between the version
   of LLVM used and the imported version of compiler-rt.  We hope to fix this
