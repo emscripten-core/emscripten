@@ -2328,6 +2328,9 @@ class libopenmp(Library):
     'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S',
   ]
 
+  def can_build(self):
+    return super().can_build() and not settings.MEMORY64
+
 
 def get_libs_to_link():
   libs_to_link = []
