@@ -22,6 +22,8 @@ See docs/process.md for more on how version tagging works.
 ----------------------
 - The SDL3 port is no longer considered experimental, and the compiler
   diagnostic warning has been removed. (#27646)
+- WasmFS no longer deadlocks when a `rename` runs concurrently with path
+  lookups in the same directory tree. (#27684)
 - `WASM=0` and `WASM=2` (wasm2js) were marked as deprecated. (See #27608)
 - mimalloc was updated to 3.5.1. (#27662)
 - `-sWASM_BINDGEN` supports emcc usage as a post-link step, where

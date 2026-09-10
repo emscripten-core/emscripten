@@ -13854,6 +13854,13 @@ Module.postRun = () => {{
     create_file('js_backend_files/file.dat', 'data')
     self.do_runf_out_file('wasmfs/wasmfs_before_preload.c', cflags=['--preload-file', 'js_backend_files/file.dat'])
 
+  @requires_pthreads
+  def test_wasmfs_rename_race(self):
+    self.set_setting('WASMFS')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 8)
+    self.do_runf_out_file('wasmfs/wasmfs_rename_race.c')
+
   def test_hello_world_above_2gb(self):
     self.do_runf_out_file('hello_world.c', cflags=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
