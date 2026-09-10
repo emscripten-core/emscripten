@@ -493,33 +493,33 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,  # ru
 
       # Wrap asserts with existence check when argument is optional.
       if all_checks and optional:
-        body += "if(typeof {0} !== 'undefined' && {0} !== null) {{\n".format(js_arg)
+        body += f"if(typeof {js_arg} !== 'undefined' && {js_arg} !== null) {{\n"
       # Special case argument types.
       if arg.type.isNumeric():
         if arg.type.isInteger():
           if all_checks:
-            body += "  assert(typeof {0} === 'number' && !isNaN({0}), '{1}Expecting <integer>');\n".format(js_arg, check_msg)
+            body += f"  assert(typeof {js_arg} === 'number' && !isNaN({js_arg}), '{check_msg}Expecting <integer>');\n"
         else:
           if all_checks:
-            body += "  assert(typeof {0} === 'number', '{1}Expecting <number>');\n".format(js_arg, check_msg)
+            body += f"  assert(typeof {js_arg} === 'number', '{check_msg}Expecting <number>');\n"
         # No transform needed for numbers
       elif arg.type.isBoolean():
         if all_checks:
-          body += "  assert(typeof {0} === 'boolean' || (typeof {0} === 'number' && !isNaN({0})), '{1}Expecting <boolean>');\n".format(js_arg, check_msg)
+          body += f"  assert(typeof {js_arg} === 'boolean' || (typeof {0} === 'number' && !isNaN({0})), '{1}Expecting <boolean>');\n"
         # No transform needed for booleans
       elif arg.type.isString():
         # Strings can be DOM strings or pointers.
         if all_checks:
-          body += "  assert(typeof {0} === 'string' || ({0} && typeof {0} === 'object' && typeof {0}.ptr === 'number'), '{1}Expecting <string>');\n".format(js_arg, check_msg)
+          body += f"  assert(typeof {js_arg} === 'string' || ({js_arg} && typeof {js_arg} === 'object' && typeof {js_arg}.ptr === 'number'), '{check_msg}Expecting <string>');\n"
         do_default = True # legacy path is fast enough for strings.
       elif arg.type.isInterface():
         if all_checks:
-          body += "  assert(typeof {0} === 'object' && typeof {0}.ptr === 'number', '{1}Expecting <pointer>');\n".format(js_arg, check_msg)
+          body += f"  assert(typeof {js_arg} === 'object' && typeof {js_arg}.ptr === 'number', '{check_msg}Expecting <pointer>');\n"
         if optional:
-          body += "  if(typeof {0} !== 'undefined' && {0} !== null) {{ {0} = {0}.ptr }};\n".format(js_arg)
+          body += f"  if(typeof {js_arg} !== 'undefined' && {js_arg} !== null) {{ {js_arg} = {js_arg}.ptr }};\n"
         else:
           # No checks in fast mode when the arg is required
-          body += "  {0} = {0}.ptr;\n".format(js_arg)
+          body += f"  {js_arg} = {js_arg}.ptr;\n"
       else:
         do_default = True
 
