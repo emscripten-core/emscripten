@@ -78,7 +78,7 @@ var mainArgs = undefined;
     var ret = entryFunction(argc, {{{ to64('argv') }}});
 #endif // STANDALONE_WASM
 
-#if ASYNCIFY == 2 && !PROXY_TO_PTHREAD
+#if ASYNCIFY == 2
     // The current spec of JSPI returns a promise only if the function suspends
     // and a plain value otherwise. This will likely change:
     // https://github.com/WebAssembly/js-promise-integration/issues/11
