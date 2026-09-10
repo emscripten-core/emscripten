@@ -126,8 +126,11 @@ class sockets_node(RunnerCore):
 
   def test_noderawsockets_connect_getsockname(self):
     # getsockname() immediately after a non-blocking connect() on an unbound
-    # client reports the ephemeral source port synchronously (kernel semantics:
-    # the port is assigned at connect(), not when the connection completes).
+    # client reports the source address and ephemeral port synchronously
+    # (kernel semantics: both are assigned at connect(), not when the connection
+    # completes), and neither changes once connected.
+    if not self.try_require_node_version(26, 7):
+      self.skipTest('requires in-tick BoundSocket connect (node >= 26.7)')
     self.do_runf('sockets/test_tcp_connect_getsockname.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   def test_noderawsockets_client_semantics(self):
