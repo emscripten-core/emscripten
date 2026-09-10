@@ -15,6 +15,7 @@ import subprocess
 import textwrap
 from enum import IntEnum, auto
 from glob import iglob
+from pathlib import Path
 from time import time
 
 from . import building, cache, diagnostics, shared, utils
@@ -84,7 +85,7 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
 
 
 def get_build_dir():
-  return cache.get_path('build')
+  return cache.get_path(Path('build', cache.get_lib_dir_relative()))
 
 
 def clean_env():
@@ -179,6 +180,7 @@ def run_ninja(build_dir):
 def ensure_target_in_ninja_file(ninja_file, target):
   if os.path.isfile(ninja_file) and target in read_file(ninja_file):
     return
+  utils.safe_ensure_dirs(os.path.dirname(ninja_file))
   with open(ninja_file, 'a', encoding='utf-8') as f:
     f.write(target + '\n')
 

@@ -285,7 +285,7 @@ class Ports:
 
   @staticmethod
   def get_build_dir():
-    return system_libs.get_build_dir()
+    return cache.get_path('build')
 
   name_cache: set[str] = set()
 
