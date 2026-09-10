@@ -1,10 +1,10 @@
 {
-  "a.out.js": 19023,
-  "a.out.js.gz": 8039,
+  "a.out.js": 19024,
+  "a.out.js.gz": 8041,
   "a.out.nodebug.wasm": 149601,
   "a.out.nodebug.wasm.gz": 56302,
-  "total": 168624,
-  "total_gz": 64341,
+  "total": 168625,
+  "total_gz": 64343,
   "sent": [
     "_abort_js",
     "_tzset_js",

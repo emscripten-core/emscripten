@@ -22,6 +22,7 @@ from . import (
   diagnostics,
   feature_matrix,
   js_optimizer,
+  ports,
   response_file,
   shared,
   utils,
@@ -570,6 +571,26 @@ def version_split(v):
   return f'{int(major)}.{int(minor)}.{int(rev)}'
 
 
+def filter_closure_args(args):
+  # TODO: this can be removed once emdawnwebgpu no longer passes in
+  # --externs=webgpu-externs.js
+  # Closure compiler includes WebGPU externs natively (w3c_webgpu.js).
+  # Exclude webgpu-externs.js (provided by emdawnwebgpu) to avoid duplicate definition errors.
+  filtered = []
+  skip_next = False
+  for i, arg in enumerate(args):
+    if skip_next:
+      skip_next = False
+      continue
+    if arg == '--externs' and i + 1 < len(args) and args[i + 1].strip('\'"').endswith('webgpu-externs.js'):
+      skip_next = True
+      continue
+    if arg.startswith('--externs=') and arg.split('=', 1)[1].strip('\'"').endswith('webgpu-externs.js'):
+      continue
+    filtered.append(arg)
+  return filtered
+
+
 @ToolchainProfiler.profile()
 def closure_compiler(filename, advanced=True, extra_closure_args=None):
   user_args = []
@@ -578,6 +599,8 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     user_args += shlex.split(env_args)
   if extra_closure_args:
     user_args += extra_closure_args
+  if any('emdawnwebgpu' in p.name for p in ports.get_needed_ports(settings)):
+    user_args = filter_closure_args(user_args)
 
   closure_cmd, env = get_closure_compiler_and_env(user_args)
 
