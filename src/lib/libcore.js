@@ -1795,6 +1795,8 @@ addToLibrary({
     var f = dynCalls[sig];
     return f(ptr, ...args);
   },
+#endif
+
   $dynCall__deps: [
 #if DYNCALLS || !WASM_BIGINT
     '$dynCallLegacy',
@@ -1802,7 +1804,28 @@ addToLibrary({
 #if !DYNCALLS
     '$getWasmTableEntry',
 #endif
+#if JSPI_HOOKS
+    '$jspiDynCall',
+#endif
   ],
+
+#if JSPI_HOOKS
+  // Promising callers of the jspi-hooks trampolines, by signature.
+  $jspiDynCallers: {},
+  $jspiDynCall__deps: ['$jspiDynCallers'],
+  $jspiDynCall: (sig) => {
+    sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}});
+    var caller = jspiDynCallers[sig];
+    if (!caller) {
+      var trampoline = wasmExports['__jspi_dyncall_' + sig];
+#if ASSERTIONS
+      assert(trampoline, `no JSPI trampoline for function pointer signature '${sig}': no function with that signature was in the table at link time (see JSPI_HOOKS)`);
+#endif
+      var promising = WebAssembly.promising(trampoline);
+      caller = jspiDynCallers[sig] = (ptr, ...args) => promising({{{ toIndexType('ptr') }}}, ...args);
+    }
+    return caller;
+  },
 #endif
 
   // Used in library code to get JS function from wasm function pointer.
@@ -1811,7 +1834,7 @@ addToLibrary({
   $getDynCaller__deps: ['$dynCall'],
   $getDynCaller: (sig, ptr, promising = false) => {
 #if ASSERTIONS && !DYNCALLS
-    assert(sig.includes('j') || sig.includes('p'), 'getDynCaller should only be called with i64 sigs')
+    assert(promising || sig.includes('j') || sig.includes('p'), 'getDynCaller should only be called with i64 sigs')
 #endif
     return (...args) => dynCall(sig, ptr, args, promising);
   },
@@ -1845,13 +1868,19 @@ addToLibrary({
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
-    var func = getWasmTableEntry(ptr);
 #if JSPI
     if (promising) {
-      func = WebAssembly.promising(func);
+#if JSPI_HOOKS
+      // Function pointers are made promising through the per-signature
+      // trampoline exports the jspi-hooks pass generates, so that the fiber
+      // gets its lifecycle hooks like any other promising export.
+      return jspiDynCall(sig)(ptr, ...args).then(convert);
+#else
+      return WebAssembly.promising(getWasmTableEntry(ptr))(...args).then(convert);
+#endif
     }
 #endif
-    var rtn = func(...args);
+    var rtn = getWasmTableEntry(ptr)(...args);
 #endif // DYNCALLS
 
     function convert(rtn) {
@@ -1864,11 +1893,6 @@ addToLibrary({
 #endif
     }
 
-#if JSPI
-    if (promising) {
-      return rtn.then(convert);
-    }
-#endif
     return convert(rtn);
   },
 
@@ -1912,13 +1936,13 @@ addToLibrary({
     if (!func) {
       /** @suppress {checkTypes} */
       wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
-#if ASYNCIFY == 2
+#if ASYNCIFY == 2 && !JSPI_HOOKS
       if (Asyncify.isAsyncExport(func)) {
         wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
       }
 #endif
     }
-#if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
+#if ASSERTIONS && !(ASYNCIFY == 2 && !JSPI_HOOKS) // Without the hooks the function stored in the table may be a wrapper.
     /** @suppress {checkTypes} */
     assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'table mirror is out of date');
 #endif

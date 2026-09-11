@@ -421,6 +421,70 @@ and exports must be explicitly set using :ref:`JSPI_IMPORTS` and
           using various helpers mentioned above such as: ``EM_ASYNC_JS``,
           Embind's Async support, ``ccall``, etc...
 
+.. _jspi_lifecycle_hooks:
+
+JSPI lifecycle hooks
+####################
+
+With JSPI, each call to a promising export starts a *fiber*: a wasm activation
+that may be suspended while its suspending imports await, during which other
+fibers (or plain synchronous calls) run on the same thread. All fibers share
+the same static storage and shadow stack, so libraries that keep state which
+is only meaningful for one activation (for example a current-context pointer)
+need to know when a fiber is entered, left and resumed. The experimental
+:ref:`JSPI_HOOKS` setting and ``<emscripten/jspi.h>`` provide that:
+
+.. code-block:: c
+
+    #include <emscripten/jspi.h>
+
+    void* hook(jspi_event event, void* token, int error) {
+      switch (event) {
+        case JSPI_ENTER:   /* a promising export was called; token is NULL */
+          return my_state_for_this_fiber();
+        case JSPI_SUSPEND: /* a suspending import is about to be called */
+          stash(token);
+          break;
+        case JSPI_RESUME:  /* it returned (error != 0 if it threw/rejected) */
+          restore(token);
+          break;
+        case JSPI_EXIT:    /* the export is returning (error != 0 if throwing) */
+          release(token);
+          break;
+      }
+      return token;
+    }
+
+    jspi_register(hook, JSPI_ALL);
+
+``token`` is the hook's own value for the fiber the event is about: ``NULL``
+at the first event the hook sees for that fiber, then whatever the hook
+returned at the fiber's previous event, so a hook needs no lookup table to
+find its per-fiber state. Hooks run in registration order on the thread they
+were registered on, inside the fiber's own wasm frames immediately
+before/after the boundary call. ``JSPI_SUSPEND`` fires whether or not the
+import actually suspends. ``error`` is set when the export or import
+completed with an exception (a JS exception, a rejected promise or a wasm
+exception such as a C++ ``throw``), which is rethrown unchanged after the
+hooks run; hooks cannot inspect it. Hooks must not throw, suspend or call
+promising exports.
+
+``jspi_register`` returns 0, -1 when the program was linked without
+``-sJSPI_HOOKS`` (so a library can fall back at runtime rather than requiring
+the setting), or -2 when the per-thread table (``JSPI_MAX_HOOKS``) is full.
+
+The hooks are inserted by a post-link Binaryen pass around every export in
+:ref:`JSPI_EXPORTS` and every import in :ref:`JSPI_IMPORTS` (including
+``EM_ASYNC_JS`` and other JS library functions marked async). Function
+pointers made promising from JavaScript with ``dynCall(sig, ptr, args, true)``
+or Embind's ``async()`` policy go through the same hooks via a trampoline
+export per function signature. Trampolines are generated for the signatures
+of the functions in the table at link time, so a pointer added at runtime with
+``addFunction`` can only be made promising if some linked function shares its
+signature (an ``ASSERTIONS`` build reports the missing trampoline). Calling
+``WebAssembly.promising`` on a wrapped export from your own JS is fine; only a
+raw table entry made promising bypasses the hooks.
+
 Optimizing Asyncify
 ###################
 

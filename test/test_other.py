@@ -3689,6 +3689,48 @@ More info: https://emscripten.org
     self.do_runf('other/test_jspi_add_function.c', 'done\n')
 
   @requires_jspi
+  @parameterized({
+    'legacy': ([],),
+    'exnref': (['-sWASM_LEGACY_EXCEPTIONS=0'],),
+  })
+  def test_jspi_hooks_cpp_exception(self, args):
+    # A C++ exception escaping a promising export reaches the EXIT hook as an
+    # error, and is caught normally inside wasm across a suspension.
+    self.do_other_test('test_jspi_hooks_cpp_exception.cpp',
+                       cflags=['-sJSPI', '-sJSPI_HOOKS', '-Wno-experimental', '-fwasm-exceptions',
+                               '-sJSPI_EXPORTS=throws_after_suspend,caught_inside'] + args)
+
+  @requires_jspi
+  def test_jspi_hooks_enabled(self):
+    # Hooks are opt-in: without the setting nothing of them is linked in.
+    self.do_runf('other/test_jspi_wildcard.c', 'done\n', cflags=['-sJSPI', '-sJSPI_EXPORTS=async*'])
+    exports = [e.name for e in webassembly.get_exports('test_jspi_wildcard.wasm')]
+    self.assertFalse(any(e.startswith('__jspi_') for e in exports))
+    self.do_runf('other/test_jspi_wildcard.c', 'done\n',
+                 cflags=['-sJSPI', '-sJSPI_HOOKS', '-Wno-experimental', '-sJSPI_EXPORTS=async*'])
+    exports = [e.name for e in webassembly.get_exports('test_jspi_wildcard.wasm')]
+    self.assertIn('__jspi_enter', exports)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sJSPI_HOOKS', '-Wno-experimental'])
+    self.assertContained('JSPI_HOOKS requires JSPI', err)
+
+  def test_jspi_hooks_stub(self):
+    # Without the setting jspi_register links against a stub returning -1, so
+    # a library can degrade at runtime rather than failing to link.
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <emscripten/jspi.h>
+      void* hook(jspi_event ev, void* token, int error) { return token; }
+      int main() {
+        assert(jspi_register(hook, JSPI_ALL) == -1);
+        printf("done\n");
+      }
+    ''')
+    self.do_runf('main.c', 'done\n')
+    self.do_runf('main.c', 'done\n', cflags=['-sJSPI'])
+    self.assertNotIn(b'__jspi_', read_binary('main.wasm'))
+
+  @requires_jspi
   def test_jspi_async_function(self):
     # Make sure async library functions are not automatically JSPI'd.
     create_file('lib.js', r'''
