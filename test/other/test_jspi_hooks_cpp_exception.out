@@ -1,0 +1,12 @@
+ENTER#1
+SUSPEND#1
+EXIT#0
+RESUME#1
+EXIT#1 err
+rejected with WebAssembly.Exception
+ENTER#2
+SUSPEND#2
+RESUME#2
+caught cpp in wasm
+EXIT#2
+done

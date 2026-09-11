@@ -160,16 +160,19 @@ addToLibrary({
 #endif
 #if ASYNCIFY == 2
       var exportPattern = {{{ new RegExp(`^(${ASYNCIFY_EXPORTS.join('|').replace(/\*/g, '.*')})$`) }}};
+#if !JSPI_HOOKS
       Asyncify.asyncExports = new Set();
+#endif
 #endif
       var ret = {};
       for (let [x, original] of Object.entries(exports)) {
         if (typeof original == 'function') {
  #if ASYNCIFY == 2
           // Wrap all exports with a promising WebAssembly function.
-          let isAsyncifyExport = exportPattern.test(x);
-          if (isAsyncifyExport) {
+          if (exportPattern.test(x)) {
+#if !JSPI_HOOKS
             Asyncify.asyncExports.add(original);
+#endif
             original = Asyncify.makeAsyncFunction(original);
           }
           ret[x] = original;
@@ -453,13 +456,15 @@ addToLibrary({
     //
     // JSPI implementation of Asyncify.
     //
-
-    // Stores all the exported raw Wasm functions that are wrapped with async
-    // WebAssembly.Functions.
+#if !JSPI_HOOKS
+    // The raw wasm exports that were wrapped with WebAssembly.promising; with
+    // the hooks the table holds the unwrapped functions instead, and function
+    // pointers are made promising through the trampolines.
     asyncExports: null,
     isAsyncExport(func) {
       return Asyncify.asyncExports?.has(func);
     },
+#endif
     handleAsync: async (startAsync) => {
       {{{ runtimeKeepalivePush(); }}}
       try {
@@ -477,6 +482,23 @@ addToLibrary({
     },
 #endif
   },
+
+#if REENTRANT_JSPI
+  __jspi_fiber_stack_size__sig: 'p',
+  __jspi_fiber_stack_size: () => {{{ JSPI_FIBER_STACK_SIZE }}},
+  __jspi_fiber_stack_guard__sig: 'p',
+  __jspi_fiber_stack_guard: () => {{{ JSPI_FIBER_STACK_GUARD }}},
+  __jspi_stack_checked__sig: 'i',
+  __jspi_stack_checked: () => {{{ STACK_OVERFLOW_CHECK >= 2 ? 1 : 0 }}},
+  // The bounds the stack-check pass instruments against live in globals it
+  // generates, reachable only through its export.
+  __jspi_set_stack_limits__sig: 'vpp',
+  __jspi_set_stack_limits: (base, end) => {
+#if STACK_OVERFLOW_CHECK >= 2
+    ___set_stack_limits(base, end);
+#endif
+  },
+#endif
 
   emscripten_sleep__async: 'auto',
   emscripten_sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),

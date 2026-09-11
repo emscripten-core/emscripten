@@ -1124,6 +1124,7 @@ native_sigs = {
   'iswxdigit_l': '__p',
   'isxdigit_l': '__p',
   'jrand48': 'pp',
+  'jspi_register': '_p_',
   'l64a': 'pp',
   'labs': 'pp',
   'lchmod': '_p_',

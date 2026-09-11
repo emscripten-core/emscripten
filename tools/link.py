@@ -386,6 +386,29 @@ def get_binaryen_passes():
       check_human_readable_list(settings.ASYNCIFY_ONLY)
       passes += [f"--pass-arg=asyncify-onlylist@{','.join(settings.ASYNCIFY_ONLY)}"]
 
+  if settings.JSPI_HOOKS:
+    if not settings.WASM_LEGACY_EXCEPTIONS:
+      # The hook wrappers use the module's exception handling flavor, so a
+      # module targeting exnref must not still carry legacy instructions from
+      # prebuilt inputs when the pass runs.
+      passes += ['--translate-to-exnref']
+    # Wrap the promising exports and suspending imports (exactly the sets the
+    # JS wraps in WebAssembly.promising / WebAssembly.Suspending) with the
+    # fiber lifecycle hooks provided by libjspi, plus trampolines for making
+    # function pointers promising. Side modules are not instrumented: their
+    # direct imports of suspending JS functions run without hooks.
+    passes += ['--jspi-hooks']
+    # The JS matches suspending imports by base name only (see
+    # instrumentWasmImports), so match any module here too.
+    jspi_imports = ['*.' + i.split('.', 1)[1] for i in settings.ASYNCIFY_IMPORTS]
+    passes += [f"--pass-arg=jspi-imports@{','.join(jspi_imports)}"]
+    passes += [f"--pass-arg=jspi-exports@{','.join(settings.ASYNCIFY_EXPORTS)}"]
+    # The trampolines keep every table entry of their signatures alive, so only
+    # emit them when the JS can actually make function pointers promising,
+    # which is only done through $dynCall.
+    if 'dynCall' in building.js_library_symbols:
+      passes += ['--pass-arg=jspi-dyncalls']
+
   if settings.MEMORY64 == 2:
     passes += ['--memory64-lowering', '--table64-lowering']
 
@@ -991,6 +1014,46 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
+
+  # JSPI and ASYNCIFY=2 are the same mode.
+  if settings.ASYNCIFY == 2:
+    settings.JSPI = 1
+  if settings.JSPI:
+    settings.ASYNCIFY = 2
+  if settings.SIDE_MODULE:
+    # The hooks and fiber stacks belong to the main module's runtime; a side
+    # module contributes no imports or exports to wrap. Like JSPI itself, the
+    # settings are accepted so one flag set serves every link of a build.
+    settings.JSPI_HOOKS = 0
+    settings.REENTRANT_JSPI = 0
+  if settings.REENTRANT_JSPI:
+    diagnostics.warning('experimental', 'REENTRANT_JSPI is experimental')
+    if not settings.JSPI:
+      exit_with_error('REENTRANT_JSPI requires JSPI')
+    if 'JSPI_HOOKS' in user_settings and not settings.JSPI_HOOKS:
+      exit_with_error('REENTRANT_JSPI requires JSPI_HOOKS')
+    if settings.MAIN_MODULE:
+      exit_with_error('REENTRANT_JSPI is not compatible with dynamic linking')
+    settings.JSPI_HOOKS = 1
+  if settings.JSPI_HOOKS:
+    if not settings.REENTRANT_JSPI:
+      diagnostics.warning('experimental', 'JSPI_HOOKS is experimental')
+    if not settings.JSPI:
+      exit_with_error('JSPI_HOOKS requires JSPI')
+    if not settings.WASM_BIGINT:
+      # The hook export takes and returns the fiber token as an i64.
+      exit_with_error('JSPI_HOOKS requires WASM_BIGINT')
+
+  if settings.REENTRANT_JSPI:
+    # Fiber stacks live in the heap, so the only way to make an overflow trap
+    # at the overflowing store is the bounds check; -sSTACK_OVERFLOW_CHECK=1 or
+    # 0 opts out, leaving the guard region and the checks at suspension/exit.
+    default_setting('STACK_OVERFLOW_CHECK', 2)
+    if not settings.JSPI_FIBER_STACK_SIZE:
+      settings.JSPI_FIBER_STACK_SIZE = settings.STACK_SIZE
+    if settings.JSPI_FIBER_STACK_GUARD < 0:
+      settings.JSPI_FIBER_STACK_GUARD = 0 if settings.STACK_OVERFLOW_CHECK >= 2 else 16 * 1024
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['__jspi_fiber_stack_size', '__jspi_fiber_stack_guard', '__jspi_stack_checked', '__jspi_set_stack_limits']
 
   if settings.ASYNCIFY == 1:
     # ASYNCIFY=1 wraps only wasm exports so we need to enable legacy
@@ -1707,11 +1770,15 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if not settings.DISABLE_EXCEPTION_CATCHING:
     settings.REQUIRED_EXPORTS += ['setThrew']
 
+  if settings.JSPI_HOOKS:
+    settings.REQUIRED_EXPORTS += ['__jspi_enter', '__jspi_exit', '__jspi_suspend', '__jspi_resume']
+
   if settings.ASYNCIFY:
-    if not settings.ASYNCIFY_IGNORE_INDIRECT:
+    if settings.ASYNCIFY == 1 and not settings.ASYNCIFY_IGNORE_INDIRECT:
       # if we are not ignoring indirect calls, then we must treat invoke_* as if
       # they are indirect calls, since that is what they do - we can't see their
-      # targets statically.
+      # targets statically. (JSPI cannot suspend across the JS frame of an
+      # invoke, so there they are never suspending.)
       settings.ASYNCIFY_IMPORTS += ['invoke_*']
     # add the default imports
     settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
@@ -2327,6 +2394,13 @@ def phase_binaryen(target, wasm_target):
                             args=passes,
                             debug=intermediate_debug_info)
       building.save_intermediate(wasm_target, 'byn.wasm')
+    if '--pass-arg=jspi-dyncalls' in passes:
+      # The jspi-hooks pass adds the __jspi_dyncall_* trampoline exports, which
+      # the JS looks up by signature at runtime; keep them through metadce.
+      for e in webassembly.get_exports(wasm_target):
+        if e.name.startswith('__jspi_dyncall_'):
+          settings.WASM_EXPORTS.append(e.name)
+          building.user_requested_exports.add(shared.asmjs_mangle(e.name))
 
   if settings.EVAL_CTORS:
     with ToolchainProfiler.profile_block('eval_ctors'):

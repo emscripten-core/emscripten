@@ -62,6 +62,8 @@ WASM_LD = shared.llvm_tool_path('wasm-ld')
 user_requested_exports: set[str] = set()
 # JS library symbols exported via the `__export` decorator.
 extra_js_exports: set[str] = set()
+# JS library symbols (mangled) that were emitted into the JS output.
+js_library_symbols: set[str] = set()
 # Mangled wasm exports wasm-bindgen's glue reaches by name, kept off the public surface.
 wasm_bindgen_internal_exports: set[str] = set()
 # A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,

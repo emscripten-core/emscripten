@@ -3689,6 +3689,103 @@ More info: https://emscripten.org
     self.do_runf('other/test_jspi_add_function.c', 'done\n')
 
   @requires_jspi
+  @parameterized({
+    'legacy': ([],),
+    'exnref': (['-sWASM_LEGACY_EXCEPTIONS=0'],),
+  })
+  def test_jspi_hooks_cpp_exception(self, args):
+    # A C++ exception escaping a promising export reaches the EXIT hook as an
+    # error, and is caught normally inside wasm across a suspension.
+    self.do_other_test('test_jspi_hooks_cpp_exception.cpp',
+                       cflags=['-sJSPI', '-sJSPI_HOOKS', '-Wno-experimental', '-fwasm-exceptions',
+                               '-sJSPI_EXPORTS=throws_after_suspend,caught_inside'] + args)
+
+  @requires_jspi
+  def test_jspi_hooks_cpp_exception_mixed_eh(self):
+    # An exnref link may still receive legacy EH from prebuilt objects; the
+    # hooks pass sees one flavor after translation.
+    self.run_process([EMXX, '-c', test_file('other/test_jspi_hooks_cpp_exception.cpp'),
+                      '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS', '-o', 'legacy.o'])
+    self.run_process([EMXX, 'legacy.o', '-sJSPI', '-sJSPI_HOOKS', '-Wno-experimental', '-fwasm-exceptions',
+                      '-sWASM_LEGACY_EXCEPTIONS=0', '-sJSPI_EXPORTS=throws_after_suspend,caught_inside',
+                      '-o', 'mixed.js'])
+    self.assertFileContents(test_file('other/test_jspi_hooks_cpp_exception.out'), self.run_js('mixed.js'))
+
+  @requires_jspi
+  def test_reentrant_jspi_oom(self):
+    # No room on the heap for a fiber stack.
+    self.do_runf('jspi/test_reentrant_jspi_oom.c',
+                 'REENTRANT_JSPI: out of memory allocating a fiber stack',
+                 cflags=['-sJSPI', '-sREENTRANT_JSPI', '-Wno-experimental', '-sINITIAL_MEMORY=128KB',
+                         '-sALLOW_MEMORY_GROWTH=0', '-sABORTING_MALLOC=0', '-sSTACK_SIZE=64KB',
+                         '-sJSPI_FIBER_STACK_SIZE=64KB'],
+                 assert_returncode=NON_ZERO)
+
+  @requires_jspi
+  @parameterized({
+    # The default bounds check catches the overflowing store itself.
+    '': ([],),
+    'O2': (['-O2'],),
+    # Opting out: the overflow lands in the guard region and is reported at
+    # the suspension.
+    'no_stack_check': (['-sSTACK_OVERFLOW_CHECK=1'],),
+    'no_stack_check_guard': (['-sSTACK_OVERFLOW_CHECK=0', '-sJSPI_FIBER_STACK_GUARD=16KB'],),
+  })
+  def test_reentrant_jspi_stack_overflow(self, args):
+    expected = 'inside a JSPI activation, -sJSPI_FIBER_STACK_SIZE'
+    if any(a.startswith('-sSTACK_OVERFLOW_CHECK') for a in args):
+      expected = 'REENTRANT_JSPI: fiber stack overflow; increase -sJSPI_FIBER_STACK_SIZE'
+    self.do_runf(test_file('jspi/test_reentrant_jspi_stack_overflow.c'), expected,
+                 cflags=['-sJSPI', '-sREENTRANT_JSPI', '-Wno-experimental', '-sJSPI_FIBER_STACK_SIZE=16KB'] + args,
+                 assert_returncode=NON_ZERO)
+
+  def test_reentrant_jspi_settings(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sREENTRANT_JSPI', '-Wno-experimental'])
+    self.assertContained('REENTRANT_JSPI requires JSPI', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sJSPI', '-sJSPI_HOOKS=0', '-sREENTRANT_JSPI', '-Wno-experimental'])
+    self.assertContained('REENTRANT_JSPI requires JSPI_HOOKS', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sJSPI', '-sMAIN_MODULE=2', '-sREENTRANT_JSPI', '-Wno-experimental'])
+    self.assertContained('REENTRANT_JSPI is not compatible with dynamic linking', err)
+    # A side module accepts the setting and ignores it, so one flag set can
+    # serve every link of a build.
+    self.run_process([EMCC, test_file('hello_world.c'), '-sJSPI', '-sSIDE_MODULE', '-sREENTRANT_JSPI', '-Wno-experimental', '-o', 'side.wasm'])
+    # STACK_OVERFLOW_CHECK defaults to 2 and can be opted out of explicitly.
+    self.run_process([EMCC, test_file('hello_world.c'), '-sJSPI', '-sREENTRANT_JSPI', '-Wno-experimental'])
+    self.assertContained('__handle_stack_overflow', read_file('a.out.js'))
+    self.run_process([EMCC, test_file('hello_world.c'), '-sJSPI', '-sREENTRANT_JSPI', '-Wno-experimental', '-sSTACK_OVERFLOW_CHECK=1'])
+    self.assertNotContained('__handle_stack_overflow', read_file('a.out.js'))
+
+  @requires_jspi
+  def test_jspi_hooks_enabled(self):
+    # Hooks are opt-in: without the setting nothing of them is linked in.
+    self.do_runf('other/test_jspi_wildcard.c', 'done\n', cflags=['-sJSPI', '-sJSPI_EXPORTS=async*'])
+    exports = [e.name for e in webassembly.get_exports('test_jspi_wildcard.wasm')]
+    self.assertFalse(any(e.startswith('__jspi_') for e in exports))
+    self.do_runf('other/test_jspi_wildcard.c', 'done\n',
+                 cflags=['-sJSPI', '-sJSPI_HOOKS', '-Wno-experimental', '-sJSPI_EXPORTS=async*'])
+    exports = [e.name for e in webassembly.get_exports('test_jspi_wildcard.wasm')]
+    self.assertIn('__jspi_enter', exports)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sJSPI_HOOKS', '-Wno-experimental'])
+    self.assertContained('JSPI_HOOKS requires JSPI', err)
+
+  def test_jspi_hooks_stub(self):
+    # Without the setting jspi_register links against a stub returning -1, so
+    # a library can degrade at runtime rather than failing to link.
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <emscripten/jspi.h>
+      void* hook(jspi_event ev, void* token, int error) { return token; }
+      int main() {
+        assert(jspi_register(hook, JSPI_ALL) == -1);
+        printf("done\n");
+      }
+    ''')
+    self.do_runf('main.c', 'done\n')
+    self.do_runf('main.c', 'done\n', cflags=['-sJSPI'])
+    self.assertNotIn(b'__jspi_', read_binary('main.wasm'))
+
+  @requires_jspi
   def test_jspi_async_function(self):
     # Make sure async library functions are not automatically JSPI'd.
     create_file('lib.js', r'''
