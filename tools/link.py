@@ -387,6 +387,11 @@ def get_binaryen_passes():
       passes += [f"--pass-arg=asyncify-onlylist@{','.join(settings.ASYNCIFY_ONLY)}"]
 
   if settings.JSPI_HOOKS:
+    if not settings.WASM_LEGACY_EXCEPTIONS:
+      # The hook wrappers use the module's exception handling flavor, so a
+      # module targeting exnref must not still carry legacy instructions from
+      # prebuilt inputs when the pass runs.
+      passes += ['--translate-to-exnref']
     # Wrap the promising exports and suspending imports (exactly the sets the
     # JS wraps in WebAssembly.promising / WebAssembly.Suspending) with the
     # fiber lifecycle hooks provided by libjspi, plus trampolines for making
