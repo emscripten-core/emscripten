@@ -2269,10 +2269,11 @@ var JS_BASE64_API = false;
 // it when available.
 // Setting this to 2 will unconditionally require it. This is the only way
 // to completely remove the overhead of growable memory + pthreads.
-//   * Note that while browser support for this feature is widespread
-//     (https://caniuse.com/?search=sharedarraybuffer.resize), it was
-//     not usable on Firefox until Firefox 154,
-//     https://bugzilla.mozilla.org/show_bug.cgi?id=2021136
+//
+// Note that while browser support for this feature is widespread
+// (https://caniuse.com/?search=sharedarraybuffer.resize), it was not usable on
+// Firefox until Firefox 154,
+// https://bugzilla.mozilla.org/show_bug.cgi?id=2021136
 //
 // This settings does nothing unless ALLOW_MEMORY_GROWTH is set.
 // [link]
