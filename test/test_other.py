@@ -12139,7 +12139,7 @@ int main(void) {
 
     # check that `-Wno-pthreads-mem` disables pthread + ALLOW_GROWTH_MEMORY warning
     stderr = self.run_process(cmd + ['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH'], stderr=PIPE).stderr
-    self.assertNotContained('pthreads + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271', stderr)
+    self.assertNotContained('pthreads + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, consider -sGROWABLE_ARRAYBUFFERS=2', stderr)
 
   def test_emranlib(self):
     create_file('foo.c', 'int foo = 1;')
