@@ -1020,13 +1020,19 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.JSPI = 1
   if settings.JSPI:
     settings.ASYNCIFY = 2
+  if settings.SIDE_MODULE:
+    # The hooks and fiber stacks belong to the main module's runtime; a side
+    # module contributes no imports or exports to wrap. Like JSPI itself, the
+    # settings are accepted so one flag set serves every link of a build.
+    settings.JSPI_HOOKS = 0
+    settings.REENTRANT_JSPI = 0
   if settings.REENTRANT_JSPI:
     diagnostics.warning('experimental', 'REENTRANT_JSPI is experimental')
     if not settings.JSPI:
       exit_with_error('REENTRANT_JSPI requires JSPI')
     if 'JSPI_HOOKS' in user_settings and not settings.JSPI_HOOKS:
       exit_with_error('REENTRANT_JSPI requires JSPI_HOOKS')
-    if settings.MAIN_MODULE or settings.SIDE_MODULE:
+    if settings.MAIN_MODULE:
       exit_with_error('REENTRANT_JSPI is not compatible with dynamic linking')
     settings.JSPI_HOOKS = 1
   if settings.JSPI_HOOKS:
@@ -1037,8 +1043,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     if not settings.WASM_BIGINT:
       # The hook export takes and returns the fiber token as an i64.
       exit_with_error('JSPI_HOOKS requires WASM_BIGINT')
-  if settings.SIDE_MODULE:
-    settings.JSPI_HOOKS = 0
 
   if settings.REENTRANT_JSPI:
     # Fiber stacks live in the heap, so the only way to make an overflow trap

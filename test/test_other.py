@@ -3746,6 +3746,9 @@ More info: https://emscripten.org
     self.assertContained('REENTRANT_JSPI requires JSPI_HOOKS', err)
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sJSPI', '-sMAIN_MODULE=2', '-sREENTRANT_JSPI', '-Wno-experimental'])
     self.assertContained('REENTRANT_JSPI is not compatible with dynamic linking', err)
+    # A side module accepts the setting and ignores it, so one flag set can
+    # serve every link of a build.
+    self.run_process([EMCC, test_file('hello_world.c'), '-sJSPI', '-sSIDE_MODULE', '-sREENTRANT_JSPI', '-Wno-experimental', '-o', 'side.wasm'])
     # STACK_OVERFLOW_CHECK defaults to 2 and can be opted out of explicitly.
     self.run_process([EMCC, test_file('hello_world.c'), '-sJSPI', '-sREENTRANT_JSPI', '-Wno-experimental'])
     self.assertContained('__handle_stack_overflow', read_file('a.out.js'))
