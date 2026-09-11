@@ -257,6 +257,7 @@ no_wasm2js = skip_if('no_wasm2js', lambda t: t.is_wasm2js())
 # shifts and such around those values to ensure they operate as 16-bit, and we
 # want coverage of that.
 only_wasm2js = skip_if('only_wasm2js', lambda t: not t.is_wasm2js())
+no_reentrant_jspi = skip_if('no_reentrant_jspi', lambda t: t.get_setting('REENTRANT_JSPI'))
 
 
 def with_asyncify_and_jspi(func):
@@ -269,12 +270,16 @@ def with_asyncify_and_jspi(func):
     if jspi:
       self.set_setting('JSPI')
       self.require_jspi()
+      if jspi == 2:
+        self.set_setting('REENTRANT_JSPI')
+        self.cflags.append('-Wno-experimental')
     else:
       self.set_setting('ASYNCIFY')
     return func(self, *args, **kwargs)
 
-  parameterize(metafunc, {'': (False,),
-                          'jspi': (True,)})
+  parameterize(metafunc, {'': (0,),
+                          'jspi': (1,),
+                          'reentrant_jspi': (2,)})
   return metafunc
 
 
@@ -3829,6 +3834,7 @@ caught outer int: 123
 
   @needs_dylink
   @with_asyncify_and_jspi
+  @no_reentrant_jspi('REENTRANT_JSPI does not support dynamic linking')
   def test_dlfcn_asyncify(self):
     create_file('libside.c', r'''
       #include <stdio.h>
@@ -8313,6 +8319,71 @@ void* operator new(size_t size) {
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_jspi_hooks.c', cflags=args)
 
+  def do_reentrant_jspi_test(self, name, exports, cflags=None):
+    self.set_setting('JSPI')
+    self.set_setting('REENTRANT_JSPI')
+    self.set_setting('JSPI_EXPORTS', exports)
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$callUserCallback'])
+    self.cflags.append('-Wno-experimental')
+    self.do_runf(test_file('jspi', name), 'done\n', cflags=cflags or [])
+
+  @requires_jspi
+  @parameterized({
+    '': ([],),
+    'stack_check': (['-sASSERTIONS=2', '-sSTACK_OVERFLOW_CHECK=2'],),
+  })
+  def test_reentrant_jspi_basic(self, args):
+    self.do_reentrant_jspi_test('test_reentrant_jspi_basic.c', ['fiber'], args)
+    # Without REENTRANT_JSPI a fiber resuming while another is suspended
+    # corrupts the other one's frames.
+    self.set_setting('REENTRANT_JSPI', 0)
+    self.do_runf(test_file('jspi/test_reentrant_jspi_basic.c'), ': CORRUPT', cflags=args)
+
+  @requires_jspi
+  def test_reentrant_jspi_interleaved(self):
+    self.do_reentrant_jspi_test('test_reentrant_jspi_interleaved.c', ['fiber'])
+
+  @requires_jspi
+  def test_reentrant_jspi_deep(self):
+    self.do_reentrant_jspi_test('test_reentrant_jspi_deep.c', ['fiber'])
+
+  @requires_jspi
+  def test_reentrant_jspi_nested(self):
+    self.do_reentrant_jspi_test('test_reentrant_jspi_nested.c', ['outer', 'inner'])
+
+  @requires_jspi
+  @parameterized({
+    'legacy': ([],),
+    'exnref': (['-sWASM_LEGACY_EXCEPTIONS=0'],),
+  })
+  def test_reentrant_jspi_exceptions(self, args):
+    self.do_reentrant_jspi_test('test_reentrant_jspi_exceptions.cpp', ['fiber', 'bystander'],
+                                ['-fwasm-exceptions'] + args)
+
+  @requires_jspi
+  @parameterized({
+    '': ([],),
+    'stack_check': (['-sASSERTIONS=2', '-sSTACK_OVERFLOW_CHECK=2'],),
+  })
+  def test_reentrant_jspi_hooks(self, args):
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'dynCall'])
+    self.do_reentrant_jspi_test('test_reentrant_jspi_hooks.c', ['fiber', 'with_string'], args)
+
+  # See test_pthread_wait_suspending for why @requires_node_25 is needed.
+  @requires_node_25
+  @requires_pthreads
+  @requires_jspi
+  @parameterized({
+    '': ([],),
+    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD'],),
+  })
+  def test_reentrant_jspi_pthread(self, args):
+    self.do_reentrant_jspi_test('test_reentrant_jspi_basic.c', ['fiber'], ['-pthread'] + args)
+    self.do_reentrant_jspi_test('test_reentrant_jspi_nested.c', ['outer', 'inner'], ['-pthread'] + args)
+    self.do_reentrant_jspi_test('test_reentrant_jspi_exceptions.cpp', ['fiber', 'bystander'],
+                                ['-pthread', '-fwasm-exceptions'] + args)
+
   # See test_pthread_wait_suspending for why @requires_node_25 is needed.
   @requires_node_25
   @requires_pthreads
@@ -8439,11 +8510,11 @@ Module.onRuntimeInitialized = () => {
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized']
     self.do_runf('main.c', 'HelloWorld')
 
+  @with_asyncify_and_jspi
   @parameterized({
     '': (False,),
     'exit_runtime': (True,),
   })
-  @with_asyncify_and_jspi
   @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_promise(self, exit_runtime):
     if self.get_setting('JSPI'):
@@ -8620,6 +8691,7 @@ Module.onRuntimeInitialized = () => {
   @no_wasm2js('dynamic linking support in wasm2js')
   @with_asyncify_and_jspi
   @needs_dylink
+  @no_reentrant_jspi('REENTRANT_JSPI does not support dynamic linking')
   def test_asyncify_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_hello_world.c')

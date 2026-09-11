@@ -1022,24 +1022,35 @@ class libjspi(MTLibrary):
 
   def __init__(self, **kwargs):
     self.hooks = kwargs.pop('hooks')
+    self.is_reentrant = kwargs.pop('is_reentrant')
     super().__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if self.is_reentrant:
+      cflags += ['-DREENTRANT_JSPI']
+    return cflags
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['hooks']
+    return super().vary_on() + ['hooks', 'is_reentrant']
 
   def get_base_name(self):
     name = super().get_base_name()
     if not self.hooks:
       name += '-stub'
+    elif self.is_reentrant:
+      name += '-reentrant'
     return name
 
   def get_files(self):
-    return [utils.path_from_root('system/lib/jspi', 'jspi.c' if self.hooks else 'jspi_stub.c')]
+    if not self.hooks:
+      return [utils.path_from_root('system/lib/jspi/jspi_stub.c')]
+    return files_in_path(path='system/lib/jspi', filenames=['jspi.c', 'jspi_ops.S'])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(hooks=settings.JSPI_HOOKS, **kwargs)
+    return super().get_default_variation(hooks=settings.JSPI_HOOKS, is_reentrant=settings.REENTRANT_JSPI, **kwargs)
 
 
 class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):

@@ -485,6 +485,45 @@ signature (an ``ASSERTIONS`` build reports the missing trampoline). Calling
 ``WebAssembly.promising`` on a wrapped export from your own JS is fine; only a
 raw table entry made promising bypasses the hooks.
 
+.. _reentrant_jspi_stacks:
+
+Concurrent JSPI activations
+###########################
+
+Every promising export starts a fiber that may suspend; while it is suspended
+another promising call may start, or an earlier one resume. The frames of C
+code live on the shadow stack in linear memory, which JSPI does not save, so by
+default a fiber that resumes while another is suspended pushes its frames over
+the other one's and corrupts it. That is fine for the common pattern of one
+promising call at a time, awaited before the next, but not for a server-like
+program that handles requests concurrently.
+
+:ref:`REENTRANT_JSPI` runs every fiber on its own shadow stack (allocated from
+the heap on entry, :ref:`JSPI_FIBER_STACK_SIZE` bytes each, released on exit)
+and switches the stack pointer at the :ref:`lifecycle hooks <jspi_hooks>`, so
+any number of fibers may be suspended at once and resume in any order. This
+also holds for a promising export entered synchronously from inside another
+fiber's import call, and for exceptions unwinding out of a suspended fiber.
+Fibers never move between threads, and each thread has its own set. Dynamic
+linking is not supported with it yet.
+
+Sizing: every live fiber, ``main`` included, holds a :ref:`JSPI_FIBER_STACK_SIZE`
+stack for as long as it is suspended, and a few released stacks are kept per
+thread for reuse, so tune it independently of ``STACK_SIZE`` (which it defaults
+to): a program built with ``-sSTACK_SIZE=8MB`` that serves requests
+concurrently would otherwise hold 8 MB per in-flight request. A fiber stack
+lives in the heap and has no hardware-style guard like the main stack has with
+``STACK_FIRST``, so ``REENTRANT_JSPI`` defaults ``STACK_OVERFLOW_CHECK`` to 2:
+the stack limits are switched per fiber and an overflow traps at the
+overflowing store itself. Setting ``STACK_OVERFLOW_CHECK`` explicitly to 1 or
+0 opts out; then a :ref:`JSPI_FIBER_STACK_GUARD` region (16KB by default) below
+each stack keeps an overflow of up to that size inside memory the runtime
+owns, reported when the fiber next suspends or exits.
+Hooks registered with ``jspi_register`` run on the fiber's stack for
+``JSPI_SUSPEND``/``JSPI_RESUME``/``JSPI_EXIT`` and on the caller's stack for
+``JSPI_ENTER``. A trap inside a fiber leaves its stack unreleased and the
+stack pointer undefined, as with any trap.
+
 Optimizing Asyncify
 ###################
 

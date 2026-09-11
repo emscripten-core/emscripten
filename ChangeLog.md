@@ -31,6 +31,11 @@ See docs/process.md for more on how version tagging works.
   and a JSPI export fetched from the table as a function pointer is no longer
   promised automatically. Independently of the setting, `invoke_*` imports are
   no longer treated as suspending under JSPI.
+- Added the experimental `-sREENTRANT_JSPI` setting, which runs every JSPI
+  promising activation on its own shadow stack so that any number of them may
+  be suspended at once and interleave, instead of corrupting each other's
+  frames. `JSPI_FIBER_STACK_SIZE` sets the per-activation stack size, and
+  `STACK_OVERFLOW_CHECK` defaults to 2 so that an overflow of one traps.
 - The SDL3 port is no longer considered experimental, and the compiler
   diagnostic warning has been removed. (#27646)
 - `WASM=0` and `WASM=2` (wasm2js) were marked as deprecated. (See #27608)

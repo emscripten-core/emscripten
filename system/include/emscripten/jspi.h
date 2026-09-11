@@ -24,6 +24,14 @@
 extern "C" {
 #endif
 
+// Hooks run synchronously inside the boundary call, on whatever stack the
+// fiber's code runs on: ENTER before the export body (the fiber is already
+// current), SUSPEND before the import is called with the fiber's frames still
+// live, RESUME after the import returned with the frames live again, and EXIT
+// after the export body returned, with the fiber still current. A trap inside
+// a fiber bypasses the hooks and leaves the JSPI state (and, with
+// REENTRANT_JSPI, the stack pointer) undefined.
+//
 // Events are bit flags so that they combine into the mask for jspi_register.
 typedef enum {
   // A promising export was called.

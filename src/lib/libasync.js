@@ -483,6 +483,23 @@ addToLibrary({
 #endif
   },
 
+#if REENTRANT_JSPI
+  __jspi_fiber_stack_size__sig: 'p',
+  __jspi_fiber_stack_size: () => {{{ JSPI_FIBER_STACK_SIZE }}},
+  __jspi_fiber_stack_guard__sig: 'p',
+  __jspi_fiber_stack_guard: () => {{{ JSPI_FIBER_STACK_GUARD }}},
+  __jspi_stack_checked__sig: 'i',
+  __jspi_stack_checked: () => {{{ STACK_OVERFLOW_CHECK >= 2 ? 1 : 0 }}},
+  // The bounds the stack-check pass instruments against live in globals it
+  // generates, reachable only through its export.
+  __jspi_set_stack_limits__sig: 'vpp',
+  __jspi_set_stack_limits: (base, end) => {
+#if STACK_OVERFLOW_CHECK >= 2
+    ___set_stack_limits(base, end);
+#endif
+  },
+#endif
+
   emscripten_sleep__async: 'auto',
   emscripten_sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 

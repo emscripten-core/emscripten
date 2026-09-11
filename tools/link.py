@@ -1020,8 +1020,18 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.JSPI = 1
   if settings.JSPI:
     settings.ASYNCIFY = 2
+  if settings.REENTRANT_JSPI:
+    diagnostics.warning('experimental', 'REENTRANT_JSPI is experimental')
+    if not settings.JSPI:
+      exit_with_error('REENTRANT_JSPI requires JSPI')
+    if 'JSPI_HOOKS' in user_settings and not settings.JSPI_HOOKS:
+      exit_with_error('REENTRANT_JSPI requires JSPI_HOOKS')
+    if settings.MAIN_MODULE or settings.SIDE_MODULE:
+      exit_with_error('REENTRANT_JSPI is not compatible with dynamic linking')
+    settings.JSPI_HOOKS = 1
   if settings.JSPI_HOOKS:
-    diagnostics.warning('experimental', 'JSPI_HOOKS is experimental')
+    if not settings.REENTRANT_JSPI:
+      diagnostics.warning('experimental', 'JSPI_HOOKS is experimental')
     if not settings.JSPI:
       exit_with_error('JSPI_HOOKS requires JSPI')
     if not settings.WASM_BIGINT:
@@ -1029,6 +1039,17 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       exit_with_error('JSPI_HOOKS requires WASM_BIGINT')
   if settings.SIDE_MODULE:
     settings.JSPI_HOOKS = 0
+
+  if settings.REENTRANT_JSPI:
+    # Fiber stacks live in the heap, so the only way to make an overflow trap
+    # at the overflowing store is the bounds check; -sSTACK_OVERFLOW_CHECK=1 or
+    # 0 opts out, leaving the guard region and the checks at suspension/exit.
+    default_setting('STACK_OVERFLOW_CHECK', 2)
+    if not settings.JSPI_FIBER_STACK_SIZE:
+      settings.JSPI_FIBER_STACK_SIZE = settings.STACK_SIZE
+    if settings.JSPI_FIBER_STACK_GUARD < 0:
+      settings.JSPI_FIBER_STACK_GUARD = 0 if settings.STACK_OVERFLOW_CHECK >= 2 else 16 * 1024
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['__jspi_fiber_stack_size', '__jspi_fiber_stack_guard', '__jspi_stack_checked', '__jspi_set_stack_limits']
 
   if settings.ASYNCIFY == 1:
     # ASYNCIFY=1 wraps only wasm exports so we need to enable legacy

@@ -1739,7 +1739,11 @@ addToLibrary({
     var end = _emscripten_stack_get_end();
     abort(`stack overflow (Attempt to set SP to ${ptrToString(requested)}` +
           `, with stack limits [${ptrToString(end)} - ${ptrToString(base)}` +
+#if REENTRANT_JSPI
+          ']). If you require more stack space build with -sSTACK_SIZE=<bytes> (or, inside a JSPI activation, -sJSPI_FIBER_STACK_SIZE=<bytes>)');
+#else
           ']). If you require more stack space build with -sSTACK_SIZE=<bytes>');
+#endif
   },
 #endif
 

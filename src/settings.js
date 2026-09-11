@@ -962,6 +962,31 @@ var JSPI_IMPORTS = [];
 // [experimental]
 var JSPI_HOOKS = false;
 
+// Run each promising activation on its own shadow stack, so that any number
+// of activations may be suspended at once on a thread and run interleaved
+// (see :ref:`reentrant_jspi_stacks`). Requires ``JSPI`` and implies ``JSPI_HOOKS``;
+// defaults ``STACK_OVERFLOW_CHECK`` to 2 so that a fiber stack overflow traps
+// (set it explicitly to opt out); not supported with dynamic linking.
+// [link]
+// [experimental]
+var REENTRANT_JSPI = false;
+
+// The size of the shadow stack given to each promising activation under
+// ``REENTRANT_JSPI``, in bytes. Every live activation holds one, so tune it
+// independently of ``STACK_SIZE``, which it defaults to.
+// [link]
+var JSPI_FIBER_STACK_SIZE = 0;
+
+// The size of the guard region below each ``REENTRANT_JSPI`` activation
+// stack, in bytes, for builds that opt out of ``STACK_OVERFLOW_CHECK=2``: a
+// stack overflow of up to this size stays inside memory the runtime owns and
+// is reported when the activation next suspends or exits, instead of silently
+// corrupting the heap below. Defaults to 0 with ``STACK_OVERFLOW_CHECK=2``
+// (the bounds check traps at the overflowing store itself) and to 16KB
+// otherwise; 0 disables the guard (the checks at suspension and exit remain).
+// [link]
+var JSPI_FIBER_STACK_GUARD = -1;
+
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
 // EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
