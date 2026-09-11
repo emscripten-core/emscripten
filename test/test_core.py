@@ -8296,6 +8296,40 @@ void* operator new(size_t size) {
     self.set_setting('STRICT')
     self.do_core_test('test_asyncify_longjmp.c')
 
+  @requires_jspi
+  @parameterized({
+    '': ([],),
+    # The program itself has no try/catch; these check the two wrapper forms
+    # the jspi-hooks pass emits when libc++abi/longjmp bring in each EH kind.
+    'wasm_eh_legacy': (['-fwasm-exceptions'],),
+    'wasm_eh': (['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],),
+  })
+  def test_jspi_hooks(self, args):
+    self.set_setting('JSPI_HOOKS')
+    self.cflags.append('-Wno-experimental')
+    self.set_setting('JSPI_EXPORTS', ['rejects', 'run_nested', 'nested'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['dynCall'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$stringToNewUTF8', '$callUserCallback'])
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test('test_jspi_hooks.c', cflags=args)
+
+  # See test_pthread_wait_suspending for why @requires_node_25 is needed.
+  @requires_node_25
+  @requires_pthreads
+  @requires_jspi
+  @parameterized({
+    '': ([],),
+    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD'],),
+  })
+  def test_jspi_hooks_pthread(self, args):
+    self.set_setting('JSPI_HOOKS')
+    self.cflags.append('-Wno-experimental')
+    self.set_setting('JSPI_EXPORTS', ['rejects', 'run_nested', 'nested'])
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['dynCall'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$stringToNewUTF8', '$callUserCallback'])
+    self.set_setting('EXIT_RUNTIME')
+    self.do_core_test('test_jspi_hooks.c', cflags=['-pthread'] + args)
+
   # Test that a main with arguments is automatically asyncified.
   @with_asyncify_and_jspi
   def test_async_main(self):

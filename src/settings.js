@@ -931,7 +931,9 @@ var JSPI = 0;
 // that will call an asynchronous import (listed in ``JSPI_IMPORTS``) must be
 // included here.
 //
-// By default this includes ``main``.
+// By default this includes ``main``. These exports are also where the
+// :ref:`JSPI lifecycle hooks <jspi_hooks>` see a fiber being entered and
+// exited (see ``JSPI_HOOKS``).
 // [link]
 var JSPI_EXPORTS = [];
 
@@ -942,8 +944,23 @@ var JSPI_EXPORTS = [];
 //
 // Note when using JS library files, the function can be marked with
 // ``<function_name>_async:: true`` in the library instead of this setting.
+// These imports are also where the :ref:`JSPI lifecycle hooks <jspi_hooks>`
+// see a fiber being suspended and resumed (see ``JSPI_HOOKS``).
 // [link]
 var JSPI_IMPORTS = [];
+
+// Instrument the JSPI boundary with the fiber lifecycle hooks of
+// ``<emscripten/jspi.h>`` (see :ref:`jspi_lifecycle_hooks`): a post-link binaryen pass
+// wraps the promising exports and suspending imports, and a small runtime
+// library dispatches the events. Function pointers made promising from JS
+// (``dynCall(sig, ptr, args, true)``, Embind ``async()``) then go through a
+// per-signature trampoline export, which exists only for signatures present
+// in the table at link time, and a JSPI export fetched from the table as a
+// function pointer is no longer made promising automatically. Requires
+// ``JSPI``; implied by ``REENTRANT_JSPI``.
+// [link]
+// [experimental]
+var JSPI_HOOKS = false;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use

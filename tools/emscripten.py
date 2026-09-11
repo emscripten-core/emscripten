@@ -127,8 +127,11 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
   # start with the MVP features, and add any detected features.
   building.binaryen_features = ['--mvp-features', *metadata.features]
-  if settings.ASYNCIFY == 2:
+  if settings.JSPI:
     building.binaryen_features += ['--enable-reference-types']
+  if settings.JSPI_HOOKS:
+    # The jspi-hooks pass adds exception handling to the module.
+    building.binaryen_features += ['--enable-exception-handling']
 
   if settings.PTHREADS:
     assert '--enable-threads' in building.binaryen_features
@@ -456,6 +459,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     pre += "}\n"
 
   report_missing_exports(forwarded_json['librarySymbols'])
+  building.js_library_symbols.update(forwarded_json['librarySymbols'])
 
   building.extra_js_exports.update(forwarded_json['extraExports'])
 

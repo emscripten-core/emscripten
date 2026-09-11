@@ -20,6 +20,17 @@ See docs/process.md for more on how version tagging works.
 
 6.0.10 (in development)
 ----------------------
+- Added the experimental `-sJSPI_HOOKS` setting and `<emscripten/jspi.h>`,
+  lifecycle hooks for `-sJSPI` fibers: `jspi_register` receives
+  `JSPI_ENTER`/`JSPI_EXIT`/`JSPI_SUSPEND`/`JSPI_RESUME` events with a
+  per-fiber token of its own, dispatched from wrappers that the new binaryen
+  `--jspi-hooks` pass places around promising exports and suspending imports.
+  With the hooks enabled, function pointers made promising from JS (`dynCall`
+  with `promising`, Embind `async()`) go through a per-signature trampoline
+  export, which only exists for signatures present in the table at link time,
+  and a JSPI export fetched from the table as a function pointer is no longer
+  promised automatically. Independently of the setting, `invoke_*` imports are
+  no longer treated as suspending under JSPI.
 - The SDL3 port is no longer considered experimental, and the compiler
   diagnostic warning has been removed. (#27646)
 - `WASM=0` and `WASM=2` (wasm2js) were marked as deprecated. (See #27608)

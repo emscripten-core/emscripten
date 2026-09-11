@@ -1,0 +1,66 @@
+A SUSPEND#0
+B SUSPEND#0
+C SUSPEND suspensions=1
+A RESUME#0
+B RESUME#1
+C RESUME suspensions=1
+plain from fiber -> 101
+registered 61 more hooks, then -2
+A ENTER#1
+B ENTER#100
+A SUSPEND#1
+B SUSPEND#101
+C SUSPEND suspensions=1
+A EXIT#0
+B EXIT#2
+A RESUME#1
+B RESUME#102
+C RESUME suspensions=1
+A SUSPEND#1
+B SUSPEND#103
+C SUSPEND suspensions=2
+A RESUME#1 err
+B RESUME#104 err
+C RESUME suspensions=2
+A EXIT#1 err
+B EXIT#105 err
+rejects -> boom
+A ENTER#2
+B ENTER#200
+A SUSPEND#2
+B SUSPEND#201
+C SUSPEND suspensions=1
+A ENTER#3
+B ENTER#300
+nested body
+A SUSPEND#3
+B SUSPEND#301
+C SUSPEND suspensions=1
+  nested returned promise: true
+A RESUME#3
+B RESUME#302
+C RESUME suspensions=1
+nested after sleep
+A EXIT#3
+B EXIT#303
+A RESUME#2
+B RESUME#202
+C RESUME suspensions=1
+A EXIT#2
+B EXIT#203
+nested_entry -> 14
+plain outside -> 101
+A ENTER#4
+B ENTER#400
+nested body
+A SUSPEND#4
+B SUSPEND#401
+C SUSPEND suspensions=1
+A RESUME#4
+B RESUME#402
+C RESUME suspensions=1
+nested after sleep
+A EXIT#4
+B EXIT#403
+dyncall -> 42
+done

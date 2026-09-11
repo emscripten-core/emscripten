@@ -692,6 +692,13 @@ function makeDynCall(sig, funcPtr, promising = false) {
   );
   assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI');
 
+  if (promising) {
+    // Routed through $dynCall so that the call goes via the jspi-hooks
+    // trampoline for the signature; direct WebAssembly.promising of a table
+    // entry would run the fiber without its lifecycle hooks.
+    return `getDynCaller("${sig}", ${funcPtr}, true)`;
+  }
+
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
     args.push(`a${i}`);
@@ -762,21 +769,12 @@ Please update to new syntax.`);
     return `(() => ${dyncall}(${funcPtr}))`;
   }
 
-  let getWasmTableEntry = `getWasmTableEntry(${funcPtr})`;
-  if (promising) {
-    getWasmTableEntry = `WebAssembly.promising(${getWasmTableEntry})`;
-  }
-
+  const getWasmTableEntry = `getWasmTableEntry(${funcPtr})`;
   if (needArgConversion) {
     if (needRtnConversion) {
-      if (promising) {
-        return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}).then(Number))`;
-      } else {
-        return `((${args}) => Number(${getWasmTableEntry}.call(null, ${callArgs})))`;
-      }
-    } else {
-      return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+      return `((${args}) => Number(${getWasmTableEntry}.call(null, ${callArgs})))`;
     }
+    return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
   }
   return getWasmTableEntry;
 }

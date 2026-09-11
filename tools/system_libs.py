@@ -1016,6 +1016,32 @@ class libnoexit(Library):
   src_files = ['atexit_dummy.c']
 
 
+class libjspi(MTLibrary):
+  name = 'libjspi'
+  src_dir = 'system/lib/jspi'
+
+  def __init__(self, **kwargs):
+    self.hooks = kwargs.pop('hooks')
+    super().__init__(**kwargs)
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['hooks']
+
+  def get_base_name(self):
+    name = super().get_base_name()
+    if not self.hooks:
+      name += '-stub'
+    return name
+
+  def get_files(self):
+    return [utils.path_from_root('system/lib/jspi', 'jspi.c' if self.hooks else 'jspi_stub.c')]
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(hooks=settings.JSPI_HOOKS, **kwargs)
+
+
 class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libllvmlibc'
   never_force = True
@@ -2483,6 +2509,8 @@ def get_libs_to_link():
     add_library('libsockets_proxy')
   else:
     add_library('libsockets')
+
+  add_library('libjspi')
 
   if settings.WASM_WORKERS and (not settings.SINGLE_FILE and not settings.MAIN_MODULE):
     # When we include libwasm_workers we use `--whole-archive` to ensure
