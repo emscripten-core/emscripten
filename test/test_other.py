@@ -13653,6 +13653,12 @@ void foo() {}
     # write from other live work still delivers.
     self.do_runf('other/test_epoll_callback_pipe_exit.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
+  def test_epoll_callback_teardown_wake(self):
+    # A closing watched fd wakes the listener only to evict and holds nothing;
+    # exitRuntime's FS.quit closes every open fd, and a hold taken there would
+    # leave keepRuntimeAlive() set at _proc_exit and skip Module.onExit.
+    self.do_runf('other/test_epoll_callback_teardown_wake.c', 'done\nexited\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_pthread_trap(self):
