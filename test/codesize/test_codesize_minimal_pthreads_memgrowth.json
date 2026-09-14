@@ -1,10 +1,10 @@
 {
   "a.out.js": 7341,
   "a.out.js.gz": 3639,
-  "a.out.nodebug.wasm": 19133,
-  "a.out.nodebug.wasm.gz": 8846,
-  "total": 26474,
-  "total_gz": 12485,
+  "a.out.nodebug.wasm": 19140,
+  "a.out.nodebug.wasm.gz": 8833,
+  "total": 26481,
+  "total_gz": 12472,
   "sent": [
     "a (memory)",
     "b (exit)",
@@ -133,6 +133,7 @@
     "$emscripten_proxy_sync_with_ctx",
     "$emscripten_stack_get_current",
     "$emscripten_stack_set_limits",
+    "$emscripten_thread_mailbox_unref",
     "$free_ctx",
     "$get_or_add_tasks_for_thread",
     "$get_tasks_for_thread",

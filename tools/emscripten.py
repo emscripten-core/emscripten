@@ -653,7 +653,7 @@ def create_tsd_exported_runtime_methods(metadata):
   # for generation.
   js_doc = 'var RuntimeExports = {};\n'
   for name in settings.EXPORTED_RUNTIME_METHODS:
-    docs = '/** @type {{any}} */'
+    docs = '/** @type {any} */'
     snippet = ''
     if name in metadata.library_definitions:
       definition = metadata.library_definitions[name]
@@ -664,10 +664,10 @@ def create_tsd_exported_runtime_methods(metadata):
         docs = ''
       if definition['docs']:
         docs = definition['docs']
-        # TSC does not generate the correct type if there are jsdocs and nothing
-        # is assigned to the property.
-        if not snippet:
-          snippet = ' = null'
+    # TSC does not generate the correct type if there are jsdocs and nothing
+    # is assigned to the property.
+    if not snippet:
+      snippet = ' = null'
     js_doc += f'{docs}\nRuntimeExports[\'{name}\']{snippet};\n'
 
   file = 'jsdoc'

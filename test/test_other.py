@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# ruff: file-ignore[multiple-spaces-before-keyword]
 
 import errno
 import glob
@@ -3930,6 +3931,17 @@ More info: https://emscripten.org
     self.assertContained("    HEAPU32: Uint32Array;", actual)
     self.assertContained("    HEAPF32: Float32Array;", actual)
     self.assertContained("    HEAPF64: Float64Array;", actual)
+
+  @requires_dev_dependency('typescript')
+  def test_emit_tsd_callmain(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd.d.ts',
+                      '-sEXPORT_ES6', '-sMODULARIZE',
+                      '-sEXPORTED_RUNTIME_METHODS=callMain',
+                      '-o', 'test_emit_tsd.js'] +
+                     self.get_cflags())
+    actual = read_file('test_emit_tsd.d.ts')
+    self.assertContained("    callMain: any;", actual)
 
   def test_emconfig(self):
     output = self.run_process([EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -12057,7 +12069,8 @@ int main(void) {
 
   def test_linker_flags_unused(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-c', '-lbar'], stderr=PIPE).stderr
-    self.assertContained("warning: -lbar: 'linker' input unused [-Wunused-command-line-argument]", err)
+    self.assertContained("warning: -lbar: 'linker' input unused", err)
+    self.assertContained("[-Wunused-command-line-argument]", err)
 
     # Check that we don't see these "input unused" errors for linker flags when
     # compiling and linking in single step (i.e. ensure that we don't pass them to clang when
@@ -12071,7 +12084,8 @@ int main(void) {
   def test_linker_input_unused(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
     err = self.run_process([EMCC, 'hello_world.o', '-c', '-o', 'out.o'], stderr=PIPE).stderr
-    self.assertContained("clang: warning: hello_world.o: 'linker' input unused [-Wunused-command-line-argument]", err)
+    self.assertContained("clang: warning: hello_world.o: 'linker' input unused", err)
+    self.assertContained("[-Wunused-command-line-argument]", err)
     # In this case the compiler does not produce any output file.
     self.assertNotExists('out.o')
 
@@ -12125,7 +12139,7 @@ int main(void) {
 
     # check that `-Wno-pthreads-mem` disables pthread + ALLOW_GROWTH_MEMORY warning
     stderr = self.run_process(cmd + ['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH'], stderr=PIPE).stderr
-    self.assertNotContained('pthreads + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271', stderr)
+    self.assertNotContained('pthreads + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, consider -sGROWABLE_ARRAYBUFFERS=2', stderr)
 
   def test_emranlib(self):
     create_file('foo.c', 'int foo = 1;')
