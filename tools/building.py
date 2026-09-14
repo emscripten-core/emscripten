@@ -100,8 +100,6 @@ def llvm_backend_args():
   args = ['-combiner-global-alias-analysis=false']
 
   # asm.js-style exception handling
-  if not settings.DISABLE_EXCEPTION_CATCHING:
-    args += ['-enable-emscripten-cxx-exceptions']
   if settings.EXCEPTION_CATCHING_ALLOWED:
     # When 'main' has a non-standard signature, LLVM outlines its content out to
     # '__original_main'. So we add it to the allowed list as well.
@@ -339,6 +337,8 @@ def lld_flags(args):
     args += ['-mllvm', '-wasm-enable-eh']
   if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     args += ['-mllvm', '-exception-model=wasm']
+  elif not settings.DISABLE_EXCEPTION_CATCHING:
+    args += ['-mllvm', '-exception-model=emscripten']
 
   return args
 
