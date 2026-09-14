@@ -322,9 +322,11 @@ var EpollLibrary = {
     // (ep_poll_callback: on an edge, list the reg and wake any waiter on this
     // epoll - and through ep.node any parent epoll nesting it.)
     if (!reg.listener) {
-      reg.listener = target.node.addListener(() => {
+      reg.listener = target.node.addListener((flags) => {
         readyListAdd(ep, reg);
-        ep.node.notifyListeners({{{ cDefs.POLLIN }}});
+        // Readiness wakes the epoll as POLLIN; a closing fd (POLLNVAL) wakes
+        // it as a teardown, so listeners can tell an eviction from an event.
+        ep.node.notifyListeners(flags & {{{ cDefs.POLLNVAL }}} ? {{{ cDefs.POLLNVAL }}} : {{{ cDefs.POLLIN }}});
       // EPOLLEXCLUSIVE: when one fd is watched by several epolls, the watched
       // node wakes only one of them per edge (round-robin), not all.
       }, !!(events & {{{ cDefs.EPOLLEXCLUSIVE }}}));
@@ -496,7 +498,7 @@ var EpollLibrary = {
     var prev = ep.interests.get(key);
     if (prev) epollClearListener(ep, prev);
 
-    var it = {key};
+    var it = {key, ep};
 #if PTHREADS
     it.ownerThread = callerThread;
 #endif
@@ -535,19 +537,30 @@ var EpollLibrary = {
         // microtask each tick and so starve the event loop; use EPOLLET or
         // remove the listener for such fds. Inside the wrapper so the re-wake's
         // hold is taken before callUserCallback's maybeExit.
-        if (!it.cleared && !epollWouldBlock(ep)) wake();
+        if (!it.cleared && !epollWouldBlock(ep)) wake(true);
       });
     }
     // A scheduled delivery is pending work and holds the runtime until it runs
     // (like safeSetTimeout), independent of what the set watches: a pipe write
-    // from a callback's last act must still deliver.
-    function wake() {
+    // from a callback's last act must still deliver. A teardown wake holds
+    // nothing: a watched fd closing (POLLNVAL) only evicts, and once FS.quit
+    // has begun (exitRuntime: FS.initialized cleared, every open fd closed,
+    // pipe peers reporting POLLHUP on the way) no delivery can run, while a
+    // hold taken there would outlive the exit, leaving keepRuntimeAlive() set
+    // at _proc_exit and onExit skipped.
+    function wake(held) {
+      if (held && FS.initialized && !it.held) {
+        it.held = true;
+        epollKeepalive(1);
+      }
       if (it.scheduled) return;
       it.scheduled = true;
-      epollKeepalive(1);
       queueMicrotask(() => {
         it.scheduled = false;
-        epollKeepalive(-1);
+        if (it.held) {
+          it.held = false;
+          epollKeepalive(-1);
+        }
         deliver();
       });
     }
@@ -560,9 +573,9 @@ var EpollLibrary = {
       epollDeliveries[it.token] = it;
     }
 #endif
-    it.listener = ep.node.addListener(wake);
+    it.listener = ep.node.addListener((flags) => wake(!(flags & {{{ cDefs.POLLNVAL }}})));
     epollReconcileKeepalive(ep);
-    wake(); // deliver initial readiness if the set is already ready
+    wake(!epollWouldBlock(ep)); // deliver initial readiness if the set is already ready
     return 0;
   },
 
@@ -596,12 +609,12 @@ var EpollLibrary = {
   // Called (on the main thread) by the C helper once a cross-thread delivery
   // finishes on the registering thread: clear the in-flight gate and re-derive,
   // so a still-ready set delivers its next batch.
-  _emscripten_epoll_delivery_done__deps: ['$epollDeliveries', '$epollKeepalive'],
+  _emscripten_epoll_delivery_done__deps: ['$epollDeliveries', '$epollKeepalive', '$epollWouldBlock'],
   _emscripten_epoll_delivery_done: (token) => {
     var it = epollDeliveries[token];
     if (!it) return; // listener was removed while the delivery was in flight
     it.inflight = false;
-    it.wake();
+    it.wake(!epollWouldBlock(it.ep));
     epollKeepalive(-1);
   },
 #endif
