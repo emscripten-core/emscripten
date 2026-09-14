@@ -611,6 +611,9 @@ var NodeSockFSLibrary = {
       });
       nodeSockHelpers.wireConnection(sock, conn);
       conn.connect({ host: addr, port, lookup: nodeSockHelpers.noLookup });
+      // BoundSocket connects in-tick, so the kernel-assigned source address is
+      // already known (node >= 26.7).
+      sock.saddr = conn.address().address;
     },
     listen(sock, backlog) {
       if (sock.type !== {{{ cDefs.SOCK_STREAM }}}) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}}); // not a stream socket

@@ -5,11 +5,11 @@
  * found in the LICENSE file.
  *
  * getsockname() immediately after a non-blocking connect() on an unbound
- * client must report the kernel-assigned ephemeral source port: the kernel
- * assigns it synchronously at connect(), not when the connection completes.
- * The port must then stay the same once connected. This is plain POSIX and
- * also builds and runs natively, so the same code can be checked against the
- * host stack.
+ * client must report the kernel-assigned source address and ephemeral port:
+ * the kernel assigns both synchronously at connect() (the address from the
+ * route to the peer), not when the connection completes. Neither may change
+ * once connected. This is plain POSIX and also builds and runs natively, so the
+ * same code can be checked against the host stack.
  */
 
 #include <arpa/inet.h>
@@ -35,7 +35,9 @@ int client_fd = -1;
 int peer_fd = -1;
 struct sockaddr_in dest;
 bool connected = false;
-uint16_t client_port = 0; // network order, recorded right after connect()
+// Both in network order, recorded right after connect().
+uint16_t client_port = 0;
+in_addr_t client_addr = 0;
 
 void set_nonblocking(int fd) {
   fcntl(fd, F_SETFL, O_NONBLOCK);
@@ -62,15 +64,20 @@ void start_client(void) {
   int r = connect(client_fd, (struct sockaddr*)&dest, sizeof(dest));
   assert((r == 0 || errno == EINPROGRESS) && "connect");
 
-  // The ephemeral source port is assigned synchronously at connect(): it must
-  // be visible here, before the connection completes or any event turn runs.
+  // The source address and ephemeral port are assigned synchronously at
+  // connect(): both must be visible here, before the connection completes or
+  // any event turn runs.
   struct sockaddr_in sa;
   socklen_t sl = sizeof(sa);
   int g = getsockname(client_fd, (struct sockaddr*)&sa, &sl);
   assert(g == 0 && "getsockname after connect");
   assert(ntohs(sa.sin_port) != 0 && "ephemeral port assigned at connect()");
+  assert(sa.sin_addr.s_addr != htonl(INADDR_ANY) && "source address assigned at connect()");
   client_port = sa.sin_port;
-  printf("connecting from port %u\n", (unsigned)ntohs(client_port));
+  client_addr = sa.sin_addr.s_addr;
+  char buf[INET_ADDRSTRLEN];
+  printf("connecting from %s:%u\n", inet_ntop(AF_INET, &sa.sin_addr, buf, sizeof(buf)),
+         (unsigned)ntohs(client_port));
 }
 
 void main_loop(void) {
@@ -103,6 +110,8 @@ void main_loop(void) {
     socklen_t sl = sizeof(sa);
     assert(getsockname(client_fd, (struct sockaddr*)&sa, &sl) == 0);
     assert(sa.sin_port == client_port && "port stable across connect completion");
+    assert(sa.sin_addr.s_addr == client_addr &&
+           "address stable across connect completion");
     test_success();
   }
 }
