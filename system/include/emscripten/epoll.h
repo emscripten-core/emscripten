@@ -53,12 +53,14 @@ extern "C" {
 //   - EPOLLONESHOT: reported once, then the registration is disabled until you
 //     re-arm it with epoll_ctl(EPOLL_CTL_MOD).
 //
-// Listeners keep the runtime alive as long as the set can still fire - i.e.
-// while the epoll has at least one open watched fd. This follows the Node.js
-// model, where registered I/O interest holds the event loop open. Once every
-// watched fd is closed the set is terminal (it can never become ready again)
-// and its listeners stop holding the runtime, so no explicit disposal is
-// required in that case.
+// Listeners keep the runtime alive as long as the host can still make the set
+// ready - i.e. while the epoll has at least one armed registration on a
+// host-backed fd (a socket). This follows the Node.js model, where registered
+// I/O interest holds the event loop open. Once every such fd is closed (or
+// disarmed) the listeners stop holding the runtime, so no explicit disposal is
+// required in that case. A pipe does not count: it can only be written by wasm
+// code, which is already running (and so already held) when it does; a
+// delivery that write schedules is itself held until it runs.
 //
 // Listeners are shared instance state: they see registrations made through any
 // dup'd fd, and closing the last fd to the instance removes them all. Returns

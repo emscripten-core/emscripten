@@ -92,9 +92,9 @@ var EpollLibrary = {
       // Readiness listeners (emscripten_epoll_add_listener), keyed by
       // (registering thread, callback).
       interests: new Map(),
-      // Registrations with a live watched-node listener; keys the listener
-      // keepalive (0 means the set is terminal - it can never fire again).
-      armed: 0,
+      // Armed registrations on host-backed fds (epollHostBacked); keys the
+      // listener keepalive (0 means nothing the host can do makes the set ready).
+      hostArmed: 0,
       // Open references (fds) to this instance; the last close reclaims it.
       refcount: 1,
     });
@@ -106,7 +106,7 @@ var EpollLibrary = {
   $epollClearListener__internal: true,
   $epollClearListener__deps: [
 #if PTHREADS
-    '$epollDeliveries', '_emscripten_epoll_keepalive_on_thread',
+    '$epollDeliveries', '$epollKeepalive', '_emscripten_epoll_keepalive_on_thread',
 #endif
   ],
   $epollClearListener: (ep, it) => {
@@ -119,24 +119,57 @@ var EpollLibrary = {
     }
     it.keptAlive = false;
     // Retire its delivery token; a still-in-flight cross-thread delivery whose
-    // completion arrives after this finds nothing and is dropped.
+    // completion arrives after this finds nothing and is dropped - so release
+    // its hold here.
     if (it.token) delete epollDeliveries[it.token];
+    if (it.inflight) {
+      it.inflight = false;
+      epollKeepalive(-1);
+    }
 #endif
   },
 
-  // Listeners hold the runtime alive only while the epoll can still fire: at
-  // least one listener and one armed registration (Node.js-style, registered
-  // I/O interest holds the loop open; a terminal set releases it). With
-  // pthreads each listener's owner thread (which runs its deliveries) is held
-  // too.
+  // Every main-runtime keepalive hold taken by this library goes through here.
+  // exitRuntime only runs once the counter is 0 - naturally, or forfeited by
+  // emscripten_force_exit - and its FS.quit closes the epoll fds; that release
+  // (or a delivery landing after exit) is of an already-forfeited hold, not an
+  // underflow.
+  $epollKeepalive__internal: true,
+  $epollKeepalive__deps: [
+#if useRuntimeKeepaliveStack()
+    '$runtimeKeepaliveCounter', '$runtimeKeepalivePush', '$runtimeKeepalivePop',
+#endif
+  ],
+  $epollKeepalive: (delta) => {
+#if useRuntimeKeepaliveStack()
+    if (delta > 0) runtimeKeepalivePush();
+    else if (runtimeKeepaliveCounter > 0) runtimeKeepalivePop();
+#endif
+  },
+
+  // Can readiness on this watched fd arrive from the host (the JS event loop),
+  // with no wasm running? A socket's can. A pipe is only ever written by wasm,
+  // so whatever runs that write already holds the runtime - the registration
+  // itself need not. A nested epoll is counted conservatively (it may hold
+  // sockets).
+  $epollHostBacked__internal: true,
+  $epollHostBacked__deps: ['$FS'],
+  $epollHostBacked: (target) => FS.isSocket(target.node.mode) || !!target.shared.epoll,
+
+  // Listeners hold the runtime alive only while the host can still make the
+  // epoll ready: at least one listener and one armed host-backed registration
+  // (Node.js-style, registered I/O interest holds the loop open; a set the host
+  // cannot fire releases it). A pending delivery holds it separately (see
+  // wake()). With pthreads each listener's owner thread (which runs its
+  // deliveries) is held too.
   $epollReconcileKeepalive__internal: true,
-  $epollReconcileKeepalive__deps: [
+  $epollReconcileKeepalive__deps: ['$epollKeepalive',
 #if PTHREADS
     '_emscripten_epoll_keepalive_on_thread',
 #endif
   ],
   $epollReconcileKeepalive: (ep) => {
-    var armed = ep.armed > 0;
+    var armed = ep.hostArmed > 0;
 #if PTHREADS
     for (var it of ep.interests.values()) {
       if (armed != !!it.keptAlive) {
@@ -152,13 +185,7 @@ var EpollLibrary = {
     var want = armed && ep.interests.size > 0;
     if (want == !!ep.keepalive) return;
     ep.keepalive = want;
-#if useRuntimeKeepaliveStack()
-    if (want) {
-      {{{ runtimeKeepalivePush() }}}
-    } else {
-      {{{ runtimeKeepalivePop() }}}
-    }
-#endif
+    epollKeepalive(want ? 1 : -1);
   },
 
   // The ready list (Linux's rdllist): registrations whose readiness edge has
@@ -201,7 +228,7 @@ var EpollLibrary = {
     if (reg.listener) {
       reg.listener.listeners.delete(reg.listener.entry);
       reg.listener = null;
-      ep.armed--;
+      ep.hostArmed -= reg.host;
     }
     ep.epoll.delete(reg.fd);
     epollReconcileKeepalive(ep);
@@ -211,7 +238,7 @@ var EpollLibrary = {
   // points stay in libsyscall.js (like every other syscall) and resolve the
   // epoll stream before calling in here, so `ep` is a known-valid epoll stream.
   $epollCtl__internal: true,
-  $epollCtl__deps: ['$FS', '$pollOne', '$readyListAdd', '$epollEvict', '$epollReconcileKeepalive'],
+  $epollCtl__deps: ['$FS', '$pollOne', '$readyListAdd', '$epollEvict', '$epollReconcileKeepalive', '$epollHostBacked'],
   $epollCtl: (ep, op, fd, ev) => {
     var target = FS.getStream(fd);
     if (!target) return -{{{ cDefs.EBADF }}};
@@ -301,7 +328,8 @@ var EpollLibrary = {
       // EPOLLEXCLUSIVE: when one fd is watched by several epolls, the watched
       // node wakes only one of them per edge (round-robin), not all.
       }, !!(events & {{{ cDefs.EPOLLEXCLUSIVE }}}));
-      ep.armed++;
+      reg.host = +epollHostBacked(target);
+      ep.hostArmed += reg.host;
     }
     // Arming is itself an event source (ep_insert/ep_modify): a source-based
     // model only learns readiness from edges, so sample the level now - the
@@ -355,7 +383,7 @@ var EpollLibrary = {
             // listener - the watched node stops poking it (no re-arm needed).
             node.listener.listeners.delete(node.listener.entry);
             node.listener = null;
-            ep.armed--;
+            ep.hostArmed -= node.host;
             disarmed = true;
           } else if (!(node.events & {{{ cDefs.EPOLLET }}})) {
             readyListAdd(ep, node); // level: re-list at tail
@@ -439,7 +467,7 @@ var EpollLibrary = {
   // collected by exactly one of them - the same load balancing as multiple
   // blocking epoll_wait callers on one epoll. A level fd left undrained
   // re-signals every tick, an edge fd once per edge.
-  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$epollReconcileKeepalive', '$callUserCallback',
+  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$epollReconcileKeepalive', '$epollKeepalive', '$callUserCallback',
 #if PTHREADS
     '$epollDeliveries', '_emscripten_epoll_run_callback_on_thread',
 #endif
@@ -493,24 +521,33 @@ var EpollLibrary = {
 #if PTHREADS
       if (callerThread) {
         it.inflight = true;
+        epollKeepalive(1); // held until the completion lands back here
         __emscripten_epoll_run_callback_on_thread(callerThread, callback, userdata, it.token);
         return;
       }
 #endif
-      callUserCallback(() => {{{ makeDynCall('vp', 'callback') }}}(userdata));
-      // Still readable (this callback didn't drain, or a still-ready level fd
-      // re-listed): fire again on the next tick. Note this is NOT a blocking
-      // epoll_wait loop - a level-triggered fd that is structurally always ready
-      // (e.g. EPOLLOUT on a writable socket) will re-schedule a microtask each
-      // tick and so starve the event loop; use EPOLLET or remove the listener
-      // for such fds.
-      if (!it.cleared && !epollWouldBlock(ep)) wake();
+      callUserCallback(() => {
+        {{{ makeDynCall('vp', 'callback') }}}(userdata);
+        // Still readable (this callback didn't drain, or a still-ready level fd
+        // re-listed): fire again on the next tick. Note this is NOT a blocking
+        // epoll_wait loop - a level-triggered fd that is structurally always
+        // ready (e.g. EPOLLOUT on a writable socket) will re-schedule a
+        // microtask each tick and so starve the event loop; use EPOLLET or
+        // remove the listener for such fds. Inside the wrapper so the re-wake's
+        // hold is taken before callUserCallback's maybeExit.
+        if (!it.cleared && !epollWouldBlock(ep)) wake();
+      });
     }
+    // A scheduled delivery is pending work and holds the runtime until it runs
+    // (like safeSetTimeout), independent of what the set watches: a pipe write
+    // from a callback's last act must still deliver.
     function wake() {
       if (it.scheduled) return;
       it.scheduled = true;
+      epollKeepalive(1);
       queueMicrotask(() => {
         it.scheduled = false;
+        epollKeepalive(-1);
         deliver();
       });
     }
@@ -559,12 +596,13 @@ var EpollLibrary = {
   // Called (on the main thread) by the C helper once a cross-thread delivery
   // finishes on the registering thread: clear the in-flight gate and re-derive,
   // so a still-ready set delivers its next batch.
-  _emscripten_epoll_delivery_done__deps: ['$epollDeliveries'],
+  _emscripten_epoll_delivery_done__deps: ['$epollDeliveries', '$epollKeepalive'],
   _emscripten_epoll_delivery_done: (token) => {
     var it = epollDeliveries[token];
     if (!it) return; // listener was removed while the delivery was in flight
     it.inflight = false;
     it.wake();
+    epollKeepalive(-1);
   },
 #endif
 };
