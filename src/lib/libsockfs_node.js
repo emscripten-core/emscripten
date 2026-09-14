@@ -56,7 +56,7 @@ null;
 
 var NodeSockFSLibrary = {
   // Node plumbing shared by the interface methods below.
-  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES', '$FS', '$inetPton4', '$inetPton6',
+  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES', '$inetPton4', '$inetPton6',
 #if ASSERTIONS
     '$warnOnce',
 #endif
@@ -75,31 +75,6 @@ var NodeSockFSLibrary = {
     },
     getDns() {
       return nodeSockHelpers.dnsModule ??= (process.getBuiltinModule || require)('dns');
-    },
-    // Address entries for `name` in /etc/hosts, read fresh through emscripten's
-    // FS on each call so a MEMFS or mounted file is honored as written. A
-    // missing file is simply empty.
-    readHosts(name) {
-      var out = [];
-      var text;
-      try {
-        text = FS.readFile('/etc/hosts', { encoding: 'utf8' });
-      } catch (e) {
-        return out;
-      }
-      for (var line of text.split('\n')) {
-        var hash = line.indexOf('#');
-        if (hash !== -1) line = line.slice(0, hash);
-        var parts = line.split(/\s+/).filter((p) => p.length);
-        if (parts.length < 2 || !parts.slice(1).includes(name)) continue;
-        var addr = inetPton4(parts[0]);
-        if (addr !== null) {
-          out.push({ family: {{{ cDefs.AF_INET }}}, addr });
-        } else if ((addr = inetPton6(parts[0])) !== null) {
-          out.push({ family: {{{ cDefs.AF_INET6 }}}, addr });
-        }
-      }
-      return out;
     },
     // Resolve a hostname via node:dns for `family` (AF_UNSPEC for both).
     // Resolves to a list of {family, addr} entries, or an EAI_* code: node:dns

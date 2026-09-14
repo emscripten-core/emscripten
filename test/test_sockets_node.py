@@ -213,14 +213,14 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_udp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   def test_noderawsockets_dns(self):
-    # getaddrinfo() resolves numeric addresses and /etc/hosts entries (read via
-    # emscripten's FS) synchronously, as a linked list. A real hostname needs a
-    # node:dns lookup, and with no stack able to wait on it is EAI_AGAIN.
+    # getaddrinfo() resolves numeric addresses synchronously. A hostname needs
+    # a node:dns lookup, and with no stack able to wait on it is EAI_AGAIN.
     self.do_runf('sockets/test_dns.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-DNO_WAIT'])
 
   def test_noderawsockets_dns_blocking(self):
-    # A real hostname blocks on the node:dns lookup: main() is proxied to a
-    # worker, which awaits the resolution through the sync proxy.
+    # A hostname blocks on the node:dns lookup, returning every address as a
+    # linked list: main() is proxied to a worker, which awaits the resolution
+    # through the sync proxy.
     self.do_runf('sockets/test_dns.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
 
