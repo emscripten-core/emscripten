@@ -1,7 +1,7 @@
 {
-  "a.out.js": 270671,
+  "a.out.js": 270584,
   "a.out.nodebug.wasm": 588266,
-  "total": 858937,
+  "total": 858850,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -442,7 +442,6 @@
     "emscripten_asm_const_double",
     "emscripten_asm_const_double_sync_on_main_thread",
     "emscripten_asm_const_int",
-    "emscripten_asm_const_int_await_on_main_thread",
     "emscripten_asm_const_int_sync_on_main_thread",
     "emscripten_asm_const_ptr",
     "emscripten_asm_const_ptr_sync_on_main_thread",

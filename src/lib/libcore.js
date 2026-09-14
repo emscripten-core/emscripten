@@ -1675,18 +1675,15 @@ addToLibrary({
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_int_sync_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 1),
 
+#if PTHREADS
   emscripten_asm_const_int_await_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_int_await_on_main_thread: (emAsmAddr, sigPtr, argbuf) => {
-#if PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) {
-      return runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 2);
-    }
-#endif
 #if ASSERTIONS
-    assert((typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD), "emscripten_asm_const_int_await_on_main_thread is not available on the main thread");
+    assert(ENVIRONMENT_IS_PTHREAD, 'emscripten_asm_const_int_await_on_main_thread is not available on the main thread');
 #endif
     return runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 2);
   },
+#endif
 
   emscripten_asm_const_ptr_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_ptr_sync_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 1),

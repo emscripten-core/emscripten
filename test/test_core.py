@@ -2000,7 +2000,7 @@ int main(int argc, char **argv) {
     self.do_core_test('test_main_thread_async_em_asm.cpp', cflags=args, force_c=force_c)
 
   @parameterized({
-    '': (['-sASSERTIONS'],),
+    '': (['-pthread', '-sASSERTIONS'],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_main_thread_async_em_asm_await(self, args):
@@ -2010,6 +2010,11 @@ int main(int argc, char **argv) {
       self.assertContained('emscripten_asm_const_int_await_on_main_thread is not available on the main thread', output)
     else:
       self.do_core_test('test_main_thread_async_em_asm_await.cpp', cflags=args)
+
+  def test_main_thread_async_em_asm_await_requires_pthreads(self):
+    self.assert_fail(
+      [EMXX, test_file('core/test_main_thread_async_em_asm_await.cpp')] + self.get_cflags(),
+      'undefined symbol: emscripten_asm_const_int_await_on_main_thread')
 
   def test_main_thread_async_em_asm_await_reject(self):
     self.do_core_test('test_main_thread_async_em_asm_await_reject.cpp',
