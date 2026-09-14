@@ -13647,6 +13647,12 @@ void foo() {}
     # the callback every tick: documents the spin contract (use EPOLLET/unregister).
     self.do_runf('other/test_epoll_callback_level.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
+  def test_epoll_callback_pipe_exit(self):
+    # Only host-backed (socket) registrations hold the runtime: a listener over
+    # an armed pipe alone lets the process exit when main returns, while a pipe
+    # write from other live work still delivers.
+    self.do_runf('other/test_epoll_callback_pipe_exit.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_pthread_trap(self):
