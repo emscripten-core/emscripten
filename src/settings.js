@@ -2238,6 +2238,7 @@ var SIGNATURE_CONVERSIONS = [];
 
 // Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
 // [link]
+// [experimental]
 var WASM_BINDGEN = 0;
 
 // Experimental support for wasm source phase imports.

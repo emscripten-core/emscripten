@@ -3373,6 +3373,8 @@ WASM_BINDGEN
 
 Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
 
+.. note:: This is an experimental setting
+
 Default value: 0
 
 .. _source_phase_imports:

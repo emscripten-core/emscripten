@@ -119,6 +119,19 @@ actions = [
 ]
 
 
+def enable_emsdk_node():
+  # By default emsdk avoids prepending its node binary to PATH if another node
+  # is already present. For running bootstrap actions (like `npm ci`), however,
+  # we prefer the emsdk-provided node (and npm) because the system node might
+  # be an incompatible version or lack npm.
+  # Other emscripten tools can rely on the config file to find node so do not
+  # need to do this.
+  emsdk_node = os.environ.get('EMSDK_NODE')
+  if emsdk_node:
+    node_dir = os.path.dirname(emsdk_node)
+    os.environ['PATH'] = node_dir + os.pathsep + os.environ['PATH']
+
+
 def main(args):
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument('-v', '--verbose', action='store_true', help='verbose', default=False)
@@ -129,6 +142,8 @@ def main(args):
 
   if args.install_git_hooks:
     return install_hooks()
+
+  enable_emsdk_node()
 
   for name, deps, action in actions:
     if not args.force:

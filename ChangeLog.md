@@ -18,8 +18,18 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.8 (in development)
+6.0.9 (in development)
 ----------------------
+- The `WASM_BINDGEN` setting is now marked experimental, and enabling it
+  produces a compiler diagnostic warning, since the integration is still
+  evolving and subject to change. (#27616)
+- The `-sCROSS_ORIGIN_STORAGE` cache-hit and cache-miss paths now use
+  `WebAssembly.instantiateStreaming()` (via `Blob.stream()` and a `tee()`'d
+  network body respectively), so enabling the flag no longer loses the
+  download/compile overlap of the standard streaming path. (#27609)
+
+6.0.8 - 08/20/26
+----------------
 - The `JSPI` setting is no longer considered experimental, and the compiler
   diagnostic warning has been removed. (#27559)
 - Added support for `epoll` (`epoll_create1`/`epoll_ctl`/`epoll_wait`/

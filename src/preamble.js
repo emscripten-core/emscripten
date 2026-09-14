@@ -620,6 +620,19 @@ async function instantiateArrayBuffer(binaryFile, imports) {
   }
 }
 
+#if CROSS_ORIGIN_STORAGE
+// Stream Wasm bytes into the compiler. A fixed `application/wasm` type is
+// used rather than any server-supplied MIME type: on a cache hit the bytes
+// were hash-verified when written into COS, and on a cache miss the store
+// branch is already consuming the body, so the standard path's re-download
+// fallback for a bad MIME type is not available. A wrong file still fails
+// compilation and falls through to the standard path.
+function cosInstantiateStream(stream, imports) {
+  var response = new Response(stream, { headers: { 'Content-Type': 'application/wasm' } });
+  return WebAssembly.instantiateStreaming(response, imports);
+}
+#endif
+
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
 #if CROSS_ORIGIN_STORAGE
@@ -631,23 +644,31 @@ async function instantiateAsync(binary, binaryFile, imports) {
     var cosHash = Module['wasmHash'];
     try {
       var cosHandle = await navigator.crossOriginStorage.requestFileHandle(cosHash);
-      // Cache hit — read the Blob and instantiate from its ArrayBuffer.
+      // Cache hit. getFile() resolves to a lazy File reference; no bytes are
+      // read until the stream is consumed by the compiler below.
       var cosFile = await cosHandle.getFile();
-      var cosBytes = await cosFile.arrayBuffer();
 #if expectToReceiveOnModule('onCOSCacheHit')
       Module['onCOSCacheHit']?.(cosHash.value);
 #endif
-      return WebAssembly.instantiate(cosBytes, imports);
+      return cosInstantiateStream(cosFile.stream(), imports);
     } catch {
       // Any error (not found, not allowed, …) — fetch from the network and
       // attempt to store in COS for future page loads.
       try {
         var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
-        var wasmBytes = await networkResponse.arrayBuffer();
+        if (!networkResponse.ok) {
+          throw new Error(`HTTP ${networkResponse.status}`);
+        }
 #if expectToReceiveOnModule('onCOSCacheMiss')
         Module['onCOSCacheMiss']?.(cosHash.value, binaryFile);
 #endif
+        // Split the body so that one branch feeds streaming compilation while
+        // the other is written into COS in the background. This keeps the
+        // download/compile overlap of the standard instantiateStreaming()
+        // path instead of waiting for the whole file to arrive first.
+        var [compileStream, storeStream] = networkResponse.body.tee();
         // Fire-and-forget store; never block instantiation on the write.
+        // pipeTo() closes the writable, and COS verifies the hash on close.
         (async () => {
           try {
             var writeHandle = await navigator.crossOriginStorage.requestFileHandle(
@@ -661,16 +682,18 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #endif
             );
             var writable = await writeHandle.createWritable();
-            await writable.write(new Blob([wasmBytes], { type: 'application/wasm' }));
-            await writable.close();
+            await storeStream.pipeTo(writable);
 #if expectToReceiveOnModule('onCOSStore')
             Module['onCOSStore']?.(cosHash.value);
 #endif
           } catch (storeErr) {
             err(`COS store failed: ${storeErr}`);
+            // Release the tee branch so the body is not buffered indefinitely
+            // on behalf of a writer that will never consume it.
+            storeStream.cancel().catch(() => {});
           }
         })();
-        return WebAssembly.instantiate(wasmBytes, imports);
+        return cosInstantiateStream(compileStream, imports);
       } catch (fetchErr) {
         // Network fetch failed; fall through to the standard path below.
         err(`COS fallback fetch failed: ${fetchErr}`);

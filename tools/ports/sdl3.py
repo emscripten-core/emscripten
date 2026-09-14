@@ -106,7 +106,7 @@ def get(ports, settings, shared):
       'sensor/dummy/*.c',
     ]
 
-    flags = ['-sUSE_SDL=0']
+    flags = []
     if settings.PTHREADS:
       glob_patterns.append('thread/pthread/*.c')
       flags += ['-pthread']

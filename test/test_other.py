@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 
+import errno
 import glob
 import hashlib
 import importlib
@@ -14,7 +15,6 @@ import os
 import platform
 import random
 import re
-import select
 import shlex
 import shutil
 import struct
@@ -84,6 +84,7 @@ from decorators import (
   parameterized,
   requires_dev_dependency,
   requires_jspi,
+  requires_login_tty,
   requires_native_clang,
   requires_network,
   requires_node,
@@ -332,22 +333,43 @@ class other(RunnerCore):
   def do_other_test(self, testname, cflags=None, **kwargs):
     return self.do_runf_out_file(test_file('other', testname), cflags=cflags, **kwargs)
 
-  def run_on_pty(self, cmd):
+  def run_on_pty(self, cmd, input=None):
     master, slave = os.openpty()
     output = []
     print(cmd)
 
+    if input:
+      assert hasattr(os, 'login_tty'), 'passing input to run_on_pty requires os.login_tty (python 3.11+)'
+      if isinstance(input, str):
+        input = input.encode('utf-8')
+      os.write(master, input)
+
     try:
       with env_modify({'TERM': 'xterm-color'}):
-        proc = subprocess.Popen(cmd, stdout=slave, stderr=slave)
-        while proc.poll() is None:
-          r, _w, _x = select.select([master], [], [], 1)
-          if r:
-            output.append(os.read(master, 1024))
-        return (proc.returncode, b''.join(output))
+        if hasattr(os, 'login_tty'):
+          proc = subprocess.Popen(cmd, preexec_fn=lambda: os.login_tty(slave), close_fds=True)  # ruff: ignore[subprocess-popen-preexec-fn]
+        else:
+          proc = subprocess.Popen(cmd, stdout=slave, stderr=slave, close_fds=True)
+    finally:
+      os.close(slave)
+
+    try:
+      while True:
+        try:
+          data = os.read(master, 1024)
+          if not data:
+            break
+          output.append(data)
+        except OSError as e:
+          # On Linux, once all slave descriptors are closed and all buffered
+          # output has been consumed, reading from master raises EIO (EOF).
+          if e.errno == errno.EIO:
+            break
+          raise
+      proc.wait()
+      return (proc.returncode, b''.join(output))
     finally:
       os.close(master)
-      os.close(slave)
 
   def create_huge_file(self, name, length):
     f = open(name, "wb")
@@ -2617,6 +2639,14 @@ F1 -> ''
     self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '-sUSE_SDL_GFX=2', '-o', 'a.out.js'])
     self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '--use-port=sdl2_gfx', '-o', 'a.out.js'])
 
+  @with_all_sjlj
+  @requires_network
+  def test_sdl2_image_linkable(self):
+    # Same as above but for sdl2_image library
+    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '-sUSE_SDL_IMAGE=2', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '--use-port=sdl2_image', '-o', 'a.out.js'])
+
+  @with_all_sjlj
   @requires_network
   def test_libpng(self):
     copy_asset('third_party/libpng/pngtest.png')
@@ -2625,6 +2655,7 @@ F1 -> ''
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  cflags=['--embed-file', 'pngtest.png', '--use-port=libpng'])
 
+  @with_all_sjlj
   @requires_pthreads
   @requires_network
   def test_libpng_with_pthreads(self):
@@ -2910,34 +2941,36 @@ More info: https://emscripten.org
       ''')
 
     for value in ([0, 1]):
-      delete_file('a.out.js')
-      print('checking %s' % value)
-      extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
-      proc = self.run_process([EMCC, '-sUSE_SDL', '-sGL_ENABLE_GET_PROC_ADDRESS', 'main.c'] + extra + args, stderr=PIPE, check=False)
-      if common.EMTEST_VERBOSE:
-        print(proc.stderr)
-      if value or action is None:
-        # The default is that we error in undefined symbols
-        self.assertContained('undefined symbol: something', proc.stderr)
-        self.assertContained('undefined symbol: elsey', proc.stderr)
-        check_success = False
-      elif action == 'ERROR' and not value:
-        # Error disables, should only warn
-        self.assertContained('warning: undefined symbol: something', proc.stderr)
-        self.assertContained('warning: undefined symbol: elsey', proc.stderr)
-        self.assertNotContained('undefined symbol: emscripten_', proc.stderr)
-        check_success = True
-      elif action == 'WARN' and not value:
-        # Disabled warning should imply disabling errors
-        self.assertNotContained('undefined symbol', proc.stderr)
-        check_success = True
+      # Ensure that JS compiler output cache doesn't affect the generated warnings/errors.
+      for _ in range(2):
+        delete_file('a.out.js')
+        print('checking %s' % value)
+        extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
+        proc = self.run_process([EMCC, '-sUSE_SDL', '-sGL_ENABLE_GET_PROC_ADDRESS', 'main.c'] + extra + args, stderr=PIPE, check=False)
+        if common.EMTEST_VERBOSE:
+          print(proc.stderr)
+        if value or action is None:
+          # The default is that we error in undefined symbols
+          self.assertContained('undefined symbol: something', proc.stderr)
+          self.assertContained('undefined symbol: elsey', proc.stderr)
+          check_success = False
+        elif action == 'ERROR' and not value:
+          # Error disables, should only warn
+          self.assertContained('warning: undefined symbol: something', proc.stderr)
+          self.assertContained('warning: undefined symbol: elsey', proc.stderr)
+          self.assertNotContained('undefined symbol: emscripten_', proc.stderr)
+          check_success = True
+        elif action == 'WARN' and not value:
+          # Disabled warning should imply disabling errors
+          self.assertNotContained('undefined symbol', proc.stderr)
+          check_success = True
 
-      if check_success:
-        self.assertEqual(proc.returncode, 0)
-        self.assertTrue(os.path.exists('a.out.js'))
-      else:
-        self.assertNotEqual(proc.returncode, 0)
-        self.assertFalse(os.path.exists('a.out.js'))
+        if check_success:
+          self.assertEqual(proc.returncode, 0)
+          self.assertTrue(os.path.exists('a.out.js'))
+        else:
+          self.assertNotEqual(proc.returncode, 0)
+          self.assertFalse(os.path.exists('a.out.js'))
 
   def test_undefined_data_symbols(self):
     create_file('main.c', r'''
@@ -3885,14 +3918,14 @@ More info: https://emscripten.org
                       '-o', 'test_emit_tsd.js'] +
                      self.get_cflags())
     actual = read_file('test_emit_tsd.d.ts')
-    self.assertContained("    let HEAP8: Int8Array;", actual)
-    self.assertContained("    let HEAPU8: Uint8Array;", actual)
-    self.assertContained("    let HEAP16: Int16Array;", actual)
-    self.assertContained("    let HEAPU16: Uint16Array;", actual)
-    self.assertContained("    let HEAP32: Int32Array;", actual)
-    self.assertContained("    let HEAPU32: Uint32Array;", actual)
-    self.assertContained("    let HEAPF32: Float32Array;", actual)
-    self.assertContained("    let HEAPF64: Float64Array;", actual)
+    self.assertContained("    HEAP8: Int8Array;", actual)
+    self.assertContained("    HEAPU8: Uint8Array;", actual)
+    self.assertContained("    HEAP16: Int16Array;", actual)
+    self.assertContained("    HEAPU16: Uint16Array;", actual)
+    self.assertContained("    HEAP32: Int32Array;", actual)
+    self.assertContained("    HEAPU32: Uint32Array;", actual)
+    self.assertContained("    HEAPF32: Float32Array;", actual)
+    self.assertContained("    HEAPF64: Float64Array;", actual)
 
   def test_emconfig(self):
     output = self.run_process([EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -8806,13 +8839,13 @@ int main() {
   # We have LTO tests covered in 'wasmltoN' targets in test_core.py, but they
   # don't run as a part of Emscripten CI, so we add a separate LTO test here.
   @requires_wasm_eh
-  def test_lto_wasm_exceptions(self):
+  @parameterized({
+    '': (['-sWASM_LEGACY_EXCEPTIONS=0'],),
+    'legacy': (['-sWASM_LEGACY_EXCEPTIONS'],),
+  })
+  def test_lto_wasm_exceptions(self, args):
     self.set_setting('EXCEPTION_DEBUG')
-    self.cflags += ['-fwasm-exceptions', '-flto']
-    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
-    self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
+    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught', cflags=['-fwasm-exceptions', '-flto'] + args)
 
   @parameterized({
     '': ([],),
@@ -9691,6 +9724,15 @@ end
     self.add_pre_run("console.log(FS.readFile('foo', { encoding: 'utf8' }));")
     self.do_runf('hello_world.c', 'bar', cflags=['-sNODERAWFS', '-sFORCE_FILESYSTEM'])
 
+  @also_with_noderawfs
+  @no_windows('ptys and select are not available on windows')
+  @requires_login_tty
+  def test_getpass(self):
+    self.run_process([EMCC, test_file('unistd/getpass.c'), '-sFORCE_FILESYSTEM'] + self.get_cflags())
+    returncode, output = self.run_on_pty(config.NODE_JS + ['a.out.js'], input='secret\n')
+    self.assertEqual(returncode, 0)
+    self.assertIn(b'done', output)
+
   @disabled('https://github.com/nodejs/node/issues/18265')
   def test_node_code_caching(self):
     self.run_process([EMCC, test_file('hello_world.c'),
@@ -9733,10 +9775,16 @@ end
     # ioctl requires filesystem
     self.do_other_test('test_ioctl.c', cflags=['-sFORCE_FILESYSTEM'])
 
-  # @also_with_noderawfs # NODERAWFS needs to implement the ioctl syscalls, see issue #22264.
   def test_ioctl_termios(self):
     # ioctl requires filesystem
     self.do_other_test('test_ioctl_termios.c', cflags=['-sFORCE_FILESYSTEM'])
+
+  @no_windows('ptys and select are not available on windows')
+  def test_ioctl_termios_noderawfs(self):
+    self.run_process([EMCC, test_file('other/test_ioctl_termios.c'), '-sNODERAWFS', '-sFORCE_FILESYSTEM'])
+    returncode, output = self.run_on_pty(config.NODE_JS + ['a.out.js'])
+    self.assertEqual(returncode, 0)
+    self.assertIn(b'done\r\n', output)
 
   def test_fd_closed(self):
     self.do_other_test('test_fd_closed.cpp')
@@ -12339,11 +12387,11 @@ int main(void) {
   @parameterized({
     '': (['-DUSE_KEEPALIVE'],),
     'minimal': (['-DUSE_KEEPALIVE', '-sMINIMAL_RUNTIME'],),
-    'command_line': (['-sEXPORTED_FUNCTIONS=_g_foo,_main'],),
-    'himem': (['-sEXPORTED_FUNCTIONS=_g_foo,_main', '-sGLOBAL_BASE=2gb', '-sINITIAL_MEMORY=3gb'],),
+    'command_line': (['-sEXPORTED_FUNCTIONS=_g_var,_g_func,__ZN2ns6ns_varE,__Z8cpp_funci,_main'],),
+    'himem': (['-sEXPORTED_FUNCTIONS=_g_var,_g_func,__ZN2ns6ns_varE,__Z8cpp_funci,_main', '-sGLOBAL_BASE=2gb', '-sINITIAL_MEMORY=3gb'],),
   })
   def test_export_global_address(self, args):
-    self.do_other_test('test_export_global_address.c', cflags=args)
+    self.do_other_test('test_export_global_address.cpp', cflags=args)
 
   def test_linker_version(self):
     out = self.run_process([EMCC, '-Wl,--version'], stdout=PIPE).stdout
@@ -12507,6 +12555,18 @@ int main () {
     ''')
     self.run_process([EMCC, 'conftest.c', 'libtest.so', '-o', 'conftest.js'])
 
+  @no_windows('configure scripts are Unix shell scripts')
+  @requires_tool('autoconf')
+  def test_autoconf_configure(self):
+    copytree(test_file('autoconf'), '.')
+    self.run_process(['autoconf'])
+    out = self.run_process([EMCONFIGURE, './configure'], stdout=PIPE).stdout
+    self.assertContained('checking for getcwd... yes', out)
+    self.assertContained('checking for getwd... no', out)
+    self.assertContained('checking for nonexistent_func... no', out)
+    self.assertContained('checking for nonexistent_header.h... no', out)
+    self.assertContained('configure: run test passed', out)
+
   def test_standalone_export_main(self):
     # Tests that explicitly exported `_main` does not fail, even though `_start` is the entry
     # point.
@@ -12514,14 +12574,14 @@ int main () {
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core/test_hello_world.c')])
 
   @requires_wasm_eh
-  def test_standalone_wasm_exceptions(self):
+  @parameterized({
+    '': (['-sWASM_LEGACY_EXCEPTIONS=0'],),
+    'legacy': (['-sWASM_LEGACY_EXCEPTIONS'],),
+  })
+  def test_standalone_wasm_exceptions(self, args):
     self.set_setting('STANDALONE_WASM')
     self.wasm_engines = []
-    self.cflags += ['-fwasm-exceptions']
-    self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
-    self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
+    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught', cflags=['-fwasm-exceptions'] + args)
 
   def test_missing_malloc_export(self):
     # we used to include malloc by default. show a clear error in builds with
@@ -15338,7 +15398,7 @@ addToLibrary({
     ''')
 
     self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
-    self.do_runf('empty.c', '42', cflags=[lib, '-sWASM_BINDGEN', '--post-js=post.js', '-lexports.js'])
+    self.do_runf('empty.c', '42', cflags=[lib, '-sWASM_BINDGEN', '-Wno-experimental', '--post-js=post.js', '-lexports.js'])
 
   @requires_rust
   @requires_dev_dependency('typescript')
@@ -15356,7 +15416,7 @@ addToLibrary({
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     create_file('empty.c', '')
     self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
-    self.run_process([EMCC, 'empty.c', '--emit-tsd', 'test_multi.d.ts', '-sWASM_BINDGEN', '-o', 'test_multi.js'] + [lib] + self.get_cflags())
+    self.run_process([EMCC, 'empty.c', '--emit-tsd', 'test_multi.d.ts', '-sWASM_BINDGEN', '-Wno-experimental', '-o', 'test_multi.js'] + [lib] + self.get_cflags())
     actual = read_file('test_multi.d.ts')
     self.assertContained("multi_value_return(): [number, number, number];", actual)
 

@@ -131,6 +131,9 @@ MINIMAL_PIC_TASKS = [
     'libwasmfs',
     'giflib',
     'sdl2',
+    'sdl2_image',
+    'sdl2_image-legacysjlj',
+    'sdl2_image-wasmsjlj',
     'sdl2_gfx',
     'sdl3',
 ]

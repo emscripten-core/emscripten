@@ -10,7 +10,7 @@
     "prettier": "^3.9.4",
     "rollup": "^4.62.2",
     "source-map": "0.7.6",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^8.1.2",
     "webpack": "^5.108.3",
     "webpack-cli": "^7.1.0",

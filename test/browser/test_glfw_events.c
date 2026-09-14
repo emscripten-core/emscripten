@@ -10,10 +10,10 @@
 #else
     #include <GLFW/glfw3.h>
 #endif
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 
-#define MULTILINE(...) #__VA_ARGS__
 #define WIDTH 640
 #define HEIGHT 480
 
@@ -43,63 +43,56 @@ test_t g_tests[] = {
     //{ "Module.injectMouseEvent(10.0, 50.0, 'mousewheel', 0)", { 10.0, 50.0, -1, -1, -1 } },
     //{ "Module.injectMouseEvent(10.0, 60.0, 'mousemove', 0)", { 10.0, 60.0, -1, -1, -1 } }
 
-    { "simulateKeyDown(8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_PRESS, -1 } },
-    { "simulateKeyUp  (8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_RELEASE, -1 } },
-    { "simulateKeyDown(9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_PRESS, -1 } },
-    { "simulateKeyUp  (9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_RELEASE, -1 } },
-    { "simulateKeyDown(112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_PRESS, -1 } },
-    { "simulateKeyUp  (112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_RELEASE, -1 } },
-    { "simulateKeyDown(37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_PRESS, -1 } },
-    { "simulateKeyUp  (37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_RELEASE, -1 } },
-    { "simulateKeyDown(39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_PRESS, -1 } },
-    { "simulateKeyUp  (39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_RELEASE, -1 } },
-    { "simulateKeyDown(38)", { 0, 0.0, 0.0, GLFW_KEY_UP, GLFW_PRESS, -1 } },
-    { "simulateKeyUp  (38)", { 0, 0.0, 0.0, GLFW_KEY_UP, GLFW_RELEASE, -1 } },
-    { "simulateKeyDown(40)", { 0, 0.0, 0.0, GLFW_KEY_DOWN, GLFW_PRESS, -1 } },
-    { "simulateKeyUp  (40)", { 0, 0.0, 0.0, GLFW_KEY_DOWN, GLFW_RELEASE, -1 } },
+    { "injectKeyEvent('keydown', 8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_PRESS, -1 } },
+    { "injectKeyEvent('keyup', 8)", { 0, 0.0, 0.0, GLFW_KEY_BACKSPACE, GLFW_RELEASE, -1 } },
+    { "injectKeyEvent('keydown', 9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_PRESS, -1 } },
+    { "injectKeyEvent('keyup', 9)", { 0, 0.0, 0.0, GLFW_KEY_TAB, GLFW_RELEASE, -1 } },
+    { "injectKeyEvent('keydown', 112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_PRESS, -1 } },
+    { "injectKeyEvent('keyup', 112)", { 0, 0.0, 0.0, GLFW_KEY_F1, GLFW_RELEASE, -1 } },
+    { "injectKeyEvent('keydown', 37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_PRESS, -1 } },
+    { "injectKeyEvent('keyup', 37)", { 0, 0.0, 0.0, GLFW_KEY_LEFT, GLFW_RELEASE, -1 } },
+    { "injectKeyEvent('keydown', 39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_PRESS, -1 } },
+    { "injectKeyEvent('keyup', 39)", { 0, 0.0, 0.0, GLFW_KEY_RIGHT, GLFW_RELEASE, -1 } },
+    { "injectKeyEvent('keydown', 38)", { 0, 0.0, 0.0, GLFW_KEY_UP, GLFW_PRESS, -1 } },
+    { "injectKeyEvent('keyup', 38)", { 0, 0.0, 0.0, GLFW_KEY_UP, GLFW_RELEASE, -1 } },
+    { "injectKeyEvent('keydown', 40)", { 0, 0.0, 0.0, GLFW_KEY_DOWN, GLFW_PRESS, -1 } },
+    { "injectKeyEvent('keyup', 40)", { 0, 0.0, 0.0, GLFW_KEY_DOWN, GLFW_RELEASE, -1 } },
     #if USE_GLFW == 2
-        { "simulateKeyDown(27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_PRESS, -1 } },
-        { "simulateKeyUp(27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_RELEASE, -1 } },
+        { "injectKeyEvent('keydown', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_PRESS, -1 } },
+        { "injectKeyEvent('keyup', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESC, GLFW_RELEASE, -1 } },
 
-        { "simulateKeyDown(65)", { 0, 0.0, 0.0, 'A', GLFW_PRESS, -1, 'A' } },
-        { "simulateKeyEvent('keypress', 65, {charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, 'A' } },
-        { "simulateKeyUp(65)", { 0, 0.0, 0.0, 'A', GLFW_RELEASE, -1, 'A' } },
+        { "injectKeyEvent('keydown', 65)", { 0, 0.0, 0.0, 'A', GLFW_PRESS, -1, 'A' } },
+        { "injectKeyEvent('keypress', 65, {charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, 'A' } },
+        { "injectKeyEvent('keyup', 65)", { 0, 0.0, 0.0, 'A', GLFW_RELEASE, -1, 'A' } },
 
-        { "simulateKeyDown(65, {ctrlKey: true})", { 0, 0.0, 0.0, 'A', GLFW_PRESS, -1, 'A' } },
-        { "simulateKeyEvent('keypress', 65, {ctrlKey: true, charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, -1 } },
-        { "simulateKeyUp(65, {ctrlKey: true})", { 0, 0.0, 0.0, 'A', GLFW_RELEASE, -1, 'A' } },
+        { "injectKeyEvent('keydown', 65, {ctrlKey: true})", { 0, 0.0, 0.0, 'A', GLFW_PRESS, -1, 'A' } },
+        { "injectKeyEvent('keypress', 65, {ctrlKey: true, charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, -1 } },
+        { "injectKeyEvent('keyup', 65, {ctrlKey: true})", { 0, 0.0, 0.0, 'A', GLFW_RELEASE, -1, 'A' } },
     #else
-        { "simulateKeyDown(27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_PRESS, -1 } },
-        { "simulateKeyUp(27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_RELEASE, -1 } },
+        { "injectKeyEvent('keydown', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_PRESS, -1 } },
+        { "injectKeyEvent('keyup', 27)", { 0, 0.0, 0.0, GLFW_KEY_ESCAPE, GLFW_RELEASE, -1 } },
 
-        { "simulateKeyDown(65)", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_PRESS, -1 } },
-        { "simulateKeyEvent('keypress', 65, {charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, 'A' } },
-        { "simulateKeyUp(65)", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_RELEASE, -1 } },
+        { "injectKeyEvent('keydown', 65)", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_PRESS, -1 } },
+        { "injectKeyEvent('keypress', 65, {charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, 'A' } },
+        { "injectKeyEvent('keyup', 65)", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_RELEASE, -1, 'A' } },
 
-        { "simulateKeyDown(65, {ctrlKey: true})", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_PRESS, -1, 'A' } },
-        { "simulateKeyEvent('keypress', 65, {ctrlKey: true, charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, -1 } },
-        { "simulateKeyUp(65, {ctrlKey: true})", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_RELEASE, -1, 'A' } },
+        { "injectKeyEvent('keydown', 65, {ctrlKey: true})", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_PRESS, -1, 'A' } },
+        { "injectKeyEvent('keypress', 65, {ctrlKey: true, charCode: 65})", { 0, 0.0, 0.0, -1, -1, -1, -1 } },
+        { "injectKeyEvent('keyup', 65, {ctrlKey: true})", { 0, 0.0, 0.0, GLFW_KEY_A, GLFW_RELEASE, -1, 'A' } },
     #endif
 };
 
 static unsigned int g_test_actual = 0;
 static unsigned int g_test_count = sizeof(g_tests) / sizeof(test_t);
-static unsigned int g_state = 0;
 
 #if USE_GLFW == 2
 static void on_mouse_button_callback(int button, int action) {
 #else
 static void on_mouse_button_callback(GLFWwindow* window, int button, int action, int modify) {
 #endif
-    test_args_t args = g_tests[g_test_actual].args;
-    if (args.button == button && args.action == action)
-    {
-        g_state |= 1 << g_test_actual;
-    }
-    else
-    {
-        printf("Test %d: FAIL\n", g_test_actual);
-    }
+  test_args_t args = g_tests[g_test_actual].args;
+  assert(args.button == button);
+  assert(args.action == action);
 }
 
 #if USE_GLFW == 2
@@ -107,15 +100,9 @@ static void on_mouse_move(int x, int y) {
 #else
 static void on_mouse_move(GLFWwindow* window, double x, double y) {
 #endif
-    test_args_t args = g_tests[g_test_actual].args;
-    if (args.x == x && args.y == y)
-    {
-        g_state |= 1 << g_test_actual;
-    }
-    else
-    {
-        printf("Test %d: FAIL\n", g_test_actual);
-    }
+  test_args_t args = g_tests[g_test_actual].args;
+  assert(args.x == x);
+  assert(args.y == y);
 }
 
 #if USE_GLFW == 2
@@ -123,15 +110,9 @@ static void on_key_callback(int key, int action) {
 #else
 static void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 #endif
-    test_args_t args = g_tests[g_test_actual].args;
-    if (args.button == key && args.action == action)
-    {
-        g_state |= 1 << g_test_actual;
-    }
-    else
-    {
-        printf("Test %d: FAIL\n", g_test_actual);
-    }
+  test_args_t args = g_tests[g_test_actual].args;
+  assert(args.button == key);
+  assert(args.action == action);
 }
 
 #if USE_GLFW == 2
@@ -140,22 +121,15 @@ static void on_char_callback(int character, int action) {
 static void on_char_callback(GLFWwindow* window, unsigned int character) {
 #endif
   test_args_t args = g_tests[g_test_actual].args;
-  if (args.character != -1 && args.character == character) {
-    g_state |= 1 << g_test_actual;
-  } else {
-    printf("Test %d: FAIL\n", g_test_actual);
-  }
-
+  assert(args.character != -1);
+  assert(args.character == character);
 }
 
 #if USE_GLFW == 3
 static void on_mouse_wheel(GLFWwindow* window, double x, double y) {
   test_args_t args = g_tests[g_test_actual].args;
-  if (args.x == x && args.y == y) {
-    g_state |= 1 << g_test_actual;
-  } else {
-    printf("Test %d: FAIL\n", g_test_actual);
-  }
+  assert(args.x == x);
+  assert(args.y == y);
 }
 
 static void on_error(int error, const char *msg) {
@@ -164,7 +138,18 @@ static void on_error(int error, const char *msg) {
 #endif
 
 int main() {
-  unsigned int success = (1 << (sizeof(g_tests) / sizeof(test_t))) - 1; // (2^count)-1;
+  EM_ASM({
+    injectKeyEvent = (type, keyCode, options) => {
+      // KeyboardEvent constructor always returns 0 keyCode on Chrome, so use generic events
+      var keyboardEvent = document.createEventObject ?
+              document.createEventObject() : document.createEvent('Events');
+      keyboardEvent.initEvent(type, true, true);
+      keyboardEvent.keyCode = keyCode;
+      keyboardEvent = Object.assign(keyboardEvent, options);
+      var canvas = Module['canvas'];
+      canvas.dispatchEvent(keyboardEvent);
+    };
+  });
 
   glfwInit();
 
@@ -197,51 +182,36 @@ int main() {
     glfwSetMouseButtonCallback(_mainWindow, p == 0 ? NULL : on_mouse_button_callback);
     glfwSetKeyCallback(_mainWindow, p == 0 ? NULL : on_key_callback);
 #endif
-    g_state = p == 0 ? success : 0;
 
     for (int i = 0; i < g_test_count; ++i) {
       g_test_actual = i;
       test_t test = g_tests[g_test_actual];
 
-      if (test.args.character == -1) {
-         g_state |= 1 << g_test_actual;
-      }
-
       emscripten_run_script(test.cmd);
 
       if (test.args.mouse) {
       #if USE_GLFW == 2
-        if (glfwGetMouseButton(test.args.button) != test.args.action) {
+        assert(glfwGetMouseButton(test.args.button) == test.args.action);
       #else
-        if (glfwGetMouseButton(_mainWindow, test.args.button) != test.args.action) {
+        assert(glfwGetMouseButton(_mainWindow, test.args.button) == test.args.action);
       #endif
-          printf("Test %d: FAIL\n", g_test_actual);
-            g_state &= ~(1 << g_test_actual);
-        }
       } else {
         // Keyboard.
       #if USE_GLFW == 2
-        if (test.args.action != -1 && glfwGetKey(test.args.button) != test.args.action) {
-      #else
-        if (test.args.action != -1 && glfwGetKey(_mainWindow, test.args.button) != test.args.action) {
-      #endif
-          printf("Test %d: FAIL\n", g_test_actual);
-          g_state &= ~(1 << g_test_actual);
+        if (test.args.action != -1) {
+          assert(glfwGetKey(test.args.button) == test.args.action);
         }
+      #else
+        if (test.args.action != -1) {
+          assert(glfwGetKey(_mainWindow, test.args.button) == test.args.action);
+        }
+      #endif
       }
-    }
-    if (g_state != success) {
-      break;
     }
   }
 
   glfwTerminate();
 
-  printf("%d == %d = %d", g_state, success, g_state == success);
-  if (g_state != success) {
-    printf("test failed\n");
-    return 1;
-  }
   printf("done\n");
   return 0;
 }

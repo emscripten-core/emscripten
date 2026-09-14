@@ -84,6 +84,25 @@ jobs:
         sudo update-alternatives --install /usr/bin/git-clang-format git-clang-format /usr/bin/git-clang-format-19 100
     - run: tools/maint/clang-format-diff.sh origin/$GITHUB_BASE_REF
 
+  build-pylauncher-x64:
+    name: Build pylauncher (x64)
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      with:
+        arch: x64
+    - name: Build pylauncher
+      run: |
+        cd tools\pylauncher
+        call build.bat
+      shell: cmd
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: pylauncher.exe
+        path: tools/pylauncher/pylauncher.exe
+
   build-pylauncher-arm64:
     name: Build pylauncher (ARM64)
     runs-on: windows-11-arm

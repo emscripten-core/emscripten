@@ -195,14 +195,19 @@ def lld_flags_for_executable(external_symbols):
       not settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
-  if cmdline.options.lto and not settings.EXIT_RUNTIME:
-    # The WebAssembly backend can generate new references to `__cxa_atexit` at
-    # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
-    # included at LTO time.  For other such symbols we exclude them from LTO
-    # and always build them as normal object files, but that would inhibit the
-    # LowerGlobalDtors optimization which allows destructors to be completely
-    # removed when __cxa_atexit is a no-op.
-    cmd.append('-u__cxa_atexit')
+  if cmdline.options.lto:
+    if not settings.EXIT_RUNTIME:
+      # The WebAssembly backend can generate new references to `__cxa_atexit` at
+      # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
+      # included at LTO time.  For other such symbols we exclude them from LTO
+      # and always build them as normal object files, but that would inhibit the
+      # LowerGlobalDtors optimization which allows destructors to be completely
+      # removed when __cxa_atexit is a no-op.
+      cmd.append('-u__cxa_atexit')
+    if not settings.DISABLE_EXCEPTION_CATCHING:
+      # The WebAssembly backend can generate new references to `__cxa_find_matching_catch_N`
+      # at LTO time, which depends on `__cxa_can_catch` in libc++abi.
+      cmd.append('-u__cxa_can_catch')
 
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores
