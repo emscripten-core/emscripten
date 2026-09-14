@@ -1193,14 +1193,8 @@ addToLibrary({
     // try as a hostname
     //
 #if NODERAWSOCKETS
-    // /etc/hosts first (read through emscripten's FS), then a real node:dns
-    // lookup, which is asynchronous: hand the caller a thunk to wait on.
-    var hosts = nodeSockHelpers.readHosts(node).filter((e) =>
-      family === {{{ cDefs.AF_UNSPEC }}} || e.family === family);
-    if (hosts.length) {
-      {{{ makeSetValue('out', '0', 'allocaddrinfos(hosts)', '*') }}};
-      return 0;
-    }
+    // A real node:dns lookup (which honors the host's /etc/hosts). It is
+    // asynchronous: hand the caller a thunk to wait on.
     return () => nodeSockHelpers.lookupHost(node, family).then((entries) => {
       if (typeof entries == 'number') return entries;
       {{{ makeSetValue('out', '0', 'allocaddrinfos(entries)', '*') }}};
