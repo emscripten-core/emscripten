@@ -29,6 +29,9 @@ See docs/process.md for more on how version tagging works.
   performed when the linker inputs carry the wasm-bindgen Emscripten marker
   section, so `-sWASM_BINDGEN` can safely be passed to non-wasm-bindgen builds.
   (#27208)
+- The fiber API (`emscripten/fiber.h`) is now supported under JSPI (`-sJSPI`).
+  When compiling with JSPI, the `asyncify_stack` argument to `emscripten_fiber_init`
+  and `emscripten_fiber_init_from_current_context` is optional and can be `NULL`.
 
 6.0.9 - 09/01/26
 ----------------
