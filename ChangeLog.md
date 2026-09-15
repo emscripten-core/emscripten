@@ -29,6 +29,13 @@ See docs/process.md for more on how version tagging works.
   performed when the linker inputs carry the wasm-bindgen Emscripten marker
   section, so `-sWASM_BINDGEN` can safely be passed to non-wasm-bindgen builds.
   (#27208)
+- Embind `value_object` and `value_array` argument temporaries for trivially
+  constructible/destructible types (up to `alignof` 16) are now placed on the
+  wasm stack instead of being heap-allocated per call, and per-field destructor
+  bookkeeping is skipped when the type registers no destructor. This removes
+  the per-call garbage on such calls. The registration ABI gained size and
+  triviality parameters, so object files built against an older `bind.h` need
+  to be rebuilt. (#27610)
 
 6.0.9 - 09/01/26
 ----------------

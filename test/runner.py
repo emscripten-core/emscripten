@@ -604,14 +604,14 @@ def log_test_environment():
   print(f'Python: "{sys.executable}". Version: {sys.version}')
   print(f'Emscripten test runner path: "{os.path.realpath(__file__)}"')
 
-  if os.path.isdir(utils.path_from_root('.git')):
+  if os.path.exists(utils.path_from_root('.git')):
     print(f'\nEmscripten repository: "{__rootpath__}"')
 
   emscripten_version = utils.path_from_root('emscripten-version.txt')
   if os.path.isfile(emscripten_version):
     print(f'emscripten-version.txt: {utils.EMSCRIPTEN_VERSION}')
 
-  if os.path.isdir(os.path.join(__rootpath__, '.git')):
+  if os.path.exists(os.path.join(__rootpath__, '.git')):
     print_repository_info(__rootpath__, 'Emscripten')
 
   print(f'EM_CONFIG: "{config.EM_CONFIG}"')
@@ -630,7 +630,7 @@ def log_test_environment():
   # Detect emsdk directory structure (build root vs source root)
   if re.match(r'main_.*_64bit_binaryen', os.path.basename(binaryen_git_dir)):
     binaryen_git_dir = os.path.realpath(os.path.join(binaryen_git_dir, '..', 'main'))
-  if os.path.isdir(os.path.join(binaryen_git_dir, '.git')):
+  if os.path.exists(os.path.join(binaryen_git_dir, '.git')):
     print(f'Binaryen git directory: "{binaryen_git_dir}"')
     print_repository_info(binaryen_git_dir, 'Binaryen')
 
@@ -639,10 +639,10 @@ def log_test_environment():
   # Find LLVM git directory in emsdk aware fashion
   def find_llvm_git_root(dir):
     while True:
-      if os.path.isdir(os.path.join(dir, ".git")):
+      if os.path.exists(os.path.join(dir, '.git')):
         return dir
-      if os.path.isdir(os.path.join(dir, "src", ".git")):
-        return os.path.join(dir, "src")
+      if os.path.exists(os.path.join(dir, 'src', '.git')):
+        return os.path.join(dir, 'src')
       if os.path.dirname(dir) == dir:
         return None
       dir = os.path.dirname(dir)
@@ -672,7 +672,7 @@ def log_test_environment():
   emsdk_dir = os.getenv('EMSDK')
   print(f'\nEMSDK: "{emsdk_dir}"')
   if emsdk_dir:
-    if os.path.isdir(os.path.join(emsdk_dir, '.git')):
+    if os.path.exists(os.path.join(emsdk_dir, '.git')):
       print_repository_info(emsdk_dir, 'Emsdk')
 
   print('==================== End of Test Setup =====================')
