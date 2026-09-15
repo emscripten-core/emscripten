@@ -12,6 +12,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -35,8 +36,9 @@ static void on_ready(void* ud) {
 
   if (fires == 1) {
     // Do NOT drain: leave the fd readable, then check it stays silent and poke a
-    // fresh edge.
-    emscripten_async_call(second_edge, NULL, 0);
+    // fresh edge. A re-delivery, were one wrongly scheduled, is an immediate
+    // queued before this one and would run first.
+    emscripten_set_immediate(second_edge, NULL);
     return;
   }
 

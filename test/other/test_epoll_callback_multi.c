@@ -15,6 +15,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -68,8 +69,9 @@ int main(void) {
 
   assert(emscripten_epoll_add_listener(ep, listener_a, 0) == 0);
   assert(emscripten_epoll_add_listener(ep, listener_b, 0) == 0);
-  // Both fds are already ready: A's tick collects one, B's collects the other,
-  // then a macrotask verifies the exact one-each split before removing both.
-  emscripten_async_call(check, NULL, 0);
+  // Both fds are already ready: A's delivery collects one, B's the other. The
+  // deliveries are immediates queued by add_listener, so an immediate queued
+  // after them runs once both have, and verifies the exact one-each split.
+  emscripten_set_immediate(check, NULL);
   return 0;
 }
