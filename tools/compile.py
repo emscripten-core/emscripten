@@ -37,6 +37,8 @@ def get_clang_flags(user_args):
   # generated in the frontend
   if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
     flags.append('-fignore-exceptions')
+  elif not settings.DISABLE_EXCEPTION_CATCHING:
+    flags.append('-femscripten-exceptions')
 
   if settings.INLINING_LIMIT:
     flags.append('-fno-inline-functions')
