@@ -31,7 +31,6 @@ from retryable_unittest import RetryableTestCase
 from tools import building, config, shared, utils
 from tools.feature_matrix import Feature
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools.shared import get_canonical_temp_dir
 from tools.utils import (
   WINDOWS,
   exe_path_from_root,
@@ -68,8 +67,7 @@ TEST_ROOT = path_from_root('test')
 LAST_TEST = path_from_root('out/last_test.txt')
 PREVIOUS_TEST_RUN_RESULTS_FILE = path_from_root('out/previous_test_run_results.json')
 
-WEBIDL_BINDER = exe_path_from_root('tools/webidl_binder')
-
+# emscripten tools
 EMBUILDER = exe_path_from_root('embuilder')
 EMMAKE = exe_path_from_root('emmake')
 EMCMAKE = exe_path_from_root('emcmake')
@@ -81,11 +79,23 @@ EMXX = exe_path_from_root('em++')
 EMAR = exe_path_from_root('emar')
 EMRANLIB = exe_path_from_root('emranlib')
 FILE_PACKAGER = exe_path_from_root('tools/file_packager')
+WEBIDL_BINDER = exe_path_from_root('tools/webidl_binder')
+
+# binaryen tools
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
+
+# llvm tools
 WASM_LD = shared.llvm_tool_path('wasm-ld')
+LLVM_DWARFDUMP = shared.llvm_tool_path('llvm-dwarfdump')
+LLVM_AR = shared.llvm_tool_path('llvm-ar')
+LLVM_NM = shared.llvm_tool_path('llvm-nm')
+LLVM_DWP = shared.llvm_tool_path('llvm-dwp')
 LLVM_COV = shared.llvm_tool_path('llvm-cov')
+CLANG_CC = shared.clang_tool_path('clang')
+CLANG_CXX = shared.clang_tool_path('clang++')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 LLVM_PROFDATA = shared.llvm_tool_path('llvm-profdata')
+
 PYTHON = sys.executable
 
 
@@ -446,7 +456,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
   temp_dir = shared.TEMP_DIR
-  canonical_temp_dir = get_canonical_temp_dir(shared.TEMP_DIR)
+  canonical_temp_dir = shared.get_canonical_temp_dir(shared.TEMP_DIR)
 
   library_cache: dict[str, tuple[str, object]] = {}
 
@@ -697,7 +707,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
-    self.canonical_temp_dir = get_canonical_temp_dir(self.temp_dir)
+    self.canonical_temp_dir = shared.get_canonical_temp_dir(self.temp_dir)
     # Explicitly set dedicated temporary directory for parallel tests
     os.environ['EMCC_TEMP_DIR'] = self.temp_dir
 

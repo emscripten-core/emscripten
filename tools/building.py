@@ -36,10 +36,6 @@ from .shared import (
   EMCC,
   EMRANLIB,
   EMXX,
-  LLVM_DWARFDUMP,
-  LLVM_NM,
-  LLVM_OBJCOPY,
-  LLVM_OBJDUMP,
   asmjs_mangle,
   check_call,
   demangle_c_symbol_name,
@@ -57,6 +53,10 @@ logger = logging.getLogger('building')
 binaryen_checked = False
 EXPECTED_BINARYEN_VERSION = 132
 WASM_LD = shared.llvm_tool_path('wasm-ld')
+LLVM_DWARFDUMP = shared.llvm_tool_path('llvm-dwarfdump')
+LLVM_OBJCOPY = shared.llvm_tool_path('llvm-objcopy')
+LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
+LLVM_NM = shared.llvm_tool_path('llvm-nm')
 
 # the exports the user requested
 user_requested_exports: set[str] = set()

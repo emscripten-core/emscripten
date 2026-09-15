@@ -48,7 +48,7 @@ import common
 import jsrun
 import parallel_testsuite
 from color_runner import ColorTextRunner
-from common import errlog
+from common import CLANG_CC, errlog
 from single_line_runner import SingleLineTestRunner
 
 from tools import building, colored_logger, config, shared, utils
@@ -652,8 +652,8 @@ def log_test_environment():
     print(f'LLVM git directory: "{llvm_git_root}"')
     print_repository_info(llvm_git_root, 'LLVM')
 
-  clang_version = utils.run_process([shared.CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
-  print(f'Clang: "{shared.CLANG_CC}"\n{clang_version}\n')
+  clang_version = utils.run_process([CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
+  print(f'Clang: "{CLANG_CC}"\n{clang_version}\n')
 
   print(f'EMTEST_BROWSER: {browser_common.EMTEST_BROWSER}')
   if browser_common.is_firefox():
