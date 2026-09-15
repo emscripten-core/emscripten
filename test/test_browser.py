@@ -1830,9 +1830,33 @@ window.close = () => {
   def test_emscripten_main_loop_setimmediate(self, args):
     self.btest_exit('test_emscripten_main_loop_setimmediate.c', cflags=args)
 
+  @also_with_proxy_to_pthread
   def test_emscripten_main_loop_setimmediate_polyfill(self):
-    create_file('remove_setimmediate.js', 'globalThis.setImmediate = undefined;')
+    create_file('remove_setimmediate.js', '''
+      globalThis.setImmediate = undefined;
+      Object.defineProperty(globalThis, 'scheduler', { value: undefined });
+    ''')
     self.btest_exit('test_emscripten_main_loop_setimmediate.c', cflags=['-sRUNTIME_DEBUG', '--pre-js=remove_setimmediate.js'])
+
+  @parameterized({
+    'default': (False, True, []),
+    'fallback': (True, True, []),
+    'default_closure': (False, True, ['-O2', '--closure=1']),
+    'fallback_closure': (True, True, ['-O2', '--closure=1']),
+    'default_no_exit_runtime': (False, False, []),
+    'fallback_no_exit_runtime': (True, False, []),
+  })
+  def test_main_loop_scheduler_lifetime(self, fallback, exit_runtime, args):
+    self.compile_btest('browser/test_main_loop_scheduler_lifetime.c', [
+      '-sMODULARIZE', '-sEXPORT_NAME=createModule', f'-sEXIT_RUNTIME={int(exit_runtime)}',
+      '-sEXPORTED_RUNTIME_METHODS=HEAPU8', '-sENVIRONMENT=web',
+    ] + args, reporting=Reporting.NONE)
+    self.add_browser_reporting()
+    html = read_file(test_file('browser/test_main_loop_scheduler_lifetime.html'))
+    html = html.replace('FORCE_FALLBACK', str(fallback).lower())
+    html = html.replace('EXIT_RUNTIME_ENABLED', str(exit_runtime).lower())
+    create_file('test.html', html)
+    self.run_browser('test.html', '/report_result?0')
 
   @parameterized({
     '': ([],),

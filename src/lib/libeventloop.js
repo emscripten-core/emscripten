@@ -198,11 +198,14 @@ LibraryJSEventLoop = {
 
   $MainLoop__internal: true,
   $MainLoop__deps: ['$setMainLoop', '$callUserCallback', 'emscripten_set_main_loop_timing'],
-  $MainLoop__postset: `
-    Module['requestAnimationFrame'] = MainLoop.requestAnimationFrame;
-    Module['pauseMainLoop'] = MainLoop.pause;
-    Module['resumeMainLoop'] = MainLoop.resume;
-    MainLoop.init();`,
+  $MainLoop__postset: () => {
+    addAtExit('MainLoop.disposeImmediate();');
+    return `
+      Module['requestAnimationFrame'] = MainLoop.requestAnimationFrame;
+      Module['pauseMainLoop'] = MainLoop.pause;
+      Module['resumeMainLoop'] = MainLoop.resume;
+      MainLoop.init();`;
+  },
   $MainLoop: {
     // The main loop tick function that will be called at each iteration.
     // This will be non-null whenever a loop function is registered.
@@ -224,6 +227,9 @@ LibraryJSEventLoop = {
     queue: [],
     preMainLoop: [],
     postMainLoop: [],
+
+    // Replaced when the immediate scheduler allocates browser resources.
+    disposeImmediate() {},
 
     pause() {
       if (MainLoop.scheduler) {
@@ -368,27 +374,26 @@ LibraryJSEventLoop = {
 #if RUNTIME_DEBUG
           dbg('setImmediate: using polyfill');
 #endif
-          // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
+          // A private channel keeps ticks local to this module, including in
+          // a Worker. A global message listener would retain the module and
+          // receive ticks posted by other instances.
           var setImmediates = [];
-          var emscriptenMainLoopMessageId = 'setimmediate';
-          /** @param {Event} event */
-          var MainLoop_setImmediate_messageHandler = (event) => {
-            if (event.data === emscriptenMainLoopMessageId) {
-              event.stopPropagation();
-              setImmediates.shift()();
-            }
+          var channel = new MessageChannel();
+          channel.port1.onmessage = () => setImmediates.shift()?.();
+          MainLoop.disposeImmediate = () => {
+            setImmediates.length = 0;
+            channel.port1.onmessage = null;
+            channel.port1.close();
+            channel.port2.close();
+            // A runner unwinding through exit must not enqueue more work or
+            // recreate the channel. Cleanup may also be called more than once.
+            MainLoop.setImmediate = (func) => {};
+            MainLoop.disposeImmediate = () => {};
           };
-          addEventListener('message', MainLoop_setImmediate_messageHandler, true);
-          MainLoop.setImmediate = /** @type{function(function(): ?, ...?): number} */((func) => {
+          MainLoop.setImmediate = (func) => {
             setImmediates.push(func);
-            if (ENVIRONMENT_IS_WORKER) {
-              // The postMessge API in a Worker, sends message to the main
-              // thread and does not support the `targetOrigin` (*) argument.
-              postMessage(emscriptenMainLoopMessageId);
-            } else {
-              postMessage(emscriptenMainLoopMessageId, '*');
-            }
-          });
+            channel.port2.postMessage(0);
+          };
         }
       }
       MainLoop.scheduler = function MainLoop_scheduler_setImmediate() {

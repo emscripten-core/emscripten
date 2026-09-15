@@ -245,6 +245,12 @@ function postRun() {
  * @param {string|number=} what
  */
 function abort(what) {
+#if librarySymbols.includes('MainLoop')
+  // abort skips atexit, but must release the scheduler's browser resources.
+  // Do this before onAbort, which may itself throw. Early startup can abort
+  // before the MainLoop object has been initialized.
+  MainLoop?.disposeImmediate();
+#endif
 #if expectToReceiveOnModule('onAbort')
   Module['onAbort']?.(what);
 #endif

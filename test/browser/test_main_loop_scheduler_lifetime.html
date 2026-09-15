@@ -1,0 +1,115 @@
+<!doctype html>
+<script>
+if (FORCE_FALLBACK) {
+  Object.defineProperty(globalThis, 'scheduler', { value: undefined });
+  globalThis.setImmediate = undefined;
+}
+
+// Observe resource ownership without retaining module callbacks or channels.
+const listeners = [];
+const nativeAdd = globalThis.addEventListener;
+const nativeRemove = globalThis.removeEventListener;
+globalThis.addEventListener = function(type, callback, options) {
+  if (type === 'message') listeners.push({ callback: new WeakRef(callback), removed: false });
+  return nativeAdd.call(this, type, callback, options);
+};
+globalThis.removeEventListener = function(type, callback, options) {
+  for (const listener of listeners) {
+    if (type === 'message' && listener.callback.deref() === callback) listener.removed = true;
+  }
+  return nativeRemove.call(this, type, callback, options);
+};
+let openPorts = 0;
+const NativeChannel = globalThis.MessageChannel;
+globalThis.MessageChannel = class extends NativeChannel {
+  constructor() {
+    super();
+    for (const port of [this.port1, this.port2]) {
+      ++openPorts;
+      let closed = false;
+      const close = port.close.bind(port);
+      port.close = () => {
+        if (!closed) --openPorts;
+        closed = true;
+        close();
+      };
+    }
+  }
+};
+const errors = [];
+globalThis.addEventListener('error', event => {
+  if (event.message.includes('expected scheduler abort')) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  } else {
+    errors.push(event.message);
+  }
+}, true);
+globalThis.addEventListener('unhandledrejection', event => {
+  // scheduler.postTask reports a thrown callback through its promise.
+  if (String(event.reason).includes('expected scheduler abort')) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  } else {
+    errors.push(String(event.reason));
+  }
+}, true);
+// Also usable by a local CDP/GC diagnostic after the test completes. The
+// portable regression below asserts deterministic listener/port cleanup.
+globalThis.schedulerWeakRefs = [];
+</script>
+<script src="browser_reporting.js"></script>
+<script src="a.out.js"></script>
+<script>const firstFactory = createModule;</script>
+<script src="a.out.js"></script>
+<script>
+const secondFactory = createModule;
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function run(factory, mode) {
+  let resolve;
+  let reject;
+  const done = new Promise((yes, no) => { resolve = yes; reject = no; });
+  // The debug runtime adds getters that close over the module to its options.
+  // Avoid V8 retaining the first instance via an object-literal allocation site.
+  const options = Object.assign(Object.create(null), {
+    testMode: mode,
+    onExit(status) {
+      if (mode < 2 && status === 0) resolve();
+      else reject(new Error('unexpected exit: ' + status));
+    },
+    onAbort(reason) {
+      if (mode >= 2 && reason === 'expected scheduler abort') resolve();
+      else reject(new Error('unexpected abort: ' + reason));
+      // Cleanup must also happen if the application's callback throws.
+      if (mode === 3) throw new Error('expected scheduler abort callback');
+    },
+  });
+  const module = await factory(options);
+  schedulerWeakRefs.push({ module: new WeakRef(module), buffer: new WeakRef(module.HEAPU8.buffer) });
+  await done;
+}
+
+async function checkReleased() {
+  // Allow queued native tasks/messages to run after shutdown.
+  await delay(20);
+  const liveListeners = listeners.filter(entry => !entry.removed && entry.callback.deref());
+  if (liveListeners.length || openPorts || errors.length) {
+    throw new Error(`scheduler resources after shutdown: ${liveListeners.length} listeners, ${openPorts} ports, errors: ${errors}`);
+  }
+}
+
+(async () => {
+  for (const mode of (EXIT_RUNTIME_ENABLED ? [0, 1, 2, 3] : [2, 3])) {
+    await run(firstFactory, mode);
+    await checkReleased();
+    await run(secondFactory, mode);
+    await checkReleased();
+  }
+  // One instance may exit while another is still receiving ticks. Separately
+  // evaluated factories must not share queues or intercept each other's work.
+  await Promise.all([run(firstFactory, EXIT_RUNTIME_ENABLED ? 0 : 2), run(secondFactory, EXIT_RUNTIME_ENABLED ? 1 : 3)]);
+  await checkReleased();
+  reportResultToServer(0);
+})().catch(error => reportResultToServer(String(error)));
+</script>
