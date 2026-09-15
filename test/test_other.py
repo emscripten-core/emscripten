@@ -13653,6 +13653,13 @@ void foo() {}
     # write from other live work still delivers.
     self.do_runf('other/test_epoll_callback_pipe_exit.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
+  def test_epoll_callback_macrotask(self):
+    # A delivery is a macrotask, ordered after microtasks queued before it runs:
+    # hosts that drain microtasks synchronously inside unrelated calls would
+    # otherwise run the callback under the frames of the call that made the set
+    # ready.
+    self.do_runf('other/test_epoll_callback_macrotask.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
   def test_epoll_callback_teardown_wake(self):
     # A closing watched fd wakes the listener only to evict and holds nothing;
     # exitRuntime's FS.quit closes every open fd, and a hold taken there would

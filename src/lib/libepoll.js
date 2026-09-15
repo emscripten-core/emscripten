@@ -469,7 +469,7 @@ var EpollLibrary = {
   // collected by exactly one of them - the same load balancing as multiple
   // blocking epoll_wait callers on one epoll. A level fd left undrained
   // re-signals every tick, an edge fd once per edge.
-  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$epollReconcileKeepalive', '$epollKeepalive', '$callUserCallback',
+  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$epollReconcileKeepalive', '$epollKeepalive', '$callUserCallback', '$emSetImmediate',
 #if PTHREADS
     '$epollDeliveries', '_emscripten_epoll_run_callback_on_thread',
 #endif
@@ -531,12 +531,12 @@ var EpollLibrary = {
       callUserCallback(() => {
         {{{ makeDynCall('vp', 'callback') }}}(userdata);
         // Still readable (this callback didn't drain, or a still-ready level fd
-        // re-listed): fire again on the next tick. Note this is NOT a blocking
+        // re-listed): fire again on the next turn. Note this is NOT a blocking
         // epoll_wait loop - a level-triggered fd that is structurally always
-        // ready (e.g. EPOLLOUT on a writable socket) will re-schedule a
-        // microtask each tick and so starve the event loop; use EPOLLET or
-        // remove the listener for such fds. Inside the wrapper so the re-wake's
-        // hold is taken before callUserCallback's maybeExit.
+        // ready (e.g. EPOLLOUT on a writable socket) will re-schedule every
+        // turn and so starve the event loop; use EPOLLET or remove the
+        // listener for such fds. Inside the wrapper so the re-wake's hold is
+        // taken before callUserCallback's maybeExit.
         if (!it.cleared && !epollWouldBlock(ep)) wake(true);
       });
     }
@@ -548,6 +548,11 @@ var EpollLibrary = {
     // pipe peers reporting POLLHUP on the way) no delivery can run, while a
     // hold taken there would outlive the exit, leaving keepRuntimeAlive() set
     // at _proc_exit and onExit skipped.
+    //
+    // Delivery is a macrotask, not a microtask: hosts drain microtasks
+    // synchronously inside other calls (Node's module loader does so on a
+    // first builtin load, e.g. from connect()), which would run the callback
+    // re-entrantly under the caller's frames.
     function wake(held) {
       if (held && FS.initialized && !it.held) {
         it.held = true;
@@ -555,7 +560,7 @@ var EpollLibrary = {
       }
       if (it.scheduled) return;
       it.scheduled = true;
-      queueMicrotask(() => {
+      emSetImmediate(() => {
         it.scheduled = false;
         if (it.held) {
           it.held = false;
