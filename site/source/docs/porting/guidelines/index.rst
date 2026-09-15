@@ -13,7 +13,3 @@ Emscripten can be used to compile almost any *portable* C/C++ code to JavaScript
   api_limitations
   function_pointer_issues
   browser_limitations.rst
-
-
-
-
