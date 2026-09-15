@@ -248,7 +248,7 @@ var LibraryExceptions = {
   // We'll do that here, instead, to keep things simpler.
   $findMatchingCatch__deps: ['$setTempRet0',
 #if !DISABLE_EXCEPTION_CATCHING
-    '$exceptionLast', '$ExceptionInfo', '__cxa_can_catch'],
+    '$exceptionLast', '$ExceptionInfo', '__cxa_can_catch',
 #endif
   ],
   $findMatchingCatch: (args) => {
