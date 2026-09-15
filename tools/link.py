@@ -1704,7 +1704,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   # Emscripten exception handling can generate invoke calls, and they call
   # setThrew(). We cannot handle this using deps_info as the invokes are not
   # emitted because of library function usage, but by codegen itself.
-  if not settings.DISABLE_EXCEPTION_CATCHING:
+  if not settings.DISABLE_EXCEPTION_CATCHING or settings.SUPPORT_LONGJMP == 'emscripten':
     settings.REQUIRED_EXPORTS += ['setThrew']
 
   if settings.ASYNCIFY:
