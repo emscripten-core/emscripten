@@ -58,6 +58,11 @@ See docs/process.md for more on how version tagging works.
 - `WASM_BIGINT` was deprecated. BigInt integration is standard and enabled by
   default across all supported engines; it should now only ever be disabled
   implicitly when targeting JavaScript via `-sWASM=0`. (#27558)
+- Added `emscripten_epoll_add_listener`/`emscripten_epoll_remove_listener` (in
+  the new `<emscripten/epoll.h>`, experimental), a non-blocking variant of
+  `epoll_wait` that signals an epoll set's readiness to listener callbacks
+  (which collect the events themselves via a zero-timeout `epoll_wait`) with no
+  `ASYNCIFY`/`JSPI` requirement.
 
 6.0.7 - 08/17/26
 ----------------

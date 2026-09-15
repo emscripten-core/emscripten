@@ -251,6 +251,22 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_udp_mmsg.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
+  def test_noderawsockets_epoll_callback(self):
+    # An epoll listener callback woken repeatedly by arriving datagrams on a
+    # real socket via the SOCKFS -> wait-queue bridge, with no ASYNCIFY/JSPI.
+    # With pthreads the readiness is tracked on the main thread (where the epoll
+    # syscalls are proxied) but each delivery is back-proxied to the thread that
+    # registered the callback.
+    self.do_runf('sockets/test_epoll_callback.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_epoll_callback_force_exit(self):
+    # emscripten_force_exit with a listener still holding the runtime (an armed
+    # socket): the forfeited hold released by FS.quit at exit must not underflow
+    # the keepalive counter.
+    self.do_runf('sockets/test_epoll_callback_force_exit.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  @also_with_proxy_to_pthread
   def test_noderawsockets_udp_connect(self):
     # Connected UDP: sendto() with an address gives EISCONN, send() reaches the
     # peer, and datagrams from a non-peer socket are filtered out.
