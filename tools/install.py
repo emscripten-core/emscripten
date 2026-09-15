@@ -114,7 +114,7 @@ def main():
   os.makedirs(target)
   copy_emscripten(target)
   npm_install(target)
-  if os.path.isdir('.git'):
+  if os.path.exists('.git'):
     # Add revision flag only if the source directory is a Git repository
     # and not a source archive
     add_revision_file(target)
