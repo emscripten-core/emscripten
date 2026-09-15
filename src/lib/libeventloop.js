@@ -228,6 +228,8 @@ LibraryJSEventLoop = {
     preMainLoop: [],
     postMainLoop: [],
 
+    /** @type {?function(function(): ?, ...?): ?} */
+    setImmediate: null,
     // Replaced when the immediate scheduler allocates browser resources.
     disposeImmediate() {},
 
