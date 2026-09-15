@@ -261,11 +261,11 @@ def apply_min_browser_versions():
     enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -sWASM_WORKERS')
   if settings.OFFSCREENCANVAS_SUPPORT:
     enable_feature(Feature.OFFSCREENCANVAS_SUPPORT, 'OFFSCREENCANVAS_SUPPORT')
-  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm': # Wasm longjmp support will lean on Wasm (Legacy) EH
+  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     if settings.WASM_LEGACY_EXCEPTIONS:
-      enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
+      enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with WASM_LEGACY_EXCEPTIONS)')
     else:
-      enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
+      enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions without WASM_LEGACY_EXCEPTIONS)')
   if settings.GROWABLE_ARRAYBUFFERS == 2:
     enable_feature(Feature.GROWABLE_ARRAYBUFFERS, 'GrowableSharedArrayBuffer')
 
@@ -276,3 +276,5 @@ def auto_enable_features():
   # compiler rather then adding them all ad-hoc as internal settings
   if caniuse(Feature.GROWABLE_ARRAYBUFFERS):
     default_setting('GROWABLE_ARRAYBUFFERS', 2)
+  if not caniuse(Feature.WASM_LEGACY_EXCEPTIONS):
+    default_setting('WASM_LEGACY_EXCEPTIONS', 0)
