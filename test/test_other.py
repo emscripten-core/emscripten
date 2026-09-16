@@ -11862,6 +11862,38 @@ int main(void) {
       ''')
     self.run_process([EMXX, 'src.cpp', '-fexceptions', '--closure=1'])
 
+  def test_exceptions_no_link_flag(self):
+    # We compile this code using -fexceptions but link without it. The necessary
+    # functions and variables still should be in depending on the existing
+    # functions and the compilation should not crash with undeclared variable
+    # errors.
+    create_file('src.cpp', r'''
+      #include <string>
+      #include <stdio.h>
+
+      void foo() {
+        std::string a = std::to_string(42);
+        std::string b = a + a;
+      }
+
+      int bar() {
+        try {
+          return std::stoi("1");
+        } catch (...) {
+          return 2;
+        }
+      }
+
+      int main() {
+        foo();
+        printf("%d\n", bar());
+        return 0;
+      }
+      ''')
+    self.run_process([EMXX, '-fexceptions', '-c', 'src.cpp', '-o', 'src.o'])
+    self.run_process([EMXX, 'src.o', '-o', 'out.js'])
+    self.assertContained('1', self.run_js('out.js'))
+
   def test_assertions_on_incoming_module_api_changes(self):
     create_file('pre.js', 'Module.read = () => {};')
     self.do_runf('hello_world.c', 'Module.read option was removed',

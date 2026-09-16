@@ -1,10 +1,10 @@
 {
   "a.out.js": 2052,
   "a.out.js.gz": 1058,
-  "a.out.nodebug.wasm": 280,
-  "a.out.nodebug.wasm.gz": 226,
-  "total": 2332,
-  "total_gz": 1284,
+  "a.out.nodebug.wasm": 326,
+  "a.out.nodebug.wasm.gz": 263,
+  "total": 2378,
+  "total_gz": 1321,
   "sent": [],
   "imports": [],
   "exports": [
@@ -15,13 +15,15 @@
     "add",
     "emscripten_stack_get_current",
     "global_val",
-    "memory"
+    "memory",
+    "setThrew"
   ],
   "funcs": [
     "$__wasm_call_ctors",
     "$_emscripten_stack_alloc",
     "$_emscripten_stack_restore",
     "$add",
-    "$emscripten_stack_get_current"
+    "$emscripten_stack_get_current",
+    "$setThrew"
   ]
 }
