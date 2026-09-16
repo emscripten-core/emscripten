@@ -229,12 +229,12 @@ class sockets_node(RunnerCore):
                  cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
 
   def test_noderawsockets_nonblock_flags(self):
-    # socket()/accept4() SOCK_NONBLOCK, no listener flag inheritance on accept,
-    # non-blocking connect EINPROGRESS, and a warning when a blocking fd
-    # would-blocks.
+    # socket()/accept4() SOCK_NONBLOCK, FIONBIO, no listener flag inheritance on
+    # accept, non-blocking connect EINPROGRESS (TCP and AF_UNIX), and a warning
+    # when a blocking fd would-blocks.
     self.set_setting('ASSERTIONS')
     out = self.do_runf('sockets/test_tcp_nonblock_flags.c', 'done\n',
-                       cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+                       cflags=['-sNODERAWSOCKETS', '-sNODERAWFS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
     self.assertContained('a blocking socket operation would block', out)
 
   @requires_jspi_node
