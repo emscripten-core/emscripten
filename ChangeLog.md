@@ -164,7 +164,7 @@ See docs/process.md for more on how version tagging works.
 - Under `-sNODERAWSOCKETS`, `getaddrinfo` now performs real name resolution
   via `node:dns`, blocking the caller where its stack can wait (a proxied
   pthread, `ASYNCIFY`/`JSPI`) and returning `EAI_AGAIN` otherwise. Results may
-  now be a linked list, which `freeaddrinfo` frees in full.
+  now be a linked list, which `freeaddrinfo` frees in full. (#27693)
 - The following symbols are no longer included in `INCOMING_MODULE_JS_API`
   by default:
   - GL_MAX_TEXTURE_IMAGE_UNITS
