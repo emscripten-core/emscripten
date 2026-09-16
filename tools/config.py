@@ -15,11 +15,19 @@ from .utils import __rootpath__, exit_with_error, path_from_root
 
 logger = logging.getLogger('config')
 
-# The following class can be overridden by the config file and/or
-# environment variables.  Specifically any variable whose name
-# is in ALL_UPPER_CASE is considered a valid config file key.
-# See parse_config_file below.
-EMSCRIPTEN_ROOT = __rootpath__
+CONFIG_KEYS = {
+  'NODE_JS',
+  'BINARYEN_ROOT',
+  'LLVM_ROOT',
+  'LLVM_ADD_VERSION',
+  'CLANG_ADD_VERSION',
+  'CLOSURE_COMPILER',
+  'FROZEN_CACHE',
+  'CACHE',
+  'PORTS',
+  'COMPILER_WRAPPER',
+}
+
 NODE_JS = None
 BINARYEN_ROOT = None
 LLVM_ADD_VERSION = None
@@ -102,19 +110,6 @@ def parse_config_file():
   except Exception as e:
     exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, e, config_text)
 
-  CONFIG_KEYS = (
-    'NODE_JS',
-    'BINARYEN_ROOT',
-    'LLVM_ROOT',
-    'LLVM_ADD_VERSION',
-    'CLANG_ADD_VERSION',
-    'CLOSURE_COMPILER',
-    'FROZEN_CACHE',
-    'CACHE',
-    'PORTS',
-    'COMPILER_WRAPPER',
-  )
-
   if '_EM_TEST_RUNNER' in os.environ:
     # TODO(sbc): Move this completely out of the core compiler and into the test framework.
     TEST_KEYS = (
@@ -126,7 +121,7 @@ def parse_config_file():
       'WASMTIME',
       'WASM_ENGINES',
     )
-    CONFIG_KEYS += TEST_KEYS
+    CONFIG_KEYS.update(TEST_KEYS)
     for key in TEST_KEYS:
       globals()[key] = None
 

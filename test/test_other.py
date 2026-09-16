@@ -3965,15 +3965,14 @@ More info: https://emscripten.org
     # itself (its not configurable via the config file but driven by the location for arg0)
     output = self.run_process([EMCONFIG, 'EMSCRIPTEN_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, os.path.dirname(EMCONFIG))
-    invalid = 'Usage: em-config VAR_NAME'
     # Don't accept variables that do not exist
-    self.assert_fail([EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], invalid)
+    self.assert_fail([EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], 'Invalid config key: VAR_WHICH_DOES_NOT_EXIST')
     # Don't accept no arguments
-    self.assert_fail([EMCONFIG], invalid)
+    self.assert_fail([EMCONFIG], 'Usage: em-config VAR_NAME')
     # Don't accept more than one variable
-    self.assert_fail([EMCONFIG, 'LLVM_ROOT', 'EMCC'], invalid)
+    self.assert_fail([EMCONFIG, 'LLVM_ROOT', 'EMCC'], 'Usage: em-config VAR_NAME')
     # Don't accept arbitrary python code
-    self.assert_fail([EMCONFIG, 'sys.argv[1]'], invalid)
+    self.assert_fail([EMCONFIG, 'sys.argv[1]'], 'Invalid config key: sys.argv[1]')
 
   def test_link_s(self):
     # -s OPT=VALUE can conflict with -s as a linker option. We warn and ignore
