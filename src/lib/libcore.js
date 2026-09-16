@@ -1009,8 +1009,7 @@ addToLibrary({
 
   // Returns an EAI_* code (0 on success, having written the addrinfo list to
   // *out), or - under NODERAWSOCKETS, for a hostname needing a real DNS lookup -
-  // a thunk producing a Promise of that code, for getaddrinfo to wait on where
-  // the calling stack can suspend.
+  // a Promise of one.
   $doGetAddrInfo__internal: true,
   $doGetAddrInfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl',
 #if NODERAWSOCKETS
@@ -1064,8 +1063,11 @@ addToLibrary({
     }
 
 #if NODERAWSOCKETS
-    // Chain one addrinfo per {family, addr} entry, returning the head.
-    function allocaddrinfos(entries) {
+    // Resolve via node:dns (which honors the host's /etc/hosts), chaining one
+    // addrinfo per {family, addr} result into *out.
+    async function lookupHostname() {
+      var entries = await nodeSockHelpers.lookupHost(node, family);
+      if (typeof entries == 'number') return entries;
       var head = 0, prev = 0;
       for (var entry of entries) {
         var ai = allocaddrinfo(entry.family, type, proto, null, entry.addr, port);
@@ -1076,7 +1078,8 @@ addToLibrary({
         }
         prev = ai;
       }
-      return head;
+      {{{ makeSetValue('out', '0', 'head', '*') }}};
+      return 0;
     }
 #endif
 
@@ -1193,16 +1196,18 @@ addToLibrary({
     // try as a hostname
     //
 #if NODERAWSOCKETS
-    // A real node:dns lookup (which honors the host's /etc/hosts). It is
-    // asynchronous, and returned as a thunk rather than a started Promise
-    // because ASYNCIFY re-runs this import body on rewind: Asyncify.handleAsync
-    // only invokes the thunk on the initial unwind, so the lookup runs once.
-    return async () => {
-      var entries = await nodeSockHelpers.lookupHost(node, family);
-      if (typeof entries == 'number') return entries;
-      {{{ makeSetValue('out', '0', 'allocaddrinfos(entries)', '*') }}};
-      return 0;
-    };
+    // The lookup is asynchronous, so only start it where the calling stack can
+    // wait on the Promise: a sync-proxied pthread (PROXY_SYNC_ASYNC) awaits it,
+    // JSPI suspends on it. Otherwise (the event-loop thread itself) it must not
+    // start at all, since it would write to *out after we have returned.
+#if PTHREADS
+    if (PThread.currentProxiedOperationCallerThread) return lookupHostname();
+#endif
+#if JSPI
+    return lookupHostname();
+#else
+    return {{{ cDefs.EAI_AGAIN }}};
+#endif
 #else
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
@@ -1218,36 +1223,16 @@ addToLibrary({
 #endif
   },
 
-  getaddrinfo__deps: ['$doGetAddrInfo',
-#if NODERAWSOCKETS && ASYNCIFY
-    '$Asyncify',
-#endif
-  ],
+  getaddrinfo__deps: ['$doGetAddrInfo'],
   getaddrinfo__proxy: 'sync',
-#if NODERAWSOCKETS && (PTHREADS || ASYNCIFY)
-  // A hostname needing a real DNS lookup blocks by returning a Promise, which
-  // a proxied pthread awaits (PROXY_SYNC_ASYNC) and ASYNCIFY/JSPI suspends on.
-  // Every other outcome still returns synchronously.
+#if NODERAWSOCKETS && (PTHREADS || JSPI)
   getaddrinfo__async: true,
 #endif
   getaddrinfo: (node, service, hint, out) => {
     var ret = doGetAddrInfo(node, service, hint, out);
-#if NODERAWSOCKETS
-    if (typeof ret == 'function') {
-#if PTHREADS
-      if (PThread.currentProxiedOperationCallerThread) return ret();
-#endif
-#if ASYNCIFY
-      return Asyncify.handleAsync(ret);
-#else
-      // No stack that can wait on the lookup (the event-loop thread itself).
-      return {{{ cDefs.EAI_AGAIN }}};
-#endif
-    }
-#if PTHREADS
+#if NODERAWSOCKETS && PTHREADS
     // A sync-proxied caller awaits a thenable even for an immediate result.
     if (PThread.currentProxiedOperationCallerThread) return Promise.resolve(ret);
-#endif
 #endif
     return ret;
   },
