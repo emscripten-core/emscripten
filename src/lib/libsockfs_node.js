@@ -56,7 +56,11 @@ null;
 
 var NodeSockFSLibrary = {
   // Node plumbing shared by the interface methods below.
-  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES'],
+  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES',
+#if ASSERTIONS
+    '$warnOnce',
+#endif
+  ],
   $nodeSockHelpers: {
     // node builtins, resolved once each. getBuiltinModule works in both
     // CommonJS and ESM output, with require as the fallback.
@@ -211,6 +215,22 @@ var NodeSockFSLibrary = {
     // the literal: a colon means IPv6.
     noLookup(host, _opts, cb) {
       cb(null, host, host.includes(':') ? 6 : 4);
+    },
+    // The connection completes asynchronously. A blocking connect() cannot wait,
+    // so it keeps returning 0 (callers such as Rust std treat EINPROGRESS from a
+    // blocking connect as an error).
+    connectInProgress(sock) {
+      if (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}) throw new FS.ErrnoError({{{ cDefs.EINPROGRESS }}});
+    },
+    // Operations that would block return EAGAIN even on a blocking fd, since
+    // there is no way to block here.
+    wouldBlock(sock) {
+#if ASSERTIONS
+      if (!(sock.stream.flags & {{{ cDefs.O_NONBLOCK }}})) {
+        warnOnce('NODERAWSOCKETS: a blocking socket operation would block, returning EAGAIN instead (blocking I/O is not supported, use O_NONBLOCK with poll/epoll)');
+      }
+#endif
+      return new FS.ErrnoError({{{ cDefs.EAGAIN }}});
     },
     // The UDP backing object. With a synchronous dgram bindSync available we use
     // a public node:dgram socket (sock.udpPublic); otherwise we fall back to a
@@ -554,6 +574,7 @@ var NodeSockFSLibrary = {
         // same SO_ERROR/poll seam as TCP.
         nodeSockHelpers.wireConnection(sock, uconn);
         uconn.connect({ path: addr });
+        nodeSockHelpers.connectInProgress(sock);
         return;
       }
       if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
@@ -611,6 +632,7 @@ var NodeSockFSLibrary = {
       });
       nodeSockHelpers.wireConnection(sock, conn);
       conn.connect({ host: addr, port, lookup: nodeSockHelpers.noLookup });
+      nodeSockHelpers.connectInProgress(sock);
     },
     listen(sock, backlog) {
       if (sock.type !== {{{ cDefs.SOCK_STREAM }}}) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}}); // not a stream socket
@@ -669,10 +691,8 @@ var NodeSockFSLibrary = {
         listensock.error = null;
         throw new FS.ErrnoError(e);
       }
-      if (!listensock.pending.length) throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
-      var newsock = listensock.pending.shift();
-      newsock.stream.flags = listensock.stream.flags;
-      return newsock;
+      if (!listensock.pending.length) throw nodeSockHelpers.wouldBlock(listensock);
+      return listensock.pending.shift();
     },
     sendmsg(sock, buffer, offset, length, addr, port) {
       if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
@@ -753,7 +773,7 @@ var NodeSockFSLibrary = {
             sock.error = null;
             throw new FS.ErrnoError(derr);
           }
-          throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+          throw nodeSockHelpers.wouldBlock(sock);
         }
         // A datagram is atomic: return up to length bytes and drop the rest.
         var dd = dgram.data;
@@ -767,7 +787,7 @@ var NodeSockFSLibrary = {
         if (!sock.connection) {
           throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
         }
-        throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+        throw nodeSockHelpers.wouldBlock(sock);
       }
       var q = queued.data;
       var bytesRead = Math.min(length, q.length);

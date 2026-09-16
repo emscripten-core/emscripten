@@ -52,6 +52,24 @@ to connect to, and the linker flag ``-sWEBSOCKET_SUBPROTOCOL`` or
 ``Module['websocket']['subprotocol']`` to control the connection type
 (``'binary'`` or ``'text'``).
 
+POSIX Sockets on Node.js
+========================
+
+When targeting Node.js, the linker flag ``-sNODERAWSOCKETS`` backs the POSIX
+sockets API with real host TCP, UDP and ``AF_UNIX`` stream sockets (see
+:ref:`NODERAWSOCKETS`).
+
+Non-blocking sockets (``SOCK_NONBLOCK``, ``fcntl(F_SETFL, O_NONBLOCK)`` or
+``ioctl(FIONBIO)``) behave as on Linux.
+
+Blocking sockets cannot actually block. An operation on a blocking socket that
+would need to wait (``accept()``, ``recv()``/``read()``) fails with ``EAGAIN``
+instead, and a blocking ``connect()`` returns ``0`` before the connection has
+completed. Builds with ``ASSERTIONS`` print a warning the first time a blocking
+socket returns ``EAGAIN``. Applications should use non-blocking sockets together
+with ``poll()`` or ``epoll``, which can wait under ``-pthread`` with
+``-sPROXY_TO_PTHREAD`` or with JSPI.
+
 Full POSIX Sockets over WebSocket Proxy Server
 ==============================================
 

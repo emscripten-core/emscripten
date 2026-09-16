@@ -414,6 +414,9 @@ var SyscallsLibrary = {
   __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
     var sock = getSocketFromFD(fd);
     var newsock = sock.sock_ops.accept(sock);
+    // Linux: the accepted fd's status flags come only from `flags`, never from
+    // the listener.
+    if (flags & {{{ cDefs.SOCK_NONBLOCK }}}) newsock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
     if (addr) {
       var errno = writeSockaddr(addr, newsock.family, newsock.daddr, newsock.dport, len);
 #if ASSERTIONS

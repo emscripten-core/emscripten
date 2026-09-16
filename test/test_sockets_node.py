@@ -228,6 +228,15 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_epoll_rdhup.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_nonblock_flags(self):
+    # socket()/accept4() SOCK_NONBLOCK, no listener flag inheritance on accept,
+    # non-blocking connect EINPROGRESS, and a warning when a blocking fd
+    # would-blocks.
+    self.set_setting('ASSERTIONS')
+    out = self.do_runf('sockets/test_tcp_nonblock_flags.c', 'done\n',
+                       cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+    self.assertContained('a blocking socket operation would block', out)
+
   @requires_jspi_node
   def test_noderawsockets_epoll_rdhup_jspi(self):
     # Same, but the blocking calls suspend the wasm stack under JSPI.

@@ -6,7 +6,11 @@
 
 addToLibrary({
   $PIPEFS__postset: () => addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);'),
-  $PIPEFS__deps: ['$FS'],
+  $PIPEFS__deps: ['$FS',
+#if ASSERTIONS
+    '$warnOnce',
+#endif
+  ],
   $PIPEFS: {
     BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer
     mount(mount) {
@@ -161,6 +165,11 @@ addToLibrary({
         }
         if (currentLength == 0) {
           // Behave as if the read end is always non-blocking
+#if ASSERTIONS
+          if (!(stream.flags & {{{ cDefs.O_NONBLOCK }}})) {
+            warnOnce('a blocking pipe read would block, returning EAGAIN instead (blocking I/O is not supported, use O_NONBLOCK with poll/epoll)');
+          }
+#endif
           throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
         }
         var toRead = Math.min(currentLength, length);
