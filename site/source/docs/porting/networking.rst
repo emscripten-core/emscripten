@@ -69,8 +69,8 @@ completed, and a blocking ``send()`` never waits: it buffers without limit
 (only a non-blocking socket is bounded by the write buffer's high-water mark
 and reports ``EAGAIN``). Builds with ``ASSERTIONS`` print a warning the first
 time a blocking socket returns ``EAGAIN``. Applications should use non-blocking
-sockets together with ``poll()`` or ``epoll``, which can wait under
-``-pthread`` with ``-sPROXY_TO_PTHREAD`` or with JSPI.
+sockets together with ``poll()`` or ``epoll``, which can wait when called from
+a pthread, or when using :ref:`ASYNCIFY`.
 
 Full POSIX Sockets over WebSocket Proxy Server
 ==============================================
