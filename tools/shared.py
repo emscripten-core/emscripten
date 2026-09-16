@@ -366,7 +366,7 @@ def perform_sanity_checks(quiet=False):
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in (CLANG_CC, LLVM_AR):
-      if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
+      if not os.path.exists(cmd):
         exit_with_error('cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
