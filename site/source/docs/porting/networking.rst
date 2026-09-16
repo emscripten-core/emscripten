@@ -64,8 +64,8 @@ Non-blocking sockets (``SOCK_NONBLOCK``, ``fcntl(F_SETFL, O_NONBLOCK)`` or
 
 Blocking ``accept()``, ``recv()``, ``recvfrom()`` and ``recvmsg()`` wait when
 called from a pthread (including ``main()`` under :ref:`PROXY_TO_PTHREAD`), or
-when using :ref:`ASYNCIFY` (including JSPI), just like ``poll()`` and
-``epoll_wait()``; ``MSG_DONTWAIT`` still returns ``EAGAIN`` without waiting.
+when using :ref:`JSPI`, just like ``poll()`` and ``epoll_wait()``;
+``MSG_DONTWAIT`` still returns ``EAGAIN`` without waiting.
 Where no stack can wait (the main thread of a plain build) these fail with
 ``EAGAIN`` instead, and builds with ``ASSERTIONS`` print a warning the first
 time that happens. Other blocking operations never wait: a blocking

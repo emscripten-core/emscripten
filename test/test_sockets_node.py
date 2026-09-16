@@ -261,6 +261,18 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_tcp_blocking_error(self):
+    # A blocking recv() is woken by a connection error that lands after it
+    # blocked, and returns it (rather than spinning on EAGAIN while poll()
+    # reports POLLERR).
+    self.do_runf('sockets/test_tcp_blocking_error.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  @requires_jspi_node
+  def test_noderawsockets_tcp_blocking_error_jspi(self):
+    self.do_runf('sockets/test_tcp_blocking_error.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
   def test_noderawsockets_epoll_rdhup(self):
     # A blocking epoll_wait reports EPOLLRDHUP when the TCP peer half-closes its
     # write side (FIN), distinct from a full EPOLLHUP, and only when requested.

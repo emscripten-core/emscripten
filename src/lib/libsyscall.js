@@ -414,17 +414,17 @@ var SyscallsLibrary = {
   // backend is strictly synchronous: `op` throws EAGAIN when it would block,
   // whatever the fd's mode. A blocking socket (no O_NONBLOCK, no MSG_DONTWAIT)
   // then waits for readiness where the calling stack can - a sync-proxied
-  // pthread (PROXY_SYNC_ASYNC) awaits the returned Promise, ASYNCIFY/JSPI
-  // suspends on it - and retries. Every other outcome returns synchronously
-  // (under JSPI a Suspending import only suspends on a Promise), so a
-  // non-blocking call stays callable from any stack, and where no stack can
-  // wait (the event-loop thread itself) the EAGAIN surfaces unchanged.
+  // pthread (PROXY_SYNC_ASYNC) awaits the returned Promise, JSPI suspends on
+  // it - and retries. Every other outcome returns synchronously (a JSPI
+  // Suspending import only suspends on a Promise), so a non-blocking call
+  // stays callable from any stack, and where no stack can wait (the event-loop
+  // thread itself) the EAGAIN surfaces unchanged.
   $sockCall__internal: true,
   $sockCall__deps: ['$getSocketFromFD',
-#if PTHREADS || ASYNCIFY
-    '$sockCallAsync',
+#if PTHREADS || JSPI
+    '$sockCallAsync', '$sockWouldBlock',
 #endif
-#if ASYNCIFY
+#if JSPI
     '$Asyncify',
 #endif
 #if ASSERTIONS
@@ -436,34 +436,47 @@ var SyscallsLibrary = {
     // A sync-proxied caller awaits a thenable even for an immediate result.
     if (PThread.currentProxiedOperationCallerThread) return sockCallAsync(fd, dontWait, op);
 #endif
-#if ASYNCIFY == 1
-    // The rewind re-enters here after the wait has already run `op`, so it
-    // must go back through handleAsync rather than run `op` again.
-    if (Asyncify.state === Asyncify.State.Rewinding) return Asyncify.handleAsync(() => {});
-#endif
     var sock = getSocketFromFD(fd);
+#if JSPI
     try {
       return op(sock);
     } catch (e) {
-      if (e.name !== 'ErrnoError' || e.errno !== {{{ cDefs.EAGAIN }}} || dontWait || (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}})) throw e;
-#if ASYNCIFY
+      if (!sockWouldBlock(e, sock, dontWait)) throw e;
+      // handleAsync keeps the runtime alive across the suspension (EXIT_RUNTIME
+      // would otherwise tear it down from an event-loop callback while main()
+      // is parked here).
       return Asyncify.handleAsync(() => sockCallAsync(fd, dontWait, op));
+    }
 #else
 #if ASSERTIONS
-      warnOnce('a blocking socket operation would block, returning EAGAIN instead (this stack cannot block: use O_NONBLOCK with poll/epoll, or call from a pthread or with ASYNCIFY/JSPI)');
-#endif
+    try {
+      return op(sock);
+    } catch (e) {
+      if (e.name === 'ErrnoError' && e.errno === {{{ cDefs.EAGAIN }}} && !dontWait && !(sock.stream.flags & {{{ cDefs.O_NONBLOCK }}})) {
+        warnOnce('a blocking socket operation would block, returning EAGAIN instead (this stack cannot block: use O_NONBLOCK with poll/epoll, or call from a pthread or with JSPI)');
+      }
       throw e;
-#endif
     }
+#else
+    return op(sock);
+#endif
+#endif
   },
-#if PTHREADS || ASYNCIFY
-  // Async sockCall(): run `op`, and on a would-block wait on the socket's node
+#if PTHREADS || JSPI
+  // Whether a failed `op` on a blocking socket should wait and retry.
+  $sockWouldBlock__internal: true,
+  $sockWouldBlock: (e, sock, dontWait) =>
+    e.name === 'ErrnoError' && e.errno === {{{ cDefs.EAGAIN }}} && !dontWait && !(sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}),
+  // Async sockCall(): run `op`, and on a would-block park on the socket's node
   // wait-queue until poll() reports something to consume (readable, hung up or
   // errored; readiness is re-derived on each wake, the wake flags are just the
-  // trigger), then retry. Resolves to the result or -errno, as the synchronous
-  // syscall returns.
+  // trigger), then retry. Always parks after an EAGAIN rather than re-checking
+  // readiness first: nothing can have changed since `op` ran, and a backend
+  // whose poll() disagrees with its recv must wait, not spin. Resolves to the
+  // result or -errno: wrapSyscallFunction's catch only covers the synchronous
+  // part of the syscall, so a rejection would escape it.
   $sockCallAsync__internal: true,
-  $sockCallAsync__deps: ['$getSocketFromFD'],
+  $sockCallAsync__deps: ['$getSocketFromFD', '$sockWouldBlock'],
   $sockCallAsync: async (fd, dontWait, op) => {
     try {
       var sock = getSocketFromFD(fd);
@@ -471,18 +484,15 @@ var SyscallsLibrary = {
         try {
           return op(sock);
         } catch (e) {
-          if (e.name !== 'ErrnoError' || e.errno !== {{{ cDefs.EAGAIN }}} || dontWait || (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}})) throw e;
+          if (!sockWouldBlock(e, sock, dontWait)) throw e;
         }
-        var ready = () => sock.sock_ops.poll(sock) & {{{ cDefs.POLLIN | cDefs.POLLERR | cDefs.POLLHUP }}};
-        if (!ready()) {
-          await new Promise((resolve) => {
-            var reg = sock.stream.node.addListener(() => {
-              if (!ready()) return;
-              reg.listeners.delete(reg.entry);
-              resolve();
-            });
+        await new Promise((resolve) => {
+          var reg = sock.stream.node.addListener(() => {
+            if (!(sock.sock_ops.poll(sock) & {{{ cDefs.POLLIN | cDefs.POLLERR | cDefs.POLLHUP }}})) return;
+            reg.listeners.delete(reg.entry);
+            resolve();
           });
-        }
+        });
       }
     } catch (e) {
       if (e.name !== 'ErrnoError') throw e;
@@ -491,7 +501,7 @@ var SyscallsLibrary = {
   },
 #endif
   __syscall_accept4__deps: ['$sockCall', '$writeSockaddr'],
-#if PTHREADS || ASYNCIFY
+#if PTHREADS || JSPI
   __syscall_accept4__async: true,
 #endif
   __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
@@ -525,7 +535,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_recvfrom__deps: ['$sockCall', '$writeSockaddr'],
-#if PTHREADS || ASYNCIFY
+#if PTHREADS || JSPI
   __syscall_recvfrom__async: true,
 #endif
   __syscall_recvfrom: (fd, buf, len, flags, addr, alen) => {
@@ -618,7 +628,7 @@ var SyscallsLibrary = {
     return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
   },
   __syscall_recvmsg__deps: ['$sockCall', '$writeSockaddr'],
-#if PTHREADS || ASYNCIFY
+#if PTHREADS || JSPI
   __syscall_recvmsg__async: true,
 #endif
   __syscall_recvmsg: (fd, message, flags, u1, u2, u3) => {

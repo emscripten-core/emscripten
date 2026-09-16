@@ -807,6 +807,13 @@ var NodeSockFSLibrary = {
         if (!sock.connection) {
           throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
         }
+        // A pending error (poll reports it readable for this) is returned and
+        // cleared here, as Linux does, rather than reporting EAGAIN forever.
+        if (sock.error) {
+          var serr = sock.error;
+          sock.error = null;
+          throw new FS.ErrnoError(serr);
+        }
         throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
       }
       var q = queued.data;
