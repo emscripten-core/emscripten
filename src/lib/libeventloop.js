@@ -11,21 +11,32 @@ LibraryJSEventLoop = {
     throw 'unwind';
   },
 
-  // Pending timeout ids that hold a runtime keepalive.
-  $liveTimeouts: 'new Set()',
-
-  $safeSetTimeout__deps: ['$callUserCallback', '$liveTimeouts'],
+  // Just like setTimeout but returns an i32 that can be passed back to wasm
+  // rather than a JS object, and holds a runtime keepalive while pending.
+  $safeSetTimeout__deps: ['$callUserCallback'],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
   $safeSetTimeout: (func, timeout) => {
     {{{ runtimeKeepalivePush() }}}
-    // Coerce to a number since node returns a Timeout object.
-    var id = +setTimeout(() => {
-      liveTimeouts.delete(id);
+    // Slot 0 is reserved so that, like setTimeout, ids are always non-zero.
+    safeSetTimeout.mapping ||= [0];
+    var id = safeSetTimeout.mapping.length;
+    safeSetTimeout.mapping[id] = setTimeout(() => {
+      safeSetTimeout.mapping[id] = undefined;
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(func);
     }, timeout);
-    liveTimeouts.add(id);
     return id;
+  },
+
+  // Clears a pending safeSetTimeout and releases its keepalive. No-op if the
+  // timeout has already fired or been cleared.
+  $safeClearTimeout__deps: ['$safeSetTimeout'],
+  $safeClearTimeout: (id) => {
+    var handle = safeSetTimeout.mapping?.[id];
+    if (!handle) return;
+    clearTimeout(handle);
+    safeSetTimeout.mapping[id] = undefined;
+    {{{ runtimeKeepalivePop() }}}
   },
 
   // Just like setImmediate but returns an i32 that can be passed back
@@ -134,13 +145,7 @@ LibraryJSEventLoop = {
   emscripten_set_timeout: (cb, msecs, userData) =>
     safeSetTimeout(() => {{{ makeDynCall('vp', 'cb') }}}(userData), msecs),
 
-  emscripten_clear_timeout__deps: ['$liveTimeouts'],
-  emscripten_clear_timeout: (id) => {
-    if (liveTimeouts.delete(id)) {
-      {{{ runtimeKeepalivePop() }}}
-      clearTimeout(id);
-    }
-  },
+  emscripten_clear_timeout: '$safeClearTimeout',
 
   emscripten_set_timeout_loop__deps: ['$callUserCallback', 'emscripten_get_now'],
   emscripten_set_timeout_loop: (cb, msecs, userData) => {

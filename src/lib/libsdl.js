@@ -2562,14 +2562,14 @@ var LibrarySDL = {
   },
 
   SDL_PauseAudio__proxy: 'sync',
-  SDL_PauseAudio__deps: ['$safeSetTimeout'],
+  SDL_PauseAudio__deps: ['$safeSetTimeout', '$safeClearTimeout'],
   SDL_PauseAudio: (pauseOn) => {
     if (!SDL.audio) {
       return;
     }
     if (pauseOn) {
       if (SDL.audio.timer !== undefined) {
-        clearTimeout(SDL.audio.timer);
+        safeClearTimeout(SDL.audio.timer);
         SDL.audio.numAudioTimersPending = 0;
         SDL.audio.timer = undefined;
       }
