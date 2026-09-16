@@ -223,9 +223,8 @@ def get_path_to_functions_map(wasm, sourcemap, paths):
 
       if loc and loc.source:
         func_to_src[func_name] = utils.normalize_path(loc.source)
-      else:
-        if not is_synthesized_func(func_name):
-          diagnostics.warn(f"No source file information found in the source map for function '{func_name}'")
+      elif not is_synthesized_func(func_name):
+        diagnostics.warn(f"No source file information found in the source map for function '{func_name}'")
 
     for func_name, src in func_to_src.items():
       if src not in src_to_funcs:

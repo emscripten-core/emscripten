@@ -530,13 +530,12 @@ def finalize_wasm(infile, outfile, js_syms):
   if settings.DYNCALLS:
     # we need to add all dyncalls to the wasm
     modify_wasm = True
+  elif settings.WASM_BIGINT:
+    args.append('--no-dyncalls')
   else:
-    if settings.WASM_BIGINT:
-      args.append('--no-dyncalls')
-    else:
-      args.append('--dyncalls-i64')
-      # we need to add some dyncalls to the wasm
-      modify_wasm = True
+    args.append('--dyncalls-i64')
+    # we need to add some dyncalls to the wasm
+    modify_wasm = True
   # In AUTODEBUG mode we want to delay all legalization until later.  Here we
   # pass --bigint to tell wasm-emscripten-finalize not to do any legalization
   # at this point.
@@ -1038,12 +1037,11 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
         else:
           assignment = f"Module['{sym}']"
       receiving.append(f"{assignment} = makeInvalidEarlyAccess('{sym}');")
-  else:
-    # Declare JavaScript bindings for exports whose names are valid identifiers.
-    # Other WASM exports are accessible through wasmExports or Module.
-    if declarations:
-      sep = ',\n  '
-      receiving.append(f'var {sep.join(declarations)};\n')
+  # Declare JavaScript bindings for exports whose names are valid identifiers.
+  # Other WASM exports are accessible through wasmExports or Module.
+  elif declarations:
+    sep = ',\n  '
+    receiving.append(f'var {sep.join(declarations)};\n')
 
   if settings.MODULARIZE == 'instance':
     esm_exports = [e for e in mangled if should_export(e)]
@@ -1115,16 +1113,15 @@ def create_module(metadata, function_exports, other_exports, library_symbols, al
   sending = create_sending(metadata, library_symbols)
   if settings.WASM_ESM_INTEGRATION:
     module.append(sending)
-  else:
-    if settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):
-      sending = textwrap.indent(sending, '  ').strip()
-      module.append(f'''\
+  elif settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):
+    sending = textwrap.indent(sending, '  ').strip()
+    module.append(f'''\
   var wasmImports;
   function assignWasmImports() {{
     wasmImports = {sending};
   }}''')
-    else:
-      module.append(f'var wasmImports = {sending};')
+  else:
+    module.append(f'var wasmImports = {sending};')
 
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
     module += create_invoke_wrappers(metadata)

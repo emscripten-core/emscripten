@@ -373,47 +373,45 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
         # for clang
         if debug_level < 3 and not (settings.GENERATE_SOURCE_MAP or settings.SEPARATE_DWARF):
           newargs[i] = '-g0'
+        elif debug_level == 3:
+          settings.GENERATE_DWARF = 1
+        elif debug_level == 4:
+          # In the past we supported, -g4.  But clang never did.
+          # Lower this to -g3, and report a warning.
+          newargs[i] = '-g3'
+          diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
+          settings.GENERATE_SOURCE_MAP = 1
+        elif debug_level > 4:
+          exit_with_error(f"unknown argument: '{arg}'")
+      elif debug_level.startswith('force_dwarf'):
+        exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
+      elif debug_level.startswith('separate-dwarf'):
+        # emit full DWARF but also emit it in a file on the side
+        newargs[i] = '-g'
+        # if a file is provided, use that; otherwise use the default location
+        # (note that we do not know the default location until all args have
+        # been parsed, so just note True for now).
+        if debug_level != 'separate-dwarf':
+          if not debug_level.startswith('separate-dwarf=') or debug_level.count('=') != 1:
+            exit_with_error('invalid -gseparate-dwarf=FILENAME notation')
+          settings.SEPARATE_DWARF = debug_level.split('=')[1]
         else:
-          if debug_level == 3:
-            settings.GENERATE_DWARF = 1
-          elif debug_level == 4:
-            # In the past we supported, -g4.  But clang never did.
-            # Lower this to -g3, and report a warning.
-            newargs[i] = '-g3'
-            diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
-            settings.GENERATE_SOURCE_MAP = 1
-          elif debug_level > 4:
-            exit_with_error(f"unknown argument: '{arg}'")
+          settings.SEPARATE_DWARF = True
+        settings.GENERATE_DWARF = 1
+        settings.DEBUG_LEVEL = 3
+      elif debug_level in {'source-map', 'source-map=inline'}:
+        settings.GENERATE_SOURCE_MAP = 1 if debug_level == 'source-map' else 2
+        newargs[i] = '-g'
+      elif debug_level == 'z':
+        # Ignore `-gz`.  We don't support debug info compression.
+        pass
       else:
-        if debug_level.startswith('force_dwarf'):
-          exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
-        elif debug_level.startswith('separate-dwarf'):
-          # emit full DWARF but also emit it in a file on the side
-          newargs[i] = '-g'
-          # if a file is provided, use that; otherwise use the default location
-          # (note that we do not know the default location until all args have
-          # been parsed, so just note True for now).
-          if debug_level != 'separate-dwarf':
-            if not debug_level.startswith('separate-dwarf=') or debug_level.count('=') != 1:
-              exit_with_error('invalid -gseparate-dwarf=FILENAME notation')
-            settings.SEPARATE_DWARF = debug_level.split('=')[1]
-          else:
-            settings.SEPARATE_DWARF = True
-          settings.GENERATE_DWARF = 1
-          settings.DEBUG_LEVEL = 3
-        elif debug_level in {'source-map', 'source-map=inline'}:
-          settings.GENERATE_SOURCE_MAP = 1 if debug_level == 'source-map' else 2
-          newargs[i] = '-g'
-        elif debug_level == 'z':
-          # Ignore `-gz`.  We don't support debug info compression.
-          pass
-        else:
-          # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
-          # usually clang flags that emit DWARF. So we pass them through to
-          # clang and make the emscripten code treat it like any other DWARF.
-          settings.GENERATE_DWARF = 1
-          settings.EMIT_NAME_SECTION = 1
-          settings.DEBUG_LEVEL = 3
+        # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
+        # usually clang flags that emit DWARF. So we pass them through to
+        # clang and make the emscripten code treat it like any other DWARF.
+        settings.GENERATE_DWARF = 1
+        settings.EMIT_NAME_SECTION = 1
+        settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
       settings.EMIT_NAME_SECTION = 1

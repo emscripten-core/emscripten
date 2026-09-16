@@ -273,11 +273,10 @@ def choose_random_tests(base, num_tests, relevant_modes):
     chosen.add(new_test)
     if len(chosen) > before:
       print('* ' + new_test)
-    else:
-      # we may have hit the limit
-      if len(chosen) == len(tests) * len(relevant_modes):
-        print(f'(all possible tests chosen! {len(chosen)} = {len(tests)}*{len(relevant_modes)})')
-        break
+    elif len(chosen) == len(tests) * len(relevant_modes):
+      # we hit the limit
+      print(f'(all possible tests chosen! {len(chosen)} = {len(tests)}*{len(relevant_modes)})')
+      break
   return list(chosen)
 
 
@@ -421,10 +420,9 @@ def load_test_suite(args, modules, options):
       is_parallel_module = use_parallel_suite(m)
       if using_parallel_suite is None:
         using_parallel_suite = is_parallel_module
-      else:
+      elif is_parallel_module != using_parallel_suite:
         # All the following modules must match in their support for the parallel runner.
-        if is_parallel_module != using_parallel_suite:
-          utils.exit_with_error(f'attempt to mix parallel and non-parallel test modules ({m.__name__})')
+        utils.exit_with_error(f'attempt to mix parallel and non-parallel test modules ({m.__name__})')
 
   # If we are only running a single tests, never use the parallel tests suite.
   # This means that the output of a single test is always going to be in `out/test/` rather
@@ -542,7 +540,7 @@ def parse_args():
 
   if options.ansi is None:
     options.ansi = colored_logger.ansi_color_available()
-  else:
+  else:  # ruff: ignore[collapsible-else-if]
     if options.ansi:
       colored_logger.enable(force=True)
     else:
@@ -781,14 +779,14 @@ if __name__ == '__main__':
   except KeyboardInterrupt:
     logger.warning('KeyboardInterrupt')
     sys.exit(1)
-else:
-  # We are not the main process, and most likely a child process of
-  # the multiprocess pool.  In this mode the modifications made to the
-  # test class by `skip_test` need to be re-applied in each child
-  # subprocess (sad but true).  This is needed in particular on macOS
-  # and Windows where the default mode for multiprocessing is `spawn`
-  # rather than `fork`
-  if 'EMTEST_SKIP' in os.environ:
-    modules = get_and_import_modules()
-    for skip in os.environ['EMTEST_SKIP'].split():
-      skip_test(skip, modules)
+
+# We are not the main process, and most likely a child process of
+# the multiprocess pool.  In this mode the modifications made to the
+# test class by `skip_test` need to be re-applied in each child
+# subprocess (sad but true).  This is needed in particular on macOS
+# and Windows where the default mode for multiprocessing is `spawn`
+# rather than `fork`
+if 'EMTEST_SKIP' in os.environ:
+  modules = get_and_import_modules()
+  for skip in os.environ['EMTEST_SKIP'].split():
+    skip_test(skip, modules)

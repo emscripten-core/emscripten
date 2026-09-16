@@ -262,15 +262,14 @@ def lld_flags_for_executable(external_symbols):
       # when settings.EXPECT_MAIN is set we fall back to wasm-ld default of _start
       if not settings.EXPECT_MAIN:
         cmd += ['--entry=_initialize']
+    elif settings.PROXY_TO_PTHREAD:
+      cmd += ['--entry=_emscripten_proxy_main']
     else:
-      if settings.PROXY_TO_PTHREAD:
-        cmd += ['--entry=_emscripten_proxy_main']
-      else:
-        # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
-        # For now we need to do this since the entry point can be either `main` or
-        # `__main_argv_argc`, but we should address that by using a single `_start`
-        # function like we do in STANDALONE_WASM mode.
-        cmd += ['--no-entry']
+      # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
+      # For now we need to do this since the entry point can be either `main` or
+      # `__main_argv_argc`, but we should address that by using a single `_start`
+      # function like we do in STANDALONE_WASM mode.
+      cmd += ['--no-entry']
 
   # The default for `--stack-first` is transitioning from disabled to
   # enabled.  So be explicit in all cases for now.

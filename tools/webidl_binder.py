@@ -499,9 +499,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,  # ru
         if arg.type.isInteger():
           if all_checks:
             body += f"  assert(typeof {js_arg} === 'number' && !isNaN({js_arg}), '{check_msg}Expecting <integer>');\n"
-        else:
-          if all_checks:
-            body += f"  assert(typeof {js_arg} === 'number', '{check_msg}Expecting <number>');\n"
+        elif all_checks:
+          body += f"  assert(typeof {js_arg} === 'number', '{check_msg}Expecting <number>');\n"
         # No transform needed for numbers
       elif arg.type.isBoolean():
         if all_checks:

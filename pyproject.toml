@@ -68,7 +68,6 @@ lint.ignore = [
   "too-many-locals",
   "too-many-nested-blocks",
   "redefined-argument-from-local",
-  "collapsible-else-if",
   "no-self-use",
   "global-variable-not-assigned",
   "global-statement",

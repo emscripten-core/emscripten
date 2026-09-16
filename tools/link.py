@@ -1080,7 +1080,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     if '_main' in settings.EXPORTED_FUNCTIONS:
       # TODO(sbc): Make this into a warning?
       logger.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
-  else:
+  else:  # ruff: ignore[collapsible-else-if]
     # In normal non-standalone mode we have special handling of `_main` in EXPORTED_FUNCTIONS.
     # 1. If the user specifies exports, but doesn't include `_main` we assume they want to build a
     #    reactor.
@@ -2841,11 +2841,10 @@ class ScriptSource:
           initModule(Module);
         </script>
         '''
+      elif settings.MODULARIZE:
+        return f'<script type="text/javascript" src="{src}"></script>'
       else:
-        if settings.MODULARIZE:
-          return f'<script type="text/javascript" src="{src}"></script>'
-        else:
-          return f'<script async type="text/javascript" src="{src}"></script>'
+        return f'<script async type="text/javascript" src="{src}"></script>'
     else:
       return f'<script id="mainScript">\n{self.inline}\n</script>'
 
