@@ -63,10 +63,10 @@ void check_connect(int fd, struct sockaddr* addr, socklen_t len) {
   assert(err == 0);
 }
 
-void check_accept(int listen_fd, struct sockaddr_in* addr, int flags, int expect_nonblock) {
-  int client_fd = socket(AF_INET, SOCK_STREAM, 0);
+void check_accept(int listen_fd, struct sockaddr* addr, socklen_t len, int flags, int expect_nonblock) {
+  int client_fd = socket(addr->sa_family, SOCK_STREAM, 0);
   assert(client_fd >= 0);
-  assert(connect(client_fd, (struct sockaddr*)addr, sizeof(*addr)) == 0);
+  assert(connect(client_fd, addr, len) == 0);
   wait_for(listen_fd, POLLIN);
   int peer_fd = flags ? accept4(listen_fd, NULL, NULL, flags) : accept(listen_fd, NULL, NULL);
   assert(peer_fd >= 0);
@@ -105,10 +105,10 @@ int main(void) {
   assert(accept(blocking_fd, NULL, NULL) == -1 && errno == EAGAIN);
 #endif
 
-  check_accept(blocking_fd, &blocking_addr, 0, 0);
-  check_accept(blocking_fd, &blocking_addr, SOCK_NONBLOCK | SOCK_CLOEXEC, 1);
-  check_accept(nonblocking_fd, &nonblocking_addr, 0, 0);
-  check_accept(nonblocking_fd, &nonblocking_addr, SOCK_NONBLOCK | SOCK_CLOEXEC, 1);
+  check_accept(blocking_fd, (struct sockaddr*)&blocking_addr, sizeof(blocking_addr), 0, 0);
+  check_accept(blocking_fd, (struct sockaddr*)&blocking_addr, sizeof(blocking_addr), SOCK_NONBLOCK | SOCK_CLOEXEC, 1);
+  check_accept(nonblocking_fd, (struct sockaddr*)&nonblocking_addr, sizeof(nonblocking_addr), 0, 0);
+  check_accept(nonblocking_fd, (struct sockaddr*)&nonblocking_addr, sizeof(nonblocking_addr), SOCK_NONBLOCK | SOCK_CLOEXEC, 1);
 
   int client_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
   assert(client_fd >= 0);
@@ -128,6 +128,8 @@ int main(void) {
   assert(client_fd >= 0);
   check_connect(client_fd, (struct sockaddr*)&un, sizeof(un));
   close(client_fd);
+  check_accept(unix_fd, (struct sockaddr*)&un, sizeof(un), 0, 0);
+  check_accept(unix_fd, (struct sockaddr*)&un, sizeof(un), SOCK_NONBLOCK, 1);
   close(unix_fd);
   unlink(un.sun_path);
 
