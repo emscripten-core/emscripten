@@ -232,7 +232,7 @@ class sockets_node(RunnerCore):
     # socket()/accept4() SOCK_NONBLOCK, FIONBIO, no listener flag inheritance on
     # accept, non-blocking connect EINPROGRESS (TCP and AF_UNIX), and a warning
     # when a blocking fd would-blocks.
-    out = self.do_runf('sockets/test_tcp_nonblock_flags.c', 'done\n',
+    out = self.do_runf('sockets/test_nonblock_flags.c', 'done\n',
                        cflags=['-sNODERAWSOCKETS', '-sNODERAWFS', '-sASSERTIONS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
     self.assertContained('a blocking socket operation would block', out)
 
