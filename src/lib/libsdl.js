@@ -3579,8 +3579,9 @@ var LibrarySDL = {
       interval),
 
   SDL_RemoveTimer__proxy: 'sync',
+  SDL_RemoveTimer__deps: ['$safeClearTimeout'],
   SDL_RemoveTimer: (id) => {
-    clearTimeout(id);
+    safeClearTimeout(id);
     return true;
   },
 
