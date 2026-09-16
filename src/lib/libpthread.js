@@ -1086,7 +1086,8 @@ var LibraryPThread = {
     var rtn = func(...proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
     if (ctx) {
-      rtn.then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, rtn));
+      // A PROXY_SYNC_ASYNC function may complete synchronously with a plain value.
+      Promise.resolve(rtn).then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, rtn));
       return;
     }
 

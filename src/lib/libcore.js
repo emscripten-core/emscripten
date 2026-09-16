@@ -1007,11 +1007,7 @@ addToLibrary({
     return inetPton4(DNS.lookup_name(nameString));
   },
 
-  // Returns an EAI_* code (0 on success, having written the addrinfo list to
-  // *out), or - under NODERAWSOCKETS, for a hostname needing a real DNS lookup -
-  // a Promise of one.
-  $doGetAddrInfo__internal: true,
-  $doGetAddrInfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl',
+  getaddrinfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl',
 #if NODERAWSOCKETS
     '$nodeSockHelpers',
 #endif
@@ -1019,7 +1015,14 @@ addToLibrary({
     '$Asyncify',
 #endif
   ],
-  $doGetAddrInfo: (node, service, hint, out) => {
+  getaddrinfo__proxy: 'sync',
+#if NODERAWSOCKETS && (PTHREADS || ASYNCIFY)
+  // Returns an EAI_* code synchronously, or - for a hostname needing a real
+  // DNS lookup - a Promise of one, which a sync-proxied pthread awaits and
+  // ASYNCIFY/JSPI suspend on.
+  getaddrinfo__async: true,
+#endif
+  getaddrinfo: (node, service, hint, out) => {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
     // really should provide a linked list of suitable addrinfo values.
@@ -1229,20 +1232,6 @@ addToLibrary({
     {{{ makeSetValue('out', '0', 'ai', '*') }}};
     return 0;
 #endif
-  },
-
-  getaddrinfo__deps: ['$doGetAddrInfo'],
-  getaddrinfo__proxy: 'sync',
-#if NODERAWSOCKETS && (PTHREADS || ASYNCIFY)
-  getaddrinfo__async: true,
-#endif
-  getaddrinfo: (node, service, hint, out) => {
-    var ret = doGetAddrInfo(node, service, hint, out);
-#if NODERAWSOCKETS && PTHREADS
-    // A sync-proxied caller awaits a thenable even for an immediate result.
-    if (PThread.currentProxiedOperationCallerThread) return Promise.resolve(ret);
-#endif
-    return ret;
   },
 
   getnameinfo__deps: ['$DNS', '$readSockaddr', '$stringToUTF8'],
