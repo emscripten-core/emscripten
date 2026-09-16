@@ -1023,6 +1023,7 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'restoreOldWindowedStyle',
   'UNWIND_CACHE',
   'ExitStatus',
+  'liveTimeouts',
   'emSetImmediate',
   'emClearImmediate_deps',
   'emClearImmediate',
