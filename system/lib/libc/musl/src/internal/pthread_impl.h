@@ -125,6 +125,11 @@ struct pthread {
 	//
 	// Since futex addresses must be 4-byte aligned, the low bit is safe to use.
 	_Atomic uintptr_t wait_addr;
+	// Runtime keepalive holds placed on this thread by other threads (see
+	// _emscripten_thread_keepalive). Read by this thread's keepRuntimeAlive()
+	// alongside its own JS-side counter, which other threads cannot reach
+	// synchronously.
+	_Atomic int keepalive_holds;
 #endif
 };
 
