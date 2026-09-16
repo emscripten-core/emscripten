@@ -1,10 +1,10 @@
 {
-  "a.out.js": 23471,
-  "a.out.js.gz": 8555,
-  "a.out.nodebug.wasm": 14228,
-  "a.out.nodebug.wasm.gz": 7062,
-  "total": 37699,
-  "total_gz": 15617,
+  "a.out.js": 23579,
+  "a.out.js.gz": 8576,
+  "a.out.nodebug.wasm": 14279,
+  "a.out.nodebug.wasm.gz": 7101,
+  "total": 37858,
+  "total_gz": 15677,
   "sent": [
     "fd_write"
   ],
@@ -24,6 +24,7 @@
     "fflush",
     "main",
     "memory",
+    "setThrew",
     "strerror"
   ],
   "funcs": [
@@ -71,6 +72,7 @@
     "$printf",
     "$printf_core",
     "$scalbn",
+    "$setThrew",
     "$strerror",
     "$strnlen",
     "$vfprintf",
