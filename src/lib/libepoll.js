@@ -106,7 +106,7 @@ var EpollLibrary = {
   $epollClearListener__internal: true,
   $epollClearListener__deps: [
 #if PTHREADS
-    '$epollDeliveries', '$epollKeepalive', '_emscripten_epoll_keepalive_on_thread',
+    '$epollDeliveries', '$epollHoldOwner',
 #endif
   ],
   $epollClearListener: (ep, it) => {
@@ -114,9 +114,7 @@ var EpollLibrary = {
     it.cleared = true;
     it.listener.listeners.delete(it.listener.entry);
 #if PTHREADS
-    if (it.keptAlive && it.ownerThread) {
-      __emscripten_epoll_keepalive_on_thread(it.ownerThread, -1);
-    }
+    if (it.keptAlive) epollHoldOwner(it, -1);
     it.keptAlive = false;
     // Retire its delivery token; a still-in-flight cross-thread delivery whose
     // completion arrives after this finds nothing and is dropped - so release
@@ -124,7 +122,7 @@ var EpollLibrary = {
     if (it.token) delete epollDeliveries[it.token];
     if (it.inflight) {
       it.inflight = false;
-      epollKeepalive(-1);
+      epollHoldOwner(it, -1);
     }
 #endif
   },
@@ -147,6 +145,36 @@ var EpollLibrary = {
 #endif
   },
 
+#if PTHREADS
+  // Hold or release a listener's owner thread (where its callbacks run) in
+  // step with the main thread: the atomic add lands immediately, so the owner
+  // can never decide to exit ahead of a hold taken for it. ownerThread is 0
+  // for a main-thread listener, covered by epollKeepalive. An owner that has
+  // exited (its pthread struct is being reclaimed) has nothing to hold.
+  $epollHoldOwner__internal: true,
+  $epollHoldOwner__deps: ['_emscripten_thread_keepalive'],
+  $epollHoldOwner: (it, delta) => {
+    if (it.ownerThread && PThread.pthreads[it.ownerThread]) {
+      __emscripten_thread_keepalive(it.ownerThread, delta);
+    }
+  },
+#endif
+
+  // A hold scoped to one listener (a pending or in-flight delivery): on the
+  // main thread and, with pthreads, mirrored on the owner.
+  $epollHold__internal: true,
+  $epollHold__deps: ['$epollKeepalive',
+#if PTHREADS
+    '$epollHoldOwner',
+#endif
+  ],
+  $epollHold: (it, delta) => {
+    epollKeepalive(delta);
+#if PTHREADS
+    epollHoldOwner(it, delta);
+#endif
+  },
+
   // Can readiness on this watched fd arrive from the host (the JS event loop),
   // with no wasm running? A socket's can. A pipe is only ever written by wasm,
   // so whatever runs that write already holds the runtime - the registration
@@ -161,11 +189,11 @@ var EpollLibrary = {
   // (Node.js-style, registered I/O interest holds the loop open; a set the host
   // cannot fire releases it). A pending delivery holds it separately (see
   // wake()). With pthreads each listener's owner thread (which runs its
-  // deliveries) is held too.
+  // deliveries) is held by the same rule.
   $epollReconcileKeepalive__internal: true,
   $epollReconcileKeepalive__deps: ['$epollKeepalive',
 #if PTHREADS
-    '_emscripten_epoll_keepalive_on_thread',
+    '$epollHoldOwner',
 #endif
   ],
   $epollReconcileKeepalive: (ep) => {
@@ -174,11 +202,7 @@ var EpollLibrary = {
     for (var it of ep.interests.values()) {
       if (armed != !!it.keptAlive) {
         it.keptAlive = armed;
-        // ownerThread is 0 when the main thread registered; the main keepalive
-        // below covers it.
-        if (it.ownerThread) {
-          __emscripten_epoll_keepalive_on_thread(it.ownerThread, armed ? 1 : -1);
-        }
+        epollHoldOwner(it, armed ? 1 : -1);
       }
     }
 #endif
@@ -469,7 +493,7 @@ var EpollLibrary = {
   // collected by exactly one of them - the same load balancing as multiple
   // blocking epoll_wait callers on one epoll. A level fd left undrained
   // re-signals every tick, an edge fd once per edge.
-  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$epollReconcileKeepalive', '$epollKeepalive', '$callUserCallback', '$emSetImmediate', '$maybeExit',
+  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$epollReconcileKeepalive', '$epollHold', '$callUserCallback', '$emSetImmediate', '$maybeExit',
 #if PTHREADS
     '$epollDeliveries', '_emscripten_epoll_run_callback_on_thread',
 #endif
@@ -523,8 +547,16 @@ var EpollLibrary = {
 #if PTHREADS
       if (callerThread) {
         it.inflight = true;
-        epollKeepalive(1); // held until the completion lands back here
-        __emscripten_epoll_run_callback_on_thread(callerThread, callback, userdata, it.token);
+        // Held until the completion lands back here - on the owner only: an
+        // exit() from inside the callback unwinds past the completion, and a
+        // hold on the main thread would then defer the exit it asks for.
+        epollHoldOwner(it, 1);
+        if (!__emscripten_epoll_run_callback_on_thread(callerThread, callback, userdata, it.token)) {
+          // The owner thread is gone (exited under an exit() elsewhere): the
+          // listener dies with it.
+          epollClearListener(ep, it);
+          epollReconcileKeepalive(ep);
+        }
         return;
       }
 #endif
@@ -556,23 +588,40 @@ var EpollLibrary = {
     function wake(held) {
       if (held && FS.initialized && !it.held) {
         it.held = true;
-        epollKeepalive(1);
+        epollHold(it, 1);
       }
       if (it.scheduled) return;
       it.scheduled = true;
       emSetImmediate(() => {
         it.scheduled = false;
-        if (it.held) {
-          it.held = false;
-          epollKeepalive(-1);
+        function release() {
+          if (it.held) {
+            it.held = false;
+            epollHold(it, -1);
+          }
         }
         // Nothing to deliver (cleared, or drained synchronously meanwhile):
         // callUserCallback's maybeExit will not run, and the hold just
         // released may have been what deferred main's exit.
         if (it.cleared || epollWouldBlock(ep)) {
+          release();
           maybeExit();
           return;
         }
+#if PTHREADS
+        // Cross-thread: take the in-flight hold before releasing this one, so
+        // the owner (woken at once by the release) never sees a gap between
+        // the two and exits under the callback on its way.
+        if (callerThread) {
+          deliver();
+          release();
+          maybeExit();
+          return;
+        }
+#endif
+        // Inline: release first, so callUserCallback's maybeExit sees the
+        // true state (the callback's own re-wake takes a fresh hold inside).
+        release();
         deliver();
       });
     }
@@ -621,13 +670,13 @@ var EpollLibrary = {
   // Called (on the main thread) by the C helper once a cross-thread delivery
   // finishes on the registering thread: clear the in-flight gate and re-derive,
   // so a still-ready set delivers its next batch.
-  _emscripten_epoll_delivery_done__deps: ['$epollDeliveries', '$epollKeepalive', '$epollWouldBlock'],
+  _emscripten_epoll_delivery_done__deps: ['$epollDeliveries', '$epollHoldOwner', '$epollWouldBlock'],
   _emscripten_epoll_delivery_done: (token) => {
     var it = epollDeliveries[token];
     if (!it) return; // listener was removed while the delivery was in flight
     it.inflight = false;
     it.wake(!epollWouldBlock(it.ep));
-    epollKeepalive(-1);
+    epollHoldOwner(it, -1);
   },
 #endif
 };

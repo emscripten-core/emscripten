@@ -13671,6 +13671,7 @@ void foo() {}
     'later': (['-DMODE_LATER'], 0),
     'drain_pthread': (['-DMODE_DRAIN', '-pthread', '-sPROXY_TO_PTHREAD'], 7),
     'remove_pthread': (['-DMODE_REMOVE', '-pthread', '-sPROXY_TO_PTHREAD'], 7),
+    'later_pthread': (['-DMODE_LATER', '-pthread', '-sPROXY_TO_PTHREAD'], 0),
   })
   def test_epoll_callback_drain_exit(self, cflags, returncode):
     # A scheduled delivery whose set was drained (or listener removed) before it

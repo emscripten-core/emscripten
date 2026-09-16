@@ -61,7 +61,11 @@ extern "C" {
 // disarmed) the listeners stop holding the runtime, so no explicit disposal is
 // required in that case. A pipe does not count: it can only be written by wasm
 // code, which is already running (and so already held) when it does; a
-// delivery that write schedules is itself held until it runs.
+// delivery that write schedules is itself held until it runs. With pthreads the
+// same holds apply to the thread that registered the listener, where its
+// callbacks run. Such a callback may see a spurious wakeup (epoll_wait
+// collects nothing) if the set was drained from that thread while the signal
+// was in flight.
 //
 // Listeners are shared instance state: they see registrations made through any
 // dup'd fd, and closing the last fd to the instance removes them all. Returns
