@@ -960,7 +960,7 @@ var LibraryEmbind = {
 
   _embind_finalize_value_array__deps: [
     '$tupleRegistrations', '$runDestructors',
-    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc'],
+    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc', '$zeroMemory'],
   _embind_finalize_value_array: (rawTupleType) => {
     var reg = tupleRegistrations[rawTupleType];
     delete tupleRegistrations[rawTupleType];
@@ -1013,7 +1013,7 @@ var LibraryEmbind = {
             throw new TypeError(`Incorrect number of tuple elements for ${reg.name}: expected=${elementsLength}, actual=${o.length}`);
           }
           var ptr;
-          if (isTrivial && destructors === null) {
+          if (isTrivial && !destructors) {
             // Trivially constructible and destructible, and the invoker
             // manages a stack frame around this call: the temporary lives on
             // the wasm stack. No allocation, nothing to destruct. Callers
@@ -1022,10 +1022,10 @@ var LibraryEmbind = {
             // Zero-fill so unregistered fields and padding match the
             // value-initialization the heap path's `new T()` performs.
             ptr = stackAlloc(valueSize);
-            HEAPU8.fill(0, ptr, ptr + valueSize);
+            zeroMemory(ptr, valueSize);
           } else {
             ptr = rawConstructor();
-            if (destructors !== null) {
+            if (destructors) {
               destructors.push(rawDestructor, ptr);
             }
           }
@@ -1092,7 +1092,7 @@ var LibraryEmbind = {
 
   _embind_finalize_value_object__deps: [
     '$structRegistrations', '$runDestructors',
-    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc'],
+    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc', '$zeroMemory'],
   _embind_finalize_value_object: (structType) => {
     var reg = structRegistrations[structType];
     delete structRegistrations[structType];
@@ -1150,16 +1150,16 @@ var LibraryEmbind = {
             }
           }
           var ptr;
-          if (isTrivial && destructors === null) {
+          if (isTrivial && !destructors) {
             // See the matching branch in _embind_finalize_value_array: the
             // invoker manages a stack frame, so the temporary lives on the
             // wasm stack with no allocation and no destructor bookkeeping;
             // zero-filled to match the heap path's value-initialization.
             ptr = stackAlloc(valueSize);
-            HEAPU8.fill(0, ptr, ptr + valueSize);
+            zeroMemory(ptr, valueSize);
           } else {
             ptr = rawConstructor();
-            if (destructors !== null) {
+            if (destructors) {
               destructors.push(rawDestructor, ptr);
             }
           }
