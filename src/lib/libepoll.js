@@ -469,7 +469,7 @@ var EpollLibrary = {
   // collected by exactly one of them - the same load balancing as multiple
   // blocking epoll_wait callers on one epoll. A level fd left undrained
   // re-signals every tick, an edge fd once per edge.
-  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$epollReconcileKeepalive', '$epollKeepalive', '$callUserCallback', '$emSetImmediate',
+  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$epollReconcileKeepalive', '$epollKeepalive', '$callUserCallback', '$emSetImmediate', '$maybeExit',
 #if PTHREADS
     '$epollDeliveries', '_emscripten_epoll_run_callback_on_thread',
 #endif
@@ -565,6 +565,13 @@ var EpollLibrary = {
         if (it.held) {
           it.held = false;
           epollKeepalive(-1);
+        }
+        // Nothing to deliver (cleared, or drained synchronously meanwhile):
+        // callUserCallback's maybeExit will not run, and the hold just
+        // released may have been what deferred main's exit.
+        if (it.cleared || epollWouldBlock(ep)) {
+          maybeExit();
+          return;
         }
         deliver();
       });
