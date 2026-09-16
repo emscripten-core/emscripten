@@ -31,8 +31,9 @@ int main() {
   atexit(at_exit);
 #if MODE_CLEARED
   // Clearing a pending timeout releases its keepalive so the runtime exits
-  // from main without waiting for it.
-  int id = emscripten_set_timeout(never, 10000, NULL);
+  // from main without waiting for it (a leak fails the check below; a timer
+  // that was not actually cleared aborts when it fires).
+  int id = emscripten_set_timeout(never, 1000, NULL);
   assert(emscripten_runtime_keepalive_check());
   emscripten_clear_timeout(id);
   assert(!emscripten_runtime_keepalive_check());

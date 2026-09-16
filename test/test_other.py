@@ -13731,12 +13731,7 @@ void foo() {}
     'immediate': (['-DMODE_IMMEDIATE'], 0, 'fired\ndone\n'),
   })
   def test_emscripten_clear_timeout(self, cflags, returncode, expected):
-    js_file = self.build('test_emscripten_clear_timeout.c', cflags=['-sEXIT_RUNTIME'] + cflags)
-    start = time.time()
-    output = self.run_js(js_file, assert_returncode=returncode)
-    # A cleared 10s timeout must not delay exit.
-    self.assertLess(time.time() - start, 5)
-    self.assertEqual(output, expected)
+    self.do_runf('test_emscripten_clear_timeout.c', expected, cflags=['-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
 
   @parameterized({
     '': ([],),
