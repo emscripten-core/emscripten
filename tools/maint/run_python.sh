@@ -30,4 +30,4 @@ if [ -z "$_EM_PY" ]; then
   exit 1
 fi
 
-exec "$_EM_PY" -E "$0.py" "$@"
+exec "$_EM_PY" -E "$(readlink -f $0).py" "$@"
