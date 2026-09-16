@@ -632,6 +632,9 @@ var NodeSockFSLibrary = {
       });
       nodeSockHelpers.wireConnection(sock, conn);
       conn.connect({ host: addr, port, lookup: nodeSockHelpers.noLookup });
+      // BoundSocket connects in-tick, so the kernel-assigned source address is
+      // already known (node >= 26.7).
+      sock.saddr = conn.address().address;
       nodeSockHelpers.connectInProgress(sock);
     },
     listen(sock, backlog) {
