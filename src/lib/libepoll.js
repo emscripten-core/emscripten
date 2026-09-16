@@ -493,7 +493,10 @@ var EpollLibrary = {
   // collected by exactly one of them - the same load balancing as multiple
   // blocking epoll_wait callers on one epoll. A level fd left undrained
   // re-signals every tick, an edge fd once per edge.
-  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$epollReconcileKeepalive', '$epollHold', '$callUserCallback', '$emSetImmediate', '$maybeExit',
+  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$epollReconcileKeepalive', '$epollHold', '$callUserCallback', '$emSetImmediate',
+#if !MINIMAL_RUNTIME
+    '$maybeExit',
+#endif
 #if PTHREADS
     '$epollDeliveries', '_emscripten_epoll_run_callback_on_thread',
 #endif
@@ -605,7 +608,9 @@ var EpollLibrary = {
         // released may have been what deferred main's exit.
         if (it.cleared || epollWouldBlock(ep)) {
           release();
+#if !MINIMAL_RUNTIME
           maybeExit();
+#endif
           return;
         }
 #if PTHREADS
@@ -615,7 +620,9 @@ var EpollLibrary = {
         if (callerThread) {
           deliver();
           release();
+#if !MINIMAL_RUNTIME
           maybeExit();
+#endif
           return;
         }
 #endif
