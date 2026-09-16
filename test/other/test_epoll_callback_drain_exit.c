@@ -19,7 +19,7 @@
  * the proxied write and the proxied drain, and its epoll_wait(0) then collects
  * nothing. Exits are explicit there: a proxied main whose keepalive later
  * reaches zero does not run exit()
- * (https://github.com/emscripten-core/emscripten/issues/ISSUE_TODO).
+ * (https://github.com/emscripten-core/emscripten/issues/27721).
  */
 
 #include <sys/epoll.h>
