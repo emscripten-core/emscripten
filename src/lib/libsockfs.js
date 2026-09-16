@@ -76,7 +76,11 @@ addToLibrary({
          ) {
         throw new FS.ErrnoError({{{ cDefs.EAFNOSUPPORT }}});
       }
-      type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // Some applications may pass it; it makes no sense for a single process.
+      var flags = {{{ cDefs.O_RDWR }}};
+#if NODERAWSOCKETS
+      if (type & {{{ cDefs.SOCK_NONBLOCK }}}) flags |= {{{ cDefs.O_NONBLOCK }}};
+#endif
+      type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // SOCK_CLOEXEC makes no sense for a single process.
       // Emscripten only supports SOCK_STREAM and SOCK_DGRAM
       if (type != {{{ cDefs.SOCK_STREAM }}} && type != {{{ cDefs.SOCK_DGRAM }}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -125,7 +129,7 @@ addToLibrary({
       var stream = FS.createStream({
         path: name,
         node,
-        flags: {{{ cDefs.O_RDWR }}},
+        flags,
         seekable: false,
         stream_ops: SOCKFS.stream_ops
       });
