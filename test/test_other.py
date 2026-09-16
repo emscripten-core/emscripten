@@ -13666,6 +13666,22 @@ void foo() {}
     # leave keepRuntimeAlive() set at _proc_exit and skip Module.onExit.
     self.do_runf('other/test_epoll_callback_teardown_wake.c', 'done\nexited\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
+  @parameterized({
+    'drain': (['-DMODE_DRAIN'], 7),
+    'remove': (['-DMODE_REMOVE'], 7),
+    'later': (['-DMODE_LATER'], 0),
+    'drain_pthread': (['-DMODE_DRAIN', '-pthread', '-sPROXY_TO_PTHREAD'], 7),
+    'remove_pthread': (['-DMODE_REMOVE', '-pthread', '-sPROXY_TO_PTHREAD'], 7),
+  })
+  def test_epoll_callback_drain_exit(self, cflags, returncode):
+    # A scheduled delivery whose set was drained (or listener removed) before it
+    # ran has nothing to deliver, but releasing its hold must still let main's
+    # deferred exit complete (Module.onExit fires, main's status is returned).
+    if '-pthread' in cflags:
+      self.require_pthreads()
+    self.do_runf('other/test_epoll_callback_drain_exit.c', 'done\nexited\n',
+                 cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
+
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_pthread_trap(self):
