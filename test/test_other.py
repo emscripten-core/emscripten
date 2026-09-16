@@ -13725,6 +13725,20 @@ void foo() {}
     self.do_runf('emscripten_set_timeout_loop.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   @parameterized({
+    'fires': ([], 0, 'fired\ndone\n'),
+    'cleared': (['-DMODE_CLEARED'], 42, 'done\n'),
+    'idempotent': (['-DMODE_IDEMPOTENT'], 0, 'fired\nfired\ndone\n'),
+    'immediate': (['-DMODE_IMMEDIATE'], 0, 'fired\ndone\n'),
+  })
+  def test_emscripten_clear_timeout(self, cflags, returncode, expected):
+    js_file = self.build('test_emscripten_clear_timeout.c', cflags=['-sEXIT_RUNTIME'] + cflags)
+    start = time.time()
+    output = self.run_js(js_file, assert_returncode=returncode)
+    # A cleared 10s timeout must not delay exit.
+    self.assertLess(time.time() - start, 5)
+    self.assertEqual(output, expected)
+
+  @parameterized({
     '': ([],),
     'asyncify': (['-sASYNCIFY'],),
     'jspi': (['-sJSPI'],),
