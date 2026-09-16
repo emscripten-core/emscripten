@@ -291,7 +291,7 @@ window.close = () => {
     kwargs['cflags'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
 
     try:
-      return self.btest(filename, expected=expected, *args, **kwargs)
+      return self.btest(filename, *args, expected=expected, **kwargs)
     finally:
       if common.EMTEST_REBASELINE and os.path.exists('actual.png'):
         print(f'overwriting expected image: {reference}')
@@ -1712,7 +1712,7 @@ window.close = () => {
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
-    libs = [l for l in libs if program in os.path.basename(l)]
+    libs = [lib for lib in libs if program in os.path.basename(lib)]
 
     self.reftest(libs[0], book_path(program.replace('.o', '.png')), cflags=cflags)
 

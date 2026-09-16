@@ -247,19 +247,19 @@ def write_sig_library(filename, sig_info):
 def update_sigs(sig_info):
   print("updating __sig attributes ...")
 
-  def update_line(l):
-    if '__sig' not in l:
-      return l
-    stripped = l.strip()
+  def update_line(line):
+    if '__sig' not in line:
+      return line
+    stripped = line.strip()
     for sym, sig in sig_info.items():
       if stripped.startswith(f'{sym}__sig:'):
-        return re.sub(rf"\b{sym}__sig: '.*'", f"{sym}__sig: '{sig}'", l)
-    return l
+        return re.sub(rf"\b{sym}__sig: '.*'", f"{sym}__sig: '{sig}'", line)
+    return line
 
   files = glob.glob('src/*.js') + glob.glob('src/**/*.js')
   for file in files:
     lines = utils.read_file(file).splitlines()
-    lines = [update_line(l) for l in lines]
+    lines = [update_line(line) for line in lines]
     utils.write_file(file, '\n'.join(lines) + '\n')
 
 
@@ -268,15 +268,15 @@ def remove_sigs(sig_info):
 
   to_remove = [f'{sym}__sig:' for sym in sig_info]
 
-  def strip_line(l):
-    l = l.strip()
-    return l.startswith(to_remove)
+  def strip_line(line):
+    line = line.strip()
+    return line.startswith(to_remove)
 
   files = glob.glob('src/*.js') + glob.glob('src/**/*.js')
   for file in files:
     if os.path.basename(file) != 'libsigs.js':
       lines = utils.read_file(file).splitlines()
-      lines = [l for l in lines if not strip_line(l)]
+      lines = [line for line in lines if not strip_line(line)]
       utils.write_file(file, '\n'.join(lines) + '\n')
 
 

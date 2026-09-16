@@ -2735,8 +2735,8 @@ def process_libraries(flags):
 
     js_libs = map_to_js_libs(lib)
     if js_libs is not None:
-      for l in js_libs:
-        add_system_js_lib(l)
+      for js_lib in js_libs:
+        add_system_js_lib(js_lib)
 
     # We don't need to resolve system libraries to absolute paths here, we can just
     # let wasm-ld handle that.  However, we do want to map to the correct variant.
