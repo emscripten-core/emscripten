@@ -56,7 +56,7 @@ null;
 
 var NodeSockFSLibrary = {
   // Node plumbing shared by the interface methods below.
-  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES',
+  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES', '$inetPton4', '$inetPton6',
 #if ASSERTIONS
     '$warnOnce',
 #endif
@@ -72,6 +72,37 @@ var NodeSockFSLibrary = {
     },
     getDgram() {
       return nodeSockHelpers.dgramModule ??= (process.getBuiltinModule || require)('dgram');
+    },
+    getDns() {
+      return nodeSockHelpers.dnsModule ??= (process.getBuiltinModule || require)('dns');
+    },
+    // Resolve a hostname via node:dns for `family` (AF_UNSPEC for both).
+    // Resolves to a list of {family, addr} entries, or an EAI_* code: node:dns
+    // surfaces either getaddrinfo EAI_* names or libuv codes, of which the
+    // transient ones map to EAI_AGAIN and the rest to "name not found".
+    lookupHost(name, family) {
+      var opts = { all: true };
+      if (family === {{{ cDefs.AF_INET }}}) opts.family = 4;
+      else if (family === {{{ cDefs.AF_INET6 }}}) opts.family = 6;
+      return new Promise((resolve) => {
+        nodeSockHelpers.getDns().lookup(name, opts, (err, addresses) => {
+          if (err) {
+            switch (err.code) {
+              case 'EAI_AGAIN':
+              case 'ETIMEDOUT':
+              case 'ESERVFAIL':
+              case 'EREFUSED':
+                return resolve({{{ cDefs.EAI_AGAIN }}});
+              default:
+                return resolve({{{ cDefs.EAI_NONAME }}});
+            }
+          }
+          if (!addresses.length) return resolve({{{ cDefs.EAI_NONAME }}});
+          resolve(addresses.map((a) => a.family === 6 ?
+            { family: {{{ cDefs.AF_INET6 }}}, addr: inetPton6(a.address) } :
+            { family: {{{ cDefs.AF_INET }}}, addr: inetPton4(a.address) }));
+        });
+      });
     },
     // True when node:dgram exposes both synchronous bindSync and connectSync
     // (a recent addition), letting UDP run entirely on the public API. A runtime
