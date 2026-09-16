@@ -1194,12 +1194,15 @@ addToLibrary({
     //
 #if NODERAWSOCKETS
     // A real node:dns lookup (which honors the host's /etc/hosts). It is
-    // asynchronous: hand the caller a thunk to wait on.
-    return () => nodeSockHelpers.lookupHost(node, family).then((entries) => {
+    // asynchronous, and returned as a thunk rather than a started Promise
+    // because ASYNCIFY re-runs this import body on rewind: Asyncify.handleAsync
+    // only invokes the thunk on the initial unwind, so the lookup runs once.
+    return async () => {
+      var entries = await nodeSockHelpers.lookupHost(node, family);
       if (typeof entries == 'number') return entries;
       {{{ makeSetValue('out', '0', 'allocaddrinfos(entries)', '*') }}};
       return 0;
-    });
+    };
 #else
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
