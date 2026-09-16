@@ -2568,6 +2568,10 @@ The current type of b is: 9
     self.do_runf_out_file('pthread/test_pthread_equal.cpp')
 
   @requires_pthreads
+  def test_pthread_proxy_growth_export_all(self):
+    self.do_core_test('test_hello_world.c', cflags=['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sALLOW_MEMORY_GROWTH', '-sEXPORT_ALL'])
+
+  @requires_pthreads
   @also_with_modularize
   def test_pthread_proxying(self):
     if '-sMODULARIZE' in self.cflags:
