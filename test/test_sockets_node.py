@@ -246,6 +246,21 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_epoll_socket_blocking.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_tcp_blocking(self):
+    # Blocking accept() and recv() on empty sockets wait on the socket's
+    # readiness wait-queue and are woken by a connection, data, or the peer
+    # closing after they blocked, with main() proxied to a worker so the wait
+    # can suspend. A non-blocking call or MSG_DONTWAIT still returns EAGAIN at
+    # once, and pending data is returned without waiting.
+    self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  @requires_jspi_node
+  def test_noderawsockets_tcp_blocking_jspi(self):
+    # Same, but the blocking calls suspend the wasm stack under JSPI.
+    self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
   def test_noderawsockets_epoll_rdhup(self):
     # A blocking epoll_wait reports EPOLLRDHUP when the TCP peer half-closes its
     # write side (FIN), distinct from a full EPOLLHUP, and only when requested.
@@ -254,11 +269,9 @@ class sockets_node(RunnerCore):
 
   def test_noderawsockets_nonblock_flags(self):
     # socket()/accept4() SOCK_NONBLOCK, FIONBIO, no listener flag inheritance on
-    # accept, non-blocking connect EINPROGRESS (TCP and AF_UNIX), and a warning
-    # when a blocking fd would-blocks.
-    out = self.do_runf('sockets/test_nonblock_flags.c', 'done\n',
-                       cflags=['-sNODERAWSOCKETS', '-sNODERAWFS', '-sASSERTIONS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
-    self.assertContained('a blocking socket operation would block', out)
+    # accept, and non-blocking connect EINPROGRESS (TCP and AF_UNIX).
+    self.do_runf('sockets/test_nonblock_flags.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sNODERAWFS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
 
   @requires_jspi_node
   def test_noderawsockets_epoll_rdhup_jspi(self):

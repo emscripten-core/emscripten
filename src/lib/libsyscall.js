@@ -410,9 +410,92 @@ var SyscallsLibrary = {
     return -{{{ cDefs.ENOSYS }}}; // unsupported feature
 #endif
   },
-  __syscall_accept4__deps: ['$getSocketFromFD', '$writeSockaddr'],
-  __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
+  // Run a receive-side socket syscall body `op(sock)` that may block. The
+  // backend is strictly synchronous: `op` throws EAGAIN when it would block,
+  // whatever the fd's mode. A blocking socket (no O_NONBLOCK, no MSG_DONTWAIT)
+  // then waits for readiness where the calling stack can - a sync-proxied
+  // pthread (PROXY_SYNC_ASYNC) awaits the returned Promise, ASYNCIFY/JSPI
+  // suspends on it - and retries. Every other outcome returns synchronously
+  // (under JSPI a Suspending import only suspends on a Promise), so a
+  // non-blocking call stays callable from any stack, and where no stack can
+  // wait (the event-loop thread itself) the EAGAIN surfaces unchanged.
+  $sockCall__internal: true,
+  $sockCall__deps: ['$getSocketFromFD',
+#if PTHREADS || ASYNCIFY
+    '$sockCallAsync',
+#endif
+#if ASYNCIFY
+    '$Asyncify',
+#endif
+#if ASSERTIONS
+    '$warnOnce',
+#endif
+  ],
+  $sockCall: (fd, dontWait, op) => {
+#if PTHREADS
+    // A sync-proxied caller awaits a thenable even for an immediate result.
+    if (PThread.currentProxiedOperationCallerThread) return sockCallAsync(fd, dontWait, op);
+#endif
+#if ASYNCIFY == 1
+    // The rewind re-enters here after the wait has already run `op`, so it
+    // must go back through handleAsync rather than run `op` again.
+    if (Asyncify.state === Asyncify.State.Rewinding) return Asyncify.handleAsync(() => {});
+#endif
     var sock = getSocketFromFD(fd);
+    try {
+      return op(sock);
+    } catch (e) {
+      if (e.name !== 'ErrnoError' || e.errno !== {{{ cDefs.EAGAIN }}} || dontWait || (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}})) throw e;
+#if ASYNCIFY
+      return Asyncify.handleAsync(() => sockCallAsync(fd, dontWait, op));
+#else
+#if ASSERTIONS
+      warnOnce('a blocking socket operation would block, returning EAGAIN instead (this stack cannot block: use O_NONBLOCK with poll/epoll, or call from a pthread or with ASYNCIFY/JSPI)');
+#endif
+      throw e;
+#endif
+    }
+  },
+#if PTHREADS || ASYNCIFY
+  // Async sockCall(): run `op`, and on a would-block wait on the socket's node
+  // wait-queue until poll() reports something to consume (readable, hung up or
+  // errored; readiness is re-derived on each wake, the wake flags are just the
+  // trigger), then retry. Resolves to the result or -errno, as the synchronous
+  // syscall returns.
+  $sockCallAsync__internal: true,
+  $sockCallAsync__deps: ['$getSocketFromFD'],
+  $sockCallAsync: async (fd, dontWait, op) => {
+    try {
+      var sock = getSocketFromFD(fd);
+      for (;;) {
+        try {
+          return op(sock);
+        } catch (e) {
+          if (e.name !== 'ErrnoError' || e.errno !== {{{ cDefs.EAGAIN }}} || dontWait || (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}})) throw e;
+        }
+        var ready = () => sock.sock_ops.poll(sock) & {{{ cDefs.POLLIN | cDefs.POLLERR | cDefs.POLLHUP }}};
+        if (!ready()) {
+          await new Promise((resolve) => {
+            var reg = sock.stream.node.addListener(() => {
+              if (!ready()) return;
+              reg.listeners.delete(reg.entry);
+              resolve();
+            });
+          });
+        }
+      }
+    } catch (e) {
+      if (e.name !== 'ErrnoError') throw e;
+      return -e.errno;
+    }
+  },
+#endif
+  __syscall_accept4__deps: ['$sockCall', '$writeSockaddr'],
+#if PTHREADS || ASYNCIFY
+  __syscall_accept4__async: true,
+#endif
+  __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
+    return sockCall(fd, false, (sock) => {
     var newsock = sock.sock_ops.accept(sock);
 #if NODERAWSOCKETS
     // Linux: the accepted fd's status flags come only from `flags`, never from
@@ -426,6 +509,7 @@ var SyscallsLibrary = {
 #endif
     }
     return newsock.stream.fd;
+    });
   },
   __syscall_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_bind: (fd, addr, len, u1, u2, u3) => {
@@ -440,9 +524,12 @@ var SyscallsLibrary = {
     sock.sock_ops.listen(sock, backlog);
     return 0;
   },
-  __syscall_recvfrom__deps: ['$getSocketFromFD', '$writeSockaddr'],
+  __syscall_recvfrom__deps: ['$sockCall', '$writeSockaddr'],
+#if PTHREADS || ASYNCIFY
+  __syscall_recvfrom__async: true,
+#endif
   __syscall_recvfrom: (fd, buf, len, flags, addr, alen) => {
-    var sock = getSocketFromFD(fd);
+    return sockCall(fd, flags & {{{ cDefs.MSG_DONTWAIT }}}, (sock) => {
     var msg = sock.sock_ops.recvmsg(sock, len, flags);
     if (!msg) return 0; // socket is closed
     if (addr) {
@@ -453,6 +540,7 @@ var SyscallsLibrary = {
     }
     HEAPU8.set(msg.buffer, buf);
     return msg.buffer.byteLength;
+    });
   },
   __syscall_sendto__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendto: (fd, buf, len, flags, addr, alen) => {
@@ -529,9 +617,12 @@ var SyscallsLibrary = {
     // write the buffer
     return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
   },
-  __syscall_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr'],
+  __syscall_recvmsg__deps: ['$sockCall', '$writeSockaddr'],
+#if PTHREADS || ASYNCIFY
+  __syscall_recvmsg__async: true,
+#endif
   __syscall_recvmsg: (fd, message, flags, u1, u2, u3) => {
-    var sock = getSocketFromFD(fd);
+    return sockCall(fd, flags & {{{ cDefs.MSG_DONTWAIT }}}, (sock) => {
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
     // get the total amount of data we can read across all arrays
@@ -587,6 +678,7 @@ var SyscallsLibrary = {
     // MSG_CTRUNC
 
     return bytesRead;
+    });
   },
 #endif // ~PROXY_POSIX_SOCKETS==0
   __syscall_fchdir: (fd) => {

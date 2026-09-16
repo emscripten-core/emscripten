@@ -56,11 +56,7 @@ null;
 
 var NodeSockFSLibrary = {
   // Node plumbing shared by the interface methods below.
-  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES', '$inetPton4', '$inetPton6',
-#if ASSERTIONS
-    '$warnOnce',
-#endif
-  ],
+  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES', '$inetPton4', '$inetPton6'],
   $nodeSockHelpers: {
     // node builtins, resolved once each. getBuiltinModule works in both
     // CommonJS and ESM output, with require as the fallback.
@@ -252,16 +248,6 @@ var NodeSockFSLibrary = {
     // blocking connect as an error).
     connectInProgress(sock) {
       if (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}) throw new FS.ErrnoError({{{ cDefs.EINPROGRESS }}});
-    },
-    // Operations that would block return EAGAIN even on a blocking fd, since
-    // there is no way to block here.
-    wouldBlock(sock) {
-#if ASSERTIONS
-      if (!(sock.stream.flags & {{{ cDefs.O_NONBLOCK }}})) {
-        warnOnce('NODERAWSOCKETS: a blocking socket operation would block, returning EAGAIN instead (blocking I/O is not supported, use O_NONBLOCK with poll/epoll)');
-      }
-#endif
-      return new FS.ErrnoError({{{ cDefs.EAGAIN }}});
     },
     // The UDP backing object. With a synchronous dgram bindSync available we use
     // a public node:dgram socket (sock.udpPublic); otherwise we fall back to a
@@ -725,7 +711,7 @@ var NodeSockFSLibrary = {
         listensock.error = null;
         throw new FS.ErrnoError(e);
       }
-      if (!listensock.pending.length) throw nodeSockHelpers.wouldBlock(listensock);
+      if (!listensock.pending.length) throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
       return listensock.pending.shift();
     },
     sendmsg(sock, buffer, offset, length, addr, port) {
@@ -807,7 +793,7 @@ var NodeSockFSLibrary = {
             sock.error = null;
             throw new FS.ErrnoError(derr);
           }
-          throw nodeSockHelpers.wouldBlock(sock);
+          throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
         }
         // A datagram is atomic: return up to length bytes and drop the rest.
         var dd = dgram.data;
@@ -821,7 +807,7 @@ var NodeSockFSLibrary = {
         if (!sock.connection) {
           throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
         }
-        throw nodeSockHelpers.wouldBlock(sock);
+        throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
       }
       var q = queued.data;
       var bytesRead = Math.min(length, q.length);
