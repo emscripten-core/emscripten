@@ -149,7 +149,7 @@ var LibraryExceptions = {
   llvm_eh_typeid_for: (type) => type,
 
   __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_get_exception_ptr',
-                            '$uncaughtExceptionCount'],
+                            '$uncaughtExceptionCount', '$ExceptionInfo'],
   __cxa_begin_catch: (ptr) => {
     var info = new ExceptionInfo(ptr);
     if (!info.get_caught()) {
@@ -246,9 +246,11 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
+  $findMatchingCatch__deps: ['$setTempRet0',
 #if !DISABLE_EXCEPTION_CATCHING
-  $findMatchingCatch__deps: ['$exceptionLast', '$ExceptionInfo', '__cxa_can_catch', '$setTempRet0'],
+    '$exceptionLast', '$ExceptionInfo', '__cxa_can_catch',
 #endif
+  ],
   $findMatchingCatch: (args) => {
 #if DISABLE_EXCEPTION_CATCHING
     setTempRet0(0);

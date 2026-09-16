@@ -133,7 +133,7 @@ INCOMPATIBLE_SETTINGS = [
   ('WASM_WORKERS', 'MAIN_MODULE', 'dynamic linking is not supported with -sWASM_WORKERS'),
   ('WASM2JS', 'MAIN_MODULE', 'wasm2js does not support dynamic linking'),
   ('WASM2JS', 'SIDE_MODULE', 'wasm2js does not support dynamic linking'),
-  ('WASM2JS', 'GROWABLE_ARRAYBUFFERS',  None),
+  ('WASM2JS', 'GROWABLE_ARRAYBUFFERS', None),
   ('WASM2JS', 'SUPPORT_BIG_ENDIAN', None),
   ('WASM2JS', 'MEMORY64', None),
   ('MAIN_MODULE', 'NO_WASM_ASYNC_COMPILATION', 'dynamic linking requires async wasm compilation'),

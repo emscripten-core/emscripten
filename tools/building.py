@@ -100,8 +100,6 @@ def llvm_backend_args():
   args = ['-combiner-global-alias-analysis=false']
 
   # asm.js-style exception handling
-  if not settings.DISABLE_EXCEPTION_CATCHING:
-    args += ['-enable-emscripten-cxx-exceptions']
   if settings.EXCEPTION_CATCHING_ALLOWED:
     # When 'main' has a non-standard signature, LLVM outlines its content out to
     # '__original_main'. So we add it to the allowed list as well.
@@ -264,15 +262,14 @@ def lld_flags_for_executable(external_symbols):
       # when settings.EXPECT_MAIN is set we fall back to wasm-ld default of _start
       if not settings.EXPECT_MAIN:
         cmd += ['--entry=_initialize']
+    elif settings.PROXY_TO_PTHREAD:
+      cmd += ['--entry=_emscripten_proxy_main']
     else:
-      if settings.PROXY_TO_PTHREAD:
-        cmd += ['--entry=_emscripten_proxy_main']
-      else:
-        # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
-        # For now we need to do this since the entry point can be either `main` or
-        # `__main_argv_argc`, but we should address that by using a single `_start`
-        # function like we do in STANDALONE_WASM mode.
-        cmd += ['--no-entry']
+      # TODO(sbc): Avoid passing --no-entry when we know we have an entry point.
+      # For now we need to do this since the entry point can be either `main` or
+      # `__main_argv_argc`, but we should address that by using a single `_start`
+      # function like we do in STANDALONE_WASM mode.
+      cmd += ['--no-entry']
 
   # The default for `--stack-first` is transitioning from disabled to
   # enabled.  So be explicit in all cases for now.
@@ -339,6 +336,8 @@ def lld_flags(args):
     args += ['-mllvm', '-wasm-enable-eh']
   if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     args += ['-mllvm', '-exception-model=wasm']
+  elif not settings.DISABLE_EXCEPTION_CATCHING:
+    args += ['-mllvm', '-exception-model=emscripten']
 
   return args
 

@@ -161,6 +161,20 @@ var LibraryEmbindShared = {
     return false;
   },
 
+  // Trivially constructible/destructible value types (argStackAlloc) place
+  // their argument temporaries on the wasm stack when the invoker brackets
+  // the call in stackSave/stackRestore, skipping the per-call heap temp and
+  // destructor bookkeeping entirely.
+  $argsUseStackAlloc(argTypes) {
+    // Skip return value at index 0 - only arguments stack-allocate.
+    for (var i = 1; i < argTypes.length; ++i) {
+      if (argTypes[i] !== null && argTypes[i].argStackAlloc) {
+        return true;
+      }
+    }
+    return false;
+  },
+
   // Many of the JS invoker functions are generic and can be reused for multiple
   // function bindings. This function needs to match createJsInvoker and create
   // a unique signature for any inputs that will create different invoker
@@ -174,7 +188,11 @@ var LibraryEmbindShared = {
     for (let i = isClassMethodFunc ? 1 : 2; i < argTypes.length; ++i) {
       const arg = argTypes[i];
       let destructorSig = '';
-      if (arg.destructorFunction === undefined) {
+      if (arg.argStackAlloc) {
+        // Stack-allocated trivial value type: needs no destructor, but the
+        // invoker must bracket the call in a stack frame.
+        destructorSig = 's';
+      } else if (arg.destructorFunction === undefined) {
         destructorSig = 'u';
       } else if (arg.destructorFunction === null) {
         destructorSig = 'n';
@@ -209,13 +227,29 @@ var LibraryEmbindShared = {
     return requiredArgCount;
   },
 
-  $createJsInvoker__deps: ['$usesDestructorStack',
+  $createJsInvoker__deps: ['$usesDestructorStack', '$argsUseStackAlloc',
 #if ASSERTIONS
     '$checkArgCount',
 #endif
   ],
   $createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync) {
     var needsDestructorStack = usesDestructorStack(argTypes);
+    var argsNeedStack = argsUseStackAlloc(argTypes);
+#if ASYNCIFY == 1
+    // Any call may suspend under Asyncify, and destructors run deferred in
+    // onDone, after a stack frame would already be gone.
+    var useStackFrame = false;
+#else
+    // JSPI-async invokers resume after the frame would be gone, so they
+    // defer through the destructors array instead.
+    var useStackFrame = argsNeedStack && !isAsync && !needsDestructorStack;
+#endif
+    if (argsNeedStack && !useStackFrame) {
+      // A stack-allocating type must never see a null destructors argument
+      // without a bracketing frame; route it through the destructors array
+      // (it heap-allocates on that path).
+      needsDestructorStack = true;
+    }
     var argCount = argTypes.length - 2;
     var argsList = [];
     var argsListWired = ['fn'];
@@ -242,9 +276,18 @@ var LibraryEmbindShared = {
     if (needsDestructorStack) {
       invokerFnBody += 'var destructors = [];\n';
     }
+    if (useStackFrame) {
+      // The frame must be released on every completion, including a throwing
+      // argument conversion or callee: a skipped stackRestore permanently
+      // leaks wasm stack. `var` declarations hoist out of the try block.
+      invokerFnBody += 'var sp = stackSave();\ntry {\n';
+    }
 
     var dtorStack = needsDestructorStack ? 'destructors' : 'null';
     var args1 = ['humanName', 'throwBindingError', 'invoker', 'fn', 'runDestructors', 'fromRetWire', 'toClassParamWire'];
+    if (useStackFrame) {
+      args1.push('stackSave', 'stackRestore');
+    }
 
 #if EMSCRIPTEN_TRACING
     args1.push('Module');
@@ -261,6 +304,11 @@ var LibraryEmbindShared = {
     }
 
     invokerFnBody += (returns || isAsync ? 'var rv = ' : '') + `invoker(${argsListWired});\n`;
+    if (useStackFrame) {
+      // The callee has consumed the stack-allocated argument temporaries;
+      // release the frame before any post-call work.
+      invokerFnBody += '} finally {\nstackRestore(sp);\n}\n';
+    }
 
     var returnVal = returns ? 'rv' : '';
 #if ASYNCIFY == 1

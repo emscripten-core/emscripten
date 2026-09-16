@@ -133,6 +133,12 @@ var LibraryEmbind = {
         default:
           throw new Error(`Bad destructor type '${type.destructorType}'`);
       }
+      if (type.argStackAlloc) {
+        // Trivial value types stack-allocate their argument temporaries;
+        // must mirror the runtime type object so the invoker signature and
+        // generated shape match (see createJsInvokerSignature).
+        ret.argStackAlloc = true;
+      }
       return ret;
     }
 
@@ -356,12 +362,15 @@ var LibraryEmbind = {
     }
   },
   $ValueArrayDefinition: class {
-    constructor(typeId, name) {
+    constructor(typeId, name, isTrivial) {
       this.typeId = typeId;
       this.name = name;
       this.elementTypeIds = [];
       this.elements = [];
-      this.destructorType = 'function';
+      // Trivial types need no destructor call; their argument temporaries
+      // live in the invoker's stack frame.
+      this.destructorType = isTrivial ? 'none' : 'function';
+      this.argStackAlloc = !!isTrivial;
     }
 
     print(nameMap, out) {
@@ -375,13 +384,15 @@ var LibraryEmbind = {
     }
   },
   $ValueObjectDefinition: class {
-    constructor(typeId, name) {
+    constructor(typeId, name, isTrivial) {
       this.typeId = typeId;
       this.name = name;
       this.fieldTypeIds = [];
       this.fieldNames = [];
       this.fields = [];
-      this.destructorType = 'function';
+      // See ValueArrayDefinition: trivial types stack-allocate.
+      this.destructorType = isTrivial ? 'none' : 'function';
+      this.argStackAlloc = !!isTrivial;
     }
 
     print(nameMap, out) {
@@ -802,10 +813,12 @@ var LibraryEmbind = {
     constructorSignature,
     rawConstructor,
     destructorSignature,
-    rawDestructor
+    rawDestructor,
+    valueSize,
+    isTrivial
   ) {
     name = AsciiToString(name);
-    const valueArray = new ValueArrayDefinition(rawType, name);
+    const valueArray = new ValueArrayDefinition(rawType, name, isTrivial);
     tupleRegistrations[rawType] = valueArray;
   },
   _embind_register_value_array_element__deps: ['$tupleRegistrations'],
@@ -844,10 +857,12 @@ var LibraryEmbind = {
     constructorSignature,
     rawConstructor,
     destructorSignature,
-    rawDestructor
+    rawDestructor,
+    valueSize,
+    isTrivial
   ) {
     name = AsciiToString(name);
-    const valueObject = new ValueObjectDefinition(rawType, name);
+    const valueObject = new ValueObjectDefinition(rawType, name, isTrivial);
     structRegistrations[rawType] = valueObject;
   },
   _embind_register_value_object_field__deps: [

@@ -609,7 +609,7 @@ function exportLibrarySymbols() {
   assert(MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
-    if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident) || extraExports.has(ident)) && !nativeAliases[ident]) {
+    if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident) || extraExports.has(ident)) && !nativeAliases[ident] && !ident.startsWith('HEAP')) {
       results.push(exportSymbol(ident));
     }
   }

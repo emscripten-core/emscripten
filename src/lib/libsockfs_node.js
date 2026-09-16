@@ -56,7 +56,11 @@ null;
 
 var NodeSockFSLibrary = {
   // Node plumbing shared by the interface methods below.
-  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES'],
+  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES', '$inetPton4', '$inetPton6',
+#if ASSERTIONS
+    '$warnOnce',
+#endif
+  ],
   $nodeSockHelpers: {
     // node builtins, resolved once each. getBuiltinModule works in both
     // CommonJS and ESM output, with require as the fallback.
@@ -68,6 +72,37 @@ var NodeSockFSLibrary = {
     },
     getDgram() {
       return nodeSockHelpers.dgramModule ??= (process.getBuiltinModule || require)('dgram');
+    },
+    getDns() {
+      return nodeSockHelpers.dnsModule ??= (process.getBuiltinModule || require)('dns');
+    },
+    // Resolve a hostname via node:dns for `family` (AF_UNSPEC for both).
+    // Resolves to a list of {family, addr} entries, or an EAI_* code: node:dns
+    // surfaces either getaddrinfo EAI_* names or libuv codes, of which the
+    // transient ones map to EAI_AGAIN and the rest to "name not found".
+    lookupHost(name, family) {
+      var opts = { all: true };
+      if (family === {{{ cDefs.AF_INET }}}) opts.family = 4;
+      else if (family === {{{ cDefs.AF_INET6 }}}) opts.family = 6;
+      return new Promise((resolve) => {
+        nodeSockHelpers.getDns().lookup(name, opts, (err, addresses) => {
+          if (err) {
+            switch (err.code) {
+              case 'EAI_AGAIN':
+              case 'ETIMEDOUT':
+              case 'ESERVFAIL':
+              case 'EREFUSED':
+                return resolve({{{ cDefs.EAI_AGAIN }}});
+              default:
+                return resolve({{{ cDefs.EAI_NONAME }}});
+            }
+          }
+          if (!addresses.length) return resolve({{{ cDefs.EAI_NONAME }}});
+          resolve(addresses.map((a) => a.family === 6 ?
+            { family: {{{ cDefs.AF_INET6 }}}, addr: inetPton6(a.address) } :
+            { family: {{{ cDefs.AF_INET }}}, addr: inetPton4(a.address) }));
+        });
+      });
     },
     // True when node:dgram exposes both synchronous bindSync and connectSync
     // (a recent addition), letting UDP run entirely on the public API. A runtime
@@ -211,6 +246,22 @@ var NodeSockFSLibrary = {
     // the literal: a colon means IPv6.
     noLookup(host, _opts, cb) {
       cb(null, host, host.includes(':') ? 6 : 4);
+    },
+    // The connection completes asynchronously. A blocking connect() cannot wait,
+    // so it keeps returning 0 (callers such as Rust std treat EINPROGRESS from a
+    // blocking connect as an error).
+    connectInProgress(sock) {
+      if (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}) throw new FS.ErrnoError({{{ cDefs.EINPROGRESS }}});
+    },
+    // Operations that would block return EAGAIN even on a blocking fd, since
+    // there is no way to block here.
+    wouldBlock(sock) {
+#if ASSERTIONS
+      if (!(sock.stream.flags & {{{ cDefs.O_NONBLOCK }}})) {
+        warnOnce('NODERAWSOCKETS: a blocking socket operation would block, returning EAGAIN instead (blocking I/O is not supported, use O_NONBLOCK with poll/epoll)');
+      }
+#endif
+      return new FS.ErrnoError({{{ cDefs.EAGAIN }}});
     },
     // The UDP backing object. With a synchronous dgram bindSync available we use
     // a public node:dgram socket (sock.udpPublic); otherwise we fall back to a
@@ -554,6 +605,7 @@ var NodeSockFSLibrary = {
         // same SO_ERROR/poll seam as TCP.
         nodeSockHelpers.wireConnection(sock, uconn);
         uconn.connect({ path: addr });
+        nodeSockHelpers.connectInProgress(sock);
         return;
       }
       if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
@@ -611,6 +663,10 @@ var NodeSockFSLibrary = {
       });
       nodeSockHelpers.wireConnection(sock, conn);
       conn.connect({ host: addr, port, lookup: nodeSockHelpers.noLookup });
+      // BoundSocket connects in-tick, so the kernel-assigned source address is
+      // already known (node >= 26.7).
+      sock.saddr = conn.address().address;
+      nodeSockHelpers.connectInProgress(sock);
     },
     listen(sock, backlog) {
       if (sock.type !== {{{ cDefs.SOCK_STREAM }}}) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}}); // not a stream socket
@@ -669,10 +725,8 @@ var NodeSockFSLibrary = {
         listensock.error = null;
         throw new FS.ErrnoError(e);
       }
-      if (!listensock.pending.length) throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
-      var newsock = listensock.pending.shift();
-      newsock.stream.flags = listensock.stream.flags;
-      return newsock;
+      if (!listensock.pending.length) throw nodeSockHelpers.wouldBlock(listensock);
+      return listensock.pending.shift();
     },
     sendmsg(sock, buffer, offset, length, addr, port) {
       if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
@@ -753,7 +807,7 @@ var NodeSockFSLibrary = {
             sock.error = null;
             throw new FS.ErrnoError(derr);
           }
-          throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+          throw nodeSockHelpers.wouldBlock(sock);
         }
         // A datagram is atomic: return up to length bytes and drop the rest.
         var dd = dgram.data;
@@ -767,7 +821,7 @@ var NodeSockFSLibrary = {
         if (!sock.connection) {
           throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
         }
-        throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+        throw nodeSockHelpers.wouldBlock(sock);
       }
       var q = queued.data;
       var bytesRead = Math.min(length, q.length);

@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# ruff: file-ignore[multiple-spaces-before-keyword]
 
 import errno
 import glob
@@ -107,9 +108,7 @@ from decorators import (
 
 from tools import building, cache, response_file, shared, utils, webassembly
 from tools.building import get_building_env
-from tools.cmdline import options
 from tools.link import binary_encode
-from tools.settings import settings
 from tools.shared import (
   CLANG_CC,
   CLANG_CXX,
@@ -768,6 +767,14 @@ f.close()
     self.run_process([EMCC, 'out.o'] + self.get_cflags())
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
+  def get_expected_lib_dir(self, args):
+    target = 'wasm64-emscripten' if '-m64' in args else 'wasm32-emscripten'
+    cache_dir = Path(self.run_process([EMCONFIG, 'CACHE'], stdout=PIPE).stdout.strip())
+    libdir = cache_dir / 'sysroot' / 'lib' / target
+    if '-flto' in args:
+      libdir /= 'lto'
+    return libdir
+
   @crossplatform
   @parameterized({
     '': ([],),
@@ -783,9 +790,7 @@ f.close()
     libpath = output.split('libraries: =', 1)[1].strip()
     libpath = libpath.split(os.pathsep)
     libpath = [Path(p) for p in libpath]
-    options.lto = 'full' if '-flto' in args else None
-    settings.MEMORY64 = int('-m64' in args)
-    expected = cache.get_lib_dir(absolute=True)
+    expected = self.get_expected_lib_dir(args)
     self.assertIn(expected, libpath)
 
   @crossplatform
@@ -798,11 +803,8 @@ f.close()
     output = self.run_process([EMCC, '-print-libgcc-file-name'] + args, stdout=PIPE).stdout
     output2 = self.run_process([EMCC, '--print-libgcc-file-name'] + args, stdout=PIPE).stdout
     self.assertEqual(output, output2)
-    options.lto = 'full' if '-flto' in args else None
-    settings.MEMORY64 = int('-m64' in args)
-    libdir = cache.get_lib_dir(absolute=True)
-    expected = os.path.join(libdir, 'libclang_rt.builtins.a')
-    self.assertEqual(output.strip(), expected)
+    expected = self.get_expected_lib_dir(args) / 'libclang_rt.builtins.a'
+    self.assertEqual(Path(output.strip()), expected)
 
   @crossplatform
   def test_print_resource_dir(self):
@@ -834,10 +836,8 @@ f.close()
     output = self.run_process([EMCC, '-print-file-name=libc.a'] + args, stdout=PIPE).stdout.rstrip()
     output2 = self.run_process([EMCC, '--print-file-name=libc.a'] + args, stdout=PIPE).stdout.rstrip()
     self.assertEqual(output, output2)
-    filename = Path(output)
-    options.lto = 'full' if '-flto' in args else None
-    settings.MEMORY64 = int('-m64' in args)
-    self.assertContained(cache.get_lib_name('libc.a'), str(filename))
+    expected = self.get_expected_lib_dir(args) / 'libc.a'
+    self.assertEqual(Path(output), expected)
 
   @crossplatform
   def test_print_file_name_resdir(self):
@@ -3640,6 +3640,21 @@ More info: https://emscripten.org
   def test_embind_return_value_policy(self):
     self.do_runf('embind/test_return_value_policy.cpp', cflags=['-lembind'])
 
+  @parameterized({
+    '': (),
+    'no_dynamic': ('-sDYNAMIC_EXECUTION=0',),
+    'aot_js': ('-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT'),
+    'wasm64': ('-m64', '-sDYNAMIC_EXECUTION=0'),
+  })
+  def test_embind_trivial_value_stack(self, *extra_args):
+    # Trivially constructible/destructible value_object and value_array
+    # arguments marshal on the wasm stack; the test overrides malloc/free and
+    # asserts the trivial paths never allocate while the non-trivial and
+    # over-aligned fallbacks still balance the heap.
+    if '-m64' in extra_args:
+      self.require_wasm64()
+    self.do_runf('embind/test_embind_trivial_value_stack.cpp', 'done\n', cflags=['-lembind', *extra_args])
+
   @requires_node_25
   def test_embind_resource_management(self):
     self.node_args.append('--js-explicit-resource-management')
@@ -3932,6 +3947,17 @@ More info: https://emscripten.org
     self.assertContained("    HEAPF32: Float32Array;", actual)
     self.assertContained("    HEAPF64: Float64Array;", actual)
 
+  @requires_dev_dependency('typescript')
+  def test_emit_tsd_callmain(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd.d.ts',
+                      '-sEXPORT_ES6', '-sMODULARIZE',
+                      '-sEXPORTED_RUNTIME_METHODS=callMain',
+                      '-o', 'test_emit_tsd.js'] +
+                     self.get_cflags())
+    actual = read_file('test_emit_tsd.d.ts')
+    self.assertContained("    callMain: any;", actual)
+
   def test_emconfig(self):
     output = self.run_process([EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
@@ -3939,15 +3965,14 @@ More info: https://emscripten.org
     # itself (its not configurable via the config file but driven by the location for arg0)
     output = self.run_process([EMCONFIG, 'EMSCRIPTEN_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, os.path.dirname(EMCONFIG))
-    invalid = 'Usage: em-config VAR_NAME'
     # Don't accept variables that do not exist
-    self.assert_fail([EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], invalid)
+    self.assert_fail([EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], 'Invalid config key: VAR_WHICH_DOES_NOT_EXIST')
     # Don't accept no arguments
-    self.assert_fail([EMCONFIG], invalid)
+    self.assert_fail([EMCONFIG], 'Usage: em-config VAR_NAME')
     # Don't accept more than one variable
-    self.assert_fail([EMCONFIG, 'LLVM_ROOT', 'EMCC'], invalid)
+    self.assert_fail([EMCONFIG, 'LLVM_ROOT', 'EMCC'], 'Usage: em-config VAR_NAME')
     # Don't accept arbitrary python code
-    self.assert_fail([EMCONFIG, 'sys.argv[1]'], invalid)
+    self.assert_fail([EMCONFIG, 'sys.argv[1]'], 'Invalid config key: sys.argv[1]')
 
   def test_link_s(self):
     # -s OPT=VALUE can conflict with -s as a linker option. We warn and ignore
@@ -11836,6 +11861,38 @@ int main(void) {
       ''')
     self.run_process([EMXX, 'src.cpp', '-fexceptions', '--closure=1'])
 
+  def test_exceptions_no_link_flag(self):
+    # We compile this code using -fexceptions but link without it. The necessary
+    # functions and variables still should be in depending on the existing
+    # functions and the compilation should not crash with undeclared variable
+    # errors.
+    create_file('src.cpp', r'''
+      #include <string>
+      #include <stdio.h>
+
+      void foo() {
+        std::string a = std::to_string(42);
+        std::string b = a + a;
+      }
+
+      int bar() {
+        try {
+          return std::stoi("1");
+        } catch (...) {
+          return 2;
+        }
+      }
+
+      int main() {
+        foo();
+        printf("%d\n", bar());
+        return 0;
+      }
+      ''')
+    self.run_process([EMXX, '-fexceptions', '-c', 'src.cpp', '-o', 'src.o'])
+    self.run_process([EMXX, 'src.o', '-o', 'out.js'])
+    self.assertContained('1', self.run_js('out.js'))
+
   def test_assertions_on_incoming_module_api_changes(self):
     create_file('pre.js', 'Module.read = () => {};')
     self.do_runf('hello_world.c', 'Module.read option was removed',
@@ -12058,7 +12115,8 @@ int main(void) {
 
   def test_linker_flags_unused(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-c', '-lbar'], stderr=PIPE).stderr
-    self.assertContained("warning: -lbar: 'linker' input unused [-Wunused-command-line-argument]", err)
+    self.assertContained("warning: -lbar: 'linker' input unused", err)
+    self.assertContained("[-Wunused-command-line-argument]", err)
 
     # Check that we don't see these "input unused" errors for linker flags when
     # compiling and linking in single step (i.e. ensure that we don't pass them to clang when
@@ -12072,7 +12130,8 @@ int main(void) {
   def test_linker_input_unused(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
     err = self.run_process([EMCC, 'hello_world.o', '-c', '-o', 'out.o'], stderr=PIPE).stderr
-    self.assertContained("clang: warning: hello_world.o: 'linker' input unused [-Wunused-command-line-argument]", err)
+    self.assertContained("clang: warning: hello_world.o: 'linker' input unused", err)
+    self.assertContained("[-Wunused-command-line-argument]", err)
     # In this case the compiler does not produce any output file.
     self.assertNotExists('out.o')
 
@@ -12126,7 +12185,7 @@ int main(void) {
 
     # check that `-Wno-pthreads-mem` disables pthread + ALLOW_GROWTH_MEMORY warning
     stderr = self.run_process(cmd + ['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH'], stderr=PIPE).stderr
-    self.assertNotContained('pthreads + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271', stderr)
+    self.assertNotContained('pthreads + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, consider -sGROWABLE_ARRAYBUFFERS=2', stderr)
 
   def test_emranlib(self):
     create_file('foo.c', 'int foo = 1;')
@@ -16071,6 +16130,7 @@ console.log('OK');'''
       INTERNAL_SETTINGS,
       JS_ONLY_SETTINGS,
       MEM_SIZE_SETTINGS,
+      settings,
     )
     setting_names = (
       COMPILE_TIME_SETTINGS

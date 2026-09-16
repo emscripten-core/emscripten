@@ -126,8 +126,11 @@ class sockets_node(RunnerCore):
 
   def test_noderawsockets_connect_getsockname(self):
     # getsockname() immediately after a non-blocking connect() on an unbound
-    # client reports the ephemeral source port synchronously (kernel semantics:
-    # the port is assigned at connect(), not when the connection completes).
+    # client reports the source address and ephemeral port synchronously
+    # (kernel semantics: both are assigned at connect(), not when the connection
+    # completes), and neither changes once connected.
+    if not self.try_require_node_version(26, 7):
+      self.skipTest('requires in-tick BoundSocket connect (node >= 26.7)')
     self.do_runf('sockets/test_tcp_connect_getsockname.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   def test_noderawsockets_client_semantics(self):
@@ -209,6 +212,27 @@ class sockets_node(RunnerCore):
       self.skipTest('no IPv6 loopback available')
     self.do_runf('sockets/test_udp_ipv6.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
+  def test_noderawsockets_dns(self):
+    # getaddrinfo() resolves numeric addresses synchronously. A hostname needs
+    # a node:dns lookup, and with no stack able to wait on it is EAI_AGAIN.
+    self.do_runf('sockets/test_dns.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-DNO_WAIT'])
+
+  def test_noderawsockets_dns_blocking(self):
+    # A hostname blocks on the node:dns lookup, returning every address as a
+    # linked list: main() is proxied to a worker, which awaits the resolution
+    # through the sync proxy.
+    self.do_runf('sockets/test_dns.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  @requires_jspi_node
+  def test_noderawsockets_dns_blocking_jspi(self):
+    # Same, but getaddrinfo() suspends the wasm stack under JSPI.
+    self.do_runf('sockets/test_dns.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_dns_blocking_asyncify(self):
+    # Same, unwinding the wasm stack under ASYNCIFY.
+    self.do_runf('sockets/test_dns.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sASYNCIFY', '-sEXIT_RUNTIME'])
+
   def test_noderawsockets_epoll_socket_blocking(self):
     # A blocking epoll_wait() on a socket is woken by an incoming datagram
     # through the unified readiness wait-queue (the SOCKFS.emit bridge), with
@@ -227,6 +251,14 @@ class sockets_node(RunnerCore):
     # write side (FIN), distinct from a full EPOLLHUP, and only when requested.
     self.do_runf('sockets/test_epoll_rdhup.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_nonblock_flags(self):
+    # socket()/accept4() SOCK_NONBLOCK, FIONBIO, no listener flag inheritance on
+    # accept, non-blocking connect EINPROGRESS (TCP and AF_UNIX), and a warning
+    # when a blocking fd would-blocks.
+    out = self.do_runf('sockets/test_nonblock_flags.c', 'done\n',
+                       cflags=['-sNODERAWSOCKETS', '-sNODERAWFS', '-sASSERTIONS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+    self.assertContained('a blocking socket operation would block', out)
 
   @requires_jspi_node
   def test_noderawsockets_epoll_rdhup_jspi(self):

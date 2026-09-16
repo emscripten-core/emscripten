@@ -96,7 +96,7 @@ var runtimeExited = false;
   // if requested.
   const shouldExportHeap = (x) => {
     let shouldExport = false;
-    if (MODULARIZE && EXPORT_ALL) {
+    if (EXPORT_ALL) {
       shouldExport = true;
     } else if (EXPORTED_RUNTIME_METHODS.has(x)) {
       shouldExport = true;

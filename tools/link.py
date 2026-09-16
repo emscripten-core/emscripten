@@ -461,7 +461,7 @@ def setup_pthreads():
   if settings.MAIN_MODULE:
     diagnostics.warning('experimental', 'dynamic linking + pthreads is experimental')
   if settings.ALLOW_MEMORY_GROWTH and settings.GROWABLE_ARRAYBUFFERS != 2:
-    diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
+    diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, consider -sGROWABLE_ARRAYBUFFERS=2')
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
 
@@ -1080,7 +1080,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     if '_main' in settings.EXPORTED_FUNCTIONS:
       # TODO(sbc): Make this into a warning?
       logger.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
-  else:
+  else:  # ruff: ignore[collapsible-else-if]
     # In normal non-standalone mode we have special handling of `_main` in EXPORTED_FUNCTIONS.
     # 1. If the user specifies exports, but doesn't include `_main` we assume they want to build a
     #    reactor.
@@ -1704,7 +1704,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   # Emscripten exception handling can generate invoke calls, and they call
   # setThrew(). We cannot handle this using deps_info as the invokes are not
   # emitted because of library function usage, but by codegen itself.
-  if not settings.DISABLE_EXCEPTION_CATCHING:
+  if not settings.DISABLE_EXCEPTION_CATCHING or settings.SUPPORT_LONGJMP == 'emscripten':
     settings.REQUIRED_EXPORTS += ['setThrew']
 
   if settings.ASYNCIFY:
@@ -2841,11 +2841,10 @@ class ScriptSource:
           initModule(Module);
         </script>
         '''
+      elif settings.MODULARIZE:
+        return f'<script type="text/javascript" src="{src}"></script>'
       else:
-        if settings.MODULARIZE:
-          return f'<script type="text/javascript" src="{src}"></script>'
-        else:
-          return f'<script async type="text/javascript" src="{src}"></script>'
+        return f'<script async type="text/javascript" src="{src}"></script>'
     else:
       return f'<script id="mainScript">\n{self.inline}\n</script>'
 

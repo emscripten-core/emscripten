@@ -1007,8 +1007,21 @@ addToLibrary({
     return inetPton4(DNS.lookup_name(nameString));
   },
 
-  getaddrinfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl'],
+  getaddrinfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl',
+#if NODERAWSOCKETS
+    '$nodeSockHelpers',
+#endif
+#if NODERAWSOCKETS && ASYNCIFY
+    '$Asyncify',
+#endif
+  ],
   getaddrinfo__proxy: 'sync',
+#if NODERAWSOCKETS && (PTHREADS || ASYNCIFY)
+  // Returns an EAI_* code synchronously, or - for a hostname needing a real
+  // DNS lookup - a Promise of one, which a sync-proxied pthread awaits and
+  // ASYNCIFY/JSPI suspend on.
+  getaddrinfo__async: true,
+#endif
   getaddrinfo: (node, service, hint, out) => {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
@@ -1054,6 +1067,27 @@ addToLibrary({
 
       return ai;
     }
+
+#if NODERAWSOCKETS
+    // Resolve via node:dns (which honors the host's /etc/hosts), chaining one
+    // addrinfo per {family, addr} result into *out.
+    async function lookupHostname() {
+      var entries = await nodeSockHelpers.lookupHost(node, family);
+      if (typeof entries == 'number') return entries;
+      var head = 0, prev = 0;
+      for (var entry of entries) {
+        var ai = allocaddrinfo(entry.family, type, proto, null, entry.addr, port);
+        if (prev) {
+          {{{ makeSetValue('prev', C_STRUCTS.addrinfo.ai_next, 'ai', '*') }}};
+        } else {
+          head = ai;
+        }
+        prev = ai;
+      }
+      {{{ makeSetValue('out', '0', 'head', '*') }}};
+      return 0;
+    }
+#endif
 
     if (hint) {
       flags = {{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}};
@@ -1167,6 +1201,25 @@ addToLibrary({
     //
     // try as a hostname
     //
+#if NODERAWSOCKETS
+    // The lookup is asynchronous, so only start it where the calling stack can
+    // wait on the Promise: a sync-proxied pthread (PROXY_SYNC_ASYNC) awaits it,
+    // ASYNCIFY/JSPI suspend on it. Otherwise (the event-loop thread itself) it
+    // must not start at all, since it would write to *out after we have
+    // returned.
+#if PTHREADS
+    if (PThread.currentProxiedOperationCallerThread) return lookupHostname();
+#endif
+#if ASYNCIFY
+    // handleAsync holds a runtime keepalive across the suspension, so a user
+    // callback completing meanwhile does not exit the runtime under main().
+    // Everything above this point is pure, so the ASYNCIFY rewind re-running
+    // this body reaches handleAsync again and takes the stored result.
+    return Asyncify.handleAsync(lookupHostname);
+#else
+    return {{{ cDefs.EAI_AGAIN }}};
+#endif
+#else
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
     addr = inetPton4(node);
@@ -1178,6 +1231,7 @@ addToLibrary({
     ai = allocaddrinfo(family, type, proto, null, addr, port);
     {{{ makeSetValue('out', '0', 'ai', '*') }}};
     return 0;
+#endif
   },
 
   getnameinfo__deps: ['$DNS', '$readSockaddr', '$stringToUTF8'],

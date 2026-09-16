@@ -1170,9 +1170,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       string = string()
     if regex:
       self.assertFalse(re.search(value, string, re.DOTALL), f'Expected regex "{value}" NOT to match on:\n{limit_size(string)}')
-    else:
-      if value in string:
-        self.fail(f"Expected to NOT find '{limit_size(value)}' in '{limit_size(string)}'")
+    elif value in string:
+      self.fail(f"Expected to NOT find '{limit_size(value)}' in '{limit_size(string)}'")
 
   def assertContainedIf(self, value, string, condition):
     if condition:
