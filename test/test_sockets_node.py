@@ -261,6 +261,11 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_tcp_blocking_asyncify(self):
+    # Same under ASYNCIFY, where the import is re-entered on rewind.
+    self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sASYNCIFY', '-sEXIT_RUNTIME'])
+
   def test_noderawsockets_tcp_blocking_error(self):
     # A blocking recv() is woken by a connection error that lands after it
     # blocked, and returns it (rather than spinning on EAGAIN while poll()
@@ -272,6 +277,10 @@ class sockets_node(RunnerCore):
   def test_noderawsockets_tcp_blocking_error_jspi(self):
     self.do_runf('sockets/test_tcp_blocking_error.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_tcp_blocking_error_asyncify(self):
+    self.do_runf('sockets/test_tcp_blocking_error.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sASYNCIFY', '-sEXIT_RUNTIME'])
 
   def test_noderawsockets_epoll_rdhup(self):
     # A blocking epoll_wait reports EPOLLRDHUP when the TCP peer half-closes its

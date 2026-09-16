@@ -803,16 +803,17 @@ var NodeSockFSLibrary = {
       }
       var queued = sock.recv_queue[0];
       if (!queued) {
-        if (sock.readClosed) return null; // EOF
-        if (!sock.connection) {
-          throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
-        }
         // A pending error (poll reports it readable for this) is returned and
-        // cleared here, as Linux does, rather than reporting EAGAIN forever.
+        // cleared here, as Linux does, rather than reporting EAGAIN forever. It
+        // takes precedence over EOF: node emits 'close' right after 'error'.
         if (sock.error) {
           var serr = sock.error;
           sock.error = null;
           throw new FS.ErrnoError(serr);
+        }
+        if (sock.readClosed) return null; // EOF
+        if (!sock.connection) {
+          throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
         }
         throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
       }
