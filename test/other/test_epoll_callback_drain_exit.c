@@ -12,9 +12,14 @@
  * the process exits with main's status. MODE_LATER is the regression guard: a
  * set made ready after main returns still delivers, then exits.
  *
- * A listener registered from a non-main thread (PROXY_TO_PTHREAD) may see one
- * spurious wakeup: the main thread's delivery can be dispatched between the
- * proxied write and the proxied drain. Its epoll_wait(0) then collects nothing.
+ * Under PROXY_TO_PTHREAD the listener is owned by the proxied main thread,
+ * whose holds mirror the main thread's: in MODE_LATER it survives its return
+ * from main to take the delivery scheduled by its own pipe write. It may see
+ * one spurious wakeup: the main thread's delivery can be dispatched between
+ * the proxied write and the proxied drain, and its epoll_wait(0) then collects
+ * nothing. Exits are explicit there: a proxied main whose keepalive later
+ * reaches zero does not run exit()
+ * (https://github.com/emscripten-core/emscripten/issues/ISSUE_TODO).
  */
 
 #include <sys/epoll.h>
@@ -24,6 +29,12 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+#define EXIT(rc) exit(rc)
+#else
+#define EXIT(rc) return rc
+#endif
 
 static int ep, rfd, wfd, fires;
 
@@ -42,6 +53,9 @@ static void on_ready(void* ud) {
   char b;
   assert(read(rfd, &b, 1) == 1);
   fires++;
+#ifdef __EMSCRIPTEN_PTHREADS__
+  exit(0);
+#endif
 }
 
 static void writer(void* arg) { assert(write(wfd, "x", 1) == 1); }
@@ -79,6 +93,6 @@ int main(void) {
   char b;
   assert(read(rfd, &b, 1) == 1);
 #endif
-  return 7;
+  EXIT(7);
 #endif
 }

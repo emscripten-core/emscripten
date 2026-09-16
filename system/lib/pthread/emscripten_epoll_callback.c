@@ -14,8 +14,8 @@
 // main thread must wait for that before firing again, or it would spin
 // re-signalling the same still-ready level fd.
 
-#include <assert.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -47,7 +47,8 @@ static void do_epoll_done(void* arg) {
   free(arg);
 }
 
-void _emscripten_epoll_run_callback_on_thread(pthread_t t,
+// Returns false if the target thread no longer exists.
+bool _emscripten_epoll_run_callback_on_thread(pthread_t t,
                                               em_epoll_callback callback,
                                               void* userdata,
                                               int token) {
@@ -59,24 +60,8 @@ void _emscripten_epoll_run_callback_on_thread(pthread_t t,
 
   if (!emscripten_proxy_callback(
         q, t, do_epoll_callback, do_epoll_done, do_epoll_done, args)) {
-    assert(false && "emscripten_proxy_callback failed");
+    free(args);
+    return false;
   }
-}
-
-// Adjust the owner thread's (thread-local) runtime keepalive so the epoll
-// callback holds the thread it was registered on, not the main thread.
-static void do_epoll_keepalive(void* arg) {
-  if ((intptr_t)arg > 0) {
-    emscripten_runtime_keepalive_push();
-  } else {
-    emscripten_runtime_keepalive_pop();
-  }
-}
-
-void _emscripten_epoll_keepalive_on_thread(pthread_t t, int delta) {
-  em_proxying_queue* q = emscripten_proxy_get_system_queue();
-  if (!emscripten_proxy_async(
-        q, t, do_epoll_keepalive, (void*)(intptr_t)delta)) {
-    assert(false && "emscripten_proxy_async failed");
-  }
+  return true;
 }

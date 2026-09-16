@@ -2094,12 +2094,32 @@ addToLibrary({
   $runtimeKeepaliveCounter__internal: true,
   $runtimeKeepaliveCounter: 0,
 
+#if PTHREADS
+  // Holds other threads placed on this thread's runtime, in shared memory
+  // (struct pthread.keepalive_holds, via _emscripten_thread_keepalive): a
+  // thread cannot reach another's runtimeKeepaliveCounter synchronously.
+  $keepaliveHeldByOthers__internal: true,
+  $keepaliveHeldByOthers__deps: ['pthread_self'],
+  $keepaliveHeldByOthers: () => {
+    var self = _pthread_self();
+    return self && Atomics.load(HEAP32, {{{ getHeapOffset('self + ' + C_STRUCTS.pthread.keepalive_holds, 'i32') }}}) > 0;
+  },
+#endif
+
 #if isSymbolNeeded('$noExitRuntime')
   // If the `noExitRuntime` symbol is included in the build then
   // keepRuntimeAlive is always conditional since its state can change
   // at runtime.
-  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
-  $keepRuntimeAlive: () => noExitRuntime || runtimeKeepaliveCounter > 0,
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter',
+#if PTHREADS
+    '$keepaliveHeldByOthers',
+#endif
+  ],
+  $keepRuntimeAlive: () => noExitRuntime || runtimeKeepaliveCounter > 0
+#if PTHREADS
+    || keepaliveHeldByOthers()
+#endif
+  ,
 #elif !EXIT_RUNTIME && !PTHREADS
   // When `noExitRuntime` is not included and EXIT_RUNTIME=0 then we know the
   // runtime can never exit (i.e. should always be kept alive).
@@ -2107,8 +2127,16 @@ addToLibrary({
   // have to track `runtimeKeepaliveCounter` in that case.
   $keepRuntimeAlive: () => true,
 #else
-  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
-  $keepRuntimeAlive: () => runtimeKeepaliveCounter > 0,
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter',
+#if PTHREADS
+    '$keepaliveHeldByOthers',
+#endif
+  ],
+  $keepRuntimeAlive: () => runtimeKeepaliveCounter > 0
+#if PTHREADS
+    || keepaliveHeldByOthers()
+#endif
+  ,
 #endif
 
   // Callable in pthread without __proxy needed.
