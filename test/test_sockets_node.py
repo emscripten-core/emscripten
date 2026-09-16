@@ -229,6 +229,10 @@ class sockets_node(RunnerCore):
     # Same, but getaddrinfo() suspends the wasm stack under JSPI.
     self.do_runf('sockets/test_dns.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_dns_blocking_asyncify(self):
+    # Same, unwinding the wasm stack under ASYNCIFY.
+    self.do_runf('sockets/test_dns.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sASYNCIFY', '-sEXIT_RUNTIME'])
+
   def test_noderawsockets_epoll_socket_blocking(self):
     # A blocking epoll_wait() on a socket is woken by an incoming datagram
     # through the unified readiness wait-queue (the SOCKFS.emit bridge), with

@@ -1015,6 +1015,9 @@ addToLibrary({
 #if NODERAWSOCKETS
     '$nodeSockHelpers',
 #endif
+#if NODERAWSOCKETS && ASYNCIFY
+    '$Asyncify',
+#endif
   ],
   $doGetAddrInfo: (node, service, hint, out) => {
     // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
@@ -1198,13 +1201,18 @@ addToLibrary({
 #if NODERAWSOCKETS
     // The lookup is asynchronous, so only start it where the calling stack can
     // wait on the Promise: a sync-proxied pthread (PROXY_SYNC_ASYNC) awaits it,
-    // JSPI suspends on it. Otherwise (the event-loop thread itself) it must not
-    // start at all, since it would write to *out after we have returned.
+    // ASYNCIFY/JSPI suspend on it. Otherwise (the event-loop thread itself) it
+    // must not start at all, since it would write to *out after we have
+    // returned.
 #if PTHREADS
     if (PThread.currentProxiedOperationCallerThread) return lookupHostname();
 #endif
-#if JSPI
-    return lookupHostname();
+#if ASYNCIFY
+    // handleAsync holds a runtime keepalive across the suspension, so a user
+    // callback completing meanwhile does not exit the runtime under main().
+    // Everything above this point is pure, so the ASYNCIFY rewind re-running
+    // this body reaches handleAsync again and takes the stored result.
+    return Asyncify.handleAsync(lookupHostname);
 #else
     return {{{ cDefs.EAI_AGAIN }}};
 #endif
@@ -1225,7 +1233,7 @@ addToLibrary({
 
   getaddrinfo__deps: ['$doGetAddrInfo'],
   getaddrinfo__proxy: 'sync',
-#if NODERAWSOCKETS && (PTHREADS || JSPI)
+#if NODERAWSOCKETS && (PTHREADS || ASYNCIFY)
   getaddrinfo__async: true,
 #endif
   getaddrinfo: (node, service, hint, out) => {

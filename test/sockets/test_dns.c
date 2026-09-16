@@ -13,6 +13,7 @@
 
 #include <arpa/inet.h>
 #include <assert.h>
+#include <emscripten/eventloop.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -47,6 +48,9 @@ static int count_v4(struct addrinfo* res, const char* addr) {
   return n;
 }
 
+int ticked = 0;
+void tick(void* arg) { ticked = 1; }
+
 int main(void) {
   struct addrinfo* res = lookup("10.9.8.7", AF_UNSPEC, 0);
   assert(count_v4(res, "10.9.8.7") == 1 && !res->ai_next);
@@ -56,7 +60,14 @@ int main(void) {
 #ifdef NO_WAIT
   lookup("localhost", AF_INET, EAI_AGAIN);
 #else
+  // A user callback completing while main() is suspended in the lookup must
+  // not exit the runtime (EXIT_RUNTIME). Under PROXY_TO_PTHREAD the calling
+  // thread is parked, so the timer only runs once the lookup has returned.
+  emscripten_set_timeout(tick, 0, NULL);
   res = lookup("localhost", AF_INET, 0);
+#ifndef __EMSCRIPTEN_PTHREADS__
+  assert(ticked);
+#endif
   assert(count_v4(res, "127.0.0.1") == 1);
   for (struct addrinfo* ai = res; ai; ai = ai->ai_next) {
     assert(ai->ai_family == AF_INET);
