@@ -205,6 +205,21 @@ def get_firefox_version():
   return version
 
 
+@memoize
+def get_chrome_version():
+  if not is_chrome():
+    return UNSUPPORTED
+  exe = shlex.split(EMTEST_BROWSER, posix=not WINDOWS)[0]
+  if WINDOWS:
+    cmd = ['powershell', '-NoProfile', '-Command', f'(Get-Item "{exe}").VersionInfo.ProductVersion']
+  else:
+    if exe.endswith('.app'):
+      exe = os.path.join(exe, 'Contents/MacOS/Google Chrome')
+    cmd = [exe, '--version']
+  version = subprocess.check_output(cmd, text=True)
+  return int(re.search(r'\b(\d+)\.', version).group(1))
+
+
 def browser_should_skip_feature(skip_env_var, feature):
   # If an env. var. EMTEST_LACKS_x to skip the given test is set (to either
   # value 0 or 1), don't bother checking if current browser supports the feature
@@ -243,6 +258,7 @@ class ChromeConfig:
     # this flag for now: https://crbug.com/638180
     '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-features=JavaScriptSourcePhaseImports',
     '--enable-experimental-webassembly-features',
+    '--enable-blink-features=AudioWorkletSharedPort',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
     '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
