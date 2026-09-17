@@ -22,7 +22,9 @@ char *getcwd(char *buf, size_t size)
 	// prefix returned by the kernel's getcwd syscall. Emscripten's
 	// __syscall_getcwd never returns `(unreachable)` (it returns -ENOENT
 	// directly), and under NODERAWFS on Windows valid paths can start with
-	// a drive letter (e.g. `C:\...`) or UNC prefix (`\\...`).
+	// a drive letter (e.g. `C:\...`) or UNC prefix (`\\...`). That is, the
+	// Emscripten change here is to get musl to work properly on Windows (which
+	// musl does not normally do).
 	if (ret == 0) {
 #else
 	if (ret == 0 || buf[0] != '/') {
