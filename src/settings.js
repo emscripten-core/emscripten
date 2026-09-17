@@ -420,7 +420,9 @@ var PROXY_POSIX_SOCKETS = false;
 // It is event-driven. Socket readiness comes through the same
 // ``emscripten_set_socket_*_callback`` hooks the WebSocket backend uses, so it
 // works with existing readiness reactors. It cannot be combined with the
-// WebSocket emulation or :ref:`PROXY_POSIX_SOCKETS`.
+// WebSocket emulation or :ref:`PROXY_POSIX_SOCKETS`. Blocking ``accept()``
+// and ``recv()`` wait (like ``poll()``) from a pthread or under
+// :ref:`ASYNCIFY`/JSPI.
 //
 // It works under -pthread with :ref:`PROXY_TO_PTHREAD`, where main() and every socket
 // syscall run on a single worker alongside the node handles and their event

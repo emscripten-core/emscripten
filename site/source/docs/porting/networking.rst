@@ -62,15 +62,18 @@ sockets API with real host TCP, UDP and ``AF_UNIX`` stream sockets (see
 Non-blocking sockets (``SOCK_NONBLOCK``, ``fcntl(F_SETFL, O_NONBLOCK)`` or
 ``ioctl(FIONBIO)``) behave as on Linux.
 
-Blocking sockets cannot actually block. An operation on a blocking socket that
-would need to wait (``accept()``, ``recv()``/``read()``) fails with ``EAGAIN``
-instead, a blocking ``connect()`` returns ``0`` before the connection has
-completed, and a blocking ``send()`` never waits: it buffers without limit
-(only a non-blocking socket is bounded by the write buffer's high-water mark
-and reports ``EAGAIN``). Builds with ``ASSERTIONS`` print a warning the first
-time a blocking socket returns ``EAGAIN``. Applications should use non-blocking
-sockets together with ``poll()`` or ``epoll``, which can wait when called from
-a pthread, or when using :ref:`ASYNCIFY`.
+Blocking ``accept()``, ``recv()``, ``recvfrom()`` and ``recvmsg()`` wait when
+called from a pthread (including ``main()`` under :ref:`PROXY_TO_PTHREAD`), or
+when using :ref:`ASYNCIFY` or :ref:`JSPI`, just like ``poll()`` and
+``epoll_wait()``; ``MSG_DONTWAIT`` still returns ``EAGAIN`` without waiting.
+Where no stack can wait (the main thread of a plain build) these fail with
+``EAGAIN`` instead, and builds with ``ASSERTIONS`` print a warning the first
+time that happens. Other blocking operations never wait: a blocking
+``connect()`` returns ``0`` before the connection has completed, and a
+blocking ``send()`` buffers without limit (only a non-blocking socket is
+bounded by the write buffer's high-water mark and reports ``EAGAIN``).
+Applications can otherwise use non-blocking sockets together with ``poll()``
+or ``epoll``.
 
 Full POSIX Sockets over WebSocket Proxy Server
 ==============================================
