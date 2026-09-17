@@ -189,10 +189,13 @@ var imports = {
 {{{
 #if EXPORT_ES6 && !ENVIRONMENT_MAY_BE_AUDIO_WORKLET
 const moduleUrl = `new URL('${TARGET_BASENAME}.wasm', import.meta.url)`;
+const nodeWasmPath = `require('node:url').fileURLToPath(${moduleUrl})`;
 #elif !EXPORT_ES6 || AUDIO_WORKLET
 const moduleUrl = `'${TARGET_BASENAME}.wasm'`;
+const nodeWasmPath = `__dirname + '/${TARGET_BASENAME}.wasm'`;
 #else
 const moduleUrl = `ENVIRONMENT_IS_AUDIO_WORKLET ? '${TARGET_BASENAME}.wasm' : new URL('${TARGET_BASENAME}.wasm', import.meta.url)`;
+const nodeWasmPath = `__dirname + '/${TARGET_BASENAME}.wasm'`;
 #endif
 }}}
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
