@@ -5,14 +5,10 @@
  * found in the LICENSE file.
  */
 
-// Backs emscripten_epoll_add_listener under PTHREADS: the epoll readiness lives
-// on the main thread (the epoll syscalls are proxied there), but the user
-// callback must run on the thread that registered it. This mirrors
-// _emscripten_run_callback_on_thread in html5/callback.c, but reports back to
-// the main thread when a delivery completes so it can pace the next one - the
-// callback collects the ready events (via a proxied epoll_wait) itself, so the
-// main thread must wait for that before firing again, or it would spin
-// re-signalling the same still-ready level fd.
+// Backs emscripten_epoll_add_listener under PTHREADS: readiness lives on the
+// main thread, the callback runs on the registering thread. Like
+// _emscripten_run_callback_on_thread (html5/callback.c), but reports completion
+// back to the main thread so it can pace the next delivery.
 
 #include <pthread.h>
 #include <stdbool.h>
@@ -30,15 +26,12 @@ typedef struct epoll_callback_args_t {
   int token;
 } epoll_callback_args_t;
 
-// Runs on the registering thread: signal the user callback that events are
-// pending (it collects them itself via epoll_wait).
 static void do_epoll_callback(void* arg) {
   epoll_callback_args_t* args = (epoll_callback_args_t*)arg;
   args->callback(args->userdata);
 }
 
-// Runs back on the main thread once the delivery above has finished (or was
-// cancelled because the target thread went away): let the JS layer re-derive.
+// On the main thread, after the delivery ran or its target thread went away.
 static void do_epoll_done(void* arg) {
   epoll_callback_args_t* args = (epoll_callback_args_t*)arg;
   _emscripten_epoll_delivery_done(args->token);
