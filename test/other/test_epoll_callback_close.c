@@ -4,11 +4,10 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * A registered callback keeps the runtime alive only while its epoll can still
- * fire. Closing the watched fd makes the set terminal (nothing it watches can
- * become ready again), so the keepalive is dropped and the process exits with no
- * explicit unregister - here over a pipe, exercising the PIPEFS close -> wake ->
- * evict path (the same property the sockets test relies on for SOCKFS).
+ * Closing the watched fd from inside the callback: the PIPEFS close wakes the
+ * epoll (POLLNVAL), which evicts the now-stale registration rather than
+ * delivering, and with nothing held the process exits with the listener still
+ * registered and no explicit unregister.
  */
 
 #include <sys/epoll.h>
@@ -26,7 +25,8 @@ static void on_ready(void* ud) {
   char b[1];
   assert(read(rfd, b, 1) == 1);
   printf("done\n");
-  // No unregister: closing the watched fd alone must let the runtime exit.
+  // No unregister: nothing is held, so the callback returning exits the runtime
+  // with the (now fd-less) listener still registered.
   close(rfd);
   close(wfd);
 }

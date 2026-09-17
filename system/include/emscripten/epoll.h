@@ -39,33 +39,27 @@ extern "C" {
 //
 // A listener fires on the next event-loop tick (as a macrotask, never from
 // within a running wasm call) while the set has ready events that have not yet
-// been collected, and keeps firing while any remain - it only
-// signals that events are pending, so a callback that does not drain them (via
-// epoll_wait) leaves them pending and re-fires. Whether a given fd is
-// re-reported follows its per-fd trigger mode (set via epoll_ctl) exactly as
-// epoll_wait does, so one epoll can mix modes:
-//   - Level-triggered (the default): the fd is reported on the next tick whenever
-//     it is ready, and keeps re-firing while it stays ready. The runtime - not
-//     the application - drives the loop, so an fd that is structurally always
-//     ready (notably EPOLLOUT on a writable socket) will spin the event loop.
-//     Use one of the modes below for such fds.
-//   - EPOLLET (edge-triggered): reported once per readiness edge and not again
-//     until a fresh edge; usually preferable in this model.
-//   - EPOLLONESHOT: reported once, then the registration is disabled until you
-//     re-arm it with epoll_ctl(EPOLL_CTL_MOD).
+// been collected, and keeps firing while any remain: it only signals that
+// events are pending, so a callback that does not drain them (via epoll_wait)
+// leaves them pending and re-fires. Whether a given fd is re-reported follows
+// its per-fd trigger mode (set via epoll_ctl) exactly as epoll_wait does. Note
+// that for a level-triggered fd the runtime, not the application, drives the
+// loop, so an fd that is structurally always ready (notably EPOLLOUT on a
+// writable socket) will spin the event loop; use EPOLLET or EPOLLONESHOT for
+// such fds.
 //
-// Listeners keep the runtime alive as long as the host can still make the set
-// ready - i.e. while the epoll has at least one armed registration on a
-// host-backed fd (a socket). This follows the Node.js model, where registered
-// I/O interest holds the event loop open. Once every such fd is closed (or
-// disarmed) the listeners stop holding the runtime, so no explicit disposal is
-// required in that case. A pipe does not count: it can only be written by wasm
-// code, which is already running (and so already held) when it does; a
-// delivery that write schedules is itself held until it runs. With pthreads the
-// same holds apply to the thread that registered the listener, where its
-// callbacks run. Such a callback may see a spurious wakeup (epoll_wait
-// collects nothing) if the set was drained from that thread while the signal
-// was in flight.
+// A listener is an unref'd handle (like Node's handle.unref()): while the
+// runtime is alive, readiness is delivered to it, but it never keeps the
+// runtime - or, with pthreads, the registering thread - alive by itself. A
+// program whose only reason to stay alive is a listener holds the runtime
+// itself, on the registering thread:
+//
+//   emscripten_runtime_keepalive_push();  // e.g. before main() returns
+//   ...
+//   emscripten_runtime_keepalive_pop();   // e.g. from the callback, when done
+//
+// Likewise emscripten_epoll_remove_listener and the last close of the epoll fd
+// release nothing, since nothing was held.
 //
 // Listeners are shared instance state: they see registrations made through any
 // dup'd fd, and closing the last fd to the instance removes them all. Returns

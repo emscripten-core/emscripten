@@ -9,16 +9,13 @@
  * listener is removed (MODE_REMOVE), the delivery has nothing to do - but
  * releasing its hold may be what lets main's deferred exit proceed, so the
  * runtime must still exit: atexit prints "done", Module.onExit "exited", and
- * the process exits with main's status. MODE_LATER is the regression guard: a
- * set made ready after main returns still delivers, then exits.
+ * the process exits with main's status.
  *
- * Under PROXY_TO_PTHREAD the listener is owned by the proxied main thread,
- * whose holds mirror the main thread's: in MODE_LATER it survives its return
- * from main to take the delivery scheduled by its own pipe write. It may see
- * one spurious wakeup: the main thread's delivery can be dispatched between
- * the proxied write and the proxied drain, and its epoll_wait(0) then collects
- * nothing. Exits are explicit there: a proxied main whose keepalive later
- * reaches zero does not run exit()
+ * Under PROXY_TO_PTHREAD the listener is owned by the proxied main thread. It
+ * may see one spurious wakeup: the main thread's delivery can be dispatched
+ * between the proxied write and the proxied drain, and its epoll_wait(0) then
+ * collects nothing. Exits are explicit there: a proxied main whose keepalive
+ * later reaches zero does not run exit()
  * (https://github.com/emscripten-core/emscripten/issues/27721).
  */
 
@@ -36,7 +33,7 @@
 #define EXIT(rc) return rc
 #endif
 
-static int ep, rfd, wfd, fires;
+static int ep, rfd, wfd;
 
 static void nothing_to_collect(void* ud) {
   struct epoll_event ev[4];
@@ -47,23 +44,7 @@ static void nothing_to_collect(void* ud) {
 #endif
 }
 
-static void on_ready(void* ud) {
-  struct epoll_event ev[4];
-  assert(epoll_wait(ep, ev, 4, 0) == 1 && ev[0].data.fd == rfd);
-  char b;
-  assert(read(rfd, &b, 1) == 1);
-  fires++;
-#ifdef __EMSCRIPTEN_PTHREADS__
-  exit(0);
-#endif
-}
-
-static void writer(void* arg) { assert(write(wfd, "x", 1) == 1); }
-
 static void at_exit(void) {
-#if MODE_LATER
-  assert(fires == 1);
-#endif
   printf("done\n");
 }
 
@@ -78,11 +59,6 @@ int main(void) {
   struct epoll_event ev = { .events = EPOLLIN };
   ev.data.fd = rfd;
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
-#if MODE_LATER
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
-  emscripten_async_call(writer, NULL, 0);
-  return 0;
-#else
   assert(emscripten_epoll_add_listener(ep, nothing_to_collect, 0) == 0);
   // Ready: a delivery is now scheduled and holds the runtime.
   assert(write(wfd, "x", 1) == 1);
@@ -94,5 +70,4 @@ int main(void) {
   assert(read(rfd, &b, 1) == 1);
 #endif
   EXIT(7);
-#endif
 }

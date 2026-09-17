@@ -97,8 +97,9 @@ int main(void) {
   assert(wi >= 0 && !seen[wi]);
   seen[wi] = 1;
 
-  // The callback (kept alive by its own keepalive) delivers the remaining two
-  // off the shared list; "done" prints once both slices are in, in either order.
+  // The callback's delivery (scheduled by those edges, and held until it runs)
+  // collects the remaining two off the shared list; "done" prints once both
+  // slices are in, in either order.
   maybe_done();
   return 0;
 }
