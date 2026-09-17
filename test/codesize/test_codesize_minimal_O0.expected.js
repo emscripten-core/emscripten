@@ -674,8 +674,6 @@ async function instantiateAsync(binary, binaryFile, imports) {
     // See: https://github.com/emscripten-core/emscripten/pull/16917
     try {
       var url = require('node:url');
-      // `binaryFile` may be a `file://` URL string here; fs.createReadStream()
-      // needs an actual URL object (or a plain path), not a URL string.
       var nodeBinaryFile = isFileURI(binaryFile) ? url.fileURLToPath(binaryFile) : binaryFile;
       var response = fs.openAsBlob(nodeBinaryFile).then(
         (blob) =>
