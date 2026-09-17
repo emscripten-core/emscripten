@@ -740,7 +740,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
       var nodeBinaryFile = isFileURI(binaryFile) ? url.fileURLToPath(binaryFile) : binaryFile;
       var response = fs.openAsBlob(nodeBinaryFile).then(
         (blob) =>
-          new Response(blob, {
+          new Response(blob.stream(), {
             headers: { 'Content-Type': 'application/wasm' },
           }),
       );

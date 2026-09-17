@@ -217,7 +217,7 @@ instantiatePromise =
       ? WebAssembly.instantiateStreaming(
           require('node:fs')
             .openAsBlob({{{ nodeWasmPath }}})
-            .then((blob) => new Response(blob, { headers: { 'Content-Type': 'application/wasm' } })),
+            .then((blob) => new Response(blob.stream(), { headers: { 'Content-Type': 'application/wasm' } })),
           imports,
         )
       : WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports))
