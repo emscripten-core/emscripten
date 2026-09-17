@@ -9777,41 +9777,6 @@ end
     self.assertEqual(returncode, 0)
     self.assertIn(b'done', output)
 
-  @disabled('https://github.com/nodejs/node/issues/18265')
-  def test_node_code_caching(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sNODE_CODE_CACHING',
-                      '-sWASM_ASYNC_COMPILATION=0'])
-
-    def get_cached():
-      cached = glob.glob('a.out.wasm.*.cached')
-      if not cached:
-        return None
-      self.assertEqual(len(cached), 1)
-      return cached[0]
-
-    # running the program makes it cache the code
-    self.assertFalse(get_cached())
-    self.assertEqual('Hello, world!', self.run_js('a.out.js').strip())
-    self.assertTrue(get_cached(), 'should be a cache file')
-
-    # hard to test it actually uses it to speed itself up, but test that it
-    # does try to deserialize it at least
-    create_file(get_cached(), 'waka waka')
-    ERROR = 'NODE_CODE_CACHING: failed to deserialize, bad cache file?'
-    self.assertContained(ERROR, self.run_js('a.out.js'))
-    # we cached proper code after showing that error
-    self.assertEqual(read_binary(get_cached()).count(b'waka'), 0)
-    self.assertNotContained(ERROR, self.run_js('a.out.js'))
-
-  def test_node_code_caching_incompatible_settings(self):
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-sNODE_CODE_CACHING', '-sWASM_ASYNC_COMPILATION=0', '-sSINGLE_FILE'],
-                     'emcc: error: NODE_CODE_CACHING is not compatible with SINGLE_FILE (saves a file on the side)')
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-sNODE_CODE_CACHING'],
-                     'emcc: error: NODE_CODE_CACHING is not compatible with WASM_ASYNC_COMPILATION')
-    err = self.run_process([EMCC, test_file('hello_world.c'), '-sNODE_CODE_CACHING', '-sWASM_ASYNC_COMPILATION=0', '-sENVIRONMENT=web'], stderr=PIPE).stderr
-    self.assertContained('warning: NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT` [-Wunused-command-line-argument]', err)
-
   @with_env_modify({'LC_ALL': 'C'})
   def test_autotools_shared_check(self):
     expected = ': supported targets:.* elf'

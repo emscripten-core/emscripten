@@ -1803,8 +1803,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       diagnostics.warning('unused-command-line-argument', 'NODERAWFS ignored since `node` not in `ENVIRONMENT`')
     if settings.NODERAWSOCKETS:
       diagnostics.warning('unused-command-line-argument', 'NODERAWSOCKETS ignored since `node` not in `ENVIRONMENT`')
-    if settings.NODE_CODE_CACHING:
-      diagnostics.warning('unused-command-line-argument', 'NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT`')
 
   settings.PRE_JS_FILES = options.pre_js
   settings.POST_JS_FILES = options.post_js
