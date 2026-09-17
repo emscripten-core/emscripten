@@ -325,10 +325,10 @@ class other(RunnerCore):
     super().setUp()
 
   def assertIsObjectFile(self, filename):
-    self.assertTrue(building.is_wasm(filename))
+    self.assertTrue(webassembly.is_wasm(filename))
 
   def assertIsWasmDylib(self, filename):
-    self.assertTrue(building.is_wasm_dylib(filename))
+    self.assertTrue(webassembly.is_wasm_dylib(filename))
 
   def do_other_test(self, testname, cflags=None, **kwargs):
     return self.do_runf_out_file(test_file('other', testname), cflags=cflags, **kwargs)
@@ -620,7 +620,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # of output.  For example, specifying an output filename that ends in `.bc` does
     # *not* imply the output is actually bitcode.
     self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'out.bc'])
-    self.assertTrue(building.is_wasm('out.bc'))
+    self.assertIsObjectFile('out.bc')
 
   def test_bc_as_archive(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c'), '-flto', '-o', 'out.a'])
@@ -1095,9 +1095,9 @@ f.close()
     self.run_process([EMCMAKE, 'cmake', f'-DSET_CUSTOM_SUFFIX_IN_PROJECT={custom}', test_file('cmake/static_lib')])
     self.run_process(['cmake', '--build', '.'])
     if custom == '1':
-      self.assertTrue(building.is_ar('myprefix_static_lib.somecustomsuffix'))
+      self.assertTrue(utils.is_ar('myprefix_static_lib.somecustomsuffix'))
     else:
-      self.assertTrue(building.is_ar('libstatic_lib.a'))
+      self.assertTrue(utils.is_ar('libstatic_lib.a'))
 
   # Tests that cmake functions which require evaluation via the node runtime run properly with pthreads
   def test_cmake_pthreads(self):
@@ -5223,8 +5223,8 @@ int main() {
     self.run_process([EMCC, '-flto', '-c', test_file('hello_world.c')])
     self.assertExists('hello_world.o')
     self.run_process([EMCC, '-flto', '-r', 'hello_world.o', '-o', 'hello_world2.o'])
-    is_bitcode('hello_world.o')
-    building.is_wasm('hello_world2.o')
+    self.assertTrue(is_bitcode('hello_world.o'))
+    self.assertIsObjectFile('hello_world2.o')
 
   @parameterized({
     '': ([],),
@@ -8775,7 +8775,7 @@ int main() {
       self.run_process([EMCC, test_file('hello_world.c'), '-sSIDE_MODULE', '-Werror'] + opts)
       for x in os.listdir('.'):
         self.assertFalse(x.endswith('.js'))
-      self.assertTrue(building.is_wasm_dylib(target))
+      self.assertIsWasmDylib(target)
 
       create_file('main.c', '')
       self.do_runf('main.c', cflags=['-sMAIN_MODULE=2', 'main.c', '-Werror', target])
@@ -8839,12 +8839,12 @@ int main() {
     src = test_file('hello_libcxx.cpp')
     # wasm in object
     self.run_process([EMXX, src] + args + ['-c', '-o', 'hello_obj.o'])
-    self.assertTrue(building.is_wasm('hello_obj.o'))
+    self.assertIsObjectFile('hello_obj.o')
     self.assertFalse(is_bitcode('hello_obj.o'))
 
     # bitcode in object
     self.run_process([EMXX, src] + args + ['-c', '-o', 'hello_bitcode.o', '-flto'])
-    self.assertFalse(building.is_wasm('hello_bitcode.o'))
+    self.assertFalse(webassembly.is_wasm('hello_bitcode.o'))
     self.assertTrue(is_bitcode('hello_bitcode.o'))
 
     # use bitcode object (LTO)
@@ -10728,11 +10728,11 @@ T6:(else) !ASSERTIONS""", output)
 
     with open(fname, 'wb') as f:
       f.write(b'foo')
-    self.assertFalse(building.is_ar(fname))
+    self.assertFalse(utils.is_ar(fname))
 
     with open(fname, 'wb') as f:
       f.write(b'!<arch>\n')
-    self.assertTrue(building.is_ar(fname))
+    self.assertTrue(utils.is_ar(fname))
 
   def test_dash_s_list_parsing(self):
     create_file('src.c', r'''
@@ -12436,7 +12436,7 @@ int main(void) {
     self.run_process([EMCC, '-emit-llvm', '-c', '-o', 'main.bc', 'main.c'])
     self.assertTrue(is_bitcode('main.bc'))
     self.run_process([EMCC, '-c', '-o', 'main.o', 'main.bc'])
-    self.assertTrue(building.is_wasm('main.o'))
+    self.assertIsObjectFile('main.o')
 
   @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_nostdlib(self):
@@ -12826,16 +12826,16 @@ exec "$@"
 
   def test_oformat(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=wasm', '-o', 'out.foo'])
-    self.assertTrue(building.is_wasm('out.foo'))
+    self.assertTrue(webassembly.is_wasm('out.foo'))
     self.clear()
 
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=html', '-o', 'out.foo'])
-    self.assertFalse(building.is_wasm('out.foo'))
+    self.assertFalse(webassembly.is_wasm('out.foo'))
     self.assertContained('<html ', read_file('out.foo'))
     self.clear()
 
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=js', '-o', 'out.foo'])
-    self.assertFalse(building.is_wasm('out.foo'))
+    self.assertFalse(webassembly.is_wasm('out.foo'))
     self.assertContained('new ExitStatus', read_file('out.foo'))
     self.clear()
 
@@ -13256,8 +13256,8 @@ exec "$@"
     self.run_process([EMCC, '-o', 'hello.wasm', '--oformat=js', test_file('hello_world.c')])
     self.assertExists('hello.wasm')
     self.assertExists('hello_.wasm')
-    self.assertFalse(building.is_wasm('hello.wasm'))
-    self.assertTrue(building.is_wasm('hello_.wasm'))
+    self.assertFalse(webassembly.is_wasm('hello.wasm'))
+    self.assertTrue(webassembly.is_wasm('hello_.wasm'))
     # Node cannot actually run the generated JS if it's in a file with the .wasm extension
     os.rename('hello.wasm', 'hello.js')
     self.assertContained('Hello, world!', self.run_js('hello.js'))

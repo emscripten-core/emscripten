@@ -661,3 +661,23 @@ def get_weak_imports(wasm_file):
       if flags & SYMBOL_BINDING_MASK == SYMBOL_BINDING_WEAK:
         weak_imports.append(symbol)
   return weak_imports
+
+
+def is_wasm(filename):
+  if not os.path.isfile(filename):
+    return False
+  with open(filename, 'rb') as f:
+    header = f.read(HEADER_SIZE)
+  return header == MAGIC + VERSION
+
+
+def is_wasm_dylib(filename):
+  """Detect wasm dynamic libraries by the presence of the "dylink" custom section."""
+  if not is_wasm(filename):
+    return False
+  with Module(filename) as module:
+    section = next(module.sections(), None)
+    if section and section.type == SecType.CUSTOM:
+      if section.name in {'dylink', 'dylink.0'}:
+        return True
+  return False

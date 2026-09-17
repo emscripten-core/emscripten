@@ -760,9 +760,9 @@ def get_dylibs(linker_args):
       if search_for_dylibs:
         for ext in DYLIB_EXTENSIONS:
           path = find_library('lib' + arg[2:] + ext, options.lib_dirs)
-          if path and building.is_wasm_dylib(path):
+          if path and webassembly.is_wasm_dylib(path):
             dylibs.append(path)
-    elif building.is_wasm_dylib(arg):
+    elif webassembly.is_wasm_dylib(arg):
       dylibs.append(arg)
   return dylibs
 
@@ -1978,7 +1978,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
     # Copy libraries to the temp directory so they can be used when running
     # in node.
     for f in options.input_files:
-      if building.is_wasm_dylib(f):
+      if webassembly.is_wasm_dylib(f):
         safe_copy(f, in_temp(''))
 
   # Ignore any options or settings that can conflict with running the TS
@@ -2775,7 +2775,7 @@ def process_libraries(flags):
       for ext in DYLIB_EXTENSIONS:
         name = 'lib' + lib + ext
         path = find_library(name, options.lib_dirs)
-        if path and not building.is_wasm_dylib(path):
+        if path and not webassembly.is_wasm_dylib(path):
           found_dylib = True
           new_flags.append(path)
           break
@@ -2852,7 +2852,7 @@ class ScriptSource:
 def filter_out_fake_dynamic_libs(inputs):
   """Filter out "fake" dynamic libraries that are really just intermediate object files."""
   def is_fake_dylib(input_file):
-    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and os.path.exists(input_file) and not building.is_wasm_dylib(input_file):
+    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and os.path.exists(input_file) and not webassembly.is_wasm_dylib(input_file):
       if not options.ignore_dynamic_linking:
         diagnostics.warning('emcc', 'ignoring dynamic library %s when generating an object file, this will need to be included explicitly in the final link', os.path.basename(input_file))
       return True
@@ -2870,7 +2870,7 @@ def filter_out_duplicate_fake_dynamic_libs(inputs):
   seen = set()
 
   def check(input_file):
-    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and not building.is_wasm_dylib(input_file):
+    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and not webassembly.is_wasm_dylib(input_file):
       abspath = os.path.abspath(input_file)
       if abspath in seen:
         return False

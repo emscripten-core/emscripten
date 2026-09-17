@@ -1165,37 +1165,6 @@ def write_symbol_map(wasm_file, symbols_file):
   utils.write_file(symbols_file, contents)
 
 
-def is_ar(filename):
-  """Return True if the given filename is an ar archive, False otherwise."""
-  try:
-    header = open(filename, 'rb').read(8)
-  except Exception as e:
-    logger.debug(f'is_ar failed to test whether file \'{filename}\' is a llvm archive file! Failed on exception: {e}')
-    return False
-
-  return header in {b'!<arch>\n', b'!<thin>\n'}
-
-
-def is_wasm(filename):
-  if not os.path.isfile(filename):
-    return False
-  header = open(filename, 'rb').read(webassembly.HEADER_SIZE)
-  return header == webassembly.MAGIC + webassembly.VERSION
-
-
-def is_wasm_dylib(filename):
-  """Detect wasm dynamic libraries by the presence of the "dylink" custom section."""
-  if not is_wasm(filename):
-    return False
-  with webassembly.Module(filename) as module:
-    section = next(module.sections())
-    if section.type == webassembly.SecType.CUSTOM:
-      module.seek(section.offset)
-      if module.read_string() in {'dylink', 'dylink.0'}:
-        return True
-  return False
-
-
 def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
