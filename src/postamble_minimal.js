@@ -189,10 +189,13 @@ var imports = {
 {{{
 #if EXPORT_ES6 && !ENVIRONMENT_MAY_BE_AUDIO_WORKLET
 const moduleUrl = `new URL('${TARGET_BASENAME}.wasm', import.meta.url)`;
+const nodeWasmPath = `require('node:url').fileURLToPath(${moduleUrl})`;
 #elif !EXPORT_ES6 || AUDIO_WORKLET
 const moduleUrl = `'${TARGET_BASENAME}.wasm'`;
+const nodeWasmPath = `__dirname + '/${TARGET_BASENAME}.wasm'`;
 #else
 const moduleUrl = `ENVIRONMENT_IS_AUDIO_WORKLET ? '${TARGET_BASENAME}.wasm' : new URL('${TARGET_BASENAME}.wasm', import.meta.url)`;
+const nodeWasmPath = `__dirname + '/${TARGET_BASENAME}.wasm'`;
 #endif
 }}}
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
@@ -206,13 +209,21 @@ assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembl
 instantiatePromise =
 #endif
 (WebAssembly.instantiateStreaming
-#if ENVIRONMENT_MAY_BE_NODE
-  // Avoid using instantiateStreaming() on Node.js since the `fetch()` API
-  // does not support `file://` URLs.
-  // See: https://github.com/emscripten-core/emscripten/pull/16917
-  && !ENVIRONMENT_IS_NODE
-#endif
-  ? WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports)
+  ? (ENVIRONMENT_IS_NODE
+    ? // Avoid using `fetch()` API on Node.js since it does not support
+      // `file://` URLs. Instead, provide a Response that wraps a fs read stream
+      // with the correct MIME type.
+      // See: https://github.com/emscripten-core/emscripten/pull/16917
+      WebAssembly.instantiateStreaming(
+        new Response(
+          // Closure Compiler declaration requires a valid Response input,
+          // convert from Node stream to web ReadableStream
+          require('node:stream').Readable.toWeb(require('node:fs').createReadStream({{{ nodeWasmPath }}})),
+          { headers: { 'Content-Type': 'application/wasm' } },
+        ),
+        imports,
+      )
+    : WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports))
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
 #if MODULARIZE || AUDIO_WORKLET

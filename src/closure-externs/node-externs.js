@@ -166,3 +166,9 @@ worker_threads.Worker;
 worker_threads.workerData;
 
 worker_threads.parentPort;
+
+/**
+ * @param {!stream.Readable} stream
+ * @return {!ReadableStream}
+ */
+stream.Readable.toWeb = function (stream) {};
