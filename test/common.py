@@ -391,7 +391,7 @@ def clean_js_output(output):
       line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
     return line
 
-  lines = [cleanup(l) for l in lines]
+  lines = [cleanup(line) for line in lines]
   if not long_lines:
     # No long lines found just return the unmodified output
     return output

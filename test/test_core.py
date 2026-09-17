@@ -3370,8 +3370,8 @@ Var: 42
     def get_data_exports(wasm):
       wat = self.get_wasm_text(wasm)
       lines = wat.splitlines()
-      exports = [l for l in lines if l.strip().startswith('(export ')]
-      data_exports = [l for l in exports if '(global ' in l]
+      exports = [line for line in lines if line.strip().startswith('(export ')]
+      data_exports = [exp for exp in exports if '(global ' in exp]
       data_exports = [d.split()[1].strip('"') for d in data_exports]
       return data_exports
 
@@ -8002,7 +8002,7 @@ void* operator new(size_t size) {
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
     no_maps_file = read_file(no_maps_filename)
-    no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
+    no_maps_file = re.sub(r' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
     self.cflags.append('-gsource-map')
 
     self.emcc(os.path.abspath('src.cpp'), ['-o', out_filename])

@@ -272,8 +272,8 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       diagnostics.warning('deprecated', f'{arg} is no longer supported')
       continue
 
-    for l in LEGACY_ARGS:
-      if check_arg(l):
+    for legacy_arg in LEGACY_ARGS:
+      if check_arg(legacy_arg):
         consume_arg()
         diagnostics.warning('deprecated', f'{arg} is no longer supported')
         continue

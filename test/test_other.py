@@ -4033,7 +4033,7 @@ More info: https://emscripten.org
 
     def clean(txt):
       lines = txt.splitlines()
-      lines = [l for l in lines if 'PACKAGE_UUID' not in l and 'loadPackage({' not in l]
+      lines = [line for line in lines if 'PACKAGE_UUID' not in line and 'loadPackage({' not in line]
       return ''.join(lines)
 
     self.assertTextDataIdentical(clean(proc.stdout), clean(proc2.stdout))
@@ -8512,7 +8512,7 @@ int main() {
       print(' '.join(cmd))
       self.run_process(cmd)
       wat = self.get_wasm_text('a.out.wasm')
-      memories = [l for l in wat.splitlines() if '(memory ' in l]
+      memories = [line for line in wat.splitlines() if '(memory ' in line]
       self.assertEqual(len(memories), 2)
       line = memories[0]
       parts = line.strip().replace('(', '').replace(')', '').split()
@@ -11152,7 +11152,7 @@ int main () {
     # fastcomp does not support the new license flag
     self.run_process([EMCC, test_file('hello_world.c')] + args)
     js = read_file('a.out.js')
-    licenses_found = len(re.findall('Copyright [0-9]* The Emscripten Authors', js))
+    licenses_found = len(re.findall(r'Copyright [0-9]* The Emscripten Authors', js))
     if expect_license:
       self.assertNotEqual(licenses_found, 0, 'Unable to find license block in output file!')
       self.assertEqual(licenses_found, 1, 'Found too many license blocks in the output file!')
