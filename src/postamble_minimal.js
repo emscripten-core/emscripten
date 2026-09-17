@@ -107,7 +107,7 @@ function run() {
 #else
   // Run a persistent (never-exiting) application starting at main().
   _main({{{ argc_argv() }}});
-#endif 
+#endif
 
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
@@ -206,13 +206,16 @@ assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembl
 instantiatePromise =
 #endif
 (WebAssembly.instantiateStreaming
-#if ENVIRONMENT_MAY_BE_NODE
-  // Avoid using instantiateStreaming() on Node.js since the `fetch()` API
-  // does not support `file://` URLs.
-  // See: https://github.com/emscripten-core/emscripten/pull/16917
-  && !ENVIRONMENT_IS_NODE
-#endif
-  ? WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports)
+  ? (ENVIRONMENT_IS_NODE
+      // Avoid using `fetch()` API on Node.js since it does not support `file://`
+      // URLs. Instead, provide a Response that wraps a fs read stream with the
+      // correct MIME type.
+      // See: https://github.com/emscripten-core/emscripten/pull/16917
+      ? WebAssembly.instantiateStreaming(
+          new Response(require('node:fs').createReadStream({{{ nodeWasmPath }}}), { headers: { 'Content-Type': 'application/wasm' } }),
+          imports,
+        )
+      : WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports))
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
 #if MODULARIZE || AUDIO_WORKLET
