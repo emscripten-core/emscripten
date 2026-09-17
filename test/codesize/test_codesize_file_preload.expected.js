@@ -428,6 +428,27 @@ async function instantiateAsync(binary, binaryFile, imports) {
       err(`wasm streaming compile failed: ${reason}`);
       err("falling back to ArrayBuffer instantiation");
     }
+  } else if (!binary && ENVIRONMENT_IS_NODE) {
+    // Avoid using `fetch()` API on Node.js since it does not support `file://`
+    // URLs. Instead, provide a Response that wraps a fs read stream with the
+    // correct MIME type.
+    // See: https://github.com/emscripten-core/emscripten/pull/16917
+    try {
+      var url = require("node:url");
+      // `binaryFile` may be a `file://` URL string here; fs.createReadStream()
+      // needs an actual URL object (or a plain path), not a URL string.
+      var nodeBinaryFile = isFileURI(binaryFile) ? url.fileURLToPath(binaryFile) : binaryFile;
+      var response = fs.openAsBlob(nodeBinaryFile).then(blob => new Response(blob, {
+        headers: {
+          "Content-Type": "application/wasm"
+        }
+      }));
+      var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
+      return instantiationResult;
+    } catch (reason) {
+      err(`wasm streaming compile failed: ${reason}`);
+      err("falling back to ArrayBuffer instantiation");
+    }
   }
   return instantiateArrayBuffer(binaryFile, imports);
 }
