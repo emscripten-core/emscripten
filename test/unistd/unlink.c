@@ -140,7 +140,8 @@ void test() {
   // Update: Removing cwd on Linux does not return EBUSY.
   // WASMFS behaviour will match the native FS.
 #ifndef __APPLE__
-  getcwd(buffer, sizeof(buffer));
+  char* cwd = getcwd(buffer, sizeof(buffer));
+  assert(cwd != NULL);
   printf("CWD: %s\n", buffer);
   err = rmdir(buffer);
   assert(err == -1);
