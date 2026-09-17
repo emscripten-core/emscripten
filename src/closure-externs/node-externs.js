@@ -132,6 +132,14 @@ fs.Stats.prototype.ctimeMs;
 fs.Stats.prototype.blksize;
 
 /**
+ * @param {string|!Buffer|!URL} path
+ * @param {{type: (string|undefined)}=} options
+ * @return {!Promise<!Blob>}
+ * @nosideeffects
+ */
+fs.openAsBlob = function (path, options) {};
+
+/**
  * @param {string} p
  * @return {boolean}
  * @nosideeffects
