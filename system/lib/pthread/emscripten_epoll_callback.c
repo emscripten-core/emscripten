@@ -19,12 +19,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <emscripten/eventloop.h>
+#include <emscripten/epoll.h>
 #include <emscripten/proxying.h>
 
 #include "emscripten_internal.h"
-
-typedef void (*em_epoll_callback)(void* userdata);
 
 typedef struct epoll_callback_args_t {
   em_epoll_callback callback;

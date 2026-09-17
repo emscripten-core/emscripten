@@ -74,10 +74,11 @@ See docs/process.md for more on how version tagging works.
   default across all supported engines; it should now only ever be disabled
   implicitly when targeting JavaScript via `-sWASM=0`. (#27558)
 - Added `emscripten_epoll_add_listener`/`emscripten_epoll_remove_listener` (in
-  the new `<emscripten/epoll.h>`, experimental), a non-blocking variant of
-  `epoll_wait` that signals an epoll set's readiness to listener callbacks
-  (which collect the events themselves via a zero-timeout `epoll_wait`) with no
-  `ASYNCIFY`/`JSPI` requirement.
+  the new `<emscripten/epoll.h>`, experimental), which deliver an epoll set's
+  readiness to a callback on the host event loop (the callback collects the
+  events itself via a zero-timeout `epoll_wait`), with no `ASYNCIFY`/`JSPI`
+  requirement. The listener does not keep the runtime alive; use
+  `emscripten_runtime_keepalive_push`/`pop` for that. (#27547)
 
 6.0.7 - 08/17/26
 ----------------

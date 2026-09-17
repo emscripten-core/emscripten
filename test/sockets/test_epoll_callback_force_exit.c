@@ -4,10 +4,9 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * emscripten_force_exit while a listener holds the runtime: the forced exit
- * forfeits every keepalive hold before exitRuntime, whose FS.quit then closes the
- * epoll fd and releases the listener's (already forfeited) hold. That release
- * must not underflow the keepalive counter (which asserts).
+ * emscripten_force_exit with a listener registered on an armed socket: FS.quit
+ * closes the epoll fd on the way out, removing the listener, and the teardown
+ * wake that raises delivers nothing and holds nothing.
  */
 
 #include <sys/epoll.h>
@@ -45,8 +44,8 @@ int main(void) {
   struct epoll_event ev = { .events = EPOLLIN };
   ev.data.fd = rx;
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rx, &ev) == 0);
-  // A socket registration holds the runtime open; the listener is armed and the
-  // socket left open when the forced exit runs.
+  // The listener is armed and the socket left open when the forced exit runs:
+  // FS.quit closes the epoll and removes the listener on the way out.
   assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
   emscripten_async_call(quit, NULL, 0);
   return 0;

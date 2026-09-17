@@ -13622,8 +13622,8 @@ void foo() {}
     self.do_runf('other/test_epoll_callback_replace.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_close(self):
-    # Closing the last watched fd makes the epoll terminal, so the callback stops
-    # keeping the runtime alive and the process exits (no explicit unregister).
+    # Closing the watched fd from the callback wakes the epoll only to evict the
+    # stale registration; the process exits with the listener still registered.
     self.do_runf('other/test_epoll_callback_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_nested(self):
@@ -13632,8 +13632,8 @@ void foo() {}
     self.do_runf('other/test_epoll_callback_nested.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_nested_close(self):
-    # Closing the inner epoll wakes the outer to drop its stale registration, so
-    # an outer callback watching only the inner stops holding the runtime.
+    # Closing the inner epoll wakes the outer to drop its stale registration
+    # rather than deliver; the same close -> wake -> evict path one level up.
     self.do_runf('other/test_epoll_callback_nested_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_edge(self):
@@ -13646,11 +13646,21 @@ void foo() {}
     # the callback every tick: documents the spin contract (use EPOLLET/unregister).
     self.do_runf('other/test_epoll_callback_level.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
-  def test_epoll_callback_pipe_exit(self):
-    # Only host-backed (socket) registrations hold the runtime: a listener over
-    # an armed pipe alone lets the process exit when main returns, while a pipe
-    # write from other live work still delivers.
-    self.do_runf('other/test_epoll_callback_pipe_exit.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+  @parameterized({
+    '': ([], 3),
+    'hold': (['-DMODE_HOLD'], 0),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'], 3),
+    'hold_pthread': (['-DMODE_HOLD', '-pthread', '-sPROXY_TO_PTHREAD'], 0),
+  })
+  def test_epoll_callback_unref(self, cflags, returncode):
+    # A listener is an unref'd handle: with nothing held, main returning exits
+    # at once with its status and the callback never runs. With a
+    # emscripten_runtime_keepalive_push() the delivery runs (on the registering
+    # thread under PROXY_TO_PTHREAD) and the pop from the callback exits.
+    if '-pthread' in cflags:
+      self.require_pthreads()
+    self.do_runf('other/test_epoll_callback_unref.c', 'done\nexited %d\n' % returncode,
+                 cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
 
   def test_epoll_callback_macrotask(self):
     # A delivery is a macrotask, ordered after microtasks queued before it runs:
@@ -13666,21 +13676,19 @@ void foo() {}
     self.do_runf('other/test_epoll_callback_teardown_wake.c', 'done\nexited\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   @parameterized({
-    'drain': (['-DMODE_DRAIN'], 7),
-    'remove': (['-DMODE_REMOVE'], 7),
-    'later': (['-DMODE_LATER'], 0),
-    'drain_pthread': (['-DMODE_DRAIN', '-pthread', '-sPROXY_TO_PTHREAD'], 7),
-    'remove_pthread': (['-DMODE_REMOVE', '-pthread', '-sPROXY_TO_PTHREAD'], 7),
-    'later_pthread': (['-DMODE_LATER', '-pthread', '-sPROXY_TO_PTHREAD'], 0),
+    'drain': (['-DMODE_DRAIN'],),
+    'remove': (['-DMODE_REMOVE'],),
+    'drain_pthread': (['-DMODE_DRAIN', '-pthread', '-sPROXY_TO_PTHREAD'],),
+    'remove_pthread': (['-DMODE_REMOVE', '-pthread', '-sPROXY_TO_PTHREAD'],),
   })
-  def test_epoll_callback_drain_exit(self, cflags, returncode):
+  def test_epoll_callback_drain_exit(self, cflags):
     # A scheduled delivery whose set was drained (or listener removed) before it
     # ran has nothing to deliver, but releasing its hold must still let main's
     # deferred exit complete (Module.onExit fires, main's status is returned).
     if '-pthread' in cflags:
       self.require_pthreads()
     self.do_runf('other/test_epoll_callback_drain_exit.c', 'done\nexited\n',
-                 cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
+                 cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=7)
 
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
