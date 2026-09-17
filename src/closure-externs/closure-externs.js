@@ -214,3 +214,8 @@ ArrayBuffer.prototype.resizable;
 
 /** @type {boolean} */
 SharedArrayBuffer.prototype.growable;
+
+/**
+ * @return {!ReadableStream}
+ */
+Blob.prototype.stream = function() {};
