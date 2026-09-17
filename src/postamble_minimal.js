@@ -208,11 +208,13 @@ instantiatePromise =
 (WebAssembly.instantiateStreaming
   ? (ENVIRONMENT_IS_NODE
       // Avoid using `fetch()` API on Node.js since it does not support `file://`
-      // URLs. Instead, provide a Response that wraps a fs read stream with the
-      // correct MIME type.
+      // URLs. Instead, provide a Response that wraps a blob with the correct
+      // MIME type.
       // See: https://github.com/emscripten-core/emscripten/pull/16917
       ? WebAssembly.instantiateStreaming(
-          new Response(require('node:fs').createReadStream({{{ nodeWasmPath }}}), { headers: { 'Content-Type': 'application/wasm' } }),
+          require('node:fs')
+            .openAsBlob({{{ nodeWasmPath }}})
+            .then((blob) => new Response(blob, { headers: { 'Content-Type': 'application/wasm' } })),
           imports,
         )
       : WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports))

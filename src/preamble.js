@@ -740,7 +740,12 @@ async function instantiateAsync(binary, binaryFile, imports) {
       // `binaryFile` may be a `file://` URL string here; fs.createReadStream()
       // needs an actual URL object (or a plain path), not a URL string.
       var nodeBinaryFile = isFileURI(binaryFile) ? url.fileURLToPath(binaryFile) : binaryFile;
-      var response = new Response(fs.createReadStream(nodeBinaryFile), { headers: { 'Content-Type': 'application/wasm' } });
+      var response = fs.openAsBlob(nodeBinaryFile).then(
+        (blob) =>
+          new Response(blob, {
+            headers: { 'Content-Type': 'application/wasm' },
+          }),
+      );
       var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
       return instantiationResult;
     } catch (reason) {
