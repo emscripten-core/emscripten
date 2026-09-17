@@ -629,14 +629,7 @@ def init():
 
 CLANG_CC = clang_tool_path('clang')
 CLANG_CXX = clang_tool_path('clang++')
-CLANG_SCAN_DEPS = llvm_tool_path('clang-scan-deps')
 LLVM_AR = llvm_tool_path('llvm-ar')
-LLVM_DWP = llvm_tool_path('llvm-dwp')
-LLVM_RANLIB = llvm_tool_path('llvm-ranlib')
-LLVM_NM = llvm_tool_path('llvm-nm')
-LLVM_DWARFDUMP = llvm_tool_path('llvm-dwarfdump')
-LLVM_OBJCOPY = llvm_tool_path('llvm-objcopy')
-LLVM_OBJDUMP = llvm_tool_path('llvm-objdump')
 
 EMCC = exe_path_from_root('emcc')
 EMXX = exe_path_from_root('em++')

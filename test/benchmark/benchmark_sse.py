@@ -18,10 +18,9 @@ sys.path.insert(0, __rootpath__)
 sys.path.insert(0, __testdir__)
 
 import clang_native
-from common import EMCC, EMRUN, test_file
+from common import CLANG_CXX, EMCC, EMRUN, test_file
 
 from tools import config
-from tools.shared import CLANG_CXX
 from tools.utils import WINDOWS, run_process, write_file
 
 # System info

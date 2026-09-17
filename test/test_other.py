@@ -36,6 +36,8 @@ import common
 import jsrun
 import line_endings
 from common import (
+  CLANG_CC,
+  CLANG_CXX,
   EMAR,
   EMBUILDER,
   EMCC,
@@ -46,6 +48,10 @@ from common import (
   EMRANLIB,
   EMXX,
   FILE_PACKAGER,
+  LLVM_AR,
+  LLVM_DWARFDUMP,
+  LLVM_DWP,
+  LLVM_NM,
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
@@ -106,18 +112,9 @@ from decorators import (
   with_env_modify,
 )
 
-from tools import building, cache, response_file, shared, utils, webassembly
+from tools import building, cache, config, response_file, shared, utils, webassembly
 from tools.building import get_building_env
 from tools.link import binary_encode
-from tools.shared import (
-  CLANG_CC,
-  CLANG_CXX,
-  LLVM_AR,
-  LLVM_DWARFDUMP,
-  LLVM_DWP,
-  LLVM_NM,
-  config,
-)
 from tools.system_libs import DETERMINISTIC_PREFIX
 from tools.utils import (
   MACOS,
@@ -6606,7 +6603,7 @@ print(os.environ.get('CROSS_COMPILE'))
 import os
 print(os.environ.get('NM'))
 ''')
-    check(EMCONFIGURE, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+    check(EMCONFIGURE, [PYTHON, 'test.py'], expect=LLVM_NM, fail=False)
 
     create_file('test.c', 'int main() { return 0; }')
     os.mkdir('test_cache')
@@ -12194,12 +12191,12 @@ int main(void) {
 
     # Create a library with no archive map
     self.run_process([EMAR, 'crS', 'liba.a', 'foo.o', 'bar.o'])
-    output = self.run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
+    output = self.run_process([LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
     self.assertNotContained('Archive map', output)
 
     # Add an archive map
     self.run_process([EMRANLIB, 'liba.a'])
-    output = self.run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
+    output = self.run_process([LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
     self.assertContained('Archive map', output)
 
   def test_pthread_stub(self):

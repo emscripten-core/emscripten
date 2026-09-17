@@ -578,7 +578,7 @@ def finalize_wasm(infile, outfile, js_syms):
       with shared.get_temp_files().get_file('.bin') as url_file:
         utils.write_binary(url_file,
                            leb128.u.encode(len(base_url)) + base_url.encode('utf-8'))
-        cmd = [shared.LLVM_OBJCOPY,
+        cmd = [building.LLVM_OBJCOPY,
                '--add-section',
                'sourceMappingURL=' + url_file,
                infile]

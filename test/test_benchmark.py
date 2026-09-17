@@ -25,11 +25,19 @@ if __name__ == '__main__':
 import clang_native
 import common
 import jsrun
-from common import EMCC, compiler_for, copy_asset, read_binary, read_file, test_file
+from common import (
+  CLANG_CC,
+  CLANG_CXX,
+  EMCC,
+  compiler_for,
+  copy_asset,
+  read_binary,
+  read_file,
+  test_file,
+)
 from decorators import needs_make, parameterized
 
-from tools import utils
-from tools.shared import CLANG_CC, CLANG_CXX, config
+from tools import config, utils
 from tools.utils import run_process
 
 # standard arguments for timing:
