@@ -332,8 +332,6 @@ def lld_flags(args):
   for a in llvm_backend_args():
     args += ['-mllvm', a]
 
-  if settings.WASM_EXCEPTIONS:
-    args += ['-mllvm', '-wasm-enable-eh']
   if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     args += ['-mllvm', '-exception-model=wasm']
   elif not settings.DISABLE_EXCEPTION_CATCHING:
