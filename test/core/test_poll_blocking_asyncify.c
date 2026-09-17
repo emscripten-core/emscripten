@@ -72,8 +72,11 @@ void test_unblock_poll() {
     {pipe_a[0], POLLIN, 0},
     {pipe_shared[0], POLLIN, 0},
   };
-  emscripten_set_timeout(write_to_pipe, 1000, NULL);
+  // Start the clock before arming the timer: any delay between the two (e.g.
+  // preemption on a loaded machine) would otherwise shorten the measured
+  // duration below the timer's.
   clock_gettime(CLOCK_MONOTONIC, &begin);
+  emscripten_set_timeout(write_to_pipe, 1000, NULL);
   assert(poll(fds, 2, -1) == 1);
   clock_gettime(CLOCK_MONOTONIC, &end);
   assert(fds[1].revents & POLLIN);
