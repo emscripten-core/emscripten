@@ -1735,12 +1735,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # WASM2JS does not support GROWABLE_ARRAYBUFFERS at all
     default_setting('GROWABLE_ARRAYBUFFERS', 0)
 
-  if settings.NODE_CODE_CACHING:
-    if settings.WASM_ASYNC_COMPILATION:
-      exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
-    if not settings.ENVIRONMENT_MAY_BE_NODE:
-      exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
-
   if not js_manipulation.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
 

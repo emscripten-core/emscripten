@@ -9807,6 +9807,10 @@ end
   def test_node_code_caching_incompatible_settings(self):
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sNODE_CODE_CACHING', '-sWASM_ASYNC_COMPILATION=0', '-sSINGLE_FILE'],
                      'emcc: error: NODE_CODE_CACHING is not compatible with SINGLE_FILE (saves a file on the side)')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sNODE_CODE_CACHING'],
+                     'emcc: error: NODE_CODE_CACHING is not compatible with WASM_ASYNC_COMPILATION')
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-sNODE_CODE_CACHING', '-sWASM_ASYNC_COMPILATION=0', '-sENVIRONMENT=web'], stderr=PIPE).stderr
+    self.assertContained('warning: NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT` [-Wunused-command-line-argument]', err)
 
   @with_env_modify({'LC_ALL': 'C'})
   def test_autotools_shared_check(self):
