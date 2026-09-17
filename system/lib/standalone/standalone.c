@@ -413,18 +413,22 @@ weak int __syscall_openat(int dirfd, const char *path, int flags, ...) {
     ~(__WASI_RIGHTS_FD_DATASYNC | __WASI_RIGHTS_FD_READ |
       __WASI_RIGHTS_FD_WRITE | __WASI_RIGHTS_FD_ALLOCATE |
       __WASI_RIGHTS_FD_READDIR | __WASI_RIGHTS_FD_FILESTAT_SET_SIZE);
+  // Note that musl defines O_RDONLY as 0, O_WRONLY as 1 and O_RDWR as 2,
+  // so unlike in wasi-libc the access mode can not be tested as bit flags.
   switch (flags & O_ACCMODE) {
     case O_RDONLY:
-    case O_RDWR:
+      max |= __WASI_RIGHTS_FD_READ | __WASI_RIGHTS_FD_READDIR;
+      break;
     case O_WRONLY:
-      if ((flags & O_RDONLY) != 0) {
-        max |= __WASI_RIGHTS_FD_READ | __WASI_RIGHTS_FD_READDIR;
-      }
-      if ((flags & O_WRONLY) != 0) {
-        max |= __WASI_RIGHTS_FD_DATASYNC | __WASI_RIGHTS_FD_WRITE |
-               __WASI_RIGHTS_FD_ALLOCATE |
-               __WASI_RIGHTS_FD_FILESTAT_SET_SIZE;
-      }
+      max |= __WASI_RIGHTS_FD_DATASYNC | __WASI_RIGHTS_FD_WRITE |
+             __WASI_RIGHTS_FD_ALLOCATE |
+             __WASI_RIGHTS_FD_FILESTAT_SET_SIZE;
+      break;
+    case O_RDWR:
+      max |= __WASI_RIGHTS_FD_READ | __WASI_RIGHTS_FD_READDIR |
+             __WASI_RIGHTS_FD_DATASYNC | __WASI_RIGHTS_FD_WRITE |
+             __WASI_RIGHTS_FD_ALLOCATE |
+             __WASI_RIGHTS_FD_FILESTAT_SET_SIZE;
       break;
     case O_EXEC: // O_EXEC => O_PATH => 010000000
     //case O_SEARCH: O_SEARCH => O_PATH => 010000000, both are the same, so causes errors.
