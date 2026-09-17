@@ -948,6 +948,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'initRandomFill',
   'randomFill',
   'safeSetTimeout',
+  'safeClearTimeout',
   'setImmediateWrapped',
   'safeRequestAnimationFrame',
   'clearImmediateWrapped',

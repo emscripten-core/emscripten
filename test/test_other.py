@@ -13725,6 +13725,15 @@ void foo() {}
     self.do_runf('emscripten_set_timeout_loop.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   @parameterized({
+    'fires': ([], 0, 'fired\ndone\n'),
+    'cleared': (['-DMODE_CLEARED'], 42, 'done\n'),
+    'idempotent': (['-DMODE_IDEMPOTENT'], 0, 'fired\nfired\ndone\n'),
+    'immediate': (['-DMODE_IMMEDIATE'], 0, 'fired\ndone\n'),
+  })
+  def test_emscripten_clear_timeout(self, cflags, returncode, expected):
+    self.do_runf('test_emscripten_clear_timeout.c', expected, cflags=['-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
+
+  @parameterized({
     '': ([],),
     'asyncify': (['-sASYNCIFY'],),
     'jspi': (['-sJSPI'],),

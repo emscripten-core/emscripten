@@ -36,6 +36,9 @@ See docs/process.md for more on how version tagging works.
   the per-call garbage on such calls. The registration ABI gained size and
   triviality parameters, so object files built against an older `bind.h` need
   to be rebuilt. (#27610)
+- `emscripten_clear_timeout` now releases the runtime keepalive held by the
+  pending timeout, and both `emscripten_clear_timeout` and
+  `emscripten_clear_immediate` are no-ops for ids that already fired. (#27720)
 
 6.0.9 - 09/01/26
 ----------------
