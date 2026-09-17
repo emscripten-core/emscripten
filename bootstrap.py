@@ -152,13 +152,13 @@ def main(args):
         continue
       print(f'Out-of-date: {name}')
     if args.dry_run:
-      if type(action) == list:
+      if isinstance(action, list):
         action_str = ' '.join(action)
       else:
         action_str = action.__name__
       print(f' (skipping: dry run) -> {action_str}')
       continue
-    if type(action) == list:
+    if isinstance(action, list):
       run_cmd(action)
     else:
       action()

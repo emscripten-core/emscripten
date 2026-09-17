@@ -55,7 +55,6 @@ lint.ignore = [
   "module-import-not-at-top-of-file",
   "multiple-leading-hashes-for-block-comment",
   "line-too-long",
-  "type-comparison",
   "ambiguous-variable-name",
   "indentation-with-invalid-multiple", # Does not honor `indent-width`. See https://github.com/astral-sh/ruff/issues/8705
   "indentation-with-invalid-multiple-comment", # Does not honor `indent-width`. See https://github.com/astral-sh/ruff/issues/8705
@@ -67,9 +66,7 @@ lint.ignore = [
   "too-many-boolean-expressions",
   "too-many-locals",
   "too-many-nested-blocks",
-  "redefined-argument-from-local",
   "no-self-use",
-  "global-variable-not-assigned",
   "global-statement",
   "too-many-statements-in-try-clause",
   "subprocess-run-without-check",

@@ -190,7 +190,7 @@ def is_jspi(args):
 
 
 def skipIfFeatureNotAvailable(skip_env_var, feature, message):
-  for env_var in skip_env_var if type(skip_env_var) == list else [skip_env_var]:
+  for env_var in skip_env_var if isinstance(skip_env_var, list) else [skip_env_var]:
     should_skip = browser_should_skip_feature(env_var, feature)
     if should_skip:
       break

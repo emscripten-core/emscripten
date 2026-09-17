@@ -433,7 +433,7 @@ class SettingsManager:
     if not expected_type:
       return
     # Allow integers 1 and 0 for type `bool`
-    if expected_type == bool and type(value) is not list:
+    if expected_type is bool and type(value) is not list:
       if value in {1, 0}:
         value = bool(value)
       if value in {'True', 'False', 'true', 'false'}:
