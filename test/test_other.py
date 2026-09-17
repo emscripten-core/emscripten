@@ -9753,6 +9753,7 @@ end
     self.assert_fail(base + ['--preload-file', 'somefile'], expected)
     self.assert_fail(base + ['--embed-file', 'somefile'], expected)
 
+  @crossplatform
   def test_noderawfs_access_abspath(self):
     create_file('foo', 'bar')
     create_file('access.c', r'''
@@ -9762,6 +9763,24 @@ end
       }
     ''')
     self.do_runf('access.c', cflags=['-sNODERAWFS'], args=[os.path.abspath('foo')])
+
+  @crossplatform
+  def test_noderawfs_getcwd(self):
+    create_file('getcwd.c', r'''
+      #include <assert.h>
+      #include <limits.h>
+      #include <stdio.h>
+      #include <unistd.h>
+
+      int main() {
+        char buf[PATH_MAX];
+        char* cwd = getcwd(buf, sizeof(buf));
+        assert(cwd == buf);
+        printf("cwd: %s\n", cwd);
+        return 0;
+      }
+    ''')
+    self.do_runf('getcwd.c', f'cwd: {os.getcwd()}\n', cflags=['-sNODERAWFS'])
 
   def test_noderawfs_readfile_prerun(self):
     create_file('foo', 'bar')
