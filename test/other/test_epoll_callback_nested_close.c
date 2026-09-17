@@ -5,10 +5,9 @@
  * found in the LICENSE file.
  *
  * Closing a nested (inner) epoll wakes the outer epoll watching it, which
- * re-derives and drops the now-stale registration. An outer callback that
- * watched only the inner then has nothing that can fire, so it stops keeping the
- * runtime alive and the process exits - with no explicit unregister, the same
- * terminal-set property as closing a leaf fd, one level up.
+ * re-derives and drops the now-stale registration instead of delivering; the
+ * process then exits with the outer listener still registered - the same
+ * close -> wake -> evict path as a leaf fd, one level up.
  */
 
 #include <sys/epoll.h>
@@ -24,7 +23,7 @@ static void on_ready(void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(epA, ev, 4, 0) == 1 && ev[0].data.fd == epB);
   printf("done\n");
-  close(epB); // inner epoll gone -> outer's only registration becomes terminal
+  close(epB); // inner epoll gone -> outer evicts its only registration on the wake
 }
 
 int main(void) {

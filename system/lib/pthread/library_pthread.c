@@ -10,7 +10,6 @@
 #include <assert.h>
 #include <pthread.h>
 #include <stdarg.h>
-#include <stdatomic.h>
 #include <threads.h>
 #include <unistd.h>
 
@@ -133,18 +132,4 @@ void _emscripten_init_main_thread(void) {
 
   _emscripten_thread_mailbox_init(&__main_pthread);
   _emscripten_thread_mailbox_await(&__main_pthread);
-}
-
-static void keepalive_noop(void* arg) {}
-
-// Hold (delta > 0) or release another thread's runtime. The add is immediate,
-// so an acquire is never late; a release also queues a no-op task so the
-// target re-evaluates keepRuntimeAlive on its next event-loop turn (a thread
-// that already exited has nothing to re-evaluate, so a failed proxy is fine).
-void _emscripten_thread_keepalive(pthread_t t, int delta) {
-  atomic_fetch_add(&t->keepalive_holds, delta);
-  if (delta < 0) {
-    emscripten_proxy_async(
-      emscripten_proxy_get_system_queue(), t, keepalive_noop, NULL);
-  }
 }

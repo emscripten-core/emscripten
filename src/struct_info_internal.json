@@ -6,7 +6,6 @@
         "file": "pthread_impl.h",
         "structs": {
             "pthread": [
-              "keepalive_holds",
               "profilerBlock",
               "stack",
               "stack_size",
