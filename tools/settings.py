@@ -167,8 +167,6 @@ INCOMPATIBLE_SETTINGS = [
   ('WASM_ESM_INTEGRATION', 'WASM2JS', None),
   ('WASM_ESM_INTEGRATION', 'ABORT_ON_WASM_EXCEPTIONS', None),
   ('FORCE_FILESYSTEM', 'NO_FILESYSTEM', None),
-  ('NODE_CODE_CACHING', 'SINGLE_FILE', 'saves a file on the side'),
-  ('NODE_CODE_CACHING', 'WASM_ASYNC_COMPILATION', None),
 ]
 
 EXPERIMENTAL_SETTINGS = {
@@ -279,6 +277,7 @@ LEGACY_SETTINGS = [
   ['DETERMINISTIC', [0], 'No longer supported'],
   ['LEGALIZE_JS_FFI', [0], 'legacy JS FFI legalization is no longer supported'],
   ['SOCKET_WEBRTC', [0], 'No longer supported'],
+  ['NODE_CODE_CACHING', [0], 'No longer supported'],
 ]
 
 user_settings: dict[str, str] = {}

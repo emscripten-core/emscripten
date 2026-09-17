@@ -39,6 +39,8 @@ See docs/process.md for more on how version tagging works.
 - `emscripten_clear_timeout` now releases the runtime keepalive held by the
   pending timeout, and both `emscripten_clear_timeout` and
   `emscripten_clear_immediate` are no-ops for ids that already fired. (#27720)
+- The `NODE_CODE_CACHING` setting was removed, as node's support for
+  serializing WebAssembly modules has been missing for over 5 years now.
 
 6.0.9 - 09/01/26
 ----------------

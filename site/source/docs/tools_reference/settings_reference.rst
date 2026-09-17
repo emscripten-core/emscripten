@@ -1530,29 +1530,6 @@ also be controlled separately.
 
 Default value: false
 
-.. _node_code_caching:
-
-NODE_CODE_CACHING
-=================
-
-This saves the compiled wasm module in a file with name
-``$WASM_BINARY_NAME.$V8_VERSION.cached``
-and loads it on subsequent runs. This caches the compiled wasm code from
-v8 in node, which saves compiling on subsequent runs, making them start up
-much faster.
-The V8 version used in node is included in the cache name so that we don't
-try to load cached code from another version, which fails silently (it seems
-to load ok, but we do actually recompile).
-
-- The only version known to work for sure is node 12.9.1, as this has
-  regressed, see
-  https://github.com/nodejs/node/issues/18265#issuecomment-622971547
-- The default location of the .cached files is alongside the wasm binary,
-  as mentioned earlier. If that is in a read-only directory, you may need
-  to place them elsewhere. You can use the locateFile() hook to do so.
-
-Default value: false
-
 .. _exported_functions:
 
 EXPORTED_FUNCTIONS
@@ -3630,3 +3607,4 @@ for backwards compatibility with older versions:
  - ``DETERMINISTIC``: No longer supported (Valid values: [0])
  - ``LEGALIZE_JS_FFI``: legacy JS FFI legalization is no longer supported (Valid values: [0])
  - ``SOCKET_WEBRTC``: No longer supported (Valid values: [0])
+ - ``NODE_CODE_CACHING``: No longer supported (Valid values: [0])
