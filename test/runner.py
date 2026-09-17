@@ -51,7 +51,7 @@ from color_runner import ColorTextRunner
 from common import CLANG_CC, errlog
 from single_line_runner import SingleLineTestRunner
 
-from tools import building, colored_logger, config, shared, utils
+from tools import colored_logger, config, shared, utils
 
 logger = logging.getLogger("runner")
 
@@ -621,7 +621,7 @@ def log_test_environment():
 
   print(f'JS_ENGINES: {config.JS_ENGINES}')
   print(f'BINARYEN_ROOT: {config.BINARYEN_ROOT}')
-  wasm_opt_version = building.get_binaryen_version(building.get_binaryen_bin()).strip()
+  wasm_opt_version = utils.run_process([common.WASM_OPT, '--version'], stdout=subprocess.PIPE).stdout.strip()
   print(f'wasm-opt version: {wasm_opt_version}')
 
   binaryen_git_dir = config.BINARYEN_ROOT

@@ -32,6 +32,7 @@ from common import (
   LLVM_PROFDATA,
   NON_ZERO,
   PYTHON,
+  WASM_OPT,
   WEBIDL_BINDER,
   RunnerCore,
   compiler_for,
@@ -87,7 +88,7 @@ from decorators import (
   with_env_modify,
 )
 
-from tools import building, config, shared, utils, webassembly
+from tools import config, shared, utils, webassembly
 from tools.utils import LINUX, MACOS, WINDOWS, delete_file, write_file
 
 # decorators for limiting which modes a test can run in
@@ -8144,8 +8145,7 @@ void* operator new(size_t size) {
     self.assertLess(get_dwarf_addr(7, 3), get_dwarf_addr(8, 3))
 
     # Get the wat, printing with -g which has binary offsets
-    wat = self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'),
-                           'a.out.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout
+    wat = self.run_process([WASM_OPT, 'a.out.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout
 
     # We expect to see a pattern like this in optimized builds (there isn't
     # much that can change with such calls to JS (they can't be reordered or

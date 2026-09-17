@@ -83,6 +83,8 @@ WEBIDL_BINDER = exe_path_from_root('tools/webidl_binder')
 
 # binaryen tools
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
+WASM_SPLIT = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+WASM_OPT = os.path.join(building.get_binaryen_bin(), 'wasm-opt')
 
 # llvm tools
 WASM_LD = shared.llvm_tool_path('wasm-ld')
