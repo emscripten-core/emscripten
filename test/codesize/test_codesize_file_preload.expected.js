@@ -436,7 +436,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
     try {
       var url = require("node:url");
       var nodeBinaryFile = isFileURI(binaryFile) ? url.fileURLToPath(binaryFile) : binaryFile;
-      var response = fs.openAsBlob(nodeBinaryFile).then(blob => new Response(blob, {
+      var response = fs.openAsBlob(nodeBinaryFile).then(blob => new Response(blob.stream(), {
         headers: {
           "Content-Type": "application/wasm"
         }
