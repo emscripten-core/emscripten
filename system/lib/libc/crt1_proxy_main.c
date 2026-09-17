@@ -32,6 +32,8 @@ static void* _main_thread(void* param) {
   if (!emscripten_runtime_keepalive_check()) {
     exit(rtn);
   }
+  // Wait for keepalives, then exit with main's status.
+  __emscripten_proxied_main_done(rtn);
   return NULL;
 }
 
