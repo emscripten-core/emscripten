@@ -1354,7 +1354,7 @@ var FS = {
   devices: {},
   streams: [],
   nextInode: 1,
-  nameTable: null,
+  nameTable: [],
   currentPath: "/",
   initialized: false,
   ignorePermissions: true,
@@ -1987,7 +1987,7 @@ var FS = {
     mode |= 16384;
     return FS.mknod(path, mode, 0);
   },
-  mkdirTree(path, mode) {
+  mkdirTree(path, mode = 511) {
     var dirs = path.split("/");
     var d = "";
     for (var dir of dirs) {
@@ -2199,7 +2199,7 @@ var FS = {
     }
     return link.node_ops.readlink(link);
   },
-  stat(path, dontFollow) {
+  stat(path, dontFollow = false) {
     var lookup = FS.lookupPath(path, {
       follow: !dontFollow
     });
@@ -2219,14 +2219,14 @@ var FS = {
   lstat(path) {
     return FS.stat(path, true);
   },
-  doChmod(stream, node, mode, dontFollow) {
+  doChmod(stream, node, mode, dontFollow = false) {
     FS.doSetAttr(stream, node, {
       mode: (mode & 4095) | (node.mode & ~4095),
       ctime: Date.now(),
       dontFollow
     });
   },
-  chmod(path, mode, dontFollow) {
+  chmod(path, mode, dontFollow = false) {
     var node;
     if (typeof path == "string") {
       var lookup = FS.lookupPath(path, {
@@ -2245,13 +2245,13 @@ var FS = {
     var stream = FS.getStreamChecked(fd);
     FS.doChmod(stream, stream.node, mode, false);
   },
-  doChown(stream, node, dontFollow) {
+  doChown(stream, node, dontFollow = false) {
     FS.doSetAttr(stream, node, {
       timestamp: Date.now(),
       dontFollow
     });
   },
-  chown(path, uid, gid, dontFollow) {
+  chown(path, uid, gid, dontFollow = false) {
     var node;
     if (typeof path == "string") {
       var lookup = FS.lookupPath(path, {
@@ -2308,7 +2308,7 @@ var FS = {
     }
     FS.doTruncate(stream, stream.node, len);
   },
-  utime(path, atime, mtime, dontFollow) {
+  utime(path, atime, mtime, dontFollow = false) {
     var lookup = FS.lookupPath(path, {
       follow: !dontFollow
     });
@@ -2686,7 +2686,7 @@ var FS = {
     var stderr = FS.open("/dev/stderr", 1);
   },
   staticInit() {
-    FS.nameTable = new Array(4096);
+    FS.nameTable.length = 4096;
     FS.mount(MEMFS, {}, "/");
     FS.createDefaultDirectories();
     FS.createDefaultDevices();
@@ -3004,7 +3004,7 @@ var FS = {
 
 var SYSCALLS = {
   currentUmask: 18,
-  calculateAt(dirfd, path, allowEmpty) {
+  calculateAt(dirfd, path, allowEmpty = false) {
     if (PATH.isAbs(path)) {
       return path;
     }

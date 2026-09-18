@@ -101,7 +101,7 @@ addToLibrary({
     readdir(...args) { return ['.', '..'].concat(fs.readdirSync(...args)); },
     unlink(...args) { fs.unlinkSync(...args); },
     readlink(...args) { return fs.readlinkSync(...args); },
-    stat(path, dontFollow) {
+    stat(path, dontFollow = false) {
       var stat = dontFollow ? fs.lstatSync(path) : fs.statSync(path);
       if (NODEFS.isWindows) {
         // Windows does not report the 'x' permission bit, so propagate read
@@ -133,7 +133,7 @@ addToLibrary({
     statfsStream(stream) {
       return FS.statfs(stream.path);
     },
-    chmod(path, mode, dontFollow) {
+    chmod(path, mode, dontFollow = false) {
       mode &= {{{ cDefs.S_IALLUGO }}};
       if (NODEFS.isWindows) {
         // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
@@ -171,7 +171,7 @@ addToLibrary({
       var stream = FS.getStreamChecked(fd);
       fs.ftruncateSync(stream.nfd, len);
     },
-    utime(path, atime, mtime, dontFollow) {
+    utime(path, atime, mtime, dontFollow = false) {
       // null here for atime or mtime means UTIME_OMIT was passed.  Since node
       // doesn't support this concept we need to first find the existing
       // timestamps in order to preserve them.
