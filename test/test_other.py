@@ -13710,6 +13710,11 @@ void foo() {}
   def test_emscripten_set_timeout_loop(self):
     self.do_runf('emscripten_set_timeout_loop.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
+  def test_dns_lookup_async(self):
+    # emscripten_dns_lookup_async() without NODERAWSOCKETS: every lookup
+    # resolves synchronously (fake addresses), readable on return.
+    self.do_runf('sockets/test_dns_async.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
   @parameterized({
     'fires': ([], 0, 'fired\ndone\n'),
     'cleared': (['-DMODE_CLEARED'], 42, 'done\n'),
