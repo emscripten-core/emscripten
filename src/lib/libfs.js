@@ -54,7 +54,7 @@ FS.staticInit();`;
     devices: {},
     streams: [],
     nextInode: 1,
-    nameTable: null,
+    nameTable: [],
     currentPath: '/',
     initialized: false,
     // Whether we are currently ignoring permissions. Useful when preparing the
@@ -373,7 +373,7 @@ FS.staticInit();`;
       // if we failed to find it in the cache, call into the VFS
       return FS.lookup(parent, name);
     },
-    createNode(parent, name, mode, rdev) {
+    createNode(parent, name, mode, rdev = undefined) {
 #if ASSERTIONS
       assert(typeof parent == 'object')
 #endif
@@ -815,7 +815,7 @@ FS.staticInit();`;
       return FS.mknod(path, mode, 0);
     },
     // Creates a whole directory tree chain if it doesn't yet exist
-    mkdirTree(path, mode) {
+    mkdirTree(path, mode = 0o777) {
       var dirs = path.split('/');
       var d = '';
       for (var dir of dirs) {
@@ -829,7 +829,7 @@ FS.staticInit();`;
         }
       }
     },
-    mkdev(path, mode, dev) {
+    mkdev(path, mode, dev = undefined) {
       if (typeof dev == 'undefined') {
         dev = mode;
         mode = 0o666;
@@ -1040,7 +1040,7 @@ FS.staticInit();`;
       }
       return link.node_ops.readlink(link);
     },
-    stat(path, dontFollow) {
+    stat(path, dontFollow = false) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
       var getattr = FS.checkOpExists(node.node_ops.getattr, {{{ cDefs.EPERM }}});
@@ -1058,14 +1058,14 @@ FS.staticInit();`;
     lstat(path) {
       return FS.stat(path, true);
     },
-    doChmod(stream, node, mode, dontFollow) {
+    doChmod(stream, node, mode, dontFollow = false) {
       FS.doSetAttr(stream, node, {
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
         ctime: Date.now(),
         dontFollow
       });
     },
-    chmod(path, mode, dontFollow) {
+    chmod(path, mode, dontFollow = false) {
       var node;
       if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -1082,14 +1082,14 @@ FS.staticInit();`;
       var stream = FS.getStreamChecked(fd);
       FS.doChmod(stream, stream.node, mode, false);
     },
-    doChown(stream, node, dontFollow) {
+    doChown(stream, node, dontFollow = false) {
       FS.doSetAttr(stream, node, {
         timestamp: Date.now(),
         dontFollow
         // we ignore the uid / gid for now
       });
     },
-    chown(path, uid, gid, dontFollow) {
+    chown(path, uid, gid, dontFollow = false) {
       var node;
       if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -1142,7 +1142,7 @@ FS.staticInit();`;
       }
       FS.doTruncate(stream, stream.node, len);
     },
-    utime(path, atime, mtime, dontFollow) {
+    utime(path, atime, mtime, dontFollow = false) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       FS.doSetAttr(null, lookup.node, {
         atime: atime,
@@ -1305,7 +1305,7 @@ FS.staticInit();`;
 #endif
       return stream.position;
     },
-    read(stream, buffer, offset, length, position) {
+    read(stream, buffer, offset, length, position = undefined) {
 #if ASSERTIONS
       assert(offset >= 0);
 #endif
@@ -1342,7 +1342,7 @@ FS.staticInit();`;
     /**
      * @param {TypedArray} buffer
      */
-    write(stream, buffer, offset, length, position, canOwn) {
+    write(stream, buffer, offset, length, position = undefined, canOwn = undefined) {
 #if ASSERTIONS
       assert(offset >= 0);
       assert(buffer.subarray, 'FS.write expects a TypedArray');
@@ -1575,7 +1575,7 @@ FS.staticInit();`;
 #endif
     },
     staticInit() {
-      FS.nameTable = new Array(4096);
+      FS.nameTable.length = 4096;
 
       FS.mount(MEMFS, {}, '/');
 
@@ -1599,7 +1599,7 @@ FS.staticInit();`;
 #endif
       };
     },
-    init(input, output, error) {
+    init(input = undefined, output = undefined, error = undefined) {
 #if ASSERTIONS
       assert(!FS.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 #endif
@@ -1635,14 +1635,14 @@ FS.staticInit();`;
     //
     // old v1 compatibility functions
     //
-    findObject(path, dontResolveLastLink) {
+    findObject(path, dontResolveLastLink = false) {
       var ret = FS.analyzePath(path, dontResolveLastLink);
       if (!ret.exists) {
         return null;
       }
       return ret.object;
     },
-    analyzePath(path, dontResolveLastLink) {
+    analyzePath(path, dontResolveLastLink = false) {
       // operate from within the context of the symlink's target
       try {
         var lookup = FS.lookupPath(path, { follow: !dontResolveLastLink });
@@ -1670,7 +1670,7 @@ FS.staticInit();`;
       };
       return ret;
     },
-    createPath(parent, path, canRead, canWrite) {
+    createPath(parent, path, canRead = undefined, canWrite = undefined) {
       parent = typeof parent == 'string' ? parent : FS.getPath(parent);
       var parts = path.split('/').reverse();
       while (parts.length) {
@@ -1686,7 +1686,7 @@ FS.staticInit();`;
       }
       return current;
     },
-    createFile(parent, name, properties, canRead, canWrite) {
+    createFile(parent, name, properties, canRead = undefined, canWrite = undefined) {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(canRead, canWrite);
       return FS.create(path, mode);
@@ -1694,7 +1694,7 @@ FS.staticInit();`;
     /**
      * @param {TypedArray|Array|string=} data
      */
-    createDataFile(parent, name, data, canRead, canWrite, canOwn) {
+    createDataFile(parent, name, data = undefined, canRead = undefined, canWrite = undefined, canOwn = undefined) {
       var path = name;
       if (parent) {
         parent = typeof parent == 'string' ? parent : FS.getPath(parent);
@@ -1712,7 +1712,7 @@ FS.staticInit();`;
         FS.chmod(node, mode);
       }
     },
-    createDevice(parent, name, input, output) {
+    createDevice(parent, name, input = undefined, output = undefined) {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(!!input, !!output);
       FS.createDevice.major ??= 64;
@@ -1789,7 +1789,7 @@ FS.staticInit();`;
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
     // XHR, which is not possible in browsers except in a web worker! Use preloading,
     // either --preload-file in emcc or FS.createPreloadedFile
-    createLazyFile(parent, name, url, canRead, canWrite) {
+    createLazyFile(parent, name, url, canRead = undefined, canWrite = undefined) {
       // Lazy chunked Uint8Array (implements get and length from Uint8Array).
       // Actual getting is abstracted away for eventual reuse.
       class LazyUint8Array {
