@@ -1167,6 +1167,8 @@ int main()
 
   @requires_wasm_eh
   def test_exceptions_with_and_without_longjmp(self):
+    if '-flto' in self.cflags or '-flto=thin' in self.cflags:
+      self.skipTest('LTO EH tests are temporarily disabled until https://github.com/llvm/llvm-project/pull/224313 lands')
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
     # Emscripten EH with and without Emscripten SjLj support
