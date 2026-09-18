@@ -1605,6 +1605,35 @@ Functions
                                       arbitrary ``userData`` passed to this function.
 
 
+
+.. c:function:: int emscripten_dns_lookup_async(const char *name, const char *service, const struct addrinfo *hints)
+
+  Asynchronous ``getaddrinfo()``. Takes the same inputs and starts the lookup,
+  returning a file descriptor that becomes readable (``poll()``, ``select()``,
+  ``epoll``) once it completes; it may already be readable on return. Read the
+  outcome with :c:func:`emscripten_dns_lookup_result`, then ``close()`` the fd.
+  Nothing is allocated until a result is read.
+
+  Unlike ``getaddrinfo()``, which under ``-sNODERAWSOCKETS`` can only wait for
+  a real DNS lookup from a pthread or with ``ASYNCIFY``/JSPI, this never blocks
+  and so works from the main thread of any build.
+
+  The descriptor is a file-system stream, so the file system must be linked
+  in (any use of ``poll()`` or ``close()`` already does this; otherwise pass
+  ``-sFORCE_FILESYSTEM``).
+
+  :returns: The file descriptor, or -1 if no descriptor is available.
+
+.. c:function:: int emscripten_dns_lookup_result(int fd, struct addrinfo **res)
+
+  The outcome of an :c:func:`emscripten_dns_lookup_async` lookup.
+
+  :returns: 0 on success, with a newly allocated ``addrinfo`` list in ``*res``
+    (free it with ``freeaddrinfo()``; each successful call returns its own
+    list); an ``EAI_*`` error code; or ``EAI_AGAIN`` while the lookup is still
+    pending. ``EAI_SYSTEM`` if ``fd`` is not a lookup fd.
+
+
 Unaligned types
 ===============
 

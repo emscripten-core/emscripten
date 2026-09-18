@@ -467,6 +467,8 @@
     "emscripten_date_now",
     "emscripten_debugger",
     "emscripten_destroy_worker",
+    "emscripten_dns_lookup_async",
+    "emscripten_dns_lookup_result",
     "emscripten_enter_soft_fullscreen",
     "emscripten_epoll_listener_add",
     "emscripten_epoll_listener_remove",

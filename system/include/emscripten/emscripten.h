@@ -68,6 +68,15 @@ void emscripten_set_socket_connection_callback(void *userData, em_socket_callbac
 void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
 void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
 
+// Asynchronous getaddrinfo(): same inputs, returns an fd that becomes readable
+// (poll/select/epoll) once the lookup completes, or -1 if no fd is available.
+// Read the outcome with emscripten_dns_lookup_result(), then close() the fd.
+struct addrinfo;
+int emscripten_dns_lookup_async(const char *name, const char *service, const struct addrinfo *hints);
+// 0 with a newly allocated addrinfo list in *res (free with freeaddrinfo()),
+// an EAI_* code, or EAI_AGAIN while the lookup is still pending.
+int emscripten_dns_lookup_result(int fd, struct addrinfo **res);
+
 void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 #define emscripten_push_main_loop_blocker(func, arg) \
