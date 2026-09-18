@@ -8882,6 +8882,7 @@ int main() {
 
   # We have LTO tests covered in 'wasmltoN' targets in test_core.py, but they
   # don't run as a part of Emscripten CI, so we add a separate LTO test here.
+  @disabled('LTO EH tests are temporarily disabled until https://github.com/llvm/llvm-project/pull/224313 lands')
   @requires_wasm_eh
   @parameterized({
     '': (['-sWASM_LEGACY_EXCEPTIONS=0'],),
