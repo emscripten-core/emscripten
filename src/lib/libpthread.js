@@ -990,13 +990,10 @@ var LibraryPThread = {
   // Main's return, saved for maybeExit.
   $proxiedMainDone__internal: true,
   $proxiedMainDone: false,
-  $proxiedMainExitCode__internal: true,
-  $proxiedMainExitCode: 0,
 
-  __emscripten_proxied_main_done__deps: ['$proxiedMainDone', '$proxiedMainExitCode'],
-  __emscripten_proxied_main_done: (status) => {
+  __emscripten_proxied_main_done__deps: ['$proxiedMainDone'],
+  __emscripten_proxied_main_done: () => {
     proxiedMainDone = true;
-    proxiedMainExitCode = status;
   },
 #endif
 
@@ -1161,7 +1158,6 @@ var LibraryPThread = {
 #endif
 #if PROXY_TO_PTHREAD
     '$proxiedMainDone',
-    '$proxiedMainExitCode',
 #endif
   ],
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
@@ -1187,7 +1183,6 @@ var LibraryPThread = {
 #if PROXY_TO_PTHREAD
     // No main return waiting yet.
     proxiedMainDone = false;
-    proxiedMainExitCode = 0;
 #endif
 
 #if MAIN_MODULE

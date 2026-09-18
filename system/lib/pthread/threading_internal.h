@@ -63,7 +63,7 @@ void _emscripten_init_main_thread_js(void* tb);
 void _emscripten_thread_profiler_enable();
 void _emscripten_thread_cleanup(pthread_t thread);
 
-void __emscripten_proxied_main_done(int status);
+void __emscripten_proxied_main_done(void);
 
 hidden void* _emscripten_tls_init(void);
 hidden void _emscripten_tls_free(void);

@@ -2178,7 +2178,6 @@ addToLibrary({
 #endif
 #if PROXY_TO_PTHREAD
     '$proxiedMainDone',
-    '$proxiedMainExitCode',
     '$exitOnMainThread',
 #endif
 #if RUNTIME_DEBUG >= 2
@@ -2208,7 +2207,7 @@ addToLibrary({
           // Run a waiting main return once.
           if (proxiedMainDone) {
             proxiedMainDone = false;
-            exitOnMainThread(proxiedMainExitCode);
+            exitOnMainThread(EXITSTATUS);
             return;
           }
 #endif
