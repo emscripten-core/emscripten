@@ -435,12 +435,13 @@ async function instantiateAsync(binary, binaryFile, imports) {
     // See: https://github.com/emscripten-core/emscripten/pull/16917
     try {
       var url = require("node:url");
+      var stream = require("node:stream");
       var nodeBinaryFile = isFileURI(binaryFile) ? url.fileURLToPath(binaryFile) : binaryFile;
-      var response = fs.openAsBlob(nodeBinaryFile).then(blob => new Response(blob.stream(), {
+      var response = new Response(stream.Readable.toWeb(fs.createReadStream(nodeBinaryFile)), {
         headers: {
           "Content-Type": "application/wasm"
         }
-      }));
+      });
       var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
       return instantiationResult;
     } catch (reason) {
