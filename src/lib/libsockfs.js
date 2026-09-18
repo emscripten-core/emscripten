@@ -850,4 +850,55 @@ addToLibrary({
   emscripten_set_socket_close_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_close_callback: (userData, callback) =>
     _setNetworkCallback('close', userData, callback),
+
+#if PROXY_POSIX_SOCKETS == 0
+  // Asynchronous getaddrinfo: same inputs, returns an fd that becomes readable
+  // (poll/select/epoll) once the lookup completes; it may already be readable on
+  // return. Read the outcome with emscripten_dns_lookup_result, then close the
+  // fd. Nothing is allocated until a result is read. Returns -1 if no fd is
+  // available.
+  emscripten_dns_lookup_async__deps: ['$FS', '$getAddrInfo', '$callUserCallback'],
+  emscripten_dns_lookup_async__proxy: 'sync',
+  emscripten_dns_lookup_async: (node, service, hint) => {
+    var stream;
+    try {
+      stream = FS.createStream({
+        node: new FS.FSNode(0, '', 0, 0),
+        stream_ops: {poll: () => 'result' in dns ? {{{ cDefs.POLLRDNORM | cDefs.POLLIN }}} : 0},
+      });
+    } catch (e) {
+      return -1;
+    }
+    // On the open file description, so dup'd fds share the lookup.
+    var dns = stream.shared.dns = {};
+    var desc = getAddrInfo(node, service, hint);
+#if NODERAWSOCKETS
+    if (desc.lookup) {
+      // Pending: the lookup holds the runtime until it lands, like a timer.
+      {{{ runtimeKeepalivePush() }}}
+      desc.lookup().then((result) => {
+        {{{ runtimeKeepalivePop() }}}
+        dns.result = result;
+        callUserCallback(() => stream.node.notifyListeners({{{ cDefs.POLLRDNORM | cDefs.POLLIN }}}));
+      });
+      return stream.fd;
+    }
+#endif
+    dns.result = desc;
+    return stream.fd;
+  },
+
+  // The outcome of an emscripten_dns_lookup_async fd: 0 with a newly allocated
+  // addrinfo list in *res (the caller frees it with freeaddrinfo), an EAI_* code,
+  // or EAI_AGAIN while still pending. EAI_SYSTEM if fd is not a lookup fd (the
+  // one use here of an EAI_* code outside its getaddrinfo meaning).
+  emscripten_dns_lookup_result__deps: ['$FS', '$writeAddrInfo'],
+  emscripten_dns_lookup_result__proxy: 'sync',
+  emscripten_dns_lookup_result: (fd, res) => {
+    var dns = FS.getStream(fd)?.shared.dns;
+    if (!dns) return {{{ cDefs.EAI_SYSTEM }}};
+    if (!('result' in dns)) return {{{ cDefs.EAI_AGAIN }}};
+    return writeAddrInfo(dns.result, res);
+  },
+#endif
 });

@@ -71,6 +71,7 @@
         "EAI_OVERFLOW": -12,
         "EAI_SERVICE": -8,
         "EAI_SOCKTYPE": -7,
+        "EAI_SYSTEM": -11,
         "EALREADY": 7,
         "EBADE": 113,
         "EBADF": 8,

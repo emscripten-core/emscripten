@@ -41,6 +41,10 @@ See docs/process.md for more on how version tagging works.
   `emscripten_clear_immediate` are no-ops for ids that already fired. (#27720)
 - The `NODE_CODE_CACHING` setting was removed, as node's support for
   serializing WebAssembly modules has been missing for over 5 years now.
+- Added `emscripten_dns_lookup_async`/`emscripten_dns_lookup_result`, an
+  asynchronous `getaddrinfo` that completes through a pollable fd, so a real
+  DNS lookup under `-sNODERAWSOCKETS` can be awaited without blocking from any
+  stack.
 
 6.0.9 - 09/01/26
 ----------------
