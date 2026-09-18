@@ -132,14 +132,6 @@ fs.Stats.prototype.ctimeMs;
 fs.Stats.prototype.blksize;
 
 /**
- * @param {string|!Buffer|!URL} path
- * @param {{type: (string|undefined)}=} options
- * @return {!Promise<!Blob>}
- * @nosideeffects
- */
-fs.openAsBlob = function (path, options) {};
-
-/**
  * @param {string} p
  * @return {boolean}
  * @nosideeffects
@@ -174,3 +166,9 @@ worker_threads.Worker;
 worker_threads.workerData;
 
 worker_threads.parentPort;
+
+/**
+ * @param {!stream.Readable} stream
+ * @return {!ReadableStream}
+ */
+stream.Readable.toWeb = function (stream) {};

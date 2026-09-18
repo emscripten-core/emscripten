@@ -210,17 +210,18 @@ instantiatePromise =
 #endif
 (WebAssembly.instantiateStreaming
   ? (ENVIRONMENT_IS_NODE
-      // Avoid using `fetch()` API on Node.js since it does not support `file://`
-      // URLs. Instead, provide a Response that wraps a blob with the correct
-      // MIME type.
+    ? // Avoid using `fetch()` API on Node.js since it does not support
+      // `file://` URLs. Instead, provide a Response that wraps a fs read stream
+      // with the correct MIME type.
       // See: https://github.com/emscripten-core/emscripten/pull/16917
-      ? WebAssembly.instantiateStreaming(
-          require('node:fs')
-            .openAsBlob({{{ nodeWasmPath }}})
-            .then((blob) => new Response(blob.stream(), { headers: { 'Content-Type': 'application/wasm' } })),
-          imports,
-        )
-      : WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports))
+      WebAssembly.instantiateStreaming(
+        new Response(
+          require('node:stream').Readable.toWeb(require('node:fs').createReadStream({{{ nodeWasmPath }}})),
+          { headers: { 'Content-Type': 'application/wasm' } },
+        ),
+        imports,
+      )
+    : WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports))
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
 #if MODULARIZE || AUDIO_WORKLET
