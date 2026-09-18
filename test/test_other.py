@@ -11589,6 +11589,21 @@ int main(void) {
                             '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
                             '--profiling-funcs'])
 
+  @requires_pthreads
+  @parameterized({
+    '': ([], 3, 'fired\ndone\nexited\n'),
+    'cleared': (['-DMODE_CLEARED'], 3, 'fired\ndone\nexited\n'),
+    'force_exit': (['-DMODE_FORCE_EXIT'], 7, 'fired\ndone\nexited\n'),
+    'exit': (['-DMODE_EXIT'], 7, 'fired\ndone\nexited\n'),
+    'negative': (['-DMODE_NEGATIVE'], NON_ZERO, 'fired\ndone\nexited:-1\n'),
+  })
+  def test_proxied_main_keepalive_exit(self, cflags, returncode, expected):
+    # See https://github.com/emscripten-core/emscripten/issues/27721
+    # Proxied main that returns with a keepalive must exit with its status.
+    self.do_runf('other/test_proxied_main_keepalive_exit.c', expected,
+                 cflags=['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'] + cflags,
+                 assert_returncode=returncode)
+
   @crossplatform
   @no_windows('ptys and select are not available on windows')
   def test_color_diagnostics(self):

@@ -32,7 +32,9 @@ static void* _main_thread(void* param) {
   if (!emscripten_runtime_keepalive_check()) {
     exit(rtn);
   }
-  return NULL;
+  // Wait for keepalives, then exit with main's status.
+  __emscripten_proxied_main_done();
+  return (void*)(intptr_t)rtn;
 }
 
 EMSCRIPTEN_KEEPALIVE int _emscripten_proxy_main(int argc, char** argv) {
