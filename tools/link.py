@@ -1803,8 +1803,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       diagnostics.warning('unused-command-line-argument', 'NODERAWFS ignored since `node` not in `ENVIRONMENT`')
     if settings.NODERAWSOCKETS:
       diagnostics.warning('unused-command-line-argument', 'NODERAWSOCKETS ignored since `node` not in `ENVIRONMENT`')
-    if settings.NODE_CODE_CACHING:
-      diagnostics.warning('unused-command-line-argument', 'NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT`')
 
   settings.PRE_JS_FILES = options.pre_js
   settings.POST_JS_FILES = options.post_js
@@ -2735,8 +2733,8 @@ def process_libraries(flags):
 
     js_libs = map_to_js_libs(lib)
     if js_libs is not None:
-      for l in js_libs:
-        add_system_js_lib(l)
+      for js_lib in js_libs:
+        add_system_js_lib(js_lib)
 
     # We don't need to resolve system libraries to absolute paths here, we can just
     # let wasm-ld handle that.  However, we do want to map to the correct variant.

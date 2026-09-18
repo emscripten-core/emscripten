@@ -43,7 +43,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   kw.setdefault('text', True)
   if kw['text']:
     kw.setdefault('encoding', 'utf-8')
-  ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
+  ret = subprocess.run(cmd, *args, check=check, input=input, **kw)
   debug_text = f"{'successfully ' if check else ''}executed {shlex.join(cmd)}"
   logger.debug(debug_text)
   return ret

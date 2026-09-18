@@ -272,8 +272,8 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       diagnostics.warning('deprecated', f'{arg} is no longer supported')
       continue
 
-    for l in LEGACY_ARGS:
-      if check_arg(l):
+    for legacy_arg in LEGACY_ARGS:
+      if check_arg(legacy_arg):
         consume_arg()
         diagnostics.warning('deprecated', f'{arg} is no longer supported')
         continue
@@ -685,7 +685,7 @@ def parse_value(text, expected_type):
       return []
     return parse_string_list_members(text)
 
-  if expected_type == list or (text and text[0] == '['):
+  if expected_type is list or (text and text[0] == '['):
     # if json parsing fails, we fall back to our own parser, which can handle a few
     # simpler syntaxes
     try:
@@ -703,7 +703,7 @@ def parse_value(text, expected_type):
 
     return parsed
 
-  if expected_type == float:
+  if expected_type is float:
     try:
       return float(text)
     except ValueError:
@@ -749,7 +749,7 @@ def apply_user_settings():
 
     expected_type = settings.types.get(key)
 
-    if filename and expected_type == list and value.strip()[0] != '[':
+    if filename and expected_type is list and value.strip()[0] != '[':
       # Prefer simpler one-line-per value parser
       value = parse_symbol_list_file(value)
     else:

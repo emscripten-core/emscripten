@@ -51,12 +51,9 @@ lint.ignore = [
   "non-imperative-mood",
   "assert-false", # See https://github.com/PyCQA/flake8-bugbear/issues/66
   "function-uses-loop-variable",
-  "star-arg-unpacking-after-keyword-arg",
   "module-import-not-at-top-of-file",
   "multiple-leading-hashes-for-block-comment",
   "line-too-long",
-  "type-comparison",
-  "ambiguous-variable-name",
   "indentation-with-invalid-multiple", # Does not honor `indent-width`. See https://github.com/astral-sh/ruff/issues/8705
   "indentation-with-invalid-multiple-comment", # Does not honor `indent-width`. See https://github.com/astral-sh/ruff/issues/8705
   "too-few-spaces-before-inline-comment",
@@ -67,16 +64,12 @@ lint.ignore = [
   "too-many-boolean-expressions",
   "too-many-locals",
   "too-many-nested-blocks",
-  "redefined-argument-from-local",
   "no-self-use",
-  "global-variable-not-assigned",
   "global-statement",
   "too-many-statements-in-try-clause",
   "subprocess-run-without-check",
   "redefined-loop-name",
   "mutable-class-default",
-  "unnecessary-iterable-allocation-for-first-element",
-  "unraw-re-pattern",
   "non-empty-init-module",
 ]
 lint.per-file-ignores."tools/ports/*.py" = [ "unused-function-argument", "unused-lambda-argument" ]

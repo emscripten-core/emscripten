@@ -1060,25 +1060,6 @@ var NODERAWFS = false;
 // also be controlled separately.
 var NODE_HOST_ENV = false;
 
-// This saves the compiled wasm module in a file with name
-// ``$WASM_BINARY_NAME.$V8_VERSION.cached``
-// and loads it on subsequent runs. This caches the compiled wasm code from
-// v8 in node, which saves compiling on subsequent runs, making them start up
-// much faster.
-// The V8 version used in node is included in the cache name so that we don't
-// try to load cached code from another version, which fails silently (it seems
-// to load ok, but we do actually recompile).
-//
-// - The only version known to work for sure is node 12.9.1, as this has
-//   regressed, see
-//   https://github.com/nodejs/node/issues/18265#issuecomment-622971547
-// - The default location of the .cached files is alongside the wasm binary,
-//   as mentioned earlier. If that is in a read-only directory, you may need
-//   to place them elsewhere. You can use the locateFile() hook to do so.
-//
-// [link]
-var NODE_CODE_CACHING = false;
-
 // Symbols that are explicitly exported. These symbols are kept alive through
 // LLVM dead code elimination, and also made accessible outside of the
 // generated code even after running closure compiler (on "Module").  Native

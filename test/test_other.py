@@ -4033,7 +4033,7 @@ More info: https://emscripten.org
 
     def clean(txt):
       lines = txt.splitlines()
-      lines = [l for l in lines if 'PACKAGE_UUID' not in l and 'loadPackage({' not in l]
+      lines = [line for line in lines if 'PACKAGE_UUID' not in line and 'loadPackage({' not in line]
       return ''.join(lines)
 
     self.assertTextDataIdentical(clean(proc.stdout), clean(proc2.stdout))
@@ -8512,7 +8512,7 @@ int main() {
       print(' '.join(cmd))
       self.run_process(cmd)
       wat = self.get_wasm_text('a.out.wasm')
-      memories = [l for l in wat.splitlines() if '(memory ' in l]
+      memories = [line for line in wat.splitlines() if '(memory ' in line]
       self.assertEqual(len(memories), 2)
       line = memories[0]
       parts = line.strip().replace('(', '').replace(')', '').split()
@@ -9754,6 +9754,7 @@ end
     self.assert_fail(base + ['--preload-file', 'somefile'], expected)
     self.assert_fail(base + ['--embed-file', 'somefile'], expected)
 
+  @crossplatform
   def test_noderawfs_access_abspath(self):
     create_file('foo', 'bar')
     create_file('access.c', r'''
@@ -9763,6 +9764,24 @@ end
       }
     ''')
     self.do_runf('access.c', cflags=['-sNODERAWFS'], args=[os.path.abspath('foo')])
+
+  @crossplatform
+  def test_noderawfs_getcwd(self):
+    create_file('getcwd.c', r'''
+      #include <assert.h>
+      #include <limits.h>
+      #include <stdio.h>
+      #include <unistd.h>
+
+      int main() {
+        char buf[PATH_MAX];
+        char* cwd = getcwd(buf, sizeof(buf));
+        assert(cwd == buf);
+        printf("cwd: %s\n", cwd);
+        return 0;
+      }
+    ''')
+    self.do_runf('getcwd.c', f'cwd: {os.getcwd()}\n', cflags=['-sNODERAWFS'])
 
   def test_noderawfs_readfile_prerun(self):
     create_file('foo', 'bar')
@@ -9777,41 +9796,6 @@ end
     returncode, output = self.run_on_pty(config.NODE_JS + ['a.out.js'], input='secret\n')
     self.assertEqual(returncode, 0)
     self.assertIn(b'done', output)
-
-  @disabled('https://github.com/nodejs/node/issues/18265')
-  def test_node_code_caching(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sNODE_CODE_CACHING',
-                      '-sWASM_ASYNC_COMPILATION=0'])
-
-    def get_cached():
-      cached = glob.glob('a.out.wasm.*.cached')
-      if not cached:
-        return None
-      self.assertEqual(len(cached), 1)
-      return cached[0]
-
-    # running the program makes it cache the code
-    self.assertFalse(get_cached())
-    self.assertEqual('Hello, world!', self.run_js('a.out.js').strip())
-    self.assertTrue(get_cached(), 'should be a cache file')
-
-    # hard to test it actually uses it to speed itself up, but test that it
-    # does try to deserialize it at least
-    create_file(get_cached(), 'waka waka')
-    ERROR = 'NODE_CODE_CACHING: failed to deserialize, bad cache file?'
-    self.assertContained(ERROR, self.run_js('a.out.js'))
-    # we cached proper code after showing that error
-    self.assertEqual(read_binary(get_cached()).count(b'waka'), 0)
-    self.assertNotContained(ERROR, self.run_js('a.out.js'))
-
-  def test_node_code_caching_incompatible_settings(self):
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-sNODE_CODE_CACHING', '-sWASM_ASYNC_COMPILATION=0', '-sSINGLE_FILE'],
-                     'emcc: error: NODE_CODE_CACHING is not compatible with SINGLE_FILE (saves a file on the side)')
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-sNODE_CODE_CACHING'],
-                     'emcc: error: NODE_CODE_CACHING is not compatible with WASM_ASYNC_COMPILATION')
-    err = self.run_process([EMCC, test_file('hello_world.c'), '-sNODE_CODE_CACHING', '-sWASM_ASYNC_COMPILATION=0', '-sENVIRONMENT=web'], stderr=PIPE).stderr
-    self.assertContained('warning: NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT` [-Wunused-command-line-argument]', err)
 
   @with_env_modify({'LC_ALL': 'C'})
   def test_autotools_shared_check(self):
@@ -11188,7 +11172,7 @@ int main () {
     # fastcomp does not support the new license flag
     self.run_process([EMCC, test_file('hello_world.c')] + args)
     js = read_file('a.out.js')
-    licenses_found = len(re.findall('Copyright [0-9]* The Emscripten Authors', js))
+    licenses_found = len(re.findall(r'Copyright [0-9]* The Emscripten Authors', js))
     if expect_license:
       self.assertNotEqual(licenses_found, 0, 'Unable to find license block in output file!')
       self.assertEqual(licenses_found, 1, 'Found too many license blocks in the output file!')
@@ -15078,8 +15062,8 @@ addToLibrary({
     self.assertNotIn(b'hello from dtor', read_binary('test_unused_destructor.wasm'))
 
   def test_strip_all(self):
-    def has_debug_section(wasm):
-      with webassembly.Module('hello_world.wasm') as wasm:
+    def has_debug_section(wasm_file):
+      with webassembly.Module(wasm_file) as wasm:
         return wasm.get_custom_section('.debug_info') is not None
 
     # Use -O2 to ensure wasm-opt gets run

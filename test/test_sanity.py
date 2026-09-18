@@ -221,11 +221,11 @@ class sanity(RunnerCore):
     self.assertContained('NODE_JS', output)
     if not utils.WINDOWS:
       # os.chmod can't make files executable on Windows
-      self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
+      self.assertIdentical(temp_bin, re.search(r"^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
       possible_nodes = [os.path.join(temp_bin, 'node')]
       if os.path.exists('/usr/bin/nodejs'):
         possible_nodes.append('/usr/bin/nodejs')
-      self.assertIdentical(possible_nodes, re.search("^ *NODE_JS *= (.*)$", output, re.M).group(1))
+      self.assertIdentical(possible_nodes, re.search(r"^ *NODE_JS *= (.*)$", output, re.M).group(1))
 
     template_data = utils.read_file(path_from_root('tools/config_template.py'))
     self.assertNotContained('{{{', config_data)

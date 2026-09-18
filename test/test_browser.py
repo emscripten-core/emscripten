@@ -190,7 +190,7 @@ def is_jspi(args):
 
 
 def skipIfFeatureNotAvailable(skip_env_var, feature, message):
-  for env_var in skip_env_var if type(skip_env_var) == list else [skip_env_var]:
+  for env_var in skip_env_var if isinstance(skip_env_var, list) else [skip_env_var]:
     should_skip = browser_should_skip_feature(env_var, feature)
     if should_skip:
       break
@@ -291,7 +291,7 @@ window.close = () => {
     kwargs['cflags'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
 
     try:
-      return self.btest(filename, expected=expected, *args, **kwargs)
+      return self.btest(filename, *args, expected=expected, **kwargs)
     finally:
       if common.EMTEST_REBASELINE and os.path.exists('actual.png'):
         print(f'overwriting expected image: {reference}')
@@ -1712,7 +1712,7 @@ window.close = () => {
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
-    libs = [l for l in libs if program in os.path.basename(l)]
+    libs = [lib for lib in libs if program in os.path.basename(lib)]
 
     self.reftest(libs[0], book_path(program.replace('.o', '.png')), cflags=cflags)
 

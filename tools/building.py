@@ -1311,7 +1311,7 @@ def run_wasm_bindgen(infile):
   # Don't try to predict the .wasm filename that wasm-bindgen outputs. Instead
   # just grab the .wasm file itself.
   all_output_files = os.listdir(bindgen_out_dir)
-  new_wasm_file = [x for x in all_output_files if x.endswith('.wasm')][0]
+  new_wasm_file = next(x for x in all_output_files if x.endswith('.wasm'))
   new_wasm_path = os.path.join(bindgen_out_dir, new_wasm_file)
 
   exports_after = {e.name for e in webassembly.get_exports(new_wasm_path)}
