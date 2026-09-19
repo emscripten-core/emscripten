@@ -745,30 +745,27 @@ var LibraryEmbind = {
         sp = stackSave();
       }
       var thisWired;
-      var rv;
-      // The frame must be released on every completion, including a throwing
-      // argument conversion or callee: a skipped stackRestore permanently
-      // leaks wasm stack.
-      try {
-        invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
-        invokerFuncArgs[0] = cppTargetFunc;
-        if (isClassMethodFunc) {
-          thisWired = argTypes[1].toWireType(destructors, this);
-          invokerFuncArgs[1] = thisWired;
-        }
-        for (var i = 0; i < expectedArgCount; ++i) {
-          var argType = argTypes[i + 2];
-          // Stack-allocating types take the stack path only under a frame; a
-          // null destructors argument is that contract.
-          argsWired[i] = argType.toWireType(useStackFrame && argType.argStackAlloc ? null : destructors, args[i]);
-          invokerFuncArgs.push(argsWired[i]);
-        }
+      invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
+      invokerFuncArgs[0] = cppTargetFunc;
+      if (isClassMethodFunc) {
+        thisWired = argTypes[1].toWireType(destructors, this);
+        invokerFuncArgs[1] = thisWired;
+      }
+      for (var i = 0; i < expectedArgCount; ++i) {
+        var argType = argTypes[i + 2];
+        // Stack-allocating types take the stack path only under a frame; a
+        // null destructors argument is that contract.
+        argsWired[i] = argType.toWireType(useStackFrame && argType.argStackAlloc ? null : destructors, args[i]);
+        invokerFuncArgs.push(argsWired[i]);
+      }
 
-        rv = cppInvokerFunc(...invokerFuncArgs);
-      } finally {
-        if (useStackFrame) {
-          stackRestore(sp);
-        }
+      var rv = cppInvokerFunc(...invokerFuncArgs);
+      if (useStackFrame) {
+        // The callee has consumed the stack-allocated argument temporaries.
+        // As everywhere else in emscripten, the frame is not restored on an
+        // exception path; a JS caller that catches and continues must
+        // stackSave/stackRestore around the call (see the exceptions docs).
+        stackRestore(sp);
       }
 
       function onDone(rv) {
