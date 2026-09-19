@@ -36,6 +36,11 @@ See docs/process.md for more on how version tagging works.
   the per-call garbage on such calls. The registration ABI gained size and
   triviality parameters, so object files built against an older `bind.h` need
   to be rebuilt. (#27610)
+- Embind `value_object` and `value_array` element writes are now generated
+  per value type when `DYNAMIC_EXECUTION` is enabled, giving each element's
+  wasm setter its own call site. On V8 this keeps non-integer number fields
+  from being boxed on the way in, which was measured as 16 bytes of garbage
+  per such field in modules with many value types. (#27751)
 - `emscripten_clear_timeout` now releases the runtime keepalive held by the
   pending timeout, and both `emscripten_clear_timeout` and
   `emscripten_clear_immediate` are no-ops for ids that already fired. (#27720)

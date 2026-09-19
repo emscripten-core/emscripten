@@ -3652,6 +3652,15 @@ More info: https://emscripten.org
       self.require_wasm64()
     self.do_runf('embind/test_embind_trivial_value_stack.cpp', 'done\n', cflags=['-lembind', *extra_args])
 
+  @parameterized({
+    '': (),
+    'no_dynamic': ('-sDYNAMIC_EXECUTION=0',),
+  })
+  def test_embind_value_object_field_order(self, *extra_args):
+    # Field writes follow the field table's enumeration order and a name
+    # registered twice keeps its last registration, on both write paths.
+    self.do_runf('embind/test_embind_value_object_field_order.cpp', 'done\n', cflags=['-lembind', *extra_args])
+
   @requires_node_25
   def test_embind_resource_management(self):
     self.node_args.append('--js-explicit-resource-management')
