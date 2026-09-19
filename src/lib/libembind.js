@@ -330,6 +330,12 @@ var LibraryEmbind = {
         // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
         return value;
       },
+#if !ASSERTIONS
+      // With no checks above, toWireType is the identity: the VM's own
+      // JS-to-Wasm coercion does the work. Value types use this to pass
+      // element values straight to their wasm setters (see makeValueWriter).
+      identityToWireType: true,
+#endif
       readValueFromPointer: integerReadValueFromPointer(name, size, minRange !== 0),
       destructorFunction: null, // This type does not need a destructor
     });
@@ -411,6 +417,10 @@ var LibraryEmbind = {
         // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
         return value;
       },
+#if !ASSERTIONS
+      // See _embind_register_integer.
+      identityToWireType: true,
+#endif
       readValueFromPointer: floatReadValueFromPointer(name, size),
       destructorFunction: null, // This type does not need a destructor
     });
@@ -958,9 +968,81 @@ var LibraryEmbind = {
     });
   },
 
+  // Builds the element write step of a value_array or value_object: a
+  // function that passes each element of `o` to the wasm setter for its
+  // slot. `keys` are the indices or field names to read from `o`.
+  //
+  // Element types that register no destructor skip the per-write
+  // destructors array. Stack-allocating types still get one: a null
+  // destructors argument means an invoker-managed stack frame, which a
+  // nested write cannot assume.
+  //
+  // Number element values must reach the wasm setter without crossing a JS
+  // call V8 cannot inline: every non-Smi double passing through such a call
+  // is boxed (16 bytes of garbage per element), and V8 only inlines a
+  // JS-to-wasm call whose site has a single known target. A per-element
+  // closure built from one literal serves every element of every value type
+  // in the module, so its setter call site turns megamorphic once a few
+  // value types are registered. With dynamic execution the writer is
+  // generated per value type with one call per element, each site
+  // monomorphic, and number types with an identity conversion (see
+  // _embind_register_integer) are passed straight through.
+  $makeValueWriter__deps: ['$runDestructors'],
+  $makeValueWriter: (setters, setterContexts, setterArgumentTypes, keys) => {
+#if DYNAMIC_EXECUTION
+    var params = ['runDestructors'];
+    var args = [runDestructors];
+    var body = '';
+    for (var i = 0; i < setters.length; ++i) {
+      var type = setterArgumentTypes[i];
+      params.push(`s${i}`, `c${i}`);
+      args.push(setters[i], setterContexts[i]);
+      var value = `o[${JSON.stringify(keys[i])}]`;
+      var needsDestructors = type.destructorFunction !== null || type.argStackAlloc;
+      if (!type.identityToWireType) {
+        // Bound and passed in rather than named in the generated source, so
+        // closure compiler property renaming stays out of the picture.
+        params.push(`toWire${i}`);
+        args.push(type.toWireType.bind(type));
+        if (needsDestructors) {
+          body += `var d${i} = [];\n`;
+          value = `toWire${i}(d${i}, ${value})`;
+        } else {
+          value = `toWire${i}(null, ${value})`;
+        }
+      }
+      body += `s${i}(c${i}, ptr, ${value});\n`;
+      if (needsDestructors) {
+        body += `runDestructors(d${i});\n`;
+      }
+    }
+    return new Function(...params, `return (ptr, o) => {\n${body}};`)(...args);
+#else
+    var writers = setters.map((setter, i) => {
+      var context = setterContexts[i];
+      var type = setterArgumentTypes[i];
+      var key = keys[i];
+      if (type.destructorFunction === null && !type.argStackAlloc) {
+        return (ptr, o) => setter(context, ptr, type.toWireType(null, o[key]));
+      }
+      return (ptr, o) => {
+        var destructors = [];
+        setter(context, ptr, type.toWireType(destructors, o[key]));
+        runDestructors(destructors);
+      };
+    });
+    return (ptr, o) => {
+      for (var i = 0; i < writers.length; ++i) {
+        writers[i](ptr, o);
+      }
+    };
+#endif
+  },
+
   _embind_finalize_value_array__deps: [
-    '$tupleRegistrations', '$runDestructors',
-    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc', '$zeroMemory'],
+    '$tupleRegistrations',
+    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc', '$zeroMemory',
+    '$makeValueWriter'],
   _embind_finalize_value_array: (rawTupleType) => {
     var reg = tupleRegistrations[rawTupleType];
     delete tupleRegistrations[rawTupleType];
@@ -979,24 +1061,13 @@ var LibraryEmbind = {
         const getterReturnType = elementTypes[i];
         const getter = elt.getter;
         const getterContext = elt.getterContext;
-        const setterArgumentType = elementTypes[i + elementsLength];
-        const setter = elt.setter;
-        const setterContext = elt.setterContext;
         elt.read = (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr));
-        if (setterArgumentType.destructorFunction === null && !setterArgumentType.argStackAlloc) {
-          // The element type never registers a destructor, so skip the
-          // per-write destructors array. (Stack-allocating types still need
-          // the array here: a null destructors argument means an
-          // invoker-managed stack frame, which a nested write cannot assume.)
-          elt.write = (ptr, o) => setter(setterContext, ptr, setterArgumentType.toWireType(null, o));
-        } else {
-          elt.write = (ptr, o) => {
-            var destructors = [];
-            setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
-            runDestructors(destructors);
-          };
-        }
       }
+      var writeElements = makeValueWriter(
+        elements.map((elt) => elt.setter),
+        elements.map((elt) => elt.setterContext),
+        elementTypes.slice(elementsLength),
+        elements.map((elt, i) => i));
 
       return [{
         name: reg.name,
@@ -1029,9 +1100,7 @@ var LibraryEmbind = {
               destructors.push(rawDestructor, ptr);
             }
           }
-          for (var i = 0; i < elementsLength; ++i) {
-            elements[i].write(ptr, o[i]);
-          }
+          writeElements(ptr, o);
           return ptr;
         },
         readValueFromPointer: readPointer,
@@ -1091,8 +1160,9 @@ var LibraryEmbind = {
   },
 
   _embind_finalize_value_object__deps: [
-    '$structRegistrations', '$runDestructors',
-    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc', '$zeroMemory'],
+    '$structRegistrations',
+    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc', '$zeroMemory',
+    '$makeValueWriter'],
   _embind_finalize_value_object: (structType) => {
     var reg = structRegistrations[structType];
     delete structRegistrations[structType];
@@ -1110,26 +1180,23 @@ var LibraryEmbind = {
         const getterReturnType = fieldTypes[i];
         const getter = field.getter;
         const getterContext = field.getterContext;
-        const setterArgumentType = fieldTypes[i + fieldRecords.length];
-        const setter = field.setter;
-        const setterContext = field.setterContext;
-        var write;
-        if (setterArgumentType.destructorFunction === null && !setterArgumentType.argStackAlloc) {
-          // See the matching element-write logic in _embind_finalize_value_array.
-          write = (ptr, o) => setter(setterContext, ptr, setterArgumentType.toWireType(null, o));
-        } else {
-          write = (ptr, o) => {
-            var destructors = [];
-            setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
-            runDestructors(destructors);
-          };
-        }
         fields[field.fieldName] = {
           read: (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr)),
-          write,
+          setter: field.setter,
+          setterContext: field.setterContext,
+          setterArgumentType: fieldTypes[i + fieldRecords.length],
           optional: getterReturnType.optional,
         };
       }
+      // Write in the enumeration order of `fields`, one write per surviving
+      // name (a field registered twice keeps its last registration), the same
+      // order and set the reads use.
+      var fieldNames = Object.keys(fields);
+      var writeFields = makeValueWriter(
+        fieldNames.map((name) => fields[name].setter),
+        fieldNames.map((name) => fields[name].setterContext),
+        fieldNames.map((name) => fields[name].setterArgumentType),
+        fieldNames);
 
       return [{
         name: reg.name,
@@ -1163,9 +1230,7 @@ var LibraryEmbind = {
               destructors.push(rawDestructor, ptr);
             }
           }
-          for (fieldName in fields) {
-            fields[fieldName].write(ptr, o[fieldName]);
-          }
+          writeFields(ptr, o);
           return ptr;
         },
         readValueFromPointer: readPointer,

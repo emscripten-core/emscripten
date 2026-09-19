@@ -26,6 +26,11 @@ See docs/process.md for more on how version tagging works.
 - OpenMP was updated to LLVM commit 9076414489ed. This adds Wasm64 support and
   raises the generic microtask dispatcher limit from 15 to 32 arguments.
   (#27221)
+- Embind `value_object` and `value_array` element writes are now generated
+  per value type when `DYNAMIC_EXECUTION` is enabled, giving each element's
+  wasm setter its own call site. On V8 this keeps non-integer number fields
+  from being boxed on the way in, which was measured as 16 bytes of garbage
+  per such field in modules with many value types. (#27751)
 
 6.0.10 - 09/21/26
 -----------------
