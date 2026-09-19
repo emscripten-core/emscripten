@@ -22,6 +22,11 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - libunwind and compiler-rt were updated to LLVM 23.1.3. (#28011, #28014)
 - mimalloc was updated to 3.5.3. (#28026)
+- Embind `value_object` and `value_array` element writes are now generated
+  per value type when `DYNAMIC_EXECUTION` is enabled, giving each element's
+  wasm setter its own call site. On V8 this keeps non-integer number fields
+  from being boxed on the way in, which was measured as 16 bytes of garbage
+  per such field in modules with many value types. (#27751)
 
 6.0.13 - 10/19/26
 -----------------
