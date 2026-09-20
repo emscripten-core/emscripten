@@ -987,13 +987,12 @@ var LibraryPThread = {
   },
 
 #if PROXY_TO_PTHREAD
-  // Main's return, saved for maybeExit.
-  $proxiedMainDone__internal: true,
-  $proxiedMainDone: false,
+  $isProxiedMainThread__internal: true,
+  $isProxiedMainThread: false,
 
-  __emscripten_proxied_main_done__deps: ['$proxiedMainDone'],
-  __emscripten_proxied_main_done: () => {
-    proxiedMainDone = true;
+  __emscripten_set_proxied_main_thread__deps: ['$isProxiedMainThread'],
+  __emscripten_set_proxied_main_thread: () => {
+    isProxiedMainThread = true;
   },
 #endif
 
@@ -1157,7 +1156,8 @@ var LibraryPThread = {
     '$runtimeKeepaliveCounter',
 #endif
 #if PROXY_TO_PTHREAD
-    '$proxiedMainDone',
+    '$isProxiedMainThread',
+    'exit',
 #endif
   ],
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
@@ -1181,8 +1181,7 @@ var LibraryPThread = {
 #endif
 #endif
 #if PROXY_TO_PTHREAD
-    // No main return waiting yet.
-    proxiedMainDone = false;
+    isProxiedMainThread = false;
 #endif
 
 #if MAIN_MODULE
@@ -1208,12 +1207,17 @@ var LibraryPThread = {
 #endif
     function finish(result) {
 #if !MINIMAL_RUNTIME
+      EXITSTATUS = result;
       // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
       // pthreads. To exit a pthread with live runtime, use the function
       // emscripten_unwind_to_js_event_loop() in the pthread body.
       if (keepRuntimeAlive()) {
-        EXITSTATUS = result;
         return;
+      }
+#endif
+#if PROXY_TO_PTHREAD
+      if (isProxiedMainThread) {
+        _exit(result);
       }
 #endif
       __emscripten_thread_exit(result);

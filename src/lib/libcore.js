@@ -113,9 +113,6 @@ addToLibrary({
 #if PTHREADS
     '$exitOnMainThread',
 #endif
-#if PROXY_TO_PTHREAD
-    '$proxiedMainDone',
-#endif
 #if PTHREADS_DEBUG || ASSERTIONS
     '$runtimeKeepaliveCounter',
 #endif
@@ -135,10 +132,6 @@ addToLibrary({
 #endif
 #if PTHREADS_DEBUG
       dbg(`Pthread ${ptrToString(_pthread_self())} called exit(${status}), posting exitOnMainThread.`);
-#endif
-#if PROXY_TO_PTHREAD
-      // Forget a waiting main return.
-      proxiedMainDone = false;
 #endif
       // When running in a pthread we propagate the exit back to the main thread
       // where it can decide if the whole process should be shut down or not.
@@ -2177,8 +2170,7 @@ addToLibrary({
     '_emscripten_thread_exit',
 #endif
 #if PROXY_TO_PTHREAD
-    '$proxiedMainDone',
-    '$exitOnMainThread',
+    '$isProxiedMainThread',
 #endif
 #if RUNTIME_DEBUG >= 2
     '$runtimeKeepaliveCounter',
@@ -2199,18 +2191,14 @@ addToLibrary({
 #endif
       try {
 #if PTHREADS
-        if (ENVIRONMENT_IS_PTHREAD) {
+        if (ENVIRONMENT_IS_PTHREAD
+#if PROXY_TO_PTHREAD
+            && !isProxiedMainThread
+#endif
+        ) {
           // exit the current thread, but only if there is one active.
           // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
           // Unify this check with the runtimeExited check above
-#if PROXY_TO_PTHREAD && EXIT_RUNTIME
-          // Run a waiting main return once.
-          if (proxiedMainDone) {
-            proxiedMainDone = false;
-            exitOnMainThread(EXITSTATUS);
-            return;
-          }
-#endif
           if (_pthread_self()) __emscripten_thread_exit(EXITSTATUS);
           return;
         }

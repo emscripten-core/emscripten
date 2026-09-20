@@ -8,10 +8,11 @@
 #include <pthread.h>
 #include <stdlib.h>
 
+#include <stdint.h>
+
 #include <emscripten.h>
 #include <emscripten/stack.h>
 #include <emscripten/threading.h>
-#include <emscripten/eventloop.h>
 
 #include "threading_internal.h"
 
@@ -27,13 +28,9 @@ weak int __main_void(void) {
 static void* _main_thread(void* param) {
   // This is the main runtime thread for the application.
   emscripten_set_thread_name(pthread_self(), "Application main thread");
+  __emscripten_set_proxied_main_thread();
   // Will either call user's __main_void or weak version above.
   int rtn = __main_void();
-  if (!emscripten_runtime_keepalive_check()) {
-    exit(rtn);
-  }
-  // Wait for keepalives, then exit with main's status.
-  __emscripten_proxied_main_done();
   return (void*)(intptr_t)rtn;
 }
 
