@@ -1207,11 +1207,11 @@ var LibraryPThread = {
 #endif
     function finish(result) {
 #if !MINIMAL_RUNTIME
-      EXITSTATUS = result;
       // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
       // pthreads. To exit a pthread with live runtime, use the function
       // emscripten_unwind_to_js_event_loop() in the pthread body.
       if (keepRuntimeAlive()) {
+        EXITSTATUS = result;
         return;
       }
 #endif
