@@ -542,11 +542,11 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeou
     r = -emscripten_futex_wait(&call->operationDone, 0, timeoutMSecs);
 
     timeoutMSecs = target - emscripten_get_now();
-  } while (r == EINTR && timeoutMSecs > 0);
+  } while (!call->operationDone && r != ETIMEDOUT && timeoutMSecs > 0);
 
   emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
 
-  return r == ETIMEDOUT ? EMSCRIPTEN_RESULT_TIMED_OUT : EMSCRIPTEN_RESULT_SUCCESS;
+  return call->operationDone ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_TIMED_OUT;
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_i(
