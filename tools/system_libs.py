@@ -1732,8 +1732,8 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
 
 class libunwind(ExceptionLibrary, MTLibrary):
   name = 'libunwind'
-  # Because calls to _Unwind_CallPersonality are generated during LTO, libunwind
-  # can't currently be part of LTO.
+  # Because calls to _Unwind_GetWasmLPadContext are generated during LTO,
+  # libunwind can't currently be part of LTO.
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
