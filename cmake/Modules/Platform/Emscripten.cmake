@@ -120,6 +120,10 @@ if (NOT _emcache_result EQUAL 0)
   message(FATAL_ERROR "Failed to find emscripten cache directory with command \"'${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}' CACHE\"! Process returned with error code ${_emcache_result}.")
 endif()
 file(TO_CMAKE_PATH "${_emcache_output}" _emcache_output)
+
+# You **should** use CMAKE_SYSROOT, the one below is kept for
+# compat for whichever soul used that variable...
+set(CMAKE_SYSROOT "${_emcache_output}/sysroot")
 set(EMSCRIPTEN_SYSROOT "${_emcache_output}/sysroot")
 
 # Allow skipping of CMake compiler autodetection.  On by default since this is
