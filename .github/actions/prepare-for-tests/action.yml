@@ -1,0 +1,55 @@
+name: 'Prepare for Tests'
+description: 'Prepares the environment for running Emscripten tests'
+runs:
+  using: "composite"
+  steps:
+    - name: Install Basic Packages
+      uses: ./.github/actions/install-basic-packages
+
+    - name: Install Emsdk
+      uses: emscripten-core/setup-emsdk@v16
+      with:
+        version: tot
+        actions-cache-folder: 'emsdk-install'
+
+    - name: Attach workspace
+      uses: actions/download-artifact@v8
+      with:
+        name: emscripten-cache
+        path: ~/
+
+    - name: Extract persistent directories
+      run: |
+        tar -xzvf ~/emscripten-cache.tar.gz -C ~/
+        ls -l ~/
+        ls -l ~/cache || echo "no ~/cache dir"
+        # TODO There has to be a better way to do this. Maybe use the setup-emsdk action's builtin support?
+        echo $GITHUB_WORKSPACE
+        sed -i "s|\|.*|\|$GITHUB_WORKSPACE/emsdk-install/emsdk-main/upstream/bin|" ~/cache/sanity.txt
+
+      shell: bash
+
+    - name: Set EM_CONFIG
+      run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Setup cache config
+      run: |
+        echo "import os" >> $EMSDK/.emscripten
+        echo "CACHE = os.path.expanduser('~/cache')" >> $EMSDK/.emscripten
+        echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8')]" >> $EMSDK/.emscripten
+        echo "JS_ENGINES = [NODE_JS]" >> $EMSDK/.emscripten
+        echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> $EMSDK/.emscripten
+        echo "WASM_ENGINES = []" >> $EMSDK/.emscripten
+        test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> $EMSDK/.emscripten || true
+        test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> $EMSDK/.emscripten || true
+        test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $($EMSDK/upstream/bin/clang -print-resource-dir) || true
+      shell: bash
+
+    - name: Pip install
+      run: python -m pip install -r requirements-dev.txt
+      shell: bash
+
+    - name: Bootstrap
+      run: ./bootstrap
+      shell: bash
