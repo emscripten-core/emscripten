@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.10 (in development)
+6.0.11 (in development)
 ----------------------
+
+6.0.10 - 09/21/26
+-----------------
 - The SDL3 port is no longer considered experimental, and the compiler
   diagnostic warning has been removed. (#27646)
 - `WASM=0` and `WASM=2` (wasm2js) were marked as deprecated. (See #27608)
