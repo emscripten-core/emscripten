@@ -562,8 +562,6 @@ def with_all_eh_sjlj(func):
   def metafunc(self, mode, *args, **kwargs):
     if common.EMTEST_VERBOSE:
       print(f'parameterize:eh_mode={mode}')
-    if '-flto' in self.cflags or '-flto=thin' in self.cflags:
-      self.skipTest('LTO EH tests are temporarily disabled until https://github.com/llvm/llvm-project/pull/224313 lands')
     if mode in {'wasm', 'wasm_legacy'}:
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
