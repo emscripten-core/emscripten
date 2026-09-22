@@ -1420,8 +1420,8 @@ FS.staticInit();`;
       return stream.stream_ops.ioctl(stream, cmd, arg);
     },
     readFile(path, opts = {}) {
-      opts.flags = opts.flags ?? {{{ cDefs.O_RDONLY }}};
-      opts.encoding = opts.encoding ?? 'binary';
+      opts.flags ??= {{{ cDefs.O_RDONLY }}};
+      opts.encoding ??= 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         abort(`Invalid encoding type "${opts.encoding}"`);
       }
@@ -1440,7 +1440,7 @@ FS.staticInit();`;
      * @param {TypedArray|Array|string} data
      */
     writeFile(path, data, opts = {}) {
-      opts.flags = opts.flags ?? {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}};
+      opts.flags ??= {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}};
       var stream = FS.open(path, opts.flags, opts.mode);
       data = FS_fileDataToTypedArray(data);
       FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
