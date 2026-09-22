@@ -7,11 +7,11 @@ int pthread_getattr_np(pthread_t t, pthread_attr_t *a)
 {
 	*a = (pthread_attr_t){0};
 	a->_a_detach = t->detach_state>=DT_DETACHED;
-	a->_a_guardsize = t->guard_size;
 #ifdef __EMSCRIPTEN__
 	a->_a_stackaddr = (uintptr_t)t->stack;
 	a->_a_stacksize = t->stack_size;
 #else
+	a->_a_guardsize = t->guard_size;
 	if (t->stack) {
 		a->_a_stackaddr = (uintptr_t)t->stack;
 		a->_a_stacksize = t->stack_size;
