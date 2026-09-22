@@ -190,15 +190,20 @@ void emscripten_condvar_signal(emscripten_condvar_t * _Nonnull condvar, uint32_t
 // sleep waiting for that address to be notified. Like the linux futex syscall
 // this function returns negative errno values on failure.
 // Pass maxWaitMilliseconds = INFINITY (or __builtin_inf()) to sleep indefinitely.
+//
+// Like the Linux futex(2) syscall, this function can experience spurious
+// wakeups (e.g. from side-channel notifications or async wait cancellations).
+// Callers should always call this function in a loop that checks the
+// application-level condition.
+//
 // Returns:
 // * negative value -EINVAL if addr is null.
 // * negative value -ETIMEDOUT if the maxWaitMilliseconds timeout was exceeded.
-// * negative value -EINTR if the operation was interrupted (e.g. a timer fired, or an
-//   async signal was received).
 // * negative value -EWOULDBLOCK if the value of the memory address 'addr' was
 //   not equal to 'val' to begin with.
 // * negative value -ECANCELED if the calling thread has been canceled.
-// * the value 0 on success (i.e. another thread signaled this address)
+// * the value 0 on success (i.e. another thread signaled this address, or a
+//   spurious wakeup occurred)
 int emscripten_futex_wait(volatile void/*uint32_t*/ * _Nonnull addr, uint32_t val, double maxWaitMilliseconds);
 
 // Wakes the given number of threads waiting on a location. Pass count ==
