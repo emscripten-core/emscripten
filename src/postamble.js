@@ -212,15 +212,10 @@ function checkUnflushedContent() {
 #elif hasExportedSymbol('fflush')
     _fflush(0);
 #endif
-#if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
+#if '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
-    for (var name of ['stdout', 'stderr']) {
-      var info = FS.analyzePath('/dev/' + name);
-      if (!info) return;
-      var stream = info.object;
-      var rdev = stream.rdev;
-      var tty = TTY.ttys[rdev];
-      if (tty?.output?.length) {
+    for (var tty of Object.values(TTY.ttys)) {
+      if (tty.output.length) {
         has = true;
       }
     }
