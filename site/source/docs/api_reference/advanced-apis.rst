@@ -101,7 +101,6 @@ example, writing a new local file system) or legacy file system compatibility.
   For advanced users only.
 
 .. js:function:: FS.getMode(canRead, canWrite)
-.. js:function:: FS.findObject(path, dontResolveLastLink)
 .. js:function:: FS.createPath(parent, path, canRead, canWrite)
 .. js:function:: FS.createFile(parent, name, properties, canRead, canWrite)
 .. js:function:: FS.createDataFile(parent, name, data, canRead, canWrite, canOwn)
