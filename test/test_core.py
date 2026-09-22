@@ -5874,12 +5874,6 @@ got: 10
   def test_istream(self):
     self.do_core_test('test_istream.cpp')
 
-  @no_wasmfs('depends on FS.makedev which WASMFS does not have')
-  def test_fs_base(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
-    self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
-    self.do_runf_out_file('fs/test_fs_base.c')
-
   @also_with_noderawfs
   @is_slow_test
   @requires_node

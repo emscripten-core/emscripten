@@ -1461,7 +1461,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
         '_wasmfs_lchmod',
         '_wasmfs_utime',
         '_wasmfs_llseek',
-        '_wasmfs_identify',
         '_wasmfs_readlink',
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',
