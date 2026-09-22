@@ -6,15 +6,13 @@ requires-python = ">=3.10"
 preview = true
 line-length = 100
 indent-width = 2
-exclude = [
+extend-exclude = [
   "./cache/",
-  "./node_modules/",
   "./site/source/_themes/",
   "./site/source/conf.py",
   "./test/third_party/",
   "./third_party/",
   "./tools/filelock.py",
-  ".git",
 ]
 
 lint.select = [
