@@ -51,7 +51,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 132
+EXPECTED_BINARYEN_VERSION = 133
 WASM_LD = shared.llvm_tool_path('wasm-ld')
 LLVM_DWARFDUMP = shared.llvm_tool_path('llvm-dwarfdump')
 LLVM_OBJCOPY = shared.llvm_tool_path('llvm-objcopy')
