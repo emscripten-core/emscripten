@@ -27,7 +27,15 @@ var SyscallsLibrary = {
         dir = FS.cwd();
       } else {
         var dirstream = SYSCALLS.getStreamFromFD(dirfd);
+        // A rename can leave a stale dirstream.path so recompute it.
+        // TODO: in NODERAWFS, FS.getPath() doesn't work and calculateAt() won't
+        // work if a directory is renamed after opening a dirfd contained inside
+        // it.
+#if NODERAWFS
         dir = dirstream.path;
+#else
+        dir = FS.getPath(dirstream.node);
+#endif
       }
       if (path.length == 0) {
         if (!allowEmpty) {
