@@ -2717,46 +2717,6 @@ var FS = {
       }
     }
   },
-  analyzePath(path, dontResolveLastLink) {
-    // operate from within the context of the symlink's target
-    try {
-      var lookup = FS.lookupPath(path, {
-        follow: !dontResolveLastLink
-      });
-      path = lookup.path;
-    } catch (e) {}
-    var ret = {
-      isRoot: false,
-      exists: false,
-      error: 0,
-      name: null,
-      path: null,
-      object: null,
-      parentExists: false,
-      parentPath: null,
-      parentObject: null
-    };
-    try {
-      var lookup = FS.lookupPath(path, {
-        parent: true
-      });
-      ret.parentExists = true;
-      ret.parentPath = lookup.path;
-      ret.parentObject = lookup.node;
-      ret.name = PATH.basename(path);
-      lookup = FS.lookupPath(path, {
-        follow: !dontResolveLastLink
-      });
-      ret.exists = true;
-      ret.path = lookup.path;
-      ret.object = lookup.node;
-      ret.name = lookup.node.name;
-      ret.isRoot = lookup.path === "/";
-    } catch (e) {
-      ret.error = e.errno;
-    }
-    return ret;
-  },
   createPath(parent, path, canRead, canWrite) {
     parent = typeof parent == "string" ? parent : FS.getPath(parent);
     var parts = path.split("/").reverse();

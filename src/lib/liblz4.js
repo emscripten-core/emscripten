@@ -34,7 +34,7 @@ addToLibrary({
         var dir = PATH.dirname(file.filename);
         var name = PATH.basename(file.filename);
         FS.createPath('', dir, true, true);
-        var parent = FS.analyzePath(dir).object;
+        var parent = FS.lookupPath(dir).node;
         LZ4.createNode(parent, name, LZ4.FILE_MODE, 0, {
           compressedData,
           start: file.start,
