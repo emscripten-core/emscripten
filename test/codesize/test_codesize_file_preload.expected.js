@@ -2717,13 +2717,6 @@ var FS = {
       }
     }
   },
-  findObject(path, dontResolveLastLink) {
-    var ret = FS.analyzePath(path, dontResolveLastLink);
-    if (!ret.exists) {
-      return null;
-    }
-    return ret.object;
-  },
   analyzePath(path, dontResolveLastLink) {
     // operate from within the context of the symlink's target
     try {
