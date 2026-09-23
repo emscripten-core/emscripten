@@ -30,9 +30,8 @@ void at_exit() {
 
 #define N 1000
 
-// Number of live entries in the internal id table (slot 0 is reserved).
-#define PENDING_TIMEOUTS() EM_ASM_INT({ return Object.keys(safeSetTimeout.mapping).length - 1; })
-#define PENDING_IMMEDIATES() EM_ASM_INT({ return Object.keys(setImmediateWrapped.mapping).length; })
+#define PENDING_TIMEOUTS() EM_ASM_INT({ return safeSetTimeout.pending.size; })
+#define PENDING_IMMEDIATES() EM_ASM_INT({ return setImmediateWrapped.pending.size; })
 
 int count;
 int last_id;
