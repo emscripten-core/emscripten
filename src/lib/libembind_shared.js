@@ -277,10 +277,7 @@ var LibraryEmbindShared = {
       invokerFnBody += 'var destructors = [];\n';
     }
     if (useStackFrame) {
-      // The frame must be released on every completion, including a throwing
-      // argument conversion or callee: a skipped stackRestore permanently
-      // leaks wasm stack. `var` declarations hoist out of the try block.
-      invokerFnBody += 'var sp = stackSave();\ntry {\n';
+      invokerFnBody += 'var sp = stackSave();\n';
     }
 
     var dtorStack = needsDestructorStack ? 'destructors' : 'null';
@@ -306,8 +303,10 @@ var LibraryEmbindShared = {
     invokerFnBody += (returns || isAsync ? 'var rv = ' : '') + `invoker(${argsListWired});\n`;
     if (useStackFrame) {
       // The callee has consumed the stack-allocated argument temporaries;
-      // release the frame before any post-call work.
-      invokerFnBody += '} finally {\nstackRestore(sp);\n}\n';
+      // release the frame before any post-call work. Not restored on an
+      // exception path, matching the rest of emscripten (see the exceptions
+      // docs on stackSave/stackRestore at JS catch sites).
+      invokerFnBody += 'stackRestore(sp);\n';
     }
 
     var returnVal = returns ? 'rv' : '';

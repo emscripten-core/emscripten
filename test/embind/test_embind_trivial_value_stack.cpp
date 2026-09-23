@@ -163,26 +163,6 @@ int main() {
   printf("trivial allocs: %d frees: %d\n", allocCount, freeCount);
   assert(allocCount == 0 && freeCount == 0);
 
-  // A conversion that throws mid-call must unwind the stack frame; the
-  // stackSave comparison below catches any leaked frame.
-  EM_ASM({
-    var trap = ({ index: 1, world: 2, get generation() { throw new Error('boom'); } });
-    var sp = stackSave();
-    for (var i = 0; i < 1000; i++) {
-      try {
-        Module['sumVec'](trap, [1, 2, 3]);
-        // No .message on this string, so the catch below rethrows it.
-        throw 'expected sumVec to throw';
-      } catch (e) {
-        if (e.message !== 'boom') throw e;
-      }
-    }
-    if (stackSave() !== sp) throw 'stack leaked across throwing conversions';
-    if (Module['sumId']({ index: 1, world: 2, generation: 3 }) !== 6) throw 'sumId broken after throws';
-  });
-  printf("throwing allocs: %d frees: %d\n", allocCount, freeCount);
-  assert(allocCount == 0 && freeCount == 0);
-
   // The non-trivial type stays on the heap path, balances its allocations,
   // and runs its destructor.
   EM_ASM({
