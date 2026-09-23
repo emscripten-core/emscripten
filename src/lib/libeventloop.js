@@ -21,7 +21,7 @@ LibraryJSEventLoop = {
     safeSetTimeout.mapping ||= [0];
     var id = safeSetTimeout.mapping.length;
     safeSetTimeout.mapping[id] = setTimeout(() => {
-      safeSetTimeout.mapping[id] = undefined;
+      delete safeSetTimeout.mapping[id];
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(func);
     }, timeout);
@@ -35,7 +35,7 @@ LibraryJSEventLoop = {
     var handle = safeSetTimeout.mapping?.[id];
     if (!handle) return;
     clearTimeout(handle);
-    safeSetTimeout.mapping[id] = undefined;
+    delete safeSetTimeout.mapping[id];
     {{{ runtimeKeepalivePop() }}}
   },
 
@@ -45,7 +45,7 @@ LibraryJSEventLoop = {
     setImmediateWrapped.mapping ||= [];
     var id = setImmediateWrapped.mapping.length;
     setImmediateWrapped.mapping[id] = setImmediate(() => {
-      setImmediateWrapped.mapping[id] = undefined;
+      delete setImmediateWrapped.mapping[id];
       func();
     });
     return id;
@@ -66,7 +66,7 @@ LibraryJSEventLoop = {
     var handle = setImmediateWrapped.mapping[id];
     if (!handle) return false;
     clearImmediate(handle);
-    setImmediateWrapped.mapping[id] = undefined;
+    delete setImmediateWrapped.mapping[id];
     return true;
   },
 

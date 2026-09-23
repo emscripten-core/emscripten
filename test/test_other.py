@@ -13714,6 +13714,8 @@ void foo() {}
     'cleared': (['-DMODE_CLEARED'], 42, 'done\n'),
     'idempotent': (['-DMODE_IDEMPOTENT'], 0, 'fired\nfired\ndone\n'),
     'immediate': (['-DMODE_IMMEDIATE'], 0, 'fired\ndone\n'),
+    'bounded': (['-DMODE_BOUNDED'], 0, 'done\n'),
+    'bounded_immediate': (['-DMODE_BOUNDED_IMMEDIATE'], 0, 'done\n'),
   })
   def test_emscripten_clear_timeout(self, cflags, returncode, expected):
     self.do_runf('test_emscripten_clear_timeout.c', expected, cflags=['-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)

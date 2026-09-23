@@ -2417,7 +2417,8 @@ Functions
 .. c:function:: void emscripten_clear_timeout(long setTimeoutId)
 
   Cancels a pending ``setTimeout()`` call on the calling thread. This function must be called on the same
-  thread as the :c:func:`emscripten_set_timeout()` call that registered the callback.
+  thread as the :c:func:`emscripten_set_timeout()` call that registered the callback. Calling it after the
+  callback has already run, or more than once for the same ID, is a no-op.
 
   :param setTimeoutId: An ID returned by function :c:func:`emscripten_set_timeout()`.
 
@@ -2482,7 +2483,8 @@ Functions
 .. c:function:: void emscripten_clear_immediate(long setImmediateId)
 
   Cancels a pending ``setImmediate()`` call on the calling thread. This function must be called on the same
-  thread as the :c:func:`emscripten_set_immediate()` call that registered the callback.
+  thread as the :c:func:`emscripten_set_immediate()` call that registered the callback. Calling it after the
+  callback has already run, or more than once for the same ID, is a no-op.
 
   :param setImmediateId: An ID returned by function :c:func:`emscripten_set_immediate()`.
 
