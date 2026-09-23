@@ -103,9 +103,7 @@ actions = [
   ('create entry points', [
      'tools/maint/create_entry_points.py',
      'tools/pylauncher/pylauncher.exe',
-     'tools/maint/run_python.bat',
      'tools/maint/run_python.sh',
-     'tools/maint/run_python.ps1',
    ], [sys.executable, 'tools/maint/create_entry_points.py']),
   ('git submodules', [
      'test/third_party/posixtestsuite/',
