@@ -396,9 +396,10 @@ var EpollLibrary = {
         {{{ runtimeKeepalivePush() }}}
       }
     }
-    // Runs the callback; resolves once it has completed. Takes the hold for
-    // the next turn if the set is still ready (undrained, or a re-listed level
-    // fd), on the local path before callUserCallback's maybeExit.
+    // Runs the callback; true, or a promise of it, once it has completed. Takes
+    // the hold for the next turn if the set is still ready (undrained, or a
+    // re-listed level fd), on the local path before callUserCallback's
+    // maybeExit.
     function deliver() {
 #if PTHREADS
       if (callerThread) {
@@ -413,6 +414,7 @@ var EpollLibrary = {
           }
         }).then(() => {
           if (!it.cleared && !epollWouldBlock(ep)) hold();
+          return true;
         });
       }
 #endif
@@ -420,6 +422,29 @@ var EpollLibrary = {
         {{{ makeDynCall('vp', 'callback') }}}(userdata);
         if (!it.cleared && !epollWouldBlock(ep)) hold();
       });
+      return true;
+    }
+    // Runs one turn: releases the turn's hold and, if the set is ready,
+    // delivers. Resolves once the delivery has completed, or with false if
+    // there was nothing to deliver. Runs inside the macrotask, not after it, so
+    // a fatal error escaping the callback is an uncaught exception rather than
+    // a rejection.
+    function turn() {
+      return new Promise((resolve) => emSetImmediate(() => {
+        if (it.held) {
+          it.held = false;
+          {{{ runtimeKeepalivePop() }}}
+        }
+        if (it.cleared || epollWouldBlock(ep)) {
+          // Not delivering: callUserCallback's maybeExit will not run, and
+          // the hold just released may have been what deferred main's exit.
+#if !MINIMAL_RUNTIME
+          maybeExit();
+#endif
+          return resolve(false);
+        }
+        resolve(deliver());
+      }));
     }
     // Each delivery is a macrotask (a microtask could run re-entrantly: hosts
     // drain microtasks inside other calls, e.g. Node's module loader on a first
@@ -434,21 +459,7 @@ var EpollLibrary = {
       if (it.running) return;
       it.running = true;
       do {
-        await new Promise(emSetImmediate);
-        if (it.held) {
-          it.held = false;
-          {{{ runtimeKeepalivePop() }}}
-        }
-        if (it.cleared || epollWouldBlock(ep)) {
-          it.running = false;
-          // Not delivering: callUserCallback's maybeExit will not run, and
-          // the hold just released may have been what deferred main's exit.
-#if !MINIMAL_RUNTIME
-          maybeExit();
-#endif
-          return;
-        }
-        await deliver();
+        if (!await turn()) break;
         // A local delivery ran maybeExit; a cross-thread one takes another turn
         // for it.
       } while (it.held

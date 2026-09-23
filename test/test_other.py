@@ -13669,6 +13669,13 @@ void foo() {}
     # ready.
     self.do_runf('other/test_epoll_callback_macrotask.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
+  def test_epoll_callback_abort(self):
+    # A fatal error in the callback is an uncaught exception from the delivery
+    # macrotask, not an unhandled rejection (which would be reported differently
+    # and exit 0 here).
+    output = self.do_runf('other/test_epoll_callback_abort.c', 'Aborted(native code called abort())', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'], assert_returncode=NON_ZERO)
+    self.assertNotContained('unhandled rejection', output)
+
   def test_epoll_callback_teardown_wake(self):
     # A closing watched fd wakes the listener only to evict and holds nothing;
     # exitRuntime's FS.quit closes every open fd, and a hold taken there would
