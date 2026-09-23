@@ -350,18 +350,10 @@ var EpollLibrary = {
   },
 
   $epollClearListener__internal: true,
-  $epollClearListener__deps: [
-#if PTHREADS
-    '$epollDeliveries',
-#endif
-  ],
   $epollClearListener: (ep, it) => {
     ep.interests.delete(it.key);
     it.cleared = true;
     it.listener.listeners.delete(it.listener.entry);
-#if PTHREADS
-    if (it.token) delete epollDeliveries[it.token];
-#endif
   },
 
   // See <emscripten/epoll.h>. A listener is keyed by (registering thread,
@@ -395,80 +387,77 @@ var EpollLibrary = {
     var it = {key};
     ep.interests.set(key, it);
 
+    // Hold the runtime for the delivery scheduled on the next turn. Not once
+    // FS.quit has begun: no delivery can follow and the hold would outlive the
+    // exit.
+    function hold() {
+      if (FS.initialized && !it.held) {
+        it.held = true;
+        {{{ runtimeKeepalivePush() }}}
+      }
+    }
+    // Runs the callback; resolves once it has completed. Takes the hold for
+    // the next turn if the set is still ready (undrained, or a re-listed level
+    // fd), on the local path before callUserCallback's maybeExit.
     function deliver() {
-      if (it.cleared) return;
-#if PTHREADS
-      // One cross-thread delivery in flight at a time; its completion
-      // (_emscripten_epoll_delivery_done) re-wakes, else a still-ready level fd
-      // would be re-signalled in a tight spin while the owner drains it.
-      if (it.inflight) return;
-#endif
-      if (epollWouldBlock(ep)) return;
 #if PTHREADS
       if (callerThread) {
-        it.inflight = true;
-        // The owner thread is gone: the listener dies with it.
-        if (!__emscripten_epoll_run_callback_on_thread(callerThread, callback, userdata, it.token)) {
-          epollClearListener(ep, it);
-        }
-        return;
+        return new Promise((resolve) => {
+          var token = epollDeliveries.nextToken++;
+          epollDeliveries[token] = resolve;
+          // The owner thread is gone: the listener dies with it.
+          if (!__emscripten_epoll_run_callback_on_thread(callerThread, callback, userdata, token)) {
+            epollClearListener(ep, it);
+            delete epollDeliveries[token];
+            resolve();
+          }
+        }).then(() => {
+          if (!it.cleared && !epollWouldBlock(ep)) hold();
+        });
       }
 #endif
       callUserCallback(() => {
         {{{ makeDynCall('vp', 'callback') }}}(userdata);
-        // Still ready (undrained, or a re-listed level fd): fire again next
-        // turn, taking the hold before callUserCallback's maybeExit.
-        if (!it.cleared && !epollWouldBlock(ep)) wake(true);
+        if (!it.cleared && !epollWouldBlock(ep)) hold();
       });
     }
-    // Coalesce synchronous producer notifies into one macrotask delivery (a
-    // microtask could run re-entrantly: hosts drain microtasks inside other
-    // calls, e.g. Node's module loader on a first builtin load). A scheduled
-    // delivery holds the runtime until it runs; a teardown wake (POLLNVAL, or
-    // once FS.quit has begun) holds nothing, since no delivery can follow and
-    // the hold would outlive the exit.
-    function wake(held) {
-      if (held && FS.initialized && !it.held) {
-        it.held = true;
-        {{{ runtimeKeepalivePush() }}}
-      }
-      if (it.scheduled) return;
-      it.scheduled = true;
-      emSetImmediate(() => {
-        it.scheduled = false;
+    // Each delivery is a macrotask (a microtask could run re-entrantly: hosts
+    // drain microtasks inside other calls, e.g. Node's module loader on a first
+    // builtin load; and a still-ready level fd would never yield to I/O), so
+    // synchronous producer notifies coalesce into the one pending turn. A
+    // readiness wake holds the runtime for that turn; a teardown wake (POLLNVAL)
+    // does not. One delivery is in flight at a time: a cross-thread one is
+    // paced by its completion, else a still-ready level fd would be
+    // re-signalled in a tight spin while the owner drains it.
+    async function wake(held) {
+      if (held) hold();
+      if (it.running) return;
+      it.running = true;
+      do {
+        await new Promise(emSetImmediate);
         if (it.held) {
           it.held = false;
           {{{ runtimeKeepalivePop() }}}
         }
-        // Not delivering here (nothing to collect, or dispatched to another
-        // thread): callUserCallback's maybeExit will not run, and the hold just
-        // released may have been what deferred main's exit.
         if (it.cleared || epollWouldBlock(ep)) {
+          it.running = false;
+          // Not delivering: callUserCallback's maybeExit will not run, and
+          // the hold just released may have been what deferred main's exit.
 #if !MINIMAL_RUNTIME
           maybeExit();
 #endif
           return;
         }
+        await deliver();
+        // A local delivery ran maybeExit; a cross-thread one takes another turn
+        // for it.
+      } while (it.held
 #if PTHREADS
-        if (callerThread) {
-          deliver();
-#if !MINIMAL_RUNTIME
-          maybeExit();
+        || callerThread
 #endif
-          return;
-        }
-#endif
-        deliver();
-      });
+      );
+      it.running = false;
     }
-#if PTHREADS
-    if (callerThread) {
-      it.ep = ep;
-      it.wake = wake;
-      it.token = epollDeliveries.nextToken++;
-      epollDeliveries[it.token] = it;
-    }
-#endif
     it.listener = ep.node.addListener((flags) => wake(!(flags & {{{ cDefs.POLLNVAL }}})));
     wake(!epollWouldBlock(ep));
     return 0;
@@ -492,16 +481,14 @@ var EpollLibrary = {
   },
 
 #if PTHREADS
-  // Token -> listener for in-flight cross-thread deliveries. Tokens are
-  // monotonic so a stale completion finds nothing rather than another listener.
+  // Token -> completion of an in-flight cross-thread delivery.
   $epollDeliveries: {nextToken: 1},
 
-  _emscripten_epoll_delivery_done__deps: ['$epollDeliveries', '$epollWouldBlock'],
+  _emscripten_epoll_delivery_done__deps: ['$epollDeliveries'],
   _emscripten_epoll_delivery_done: (token) => {
-    var it = epollDeliveries[token];
-    if (!it) return;
-    it.inflight = false;
-    it.wake(!epollWouldBlock(it.ep));
+    var resolve = epollDeliveries[token];
+    delete epollDeliveries[token];
+    resolve?.();
   },
 #endif
 };
