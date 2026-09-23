@@ -5710,6 +5710,11 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
   def test_fs_bad_lookup(self):
     self.do_runf('fs/test_fs_bad_lookup.c', 'ok')
 
+  def test_fs_base(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
+    self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
+    self.do_runf_out_file('fs/test_fs_base.c')
+
   @also_with_nodefs_both
   @crossplatform
   @parameterized({

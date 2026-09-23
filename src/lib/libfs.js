@@ -30,7 +30,7 @@ var LibraryFS = {
     '$PROXYFS',
 #endif
 #if ASSERTIONS
-    '$strError', '$ERRNO_CODES',
+    '$strError', '$ERRNO_CODES', '$warnOnce',
 #endif
 #if !MINIMAL_RUNTIME
     '$FS_createPreloadedFile',
@@ -1632,10 +1632,14 @@ FS.staticInit();`;
       }
     },
 
+#if !STRICT
     //
     // old v1 compatibility functions
     //
     analyzePath(path, dontResolveLastLink) {
+#if ASSERTIONS
+      warnOnce('FS.analyzePath is deprecated; use FS.lookupPath or FS.stat instead');
+#endif
       // operate from within the context of the symlink's target
       try {
         var lookup = FS.lookupPath(path, { follow: !dontResolveLastLink });
@@ -1663,6 +1667,7 @@ FS.staticInit();`;
       };
       return ret;
     },
+#endif
     createPath(parent, path, canRead, canWrite) {
       parent = typeof parent == 'string' ? parent : FS.getPath(parent);
       var parts = path.split('/').reverse();

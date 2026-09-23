@@ -159,20 +159,6 @@ addToLibrary({
 #endif
 
 #if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // see comment above
-    // Full JS API support
-
-    analyzePath(path) {
-      // TODO: Consider simplifying this API, which for now matches the JS FS.
-      var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(path)));
-      var exists = result != {{{ cDefs.ENOENT }}};
-      return {
-        exists,
-        object: {
-          contents: exists ? FS.readFile(path) : null
-        }
-      };
-    },
-
     // libc methods
 
     mkdir: (path, mode) => FS_mkdir(path, mode),
