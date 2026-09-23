@@ -13,18 +13,19 @@ LibraryJSEventLoop = {
 
   // Just like setTimeout but returns an i32 that can be passed back to wasm
   // rather than a JS object, and holds a runtime keepalive while pending.
+  // Ids are sequential and, like setTimeout's, never zero; the native handle
+  // is retained only while pending.
   $safeSetTimeout__deps: ['$callUserCallback'],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
+  $safeSetTimeout__postset: 'safeSetTimeout.pending = new Map(); safeSetTimeout.nextId = 1;',
   $safeSetTimeout: (func, timeout) => {
     {{{ runtimeKeepalivePush() }}}
-    // Slot 0 is reserved so that, like setTimeout, ids are always non-zero.
-    safeSetTimeout.mapping ||= [0];
-    var id = safeSetTimeout.mapping.length;
-    safeSetTimeout.mapping[id] = setTimeout(() => {
-      safeSetTimeout.mapping[id] = undefined;
+    var id = safeSetTimeout.nextId++;
+    safeSetTimeout.pending.set(id, setTimeout(() => {
+      safeSetTimeout.pending.delete(id);
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(func);
-    }, timeout);
+    }, timeout));
     return id;
   },
 
@@ -32,22 +33,22 @@ LibraryJSEventLoop = {
   // timeout has already fired or been cleared.
   $safeClearTimeout__deps: ['$safeSetTimeout'],
   $safeClearTimeout: (id) => {
-    var handle = safeSetTimeout.mapping?.[id];
+    var handle = safeSetTimeout.pending.get(id);
     if (!handle) return;
+    safeSetTimeout.pending.delete(id);
     clearTimeout(handle);
-    safeSetTimeout.mapping[id] = undefined;
     {{{ runtimeKeepalivePop() }}}
   },
 
   // Just like setImmediate but returns an i32 that can be passed back
   // to wasm rather than a JS object.
+  $setImmediateWrapped__postset: 'setImmediateWrapped.pending = new Map(); setImmediateWrapped.nextId = 1;',
   $setImmediateWrapped: (func) => {
-    setImmediateWrapped.mapping ||= [];
-    var id = setImmediateWrapped.mapping.length;
-    setImmediateWrapped.mapping[id] = setImmediate(() => {
-      setImmediateWrapped.mapping[id] = undefined;
+    var id = setImmediateWrapped.nextId++;
+    setImmediateWrapped.pending.set(id, setImmediate(() => {
+      setImmediateWrapped.pending.delete(id);
       func();
-    });
+    }));
     return id;
   },
 
@@ -63,10 +64,10 @@ LibraryJSEventLoop = {
   // Just like clearImmediate but takes an i32 rather than an object.
   // Returns true if the immediate was still pending.
   $clearImmediateWrapped: (id) => {
-    var handle = setImmediateWrapped.mapping[id];
+    var handle = setImmediateWrapped.pending.get(id);
     if (!handle) return false;
+    setImmediateWrapped.pending.delete(id);
     clearImmediate(handle);
-    setImmediateWrapped.mapping[id] = undefined;
     return true;
   },
 
