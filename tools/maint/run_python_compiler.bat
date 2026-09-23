@@ -46,14 +46,12 @@
 :: To avoid this from causing issues, explicitly specify the -X utf8 encoding
 :: on tool invocations.
 
-:: If _EMCC_CCACHE is not set, do a regular invocation of the python compiler driver.
-:: Otherwise remove the ccache env. var, and then reinvoke this script with ccache enabled.
-@if "%_EMCC_CCACHE%"=="" (
-  set CMD="%_EM_PY%" -E -X utf8 "%MYDIR%%~n0.py"
-) else (
-  set _EMCC_CCACHE=
-  set CMD=ccache "%MYDIR%%~n0.bat"
+:: If _EMCC_CCACHE is set, run via ccache.
+@set _CCACHE_PREFIX=
+@if not "%_EMCC_CCACHE%"=="" (
+  set _CCACHE_PREFIX=ccache 
 )
+@set CMD=%_CCACHE_PREFIX%"%_EM_PY%" -E -X utf8 "%MYDIR%%~n0.py"
 
 :: Python Windows bug https://bugs.python.org/issue34780: If this script was invoked via a
 :: shared stdin handle from the parent process, and that parent process stdin handle is in
