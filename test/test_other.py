@@ -13617,8 +13617,9 @@ void foo() {}
     self.do_runf('other/test_epoll_callback_overflow.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_replace(self):
-    # Listener identity is (callback, thread): re-adding replaces (updating
-    # userdata, no stacking); removal is by identity (ENOENT/EBADF errors).
+    # Listener identity is (callback, userdata): the same callback registers
+    # once per userdata, a duplicate pair is EEXIST; removal is by pair
+    # (ENOENT/EBADF errors).
     self.do_runf('other/test_epoll_callback_replace.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_close(self):
@@ -13649,16 +13650,12 @@ void foo() {}
   @parameterized({
     '': ([], 3),
     'hold': (['-DMODE_HOLD'], 0),
-    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'], 3),
-    'hold_pthread': (['-DMODE_HOLD', '-pthread', '-sPROXY_TO_PTHREAD'], 0),
   })
   def test_epoll_callback_unref(self, cflags, returncode):
     # A listener is an unref'd handle: with nothing held, main returning exits
     # at once with its status and the callback never runs. With a
-    # emscripten_runtime_keepalive_push() the delivery runs (on the registering
-    # thread under PROXY_TO_PTHREAD) and the pop from the callback exits.
-    if '-pthread' in cflags:
-      self.require_pthreads()
+    # emscripten_runtime_keepalive_push() the delivery runs and the pop from the
+    # callback exits.
     self.do_runf('other/test_epoll_callback_unref.c', 'done\nexited %d\n' % returncode,
                  cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
 
@@ -13685,17 +13682,19 @@ void foo() {}
   @parameterized({
     'drain': (['-DMODE_DRAIN'],),
     'remove': (['-DMODE_REMOVE'],),
-    'drain_pthread': (['-DMODE_DRAIN', '-pthread', '-sPROXY_TO_PTHREAD'],),
-    'remove_pthread': (['-DMODE_REMOVE', '-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_epoll_callback_drain_exit(self, cflags):
     # A scheduled delivery whose set was drained (or listener removed) before it
     # ran has nothing to deliver, but releasing its hold must still let main's
     # deferred exit complete (Module.onExit fires, main's status is returned).
-    if '-pthread' in cflags:
-      self.require_pthreads()
     self.do_runf('other/test_epoll_callback_drain_exit.c', 'done\nexited\n',
                  cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=7)
+
+  @requires_pthreads
+  def test_epoll_callback_thread(self):
+    # Listeners are main-thread only: registration from another thread is
+    # ENOTSUP.
+    self.do_runf('other/test_epoll_callback_thread.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')

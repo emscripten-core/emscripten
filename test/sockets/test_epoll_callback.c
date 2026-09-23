@@ -52,11 +52,6 @@ void on_ready(void* ud) {
   close(tx);
   // Done: release the hold taken in main so the runtime exits.
   emscripten_runtime_keepalive_pop();
-#ifdef __EMSCRIPTEN_PTHREADS__
-  // Under PROXY_TO_PTHREAD releasing the last hold on the worker exits only the
-  // thread, not the process; exit explicitly.
-  exit(0);
-#endif
 }
 
 void at_exit(void) {

@@ -52,7 +52,7 @@ static void on_ready(void* ud) {
   // cleared there is nothing left to fire, and the runtime exits cleanly.
   char b[1];
   assert(read(rfd, b, 1) == 1);
-  assert(emscripten_epoll_remove_listener(ep, on_ready) == 0);
+  assert(emscripten_epoll_remove_listener(ep, on_ready, (void*)42) == 0);
   assert(write(wfd, "x", 1) == 1);
   arm_rfd(EPOLL_CTL_MOD);
   printf("done\n");

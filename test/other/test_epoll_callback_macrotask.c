@@ -32,7 +32,7 @@ static void on_ready(void* ud) {
   assert(epoll_wait(ep, events, 1, 0) == 1);
   char b[1];
   assert(read(rfd, b, 1) == 1);
-  assert(emscripten_epoll_remove_listener(ep, on_ready) == 0);
+  assert(emscripten_epoll_remove_listener(ep, on_ready, NULL) == 0);
   printf("done\n");
 }
 

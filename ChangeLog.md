@@ -78,7 +78,8 @@ See docs/process.md for more on how version tagging works.
   readiness to a callback on the host event loop (the callback collects the
   events itself via a zero-timeout `epoll_wait`), with no `ASYNCIFY`/`JSPI`
   requirement. The listener does not keep the runtime alive; use
-  `emscripten_runtime_keepalive_push`/`pop` for that. (#27547)
+  `emscripten_runtime_keepalive_push`/`pop` for that. Listeners are currently
+  main-thread only. (#27547)
 
 6.0.7 - 08/17/26
 ----------------
