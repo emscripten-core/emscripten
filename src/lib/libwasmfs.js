@@ -133,7 +133,7 @@ addToLibrary({
                                            // on other code including the
                                            // __wasmfs_* method properly.
     readFile(path, opts = {}) {
-      opts.encoding = opts.encoding || 'binary';
+      opts.encoding ??= 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         throw new Error(`Invalid encoding type "${opts.encoding}"`);
       }
