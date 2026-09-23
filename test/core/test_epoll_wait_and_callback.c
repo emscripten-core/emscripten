@@ -45,7 +45,7 @@ static void on_ready(void* ud);
 static void maybe_done(void) {
   if (seen[0] && seen[1] && seen[2] && !done_printed) {
     done_printed = 1;
-    assert(emscripten_epoll_remove_listener(ep, on_ready) == 0);
+    assert(emscripten_epoll_remove_listener(ep, on_ready, 0) == 0);
     printf("done\n");
   }
 }

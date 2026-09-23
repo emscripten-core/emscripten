@@ -28,7 +28,7 @@ static void on_ready(void* ud) {
   assert(ev[0].events & EPOLLIN);
   char b[1];
   assert(read(rfd, b, 1) == 1); // drain the leaf
-  assert(emscripten_epoll_remove_listener(epA, on_ready) == 0);
+  assert(emscripten_epoll_remove_listener(epA, on_ready, 0) == 0);
   printf("done\n");
 }
 

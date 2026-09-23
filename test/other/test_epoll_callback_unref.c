@@ -4,13 +4,12 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * A listener is an unref'd handle: it never keeps the runtime (or, with
- * pthreads, its registering thread) alive. Without a hold, main returning
- * exits the runtime at once with main's status and the callback never runs.
- * With MODE_HOLD the program holds the runtime itself with
- * emscripten_runtime_keepalive_push() before returning; the delivery then runs
- * on the registering thread, and the pop from the callback lets the runtime
- * exit, with atexit and onExit both firing.
+ * A listener is an unref'd handle: it never keeps the runtime alive. Without a
+ * hold, main returning exits the runtime at once with main's status and the
+ * callback never runs. With MODE_HOLD the program holds the runtime itself with
+ * emscripten_runtime_keepalive_push() before returning; the delivery then runs,
+ * and the pop from the callback lets the runtime exit, with atexit and onExit
+ * both firing.
  */
 
 #include <sys/epoll.h>
@@ -31,11 +30,6 @@ void on_ready(void* ud) {
   assert(read(rfd, &b, 1) == 1);
   fires++;
   emscripten_runtime_keepalive_pop();
-#ifdef __EMSCRIPTEN_PTHREADS__
-  // Under PROXY_TO_PTHREAD releasing the last hold on the worker exits only the
-  // thread, not the process; exit explicitly.
-  exit(0);
-#endif
 }
 
 void writer(void* arg) { assert(write(wfd, "x", 1) == 1); }
@@ -50,7 +44,7 @@ void at_exit(void) {
 }
 
 int main(void) {
-  MAIN_THREAD_EM_ASM({ Module['onExit'] = (status) => out('exited ' + status); });
+  EM_ASM({ Module['onExit'] = (status) => out('exited ' + status); });
   atexit(at_exit);
   ep = epoll_create1(0);
   int p[2];

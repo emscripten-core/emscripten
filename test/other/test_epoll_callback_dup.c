@@ -34,7 +34,7 @@ static void on_ready(void* ud) {
 
   char b[1];
   assert(read(rfd, b, 1) == 1);
-  assert(emscripten_epoll_remove_listener(ep_a, on_ready) == 0);
+  assert(emscripten_epoll_remove_listener(ep_a, on_ready, NULL) == 0);
   printf("done\n");
 }
 

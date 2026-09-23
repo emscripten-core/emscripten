@@ -39,7 +39,7 @@ static void on_ready(void* ud) {
   assert(read(rfd[i], b, 1) == 1); // drain so it is no longer ready
 
   if (++fires == 3) {
-    assert(emscripten_epoll_remove_listener(ep, on_ready) == 0);
+    assert(emscripten_epoll_remove_listener(ep, on_ready, 0) == 0);
     printf("done\n");
   }
 }

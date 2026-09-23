@@ -50,8 +50,8 @@ static void check(void* ud) {
   // was one event each (load balancing).
   assert(collected == 2 && seen[0] && seen[1]);
   assert(fires_a == 1 && fires_b == 1);
-  assert(emscripten_epoll_remove_listener(ep, listener_a) == 0);
-  assert(emscripten_epoll_remove_listener(ep, listener_b) == 0);
+  assert(emscripten_epoll_remove_listener(ep, listener_a, 0) == 0);
+  assert(emscripten_epoll_remove_listener(ep, listener_b, 0) == 0);
   printf("done\n");
 }
 

@@ -25,7 +25,7 @@ static void on_ready(void* ud) {
   assert(epoll_wait(ep, ev, 4, 0) == 1);
   assert(ev[0].events & EPOLLOUT);
   if (++fires == 3) { // re-fired every tick despite no new event and no drain
-    assert(emscripten_epoll_remove_listener(ep, on_ready) == 0);
+    assert(emscripten_epoll_remove_listener(ep, on_ready, 0) == 0);
     printf("done\n");
   }
 }

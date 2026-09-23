@@ -62,10 +62,6 @@ emscripten_stack_unwind_buffer(uintptr_t pc, uintptr_t* buffer, uint32_t depth);
 
 bool _emscripten_get_now_is_monotonic(void);
 
-// Defined in libepoll.js; called by emscripten_epoll_callback.c to report a
-// completed cross-thread epoll callback delivery back to the main thread.
-void _emscripten_epoll_delivery_done(int token);
-
 void _emscripten_get_progname(char*, int);
 
 // Not defined in musl, but defined in library.js.  Included here for
