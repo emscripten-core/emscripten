@@ -643,6 +643,8 @@ sigs = {
   emscripten_destroy_web_audio_node__sig: 'vi',
   emscripten_destroy_worker__sig: 'vi',
   emscripten_enter_soft_fullscreen__sig: 'ipp',
+  emscripten_epoll_add_listener__sig: 'iipp',
+  emscripten_epoll_remove_listener__sig: 'iipp',
   emscripten_err__sig: 'vp',
   emscripten_errn__sig: 'vpp',
   emscripten_exit_fullscreen__sig: 'i',

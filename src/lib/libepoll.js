@@ -45,7 +45,7 @@ var EpollLibrary = {
   },
 
   $epollNewInstance__internal: true,
-  $epollNewInstance__deps: ['$FS', '$epollWouldBlock'],
+  $epollNewInstance__deps: ['$FS', '$epollWouldBlock', '$epollClearListener'],
   $epollNewInstance: () => {
     // Its own (detached) node, so the epoll fd can be watched by a parent epoll
     // (nesting) and carry the readiness wait-queue methods. Shared across dups.
@@ -75,6 +75,9 @@ var EpollLibrary = {
           // parent epoll watching this fd so it re-derives and drops the
           // now-stale registration (via doEpollWait's shared check).
           if (--ep.refcount) return;
+          for (var it of ep.interests.values()) {
+            epollClearListener(ep, it);
+          }
           for (var reg of ep.epoll.values()) {
             reg.listener?.listeners.delete(reg.listener.entry);
           }
@@ -86,6 +89,7 @@ var EpollLibrary = {
     Object.assign(stream.shared, {
       node,
       epoll: new Map(),
+      interests: new Map(), // emscripten_epoll_add_listener listeners
       // Open references (fds) to this instance; the last close reclaims it.
       refcount: 1,
     });
@@ -221,9 +225,10 @@ var EpollLibrary = {
     // (ep_poll_callback: on an edge, list the reg and wake any waiter on this
     // epoll - and through ep.node any parent epoll nesting it.)
     if (!reg.listener) {
-      reg.listener = target.node.addListener(() => {
+      reg.listener = target.node.addListener((flags) => {
         readyListAdd(ep, reg);
-        ep.node.notifyListeners({{{ cDefs.POLLIN }}});
+        // A closing fd (POLLNVAL) wakes the epoll as a teardown, not readiness.
+        ep.node.notifyListeners(flags & {{{ cDefs.POLLNVAL }}} ? {{{ cDefs.POLLNVAL }}} : {{{ cDefs.POLLIN }}});
       // EPOLLEXCLUSIVE: when one fd is watched by several epolls, the watched
       // node wakes only one of them per edge (round-robin), not all.
       }, !!(events & {{{ cDefs.EPOLLEXCLUSIVE }}}));
@@ -344,6 +349,114 @@ var EpollLibrary = {
     if (!count && timeout != 0) warnOnce('non-zero epoll_wait() timeout not supported: ' + timeout)
 #endif
     return count;
+  },
+
+  $epollClearListener__internal: true,
+  $epollClearListener: (ep, it) => {
+    ep.interests.delete(it.key);
+    it.cleared = true;
+    it.listener.listeners.delete(it.listener.entry);
+  },
+
+  // See <emscripten/epoll.h>. A listener is keyed by (callback, userdata),
+  // signals the callback while the set has uncollected ready events, and holds
+  // nothing itself: the only keepalive taken is for a scheduled delivery, which
+  // is pending work like a safeSetTimeout callback.
+  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$callUserCallback', '$emSetImmediate',
+#if !MINIMAL_RUNTIME
+    '$maybeExit',
+#endif
+  ],
+  emscripten_epoll_add_listener__proxy: 'sync',
+  emscripten_epoll_add_listener: (epfd, callback, userdata) => {
+#if PTHREADS
+    // Readiness is tracked on the main thread and the callback runs there.
+    if (PThread.currentProxiedOperationCallerThread) return {{{ cDefs.ENOTSUP }}};
+#endif
+    var stream = FS.getStream(epfd);
+    // A public API, not a syscall: positive errno.
+    if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
+    var ep = stream.shared;
+    var key = callback + ':' + userdata;
+    if (ep.interests.has(key)) return {{{ cDefs.EEXIST }}};
+    var it = {key};
+    ep.interests.set(key, it);
+
+    // Hold the runtime for the delivery scheduled on the next turn. Not once
+    // FS.quit has begun: no delivery can follow and the hold would outlive the
+    // exit.
+    function hold() {
+      if (FS.initialized && !it.held) {
+        it.held = true;
+        {{{ runtimeKeepalivePush() }}}
+      }
+    }
+    // Runs the callback, taking the hold for the next turn if the set is still
+    // ready (undrained, or a re-listed level fd) before callUserCallback's
+    // maybeExit.
+    function deliver() {
+      callUserCallback(() => {
+        {{{ makeDynCall('vp', 'callback') }}}(userdata);
+        if (!it.cleared && !epollWouldBlock(ep)) hold();
+      });
+    }
+    // Runs one turn: releases the turn's hold and, if the set is ready,
+    // delivers. Resolves once the delivery has completed, or with false if
+    // there was nothing to deliver. Runs inside the macrotask, not after it, so
+    // a fatal error escaping the callback is an uncaught exception rather than
+    // a rejection.
+    function turn() {
+      return new Promise((resolve) => emSetImmediate(() => {
+        if (it.held) {
+          it.held = false;
+          {{{ runtimeKeepalivePop() }}}
+        }
+        if (it.cleared || epollWouldBlock(ep)) {
+          // Not delivering: callUserCallback's maybeExit will not run, and
+          // the hold just released may have been what deferred main's exit.
+#if !MINIMAL_RUNTIME
+          maybeExit();
+#endif
+          return resolve(false);
+        }
+        deliver();
+        resolve(true);
+      }));
+    }
+    // Each delivery is a macrotask (a microtask could run re-entrantly: hosts
+    // drain microtasks inside other calls, e.g. Node's module loader on a first
+    // builtin load; and a still-ready level fd would never yield to I/O), so
+    // synchronous producer notifies coalesce into the one pending turn. A
+    // readiness wake holds the runtime for that turn; a teardown wake (POLLNVAL)
+    // does not. One delivery is in flight at a time.
+    async function wake(held) {
+      if (held) hold();
+      if (it.running) return;
+      it.running = true;
+      // A delivery ran maybeExit; loop only while it left the set ready.
+      do {
+        if (!await turn()) break;
+      } while (it.held);
+      it.running = false;
+    }
+    it.listener = ep.node.addListener((flags) => wake(!(flags & {{{ cDefs.POLLNVAL }}})));
+    wake(!epollWouldBlock(ep));
+    return 0;
+  },
+
+  emscripten_epoll_remove_listener__deps: ['$FS', '$epollClearListener'],
+  emscripten_epoll_remove_listener__proxy: 'sync',
+  emscripten_epoll_remove_listener: (epfd, callback, userdata) => {
+#if PTHREADS
+    if (PThread.currentProxiedOperationCallerThread) return {{{ cDefs.ENOTSUP }}};
+#endif
+    var stream = FS.getStream(epfd);
+    if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
+    var ep = stream.shared;
+    var it = ep.interests.get(callback + ':' + userdata);
+    if (!it) return {{{ cDefs.ENOENT }}};
+    epollClearListener(ep, it);
+    return 0;
   },
 };
 
