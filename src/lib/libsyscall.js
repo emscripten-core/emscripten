@@ -17,7 +17,7 @@ var SyscallsLibrary = {
     // global constants
 
     // shared utilities
-    calculateAt(dirfd, path, allowEmpty) {
+    calculateAt(dirfd, path, allowEmpty = false) {
       if (PATH.isAbs(path)) {
         return path;
       }
@@ -947,7 +947,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     mode &= ~SYSCALLS.currentUmask;
-    FS.mkdir(path, mode, 0);
+    FS.mkdir(path, mode);
     return 0;
   },
   __syscall_mknodat: (dirfd, path, mode, dev) => {

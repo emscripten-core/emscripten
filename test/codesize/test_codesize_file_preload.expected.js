@@ -954,7 +954,7 @@ var MEMFS = {
   mount(mount) {
     return MEMFS.createNode(null, "/", 16895, 0);
   },
-  createNode(parent, name, mode, dev) {
+  createNode(parent, name, mode, dev = undefined) {
     if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
       // not supported
       throw new FS.ErrnoError(63);
@@ -1114,7 +1114,7 @@ var MEMFS = {
       }
       throw MEMFS.doesNotExistError;
     },
-    mknod(parent, name, mode, dev) {
+    mknod(parent, name, mode, dev = undefined) {
       return MEMFS.createNode(parent, name, mode, dev);
     },
     rename(old_node, new_dir, new_name) {
@@ -1361,7 +1361,7 @@ var FS = {
   devices: {},
   streams: [],
   nextInode: 1,
-  nameTable: null,
+  nameTable: [],
   currentPath: "/",
   initialized: false,
   ignorePermissions: true,
@@ -1623,7 +1623,7 @@ var FS = {
     // if we failed to find it in the cache, call into the VFS
     return FS.lookup(parent, name);
   },
-  createNode(parent, name, mode, rdev) {
+  createNode(parent, name, mode, rdev = undefined) {
     var node = new FS.FSNode(parent, name, mode, rdev);
     FS.hashAddNode(node);
     return node;
@@ -1994,7 +1994,7 @@ var FS = {
     mode |= 16384;
     return FS.mknod(path, mode, 0);
   },
-  mkdirTree(path, mode) {
+  mkdirTree(path, mode = 511) {
     var dirs = path.split("/");
     var d = "";
     for (var dir of dirs) {
@@ -2008,7 +2008,7 @@ var FS = {
       }
     }
   },
-  mkdev(path, mode, dev) {
+  mkdev(path, mode, dev = undefined) {
     if (typeof dev == "undefined") {
       dev = mode;
       mode = 438;
@@ -2206,7 +2206,7 @@ var FS = {
     }
     return link.node_ops.readlink(link);
   },
-  stat(path, dontFollow) {
+  stat(path, dontFollow = false) {
     var lookup = FS.lookupPath(path, {
       follow: !dontFollow
     });
@@ -2226,14 +2226,14 @@ var FS = {
   lstat(path) {
     return FS.stat(path, true);
   },
-  doChmod(stream, node, mode, dontFollow) {
+  doChmod(stream, node, mode, dontFollow = false) {
     FS.doSetAttr(stream, node, {
       mode: (mode & 4095) | (node.mode & ~4095),
       ctime: Date.now(),
       dontFollow
     });
   },
-  chmod(path, mode, dontFollow) {
+  chmod(path, mode, dontFollow = false) {
     var node;
     if (typeof path == "string") {
       var lookup = FS.lookupPath(path, {
@@ -2252,13 +2252,13 @@ var FS = {
     var stream = FS.getStreamChecked(fd);
     FS.doChmod(stream, stream.node, mode, false);
   },
-  doChown(stream, node, dontFollow) {
+  doChown(stream, node, dontFollow = false) {
     FS.doSetAttr(stream, node, {
       timestamp: Date.now(),
       dontFollow
     });
   },
-  chown(path, uid, gid, dontFollow) {
+  chown(path, uid, gid, dontFollow = false) {
     var node;
     if (typeof path == "string") {
       var lookup = FS.lookupPath(path, {
@@ -2315,7 +2315,7 @@ var FS = {
     }
     FS.doTruncate(stream, stream.node, len);
   },
-  utime(path, atime, mtime, dontFollow) {
+  utime(path, atime, mtime, dontFollow = false) {
     var lookup = FS.lookupPath(path, {
       follow: !dontFollow
     });
@@ -2457,7 +2457,7 @@ var FS = {
     stream.ungotten = [];
     return stream.position;
   },
-  read(stream, buffer, offset, length, position) {
+  read(stream, buffer, offset, length, position = undefined) {
     if (length < 0 || position < 0) {
       throw new FS.ErrnoError(28);
     }
@@ -2483,7 +2483,7 @@ var FS = {
     if (!seeking) stream.position += bytesRead;
     return bytesRead;
   },
-  write(stream, buffer, offset, length, position, canOwn) {
+  write(stream, buffer, offset, length, position = undefined, canOwn = undefined) {
     if (length < 0 || position < 0) {
       throw new FS.ErrnoError(28);
     }
@@ -2693,7 +2693,7 @@ var FS = {
     var stderr = FS.open("/dev/stderr", 1);
   },
   staticInit() {
-    FS.nameTable = new Array(4096);
+    FS.nameTable.length = 4096;
     FS.mount(MEMFS, {}, "/");
     FS.createDefaultDirectories();
     FS.createDefaultDevices();
@@ -2702,7 +2702,7 @@ var FS = {
       "MEMFS": MEMFS
     };
   },
-  init(input, output, error) {
+  init(input = undefined, output = undefined, error = undefined) {
     FS.initialized = true;
     // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
     FS.createStandardStreams(input, output, error);
@@ -2717,7 +2717,7 @@ var FS = {
       }
     }
   },
-  analyzePath(path, dontResolveLastLink) {
+  analyzePath(path, dontResolveLastLink = false) {
     // operate from within the context of the symlink's target
     try {
       var lookup = FS.lookupPath(path, {
@@ -2757,7 +2757,7 @@ var FS = {
     }
     return ret;
   },
-  createPath(parent, path, canRead, canWrite) {
+  createPath(parent, path, canRead = undefined, canWrite = undefined) {
     parent = typeof parent == "string" ? parent : FS.getPath(parent);
     var parts = path.split("/").reverse();
     while (parts.length) {
@@ -2773,12 +2773,12 @@ var FS = {
     }
     return current;
   },
-  createFile(parent, name, properties, canRead, canWrite) {
+  createFile(parent, name, properties, canRead = undefined, canWrite = undefined) {
     var path = PATH.join2(typeof parent == "string" ? parent : FS.getPath(parent), name);
     var mode = FS_getMode(canRead, canWrite);
     return FS.create(path, mode);
   },
-  createDataFile(parent, name, data, canRead, canWrite, canOwn) {
+  createDataFile(parent, name, data = undefined, canRead = undefined, canWrite = undefined, canOwn = undefined) {
     var path = name;
     if (parent) {
       parent = typeof parent == "string" ? parent : FS.getPath(parent);
@@ -2796,7 +2796,7 @@ var FS = {
       FS.chmod(node, mode);
     }
   },
-  createDevice(parent, name, input, output) {
+  createDevice(parent, name, input = undefined, output = undefined) {
     var path = PATH.join2(typeof parent == "string" ? parent : FS.getPath(parent), name);
     var mode = FS_getMode(!!input, !!output);
     FS.createDevice.major ??= 64;
@@ -2863,7 +2863,7 @@ var FS = {
       }
     }
   },
-  createLazyFile(parent, name, url, canRead, canWrite) {
+  createLazyFile(parent, name, url, canRead = undefined, canWrite = undefined) {
     // Lazy chunked Uint8Array (implements get and length from Uint8Array).
     // Actual getting is abstracted away for eventual reuse.
     class LazyUint8Array {
@@ -3051,7 +3051,7 @@ var FS = {
 
 var SYSCALLS = {
   currentUmask: 18,
-  calculateAt(dirfd, path, allowEmpty) {
+  calculateAt(dirfd, path, allowEmpty = false) {
     if (PATH.isAbs(path)) {
       return path;
     }

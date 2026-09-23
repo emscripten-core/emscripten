@@ -12418,6 +12418,27 @@ int main(void) {
       else:
         self.assertContained(outcome, proc.stderr)
 
+  @parameterized({
+    '': ([],),
+    'nodefs_sockfs': (['-lnodefs.js', '-lsockfs.js'],),
+  })
+  def test_closure_fs_es6(self, args):
+    # TODO: Delete this test once test_closure_full_js_library can run with
+    # -sEXPORT_ES6. Currently -sINCLUDE_FULL_LIBRARY + -sEXPORT_ES6 fails due
+    # to Closure internal compiler errors (JSC_ILLEGAL_MODULE_RENAMING_CONFLICT):
+    # https://github.com/google/closure-compiler/issues/4344
+    self.build('hello_world.c', output_suffix='.mjs', cflags=[
+      '-O2',
+      '-sEXPORT_ES6',
+      '-sFORCE_FILESYSTEM',
+      '--closure=1',
+    ] + args)
+    create_file('run.mjs', '''
+      import Module from './hello_world.mjs';
+      await Module();
+    ''')
+    self.assertContained('Hello, world!\n', self.run_js('run.mjs'))
+
   def test_bitcode_input(self):
     # Verify that bitcode files are accepted as input
     create_file('main.c', 'void foo(); int main() { return 0; }')
