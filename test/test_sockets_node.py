@@ -282,18 +282,24 @@ class sockets_node(RunnerCore):
     # call, updating msg_len per message.
     self.do_runf('sockets/test_udp_mmsg.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
+  @also_with_proxy_to_pthread
   def test_noderawsockets_epoll_callback(self):
     # An epoll listener callback woken repeatedly by arriving datagrams on a
     # real socket via the SOCKFS -> wait-queue bridge, with no ASYNCIFY/JSPI.
     # The program holds the runtime with emscripten_runtime_keepalive_push()
-    # across main's return and pops from the callback.
+    # across main's return and pops from the callback. With pthreads the
+    # readiness is tracked on the main thread (where the epoll syscalls are
+    # proxied) but each delivery is back-proxied to the thread that registered
+    # the callback.
     self.do_runf('sockets/test_epoll_callback.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
+  @also_with_proxy_to_pthread
   def test_noderawsockets_epoll_callback_unref(self):
     # Same, holding nothing: the listener is unref'd, so main returning exits at
     # once and the in-flight datagram never reaches the callback.
     self.do_runf('sockets/test_epoll_callback.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME', '-DMODE_UNREF'])
 
+  @also_with_proxy_to_pthread
   def test_noderawsockets_epoll_callback_force_exit(self):
     # emscripten_force_exit with a listener registered on an armed socket:
     # FS.quit closes the epoll on the way out, removing the listener.
