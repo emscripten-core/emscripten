@@ -44,7 +44,14 @@ commands:
           name: download browser (<< parameters.browser_name >>)
           command: |
             npx --yes @puppeteer/browsers install << parameters.browser_name >> --format={{path}} | tee browser_path.txt
-            BROWSER_PATH=`cat browser_path.txt`
+            BROWSER_PATH=$(cat browser_path.txt 2>/dev/null || true)
+            # @puppeteer/browsers can exit 0 on truncated downloads while
+            # failing to extract the binary or outputting an empty path.
+            # See: https://github.com/puppeteer/puppeteer/issues/15487
+            if [[ -z "${BROWSER_PATH}" || ! -x "${BROWSER_PATH}" ]]; then
+              echo "Failed to install browser (empty path or binary missing)"
+              exit 1
+            fi
             echo "browser installed to: ${BROWSER_PATH}"
             "${BROWSER_PATH}" --version
             echo "export EMTEST_BROWSER=\"${BROWSER_PATH}\"" >> $BASH_ENV
