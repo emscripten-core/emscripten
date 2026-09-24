@@ -1,7 +1,7 @@
 {
   "a.out.js": 270648,
-  "a.out.nodebug.wasm": 588063,
-  "total": 858711,
+  "a.out.nodebug.wasm": 588005,
+  "total": 858653,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -3854,6 +3854,7 @@
     "$__extendsfdf2",
     "$__extendsftf2",
     "$__fbufsize",
+    "$__fclose_ca",
     "$__fdopen",
     "$__ffsdi2",
     "$__ffssi2",
