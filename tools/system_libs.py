@@ -471,12 +471,18 @@ class Library:
 
     raise NotImplementedError()
 
+  def check_cflags(self, cflags):
+    if '-fno-threadsafe-statics' in cflags or ('-mthread-model' in cflags and 'single' in cflags):
+      assert isinstance(self, MTLibrary), f'{self.name} uses single-threaded flags but does not inherit from MTLibrary'
+      assert not self.is_mt and not self.is_ww, f'{self.name} ({self.get_filename()}) has single-threaded flags in a multi-threaded variation'
+
   def generate_ninja(self, build_dir, libname):
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
     self.build_dir = build_dir
 
     cflags = self.get_cflags()
+    self.check_cflags(cflags)
     asflags = get_base_cflags(self.build_dir, preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -495,6 +501,7 @@ class Library:
     objects = set()
     objects_lowercase = set()
     cflags = self.get_cflags()
+    self.check_cflags(cflags)
     for src in self.get_files():
       ext = utils.suffix(src)
       if ext in {'.s', '.S', '.c'}:
@@ -1644,6 +1651,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
     cflags = super().get_cflags()
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
+      cflags += ['-mthread-model', 'single', '-fno-threadsafe-statics']
     match self.eh_mode:
       case Exceptions.NONE:
         cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
@@ -1728,6 +1736,12 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     'tzdb.cpp',
     'tzdb_list.cpp',
   }
+
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if not self.is_mt and not self.is_ww:
+      cflags += ['-mthread-model', 'single', '-fno-threadsafe-statics']
+    return cflags
 
 
 class libunwind(ExceptionLibrary, MTLibrary):
@@ -2042,6 +2056,8 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     cflags = super().get_cflags()
     if self.ignore_case:
       cflags += ['-DWASMFS_CASE_INSENSITIVE']
+    if not self.is_mt and not self.is_ww:
+      cflags += ['-mthread-model', 'single', '-fno-threadsafe-statics']
     return cflags
 
   def get_base_name(self):
@@ -2375,6 +2391,13 @@ def get_libs_to_link():
     already_included.add(lib.name)
 
     logger.debug(f'including {lib.name} ({lib.get_filename()})')
+
+    if settings.PTHREADS:
+      if isinstance(lib, MTLibrary):
+        assert lib.is_mt, f'single-threaded {lib.name} ({lib.get_filename()}) linked in a -pthread build'
+    elif settings.SHARED_MEMORY:
+      if isinstance(lib, MTLibrary):
+        assert lib.is_ww, f'single-threaded {lib.name} ({lib.get_filename()}) linked in a shared-memory build'
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
     libs_to_link.append((lib, whole_archive or need_whole_archive))
