@@ -709,8 +709,13 @@ class MTLibrary(Library):
     cflags = super().get_cflags()
     if self.is_mt:
       cflags += ['-pthread']
-    if self.is_ww:
+    elif self.is_ww:
       cflags += ['-sWASM_WORKERS']
+    else:
+      # Posix thread model is the default even without the -pthread flag. This
+      # is safe because non-mt versions of MT libraries never get linked into
+      # MT binaries.
+      cflags += ['-mthread-model', 'single', '-fno-threadsafe-statics']
     return cflags
 
   def get_base_name(self):
