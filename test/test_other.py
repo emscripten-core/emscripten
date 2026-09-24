@@ -13620,7 +13620,6 @@ void foo() {}
     self.assertContained('at (test_pthread_trap.wasm.)?thread_main', output, regex=True)
 
   @requires_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/24725')
   def test_pthread_kill(self):
     self.do_runf_out_file('pthread/test_pthread_kill.c')
 
