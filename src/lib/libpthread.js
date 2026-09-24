@@ -986,6 +986,16 @@ var LibraryPThread = {
     _exit(returnCode);
   },
 
+#if PROXY_TO_PTHREAD
+  $isProxiedMainThread__internal: true,
+  $isProxiedMainThread: false,
+
+  __emscripten_set_proxied_main_thread__deps: ['$isProxiedMainThread'],
+  __emscripten_set_proxied_main_thread: () => {
+    isProxiedMainThread = true;
+  },
+#endif
+
 #if MEMORY64
   // Calls proxyToMainThread but returns a bigint rather than a number
   $proxyToMainThreadPtr__deps: ['$proxyToMainThread'],
@@ -1145,6 +1155,10 @@ var LibraryPThread = {
     '$keepRuntimeAlive',
     '$runtimeKeepaliveCounter',
 #endif
+#if PROXY_TO_PTHREAD
+    '$isProxiedMainThread',
+    'exit',
+#endif
   ],
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
 #if PTHREADS_DEBUG
@@ -1165,6 +1179,9 @@ var LibraryPThread = {
     // their main function.  See comment in src/runtime_pthread.js for more.
     noExitRuntime = 0;
 #endif
+#endif
+#if PROXY_TO_PTHREAD
+    isProxiedMainThread = false;
 #endif
 
 #if MAIN_MODULE
@@ -1196,6 +1213,11 @@ var LibraryPThread = {
       if (keepRuntimeAlive()) {
         EXITSTATUS = result;
         return;
+      }
+#endif
+#if PROXY_TO_PTHREAD
+      if (isProxiedMainThread) {
+        _exit(result);
       }
 #endif
       __emscripten_thread_exit(result);
