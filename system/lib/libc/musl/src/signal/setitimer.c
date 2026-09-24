@@ -25,13 +25,18 @@ static double current_intervals_ms[3];
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
+static void ms_to_timeval(double ms, struct timeval *tv)
+{
+	uint64_t us = ms * 1000;
+	tv->tv_sec = us / 1000000;
+	tv->tv_usec = us % 1000000;
+}
+
 void __getitimer(int which, struct itimerval *old, double now)
 {
 	double remaining_ms = MAX(current_timeout_ms[which] - now, 0);
-	old->it_value.tv_sec = remaining_ms / 1000;
-	old->it_value.tv_usec = remaining_ms * 1000;
-	old->it_interval.tv_sec = current_intervals_ms[which] / 1000;
-	old->it_interval.tv_usec = current_intervals_ms[which] * 1000;
+	ms_to_timeval(remaining_ms, &old->it_value);
+	ms_to_timeval(current_intervals_ms[which], &old->it_interval);
 }
 
 void _emscripten_timeout(int which, double now)

@@ -13,8 +13,6 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include <emscripten/emscripten.h>
-
 _Atomic int got_alarm[3];
 
 void alarm_handler(int dummy) {
@@ -108,8 +106,38 @@ void set_handlers() {
   assert(rtn != SIG_ERR);
 }
 
+void test_getitimer() {
+  printf("test_getitimer\n");
+  struct itimerval val = {
+    .it_value = { .tv_sec = 5, .tv_usec = 500 * 1000 },
+    .it_interval = { .tv_sec = 2, .tv_usec = 250 * 1000 },
+  };
+  int rtn = setitimer(ITIMER_REAL, &val, NULL);
+  assert(rtn == 0);
+
+  struct itimerval curr;
+  rtn = getitimer(ITIMER_REAL, &curr);
+  assert(rtn == 0);
+  assert(curr.it_value.tv_sec >= 0 && curr.it_value.tv_sec <= 5);
+  assert(curr.it_value.tv_usec >= 0 && curr.it_value.tv_usec < 1000000);
+  assert(curr.it_interval.tv_sec == 2);
+  assert(curr.it_interval.tv_usec == 250 * 1000);
+
+  // Disarm and check old value returned by setitimer
+  struct itimerval old;
+  memset(&val, 0, sizeof(val));
+  rtn = setitimer(ITIMER_REAL, &val, &old);
+  assert(rtn == 0);
+  assert(old.it_value.tv_sec >= 0 && old.it_value.tv_sec <= 5);
+  assert(old.it_value.tv_usec >= 0 && old.it_value.tv_usec < 1000000);
+  assert(old.it_interval.tv_sec == 2);
+  assert(old.it_interval.tv_usec == 250 * 1000);
+}
+
 int main() {
   set_handlers();
+
+  test_getitimer();
 
   test_oneoff(ITIMER_REAL);
   test_oneoff(ITIMER_VIRTUAL);
