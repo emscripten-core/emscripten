@@ -703,10 +703,20 @@ var NodeSockFSLibrary = {
         }
         nodeSockHelpers.wireConnection(newsock, conn);
         conn.resume(); // paused by pauseOnConnect
-        sock.pending.push(newsock);
-        SOCKFS.emit('connection', newsock.stream.fd);
-        // A queued client makes the listening socket readable (POLLIN).
-        sock.stream.node.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+        // Accept queue of depth one, filled on a fresh turn: a client is queued
+        // and signalled only once the previous one has been accepted, from a
+        // turn of its own (a host that scopes work to a request binds the
+        // immediate to this client's context), so one accept drive takes
+        // exactly one client, in that client's context, cold or warm.
+        var enqueue = () => {
+          if (!sock.server) return conn.destroy();
+          if (sock.pending.length) return setImmediate(enqueue);
+          sock.pending.push(newsock);
+          SOCKFS.emit('connection', newsock.stream.fd);
+          // A queued client makes the listening socket readable (POLLIN).
+          sock.stream.node.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+        };
+        setImmediate(enqueue);
       });
       server.on('error', (e) => {
         sock.error = nodeSockHelpers.nodeErrToErrno(e);
