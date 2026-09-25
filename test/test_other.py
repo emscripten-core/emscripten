@@ -12727,6 +12727,13 @@ exec "$@"
   def test_compiler_wrapper_ccache(self):
     self.do_runf_out_file('hello_world.c')
 
+  @requires_tool('ccache')
+  @with_env_modify({'_EMCC_CCACHE': '1', 'CCACHE_LOGFILE': 'ccache.log'})
+  def test_emcc_ccache(self):
+    self.do_runf_out_file('hello_world.c')
+    self.assertExists('ccache.log')
+    self.assertContained('=== CCACHE', read_file('ccache.log'))
+
   def test_llvm_option_dash_o(self):
     # emcc used to interpret -mllvm's option value as the output file if it
     # began with -o
