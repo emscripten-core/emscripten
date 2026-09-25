@@ -1175,7 +1175,7 @@ https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-
 
 .. note:: Applicable during both linking and compilation
 
-Default value: true
+Default value: false
 
 .. _asyncify:
 

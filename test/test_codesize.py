@@ -366,7 +366,7 @@ class codesize(RunnerCore):
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions', '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-Wno-deprecated'],),
     # Wasm EH's code size increase is smaller than that of Emscripten EH
-    'except_wasm': (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],),
+    'except_wasm': (['-O2', '-fwasm-exceptions'],),
     'except_wasm_legacy': (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'],),
     # eval_ctors 1 can partially optimize, but runs into getenv() for locale
     # code. mode 2 ignores those and fully optimizes out the ctors
