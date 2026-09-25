@@ -8,7 +8,7 @@ addToLibrary({
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS',
+  $SOCKFS__deps: ['$FS', '$ERRNO_CODES',
 #if NODERAWSOCKETS
     '$nodeSockOps',
 #endif
@@ -438,13 +438,22 @@ addToLibrary({
       // actual sock ops
       //
       poll(sock) {
-        if (sock.type === {{{ cDefs.SOCK_STREAM }}} && sock.server) {
+        if (sock.type === {{{ cDefs.SOCK_STREAM }}} && (sock.server || sock.listening)) {
+          if (sock.error) {
+            return {{{ cDefs.POLLERR }}};
+          }
+          if (!sock.server) {
+            return {{{ cDefs.POLLHUP }}};
+          }
           // listen sockets should only say they're available for reading
           // if there are pending clients.
           return sock.pending.length ? ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}}) : 0;
         }
 
         var mask = 0;
+        if (sock.error) {
+          mask |= {{{ cDefs.POLLERR }}};
+        }
         var dest = sock.type === {{{ cDefs.SOCK_STREAM }}} ?  // we only care about the socket state for connection-based sockets
           SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport) :
           null;
@@ -499,6 +508,7 @@ addToLibrary({
         }
       },
       close(sock) {
+        sock.listening = false;
         // if we've spawned a listen server, close it
         if (sock.server) {
           try {
@@ -579,7 +589,7 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
         }
 #if ENVIRONMENT_MAY_BE_NODE
-        if (sock.server) {
+        if (sock.server || sock.listening) {
            throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already listening
         }
         var WebSocketServer = require('ws').Server;
@@ -592,6 +602,7 @@ addToLibrary({
           port: sock.sport
           // TODO support backlog
         });
+        sock.listening = true;
         SOCKFS.emit('listen', sock.stream.fd); // Send Event with listen fd.
 
         sock.server.on('connection', (ws) => {
@@ -624,19 +635,28 @@ addToLibrary({
           sock.server = null;
         });
         sock.server.on('error', (error) => {
-          // Although the ws library may pass errors that may be more descriptive than
-          // ECONNREFUSED they are not necessarily the expected error code e.g.
-          // ENOTFOUND on getaddrinfo seems to be node.js specific, so using EHOSTUNREACH
-          // is still probably the most useful thing to do. This error shouldn't
-          // occur in a well written app as errors should get trapped in the compiled
-          // app's own getaddrinfo call.
-          sock.error = {{{ cDefs.EHOSTUNREACH }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
-          SOCKFS.emit('error', [sock.stream.fd, sock.error, 'EHOSTUNREACH: Host is unreachable']);
+#if SOCKET_DEBUG
+          dbg(`websocket: server error on ${host}:${sock.sport}: ${error.message || error}`);
+#endif
+          sock.error = (error.code && ERRNO_CODES[error.code]) || {{{ cDefs.EIO }}};
+          SOCKFS.emit('error', [sock.stream.fd, sock.error, error.message || error.code || 'Server error']);
+          if (sock.server) {
+            try {
+              sock.server.close();
+            } catch (e) {
+            }
+            sock.server = null;
+          }
           // don't throw
         });
 #endif // ENVIRONMENT_MAY_BE_NODE
       },
       accept(listensock) {
+        if (listensock.error) {
+          var err = listensock.error;
+          listensock.error = null;
+          throw new FS.ErrnoError(err);
+        }
         if (!listensock.server || !listensock.pending.length) {
           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
