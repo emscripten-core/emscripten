@@ -410,8 +410,11 @@ var EpollLibrary = {
       if (it.cleared || epollWouldBlock(ep)) {
         // Not delivering: callUserCallback's maybeExit will not run, and
         // the hold just released may have been what deferred main's exit.
+        // Deferred: this microtask can run between main returning and
+        // callMain's own exit (under JSPI callMain resumes in a microtask), and
+        // exiting here would re-enter exitRuntime there.
 #if !MINIMAL_RUNTIME
-        maybeExit();
+        emSetImmediate(maybeExit);
 #endif
         return;
       }
