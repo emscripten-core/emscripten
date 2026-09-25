@@ -4,11 +4,9 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * A listener delivery is a macrotask, ordered after every microtask queued
- * before it runs, however late. Some hosts drain the microtask queue
- * synchronously inside unrelated calls (a builtin module load), so a microtask
- * delivery could run the callback re-entrantly under the frames of whatever
- * wasm call happened to be executing; a macrotask never can.
+ * A listener delivery is a microtask: it runs once the call that made the set
+ * ready has returned, never under its frames, and before a microtask queued
+ * after that call - so it stays within the host turn that produced the edge.
  */
 
 #include <sys/epoll.h>
@@ -19,6 +17,7 @@
 #include <stdio.h>
 
 static int ep, rfd, wfd;
+static int write_returned;
 static int microtask_ran;
 
 EM_JS(void, queue_microtask_marker, (int* flag), {
@@ -26,8 +25,10 @@ EM_JS(void, queue_microtask_marker, (int* flag), {
 });
 
 static void on_ready(void* ud) {
-  // Queued after the set became ready, from the frame that made it ready.
-  assert(microtask_ran && "delivery ran before an earlier-queued microtask");
+  // Not under the frames of the write that made the set ready.
+  assert(write_returned && "delivery ran inside the call that made the set ready");
+  // But before a microtask queued after that write: a microtask, not a macrotask.
+  assert(!microtask_ran && "delivery ran after a later-queued microtask");
   struct epoll_event events[1];
   assert(epoll_wait(ep, events, 1, 0) == 1);
   char b[1];
@@ -46,9 +47,10 @@ int main(void) {
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
   assert(emscripten_epoll_add_listener(ep, on_ready, NULL) == 0);
 
-  // Readiness schedules the delivery; a microtask queued afterwards must still
-  // run first.
+  // Readiness schedules the delivery; it runs after this call returns and
+  // before the microtask queued next.
   assert(write(wfd, "x", 1) == 1);
+  write_returned = 1;
   queue_microtask_marker(&microtask_ran);
   return 0;
 }

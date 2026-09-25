@@ -5,7 +5,7 @@
  * found in the LICENSE file.
  *
  * A fatal error escaping the callback surfaces as an uncaught exception from
- * the delivery's macrotask, as it would from any other event loop callback, and
+ * the delivery's microtask, as it would from any other event loop callback, and
  * not as an unhandled promise rejection.
  */
 

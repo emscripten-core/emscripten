@@ -37,9 +37,9 @@ extern "C" {
 // one listener (load balancing), while a level fd keeps signalling every
 // listener until drained.
 //
-// A listener fires on the next event-loop tick (as a macrotask, never from
-// within a running wasm call) while the set has ready events that have not yet
-// been collected, and keeps firing while any remain: it only signals that
+// A listener fires once the call that made the set ready has returned (as a
+// microtask: never from within a running wasm call, and before the host's next
+// turn) while the set has ready events that have not yet been collected, and keeps firing while any remain: it only signals that
 // events are pending, so a callback that does not drain them (via epoll_wait)
 // leaves them pending and re-fires. Whether a given fd is re-reported follows
 // its per-fd trigger mode (set via epoll_ctl) exactly as epoll_wait does. Note
