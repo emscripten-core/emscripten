@@ -400,13 +400,18 @@ var EpollLibrary = {
         if (!it.cleared && !epollWouldBlock(ep)) hold();
       });
     }
-    // Runs one turn: releases the turn's hold and, if the set is ready,
-    // delivers. Resolves once the delivery has completed, or with false if
-    // there was nothing to deliver. Runs inside the macrotask, not after it, so
-    // a fatal error escaping the callback is an uncaught exception rather than
-    // a rejection.
-    function turn() {
-      return new Promise((resolve) => emSetImmediate(() => {
+    // Each delivery is a macrotask (a microtask could run re-entrantly: hosts
+    // drain microtasks inside other calls, e.g. Node's module loader on a first
+    // builtin load; and a still-ready level fd would never yield to I/O). Every
+    // wake schedules its own turn rather than coalescing onto a pending one: a
+    // host may drop a scheduled immediate (Workers cancels those left over when
+    // the request that scheduled them settles), which must not silence the
+    // listener. A turn that finds nothing to deliver is a no-op, so the extra
+    // turns of a burst cost only the immediates. A readiness wake holds the
+    // runtime for its turn; a teardown wake (POLLNVAL) does not.
+    function wake(held) {
+      if (held) hold();
+      emSetImmediate(() => {
         if (it.held) {
           it.held = false;
           {{{ runtimeKeepalivePop() }}}
@@ -417,27 +422,12 @@ var EpollLibrary = {
 #if !MINIMAL_RUNTIME
           maybeExit();
 #endif
-          return resolve(false);
+          return;
         }
         deliver();
-        resolve(true);
-      }));
-    }
-    // Each delivery is a macrotask (a microtask could run re-entrantly: hosts
-    // drain microtasks inside other calls, e.g. Node's module loader on a first
-    // builtin load; and a still-ready level fd would never yield to I/O), so
-    // synchronous producer notifies coalesce into the one pending turn. A
-    // readiness wake holds the runtime for that turn; a teardown wake (POLLNVAL)
-    // does not. One delivery is in flight at a time.
-    async function wake(held) {
-      if (held) hold();
-      if (it.running) return;
-      it.running = true;
-      // A delivery ran maybeExit; loop only while it left the set ready.
-      do {
-        if (!await turn()) break;
-      } while (it.held);
-      it.running = false;
+        // The delivery took the hold if it left the set ready: another turn.
+        if (it.held) wake(false);
+      });
     }
     it.listener = ep.node.addListener((flags) => wake(!(flags & {{{ cDefs.POLLNVAL }}})));
     wake(!epollWouldBlock(ep));
