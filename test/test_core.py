@@ -5815,7 +5815,6 @@ got: 10
     self.do_runf('utime/test_utime.c', 'done\n')
 
   @also_with_nodefs_both
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25280')
   def test_futimens(self):
     self.do_runf('utime/test_futimens.c', 'done\n')
 

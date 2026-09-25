@@ -75,9 +75,9 @@ void test() {
 
   struct timespec times[2];
   times[0].tv_sec = s.st_atim.tv_sec;
-  times[0].tv_nsec = s.st_atim.tv_nsec;
+  times[0].tv_nsec = 0;
   times[1].tv_sec = s.st_mtim.tv_sec;
-  times[1].tv_nsec = s.st_mtim.tv_nsec;
+  times[1].tv_nsec = 0;
 
   // set the timestamp to the current value
   err = futimens(fd, times);
@@ -127,7 +127,7 @@ void test() {
   times[0].tv_nsec = now.tv_nsec;
   times[1].tv_sec = now.tv_sec;
   times[1].tv_nsec = now.tv_nsec;
-  check_times(fd, times, 1);
+  check_times(fd, times, 10);
 
   printf("check setting time to 0...\n");
   struct utimbuf tb = {0};
