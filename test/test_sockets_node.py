@@ -56,13 +56,13 @@ class sockets_node(RunnerCore):
   # (python dtor time) and is a bit racy.
   # WebsockifyServerHarness uses two port numbers, x and x-1, so increment it by two.
   # CompiledServerHarness only uses one. If adding new tests, increment the used port
-  # addresses below.
+  # addresses below (using ports below 32768 to avoid Linux ephemeral client ports).
   @crossplatform
   @parameterized({
-    'native': (WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']),
-    'tcp': (CompiledServerHarness, 59162, ['-DTEST_DGRAM=0', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]),
-    'udp': (CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']),
-    'pthread': (CompiledServerHarness, 59166, ['-pthread', '-sPROXY_TO_PTHREAD']),
+    'native': (WebsockifyServerHarness, 25160, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 25162, ['-DTEST_DGRAM=0', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]),
+    'udp': (CompiledServerHarness, 25164, ['-DTEST_DGRAM=1']),
+    'pthread': (CompiledServerHarness, 25166, ['-pthread', '-sPROXY_TO_PTHREAD']),
   })
   def test_nodejs_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -310,12 +310,12 @@ class sockets_node(RunnerCore):
     # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
     # server because as long as the subprotocol list contains binary it will configure itself to accept binary
     # This test also checks that the connect url contains the correct subprotocols.
-    with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168):
-      self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59168'])
+    with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 25168):
+      self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=25168'])
 
       out = self.run_js('client.js')
       self.assertContained('do_msg_read: read 14 bytes', out)
-      self.assertContained(['connect: ws://127.0.0.1:59168, base64,binary', 'connect: ws://127.0.0.1:59168/, base64,binary'], out)
+      self.assertContained(['connect: ws://127.0.0.1:25168, base64,binary', 'connect: ws://127.0.0.1:25168/, base64,binary'], out)
 
   @requires_native_clang
   @requires_python_dev_packages
@@ -326,17 +326,17 @@ class sockets_node(RunnerCore):
     create_file('websocket_pre.js', '''
       var Module = {
         websocket: {
-          url: 'ws://localhost:59168/testA/testB',
+          url: 'ws://localhost:25170/testA/testB',
           subprotocol: 'text, base64, binary',
         }
       };
     ''')
-    with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168):
+    with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 25170):
       self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js=websocket_pre.js', '-sSOCKET_DEBUG', '-DSOCKK=12345'])
 
       out = self.run_js('client.js')
       self.assertContained('do_msg_read: read 14 bytes', out)
-      self.assertContained('connect: ws://localhost:59168/testA/testB, text,base64,binary', out)
+      self.assertContained('connect: ws://localhost:25170/testA/testB, text,base64,binary', out)
 
 
 class sockets_node64(sockets_node):
