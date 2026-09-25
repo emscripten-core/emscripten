@@ -13659,16 +13659,15 @@ void foo() {}
     self.do_runf('other/test_epoll_callback_unref.c', 'done\nexited %d\n' % returncode,
                  cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
 
-  def test_epoll_callback_macrotask(self):
-    # A delivery is a macrotask, ordered after microtasks queued before it runs:
-    # hosts that drain microtasks synchronously inside unrelated calls would
-    # otherwise run the callback under the frames of the call that made the set
-    # ready.
-    self.do_runf('other/test_epoll_callback_macrotask.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+  def test_epoll_callback_microtask(self):
+    # A delivery is a microtask: it runs once the call that made the set ready
+    # has returned, never under its frames, and before a microtask queued after
+    # that call, so it stays within the host turn of the event that produced it.
+    self.do_runf('other/test_epoll_callback_microtask.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_abort(self):
     # A fatal error in the callback is an uncaught exception from the delivery
-    # macrotask, not an unhandled rejection (which would be reported differently
+    # microtask, not an unhandled rejection (which would be reported differently
     # and exit 0 here).
     output = self.do_runf('other/test_epoll_callback_abort.c', 'Aborted(native code called abort())', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'], assert_returncode=NON_ZERO)
     self.assertNotContained('unhandled rejection', output)

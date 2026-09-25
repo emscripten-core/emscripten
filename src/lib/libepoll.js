@@ -400,34 +400,36 @@ var EpollLibrary = {
         if (!it.cleared && !epollWouldBlock(ep)) hold();
       });
     }
-    // Each delivery is a macrotask (a microtask could run re-entrantly: hosts
-    // drain microtasks inside other calls, e.g. Node's module loader on a first
-    // builtin load; and a still-ready level fd would never yield to I/O). Every
-    // wake schedules its own turn rather than coalescing onto a pending one: a
-    // host may drop a scheduled immediate (Workers cancels those left over when
-    // the request that scheduled them settles), which must not silence the
-    // listener. A turn that finds nothing to deliver is a no-op, so the extra
-    // turns of a burst cost only the immediates. A readiness wake holds the
-    // runtime for its turn; a teardown wake (POLLNVAL) does not.
+    // Runs one turn: releases the turn's hold and, if the set is ready,
+    // delivers.
+    function turn() {
+      if (it.held) {
+        it.held = false;
+        {{{ runtimeKeepalivePop() }}}
+      }
+      if (it.cleared || epollWouldBlock(ep)) {
+        // Not delivering: callUserCallback's maybeExit will not run, and
+        // the hold just released may have been what deferred main's exit.
+#if !MINIMAL_RUNTIME
+        maybeExit();
+#endif
+        return;
+      }
+      deliver();
+      // The delivery took the hold if it left the set ready: another turn, as
+      // a macrotask so a still-ready level fd yields to I/O.
+      if (it.held) emSetImmediate(turn);
+    }
+    // An edge delivers as a microtask: after the notifying stack (a host event
+    // or a wasm call) unwinds, but in the same host turn. A macrotask would
+    // leave that turn, and hosts that scope work to a request (Workers) drop
+    // immediates left over when the request settles, which would silence the
+    // listener. Every wake schedules its own turn; one that finds nothing to
+    // deliver is a no-op. A readiness wake holds the runtime for its turn; a
+    // teardown wake (POLLNVAL) does not.
     function wake(held) {
       if (held) hold();
-      emSetImmediate(() => {
-        if (it.held) {
-          it.held = false;
-          {{{ runtimeKeepalivePop() }}}
-        }
-        if (it.cleared || epollWouldBlock(ep)) {
-          // Not delivering: callUserCallback's maybeExit will not run, and
-          // the hold just released may have been what deferred main's exit.
-#if !MINIMAL_RUNTIME
-          maybeExit();
-#endif
-          return;
-        }
-        deliver();
-        // The delivery took the hold if it left the set ready: another turn.
-        if (it.held) wake(false);
-      });
+      queueMicrotask(turn);
     }
     it.listener = ep.node.addListener((flags) => wake(!(flags & {{{ cDefs.POLLNVAL }}})));
     wake(!epollWouldBlock(ep));
