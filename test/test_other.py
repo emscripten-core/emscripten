@@ -14437,12 +14437,10 @@ out.js
     self.assertContained('This page was compiled without support for Firefox browser', content)
     self.assertContained('This page was compiled without support for Chrome browser', content)
 
-  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer(self):
     self.do_other_test('test_itimer.c')
 
   @requires_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_pthread(self):
     self.do_other_test('test_itimer.c')
 
@@ -14453,7 +14451,6 @@ out.js
       self.assertContained('done\n', self.run_js('test_itimer_standalone.wasm', engine))
 
   @requires_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
