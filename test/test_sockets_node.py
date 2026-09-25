@@ -294,6 +294,11 @@ class sockets_node(RunnerCore):
     # once and the in-flight datagram never reaches the callback.
     self.do_runf('sockets/test_epoll_callback.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME', '-DMODE_UNREF'])
 
+  def test_noderawsockets_epoll_callback_accept_burst(self):
+    # Clients connecting in a burst before any accept(): the accept queue has
+    # depth one, so each listener delivery accepts exactly one client.
+    self.do_runf('sockets/test_epoll_callback_accept_burst.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
   def test_noderawsockets_epoll_callback_force_exit(self):
     # emscripten_force_exit with a listener registered on an armed socket:
     # FS.quit closes the epoll on the way out, removing the listener.
