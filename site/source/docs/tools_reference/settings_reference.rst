@@ -2434,6 +2434,17 @@ Formats to support in SDL2_mixer. Valid values: ogg, mp3, mod, mid
 
 Default value: ["ogg"]
 
+.. _sdl3_mixer_formats:
+
+SDL3_MIXER_FORMATS
+==================
+
+Formats to support in SDL3_mixer. Valid values: ogg, mp3
+
+.. note:: Applicable during both linking and compilation
+
+Default value: ["ogg"]
+
 .. _use_sqlite3:
 
 USE_SQLITE3

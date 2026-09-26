@@ -80,14 +80,14 @@ def get(ports, settings, shared):
         '-sUSE_VORBIS',
         '-DDECODER_OGGVORBIS_VORBISFILE',
       ]
-      srcs += ['src/decoder_vorbis.c',]
+      srcs += ['src/decoder_vorbis.c']
 
     if 'mp3' in formats:
       flags += [
         '-sUSE_MPG123',
         '-DDECODER_MP3_MPG123',
       ]
-      srcs += ['src/decoder_mpg123.c',]
+      srcs += ['src/decoder_mpg123.c']
 
     ports.build_port(src_root, final, 'sdl3_mixer', flags=flags, srcs=srcs)
   return [shared.cache.get_lib(libname, create, what='port')]
