@@ -60,12 +60,12 @@ def get(ports, settings, shared):
     src_root = ports.get_dir('sdl3_mixer', 'SDL_mixer-' + TAG)
     ports.install_header_dir(os.path.join(src_root, 'include'), target='.')
     srcs = [
-	    'src/SDL_mixer.c',
-	    'src/SDL_mixer_metadata_tags.c',
-	    'src/SDL_mixer_spatialization.c',
-	    'src/decoder_raw.c',
-	    'src/decoder_sinewave.c',
-	    'src/decoder_wav.c',
+      'src/SDL_mixer.c',
+      'src/SDL_mixer_metadata_tags.c',
+      'src/SDL_mixer_spatialization.c',
+      'src/decoder_raw.c',
+      'src/decoder_sinewave.c',
+      'src/decoder_wav.c',
       ]
 
     flags = ['-sUSE_SDL=3', '-DDECODER_WAV','-Wno-format-security', '-Wno-experimental']
