@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -5,48 +6,39 @@
 #include <emscripten.h>
 #include <stdio.h>
 
-class random_device
-{
-    int __f_;
-public:
-    // constructors
-    explicit random_device();
-    ~random_device();
+class random_device {
+  int __f_;
 
-    // generating functions
-    unsigned operator()();
+public:
+  // constructors
+  explicit random_device() {
+    __f_ = open("/dev/urandom", O_RDONLY);
+    assert(__f_ >= 0);
+  }
+
+  ~random_device() {
+    close(__f_);
+  }
+
+  // generating functions
+  unsigned operator()();
 };
 
-random_device::random_device()
-{
-    __f_ = open("/dev/urandom", O_RDONLY);
-    if (__f_ < 0) abort();
-}
-
-random_device::~random_device()
-{
-    close(__f_);
-}
-
-unsigned
-random_device::operator()()
-{
-    unsigned r;
-    size_t n = sizeof(r);
-    char* p = reinterpret_cast<char*>(&r);
-    while (n > 0)
-    {
-        ssize_t s = read(__f_, p, 1);
-        if (s == 0) abort();
-        if (s == -1)
-        {
-            if (errno != EINTR) abort();
-            continue;
-        }
-        n -= static_cast<size_t>(s);
-        p += static_cast<size_t>(s);
+unsigned random_device::operator()() {
+  unsigned r;
+  size_t n = sizeof(r);
+  char* p = reinterpret_cast<char*>(&r);
+  while (n > 0) {
+    ssize_t s = read(__f_, p, 1);
+    assert(s > 0);
+    if (s == -1) {
+      assert(errno == EINTR);
+      continue;
     }
-    return r;
+    n -= static_cast<size_t>(s);
+    p += static_cast<size_t>(s);
+  }
+  return r;
 }
 
 int main() {
