@@ -170,9 +170,14 @@ addToLibrary({
           // this will only keep the value nearly unchanged not exactly
           // unchanged. See:
           // https://github.com/nodejs/node/issues/56492
-          var atime = new Date(attr.atime ?? stat(arg).atime);
-          var mtime = new Date(attr.mtime ?? stat(arg).mtime);
-          utimes(arg, atime, mtime);
+          var atime = attr.atime;
+          var mtime = attr.mtime;
+          if (atime === undefined || mtime === undefined) {
+            var st = stat(arg);
+            atime ??= st.atimeMs;
+            mtime ??= st.mtimeMs;
+          }
+          utimes(arg, atime / 1000, mtime / 1000);
         }
         if (attr.size !== undefined) {
           truncate(arg, attr.size);
