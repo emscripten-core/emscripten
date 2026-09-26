@@ -3175,7 +3175,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl3_mixer.c', cflags=['--preload-file', 'sound.wav', '-DSOUND_PATH="sound.wav"'] + flags)
 
   @parameterized({
-    'ogg': (['ogg'], 'alarmvictory_1.ogg',),
+    'ogg': (['ogg'], 'alarmvictory_1.ogg'),
     'mp3': (['mp3'], 'pudinha.mp3'),
   })
   @requires_sound_hardware

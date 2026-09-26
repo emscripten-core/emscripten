@@ -43,7 +43,7 @@ def get_lib_name(settings):
   formats = '-'.join(sorted(get_formats(settings)))
 
   libname = 'libSDL3_mixer'
-  if formats != '':
+  if formats:
     libname += '-' + formats
   if settings.PTHREADS:
     libname += '-mt'
@@ -68,7 +68,7 @@ def get(ports, settings, shared):
       'src/decoder_wav.c',
       ]
 
-    flags = ['-sUSE_SDL=3', '-DDECODER_WAV','-Wno-format-security', '-Wno-experimental']
+    flags = ['-sUSE_SDL=3', '-DDECODER_WAV', '-Wno-format-security', '-Wno-experimental']
 
     if settings.PTHREADS:
       flags += ['-pthread']
