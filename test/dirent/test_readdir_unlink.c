@@ -79,7 +79,6 @@ int main() {
     return 1;
   }
 
-  printf("success\n");
-
+  printf("done\n");
   return 0;
 }

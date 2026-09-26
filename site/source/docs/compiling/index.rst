@@ -13,6 +13,7 @@ This section contains topics about building projects and running the output.
 - :ref:`Deploying-Pages` covers topics related to hosting Emscripten compiled web pages on a CDN.
 - :ref:`GitLab` explains how to build and test projects on GitLab.
 - :ref:`Contrib-Ports` contains information about contrib ports.
+- :ref:`CrossOriginStorage` explains how to enable the experimental Cross-Origin Storage integration for sharing Wasm modules across origins.
 
 
 .. toctree::
@@ -26,3 +27,4 @@ This section contains topics about building projects and running the output.
    Deploying-Pages
    GitLab
    Contrib-Ports
+   CrossOriginStorage

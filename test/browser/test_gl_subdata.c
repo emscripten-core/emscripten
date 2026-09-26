@@ -122,6 +122,7 @@ static void gl_init(void) {
     GLuint program = glCreateProgram();
     glAttachShader(program, createShader(vertex_shader  , GL_VERTEX_SHADER));
     glAttachShader(program, createShader(fragment_shader, GL_FRAGMENT_SHADER));
+    glBindAttribLocation(program, 0, "indices");
     glLinkProgram(program);
     char msg[512];
     glGetProgramInfoLog(program, sizeof msg, NULL, msg);
@@ -138,15 +139,13 @@ static void gl_init(void) {
     /* Store the vertices in a vertex buffer object (VBO) */
     glGenBuffers(1, &indicesVBO);
     glBindBuffer(GL_ARRAY_BUFFER, indicesVBO);
-    float zeroes[NUM_NODES];
-    memset(zeroes, 0, sizeof(zeroes));
+    float zeroes[NUM_NODES] = {0};
     glBufferData(GL_ARRAY_BUFFER, NUM_NODES * sizeof(float), zeroes, GL_STATIC_DRAW);
     for (int x = 0; x < NUM_NODES; x++) {
       glBufferSubData(GL_ARRAY_BUFFER, x * sizeof(float), sizeof(float), &elements[x]);
     }
     /* Get the locations of the uniforms so we can access them */
     nodeSamplerLocation = glGetUniformLocation(program, "nodeInfo");
-    glBindAttribLocation(program, 0, "indices");
 #ifndef __EMSCRIPTEN__ // GLES2 & WebGL do not have these, only pre 3.0 desktop GL and compatibility mode GL3.0+ GL do.
     // Enable glPoint size in shader, always enable in Open Gl ES 2.
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);

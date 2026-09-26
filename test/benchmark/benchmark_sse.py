@@ -18,10 +18,9 @@ sys.path.insert(0, __rootpath__)
 sys.path.insert(0, __testdir__)
 
 import clang_native
-from common import EMRUN, test_file
+from common import CLANG_CXX, EMCC, EMRUN, test_file
 
-from tools.config import V8_ENGINE
-from tools.shared import CLANG_CXX, EMCC
+from tools import config
 from tools.utils import WINDOWS, run_process, write_file
 
 # System info
@@ -56,14 +55,14 @@ def run_benchmark(benchmark_file, results_file, build_args):
     print(' '.join(cmd))
     run_process(cmd)
 
-    cmd = V8_ENGINE + [os.path.basename(out_file)]
+    cmd = config.V8_ENGINE + [os.path.basename(out_file)]
     print(' '.join(cmd))
     wasm_results = subprocess.check_output(cmd, cwd=out_dir, text=True)
 
     print('wasm_results', wasm_results)
 
     def strip_comments(text):
-        return re.sub(r'//.*?\n|/\*.*?\*/', '', text, flags=re.S) # noqa
+        return re.sub(r'//.*?\n|/\*.*?\*/', '', text, flags=re.S)
 
     benchmark_results = strip_comments(wasm_results)
     print('stripped', benchmark_results)
@@ -113,9 +112,9 @@ def run_benchmark(benchmark_file, results_file, build_args):
 
     def format_comparison(a, b):
         if a < b and a != 0:
-            return "<span style='color:green;font-weight:bold;'> {:10.2f}".format(b / a) + 'x FASTER</span>'
+            return f"<span style='color:green;font-weight:bold;'> {b / a:10.2f}" + 'x FASTER</span>'
         elif b != 0:
-            return "<span style='color:red;font-weight:bold;'> {:10.2f}".format(a / b) + 'x SLOWER</span>'
+            return f"<span style='color:red;font-weight:bold;'> {a / b:10.2f}" + 'x SLOWER</span>'
         else:
             return "<span style='color:red;font-weight:bold;'> NaN </span>"
 
@@ -146,7 +145,7 @@ def run_benchmark(benchmark_file, results_file, build_args):
             nativeScalarResults += [str(nsc)]
             nativeSimdResults += [str(nsi)]
             html_result = find_result_in_category(wasm_results, result['category'])
-            textual_results_native += 'Native ' + result['category'] + ': ' + "{:10.4f}".format(nsc) + 'ns -> ' + "{:10.4f}".format(nsi) + 'ns. '
+            textual_results_native += 'Native ' + result['category'] + ': ' + f"{nsc:10.4f}" + 'ns -> ' + f"{nsi:10.4f}" + 'ns. '
             textual_results_native += 'Native SSE is ' + format_comparison(nsi, nsc) + ' than native scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
 
             if html_result is not None:
@@ -154,7 +153,7 @@ def run_benchmark(benchmark_file, results_file, build_args):
                 htmlScalarResults += [str(hsc)]
                 hsi = html_result['simd']
                 htmlSimdResults += [str(hsi)]
-                textual_results_html += 'JS ' + result['category'] + ': ' + "{:10.4f}".format(hsc) + 'ns -> ' + "{:10.4f}".format(hsi) + 'ns. '
+                textual_results_html += 'JS ' + result['category'] + ': ' + f"{hsc:10.4f}" + 'ns -> ' + f"{hsi:10.4f}" + 'ns. '
                 textual_results_html += 'JS SSE is ' + format_comparison(hsi, hsc) + ' than JS scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
                 textual_results_html2 += 'JS ' + result['category'] + ': JS scalar is ' + format_comparison(hsc, nsc) + ' than native scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
                 textual_results_html3 += 'JS ' + result['category'] + ': JS SSE is ' + format_comparison(hsi, nsi) + ' than native SSE. &nbsp; &nbsp; &nbsp; &nbsp; <br />'

@@ -6,7 +6,7 @@
 
 int sendmmsg(int fd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags)
 {
-#if LONG_MAX > INT_MAX
+#if LONG_MAX > INT_MAX || defined(__EMSCRIPTEN__)
 	/* Can't use the syscall directly because the kernel has the wrong
 	 * idea for the types of msg_iovlen, msg_controllen, and cmsg_len,
 	 * and the cmsg blocks cannot be modified in-place. */

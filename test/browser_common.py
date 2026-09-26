@@ -22,9 +22,11 @@ from urllib.parse import parse_qs, unquote, unquote_plus, urlparse
 import common
 import psutil
 from common import (
+  EMCC,
   TEST_ROOT,
   RunnerCore,
   compiler_for,
+  copy_asset,
   create_file,
   errlog,
   force_delete_dir,
@@ -35,9 +37,8 @@ from common import (
 )
 
 from tools import feature_matrix, utils
-from tools.feature_matrix import UNSUPPORTED
-from tools.shared import DEBUG, EMCC, exit_with_error
-from tools.utils import MACOS, WINDOWS, memoize, path_from_root, read_binary
+from tools.feature_matrix import OLDEST_SUPPORTED_FIREFOX, UNSUPPORTED
+from tools.utils import LINUX, MACOS, WINDOWS, exit_with_error, memoize, path_from_root, read_binary
 
 logger = logging.getLogger('common')
 
@@ -65,6 +66,16 @@ EMTEST_BROWSER_AUTO_CONFIG = None
 EMTEST_HEADLESS = None
 EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 
+# Path to an unpacked Chrome extension implementing the Cross-Origin Storage
+# polyfill.  When set, the extension is loaded via --load-extension when
+# launching a Chromium-based browser, enabling the COS browser test paths.
+# Point this at a local clone of:
+#   https://github.com/web-ai-community/cross-origin-storage-extension
+# (the directory that contains manifest.json).
+# TODO: Remove this once Chromium ships COS natively (even behind a flag),
+# and update the browser test to use that flag instead.
+EMTEST_COS_EXTENSION_PATH = os.getenv('EMTEST_COS_EXTENSION_PATH', '')
+
 # Triggers the browser to restart after every given number of tests.
 # 0: Disabled (reuse the browser instance to run all tests. Default)
 # 1: Restart a fresh browser instance for every browser test.
@@ -78,10 +89,13 @@ browser_spawn_lock_filename = path_from_root('out/browser_spawn_lock')
 
 
 class Reporting(Enum):
-  """When running browser tests we normally automatically include support
+  """Browser reporting method.
+
+  When running browser tests we normally automatically include support
   code for reporting results back to the browser.  This enum allows tests
   to decide what type of support code they need/want.
   """
+
   NONE = 0
   # Include the JS helpers for reporting results
   JS_ONLY = 1
@@ -137,8 +151,7 @@ def init(force_browser_process_termination):
 
 
 def find_browser_test_file(filename):
-  """Looks for files in test/browser and then in test/
-  """
+  """Looks for files in test/browser and then in test/."""
   if not os.path.exists(filename):
     fullname = test_file('browser', filename)
     if not os.path.exists(fullname):
@@ -165,8 +178,22 @@ def get_safari_version():
 def get_firefox_version():
   if not is_firefox():
     return UNSUPPORTED
-  exe_path = shlex.split(EMTEST_BROWSER)[0]
+  exe_path = shutil.which(shlex.split(EMTEST_BROWSER)[0])
   ini_path = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
+  # On Linux, Firefox system installation uses a specific directory structure,
+  # where platform.ini is not located in same directory as the browser executable.
+  if LINUX and exe_path.startswith('/usr/bin/'):
+    def find_system_firefox_platform_ini():
+      for path in ['/usr/lib/firefox-esr/', '/usr/lib/firefox/']:
+        ini = os.path.join(path, 'platform.ini')
+        if os.path.isfile(ini):
+          return ini
+
+    ini_path = find_system_firefox_platform_ini()
+    if not ini_path:
+      logger.warning(f'Firefox browser detected in {EMTEST_BROWSER}, but could not find Firefox platform.ini to detect Firefox version. Assuming OLDEST_SUPPORTED_FIREFOX={OLDEST_SUPPORTED_FIREFOX}')
+      return OLDEST_SUPPORTED_FIREFOX
+
   # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
   m = re.search(r"^Milestone=(.*)$", read_file(ini_path), re.MULTILINE)
   milestone = m.group(1).strip()
@@ -176,6 +203,21 @@ def get_firefox_version():
   if any(c in milestone for c in ('a', 'b')):
     version -= 1
   return version
+
+
+@memoize
+def get_chrome_version():
+  if not is_chrome():
+    return UNSUPPORTED
+  exe = shlex.split(EMTEST_BROWSER)[0]
+  if WINDOWS:
+    cmd = ['powershell', '-NoProfile', '-Command', f'(Get-Item "{exe}").VersionInfo.ProductVersion']
+  else:
+    if exe.endswith('.app'):
+      exe = os.path.join(exe, 'Contents/MacOS/Google Chrome')
+    cmd = [exe, '--version']
+  version = subprocess.check_output(cmd, text=True)
+  return int(re.search(r'\b(\d+)\.', version).group(1))
 
 
 def browser_should_skip_feature(skip_env_var, feature):
@@ -214,8 +256,9 @@ class ChromeConfig:
   default_flags = (
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
-    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
-    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-type-reflection"',
+    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-features=JavaScriptSourcePhaseImports',
+    '--enable-experimental-webassembly-features',
+    '--enable-blink-features=AudioWorkletSharedPort',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
     '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
@@ -247,7 +290,7 @@ class FirefoxConfig:
 
   @staticmethod
   def configure(data_dir):
-    shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
+    copy_asset('firefox_user.js', os.path.join(data_dir, 'user.js'))
 
   @staticmethod
   def open_url_args(url):
@@ -270,7 +313,7 @@ class SafariConfig:
 
   @staticmethod
   def configure(data_dir):
-    """ Safari has no special configuration step."""
+    """Safari has no special configuration step."""
 
   @staticmethod
   def open_url_args(url):
@@ -319,6 +362,21 @@ def configure_test_browser():
 
   if not EMTEST_BROWSER:
     EMTEST_BROWSER = 'google-chrome'
+    if not shutil.which(EMTEST_BROWSER):
+      EMTEST_BROWSER = 'firefox'
+      if not shutil.which(EMTEST_BROWSER):
+        # FIXME: This should really be an error, but this code currently also runs for non-browser tests.
+        EMTEST_BROWSER = 'default-browser-not-found'
+
+        if MACOS and os.path.isdir('/Applications/Safari.app'):
+          EMTEST_BROWSER = '/Applications/Safari.app'
+        elif WINDOWS:
+          for browser in [
+            f'{os.getenv("ProgramFiles(x86)", "")}\\Microsoft\\Edge\\Application\\msedge.exe',
+            f'{os.getenv("ProgramFiles", "")}\\Mozilla Firefox\\firefox.exe',
+            f'{os.getenv("LOCALAPPDATA", "")}\\Google\\Chrome SxS\\Application\\chrome.exe']:
+            if os.path.isfile(browser):
+              EMTEST_BROWSER = browser
 
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
@@ -333,6 +391,8 @@ def configure_test_browser():
       EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
       if EMTEST_HEADLESS == 1:
         EMTEST_BROWSER += f" {config.headless_flags}"
+      if EMTEST_COS_EXTENSION_PATH and is_chrome():
+        EMTEST_BROWSER += f' --load-extension="{EMTEST_COS_EXTENSION_PATH}"'
 
 
 # Create a server and a web page. When a test runs, we tell the server about it,
@@ -421,7 +481,7 @@ def make_test_server(in_queue, out_queue, port):
     def do_GET(self):
       info = urlparse(self.path)
       if info.path == '/run_harness':
-        if DEBUG:
+        if common.EMTEST_VERBOSE:
           print('[server startup]')
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -449,7 +509,7 @@ def make_test_server(in_queue, out_queue, port):
         else:
           path = self.path
           url = '?'
-        if DEBUG:
+        if common.EMTEST_VERBOSE:
           print('[server response:', path, url, ']')
         if out_queue.empty():
           out_queue.put(path)
@@ -462,7 +522,7 @@ def make_test_server(in_queue, out_queue, port):
           # raise an error in here, it is just swallowed in python's webserver code - we want
           # the test to actually fail, which a webserver response can't do).
           out_queue.put(None)
-          raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
+          raise Exception(f'browser harness error, excessive response to server - test must be fixed! "{self.path}"')
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.send_header('Connection', 'close')
@@ -476,7 +536,7 @@ def make_test_server(in_queue, out_queue, port):
         if not in_queue.empty():
           # there is a new test ready to be served
           url, dir = in_queue.get()
-          if DEBUG:
+          if common.EMTEST_VERBOSE:
             print('[queue command:', url, dir, ']')
           assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
           assert out_queue.empty(), 'the single response from the last test was read'
@@ -487,7 +547,7 @@ def make_test_server(in_queue, out_queue, port):
           self.wfile.write(b'(wait)')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
-        if DEBUG:
+        if common.EMTEST_VERBOSE:
           print('[simple HTTP serving:', unquote_plus(self.path), ']')
         if self.headers.get('Range'):
           self.send_response(206)
@@ -522,6 +582,7 @@ def make_test_server(in_queue, out_queue, port):
 
 class HttpServerThread(threading.Thread):
   """A generic thread class to create and run an http server."""
+
   def __init__(self, server):
     super().__init__()
     self.server = server
@@ -531,7 +592,7 @@ class HttpServerThread(threading.Thread):
     self.server.shutdown()
 
   def run(self):
-    """Creates the server instance and serves forever until stop() is called."""
+    """Create a server instance and serve forever until stop() is called."""
     # Start the server's main loop (this blocks until shutdown() is called)
     self.server.serve_forever()
 
@@ -542,7 +603,8 @@ worker_id = None
 
 
 def init_worker(counter, lock):
-  """ Initializer function for each worker.
+  """Initializer function for each worker.
+
   It acquires a lock, gets a unique ID from the shared counter,
   and stores it in a global variable specific to this worker process.
   """
@@ -555,8 +617,11 @@ def init_worker(counter, lock):
 
 
 def move_browser_window(pid, x, y):
-  """Utility function to move the top-level window owned by given process to
-  (x,y) coordinate. Used to ensure each browser window has some visible area."""
+  """Utility function to move the top-level window.
+
+  Move the windows owned by given process to (x,y) coordinate.
+  Used to ensure each browser window has some visible area.
+  """
   import win32con
   import win32gui
   import win32process
@@ -588,9 +653,13 @@ def increment_suffix_number(str_with_maybe_suffix):
 
 
 class FileLock:
-  """Implements a filesystem-based mutex, with an additional feature that it
-  returns an integer counter denoting how many times the lock has been locked
-  before (during the current python test run instance)"""
+  """Implements a filesystem-based mutex.
+
+  In additon the context manager returns an integer counter denoting how
+  many times the lock has been locked before (during the current python test
+  run instance)
+  """
+
   def __init__(self, path):
     self.path = path
     self.counter = 0
@@ -688,7 +757,7 @@ class BrowserCore(RunnerCore):
     if hasattr(config, 'launch_prefix'):
       browser_args = list(config.launch_prefix) + browser_args
 
-    logger.info('Launching browser: %s', str(browser_args))
+    logger.info(f'Launching browser: {browser_args}')
 
     if (WINDOWS and is_firefox()) or is_safari():
       cls.launch_browser_harness_with_proc_snapshot_workaround(parallel_harness, config, browser_args, url)
@@ -697,10 +766,12 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def launch_browser_harness_with_proc_snapshot_workaround(cls, parallel_harness, config, browser_args, url):
-    ''' Dedicated function for launching browser harness in scenarios where
-    we need to identify the launched browser processes via a before-after
-    subprocess snapshotting delta workaround.'''
+    """Launch a browser using before-after subprocess snapshotting.
 
+    Dedicated function for launching browser harness in scenarios where
+    we need to identify the launched browser processes via a before-after
+    subprocess snapshotting delta workaround.
+    """
     # In order for this to work, each browser needs to be launched one at a time
     # so that we know which process belongs to which browser.
     with FileLock(browser_spawn_lock_filename) as count:
@@ -787,7 +858,8 @@ class BrowserCore(RunnerCore):
       responses = []
       while not self.harness_out_queue.empty():
         responses += [self.harness_out_queue.get()]
-      raise Exception('excessive responses from %s: %s' % (who, '\n'.join(responses)))
+      responses_str = '\n'.join(responses)
+      raise Exception(f'excessive responses from {who}: {responses_str}')
 
   # @param extra_tries: how many more times to try this test, if it fails. browser tests have
   #                     many more causes of flakiness (in particular, they do not run
@@ -813,14 +885,14 @@ class BrowserCore(RunnerCore):
     BrowserCore.num_tests_ran += 1
 
     self.assert_out_queue_empty('previous test')
-    if DEBUG:
+    if common.EMTEST_VERBOSE:
       print('[browser launch:', html_file, ']')
     assert not (message and expected), 'run_browser expects `expected` or `message`, but not both'
 
     if expected is not None:
       try:
         self.harness_in_queue.put((
-          'http://localhost:%s/%s' % (self.PORT, url),
+          f'http://localhost:{self.PORT}/{url}',
           self.get_dir(),
         ))
         if timeout is None:
@@ -829,7 +901,7 @@ class BrowserCore(RunnerCore):
           output = self.harness_out_queue.get(block=True, timeout=timeout)
         except queue.Empty:
           BrowserCore.unresponsive_tests += 1
-          print(f'[unresponsive test: {self.id()} total unresponsive={str(BrowserCore.unresponsive_tests)}]')
+          print(f'[unresponsive test: {self.id()} total unresponsive={BrowserCore.unresponsive_tests}]')
           self.browser_restart()
           # Rather than fail the test here, let fail on the `assertContained` so
           # that the test can be retried via `extra_tries`
@@ -889,8 +961,7 @@ class BrowserCore(RunnerCore):
     utils.delete_file('browser_reporting.js')
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
-    """Special case of `btest` that reports its result solely via exiting
-    with a given result code.
+    """Special case of `btest` that reports its result solely via exiting with a given result code.
 
     In this case we set EXIT_RUNTIME and we don't need to provide the
     REPORT_RESULT macro to the C code.
@@ -899,7 +970,7 @@ class BrowserCore(RunnerCore):
     assert 'reporting' not in kwargs
     assert 'expected' not in kwargs
     kwargs['reporting'] = Reporting.JS_ONLY
-    kwargs['expected'] = 'exit:%d' % assert_returncode
+    kwargs['expected'] = f'exit:{assert_returncode}'
     return self.btest(filename, *args, **kwargs)
 
   def btest(self, filename, expected=None,

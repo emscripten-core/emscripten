@@ -91,3 +91,5 @@ user_pref("gfx.offscreencanvas.enabled", true);
 user_pref("javascript.options.wasm_memory64", true);
 // Do not ask user consent to enable audio playback (0: Allow autoplay for all media)
 user_pref("media.autoplay.default", 0);
+// Enable JSPI support
+user_pref("javascript.options.wasm_js_promise_integration", true);

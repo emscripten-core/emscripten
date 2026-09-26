@@ -27,7 +27,7 @@ void run_in_worker() {
 }
 
 int main() {
-  emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(1024), run_in_worker);
+  emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(4096), run_in_worker);
   // Pin a dependency from C code to the JS function to avoid needing to mess
   // with cmdline export directives
   proxied_js_function();

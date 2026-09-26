@@ -83,11 +83,10 @@ def get(ports, settings, shared):
     misc/emscripten/SDL_sysurl.c'''.split()
     thread_srcs = ['SDL_syscond.c', 'SDL_sysmutex.c', 'SDL_syssem.c', 'SDL_systhread.c', 'SDL_systls.c']
     thread_backend = 'generic' if not settings.PTHREADS else 'pthread'
-    srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
+    srcs += [f'thread/{thread_backend}/{s}' for s in thread_srcs]
 
     srcs = [os.path.join(src_dir, 'src', s) for s in srcs]
-    # TODO: Remove fwrapv when we update to a version which includes https://github.com/libsdl-org/SDL/pull/12581
-    flags = ['-sUSE_SDL=0', '-fwrapv-pointer']
+    flags = []
     includes = [ports.get_include_dir('SDL2')]
     if settings.PTHREADS:
       flags += ['-pthread']

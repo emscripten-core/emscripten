@@ -14,7 +14,13 @@ int main() {
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
   // turn the error call into abort so that it can be detected by the test
   EM_ASM({
-    err = (msg) => { abort(`Expected Error: ${msg}`); }
+    var originalErr = err;
+    err = (msg) => {
+      // Restore original err() to avoid infinite recursion, because abort() will
+      // print to err().
+      err = originalErr;
+      abort(`Expected Error: ${msg}`);
+    }
   });
   context = emscripten_webgl_create_context("#canvas", &attrs);
   assert(context);

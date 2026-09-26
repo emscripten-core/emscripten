@@ -147,58 +147,62 @@ typedef _Int64 suseconds_t;
 #endif
 
 
+// XXX EMSCRIPTEN: This file has been modified from the upstream musl version
+// to make use of clang pre-defined macros whereever possible, eliminating
+// possible inconsistencies.
+
 #if defined(__NEED_int8_t) && !defined(__DEFINED_int8_t)
-typedef signed char     int8_t;
+typedef __INT8_TYPE__    int8_t;
 #define __DEFINED_int8_t
 #endif
 
 #if defined(__NEED_int16_t) && !defined(__DEFINED_int16_t)
-typedef signed short    int16_t;
+typedef __INT16_TYPE__   int16_t;
 #define __DEFINED_int16_t
 #endif
 
 #if defined(__NEED_int32_t) && !defined(__DEFINED_int32_t)
-typedef signed int      int32_t;
+typedef __INT32_TYPE__   int32_t;
 #define __DEFINED_int32_t
 #endif
 
 #if defined(__NEED_int64_t) && !defined(__DEFINED_int64_t)
-typedef signed _Int64   int64_t;
+typedef __INT64_TYPE__   int64_t;
 #define __DEFINED_int64_t
 #endif
 
 #if defined(__NEED_intmax_t) && !defined(__DEFINED_intmax_t)
-typedef signed _Int64   intmax_t;
+typedef __INTMAX_TYPE__  intmax_t;
 #define __DEFINED_intmax_t
 #endif
 
 #if defined(__NEED_uint8_t) && !defined(__DEFINED_uint8_t)
-typedef unsigned char   uint8_t;
+typedef __UINT8_TYPE__   uint8_t;
 #define __DEFINED_uint8_t
 #endif
 
 #if defined(__NEED_uint16_t) && !defined(__DEFINED_uint16_t)
-typedef unsigned short  uint16_t;
+typedef __UINT16_TYPE__  uint16_t;
 #define __DEFINED_uint16_t
 #endif
 
 #if defined(__NEED_uint32_t) && !defined(__DEFINED_uint32_t)
-typedef unsigned int    uint32_t;
+typedef __UINT32_TYPE__  uint32_t;
 #define __DEFINED_uint32_t
 #endif
 
 #if defined(__NEED_uint64_t) && !defined(__DEFINED_uint64_t)
-typedef unsigned _Int64 uint64_t;
+typedef __UINT64_TYPE__  uint64_t;
 #define __DEFINED_uint64_t
 #endif
 
 #if defined(__NEED_u_int64_t) && !defined(__DEFINED_u_int64_t)
-typedef unsigned _Int64 u_int64_t;
+typedef __UINT64_TYPE__  u_int64_t;
 #define __DEFINED_u_int64_t
 #endif
 
 #if defined(__NEED_uintmax_t) && !defined(__DEFINED_uintmax_t)
-typedef unsigned _Int64 uintmax_t;
+typedef __UINTMAX_TYPE__ uintmax_t;
 #define __DEFINED_uintmax_t
 #endif
 

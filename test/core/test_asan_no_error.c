@@ -1,5 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <wchar.h>
+#include <locale.h>
 
 int f(char *x) {
   int z = *x;
@@ -15,5 +18,14 @@ int main() {
   memchr("hello", 0, 6);
   strchr("hello", 'z');
   strlen("hello");
-  return ((f(x) + y[9]) % 16) + 1;
+
+  // setlocale is needed here otherwise mbsrtowcs takes the fast path
+  // via strcpy.
+  setlocale(LC_ALL, "en_US.UTF-8");
+  const char* s = "abcd";
+  mbsrtowcs(NULL, &s, 0, NULL);
+
+  printf("%d %d\n", f(x), y[9]);
+  printf("done\n");
+  return 0;
 }

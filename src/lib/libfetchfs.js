@@ -10,7 +10,7 @@ addToLibrary({
     createBackend(opts) {
       return withStackSave(
         () => _wasmfs_create_fetch_backend(
-          stringToUTF8OnStack(opts.base_url ?? ""),
+          stringToUTF8OnStack(opts.base_url ?? ''),
           opts.chunkSize | 0
         )
       );
@@ -19,5 +19,5 @@ addToLibrary({
 });
 
 if (!WASMFS) {
-  error("using -lfetchfs.js requires using WasmFS (-sWASMFS)");
+  error('using -lfetchfs.js requires using WasmFS (-sWASMFS)');
 }

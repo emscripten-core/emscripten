@@ -15,7 +15,7 @@ int main() {
   int val = setjmp(b1);
   if (val) {
     assert(val == 1);
-    printf("success\n");
+    printf("done\n");
     return 0;
   }
   /*

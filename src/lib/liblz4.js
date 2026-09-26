@@ -6,7 +6,7 @@
 
 #if LZ4
 addToLibrary({
-  $LZ4__deps: ['$FS', '$preloadPlugins', '$getUniqueRunDependency', '$addRunDependency', '$removeRunDependency'],
+  $LZ4__deps: ['$FS', '$preloadPlugins'],
   $LZ4: {
     DIR_MODE: {{{ cDefs.S_IFDIR | 0o777 }}},
     FILE_MODE: {{{ cDefs.S_IFREG | 0o777 }}},
@@ -20,7 +20,7 @@ addToLibrary({
       })();
       LZ4.CHUNK_SIZE = LZ4.codec.CHUNK_SIZE;
     },
-    loadPackage(pack, preloadPlugin) {
+    async loadPackage(pack, preloadPlugin) {
       LZ4.init();
       var compressedData = pack['compressedData'] || LZ4.codec.compressPackage(pack['data']);
       assert(compressedData['cachedIndexes'].length === compressedData['cachedChunks'].length);
@@ -52,14 +52,11 @@ addToLibrary({
           var fullname = file.filename;
           for (var plugin of preloadPlugins) {
             if (plugin['canHandle'](fullname)) {
-              var dep = getUniqueRunDependency('fp ' + fullname);
-              addRunDependency(dep);
-              var finish = () => removeRunDependency(dep);
               var byteArray = FS.readFile(fullname);
 #if ASSERTIONS
               assert(plugin['handle'].constructor.name === 'AsyncFunction', 'Filesystem plugin handlers must be async functions (See #24914)')
 #endif
-              plugin['handle'](byteArray, fullname).then(finish).catch(finish);
+              await plugin['handle'](byteArray, fullname);
               break;
             }
           }

@@ -1,8 +1,10 @@
 #include <assert.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -36,6 +38,23 @@ int main() {
 
   // check we can call this, but the test doesn't check the output
   emscripten_get_now();
+
+  // The epoll syscalls link against the standalone stubs and report ENOSYS.
+  // A zero timeout routes through __syscall_epoll_pwait_nonblocking, a nonzero
+  // one through __syscall_epoll_pwait, covering all four stubs.
+  struct epoll_event ev = {};
+  errno = 0;
+  assert(epoll_create1(0) < 0);
+  assert(errno == ENOSYS);
+  errno = 0;
+  assert(epoll_ctl(1, EPOLL_CTL_ADD, 0, &ev) < 0);
+  assert(errno == ENOSYS);
+  errno = 0;
+  assert(epoll_wait(1, &ev, 1, 0) < 0);
+  assert(errno == ENOSYS);
+  errno = 0;
+  assert(epoll_pwait(1, &ev, 1, -1, NULL) < 0);
+  assert(errno == ENOSYS);
 
   // This doesn't do anything because we have no handler registered, but it
   // verifies that `raise` can be included in the build without any non-standard

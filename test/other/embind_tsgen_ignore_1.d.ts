@@ -1,14 +1,14 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
-declare namespace RuntimeExports {
-    function FS_createPath(...args: any[]): any;
-    function FS_createDataFile(...args: any[]): any;
-    function FS_preloadFile(parent: any, name: any, url: any, canRead: any, canWrite: any, dontCreateFile: any, canOwn: any, preFinish: any): Promise<void>;
-    function FS_unlink(...args: any[]): any;
-    function FS_createLazyFile(...args: any[]): any;
-    function FS_createDevice(...args: any[]): any;
-    function addRunDependency(id: any): void;
-    function removeRunDependency(id: any): void;
-}
+declare var RuntimeExports: {
+    FS_createPath: (...args: any[]) => any;
+    FS_createDataFile: (...args: any[]) => any;
+    FS_preloadFile: (parent: any, name: any, url: any, canRead: any, canWrite: any, dontCreateFile: any, canOwn: any, preFinish: any) => Promise<void>;
+    FS_unlink: (...args: any[]) => any;
+    FS_createLazyFile: (...args: any[]) => any;
+    FS_createDevice: (...args: any[]) => any;
+    addRunDependency: (id: any) => void;
+    removeRunDependency: (id: any) => void;
+};
 interface WasmModule {
   _main(_0: number, _1: number): number;
   __emscripten_proxy_main(_0: number, _1: number): number;
@@ -50,6 +50,8 @@ export type FirstEnum = FirstEnumValue<0>|FirstEnumValue<1>|FirstEnumValue<2>;
 export type SecondEnum = 0|1|2;
 
 export type ThirdEnum = 'kValueAlpha'|'kValueBeta'|'kValueGamma';
+
+export type HyphenatedEnum = 'k-hyphen-a'|'k-hyphen-b';
 
 export interface EmptyEnumValue<T extends number> {
   value: T;
@@ -140,6 +142,7 @@ interface EmbindModule {
   FirstEnum: {kValueOne: FirstEnumValue<0>, kValueTwo: FirstEnumValue<1>, kValueThree: FirstEnumValue<2>};
   SecondEnum: {kValueA: 0, kValueB: 1, kValueC: 2};
   ThirdEnum: {kValueAlpha: 'kValueAlpha', kValueBeta: 'kValueBeta', kValueGamma: 'kValueGamma'};
+  HyphenatedEnum: {'k-hyphen-a': 'k-hyphen-a', 'k-hyphen-b': 'k-hyphen-b'};
   EmptyEnum: {};
   enum_returning_fn(): FirstEnum;
   num_enum_returning_fn(): SecondEnum;

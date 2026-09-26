@@ -56,6 +56,6 @@ int main() {
   assert(totalAllocs == 21);
   assert(totalReallocs == 1);
   assert(totalFrees == 20);
-  emscripten_console_logf("OK.");
+  emscripten_console_logf("done");
   return 0;
 }

@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Simple color-enabled diagnostics reporting functions.
-"""
+"""Simple color-enabled diagnostics reporting functions."""
 
 import logging
 import os
@@ -21,13 +20,13 @@ ERROR = 2
 
 # color for use for each diagnostic level
 level_colors = {
-    WARN: colored_logger.MAGENTA,
-    ERROR: colored_logger.RED,
+  WARN: colored_logger.MAGENTA,
+  ERROR: colored_logger.RED,
 }
 
 level_prefixes = {
-    WARN: 'warning: ',
-    ERROR: 'error: ',
+  WARN: 'warning: ',
+  ERROR: 'error: ',
 }
 
 

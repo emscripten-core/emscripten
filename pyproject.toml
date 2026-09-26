@@ -1,27 +1,25 @@
 [project]
+name = "emscripten"
 requires-python = ">=3.10"
 
 [tool.ruff]
 preview = true
 line-length = 100
 indent-width = 2
-exclude = [
+extend-exclude = [
   "./cache/",
-  "./node_modules/",
   "./site/source/_themes/",
   "./site/source/conf.py",
-  "./system/lib/",
   "./test/third_party/",
   "./third_party/",
   "./tools/filelock.py",
-  "./tools/scons/",
-  ".git",
 ]
 
 lint.select = [
   "ARG",
   "ASYNC",
   "B",
+  "D",
   "C4",
   "C90",
   "COM",
@@ -33,45 +31,52 @@ lint.select = [
   "PL",
   "UP",
   "W",
+  "RUF",
   "YTT",
 ]
 lint.external = [ "D" ]
 lint.ignore = [
-  "B011", # See https://github.com/PyCQA/flake8-bugbear/issues/66
-  "B023",
-  "B026",
-  "E272",
-  "E402",
-  "E241",
-  "E266",
-  "E501",
-  "E721",
-  "E741",
-  "E111", # Does not seem to honor `indent-width = 2` above
-  "E114", # Does not seem to honor `indent-width = 2` above
-  "E261",
-  "PERF203",
-  "PERF401",
-  "PLC0415",
-  "PLR0904",
-  "PLR0916",
-  "PLR0914",
-  "PLR1702",
-  "PLR1704",
-  "PLR5501",
-  "PLR6301",
-  "PLW0602",
-  "PLW0603",
-  "PLW1510",
-  "PLW2901",
-  "UP030", # TODO
-  "UP031", # TODO
-  "UP032", # TODO
+  "undocumented-public-module",
+  "undocumented-public-class",
+  "undocumented-public-method",
+  "undocumented-public-function",
+  "undocumented-public-package",
+  "undocumented-magic-method",
+  "undocumented-public-nested-class",
+  "undocumented-public-init",
+  "incorrect-blank-line-before-class", # Superceeded by no-blank-line-before-class
+  "multi-line-summary-second-line", # Superceeded by multi-line-summary-first-line
+  "non-imperative-mood",
+  "assert-false", # See https://github.com/PyCQA/flake8-bugbear/issues/66
+  "function-uses-loop-variable",
+  "module-import-not-at-top-of-file",
+  "multiple-leading-hashes-for-block-comment",
+  "line-too-long",
+  "indentation-with-invalid-multiple", # Does not honor `indent-width`. See https://github.com/astral-sh/ruff/issues/8705
+  "indentation-with-invalid-multiple-comment", # Does not honor `indent-width`. See https://github.com/astral-sh/ruff/issues/8705
+  "too-few-spaces-before-inline-comment",
+  "try-except-in-loop",
+  "manual-list-comprehension",
+  "import-outside-top-level",
+  "too-many-public-methods",
+  "too-many-boolean-expressions",
+  "too-many-locals",
+  "too-many-nested-blocks",
+  "no-self-use",
+  "global-statement",
+  "too-many-statements-in-try-clause",
+  "subprocess-run-without-check",
+  "redefined-loop-name",
+  "mutable-class-default",
+  "non-empty-init-module",
 ]
-lint.per-file-ignores."tools/ports/*.py" = [ "ARG001", "ARG005" ]
-lint.per-file-ignores."test/other/ports/*.py" = [ "ARG001" ]
-lint.per-file-ignores."test/parallel_testsuite.py" = [ "ARG002" ]
-lint.per-file-ignores."test/test_benchmark.py" = [ "ARG002" ]
+lint.per-file-ignores."tools/ports/*.py" = [ "unused-function-argument", "unused-lambda-argument" ]
+lint.per-file-ignores."tools/webidl_binder.py" = [ "printf-string-formatting", "f-string" ]
+lint.per-file-ignores."test/other/ports/*.py" = [ "unused-function-argument" ]
+lint.per-file-ignores."test/parallel_testsuite.py" = [ "unused-method-argument" ]
+lint.per-file-ignores."test/test_benchmark.py" = [ "unused-method-argument" ]
+lint.per-file-ignores."test/*.py" = [ "collection-literal-concatenation", "printf-string-formatting", "multiple-spaces-after-comma" ]
+lint.per-file-ignores."system/lib/update_*.py" = [ "multiple-spaces-after-comma" ]
 lint.mccabe.max-complexity = 51 # Recommended: 10
 lint.pylint.allow-magic-value-types = [
   "bytes",
@@ -98,8 +103,9 @@ mypy_path = "third_party/,third_party/ply,third_party/websockify"
 files = [ "." ]
 exclude = '''
 (?x)(
-cache |
-third_party |
+out/ |
+cache/ |
+third_party/ |
 conf\.py |
 emrun\.py |
 site/source/_themes/ |

@@ -21,7 +21,7 @@ void worker_main() {
   emscripten_wasm_worker_post_function_sig(EMSCRIPTEN_WASM_WORKER_ID_PARENT, test_success, "id", 10, 0.5);
 }
 
-char stack[1024];
+char stack[4096];
 
 int main() {
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));

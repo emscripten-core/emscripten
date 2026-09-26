@@ -20,9 +20,8 @@ mechanisms to work.
     you, so that it is asynchronous (hence the name "Asyncify") even though you
     wrote it in a normal synchronous way. This works in most environments, but
     can cause the Wasm output to be much larger.
-  * `JSPI` (experimental) - Uses the VM's support for JavaScript Promise
-    Integration (JSPI) for interacting with async JavaScript. The code size will
-    remain the same, but support for this feature is still experimental.
+  * `JSPI` - Uses the VM's support for JavaScript Promise Integration (JSPI)
+    for interacting with async JavaScript. The code size will remain the same.
 
 For more on Asyncify see the
 `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_
@@ -168,7 +167,7 @@ Marking JS library functions as async
 
 If you mark a JS library function as async using the ``__async`` decorator then
 the compiler will take a care of all the details of using the ``Asyncify`` API
-for you.  The function will also automatically be incldued in
+for you.  The function will also automatically be included in
 :ref:`ASYNCIFY_IMPORTS`.  All you need to do is write normal async JS function
 (either using the explict ``async`` JS keyword or returning a ``Promise``
 object).  For example:
@@ -177,7 +176,7 @@ object).  For example:
 
    addToLibrary({
      fetch_v1__async: 'auto',
-     fetch_v2: async (url) => {
+     fetch_v1: async (url) => {
        const response = await fetch(UTF8ToString(url);
        const json_data = await response.json();
        return stringToNewUTF8(json_data);

@@ -6,7 +6,7 @@
 
 var LibraryWebSocket = {
   $webSockets__deps: ['$HandleAllocator'],
-  $webSockets: "new HandleAllocator();",
+  $webSockets: 'new HandleAllocator();',
 
   $WS__deps: ['$webSockets', 'malloc'],
   $WS: {
@@ -355,9 +355,9 @@ var LibraryWebSocket = {
 #if SHARED_MEMORY
     // TODO: This is temporary to cast a shared Uint8Array to a non-shared Uint8Array. This could be removed if WebSocket API is improved
     // to allow passing in views to SharedArrayBuffers
-    socket.send(new Uint8Array({{{ makeHEAPView('U8', 'binaryData', 'binaryData+dataLength') }}}));
+    socket.send(HEAPU8.slice(binaryData, binaryData + dataLength));
 #else
-    socket.send({{{ makeHEAPView('U8', 'binaryData', 'binaryData+dataLength') }}});
+    socket.send(HEAPU8.subarray(binaryData, binaryData + dataLength));
 #endif
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },

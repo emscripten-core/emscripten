@@ -23,5 +23,5 @@ int main() {
   assert(mkdir("test/a/b/.", 0777) == -1);
   printf("error: %s\n", strerror(errno));
   assert(errno == ENOENT);
-  printf("success\n");
+  printf("done\n");
 }

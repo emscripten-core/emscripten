@@ -884,7 +884,7 @@ extern "C" {
 #if defined(__EMSCRIPTEN__)
 void* __libc_malloc(size_t) __attribute__((weak, alias("dlmalloc")));
 void  __libc_free(void*) __attribute__((weak, alias("dlfree")));
-void* __libc_calloc(size_t) __attribute__((weak, alias("dlcalloc")));
+void* __libc_calloc(size_t, size_t) __attribute__((weak, alias("dlcalloc")));
 void* __libc_realloc(void*, size_t) __attribute__((weak, alias("dlrealloc")));
 void* malloc(size_t) __attribute__((weak, alias("dlmalloc")));
 void  free(void*) __attribute__((weak, alias("dlfree")));
@@ -903,7 +903,7 @@ int malloc_trim(size_t) __attribute__((weak, alias("dlmalloc_trim")));
 #if !NO_MALLOC_STATS
 void malloc_stats(void) __attribute__((weak, alias("dlmalloc_stats")));
 #endif
-size_t malloc_usable_size(const void*) __attribute__((weak, alias("dlmalloc_usable_size")));
+size_t malloc_usable_size(void*) __attribute__((weak, alias("dlmalloc_usable_size")));
 size_t malloc_footprint(void) __attribute__((weak, alias("dlmalloc_footprint")));
 size_t malloc_max_footprint(void) __attribute__((weak, alias("dlmalloc_max_footprint")));
 size_t malloc_footprint_limit(void) __attribute__((weak, alias("dlmalloc_footprint_limit")));

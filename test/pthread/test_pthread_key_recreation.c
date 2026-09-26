@@ -17,9 +17,7 @@
 
 static pthread_key_t key;
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
-static bool thread_sync = false;
+static pthread_barrier_t sync_barrier;
 
 void *thread_main(void *arg) {
   assert(pthread_getspecific(key) == 0);
@@ -27,20 +25,11 @@ void *thread_main(void *arg) {
   pthread_setspecific(key, (void*)123);
   assert(pthread_getspecific(key) == (void*)123);
 
-  // wait for slot to be recreated
-  {
-    assert(pthread_mutex_lock(&mutex) == 0);
-    thread_sync = true;
-    assert(pthread_cond_signal(&cond_var) == 0);
-    assert(pthread_mutex_unlock(&mutex) == 0);
-  }
+  // 1. Wait for slot to be recreated. First signal that we are done setting our value.
+  pthread_barrier_wait(&sync_barrier);
 
-  {
-    assert(pthread_mutex_lock(&mutex) == 0);
-    while (thread_sync)
-      assert(pthread_cond_wait(&cond_var, &mutex) == 0);
-    assert(pthread_mutex_unlock(&mutex) == 0);
-  }
+  // 2. Wait for main thread to finish recreating the key.
+  pthread_barrier_wait(&sync_barrier);
 
   assert(pthread_getspecific(key) == 0);
 
@@ -55,6 +44,8 @@ int main() {
   pthread_setspecific(key, (void*)456);
   assert(pthread_getspecific(key) == (void*)456);
 
+  pthread_barrier_init(&sync_barrier, NULL, 2);
+
   // launch worker thread that also sets and queries the same slot
   pthread_attr_t attr;
   pthread_attr_init(&attr);
@@ -63,13 +54,8 @@ int main() {
   int error = pthread_create(&thread, &attr, thread_main, NULL);
   assert(!error);
 
-  // wait for worker thread to finish initial setting of the slot
-  {
-    assert(pthread_mutex_lock(&mutex) == 0);
-    while (!thread_sync)
-      assert(pthread_cond_wait(&cond_var, &mutex) == 0);
-    assert(pthread_mutex_unlock(&mutex) == 0);
-  }
+  // 1. Wait for worker thread to finish initial setting of the slot
+  pthread_barrier_wait(&sync_barrier);
 
   // recreate
   pthread_key_delete(key);
@@ -83,13 +69,8 @@ int main() {
   // until we recover the same key
   assert(oldkey == key);
 
-  // notify worker thread to check the slot again
-  {
-    assert(pthread_mutex_lock(&mutex) == 0);
-    thread_sync = false;
-    assert(pthread_cond_signal(&cond_var) == 0);
-    assert(pthread_mutex_unlock(&mutex) == 0);
-  }
+  // 2. Notify worker thread to check the slot again
+  pthread_barrier_wait(&sync_barrier);
 
   pthread_join(thread, NULL);
 

@@ -610,7 +610,7 @@ function run_all_tests() {
             console.log(`${msg.name}: ${msg.verdict}`);
         }
     }
-    const filter = process.env['EMBIND_TESTS'];
+    const filter = globalThis.process?.env['EMBIND_TESTS'];
     run_tests(report_to_stdout, filter);
 }
 

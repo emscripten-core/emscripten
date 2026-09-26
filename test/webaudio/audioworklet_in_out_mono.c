@@ -65,7 +65,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
     .numberOfOutputs = 1,
     .outputChannelCounts = outputChannelCounts
   };
-  EMSCRIPTEN_AUDIO_WORKLET_NODE_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
+  EMSCRIPTEN_WEBAUDIO_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
   emscripten_audio_node_connect(worklet, context, 0, 0);
 
   // Create the two mono source nodes and connect them to the two inputs

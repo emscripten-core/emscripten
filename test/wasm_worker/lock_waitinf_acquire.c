@@ -92,7 +92,7 @@ int main() {
 #ifdef __EMSCRIPTEN_PTHREADS__
     pthread_create(&threads[i], NULL, pthread_main, NULL);
 #else
-    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
+    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(4096);
     emscripten_wasm_worker_post_function_v(worker, worker_main);
 #endif
   }

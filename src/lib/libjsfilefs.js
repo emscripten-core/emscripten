@@ -14,5 +14,5 @@ addToLibrary({
 });
 
 if (!WASMFS) {
-  error("using -ljsfile.js requires using WasmFS (-sWASMFS)");
+  error('using -ljsfile.js requires using WasmFS (-sWASMFS)');
 }

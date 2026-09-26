@@ -12,10 +12,6 @@
 // the node constructor's "processorOptions" field, we can share the necessary
 // bootstrap information from the main thread to the AudioWorkletGlobalScope.
 
-#if MINIMAL_RUNTIME
-var instantiatePromise;
-#endif
-
 if (ENVIRONMENT_IS_AUDIO_WORKLET) {
 
 #if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
@@ -100,9 +96,8 @@ function createWasmAudioWorkletProcessor() {
     process(inputList, outputList) {
 #endif
 
-#if ALLOW_MEMORY_GROWTH
+#if ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS != 2
       // Recreate the output views if the heap has changed
-      // TODO: add support for GROWABLE_ARRAYBUFFERS
       if (HEAPF32.buffer != this.outputViews[0].buffer) {
         this.createOutputViews();
       }

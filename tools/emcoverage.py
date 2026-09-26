@@ -4,8 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""
-This is the Emscripten coverage tool.
+"""Emscripten coverage tool.
 
 Usage: emcoverage.py <help|reset|report|html|xml|COMMAND> ...
 
@@ -62,10 +61,10 @@ def main():
 
   if sys.argv[1] in {'html', 'report', 'xml'}:
     old_argv = sys.argv
-    sys.argv = ['coverage', 'combine'] + glob(os.path.join(store, '*'))
+    sys.argv = ['coverage', 'combine', *glob(os.path.join(store, '*'))]
     with contextlib.suppress(SystemExit):
       coverage.cmdline.main()
-    sys.argv = old_argv + ['-i']
+    sys.argv = [*old_argv, '-i']
     return coverage.cmdline.main()
 
   if not os.path.exists(sys.argv[1]):

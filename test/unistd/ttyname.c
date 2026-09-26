@@ -44,7 +44,6 @@ int main() {
   result = ttyname(dev);
   assert(!result);
 
-  puts("success");
-
-  return EXIT_SUCCESS;
+  puts("done");
+  return 0;
 }

@@ -220,5 +220,5 @@ addToLibrary({
 });
 
 if (WASMFS) {
-  error("using -lproxyfs is not currently supported in WasmFS.");
+  error('using -lproxyfs is not currently supported in WasmFS.');
 }

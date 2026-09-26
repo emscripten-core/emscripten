@@ -69,5 +69,5 @@ int main() {
   assert(save_side == get_side_tls());
   assert(save_main == get_main_tls());
 
-  printf("success\n");
+  printf("done\n");
 }

@@ -78,11 +78,10 @@ int clone (int (*)(void *), void *, int, void *, ...);
 int unshare(int);
 int setns(int, int);
 
-void *memcpy(void *__restrict, const void *__restrict, size_t);
-int memcmp(const void *, const void *, size_t);
-void *memset (void *, int, size_t);
-void *calloc(size_t, size_t);
-void free(void *);
+int (memcmp)(const void *, const void *, size_t);
+void *(memset)(void *, int, size_t);
+void *(calloc)(size_t, size_t);
+void (free)(void *);
 
 typedef struct cpu_set_t { unsigned long __bits[128/sizeof(long)]; } cpu_set_t;
 int __sched_cpucount(size_t, const cpu_set_t *);
@@ -116,13 +115,13 @@ __CPU_op_func_S(XOR, ^)
 #define CPU_XOR_S(a,b,c,d) __CPU_XOR_S(a,b,c,d)
 
 #define CPU_COUNT_S(size,set) __sched_cpucount(size,set)
-#define CPU_ZERO_S(size,set) memset(set,0,size)
-#define CPU_EQUAL_S(size,set1,set2) (!memcmp(set1,set2,size))
+#define CPU_ZERO_S(size,set) (memset)(set,0,size)
+#define CPU_EQUAL_S(size,set1,set2) (!(memcmp)(set1,set2,size))
 
 #define CPU_ALLOC_SIZE(n) (sizeof(long) * ( (n)/(8*sizeof(long)) \
 	+ ((n)%(8*sizeof(long)) + 8*sizeof(long)-1)/(8*sizeof(long)) ) )
-#define CPU_ALLOC(n) ((cpu_set_t *)calloc(1,CPU_ALLOC_SIZE(n)))
-#define CPU_FREE(set) free(set)
+#define CPU_ALLOC(n) ((cpu_set_t *)(calloc)(1,CPU_ALLOC_SIZE(n)))
+#define CPU_FREE(set) (free)(set)
 
 #define CPU_SETSIZE 1024
 

@@ -2,10 +2,21 @@
 #include <stdio.h>
 
 struct DestructorTester {
+  int id;
   ~DestructorTester() {
-    printf("Destructor Uncaught: %d\n", std::uncaught_exceptions());
+    printf("Destructor %d Uncaught: %d\n", id, std::uncaught_exceptions());
   }
 };
+
+void foo(std::exception_ptr p) {
+  DestructorTester dt1{1};
+  std::rethrow_exception(p);
+}
+
+void bar(std::exception_ptr p) {
+  DestructorTester dt2{2};
+  foo(p);
+}
 
 int main() {
   std::exception_ptr p;
@@ -17,8 +28,7 @@ int main() {
 
   printf("Before Uncaught: %d\n", std::uncaught_exceptions());
   try {
-    DestructorTester dt;
-    std::rethrow_exception(p);
+    bar(p);
   } catch (...) {
     printf("In catch Uncaught: %d\n", std::uncaught_exceptions());
   }

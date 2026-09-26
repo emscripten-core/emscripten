@@ -32,7 +32,6 @@ int main() {
   assert(sockfd == -1);
   assert(errno == EPROTONOSUPPORT);
 
-  puts("success");
-
-  return EXIT_SUCCESS;
+  puts("done");
+  return 0;
 }

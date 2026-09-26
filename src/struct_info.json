@@ -130,13 +130,38 @@
             "POLLWRNORM",
             "POLLIN",
             "POLLOUT",
-            "POLLNVAL"
+            "POLLNVAL",
+            "POLLRDHUP"
         ],
         "structs": {
             "pollfd": [
                 "fd",
                 "events",
                 "revents"
+            ]
+        }
+    },
+    {
+        "file": "sys/epoll.h",
+        "defines": [
+            "EPOLLIN",
+            "EPOLLOUT",
+            "EPOLLERR",
+            "EPOLLHUP",
+            "EPOLLRDNORM",
+            "EPOLLWRNORM",
+            "EPOLLET",
+            "EPOLLONESHOT",
+            "EPOLLEXCLUSIVE",
+            "EPOLL_CTL_ADD",
+            "EPOLL_CTL_DEL",
+            "EPOLL_CTL_MOD",
+            "EPOLL_CLOEXEC"
+        ],
+        "structs": {
+            "epoll_event": [
+                "events",
+                "data"
             ]
         }
     },
@@ -181,7 +206,8 @@
             "NI_NAMEREQD",
             "EAI_NONAME",
             "EAI_SOCKTYPE",
-            "EAI_BADFLAGS"
+            "EAI_BADFLAGS",
+            "EAI_AGAIN"
         ],
         "structs": {
             "addrinfo": [
@@ -231,17 +257,23 @@
                 "msg_name",
                 "msg_namelen",
                 "msg_iov",
-                "msg_iovlen"
+                "msg_iovlen",
+                "msg_control",
+                "msg_controllen",
+                "msg_flags"
             ]
         }
     },
     {
-        "file": "netinet/in.h",
-        "defines": [
-            "IPPROTO_UDP",
-            "IPPROTO_TCP",
-            "INADDR_LOOPBACK"
-        ]
+         "file": "netinet/in.h",
+         "defines": [
+             "IPPROTO_IP",
+             "IPPROTO_IPV6",
+             "IPPROTO_UDP",
+             "IPPROTO_TCP",
+             "IPV6_V6ONLY",
+             "INADDR_LOOPBACK"
+         ]
     },
     {
         "file": "bits/fcntl.h",
@@ -252,6 +284,9 @@
             "F_SETFL",
             "O_NOFOLLOW",
             "O_APPEND",
+            "O_ASYNC",
+            "O_DIRECT",
+            "O_NOATIME",
             "F_SETOWN",
             "O_TRUNC",
             "O_DIRECTORY",
@@ -286,12 +321,24 @@
             "SOCK_STREAM",
             "SOCK_CLOEXEC",
             "SOCK_NONBLOCK",
-            "AF_INET",
-            "AF_UNSPEC",
-            "AF_INET6",
-            "SOL_SOCKET",
-            "SO_ERROR"
+             "MSG_PEEK",
+             "AF_INET",
+             "AF_UNSPEC",
+             "AF_INET6",
+             "AF_UNIX",
+             "SOL_SOCKET",
+             "SO_ERROR",
+             "SO_REUSEPORT"
         ]
+    },
+    {
+        "file": "sys/un.h",
+        "structs": {
+            "sockaddr_un": [
+                "sun_family",
+                "sun_path"
+            ]
+        }
     },
     {
         "file": "bits/ioctl.h",
@@ -324,7 +371,8 @@
     {
         "file": "limits.h",
         "defines": [
-            "TZNAME_MAX"
+            "TZNAME_MAX",
+            "SYMLOOP_MAX"
         ]
     },
     {
@@ -820,6 +868,7 @@
             "EMSCRIPTEN_EVENT_MOUSEOUT",
             "EMSCRIPTEN_EVENT_CANVASRESIZED",
             "EMSCRIPTEN_EVENT_POINTERLOCKERROR",
+            "EMSCRIPTEN_EVENT_CONTEXTMENU",
 
             "EMSCRIPTEN_RESULT_SUCCESS",
             "EMSCRIPTEN_RESULT_DEFERRED",
@@ -1012,7 +1061,8 @@
               "enableExtensionsByDefault",
               "explicitSwapControl",
               "proxyContextToMainThread",
-              "renderViaOffscreenBackBuffer"
+              "renderViaOffscreenBackBuffer",
+              "desynchronized"
             ],
             "EmscriptenFullscreenStrategy": [
               "scaleMode",

@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utilities for manipulating WebAssembly binaries from python.
-"""
+"""Utilities for manipulating WebAssembly binaries from python."""
 
 import logging
 import os
@@ -31,6 +30,7 @@ VERSION = b'\x01\0\0\0'
 HEADER_SIZE = 8
 
 LIMITS_HAS_MAX = 0x1
+LIMITS_IS_64 = 0x4
 
 SEG_PASSIVE = 0x1
 
@@ -184,13 +184,17 @@ Global = namedtuple('Global', ['type', 'mutable', 'init'])
 Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info', 'runtime_paths'])
 Table = namedtuple('Table', ['elem_type', 'limits'])
 FunctionBody = namedtuple('FunctionBody', ['offset', 'size'])
+Memory = namedtuple('Memory', ['limits'])
 DataSegment = namedtuple('DataSegment', ['flags', 'init', 'offset', 'size'])
 FuncType = namedtuple('FuncType', ['params', 'returns'])
 
 
 class Module:
-  """Extremely minimal wasm module reader.  Currently only used
-  for parsing the dylink section."""
+  """Extremely minimal wasm module reader.
+
+  Currently only used for parsing the dylink section.
+  """
+
   def __init__(self, filename):
     self.buf = None # Set this before FS calls below in case they throw.
     self.filename = filename
@@ -243,7 +247,7 @@ class Module:
 
   def read_init(self):
     code = []
-    while 1:
+    while True:
       opcode = OpCode(self.read_byte())
       args = []
       match opcode:
@@ -256,7 +260,7 @@ class Module:
         case OpCode.END | OpCode.I32_ADD | OpCode.I64_ADD:
           pass
         case _:
-          raise Exception('unexpected opcode %s' % opcode)
+          raise Exception(f'unexpected opcode {opcode}')
       code.append((opcode, args))
       if opcode == OpCode.END:
         break
@@ -272,7 +276,7 @@ class Module:
     self.buf.seek(count, os.SEEK_CUR)
 
   def sections(self):
-    """Generator that lazily returns sections from the wasm file."""
+    """Lazily yield sections from the wasm file."""
     offset = HEADER_SIZE
     while offset < self.size:
       self.seek(offset)
@@ -470,6 +474,20 @@ class Module:
       self.seek(start + body_size)
     return functions
 
+  @memoize
+  def get_memories(self):
+    section = self.get_section(SecType.MEMORY)
+    if not section:
+      return []
+    memories = []
+    self.seek(section.offset)
+    num_memories = self.read_uleb()
+    for _ in range(num_memories):
+      limits = self.read_limits()
+      memories.append(Memory(limits))
+
+    return memories
+
   def get_section(self, section_code):
     return next((s for s in self.sections() if s.type == section_code), None)
 
@@ -643,3 +661,23 @@ def get_weak_imports(wasm_file):
       if flags & SYMBOL_BINDING_MASK == SYMBOL_BINDING_WEAK:
         weak_imports.append(symbol)
   return weak_imports
+
+
+def is_wasm(filename):
+  if not os.path.isfile(filename):
+    return False
+  with open(filename, 'rb') as f:
+    header = f.read(HEADER_SIZE)
+  return header == MAGIC + VERSION
+
+
+def is_wasm_dylib(filename):
+  """Detect wasm dynamic libraries by the presence of the "dylink" custom section."""
+  if not is_wasm(filename):
+    return False
+  with Module(filename) as module:
+    section = next(module.sections(), None)
+    if section and section.type == SecType.CUSTOM:
+      if section.name in {'dylink', 'dylink.0'}:
+        return True
+  return False

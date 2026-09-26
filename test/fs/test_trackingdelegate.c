@@ -86,7 +86,7 @@ int main() {
       out('Closed ' + path);
     };
     FS.trackingDelegate['onMakeDirectory'] = function(path, mode) {
-      out('Created directory "' + path + '" with mode ' + mode);
+      out('Created directory "' + path + '" with mode 0o' + mode.toString(8));
     };
     FS.trackingDelegate['onMakeSymlink'] = function(oldpath, newpath) {
       out('Created symlink from "' + oldpath + '" to "' + newpath + '"');

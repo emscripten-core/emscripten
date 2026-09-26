@@ -8,7 +8,11 @@ addToLibrary({
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS'],
+  $SOCKFS__deps: ['$FS',
+#if NODERAWSOCKETS
+    '$nodeSockOps',
+#endif
+  ],
   $SOCKFS: {
 #if expectToReceiveOnModule('websocket')
     websocketArgs: {},
@@ -19,6 +23,18 @@ addToLibrary({
     },
     emit(event, param) {
       SOCKFS.callbacks[event]?.(param);
+      // Bridge socket readiness into the inode wait-queue (poll/epoll). The
+      // 'error' event carries [fd, ...]; the rest carry the fd directly.
+      var fd = event === 'error' ? param[0] : param;
+      var flags = {
+        'message':    {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}},
+        'open':       {{{ cDefs.POLLOUT }}},
+        'connection': {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}},
+        'close':      {{{ cDefs.POLLIN }}} | {{{ cDefs.POLLHUP }}},
+        'error':      {{{ cDefs.POLLERR }}},
+      }[event];
+      // 'listen' has no readiness mapping; skip it.
+      if (flags) FS.getStream(fd)?.node.notifyListeners(flags);
     },
     mount(mount) {
 #if expectToReceiveOnModule('websocket')
@@ -44,17 +60,45 @@ addToLibrary({
       return FS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
     },
     createSocket(family, type, protocol) {
-      // Emscripten only supports AF_INET
-      if (family != {{{ cDefs.AF_INET }}}) {
+      if (family != {{{ cDefs.AF_INET }}}
+#if NODERAWSOCKETS
+          // The node:net backend supports IPv6; other backends are IPv4 only.
+          && family != {{{ cDefs.AF_INET6 }}}
+#if NODERAWFS
+          // AF_UNIX stream sockets are backed by node's named pipes, and their
+          // paths live in the host filesystem. That only stays coherent with the
+          // program's own file syscalls (bind's parent dir, getsockname, unlink)
+          // under NODERAWFS, so the family is gated behind it - MEMFS paths are a
+          // disjoint namespace and would fail confusingly.
+          && family != {{{ cDefs.AF_UNIX }}}
+#endif
+#endif
+         ) {
         throw new FS.ErrnoError({{{ cDefs.EAFNOSUPPORT }}});
       }
-      type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // Some applications may pass it; it makes no sense for a single process.
+      var flags = {{{ cDefs.O_RDWR }}};
+#if NODERAWSOCKETS
+      if (type & {{{ cDefs.SOCK_NONBLOCK }}}) flags |= {{{ cDefs.O_NONBLOCK }}};
+#endif
+      type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // SOCK_CLOEXEC makes no sense for a single process.
       // Emscripten only supports SOCK_STREAM and SOCK_DGRAM
       if (type != {{{ cDefs.SOCK_STREAM }}} && type != {{{ cDefs.SOCK_DGRAM }}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
+#if NODERAWSOCKETS && NODERAWFS
+      // node has no AF_UNIX datagram primitive; only stream unix sockets exist.
+      if (family == {{{ cDefs.AF_UNIX }}} && type != {{{ cDefs.SOCK_STREAM }}}) {
+        throw new FS.ErrnoError({{{ cDefs.EPROTONOSUPPORT }}});
+      }
+#endif
       var streaming = type == {{{ cDefs.SOCK_STREAM }}};
-      if (streaming && protocol && protocol != {{{ cDefs.IPPROTO_TCP }}}) {
+      // The IPPROTO_TCP protocol guard only applies to INET stream sockets; unix
+      // stream sockets use protocol 0.
+      if (streaming && protocol && protocol != {{{ cDefs.IPPROTO_TCP }}}
+#if NODERAWSOCKETS && NODERAWFS
+          && family != {{{ cDefs.AF_UNIX }}}
+#endif
+         ) {
         throw new FS.ErrnoError({{{ cDefs.EPROTONOSUPPORT }}}); // if SOCK_STREAM, must be tcp or 0.
       }
 
@@ -68,7 +112,8 @@ addToLibrary({
         peers: {},
         pending: [],
         recv_queue: [],
-#if SOCKET_WEBRTC
+#if NODERAWSOCKETS
+        sock_ops: nodeSockOps
 #else
         sock_ops: SOCKFS.websocket_sock_ops
 #endif
@@ -84,7 +129,7 @@ addToLibrary({
       var stream = FS.createStream({
         path: name,
         node,
-        flags: {{{ cDefs.O_RDWR }}},
+        flags,
         seekable: false,
         stream_ops: SOCKFS.stream_ops
       });
@@ -104,6 +149,24 @@ addToLibrary({
     },
     // node and stream ops are backend agnostic
     stream_ops: {
+      getattr(stream) {
+        var node = stream.node;
+        return {
+          dev: 1,
+          ino: node.id,
+          mode: {{{ cDefs.S_IFSOCK }}} | 0o777,
+          nlink: 1,
+          uid: 0,
+          gid: 0,
+          rdev: 0,
+          size: 0,
+          atime: new Date(0),
+          mtime: new Date(0),
+          ctime: new Date(0),
+          blksize: 4096,
+          blocks: 0,
+        };
+      },
       poll(stream) {
         var sock = stream.node.sock;
         return sock.sock_ops.poll(sock);
@@ -198,13 +261,13 @@ addToLibrary({
 
             if (url === 'ws://' || url === 'wss://') { // Is the supplied URL config just a prefix, if so complete it.
               var parts = addr.split('/');
-              url = url + parts[0] + ":" + port + "/" + parts.slice(1).join('/');
+              url = url + parts[0] + ':' + port + '/' + parts.slice(1).join('/');
             }
 
             if (subProtocols !== 'null') {
               // The regex trims the string (removes spaces at the beginning and end), then splits the string by
               // <any space>,<any space> into an Array. Whitespace removal is important for Websockify and ws.
-              subProtocols = subProtocols.replace(/^ +| +$/g,"").split(/ *, */);
+              subProtocols = subProtocols.replace(/^ +| +$/g,'').split(/ *, */);
 
               opts = subProtocols;
             }
@@ -274,7 +337,7 @@ addToLibrary({
       handlePeerEvents(sock, peer) {
         var first = true;
 
-        var handleOpen = function () {
+        function handleOpen() {
 #if SOCKET_DEBUG
           dbg('websocket: handle open');
 #endif
@@ -296,7 +359,7 @@ addToLibrary({
             // lied and said this data was sent. shut it down.
             peer.socket.close();
           }
-        };
+        }
 
         function handleMessage(data) {
           if (typeof data == 'string') {
@@ -336,43 +399,39 @@ addToLibrary({
 
           sock.recv_queue.push({ addr: peer.addr, port: peer.port, data: data });
           SOCKFS.emit('message', sock.stream.fd);
-        };
+        }
 
+#if ENVIRONMENT_MAY_BE_NODE
         if (ENVIRONMENT_IS_NODE) {
+           // EventEmitter-style events use by ws library objects in Node.js).
           peer.socket.on('open', handleOpen);
-          peer.socket.on('message', function(data, isBinary) {
+          peer.socket.on('message', (data, isBinary) => {
             if (!isBinary) {
               return;
             }
             handleMessage((new Uint8Array(data)).buffer); // copy from node Buffer -> ArrayBuffer
           });
-          peer.socket.on('close', function() {
-            SOCKFS.emit('close', sock.stream.fd);
-          });
-          peer.socket.on('error', function(error) {
+          peer.socket.on('close', () => SOCKFS.emit('close', sock.stream.fd));
+          peer.socket.on('error', (error) =>{
             // Although the ws library may pass errors that may be more descriptive than
             // ECONNREFUSED they are not necessarily the expected error code e.g.
             // ENOTFOUND on getaddrinfo seems to be node.js specific, so using ECONNREFUSED
             // is still probably the most useful thing to do.
             sock.error = {{{ cDefs.ECONNREFUSED }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
             SOCKFS.emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
-            // don't throw
           });
-        } else {
-          peer.socket.onopen = handleOpen;
-          peer.socket.onclose = function() {
-            SOCKFS.emit('close', sock.stream.fd);
-          };
-          peer.socket.onmessage = function peer_socket_onmessage(event) {
-            handleMessage(event.data);
-          };
-          peer.socket.onerror = function(error) {
-            // The WebSocket spec only allows a 'simple event' to be thrown on error,
-            // so we only really know as much as ECONNREFUSED.
-            sock.error = {{{ cDefs.ECONNREFUSED }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
-            SOCKFS.emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
-          };
+          return;
         }
+#endif
+        peer.socket.onopen = handleOpen;
+        peer.socket.onclose = () => SOCKFS.emit('close', sock.stream.fd);
+        peer.socket.onmessage = (event) => handleMessage(event.data);
+        peer.socket.onerror = (error) => {
+          // The WebSocket spec only allows a 'simple event' to be thrown on error,
+          // so we only really know as much as ECONNREFUSED.
+          sock.error = {{{ cDefs.ECONNREFUSED }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+          SOCKFS.emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
+        };
       },
 
       //
@@ -411,7 +470,8 @@ addToLibrary({
           if (sock.connecting) {
             mask |= {{{ cDefs.POLLOUT }}};
           } else  {
-            mask |= {{{ cDefs.POLLHUP }}};
+            // A closed peer is both a full hangup and a read-side hangup.
+            mask |= {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLRDHUP }}};
           }
         }
 
@@ -534,7 +594,7 @@ addToLibrary({
         });
         SOCKFS.emit('listen', sock.stream.fd); // Send Event with listen fd.
 
-        sock.server.on('connection', function(ws) {
+        sock.server.on('connection', (ws) => {
 #if SOCKET_DEBUG
           dbg(`websocket: received connection from: ${ws._socket.remoteAddress}:${ws._socket.remotePort}`);
 #endif
@@ -549,6 +609,8 @@ addToLibrary({
             // push to queue for accept to pick up
             sock.pending.push(newsock);
             SOCKFS.emit('connection', newsock.stream.fd);
+            // A queued client makes the listening socket readable (POLLIN).
+            sock.stream.node.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
           } else {
             // create a peer on the listen socket so calling sendto
             // with the listen socket and an address will resolve
@@ -557,11 +619,11 @@ addToLibrary({
             SOCKFS.emit('connection', sock.stream.fd);
           }
         });
-        sock.server.on('close', function() {
+        sock.server.on('close', () => {
           SOCKFS.emit('close', sock.stream.fd);
           sock.server = null;
         });
-        sock.server.on('error', function(error) {
+        sock.server.on('error', (error) => {
           // Although the ws library may pass errors that may be more descriptive than
           // ECONNREFUSED they are not necessarily the expected error code e.g.
           // ENOTFOUND on getaddrinfo seems to be node.js specific, so using EHOSTUNREACH
@@ -676,14 +738,17 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
       },
-      recvmsg(sock, length) {
+      recvmsg(sock, length, flags) {
         // http://pubs.opengroup.org/onlinepubs/7908799/xns/recvmsg.html
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && sock.server) {
           // tcp servers should not be recv()'ing on the listen socket
           throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
         }
 
-        var queued = sock.recv_queue.shift();
+        // MSG_PEEK returns the head of the queue without consuming it, so a
+        // later recv sees the same bytes and poll still reports it readable.
+        var peek = flags & {{{ cDefs.MSG_PEEK }}};
+        var queued = sock.recv_queue[0];
         if (!queued) {
           if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
             var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
@@ -718,6 +783,9 @@ addToLibrary({
         dbg(`websocket: read (${bytesRead} bytes): ${res.buffer}`);
 #endif
 
+        if (peek) return res;
+        sock.recv_queue.shift();
+
         // push back any unread data for TCP connections
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && bytesRead < queuedLength) {
           var bytesRemaining = queuedLength - bytesRead;
@@ -730,7 +798,7 @@ addToLibrary({
 
         return res;
       }
-    }
+    },
   },
 
   /*

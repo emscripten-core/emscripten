@@ -24,7 +24,7 @@ void EMSCRIPTEN_KEEPALIVE spawn_a_thread() {
 void EMSCRIPTEN_KEEPALIVE count_threads(int num_threads_spawned, int num_threads_spawned_extra) {
 	num_threads_spawned += num_threads_spawned_extra;
 	int num_workers = EM_ASM_INT({
-		return PThread.runningWorkers.length + PThread.unusedWorkers.length;
+		return Object.keys(PThread.pthreads).length + PThread.unusedWorkers.length;
 	});
 
 	std::cout << 

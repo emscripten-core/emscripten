@@ -66,8 +66,7 @@ void test_mmap_write() {
   {
     FILE* fd = fopen("out.txt", "r");
     assert(fd >= 0);
-    char buffer[15];
-    memset(buffer, 0, 15);
+    char buffer[15] = {0};
     fread(buffer, 1, 14, fd);
     printf("out.txt content=%s\n", buffer);
     fclose(fd);
@@ -104,8 +103,7 @@ void test_mmap_readonly() {
   {
     FILE* fd = fopen("outreadonly.txt", "r");
     assert(fd >= 0);
-    char buffer[16];
-    memset(buffer, 0, 16);
+    char buffer[16] = {0};
     fread(buffer, 1, 15, fd);
     printf("outreadonly.txt content=%s\n", buffer);
     fclose(fd);
@@ -137,8 +135,7 @@ void test_mmap_private() {
   {
     FILE* fd = fopen("private.txt", "r");
     assert(fd >= 0);
-    char buffer[15];
-    memset(buffer, 0, 15);
+    char buffer[15] = {0};
     fread(buffer, 1, 14, fd);
     printf("private.txt content=%s\n", buffer);
     fclose(fd);
@@ -185,8 +182,7 @@ void test_mmap_shared_with_offset() {
     assert(fd >= 0);
     size_t offset = sysconf(_SC_PAGE_SIZE) * 2;
 
-    char buffer[33];
-    memset(buffer, 0, 33);
+    char buffer[33] = {0};
     fseek(fd, offset, SEEK_SET);
     fread(buffer, 1, 32, fd);
     // expect text written from mmap operation to appear at offset in the file

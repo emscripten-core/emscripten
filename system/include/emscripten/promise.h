@@ -58,8 +58,7 @@ typedef em_promise_result_t (*em_promise_callback_t)(void** result,
 // Create a new promise that can be explicitly resolved or rejected using
 // `emscripten_promise_resolve`. The returned promise handle must eventually be
 // freed with `emscripten_promise_destroy`.
-__attribute__((warn_unused_result)) em_promise_t
-emscripten_promise_create(void);
+[[nodiscard]] em_promise_t emscripten_promise_create(void);
 
 // Release the resources associated with this promise. This must be called on
 // every promise handle created, whether by `emscripten_promise_create` or any
@@ -85,7 +84,7 @@ void emscripten_promise_resolve(em_promise_t promise,
 // for documentation on how the callbacks work. `data` is arbitrary user data
 // that will be passed to the callbacks. The returned promise handle must
 // eventually be freed with `emscripten_promise_destroy`.
-__attribute__((warn_unused_result)) em_promise_t
+[[nodiscard]] em_promise_t
 emscripten_promise_then(em_promise_t promise,
                         em_promise_callback_t on_fulfilled,
                         em_promise_callback_t on_rejected,
@@ -98,8 +97,9 @@ emscripten_promise_then(em_promise_t promise,
 // were resolved with will be written to the `results` array if it is non-null
 // and the returned promise will be fulfilled with the address of that array as
 // well.
-__attribute__((warn_unused_result)) em_promise_t emscripten_promise_all(
-  em_promise_t* promises, void** results, size_t num_promises);
+[[nodiscard]] em_promise_t emscripten_promise_all(em_promise_t* promises,
+                                                  void** results,
+                                                  size_t num_promises);
 
 typedef struct em_settled_result_t {
   em_promise_result_t result;
@@ -113,7 +113,7 @@ typedef struct em_settled_result_t {
 // fulfilled value or EM_PROMISE_REJECT and the rejection reason for each of the
 // input promises if `results` is non-null. The returned promise will be
 // fulfilled with the value of `results` as well.
-__attribute__((warn_unused_result)) em_promise_t emscripten_promise_all_settled(
+[[nodiscard]] em_promise_t emscripten_promise_all_settled(
   em_promise_t* promises, em_settled_result_t* results, size_t num_promises);
 
 // Call Promise.any to create and return a new promise that is fulfilled once
@@ -124,16 +124,17 @@ __attribute__((warn_unused_result)) em_promise_t emscripten_promise_all_settled(
 // promise is rejected, the rejection reasons for each input promise will be
 // written to the `errors` buffer if it is non-null. The rejection reason for
 // the returned promise will also be the address of the `errors` buffer.
-__attribute__((warn_unused_result)) em_promise_t emscripten_promise_any(
-  em_promise_t* promises, void** errors, size_t num_promises);
+[[nodiscard]] em_promise_t emscripten_promise_any(em_promise_t* promises,
+                                                  void** errors,
+                                                  size_t num_promises);
 
 // Call Promise.race to create and return a new promise that settles once any of
 // the `num_promises` input promises passed in `promises` has been settled. If
 // the first input promise to settle is fulfilled, the resulting promise is
 // fulfilled with the same value. Otherwise, if the first input promise to
 // settle is rejected, the resulting promise is rejected with the same reason.
-__attribute__((warn_unused_result)) em_promise_t
-emscripten_promise_race(em_promise_t* promises, size_t num_promises);
+[[nodiscard]] em_promise_t emscripten_promise_race(em_promise_t* promises,
+                                                   size_t num_promises);
 
 // Suspend the current Wasm execution context until the given promise has been
 // settled.
@@ -143,8 +144,14 @@ emscripten_promise_race(em_promise_t* promises, size_t num_promises);
 // with this function.
 //
 // This function can only be used in programs that were built with `-sASYNCIFY`.
-__attribute__((warn_unused_result)) em_settled_result_t
+[[nodiscard]] em_settled_result_t
 emscripten_promise_await(em_promise_t promise);
+
+// Just like emscripten_promise_await but does not include a rejection handler
+// and simply returns result if/when the promise is fulfilled.
+// If the promise is rejected it would then get handled elsewhere in the promise
+// chain, or result in a top level unhandled rejection.
+[[nodiscard]] void* emscripten_promise_await_unchecked(em_promise_t promise);
 
 #ifdef __cplusplus
 }

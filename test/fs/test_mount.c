@@ -130,7 +130,7 @@ int main() {
 #endif
   );
 
-  puts("success");
+  puts("done");
 
   return 0;
 }

@@ -2,13 +2,11 @@
 #include <time.h>
 #include <errno.h>
 #ifdef __EMSCRIPTEN__
-#include <math.h>
-#include <emscripten/threading.h>
-#include <emscripten/emscripten.h>
+#include <math.h> // for INFINITY
 #else
 #include "futex.h"
-#endif
 #include "syscall.h"
+#endif
 #include "pthread_impl.h"
 
 #ifndef __EMSCRIPTEN__

@@ -20,6 +20,7 @@ addToLibrary({
   },
 
 #if ASYNCIFY
+  $Asyncify__force: true,
   $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
 #if ASSERTIONS
     '$createNamedFunction',
@@ -232,7 +233,7 @@ addToLibrary({
 #endif
       if (Asyncify.currData &&
           Asyncify.state === Asyncify.State.Unwinding &&
-          Asyncify.exportCallStack.length === 0) {
+          !Asyncify.exportCallStack.length) {
         // We just finished unwinding.
         // Be sure to set the state before calling any other functions to avoid
         // possible infinite recursion here (For example in debug pthread builds
@@ -253,8 +254,8 @@ addToLibrary({
 
     whenDone() {
 #if ASSERTIONS
-      assert(Asyncify.currData, 'Tried to wait for an async operation when none is in progress.');
-      assert(!Asyncify.asyncPromiseHandlers, 'Cannot have multiple async operations in flight at once');
+      assert(Asyncify.currData, 'tried to wait for an async operation when none is in progress');
+      assert(!Asyncify.asyncPromiseHandlers, 'cannot have multiple async operations in flight at once');
 #endif
       return new Promise((resolve, reject) => {
         Asyncify.asyncPromiseHandlers = { resolve, reject };
@@ -330,7 +331,7 @@ addToLibrary({
     // and other async methods for simple examples of usage.
     handleSleep(startAsync) {
 #if ASSERTIONS
-      assert(Asyncify.state !== Asyncify.State.Disabled, 'Asyncify cannot be done during or after the runtime exits');
+      assert(Asyncify.state !== Asyncify.State.Disabled, 'handleSleep called after Asyncify was shut down');
 #endif
       if (ABORT) return;
 #if ASYNCIFY_DEBUG
@@ -361,7 +362,7 @@ addToLibrary({
           // as it might break later operations (we can rewind ok now, but if
           // we unwind again, we would unwind through the extra compiled code
           // too).
-          assert(!Asyncify.exportCallStack.length, 'Waking up (starting to rewind) must be done from JS, without compiled code on the stack.');
+          assert(!Asyncify.exportCallStack.length, 'waking up (starting to rewind) must be done from JS, without compiled code on the stack');
 #endif
 #if ASYNCIFY_DEBUG
           dbg(`ASYNCIFY: start rewind ${Asyncify.currData}`);
@@ -525,7 +526,7 @@ addToLibrary({
           var fiber = Fibers.nextFiber;
           Fibers.nextFiber = 0;
 #if ASYNCIFY_DEBUG >= 2
-          dbg("ASYNCIFY/FIBER: trampoline jump into fiber", fiber, new Error().stack);
+          dbg('ASYNCIFY/FIBER: trampoline jump into fiber', fiber, new Error().stack);
 #endif
           Fibers.finishContextSwitch(fiber);
         } while (Fibers.nextFiber);
@@ -548,7 +549,7 @@ addToLibrary({
 
       var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
 
-      if (entryPoint !== 0) {
+      if (entryPoint) {
 #if STACK_OVERFLOW_CHECK
         writeStackCookie();
 #endif
@@ -574,7 +575,7 @@ addToLibrary({
     },
   },
 
-  emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers", '$stackSave'],
+  emscripten_fiber_swap__deps: ['$Asyncify', '$Fibers', '$stackSave'],
   emscripten_fiber_swap__async: true,
   emscripten_fiber_swap: (oldFiber, newFiber) => {
     if (ABORT) return;
@@ -627,7 +628,3 @@ addToLibrary({
   },
 #endif // ASYNCIFY
 });
-
-if (ASYNCIFY) {
-  extraLibraryFuncs.push('$Asyncify');
-}

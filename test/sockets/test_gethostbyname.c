@@ -50,8 +50,7 @@ int main() {
   printf("gethostbyaddr -> %s\n", host1->h_name);
   assert(strstr(host1->h_name, "slashdot.org"));
 
-  puts("success");
-
-  return EXIT_SUCCESS;
+  puts("done");
+  return 0;
 }
 

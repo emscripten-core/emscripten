@@ -64,13 +64,13 @@ addToLibrary({
     var cArgs = [];
     var stack = 0;
 #if ASSERTIONS
-    assert(returnType !== 'array', 'Return type should not be "array".');
+    assert(returnType !== 'array', 'return type should not be "array"');
 #endif
     if (args) {
       for (var i = 0; i < args.length; i++) {
         var converter = toC[argTypes[i]];
         if (converter) {
-          if (stack === 0) stack = stackSave();
+          if (!stack) stack = stackSave();
           cArgs[i] = converter(args[i]);
         } else {
           cArgs[i] = args[i];
@@ -86,7 +86,7 @@ addToLibrary({
 #if ASYNCIFY == 1
       runtimeKeepalivePop();
 #endif
-      if (stack !== 0) stackRestore(stack);
+      if (stack) stackRestore(stack);
       return convertReturnValue(ret);
     }
 #if ASYNCIFY

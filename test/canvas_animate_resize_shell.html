@@ -12,8 +12,6 @@
     <textarea class="emscripten" id="output" rows="8" style='width:80%'></textarea>
     <script type='text/javascript'>
       var Module = {
-        preRun: [],
-        postRun: [],
         print: (function() {
           var element = document.getElementById('output');
           if (element) element.value = ''; // clear browser cache

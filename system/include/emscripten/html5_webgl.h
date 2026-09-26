@@ -45,6 +45,7 @@ typedef struct EmscriptenWebGLContextAttributes {
   bool explicitSwapControl;
   EMSCRIPTEN_WEBGL_CONTEXT_PROXY_MODE proxyContextToMainThread;
   bool renderViaOffscreenBackBuffer;
+  bool desynchronized;
 } EmscriptenWebGLContextAttributes;
 
 void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes * _Nonnull attributes);

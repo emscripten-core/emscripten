@@ -118,8 +118,8 @@ def make_dynCall(sig, args):
       # In dynamic linking mode not all of the dynCall_xxx function are defined
       # in the main module so might not be available as global symbols.
       # See `registerDynCallSymbols` in `libdylink.js`.
-      return "dynCalls['%s'](%s)" % (sig, args)
-    return 'dynCall_%s(%s)' % (sig, args)
+      return f"dynCalls['{sig}']({args})"
+    return f'dynCall_{sig}({args})'
   else:
     call_args = ",".join(args[1:])
     return f'getWasmTableEntry({args[0]})({call_args})'
@@ -133,21 +133,22 @@ def make_invoke(sig):
   # we need to return an actual BigInt, even in the exceptional case because
   # wasm won't implicitly convert undefined to 0 in this case.
   exceptional_ret = '\n    return 0n;' if legal_sig[0] == 'j' else ''
-  body = '%s%s;' % (ret, make_dynCall(sig, args))
+  body = f'{ret}{make_dynCall(sig, args)};'
   # Create a try-catch guard that rethrows the Emscripten EH exception.
   maybe_rethrow = 'if (!(e instanceof EmscriptenEH)) throw e;'
 
-  ret = '''\
-function invoke_%s(%s) {
+  args_str = ','.join(args)
+  ret = f'''\
+function invoke_{sig}({args_str}) {{
   var sp = stackSave();
-  try {
-    %s
-  } catch(e) {
+  try {{
+    {body}
+  }} catch(e) {{
     stackRestore(sp);
-    %s
-    _setThrew(1, 0);%s
-  }
-}''' % (sig, ','.join(args), body, maybe_rethrow, exceptional_ret)
+    {maybe_rethrow}
+    _setThrew(1, 0);{exceptional_ret}
+  }}
+}}'''
 
   return ret
 
@@ -155,7 +156,7 @@ function invoke_%s(%s) {
 def make_wasm64_wrapper(sig):
   assert 'p' in sig.lower()
   n_args = len(sig) - 1
-  args = ['a%d' % i for i in range(n_args)]
+  args = [f'a{i}' for i in range(n_args)]
   args_converted = args.copy()
   for i, arg_type in enumerate(sig[1:]):
     if arg_type == 'p':
@@ -181,5 +182,5 @@ def make_wasm64_wrapper(sig):
 def make_unsign_pointer_wrapper(sig):
   assert sig[0] == 'p'
   n_args = len(sig) - 1
-  args = ','.join('a%d' % i for i in range(n_args))
+  args = ','.join(f'a{i}' for i in range(n_args))
   return f'  var makeWrapper_{sig} = (f) => ({args}) => f({args}) >>> 0;\n'

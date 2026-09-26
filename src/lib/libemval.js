@@ -91,7 +91,7 @@ var LibraryEmVal = {
   _emval_decref: (handle) => {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
   #if ASSERTIONS
-      assert(emval_handles[handle] !== undefined, `Decref for unallocated handle.`);
+      assert(emval_handles[handle] !== undefined, `decref for unallocated handle`);
   #endif
       var value = emval_handles[handle];
       emval_handles[handle] = undefined;
@@ -419,6 +419,20 @@ ${functionBody}
 #endif
   },
 #endif
+
+  _emval_is_catchable_cpp_exception_object__deps: [
+    '$Emval',
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    '$isCppExceptionObject',
+#endif
+  ],
+  _emval_is_catchable_cpp_exception_object: (object) => {
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    return isCppExceptionObject(Emval.toValue(object));
+#else
+    return false;
+#endif
+  },
 
   _emval_throw__deps: ['$Emval',
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS

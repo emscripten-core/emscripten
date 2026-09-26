@@ -12,5 +12,6 @@ int main() {
   for (int i = 0; i < 256; ++i) {
     totalLen += EM_ASM_INT({return UTF8ToString($0).length}, ch);
   }
-  printf("OK. Length: %d\n", totalLen);
+  printf("Length: %d\n", totalLen);
+  printf("done\n");
 }

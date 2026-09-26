@@ -70,6 +70,7 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_MOUSEOUT              36
 #define EMSCRIPTEN_EVENT_CANVASRESIZED         37
 #define EMSCRIPTEN_EVENT_POINTERLOCKERROR      38
+#define EMSCRIPTEN_EVENT_CONTEXTMENU           39
 
 #define EMSCRIPTEN_EVENT_TARGET_INVALID        0
 #define EMSCRIPTEN_EVENT_TARGET_DOCUMENT       ((const char*)1)
@@ -142,6 +143,7 @@ EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback_on_thread(const char * _Non
 EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback_on_thread(const char * _Nonnull target, void *userData, bool useCapture, em_mouse_callback_func callback, pthread_t targetThread);
 EMSCRIPTEN_RESULT emscripten_set_mouseover_callback_on_thread(const char * _Nonnull target, void *userData, bool useCapture, em_mouse_callback_func callback, pthread_t targetThread);
 EMSCRIPTEN_RESULT emscripten_set_mouseout_callback_on_thread(const char * _Nonnull target, void *userData, bool useCapture, em_mouse_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_contextmenu_callback_on_thread(const char * _Nonnull target, void *userData, bool useCapture, em_mouse_callback_func callback, pthread_t targetThread);
 
 EMSCRIPTEN_RESULT emscripten_get_mouse_status(EmscriptenMouseEvent * _Nonnull mouseState);
 
@@ -440,6 +442,7 @@ EMSCRIPTEN_RESULT emscripten_html5_remove_event_listener(const char * _Nonnull t
 #define emscripten_set_mouseleave_callback(target, userData, useCapture, callback)            emscripten_set_mouseleave_callback_on_thread(           (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_mouseover_callback(target, userData, useCapture, callback)             emscripten_set_mouseover_callback_on_thread(            (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_mouseout_callback(target, userData, useCapture, callback)              emscripten_set_mouseout_callback_on_thread(             (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
+#define emscripten_set_contextmenu_callback(target, userData, useCapture, callback)           emscripten_set_contextmenu_callback_on_thread(          (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_wheel_callback(target, userData, useCapture, callback)                 emscripten_set_wheel_callback_on_thread(                (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_resize_callback(target, userData, useCapture, callback)                emscripten_set_resize_callback_on_thread(               (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_scroll_callback(target, userData, useCapture, callback)                emscripten_set_scroll_callback_on_thread(               (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)

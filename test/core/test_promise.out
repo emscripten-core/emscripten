@@ -31,4 +31,7 @@ promise_any reasons:
 test_race
 expected success: 42
 expected error: 42
+test_null_handlers
+expected success: 42
+expected error: 43
 finish

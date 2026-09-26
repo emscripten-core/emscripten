@@ -30,12 +30,20 @@ int main() {
 #ifdef BAD
   EM_ASM({
     globalThis.disableErrorReporting = true;
-    window.onerror = async (e) => {
-      var success = e.toString().indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
+    var checkError = (err) => {
+      if (!err) return;
+      var str = err.toString();
+      var success = str.indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
       if (success) {
         console.log("reporting success");
         maybeReportResultToServer(0);
       }
+    };
+    window.onerror = (message, source, lineno, colno, error) => {
+      checkError(error || message);
+    };
+    window.onunhandledrejection = (e) => {
+      checkError(e.reason);
     };
   });
 #endif

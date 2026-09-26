@@ -48,8 +48,7 @@ int main(int argc, char** argv) {
 
   closedir(dir);
 
-  printf("success\n");
-
+  printf("done\n");
   return 0;
 }
 

@@ -16,14 +16,11 @@
 #include <emscripten.h>
 #endif
 
-#ifndef EMSCRIPTEN_KEEPALIVE
-#define EMSCRIPTEN_KEEPALIVE
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
 #endif
-
-void EMSCRIPTEN_KEEPALIVE test_finished() {
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+void test_finished() {
+  exit(0);
 }
 
 #if defined(TEST_ALC_SOFT_PAUSE_DEVICE)

@@ -132,7 +132,7 @@ if EMPROFILE == 1:
 
     @staticmethod
     def timestamp():
-      return '{0:.3f}'.format(time.time())
+      return f'{time.time():.3f}'
 
     @staticmethod
     def log_access():

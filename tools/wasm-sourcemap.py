@@ -4,10 +4,11 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utility tools that extracts DWARF information encoded in a wasm output
-produced by the LLVM tools, and encodes it as a wasm source map. Additionally,
-it can collect original sources, change files prefixes, and strip debug
-sections from a wasm file.
+"""Utility tools that extracts DWARF information from a WebAssembly file.
+
+This script take the output produced by the LLVM tools, and encodes it as
+a wasm source map. Additionally, it can collect original sources, change
+files prefixes, and strip debug sections from a wasm file.
 """
 
 import argparse
@@ -260,7 +261,7 @@ def demangle_names(names):
   input_str = '\n'.join(mangled_names)
   proc = shared.check_call([LLVM_CXXFILT], input=input_str, stdout=shared.PIPE, stderr=shared.PIPE, text=True)
   if proc.returncode != 0:
-    logger.warning('llvm-cxxfilt failed: %s' % proc.stderr)
+    logger.warning(f'llvm-cxxfilt failed: {proc.stderr}')
     return {}
 
   demangled_list = proc.stdout.splitlines()
@@ -399,7 +400,7 @@ def read_dwarf_info(wasm, options):
   if options.dwarfdump_output:
     output = utils.read_file(options.dwarfdump_output)
   elif options.dwarfdump:
-    logger.debug('Reading DWARF information from %s' % wasm)
+    logger.debug(f'Reading DWARF information from {wasm}')
     if not os.path.exists(options.dwarfdump):
       utils.exit_with_error('llvm-dwarfdump not found: ' + options.dwarfdump)
     dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm]
@@ -570,7 +571,7 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
           source_content = utils.read_file(load_name)
           sources_content.append(source_content)
         except OSError:
-          print('Failed to read source: %s' % load_name)
+          print(f'Failed to read source: {load_name}')
           sources_content.append(None)
     else:
       source_id = sources_map[source_name]
@@ -609,7 +610,7 @@ def main(args):
 
   code_section_offset = get_code_section_offset(wasm)
 
-  logger.debug('Saving to %s' % options.output)
+  logger.debug(f'Saving to {options.output}')
   map = build_sourcemap(entries, func_ranges, code_section_offset, options)
   with open(options.output, 'w', encoding='utf-8') as outfile:
     json.dump(map, outfile, separators=(',', ':'), ensure_ascii=False)
@@ -621,7 +622,7 @@ def main(args):
     wasm = append_source_mapping(wasm, options.source_map_url)
 
   if options.w:
-    logger.debug('Saving wasm to %s' % options.w)
+    logger.debug(f'Saving wasm to {options.w}')
     with open(options.w, 'wb') as outfile:
       outfile.write(wasm)
 

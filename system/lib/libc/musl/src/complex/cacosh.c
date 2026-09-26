@@ -1,6 +1,6 @@
 #include "complex_impl.h"
 
-/* acosh(z) = i acos(z) */
+/* acosh(z) = ±i acos(z) */
 
 double complex cacosh(double complex z)
 {

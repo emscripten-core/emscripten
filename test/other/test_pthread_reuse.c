@@ -24,7 +24,7 @@ void* thread_main(void* arg) {
 }
 
 void checkThreadPool() {
-  int running = EM_ASM_INT(return PThread.runningWorkers.length);
+  int running = EM_ASM_INT(return Object.keys(PThread.pthreads).length);
   int unused = EM_ASM_INT(return PThread.unusedWorkers.length);
   printf("running=%d unused=%d\n", running, unused);
   assert(running == 0);

@@ -5,6 +5,7 @@
 
 import glob
 import hashlib
+import http.client
 import importlib.util
 import logging
 import os
@@ -19,15 +20,15 @@ from tools import cache, config, shared, system_libs, utils
 from tools.settings import settings
 from tools.toolchain_profiler import ToolchainProfiler
 
-ports = []
+ports: list[dict] = []
 
 ports_by_name: dict[str, object] = {}
 
-ports_needed = set()
+ports_needed: set[str] = set()
 
 # Variant builds that we want to support for certain ports
 # {variant_name: (port_name, extra_settings)}
-port_variants = {}
+port_variants: dict[str, tuple] = {}
 
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -77,7 +78,7 @@ def init_local_port(name, port):
 
   for variant, extra_settings in port.variants.items():
     if variant in port_variants:
-      utils.exit_with_error('duplicate port variant: `%s`' % variant)
+      utils.exit_with_error(f'duplicate port variant: `{variant}`')
     port_variants[variant] = (port.name, extra_settings)
 
   validate_port(port)
@@ -92,7 +93,7 @@ def load_port_module(module_name, port_file):
 
 def load_external_port(external_port):
   name = external_port.name
-  up_to_date = Ports.fetch_port_artifact(name, external_port.EXTERNAL_PORT, external_port.SHA512)
+  Ports.fetch_project(name, external_port.EXTERNAL_PORT, external_port.SHA512)
   port_file = os.path.join(Ports.get_dir(), name, external_port.PORT_FILE)
   local_port = load_port_module(f'tools.ports.external.{name}', port_file)
   ports.remove(external_port)
@@ -100,16 +101,15 @@ def load_external_port(external_port):
     if not hasattr(local_port, a):
       setattr(local_port, a, getattr(external_port, a))
   init_port(name, local_port)
-  if not up_to_date:
-    Ports.clear_project_build(name)
 
 
 def init_external_port(name, port):
   expected_attrs = ['SHA512', 'PORT_FILE', 'URL', 'DESCRIPTION', 'LICENSE']
   for a in expected_attrs:
-    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+    assert hasattr(port, a), f'port {port} is missing {a}'
   port.needed = lambda s: name in ports_needed
   port.show = lambda: f'{port.name} (--use-port={port.name}; {port.LICENSE})'
+  port.clear = lambda *args: None
 
 
 def load_port(path, name=None):
@@ -129,7 +129,7 @@ def validate_port(port):
   if hasattr(port, 'handle_options'):
     expected_attrs += ['OPTIONS']
   for a in expected_attrs:
-    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+    assert hasattr(port, a), f'port {port} is missing {a}'
 
 
 @ToolchainProfiler.profile()
@@ -166,7 +166,9 @@ def dir_is_newer(dir_a, dir_b):
 
 
 def maybe_copy(src, dest):
-  """Just like shutil.copyfile, but will do nothing if the destination already
+  """Copy a file, but only if the destination is out-of-date.
+
+  Just like shutil.copyfile, but will do nothing if the destination already
   exists and has the same contents as the source.
 
   In the case where a library is built in multiple different configurations,
@@ -182,8 +184,7 @@ def maybe_copy(src, dest):
 
 
 class Ports:
-  """emscripten-ports library management (https://github.com/emscripten-ports).
-  """
+  """emscripten-ports library management (https://github.com/emscripten-ports)."""
 
   @staticmethod
   def get_include_dir(*parts):
@@ -193,7 +194,7 @@ class Ports:
 
   @staticmethod
   def install_header_dir(src_dir, target=None):
-    """Like install_headers but recursively copied all files in a directory"""
+    """Like install_headers but recursively copied all files in a directory."""
     if not target:
       target = os.path.basename(src_dir)
     dest = Ports.get_include_dir(target)
@@ -222,7 +223,7 @@ class Ports:
       maybe_copy(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
-  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
+  def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # ruff: ignore[mutable-argument-default]
     mangled_name = str(Path(output_path).relative_to(Path(cache.get_sysroot(True)) / 'lib'))
     mangled_name = mangled_name.replace(os.sep, '_').replace('.a', '').replace('-emscripten', '')
     build_dir = os.path.join(Ports.get_build_dir(), port_name, mangled_name)
@@ -240,7 +241,7 @@ class Ports:
           if ext in {'.c', '.cpp'} and not any((excluded in f) for excluded in exclude_files):
             srcs.append(os.path.join(root, f))
 
-    cflags = system_libs.get_base_cflags(build_dir) + ['-O2', '-I' + src_dir] + flags
+    cflags = [*system_libs.get_base_cflags(build_dir), '-O2', '-I' + src_dir, *flags]
     for include in includes:
       cflags.append('-I' + include)
 
@@ -259,7 +260,7 @@ class Ports:
         obj = os.path.join(build_dir, relpath) + '.o'
         dirname = os.path.dirname(obj)
         os.makedirs(dirname, exist_ok=True)
-        cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
+        cmd = [shared.EMCC, '-c', src, '-o', obj, *cflags]
         if utils.suffix(src) in {'.cc', '.cxx', '.cpp'}:
           cmd[0] = shared.EMXX
           cmd += cxxflags
@@ -284,13 +285,12 @@ class Ports:
 
   @staticmethod
   def get_build_dir():
-    return system_libs.get_build_dir()
+    return cache.get_path('build')
 
   name_cache: set[str] = set()
 
   @staticmethod
-  def fetch_port_artifact(name, url, sha512hash=None):
-    """This function only fetches the port and returns True when the port is up to date, False otherwise"""
+  def fetch_project(name, url, sha512hash=None):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = Ports.get_dir(name)
 
@@ -314,13 +314,13 @@ class Ports:
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
-      logger.warning('using local ports: %s' % local_ports)
+      logger.warning(f'using local ports: {local_ports}')
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
       for local_name, path in local_ports:
         if name == local_name:
           port = ports_by_name.get(name)
           if not port:
-            utils.exit_with_error('%s is not a known port' % name)
+            utils.exit_with_error(f'{name} is not a known port')
           if not hasattr(port, 'SUBDIR'):
             utils.exit_with_error(f'port {name} lacks .SUBDIR attribute, which we need in order to override it locally, please update it')
           subdir = port.SUBDIR
@@ -330,17 +330,18 @@ class Ports:
           # before acquiring the lock we have an early out if the port already exists
           if os.path.exists(target) and dir_is_newer(path, target):
             logger.warning(uptodate_message)
-            return True
+            return
           with cache.lock('unpack local port'):
             # Another early out in case another process unpackage the library while we were
             # waiting for the lock
             if os.path.exists(target) and not dir_is_newer(path, target):
               logger.warning(uptodate_message)
-              return True
+              return
             logger.warning(f'grabbing local port: {name} from {path} to {fullname} (subdir: {subdir})')
             utils.delete_dir(fullname)
             shutil.copytree(path, target)
-            return False
+            Ports.clear_project_build(name)
+            return
 
     url_filename = url.rsplit('/')[-1]
     ext = url_filename.split('.', 1)[1]
@@ -350,16 +351,20 @@ class Ports:
       # retrieve from remote server
       logger.info(f'retrieving port: {name} from {url}')
 
-      if utils.MACOS:
-        # Use `curl` over `urllib` on macOS to avoid issues with
-        # certificate verification.
-        # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
-        # Unlike on Windows or Linux, curl is guaranteed to always be
-        # available on macOS.
-        data = subprocess.check_output(['curl', '-sSL', url])
-      else:
-        f = urlopen(url)
-        data = f.read()
+      try:
+        if utils.MACOS or os.environ.get('EMCC_USE_CURL'):
+          # Use `curl` over `urllib` on macOS to avoid issues with
+          # certificate verification.
+          # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
+          # Unlike on Windows or Linux, curl is guaranteed to always be
+          # available on macOS.
+          # EMCC_USE_CURL here is purely for testing and undocumented.
+          data = utils.run_process(['curl', '-sSL', url], stdout=subprocess.PIPE, text=False).stdout
+        else:
+          with urlopen(url) as f:
+            data = f.read()
+      except (subprocess.CalledProcessError, OSError, http.client.HTTPException) as e:
+        utils.exit_with_error(f'failed to download port "{name}" from {url}: {e}')
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
@@ -372,16 +377,29 @@ class Ports:
 
     def unpack():
       logger.info(f'unpacking port: {name}')
-      utils.safe_ensure_dirs(fullname)
-      shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
-      utils.write_file(marker, url + '\n')
+      unpack_dir = fullname + '.tmp'
+      # We unpack to a temporary directory and then atomically rename it to the
+      # final destination. This ensures that the destination directory either
+      # does not exist or is 100% complete, avoiding races where other processes
+      # might see a partially unpacked directory (lacking the marker) and
+      # incorrectly assume it is invalid or needs to be cleared.
+      utils.delete_dir(unpack_dir)
+      utils.safe_ensure_dirs(unpack_dir)
+
+      shutil.unpack_archive(filename=fullpath, extract_dir=unpack_dir)
+      tmp_marker = os.path.join(unpack_dir, '.emscripten_url')
+      utils.write_file(tmp_marker, url + '\n')
+
+      # Atomically replace the target directory
+      utils.delete_dir(fullname)
+      os.replace(unpack_dir, fullname)
 
     def up_to_date():
       return os.path.exists(marker) and utils.read_file(marker).strip() == url
 
     # before acquiring the lock we have an early out if the port already exists
     if up_to_date():
-      return True
+      return
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
@@ -391,7 +409,7 @@ class Ports:
         # Another early out in case another process unpackage the library while we were
         # waiting for the lock
         if up_to_date():
-          return True
+          return
         # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
         utils.delete_dir(fullname)
@@ -400,17 +418,12 @@ class Ports:
       retrieve()
       unpack()
 
-      return False
-
-  @staticmethod
-  def fetch_project(name, url, sha512hash=None):
-    if not Ports.fetch_port_artifact(name, url, sha512hash):
       # we unpacked a new version, clear the build in the cache
       Ports.clear_project_build(name)
 
   @staticmethod
   def clear_project_build(name):
-    port = get_port_by_name(name)
+    port = ports_by_name[name]
     port.clear(Ports, settings, shared)
     build_dir = os.path.join(Ports.get_build_dir(), name)
     logger.debug(f'clearing port build: {name} {build_dir}')
@@ -438,6 +451,7 @@ Cflags: {flags}
 
 class OrderedSet:
   """Partial implementation of OrderedSet.  Just enough for what we need here."""
+
   def __init__(self, items):
     self.dict = {}
     for i in items:
@@ -620,7 +634,10 @@ def clear():
 
 
 def get_libs(settings):
-  """Called add link time to calculate the list of port libraries.
+  """Return a list of library to link against for the selected ports.
+
+  This is called add link time only.
+
   Can have the side effect of building and installing the needed ports.
   """
   ret = []
@@ -636,12 +653,12 @@ def get_libs(settings):
 
 
 def add_cflags(args, settings):
-  """Called during compile phase add any compiler flags (e.g -Ifoo) needed
-  by the selected ports.  Can also add/change settings.
+  """Add any compiler flags (e.g -Ifoo) needed by the selected ports.
+
+  This is called during the compile phase.  Can also add/change settings.
 
   Can have the side effect of building and installing the needed ports.
   """
-
   # Legacy SDL1 port is not actually a port at all but builtin
   if settings.USE_SDL == 1:
     args += ['-I' + Ports.get_include_dir('SDL')]

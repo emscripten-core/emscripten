@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Enables colored logger just by importing this module
+"""Enables colored logger just by importing this module.
 
 Also, provides utility functions to use ANSI colors in the terminal.
 """
@@ -27,7 +27,7 @@ color_enabled = False
 
 def output_color(color):
   if color_enabled:
-    return '\033[3%sm' % color
+    return f'\033[3{color}m'
   return ''
 
 

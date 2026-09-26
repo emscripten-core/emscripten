@@ -5,10 +5,13 @@
  * found in the LICENSE file.
  */
 
+#include "atomic.h"
+#include "pthread_impl.h"
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
-#include <atomic.h>
+#include <stdatomic.h>
+
 #include <emscripten/threading.h>
 
 // Stores the memory address that the main thread is waiting on, if any. If
@@ -46,4 +49,24 @@ int emscripten_futex_wake(volatile void *addr, int count) {
   int ret = __builtin_wasm_memory_atomic_notify((int*)addr, count);
   assert(ret >= 0);
   return ret + main_thread_woken;
+}
+
+void _emscripten_thread_notify(pthread_t target) {
+  DBG("_emscripten_thread_notify %p", target);
+  uintptr_t wait_addr = atomic_fetch_or(&target->wait_addr, NOTIFY_BIT);
+  if (wait_addr == 0 || (wait_addr & NOTIFY_BIT)) {
+    // Either the thread wasn't waiting (In this case it will see NOTIFY_BIT and
+    // return early once it enters its next `emscripten_futex_wait`), or someone
+    // else is already in the process of notifying it.
+    return;
+  }
+
+  // We set the NOTIFY_BIT bit and are responsible for waking the target.
+  // The target is currently waiting on `wait_addr`.
+  while (target->wait_addr == (wait_addr | NOTIFY_BIT)) {
+    emscripten_futex_wake((void*)wait_addr, INT_MAX);
+    // TODO: Can we put some kind of yield instruction here?  For example,
+    // it we ever support an `atomics.pause` Wasm instruction this would be a
+    // good place for it.
+  }
 }

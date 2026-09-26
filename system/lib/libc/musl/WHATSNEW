@@ -2438,3 +2438,56 @@ arch-specific bugs fixed:
 - riscv64 icache flush operation was non-functional
 - sh sigsetjmp failed to properly restore call-saved register r8 on return
 - sh dlsym RTLD_NEXT did not identify calling module correctly
+
+
+
+1.2.6 release notes
+
+new features:
+- posix_getdents interface (new in POSIX-2024)
+- renameat2 interface (linux extension)
+- iconv support for CP858
+- vdso clock_gettime for riscv{32,64}, powerpc{,64}, and s390x
+- loongarch64 TLSDESC support
+- exposed __getauxval for compiler runtime use detecting cpu features
+
+compatibility:
+- initgroups no longer artificially limits number of supplementary groups
+- getusershell now skips blank lines and comments
+- exit is now explicitly thread-safe (possible future requirement)
+- atexit now fails rather than deadlocking if called from late dtor
+- strerror now has error strings for EUCLEAN and ENAVAIL
+- isatty no longer collapses errors to ENOTTY
+- sched.h namespace pollution with _GNU_SOURCE is reduced
+- hasmntopt now matches only whole options, not arbitrary substrings
+- shadow.h no longer declares an unimplemented sgetspent interface
+- vdso with missing sysv hash table (only gnu hash) is now supported
+
+conformance:
+- pwrite now handles O_APPEND correctly, reports error if it can't
+- mbnrtowcs now conforms to new POSIX-2024 requirement for partial character
+- iconv GBK now properly includes euro symbol
+- strptime now accepts conversion specifiers added in POSIX-2024
+- inet_ntop IPv6 "zero compression" now conforms to RFC 5952
+
+bugs fixed:
+- iconv euc-kr decoder could do oob writes on invalid inputs (CVE-2025-26519)
+- iconv shift_jis decoder could produce wrong outputs for some invalid inputs
+- printf did not honor hex float precision correctly in some cases
+- lost or delayed wakes in sem_post under race condition
+- termios input speed handling was wrong
+- strcasestr failed to match zero-length needle
+- fma handled corner case with negative zero wrongly
+- syslog LOG_MAKEPRI macro was incorrect
+- timer_create is no longer affected by known pthread_barrier bugs
+- sysconf(_SC_MINSIGSTKSZ) computed min size incorrectly
+- statx emulation left some fields uninitialized
+- mntent wrongly included final newline in parsed field output
+- SIGEV_THREAD timers could abort process if SIGTIMER became unblocked
+- bind_textdomain_codeset returned wrong value
+
+arch-specific bugs fixed:
+- early dynamic linker handled page size wrong on dynamic pagesize archs
+- arm and aarch64 crti/n files had wrong alignment
+- m68k POLLWRNORM and POLLWRBAND values were incorrect
+- x32 mq ABI was mismatched

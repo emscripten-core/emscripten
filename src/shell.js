@@ -25,8 +25,6 @@
 #if MODULARIZE
 #if MODULARIZE == 'instance'
 var Module = {};
-#else
-var Module = moduleArg;
 #endif
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
@@ -38,13 +36,6 @@ var Module = globalThis.Module || (typeof {{{ EXPORT_NAME }}} != 'undefined' ? {
 #else
 var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #endif // USE_CLOSURE_COMPILER
-
-#if POLYFILL
-#if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
-// See https://caniuse.com/mdn-javascript_builtins_bigint64array
-#include "polyfill/bigint64array.js"
-#endif
-#endif // POLYFILL
 
 #if WASM_WORKERS
 // The way we signal to a worker that it is hosting a pthread is to construct
@@ -118,7 +109,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 #if PTHREADS || WASM_WORKERS
   var worker_threads = require('node:worker_threads');
-  global.Worker = worker_threads.Worker;
+  globalThis.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 #if PTHREADS
   // Under node we set `workerData` to `em-pthread` to signal that the worker
@@ -130,13 +121,13 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 #endif // PTHREADS || WASM_WORKERS
 }
-#endif // ENVIRONMENT_MAY_BE_NODE
+#endif // ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
 
-var arguments_ = [];
+var programArgs = [];
 var thisProgram = './this.program';
 var quit_ = (status, toThrow) => {
   throw toThrow;
@@ -215,7 +206,7 @@ if (ENVIRONMENT_IS_NODE) {
     thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 
-  arguments_ = process.argv.slice(2);
+  programArgs = process.argv.slice(2);
 
 #if !MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
@@ -255,11 +246,8 @@ if (ENVIRONMENT_IS_SHELL) {
 
   globalThis.clearTimeout ??= (id) => {};
 
-  // spidermonkey lacks setTimeout but we use it above in readAsync.
-  globalThis.setTimeout ??= (f) => f();
-
-  // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
-  arguments_ = globalThis.arguments || globalThis.scriptArgs;
+  // v8 and jsc both use `arguments`. spidermonkey uses `scriptArgs`
+  programArgs = globalThis.arguments ?? globalThis.scriptArgs;
 
   if (globalThis.quit) {
     quit_ = (status, toThrow) => {
@@ -286,11 +274,11 @@ if (ENVIRONMENT_IS_SHELL) {
     };
   }
 
-  if (typeof print != 'undefined') {
-    // Prefer to use print/printErr where they exist, as they usually work better.
+  if (globalThis.print) {
+    // Use `print` to implement console.log/error/warn as needed.
     globalThis.console ??= /** @type{!Console} */({});
-    console.log = /** @type{!function(this:Console, ...*): undefined} */ (print);
-    console.warn = console.error = /** @type{!function(this:Console, ...*): undefined} */ (globalThis.printErr ?? print);
+    console.log ??= /** @type{!function(this:Console, ...*): undefined} */ (print);
+    console.warn ??= console.error ??= /** @type{!function(this:Console, ...*): undefined} */ (globalThis.printErr ?? print);
   }
 
 #if WASM == 2
@@ -384,24 +372,24 @@ assert(
 #if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
   ENVIRONMENT_IS_AUDIO_WORKLET ||
 #endif
-  ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
+  ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
 #else
 #endif // PTHREADS
 
 #if !ENVIRONMENT_MAY_BE_WEB
-assert(!ENVIRONMENT_IS_WEB, 'web environment detected but not enabled at build time.  Add `web` to `-sENVIRONMENT` to enable.');
+assert(!ENVIRONMENT_IS_WEB, 'web environment detected but not enabled at build time (add `web` to `-sENVIRONMENT` to enable)');
 #endif
 
 #if !ENVIRONMENT_MAY_BE_WORKER
-assert(!ENVIRONMENT_IS_WORKER, 'worker environment detected but not enabled at build time.  Add `worker` to `-sENVIRONMENT` to enable.');
+assert(!ENVIRONMENT_IS_WORKER, 'worker environment detected but not enabled at build time (add `worker` to `-sENVIRONMENT` to enable)');
 #endif
 
 #if !ENVIRONMENT_MAY_BE_NODE
-assert(!ENVIRONMENT_IS_NODE, 'node environment detected but not enabled at build time.  Add `node` to `-sENVIRONMENT` to enable.');
+assert(!ENVIRONMENT_IS_NODE, 'node environment detected but not enabled at build time (add `node` to `-sENVIRONMENT` to enable)');
 #endif
 
 #if !ENVIRONMENT_MAY_BE_SHELL
-assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at build time.  Add `shell` to `-sENVIRONMENT` to enable.');
+assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at build time (add `shell` to `-sENVIRONMENT` to enable)');
 #endif
 
 #endif // ASSERTIONS

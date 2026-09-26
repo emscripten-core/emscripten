@@ -51,6 +51,8 @@ void test_pthreads() {
   int rtn;
   int res;
 
+  printf("__builtin_thread_pointer non-null: %d\n", __builtin_thread_pointer() != NULL);
+
   // pthread_atfork should silently succeed.
   CHECK_SUCCESS(pthread_atfork(NULL, NULL, NULL));
 

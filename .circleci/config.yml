@@ -8,19 +8,22 @@ executors:
   linux-node:
     docker:
       - image: cimg/node:24.13.1
-  linux-python:
-    docker:
-      - image: cimg/python:3.10.7
-    environment:
-      EMCC_CORES: "4"
   ubuntu-lts:
     docker:
-      - image: emscripten/emscripten-ci:jammy
+      - image: emscripten/emscripten-ci:jammy.v2
     environment:
       LANG: "C.UTF-8"
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
+      EMTEST_DETECT_TEMPFILE_LEAKS: "1"
+  linux-arm64:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: arm.medium
+    environment:
+      LANG: "C.UTF-8"
+      EMSDK_NOTTY: "1"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
   mac-arm64:
     environment:
@@ -30,20 +33,28 @@ executors:
     resource_class: m4pro.medium
 
 commands:
-  download-chrome:
-    description: "Download chrome"
+  install-browser:
+    description: "Install browser"
+    parameters:
+      browser_name:
+        description: "Name of the the browser to install"
+        type: string
     steps:
       - run:
-          name: download chrome
+          name: download browser (<< parameters.browser_name >>)
           command: |
-            # TODO: Make these part of the base image
-            apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
-            # If that download link breaks, temporarily use this URL instead:
-            # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
-            dpkg -i ~/chrome.deb
-            echo "Chrome version:"
-            /usr/bin/google-chrome --version
+            npx --yes @puppeteer/browsers install << parameters.browser_name >> --format={{path}} | tee browser_path.txt
+            BROWSER_PATH=$(cat browser_path.txt 2>/dev/null || true)
+            # @puppeteer/browsers can exit 0 on truncated downloads while
+            # failing to extract the binary or outputting an empty path.
+            # See: https://github.com/puppeteer/puppeteer/issues/15487
+            if [[ -z "${BROWSER_PATH}" || ! -x "${BROWSER_PATH}" ]]; then
+              echo "Failed to install browser (empty path or binary missing)"
+              exit 1
+            fi
+            echo "browser installed to: ${BROWSER_PATH}"
+            "${BROWSER_PATH}" --version
+            echo "export EMTEST_BROWSER=\"${BROWSER_PATH}\"" >> $BASH_ENV
   emsdk-env:
     description: "emsdk_env.sh"
     steps:
@@ -57,7 +68,7 @@ commands:
   bootstrap:
     description: "bootstrap"
     steps:
-      - run: ./bootstrap
+      - run: "$EMSDK_PYTHON ./bootstrap.py"
   pip-install:
     description: "pip install"
     parameters:
@@ -72,12 +83,17 @@ commands:
   install-rust:
     steps:
       - run:
-          name: install rust
+          name: install rust and wasm-bindgen
+          # The wasm-bindgen CLI must exactly match the library version the
+          # test crates pin.
           command: |
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
             export PATH=${HOME}/.cargo/bin:${PATH}
             rustup target add wasm32-unknown-emscripten
             echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> $BASH_ENV
+            WB=wasm-bindgen-0.2.128-x86_64-unknown-linux-musl
+            curl -sSfL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.128/$WB.tar.gz | tar xz -C /tmp
+            mv /tmp/$WB/wasm-bindgen ${HOME}/.cargo/bin/
   install-node-version:
     description: "install a specific version of node"
     parameters:
@@ -100,27 +116,27 @@ commands:
               wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
             fi
             tar xf node-v${version}-linux-x64.tar.xz
-            echo "NODE_JS_TEST = [os.path.expanduser('~/node-v${version}-linux-x64/bin/node')]" >> ~/emsdk/.emscripten
+            echo "NODE_JS_TEST = '~/node-v${version}-linux-x64/bin/node'" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [NODE_JS_TEST]" >> ~/emsdk/.emscripten
-            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
+            echo "if os.path.exists(os.path.expanduser(V8_ENGINE)): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
   install-node-oldest:
-    description: "install node 12.22.9 (oldest)"
+    description: "install node 18.3.0 (oldest)"
     steps:
       - install-node-version:
           # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
-          node_version: "12.22.9"
+          node_version: "18.3.0"
   install-node-lts:
     description: "install node 22.21.0 (current LTS)"
     steps:
       - install-node-version:
          node_version: "22.21.0"
   install-node-newest:
-    description: "install node 25.4.0 (newest)"
+    description: "install node 26.3.0 (newest)"
     steps:
       - install-node-version:
-         node_version: "25.4.0"
+         node_version: "26.3.0"
   install-v8:
     description: "install v8 using jsvu"
     steps:
@@ -141,12 +157,16 @@ commands:
       - run:
           name: install emsdk
           command: |
+            EMSDK_VERSION=$(cat test/emsdk_version.txt)
+            echo "Installing emsdk version from test/emsdk_version.txt: ${EMSDK_VERSION}"
+            # The version of the emsdk repo that we use here is still not pinned.
+            # TODO(sbc): Pin (and auto-roll) this revision too.
             curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
             tar -C ~ -xf ~/emsdk-main.tar.gz
             mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
-            ./emsdk install tot
-            ./emsdk activate tot
+            ./emsdk install ${EMSDK_VERSION}
+            ./emsdk activate ${EMSDK_VERSION}
             # Write the version of clang into a file for use in the ccache key
             ./upstream/bin/clang --version > clang_version.txt
             echo "clang version:"
@@ -158,14 +178,14 @@ commands:
             echo "import os" >> .emscripten
             # We use an out-of-tree cache directory so it can be part of the
             # persisted workspace (see below).
-            echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
+            echo "CACHE = '~/cache'" >> .emscripten
             # Refer to commit 0bc3640 if we need to pin V8 version.
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8')]" >> .emscripten
+            echo "V8_ENGINE = '~/.jsvu/bin/v8'" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
-            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
+            echo "if os.path.exists(os.path.expanduser(V8_ENGINE)): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
-            test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
-            test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> .emscripten || true
+            test -f ~/vms/wasmtime && echo "WASMTIME = '~/vms/wasmtime'; WASM_ENGINES.append(WASMTIME)" >> .emscripten || true
+            test -f ~/vms/wasmer && echo "WASMER = '~/vms/wasmer'; WASM_ENGINES.append(WASMER)" >> .emscripten || true
             test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $(~/emsdk/upstream/bin/clang -print-resource-dir)
             cd -
             echo "final .emscripten:"
@@ -196,7 +216,6 @@ commands:
           name: embuilder (LTO)
           command: |
             ./embuilder build MINIMAL --lto
-            ./test/runner test_hello_world
       - run:
           name: embuilder (WASM64)
           command: |
@@ -205,20 +224,22 @@ commands:
           name: embuilder (PIC)
           command: |
             ./embuilder build MINIMAL_PIC --pic
-            ./test/runner test_hello_world
+      - run:
+          name: embuilder (PIC+WASM64)
+          command: |
+            ./embuilder build MINIMAL_PIC --pic --wasm64
       - run:
           name: embuilder (PIC+LTO)
           command: |
             ./embuilder build MINIMAL --pic --lto
-            ./test/runner test_hello_world
       - run:
           name: "Ccache stats and configuration"
           command: |
             ls -l ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
             ls -l ~/cache/sysroot/include/emscripten/heap.h
-            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin.o.ccache-log
+            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin-mt.o.ccache-log
             date
-            cat ~/cache/build/libcompiler_rt/absvdi2.o.ccache-log
+            cat ~/cache/build/wasm32-emscripten/libclang_rt.builtins/absvdi2.o.ccache-log
             ccache -s
             ccache --print-stats
             ccache -p
@@ -349,13 +370,13 @@ commands:
         default: ""
     steps:
       - prepare-for-tests
-      - download-chrome
+      - install-browser:
+          browser_name: chrome@canary
       - run:
           name: run tests (<< parameters.title >>)
           environment:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
-            EMTEST_BROWSER: "/usr/bin/google-chrome"
             EMTEST_CORES: "2"
           command: |
             # There are tests in the browser test suite that using libraries
@@ -366,7 +387,6 @@ commands:
       - upload-test-results
   setup-macos:
     steps:
-      - macos/install-rosetta
       - run:
           name: Install brew package dependencies
           environment:
@@ -389,20 +409,19 @@ commands:
         type: string
         default: ""
     steps:
-      - run:
-          name: download firefox
-          command: |
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
-            tar -C ~ -xf ~/ff.tar.bz2
+      - install-browser:
+          browser_name: firefox@nightly
       - run:
           name: Add audio dependencies
           command: |
             # This should add and start PulseAudio's dummy mixer. It will warn
             # that "This program is not intended to be run as root" but it can
             # be ignored.
-            apt-get update -y
-            apt-get install -q -y pulseaudio
-            pulseaudio --start
+            # (Use the presence of apt-get here to detect linux, where we don't
+            # want to run this elsewhere).
+            if which apt-get; then
+              pulseaudio --start
+            fi
       - run:
           name: run tests (<< parameters.title >>)
           environment:
@@ -418,7 +437,6 @@ commands:
             EMTEST_CORES: "2"
             DISPLAY: ":0"
           command: |
-            export EMTEST_BROWSER="$HOME/firefox/firefox"
             # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
@@ -431,95 +449,21 @@ commands:
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
       - upload-test-results
-  run-tests-firefox-windows:
-    description: "Runs emscripten tests under firefox on Windows"
-    parameters:
-      test_targets:
-        description: "Test suites to run"
-        type: string
-      title:
-        description: "Name of given test suite"
-        type: string
-        default: ""
-    steps:
-      - run:
-          name: download firefox
-          shell: powershell.exe -ExecutionPolicy Bypass
-          command: |
-            $ErrorActionPreference = 'Stop'
-
-            # To download Firefox, we must first figure out what the latest Firefox version name is.
-            # This is because there does not exist a stable/static URL to download latest Firefox from.
-            $html = Invoke-WebRequest "https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/"
-            $zipLink = $html.Links |
-              Where-Object { $_.href -match "firefox-.*\.en-US\.win64\.zip$" } |
-              Select-Object -Last 1 -ExpandProperty href
-
-            # Download Win64 Firefox.
-            $nightlyUrl = "https://archive.mozilla.org$zipLink"
-            $outZip = "$env:TEMP\firefox_nightly.zip"
-
-            Write-Host "Downloading latest Firefox Nightly: $nightlyUrl"
-            Invoke-WebRequest -Uri $nightlyUrl -OutFile $outZip
-
-            # Extract to user home directory
-            Write-Host "Extracing $outZip"
-            $installDir = Join-Path $env:USERPROFILE "firefox"
-            if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }
-            # All files in the archive are in the firefox/ directory so extract
-            # directly to $USERPROFILE.
-            Expand-Archive -LiteralPath $outZip -DestinationPath $env:USERPROFILE
-
-            # FIXME(sbc): This does not seem to work, and EMTEST_BROWSER is
-            # not set in the bash job below.
-            # Set environment variable that will be visibvle in future steps
-            #$ffExe = Join-Path $installDir "firefox.exe"
-            #Write-Host "Setting EMTEST_BROWSER to '$ffExe' in $env:BASH_ENV"
-            #Add-Content -Path $env:BASH_ENV -Value "export EMTEST_BROWSER='$ffExe'"
-      - run:
-          name: run tests (<< parameters.title >>)
-          environment:
-            EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
-            # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
-            EMTEST_LACKS_SOUND_HARDWARE: "1"
-            EMTEST_LACKS_WEBGPU: "1"
-            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
-            EMTEST_HEADLESS: "1"
-            EMTEST_CORES: "2"
-            DISPLAY: ":0"
-          command: |
-            # For some reason its not possible for the powershell job above to
-            # add to BASH_ENV, so we need set this here
-            export EMTEST_BROWSER="$USERPROFILE\\firefox\\firefox.exe"
-
-            # There are tests in the browser test suite that using libraries
-            # that are not included by "./embuilder build ALL".  For example the
-            # PIC version of libSDL which is used by test_sdl2_misc_main_module
-            export EM_FROZEN_CACHE=
-
-            echo "BASH_ENV($BASH_ENV):"
-            echo "-----"
-            cat $BASH_ENV
-            echo "-----"
-            echo "Running browser tests (EMTEST_BROWSER=$EMTEST_BROWSER)"
-            echo "-----"
-            test/runner.bat << parameters.test_targets >>
-      - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
       - prepare-for-tests
-      - download-chrome
+      - install-browser:
+          browser_name: chrome@canary
       - run:
           name: run sockets tests
           environment:
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
-            EMTEST_BROWSER: "/usr/bin/google-chrome"
             EMTEST_CORES: "2"
           command: |
-            test/runner sockets
+            test/runner sockets_node sockets_browser
       - upload-test-results
 
 jobs:
@@ -533,7 +477,6 @@ jobs:
       - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html
   ruff:
-    # Keep in sync with ruff commands in tools/maint/pre-push
     executor: ubuntu-lts
     steps:
       - checkout
@@ -704,18 +647,23 @@ jobs:
             lto0.test_exceptions_allowed_uncaught
             lto0.test_longjmp_standalone_standalone
             lto0.test_embind_i64_val
+            lto0.test_wasm_worker_futex_wait
             thinlto0.test_pthread_dlsym
             core3
             core2g.test_externref
             corez.test_dylink_iostream
             core2ss.test_pthread_dylink
+            core2ss.test_pthread_dylink_tls
             core2ss.test_pthread_thread_local_storage
+            core2ss.test_wasm_worker_futex_wait
             core2s.test_dylink_syslibs_missing_assertions
             core2s.test_module_wasm_memory
             cores.test_minimal_runtime_safe_heap
+            wasm2js0.test_autodebug_wasm
             wasm2js3.test_memorygrowth_2
             wasm2js2.test_pthread_proxying
             wasmfs.test_hello_world
+            wasmfs.test_pipe_select
             wasmfs.test_unistd_links*
             wasmfs.test_atexit_standalone
             wasmfs.test_emscripten_get_now
@@ -766,6 +714,12 @@ jobs:
             wasmfs.test_fs_llseek
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
+            wasmfs.test_unistd_close_rawfs
+            wasmfs.test_exceptions_minimal_runtime
+            wasmfs.test_minimal_runtime_safe_heap
+            wasmfs.test_minimal_runtime_global_initializer
+            wasmfs.test_minimal_runtime_hello_world*
+            wasmfs.test_dlmalloc
             minimal0.test_utf
             minimal0.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_static_variable
@@ -774,6 +728,7 @@ jobs:
             omitexports0.test_emscripten_api
             strict.test_no_declare_asm_module_exports
             strict.test_dylink_global_inits_reversed
+            strict.test_wasm_worker_futex_wait_pthreads
             "
   test-modularize-instance:
     executor: ubuntu-lts
@@ -790,15 +745,9 @@ jobs:
       - run-tests-linux:
           test_targets: "stress"
   test-esm-integration:
-    # We don't use `bionic` here since its too old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - prepare-for-tests
-      # The linux-python image uses /home/circleci rather than /root and jsvu
-      # hardcodes /root into its launcher scripts so we need to reinstall v8.
-      - run: rm -rf $HOME/.jsvu
-      - install-v8
       - install-node-newest
       - run-tests:
           title: "esm_integration"
@@ -812,23 +761,15 @@ jobs:
       - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64-4gb:
-    environment:
-      LANG: "C.UTF-8"
-    # We don't use `bionic` here since its too old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - prepare-for-tests
-      # The linux-python image uses /home/circleci rather than /root and jsvu
-      # hardcodes /root into its launcher scripts so we need to reinstall v8.
-      - run: rm -rf $HOME/.jsvu
-      - install-v8
       - install-node-newest
       # When running wasm64 tests we need to make sure we use the latest
-      # version of node (node 25) when running the compiler output (e.g.
-      # in configure tests.
+      # version of node when running the compiler output (e.g. in configure
+      # tests).
       - run:
-          name: configure node v25
+          name: configure node (newest)
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
@@ -836,31 +777,27 @@ jobs:
       - upload-test-results
   test-wasm64-misc:
     environment:
-      LANG: "C.UTF-8"
-    # We don't use `bionic` here since its too old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
-    executor: linux-python
+      EMTEST_SKIP_NINJA: "1"
+    executor: ubuntu-lts
     steps:
       - prepare-for-tests
-      # The linux-python image uses /home/circleci rather than /root and jsvu
-      # hardcodes /root into its launcher scripts so we need to reinstall v8.
-      - run: rm -rf $HOME/.jsvu
-      - install-v8
       - install-node-newest
       # When running wasm64 tests we need to make sure we use the latest
-      # version of node (node v25) when running the compiler output (e.g.
-      # in configure tests.
+      # version of node when running the compiler output (e.g. in configure
+      # tests).
       - run:
-          name: configure node v25
+          name: configure node (newest)
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
           test_targets: "
-            other.*_wasm64
+            other.*_wasm64*
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
             core_2gb.test_fs_js_api_wasmfs
             wasm64.test_safe_stack
+            wasm64.test_promise_await*
+            wasm64.test_pthread_join_and_asyncify
             wasm64l.test_hello_world
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory
@@ -868,9 +805,11 @@ jobs:
             wasm64l.test_embind_val_basics_legacy"
       - upload-test-results
   test-bun:
-    executor: linux-python
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_NINJA: "1"
+      EMTEST_SKIP_WASM64: "1"
     steps:
       - checkout
       - pip-install
@@ -878,15 +817,19 @@ jobs:
       - run:
           name: install bun
           command: |
-            curl -fsSL https://bun.com/install | bash
-            echo "BUN = os.path.expanduser('~/.bun/bin/bun')" >> ~/emsdk/.emscripten
+            # Temporally pin to 1.3.14 (the last non-rust version) until we
+            # can investigate the breakages:
+            # https://github.com/emscripten-core/emscripten/issues/27580
+            curl -fsSL https://bun.com/install | bash -s "bun-v1.3.14"
+            echo "BUN = '~/.bun/bin/bun'" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [BUN]" >> ~/emsdk/.emscripten
       - run-tests:
           test_targets: "--crossplatform-only"
   test-deno:
-    executor: linux-python
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_NINJA: "1"
     steps:
       - checkout
       - pip-install
@@ -895,12 +838,12 @@ jobs:
           name: install deno
           command: |
             curl -fsSL https://deno.land/install.sh | sh
-            echo "DENO = os.path.expanduser('~/.deno/bin/deno')" >> ~/emsdk/.emscripten
+            echo "DENO = '~/.deno/bin/deno'" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [DENO]" >> ~/emsdk/.emscripten
       - run-tests:
           test_targets: "--crossplatform-only"
   test-jsc:
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
@@ -914,7 +857,7 @@ jobs:
             export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             jsvu --os=default --engines=javascriptcore
-            echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/javascriptcore')]" >> ~/emsdk/.emscripten
+            echo "JSC_ENGINE = '~/.jsvu/bin/javascriptcore'" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
           test_targets: "
@@ -922,7 +865,7 @@ jobs:
             other.test_modularize_incoming
             other.test_modularize_incoming_export_name"
   test-spidermonkey:
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
@@ -936,19 +879,18 @@ jobs:
             export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
             jsvu --os=default --engines=spidermonkey
-            echo "SPIDERMONKEY_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> ~/emsdk/.emscripten
+            echo "SPIDERMONKEY_ENGINE = '~/.jsvu/bin/spidermonkey'" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
           test_targets: "
+            other.test_prepost_jspi
+            other.test_stdint_limits_wasm64
             core0.test_hello_argc
             core2.test_demangle_stacks_symbol_map"
       - upload-test-results
   test-node-compat:
-    # We don't use `bionic` here since its too old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
-    executor: linux-python
+    executor: ubuntu-lts
     environment:
-      LANG: "C.UTF-8"
       EMTEST_SKIP_V8: "1"
     steps:
       - checkout
@@ -970,8 +912,7 @@ jobs:
       # support in the generated code.
       - install-node-oldest
       - run-tests:
-          title: "node (oldest / 12.22.9)"
-          extra-cflags: "-sMIN_NODE_VERSION=122209"
+          title: "node (oldest / 18.3.0)"
           # We include most but not all of the nodefs and node rawfs tests here.
           # test_fs_nodefs_rw, test_fs_nodefs_statvfs, and test_unistd_io_nodefs_bigint fail.
           test_targets: "
@@ -1044,8 +985,6 @@ jobs:
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
-            other.test_exceptions_stack_trace*
-            other.test_exceptions_rethrow_stack_trace*
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
             core2.test_sse2
@@ -1058,7 +997,7 @@ jobs:
       - run-tests:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
-          title: "node (latest)"
+          title: "node (newest)"
           test_targets: "-v
             other.test_deterministic
             other.test_gen_struct_info
@@ -1069,6 +1008,11 @@ jobs:
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
             other.test_js_base64_api
+            other.test_pthread_growth*
+            other.test_memory_growth
+            other.test_exceptions_stack_trace*
+            other.test_exceptions_rethrow_stack_trace*
+            core2.test_*exception*_wasm
             core2.test_hello_world
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
@@ -1081,7 +1025,9 @@ jobs:
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi*
             core0.test_cubescript_jspi
+            core0.test_pthread_wait_suspending*
             core0.test_poll_blocking_asyncify_jspi
+            core0.test_promise_await*
             "
       - upload-test-results
   test-other:
@@ -1089,7 +1035,6 @@ jobs:
     environment:
       EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_RUST: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
       - install-rust
@@ -1103,6 +1048,9 @@ jobs:
           # kept functional. Must be run separately from above because we cannot
           # run non-parallel tests in the same run as parallel tests.
           test_targets: "benchmark.test_primes"
+      - run:
+          name: Test size benchmarker
+          command: EMTEST_BENCHMARKERS=size ./test/runner benchmark.test_primes
   test-browser-chrome:
     executor: ubuntu-lts
     environment:
@@ -1117,6 +1065,7 @@ jobs:
           test_targets: "
             browser.test_gl_stride
             browser.test_memory_growth_during_startup
+            browser.test_pthread_memgrowth_stale_views
             browser.test_pthread_large_pthread_allocation
             browser.test_pthread_sbrk*
             browser.test_pthread_asan*
@@ -1165,7 +1114,9 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser_2gb"
-          test_targets: "browser_2gb"
+          # Disabling test_mainScriptUrlOrBlob due to
+          # https://github.com/emscripten-core/emscripten/issues/26882
+          test_targets: "browser_2gb skip:browser_2gb.test_mainScriptUrlOrBlob*"
   test-browser-chrome-wasm64-4gb:
     executor: ubuntu-lts
     environment:
@@ -1173,11 +1124,11 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64_4gb"
-          test_targets: "browser64_4gb"
+          # Disabling test_mainScriptUrlOrBlob due to
+          # https://github.com/emscripten-core/emscripten/issues/26882
+          test_targets: "browser64_4gb skip:browser64_4gb.test_mainScriptUrlOrBlob*"
   test-browser-firefox:
     executor: ubuntu-lts
-    environment:
-      EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
     steps:
       - prepare-for-tests
       - run-tests-firefox:
@@ -1221,11 +1172,15 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install -y cmake.portable ninja pkgconfiglite
+            # Use pip rather than chocolatey here as we have had trouble with 
+            # the reliablity of chocolatey in the past.
+            pip install cmake ninja
+            cmake --version
+            ninja --version
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
-      - run-tests-firefox-windows:
+      - run-tests-firefox:
           title: "browser on firefox on windows"
           # skip browser.test_glbook, as it requires mingw32-make, which is not
           # installed on CircleCI.
@@ -1240,40 +1195,18 @@ jobs:
             skip:browser.test_glbook
             skip:browser.test_sdl2_mixer_wav_dash_l
             "
-  # TODO(https://github.com/emscripten-core/emscripten/issues/26182):
-  # Re-enable once we figure out why the emrun tests are locking up.
-  #test-browser-chrome-emrun:
-  #  executor: ubuntu-lts
-  #  steps:
-  #    - run-tests-chrome:
-  #        test_targets: "emrun"
+  test-browser-chrome-emrun:
+    executor: ubuntu-lts
+    steps:
+      - checkout
+      - pip-install
+      - install-emsdk
+      - run-tests-chrome:
+          test_targets: "emrun"
   test-sockets-chrome:
     executor: ubuntu-lts
     steps:
       - test-sockets-chrome
-
-  build-windows-launcher:
-    executor:
-      name: win/server-2022
-      shell: bash.exe -eo pipefail
-    steps:
-      - checkout
-      - run:
-          name: "build pylauncher"
-          shell: cmd.exe
-          command: .circleci\setup_vs2022.bat && cd tools\pylauncher && call build.bat
-      - store_artifacts:
-          path: tools/pylauncher/pylauncher.exe
-          destination: pylauncher.exe
-      - install-emsdk
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run:
-          name: "create_entry_points"
-          command: $EMSDK_PYTHON tools/maint/create_entry_points.py --exe-files
-      - run:
-          name: "crossplatform tests"
-          command: test/runner.exe core0.test_hello_world
 
 
   # windows and mac do not have separate build and test jobs, as they only run
@@ -1293,12 +1226,11 @@ jobs:
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_WASM_LEGACY_EH: "1"
-      EMTEST_SKIP_WASM_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_25: "1"
+      EMTEST_SKIP_PKG_CONFIG: "1"
+      EMTEST_SKIP_MESON: "1"
       EMTEST_BROWSER: "0"
     steps:
       - checkout
@@ -1309,7 +1241,11 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install -y cmake.portable ninja pkgconfiglite
+            # Use pip rather than chocolatey here as we have had trouble with
+            # the reliablity of chocolatey in the past.
+            pip install cmake ninja
+            cmake --version
+            ninja --version
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - install-emsdk
@@ -1317,13 +1253,22 @@ jobs:
           python: "$EMSDK_PYTHON"
       - run:
           name: "crossplatform tests"
-          command: test/runner.bat --crossplatform-only
+          command: test/runner --crossplatform-only
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run:
-          name: "sockets.test_nodejs_sockets_echo*"
-          command: "test/runner.bat sockets.test_nodejs_sockets_echo*"
+          name: "sockets_node.test_nodejs_sockets_echo*"
+          command: "test/runner sockets_node.test_nodejs_sockets_echo*"
       - upload-test-results
+      - run:
+          name: "sanity tests"
+          command: test/runner sanity.test_windows_path_casing
+      - upload-test-results
+      - run:
+          name: "check clean"
+          command: |
+            git checkout tools/pylauncher
+            $EMSDK_PYTHON test/check_clean.py
 
   test-mac-arm64:
     executor: mac-arm64
@@ -1331,11 +1276,10 @@ jobs:
       # We don't install d8 or modern node on the mac runner so we skip any
       # tests that depend on those.
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_WASM_LEGACY_EH: "1"
-      EMTEST_SKIP_WASM_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_MESON: "1"
       EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_NODE_25: "1"
       # Some native clang tests assume x86 clang (e.g. -sse2)
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
@@ -1349,6 +1293,29 @@ jobs:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
       - upload-test-results
+
+  test-linux-arm64:
+    executor: linux-arm64
+    environment:
+      EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_WASM_LEGACY_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_NODE_25: "1"
+      # Some native clang tests assume x86 clang (e.g. -sse2)
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMCC_SKIP_SANITY_CHECK: "1"
+    steps:
+      - checkout
+      - install-emsdk
+      - pip-install
+      - run: sudo apt-get install -q -y ninja-build scons cmake make
+      - run-tests-linux:
+          title: "crossplatform tests"
+          frozen_cache: false
+          test_targets: "--crossplatform-only"
 
 workflows:
   build-test:
@@ -1369,8 +1336,8 @@ workflows:
           requires:
             - build-linux
       - test-core2:
-          requires:
-            - build-linux
+         requires:
+           - build-linux
       - test-core3:
           requires:
             - build-linux
@@ -1390,12 +1357,13 @@ workflows:
           requires:
             - build-linux
       - test-esm-integration:
-          requires:
-            - build-linux
+         requires:
+           - build-linux
       - test-stress:
           requires:
             - build-linux
       - test-browser-chrome
+      - test-browser-chrome-emrun
       - test-browser-chrome-2gb:
           requires:
             - build-linux
@@ -1419,7 +1387,7 @@ workflows:
       - test-node-compat
       - test-windows
       - test-windows-browser-firefox
-      - build-windows-launcher
       - test-mac-arm64:
-          requires:
-            - build-linux
+         requires:
+           - build-linux
+      - test-linux-arm64

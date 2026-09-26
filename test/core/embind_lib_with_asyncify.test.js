@@ -44,7 +44,7 @@ Module['onRuntimeInitialized'] = async () => {
       } catch (e) {
         err = e.message;
       }
-      assert(err.includes('Assertion failed: Cannot have multiple async operations in flight at once)'), `"${err}" doesn't contain the assertion error`);
+      assert(err.includes('Assertion failed: cannot have multiple async operations in flight at once)'), `"${err}" doesn't contain the assertion error`);
     }
 
     console.log('ok');

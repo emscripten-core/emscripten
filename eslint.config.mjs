@@ -25,7 +25,6 @@ export default [{
     '**/cache/',
     '**/third_party/',
     '**/test/',
-    'src/polyfill/',
     'src/lib/',
     'src/binaryDecode.js',
     'src/build_as_worker.js',

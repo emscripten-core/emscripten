@@ -152,7 +152,24 @@ void test() {
 #endif
 
 #ifdef IDBFS_AUTO_PERSIST
+
+#if FIRST
+  // Register an IDBFS autopersist completion callback to detect when the
+  // filesystem sync operation has finished.
+  EM_ASM({
+    IDBFS.onAutoPersistStateChanged = (autoPersistActive) => {
+      if (autoPersistActive) {
+        console.log('IDBFS persistence operation has started.');
+      } else {
+        console.log('IDBFS persistence operation has finished.');
+        callUserCallback(_finish);
+      }
+    }
+  });
+#else
   finish();
+#endif
+
 #else
   // sync from memory state to persisted and then
   // run 'finish'

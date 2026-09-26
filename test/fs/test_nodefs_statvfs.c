@@ -31,5 +31,5 @@ int main() {
   // Test the root filesystem (which should be MEMFS by default)
   test_statvfs("/");
   test_statvfs("/working");
-  puts("success");
+  puts("done");
 }

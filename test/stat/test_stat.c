@@ -251,7 +251,7 @@ void test() {
 
   chmod("folder/file", 0777);
 
-  puts("success");
+  puts("done");
 }
 
 int main() {

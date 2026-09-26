@@ -12,4 +12,4 @@ sorted contents of dir=/working:
 - stdout
 - test_nodefs_readdir.js
 - test_nodefs_readdir.wasm
-success
+done

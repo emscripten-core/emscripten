@@ -162,7 +162,7 @@ void test() {
   assert(s.st_blocks == 1);
 #endif
 
-  puts("success");
+  puts("done");
 }
 
 int main() {

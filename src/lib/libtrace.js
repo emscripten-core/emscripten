@@ -75,7 +75,7 @@ var LibraryTracing = {
       EmscriptenTrace.worker.addEventListener('error', (e) => {
         out('TRACE WORKER ERROR:');
         out(e);
-      }, false);
+      });
       EmscriptenTrace.worker.postMessage({ 'cmd': 'configure',
                                            'data_version': EmscriptenTrace.DATA_VERSION,
                                            'session_id': session_id,
@@ -186,7 +186,7 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
-                            "MARK", message]);
+                            'MARK', message]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
       window['wtf'].trace.mark(message);
@@ -197,7 +197,7 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
-                            "MARK", UTF8ToString(message)]);
+                            'MARK', UTF8ToString(message)]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
       window['wtf'].trace.mark(UTF8ToString(message));

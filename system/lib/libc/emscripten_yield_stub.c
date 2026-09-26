@@ -6,6 +6,9 @@
  */
 
 #include <features.h>
+#include <emscripten/threading.h>
+
+#include "threading_internal.h"
 
 static void dummy(double now) {
 }
@@ -13,5 +16,7 @@ static void dummy(double now) {
 weak_alias(dummy, _emscripten_check_timers);
 
 void _emscripten_yield(double now) {
-  _emscripten_check_timers(now);
+  if (emscripten_is_main_runtime_thread()) {
+    _emscripten_check_timers(now);
+  }
 }

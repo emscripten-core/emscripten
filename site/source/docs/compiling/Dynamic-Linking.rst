@@ -6,11 +6,11 @@ Dynamic Linking
 
 .. note:: This documentation is somewhat outdated and is in the process of being refreshed.
 
-Emscripten supports linking object files (and ar archives that contain
+Emscripten supports linking object files (and ``ar`` archives that contain
 object files) statically.  This lets most build systems work with Emscripten
 with little or no changes (see :ref:`Building-Projects`).
 
-In addition, Emscripten also has support for a form of **dynamic** linking of
+In addition, Emscripten also has support for **dynamic** linking of
 WebAssembly modules.  This can add overhead, so for best performance static
 linking should still be preferred.  However, this overhead can be reduced
 with the use of certain command line flags. See below for details.
@@ -111,7 +111,8 @@ before your application starts to run.
 -  Build one part of your code as the main module, linking it using
    ``-sMAIN_MODULE`` (See :ref:`MAIN_MODULE`).
 -  Build other parts of your code as side modules, linking it using
-   ``-sSIDE_MODULE`` (See :ref:`SIDE_MODULE`).
+   ``-shared``.  You can also use the emscripten-specific :ref:`SIDE_MODULE`
+   setting which does the same thing by default.
 
 For the main module the output suffix should be ``.js`` (the WebAssembly
 file will be generated alongside it just like normal).  For the side
@@ -135,7 +136,7 @@ modules linked together.
 Runtime Dynamic Linking with ``dlopen()``
 -----------------------------------------
 
-Runtime dynamic linking can be performed by the calling the ``dlopen()``
+Runtime dynamic linking can be performed by calling the ``dlopen()``
 function to load side modules after the program is already running. The
 procedure begins in the same way, with the same flags used to build the main and
 side modules.  The difference is that you do not specify the side modules on the
@@ -144,6 +145,22 @@ module into the filesystem, so that ``dlopen`` (or ``fopen``, etc.) can access
 it (except for ``dlopen(NULL)`` which means to open the current executable,
 which just works without filesystem integration). That’s basically it - you can
 then use ``dlopen(), dlsym()``, etc. normally.
+
+Building Dynamic Libraries using ``-shared``
+============================================
+
+In traditional toolchains the ``-shared`` flag is used to generated dynamic
+libraries.  Historically, due to early limitations, Emscripten would produce a
+fake dynamic library (along with a warning) when the ``-shared`` flag was used.
+When your main program is linked against these fake dynamic library they would
+be linked into your main program like regular static other object files.
+
+These days Emscripten will produce real dynamic libraries by default and
+``-shared`` is essentially the same as ``-sSIDE_MODULE``.
+
+This behaviour can be controlled using the :ref:`FAKE_DYLIBS` settings.  If you
+prefer the older behaviour with fake dynamic libraryies you can enable this
+setting.
 
 Code Size
 =========
@@ -234,7 +251,7 @@ order to make this synchronization as seamless as possible, we hook into the
 low level primitives of `emscripten_futex_wait` and `emscripten_yield`.
 
 For most use cases all this happens under hood and no special action is needed.
-However, there there is one class of application that currently may require
+However, there is one class of application that currently may require
 modification.  If your applications busy waits, or directly uses the
 ``atomic.waitXX`` instructions (or the clang
 ``__builtin_wasm_memory_atomic_waitXX`` builtins) you maybe need to switch it

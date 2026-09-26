@@ -45,7 +45,7 @@ void worker_main() {
 #endif
 }
 
-char stack[1024];
+char stack[4096];
 
 int main() {
   test();

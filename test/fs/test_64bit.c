@@ -40,6 +40,6 @@ int main(int argc, char *argv[])
   assert(fgetc(file) == 0x5A);
   fclose(file);
 
-  puts("success");
+  puts("done");
   return 0;
 }

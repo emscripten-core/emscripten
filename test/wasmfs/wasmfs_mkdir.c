@@ -30,14 +30,14 @@ int main() {
   struct stat directory;
   fstat(fdStat, &directory);
   assert((directory.st_mode & S_IFMT) == S_IFDIR);
-  assert(directory.st_mode == (S_IRWXUGO | S_IFDIR));
+  assert(directory.st_mode == (0755 | S_IFDIR));
   close(fdStat);
 
   // Check that the file type is correct on mode (01777 = S_ISVTX | S_IRWXUGO)
   int fdStat2 = open("/foobar", O_RDONLY | O_DIRECTORY);
   struct stat directory2;
   fstat(fdStat2, &directory2);
-  assert(directory2.st_mode == (S_IRWXUGO | S_ISVTX | S_IFDIR));
+  assert(directory2.st_mode == (0755 | S_ISVTX | S_IFDIR));
   close(fdStat2);
 
   // Try to create a file in the same directory.

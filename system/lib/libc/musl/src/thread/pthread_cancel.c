@@ -108,5 +108,13 @@ int pthread_cancel(pthread_t t)
 			pthread_exit(PTHREAD_CANCELED);
 		return 0;
 	}
+#ifdef __EMSCRIPTEN__
+	// Wake the target thread in case it is in emscripten_futex_wait.  Normally,
+	// this is only required when the target is the main runtime thread and there
+	// is an event added to its system queue.
+	// However, all threads need to be interrupted like this in the case they are
+	// cancelled.
+	_emscripten_thread_notify(t);
+#endif
 	return pthread_kill(t, SIGCANCEL);
 }

@@ -253,7 +253,7 @@ var emscriptenMemoryProfiler = {
     emscriptenMemoryProfiler.recordStackWatermark();
 
     // Add a tracking mechanism to detect when VFS loading is complete.
-    Module['preRun'] ||= [];
+    Module['preRun'] ??= [];
     Module['preRun'].push(emscriptenMemoryProfiler.onPreloadComplete);
 
     if (emscriptenMemoryProfiler.hookStackAlloc && typeof stackAlloc == 'function') {

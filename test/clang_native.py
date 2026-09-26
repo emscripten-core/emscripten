@@ -7,8 +7,10 @@ import logging
 import os
 import platform
 import sys
+from subprocess import PIPE
 
-from tools.shared import CLANG_CC, CLANG_CXX, PIPE
+import common
+
 from tools.utils import MACOS, WINDOWS, path_from_root, run_process
 
 logger = logging.getLogger('clang_native')
@@ -25,16 +27,16 @@ def get_native_triple():
     return native_compilation_triple
 
   arch = {
-      'aarch64': 'arm64',
-      'arm64': 'arm64', # Python on Apple Silicon ARM64 reports lowercase arm64
-      'ARM64': 'arm64', # Python on Windows-on-ARM reports uppercase ARM64
-      'x86_64': 'x86_64',
-      'AMD64': 'x86_64',
+    'aarch64': 'arm64',
+    'arm64': 'arm64', # Python on Apple Silicon ARM64 reports lowercase arm64
+    'ARM64': 'arm64', # Python on Windows-on-ARM reports uppercase ARM64
+    'x86_64': 'x86_64',
+    'AMD64': 'x86_64',
   }[platform.machine()]
   OS = {
-      'linux': 'linux',
-      'darwin': 'darwin',
-      'win32': 'windows-msvc',
+    'linux': 'linux',
+    'darwin': 'darwin',
+    'win32': 'windows-msvc',
   }[sys.platform]
   return f'{arch}-{OS}'
 
@@ -63,9 +65,9 @@ def get_clang_native_env():
     return CACHED_CLANG_NATIVE_ENV
   env = os.environ.copy()
 
-  env['CC'] = CLANG_CC
-  env['CXX'] = CLANG_CXX
-  env['LD'] = CLANG_CXX
+  env['CC'] = common.CLANG_CC
+  env['CXX'] = common.CLANG_CXX
+  env['LD'] = common.CLANG_CXX
 
   if MACOS:
     path = run_process(['xcrun', '--show-sdk-path'], stdout=PIPE).stdout.strip()

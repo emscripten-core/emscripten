@@ -38,7 +38,8 @@ size_t mbsrtowcs(wchar_t *restrict ws, const char **restrict src, size_t wn, mbs
 	}
 
 	if (!ws) for (;;) {
-#ifdef __GNUC__
+/* XXX EMSCRIPTEN: add __has_feature check */
+#if defined(__GNUC__) && !__has_feature(address_sanitizer)
 		typedef uint32_t __attribute__((__may_alias__)) w32;
 		if (*s-1u < 0x7f && (uintptr_t)s%4 == 0) {
 			while (!(( *(w32*)s | *(w32*)s-0x01010101) & 0x80808080)) {
@@ -72,7 +73,8 @@ resume0:
 			*src = (const void *)s;
 			return wn0;
 		}
-#ifdef __GNUC__
+/* XXX EMSCRIPTEN: add __has_feature check */
+#if defined(__GNUC__) && !__has_feature(address_sanitizer)
 		typedef uint32_t __attribute__((__may_alias__)) w32;
 		if (*s-1u < 0x7f && (uintptr_t)s%4 == 0) {
 			while (wn>=5 && !(( *(w32*)s | *(w32*)s-0x01010101) & 0x80808080)) {

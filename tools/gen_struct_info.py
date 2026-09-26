@@ -4,7 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This tool extracts information about structs and defines from the C headers.
+"""Tools that extracts information about structs and defines from the C headers.
 
 The JSON input format is as follows:
 [
@@ -73,26 +73,28 @@ QUIET = (__name__ != '__main__')
 DEBUG = False
 
 CFLAGS = [
-    # Avoid parsing problems due to gcc specific syntax.
-    '-D_GNU_SOURCE',
+  # Avoid parsing problems due to gcc specific syntax.
+  '-D_GNU_SOURCE',
 ]
 
 INTERNAL_CFLAGS = [
-    '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
-    '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
-    '-I' + utils.path_from_root('system/lib/pthread/'),
+  '-I' + utils.path_from_root('system/lib/libc/musl/arch/emscripten'),
+  '-I' + utils.path_from_root('system/lib/libc/musl/arch/generic'),
+  '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
+  '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
+  '-I' + utils.path_from_root('system/lib/pthread/'),
 ]
 
 CXXFLAGS = [
-    '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
-    '-D__EMSCRIPTEN_EXCEPTIONS__',
-    '-I' + utils.path_from_root('system/lib/wasmfs/'),
+  '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
+  '-D__EMSCRIPTEN_EXCEPTIONS__',
+  '-I' + utils.path_from_root('system/lib/wasmfs/'),
 ]
 
 DEFAULT_JSON_FILES = [
-    utils.path_from_root('src/struct_info.json'),
-    utils.path_from_root('src/struct_info_internal.json'),
-    utils.path_from_root('src/struct_info_cxx.json'),
+  utils.path_from_root('src/struct_info.json'),
+  utils.path_from_root('src/struct_info_internal.json'),
+  utils.path_from_root('src/struct_info_cxx.json'),
 ]
 
 
@@ -154,16 +156,17 @@ class Scope:
     prefix += path[0]
 
     with self.child(path[-1]) as scope:
-      path_for_sizeof = [f'({prefix}){{}}'] + path[1:]
+      path_for_sizeof = [f'({prefix}){{}}', *path[1:]]
       scope.set('__size__', '%zu', f'sizeof ({".".join(path_for_sizeof)})')
 
       for field in struct:
         if isinstance(field, dict):
           # We have to recurse to inspect the nested dict.
-          fname = list(field.keys())[0]
-          self.gen_inspect_code(path + [fname], field[fname])
+          fname = next(iter(field.keys()))
+          self.gen_inspect_code([*path, fname], field[fname])
         else:
-          scope.set(field, '%zu', f'offsetof({prefix}, {".".join(path[1:] + [field])})')
+          member = ".".join([*path[1:], field])
+          scope.set(field, '%zu', f'offsetof({prefix}, {member})')
 
 
 def generate_c_code(headers):
@@ -206,16 +209,16 @@ def generate_cmd(js_file_path, src_file_path, cflags):
     compiler = shared.EMCC
 
   # -O1+ produces calls to iprintf, which libcompiler_rt doesn't support
-  cmd = [compiler] + cflags + ['-o', js_file_path, src_file_path,
-                               '-O0',
-                               '-Werror',
-                               '-Wno-format',
-                               '-sBOOTSTRAPPING_STRUCT_INFO',
-                               '-sWASM_ASYNC_COMPILATION=0',
-                               '-sINCOMING_MODULE_JS_API=',
-                               '-sSTRICT',
-                               '-sSUPPORT_LONGJMP=0',
-                               '-sASSERTIONS=0']
+  cmd = [compiler, *cflags, '-o', js_file_path, src_file_path,
+         '-O0',
+         '-Werror',
+         '-Wno-format',
+         '-sBOOTSTRAPPING_STRUCT_INFO',
+         '-sWASM_ASYNC_COMPILATION=0',
+         '-sINCOMING_MODULE_JS_API=',
+         '-sSTRICT',
+         '-sSUPPORT_LONGJMP=0',
+         '-sASSERTIONS=0']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -245,7 +248,7 @@ def inspect_headers(headers, cflags):
   try:
     subprocess.check_call(cmd, env=system_libs.clean_env())
   except subprocess.CalledProcessError as e:
-    sys.stderr.write('FAIL: Compilation failed!: %s\n' % e.cmd)
+    sys.stderr.write(f'FAIL: Compilation failed!: {e.cmd}\n')
     sys.exit(1)
 
   # Run the compiled program.
@@ -268,12 +271,12 @@ def inspect_headers(headers, cflags):
 def merge_info(target, src):
   for key, value in src['defines'].items():
     if key in target['defines']:
-      raise Exception('duplicate define: %s' % key)
+      raise Exception(f'duplicate define: {key}')
     target['defines'][key] = value
 
   for key, value in src['structs'].items():
     if key in target['structs']:
-      raise Exception('duplicate struct: %s' % key)
+      raise Exception(f'duplicate struct: {key}')
     target['structs'][key] = value
 
 
@@ -300,7 +303,7 @@ def parse_json(path):
   for item in data:
     for key in item:
       if key not in {'file', 'defines', 'structs'}:
-        raise 'Unexpected key in json file: %s' % key
+        raise f'Unexpected key in json file: {key}'
 
     header = {'name': item['file'], 'structs': {}, 'defines': {}}
     for name, data in item.get('structs', {}).items():

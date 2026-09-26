@@ -317,7 +317,7 @@
 #  if (SANITIZER_RISCV64 && !SANITIZER_FUCHSIA && !SANITIZER_LINUX) || \
       SANITIZER_IOS || SANITIZER_DRIVERKIT
 #    define SANITIZER_CAN_USE_ALLOCATOR64 0
-#  elif defined(__mips64) || defined(__hexagon__)
+#  elif defined(__mips64) || defined(__hexagon__) || defined(__wasm__)
 #    define SANITIZER_CAN_USE_ALLOCATOR64 0
 #  else
 #    define SANITIZER_CAN_USE_ALLOCATOR64 (SANITIZER_WORDSIZE == 64)
@@ -325,7 +325,11 @@
 #endif
 
 // The first address that can be returned by mmap.
-#define SANITIZER_MMAP_BEGIN 0
+#if SANITIZER_AIX && SANITIZER_WORDSIZE == 64
+#  define SANITIZER_MMAP_BEGIN 0x0a00'0000'0000'0000ULL
+#else
+#  define SANITIZER_MMAP_BEGIN 0
+#endif
 
 // The range of addresses which can be returned my mmap.
 // FIXME: this value should be different on different platforms.  Larger values
@@ -361,6 +365,8 @@
 #  endif
 #elif defined(__sparc__)
 #  define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 52)
+#elif SANITIZER_EMSCRIPTEN
+#  define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 34)
 #else
 #  define SANITIZER_MMAP_RANGE_SIZE FIRST_32_SECOND_64(1ULL << 32, 1ULL << 47)
 #endif
@@ -501,6 +507,13 @@
 #  else
 #    define SANITIZER_TERMIOS_IOCTL_CONSTANTS 1
 #  endif
+#endif
+
+#if SANITIZER_APPLE && SANITIZER_WORDSIZE == 64
+// MTE uses the lower half of the top byte.
+#  define STRIP_MTE_TAG(addr) ((addr) & ~((uptr)0x0f << 56))
+#else
+#  define STRIP_MTE_TAG(addr) (addr)
 #endif
 
 #endif  // SANITIZER_PLATFORM_H

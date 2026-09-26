@@ -133,6 +133,12 @@ var LibraryEmbind = {
         default:
           throw new Error(`Bad destructor type '${type.destructorType}'`);
       }
+      if (type.argStackAlloc) {
+        // Trivial value types stack-allocate their argument temporaries;
+        // must mirror the runtime type object so the invoker signature and
+        // generated shape match (see createJsInvokerSignature).
+        ret.argStackAlloc = true;
+      }
       return ret;
     }
 
@@ -311,7 +317,7 @@ var LibraryEmbind = {
         out.push('  value: T;\n}\n');
       }
       out.push(`export type ${this.name} = `);
-      if (this.items.length === 0) {
+      if (!this.items.length) {
         out.push('never/* Empty Enumerator */');
       } else {
         const outItems = [];
@@ -337,15 +343,17 @@ var LibraryEmbind = {
       out.push(`  ${this.name}: {`);
       const outItems = [];
       for (const [name, value] of this.items) {
+        // Quote keys that aren't valid JS identifiers.
+        const key = /^[a-zA-Z_$][\w$]*$/.test(name) ? name : `'${name}'`;
         switch (this.valueType) {
           case 'object':
-            outItems.push(`${name}: ${this.name}Value<${value}>`);
+            outItems.push(`${key}: ${this.name}Value<${value}>`);
             break;
           case 'number':
-            outItems.push(`${name}: ${value}`);
+            outItems.push(`${key}: ${value}`);
             break;
           case 'string':
-            outItems.push(`${name}: '${name}'`);
+            outItems.push(`${key}: '${name}'`);
             break;
         }
       }
@@ -354,12 +362,15 @@ var LibraryEmbind = {
     }
   },
   $ValueArrayDefinition: class {
-    constructor(typeId, name) {
+    constructor(typeId, name, isTrivial) {
       this.typeId = typeId;
       this.name = name;
       this.elementTypeIds = [];
       this.elements = [];
-      this.destructorType = 'function';
+      // Trivial types need no destructor call; their argument temporaries
+      // live in the invoker's stack frame.
+      this.destructorType = isTrivial ? 'none' : 'function';
+      this.argStackAlloc = !!isTrivial;
     }
 
     print(nameMap, out) {
@@ -373,13 +384,15 @@ var LibraryEmbind = {
     }
   },
   $ValueObjectDefinition: class {
-    constructor(typeId, name) {
+    constructor(typeId, name, isTrivial) {
       this.typeId = typeId;
       this.name = name;
       this.fieldTypeIds = [];
       this.fieldNames = [];
       this.fields = [];
-      this.destructorType = 'function';
+      // See ValueArrayDefinition: trivial types stack-allocate.
+      this.destructorType = isTrivial ? 'none' : 'function';
+      this.argStackAlloc = !!isTrivial;
     }
 
     print(nameMap, out) {
@@ -713,7 +726,7 @@ var LibraryEmbind = {
                                             setter,
                                             setterContext) {
     fieldName = AsciiToString(fieldName);
-    const readonly = setter === 0;
+    const readonly = !setter;
     if (!(readonly || getterReturnType === setterArgumentType)) {
       throw new error('Mismatched getter and setter types are not supported.');
     }
@@ -800,10 +813,12 @@ var LibraryEmbind = {
     constructorSignature,
     rawConstructor,
     destructorSignature,
-    rawDestructor
+    rawDestructor,
+    valueSize,
+    isTrivial
   ) {
     name = AsciiToString(name);
-    const valueArray = new ValueArrayDefinition(rawType, name);
+    const valueArray = new ValueArrayDefinition(rawType, name, isTrivial);
     tupleRegistrations[rawType] = valueArray;
   },
   _embind_register_value_array_element__deps: ['$tupleRegistrations'],
@@ -842,10 +857,12 @@ var LibraryEmbind = {
     constructorSignature,
     rawConstructor,
     destructorSignature,
-    rawDestructor
+    rawDestructor,
+    valueSize,
+    isTrivial
   ) {
     name = AsciiToString(name);
-    const valueObject = new ValueObjectDefinition(rawType, name);
+    const valueObject = new ValueObjectDefinition(rawType, name, isTrivial);
     structRegistrations[rawType] = valueObject;
   },
   _embind_register_value_object_field__deps: [
@@ -912,6 +929,7 @@ var LibraryEmbind = {
 #endif
   ],
   $emitOutput__postset: () => { addAtPostCtor('emitOutput()'); },
+  $emitOutput__force: true,
   $emitOutput: () => {
     for (const typeId in awaitingDependencies) {
       throwBindingError(`Missing binding for type: '${getTypeName(typeId)}' typeId: ${typeId}`);
@@ -933,7 +951,5 @@ var LibraryEmbind = {
   $setDelayFunction: () => { throw new Error('stub function should not be called'); },
   $PureVirtualError: () => { throw new Error('stub function should not be called'); },
 };
-
-extraLibraryFuncs.push('$emitOutput');
 
 addToLibrary(LibraryEmbind);

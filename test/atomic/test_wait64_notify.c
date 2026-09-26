@@ -45,7 +45,7 @@ void run_test() {
 // This test run in both wasm workers and pthreads mode
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
 
-char stack[1024];
+char stack[4096];
 
 void worker_main() {
   run_test();

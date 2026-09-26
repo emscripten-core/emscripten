@@ -34,8 +34,8 @@ void worker2_main() {
   }
 }
 
-char stack1[1024];
-char stack2[1024];
+char stack1[4096];
+char stack2[4096];
 
 int main() {
   assert(!emscripten_current_thread_is_wasm_worker());

@@ -10,13 +10,13 @@
 #include "syscall.h"
 #include "libc.h"
 
-extern sigset_t __sig_pending;
+#include "emscripten_internal.h"
 
 int sigtimedwait(const sigset_t *restrict mask, siginfo_t *restrict si, const struct timespec *restrict timeout) {
   for (int sig = 0; sig < _NSIG; sig++) {
     if (sigismember(mask, sig) && sigismember(&__sig_pending, sig)) {
       if (si) {
-        siginfo_t t = {0};
+        siginfo_t t = {.si_signo = sig};
         *si = t;
       }
       sigdelset(&__sig_pending, sig);

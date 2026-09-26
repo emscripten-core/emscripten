@@ -29,6 +29,6 @@ int main() {
   assert(ws.ws_col == 80);
   assert(ws.ws_row == 24);
 
-  puts("success");
+  puts("done");
   return 0;
 }

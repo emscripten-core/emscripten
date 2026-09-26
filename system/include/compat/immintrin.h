@@ -39,4 +39,8 @@
 #include <avx2intrin.h>
 #endif
 
+#ifdef __FMA__
+#include <fmaintrin.h>
+#endif
+
 #endif /* __emscripten_immintrin_h__ */

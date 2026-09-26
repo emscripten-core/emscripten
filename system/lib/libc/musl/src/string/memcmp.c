@@ -1,4 +1,4 @@
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 #include <stdint.h>
 #endif
 #include <string.h>

@@ -4,9 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Install the parts of emscripten needed for end users. This works like
-a traditional `make dist` target but is written in python so it can be portable
-and run on non-unix platforms (basically windows).
+"""Install the parts of emscripten needed for end users.
+
+This works like a traditional `make dist` target but is written in python
+so it can be portable and run on non-unix platforms (i.e. windows).
 """
 
 import argparse
@@ -107,13 +108,13 @@ def main():
   args = parser.parse_args()
   target = os.path.abspath(args.target)
   if os.path.exists(target):
-    print('target directory already exists: %s' % target)
+    print(f'target directory already exists: {target}')
     return 1
   logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
   os.makedirs(target)
   copy_emscripten(target)
   npm_install(target)
-  if os.path.isdir('.git'):
+  if os.path.exists('.git'):
     # Add revision flag only if the source directory is a Git repository
     # and not a source archive
     add_revision_file(target)

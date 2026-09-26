@@ -3,13 +3,13 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-TAG = '3.4.0.20260301'
+TAG = '3.5.1.20260809'
 
 EXTERNAL_PORT = f'https://github.com/pongasoft/emscripten-glfw/releases/download/v{TAG}/emscripten-glfw3-{TAG}.zip'
-SHA512 = '57913935492c9372199fc37fc88354ec5922ad627bdf39890fe5b7fcd3b51aaa57d65f059492563f2f2773e31181c9f3d56c05413445e85467c609206016ed6d'
+SHA512 = '9efad6b2022885a39c92195540982027a0f13cf346272913ed89c7c67139d653c5835c799fe6325e83047afbb388532226174cbde476847ac3364500218e4efc'
 PORT_FILE = 'port/glfw3.py'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
-DESCRIPTION = 'This project is an emscripten port of GLFW 3.4 written in C++ for the web/webassembly platform'
+DESCRIPTION = 'This project is an emscripten port of GLFW 3.5 written in C++ for the web/webassembly platform'
 LICENSE = 'Apache 2.0 license'

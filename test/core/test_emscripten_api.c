@@ -35,7 +35,7 @@ int main() {
   assert(buffer[0] == '0'); // touched
   assert(buffer[1] == 0); // touched
   assert(buffer[2] == 3); // untouched
-  puts("success\n");
+  puts("done");
 
   return 0;
 }

@@ -4,7 +4,9 @@
 val.h
 =====
 
-The *Embind* C++ class :cpp:class:`emscripten::val` (defined in `val.h <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/val.h>`_) is used to *transliterate* JavaScript code to C++.
+The *Embind* C++ class :cpp:class:`emscripten::val` (defined in `val.h
+<https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/val.h>`_)
+is used to *transliterate* JavaScript code to C++.
 
 Guide material for this class can be found in :ref:`embind-val-guide`.
 
@@ -13,9 +15,13 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
 .. cpp:class:: emscripten::val
 
-  This class is a C++ data type that can be used to represent (and provide convenient access to) any JavaScript object. You can use it to call a JavaScript object, read and write its properties, or coerce it to a C++ value like a ``bool``, ``int``, or ``std::string``.
+  This class is a C++ data type that can be used to represent (and provide
+  convenient access to) any JavaScript object. You can use it to call a
+  JavaScript object, read and write its properties, or coerce it to a C++ value
+  like a ``bool``, ``int``, or ``std::string``.
 
-  For example, the code below shows some simple JavaScript for making an XHR request on a URL:
+  For example, the code below shows some simple JavaScript for making an XHR
+  request on a URL:
 
   .. code:: javascript
 
@@ -23,7 +29,9 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     xhr.open("GET", "http://url");
 
 
-  This same code can be written in C++, using :cpp:func:`~emscripten::val::global` to get the symbol for the global ``XMLHttpRequest`` object and then using it to open a URL.
+  This same code can be written in C++, using
+  :cpp:func:`~emscripten::val::global` to get the symbol for the global
+  ``XMLHttpRequest`` object and then using it to open a URL.
 
 
   .. code:: cpp
@@ -31,7 +39,9 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     val xhr = val::global("XMLHttpRequest").new_();
     xhr.call<void>("open", std::string("GET"), std::string("http://url"));
 
-  You can test whether the ``open`` method call was successful using :cpp:func:`~emscripten::val::operator[]` to read an object property, then :cpp:func:`~emscripten::val::as` to coerce the type:
+  You can test whether the ``open`` method call was successful using
+  :cpp:func:`~emscripten::val::operator[]` to read an object property, then
+  :cpp:func:`~emscripten::val::as` to coerce the type:
 
   .. code:: cpp
 
@@ -48,7 +58,8 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
   See :ref:`embind-val-guide` for other examples.
 
 
-  .. warning:: JavaScript values can't be shared across threads, so neither can ``val`` instances that bind them.
+  .. warning:: JavaScript values can't be shared across threads, so neither can
+    ``val`` instances that bind them.
 
     For example, if you want to cache some JavaScript global as a ``val``, you need to retrieve and bind separate instances of that global by its name in each thread.
     The easiest way to do this is with a ``thread_local`` declaration:

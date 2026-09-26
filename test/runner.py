@@ -4,8 +4,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This is the Emscripten test runner. To run some tests, specify which tests
-you want, for example
+"""Emscripten test runner.
+
+To run some tests, specify which tests you want, for example
 
   test/runner core0.test_hello_world
 
@@ -39,12 +40,15 @@ from functools import cmp_to_key
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, __rootpath__)
 
+# Let config.py know to parse test config settings
+os.environ['_EM_TEST_RUNNER'] = '1'
+
 import browser_common
 import common
 import jsrun
 import parallel_testsuite
 from color_runner import ColorTextRunner
-from common import errlog
+from common import CLANG_CC, errlog
 from single_line_runner import SingleLineTestRunner
 
 from tools import building, colored_logger, config, shared, utils
@@ -62,6 +66,9 @@ else:
   # The test framework depends on writing files to the `out/` directory.
   # For git checkouts the bootstrap.py script would take care of creating this.
   os.makedirs('out', exist_ok=True)
+
+EMCC_DEBUG = utils.get_env_bool('EMCC_DEBUG')
+RUNNING_IN_CI = utils.get_env_bool('CI')
 
 
 # Test modes from 'core' that fully pass all tests. When running a random
@@ -112,7 +119,8 @@ misc_test_modes = [
   'jslib',
   'browser',
   'sanity',
-  'sockets',
+  'sockets_node',
+  'sockets_browser',
   'interactive',
   'benchmark',
   'wasm2ss',
@@ -126,6 +134,7 @@ misc_test_modes = [
   'browser64',
   'browser64_4gb',
   'browser_2gb',
+  'llvmlibc',
 ]
 
 default_tests = ['jslib', 'other', 'core0']
@@ -264,11 +273,10 @@ def choose_random_tests(base, num_tests, relevant_modes):
     chosen.add(new_test)
     if len(chosen) > before:
       print('* ' + new_test)
-    else:
-      # we may have hit the limit
-      if len(chosen) == len(tests) * len(relevant_modes):
-        print('(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes)))
-        break
+    elif len(chosen) == len(tests) * len(relevant_modes):
+      # we hit the limit
+      print(f'(all possible tests chosen! {len(chosen)} = {len(tests)}*{len(relevant_modes)})')
+      break
   return list(chosen)
 
 
@@ -276,15 +284,13 @@ def print_random_test_statistics(num_tests):
   std = 0.5 / math.sqrt(num_tests)
   expected = 100.0 * (1.0 - std)
   print()
-  print('running those %d randomly-selected tests. if they all pass, then there is a '
-        'greater than 95%% chance that at least %.2f%% of the test suite will pass'
-        % (num_tests, expected))
+  print(f'running those {num_tests} randomly-selected tests. if they all pass, then there is a '
+        f'greater than 95% chance that at least {expected:.2f}% of the test suite will pass')
   print()
 
   def show():
-    print('if all tests passed then there is a greater than 95%% chance that at least '
-          '%.2f%% of the test suite will pass'
-          % (expected))
+    print('if all tests passed then there is a greater than 95% chance that at least '
+          f'{expected:.2f}% of the test suite will pass')
   atexit.register(show)
 
 
@@ -372,8 +378,8 @@ def create_test_run_sorter(sort_failing_tests_at_front):
 
 
 def use_parallel_suite(module):
-  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress'}
-  if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
+  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets_node', 'test_sockets_browser', 'test_interactive', 'test_stress', 'test_emrun'}
+  if not common.EMTEST_SAVE_DIR and not EMCC_DEBUG:
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_cores:
       return True
@@ -414,10 +420,9 @@ def load_test_suite(args, modules, options):
       is_parallel_module = use_parallel_suite(m)
       if using_parallel_suite is None:
         using_parallel_suite = is_parallel_module
-      else:
+      elif is_parallel_module != using_parallel_suite:
         # All the following modules must match in their support for the parallel runner.
-        if is_parallel_module != using_parallel_suite:
-          utils.exit_with_error(f'attempt to mix parallel and non-parallel test modules ({m.__name__})')
+        utils.exit_with_error(f'attempt to mix parallel and non-parallel test modules ({m.__name__})')
 
   # If we are only running a single tests, never use the parallel tests suite.
   # This means that the output of a single test is always going to be in `out/test/` rather
@@ -456,10 +461,10 @@ def flattened_tests(loaded_tests):
 
 def run_tests(options, suite):
   # Run the discovered tests
-  if os.getenv('CI'):
+  if RUNNING_IN_CI:
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
-    import xmlrunner  # type: ignore  # noqa: PLC0415
+    import xmlrunner  # type: ignore
     testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
                                          failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))
@@ -476,13 +481,13 @@ def run_tests(options, suite):
 
   run_start_time = time.perf_counter()
 
-  errlog('Running %s tests' % suite.countTestCases())
+  errlog(f'Running {suite.countTestCases()} tests')
   res = testRunner.run(suite)
   num_failures = len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
 
   total_run_time = time.perf_counter() - run_start_time
   if hasattr(res, 'core_time'):
-    errlog('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (res.core_time, total_run_time, res.core_time / total_run_time))
+    errlog(f'Total core time: {res.core_time:.3f}s. Wallclock time: {total_run_time:.3f}s. Parallelization: {res.core_time / total_run_time:.2f}x.')
 
   if options.bell:
     sys.stdout.write('\a')
@@ -535,7 +540,7 @@ def parse_args():
 
   if options.ansi is None:
     options.ansi = colored_logger.ansi_color_available()
-  else:
+  else:  # ruff: ignore[collapsible-else-if]
     if options.ansi:
       colored_logger.enable(force=True)
     else:
@@ -551,16 +556,16 @@ def parse_args():
 
 def configure():
   browser_common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
-  browser_common.EMTEST_BROWSER_AUTO_CONFIG = int(os.getenv('EMTEST_BROWSER_AUTO_CONFIG', '1'))
-  browser_common.EMTEST_HEADLESS = int(os.getenv('EMTEST_HEADLESS', '0'))
-  common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
-  common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
-  common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
-  common.EMTEST_SKIP_FLAKY = int(os.getenv('EMTEST_SKIP_FLAKY', '0'))
-  common.EMTEST_RETRY_FLAKY = int(os.getenv('EMTEST_RETRY_FLAKY', '0'))
-  common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
-  common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
-  common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
+  browser_common.EMTEST_BROWSER_AUTO_CONFIG = utils.get_env_bool('EMTEST_BROWSER_AUTO_CONFIG', '1')
+  browser_common.EMTEST_HEADLESS = utils.get_env_bool('EMTEST_HEADLESS')
+  common.EMTEST_DETECT_TEMPFILE_LEAKS = utils.get_env_bool('EMTEST_DETECT_TEMPFILE_LEAKS')
+  common.EMTEST_ALL_ENGINES = utils.get_env_bool('EMTEST_ALL_ENGINES')
+  common.EMTEST_SKIP_SLOW = utils.get_env_bool('EMTEST_SKIP_SLOW')
+  common.EMTEST_SKIP_FLAKY = utils.get_env_bool('EMTEST_SKIP_FLAKY')
+  common.EMTEST_RETRY_FLAKY = utils.get_env_int('EMTEST_RETRY_FLAKY')
+  common.EMTEST_LACKS_NATIVE_CLANG = utils.get_env_bool('EMTEST_LACKS_NATIVE_CLANG')
+  common.EMTEST_REBASELINE = utils.get_env_bool('EMTEST_REBASELINE')
+  common.EMTEST_VERBOSE = utils.get_env_bool('EMTEST_VERBOSE') or EMCC_DEBUG
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 
@@ -571,8 +576,7 @@ def configure():
 
 
 def cleanup_temp_directory():
-  """Deletes all files and directories in TEMP_DIR that look like they
-  might have been created by Emscripten."""
+  """Delete all files and directories in TEMP_DIR that look like they might have been created by Emscripten."""
   for entry in os.listdir(shared.TEMP_DIR):
     if entry.startswith(('emtest_', 'emscripten_')):
       entry = os.path.join(shared.TEMP_DIR, entry)
@@ -592,21 +596,20 @@ def print_repository_info(directory, repository_name):
 
 
 def log_test_environment():
-  """Print detailed information about the current test environment. Useful for
-  logging test run configuration in a CI."""
+  """Print detailed information about the current test environment. Useful for logging test run configuration in a CI."""
   print('======================== Test Setup ========================')
   print(f'Test time: {datetime.datetime.now(datetime.timezone.utc).strftime("%A, %B %d, %Y %H:%M:%S %Z")}')
   print(f'Python: "{sys.executable}". Version: {sys.version}')
   print(f'Emscripten test runner path: "{os.path.realpath(__file__)}"')
 
-  if os.path.isdir(utils.path_from_root('.git')):
+  if os.path.exists(utils.path_from_root('.git')):
     print(f'\nEmscripten repository: "{__rootpath__}"')
 
   emscripten_version = utils.path_from_root('emscripten-version.txt')
   if os.path.isfile(emscripten_version):
     print(f'emscripten-version.txt: {utils.EMSCRIPTEN_VERSION}')
 
-  if os.path.isdir(os.path.join(__rootpath__, '.git')):
+  if os.path.exists(os.path.join(__rootpath__, '.git')):
     print_repository_info(__rootpath__, 'Emscripten')
 
   print(f'EM_CONFIG: "{config.EM_CONFIG}"')
@@ -616,6 +619,7 @@ def log_test_environment():
   node_js_version = utils.run_process(config.NODE_JS + ['--version'], stdout=subprocess.PIPE).stdout.strip()
   print(f'NODE_JS: {config.NODE_JS}. Version: {node_js_version}')
 
+  print(f'JS_ENGINES: {config.JS_ENGINES}')
   print(f'BINARYEN_ROOT: {config.BINARYEN_ROOT}')
   wasm_opt_version = building.get_binaryen_version(building.get_binaryen_bin()).strip()
   print(f'wasm-opt version: {wasm_opt_version}')
@@ -624,7 +628,7 @@ def log_test_environment():
   # Detect emsdk directory structure (build root vs source root)
   if re.match(r'main_.*_64bit_binaryen', os.path.basename(binaryen_git_dir)):
     binaryen_git_dir = os.path.realpath(os.path.join(binaryen_git_dir, '..', 'main'))
-  if os.path.isdir(os.path.join(binaryen_git_dir, '.git')):
+  if os.path.exists(os.path.join(binaryen_git_dir, '.git')):
     print(f'Binaryen git directory: "{binaryen_git_dir}"')
     print_repository_info(binaryen_git_dir, 'Binaryen')
 
@@ -633,10 +637,10 @@ def log_test_environment():
   # Find LLVM git directory in emsdk aware fashion
   def find_llvm_git_root(dir):
     while True:
-      if os.path.isdir(os.path.join(dir, ".git")):
+      if os.path.exists(os.path.join(dir, '.git')):
         return dir
-      if os.path.isdir(os.path.join(dir, "src", ".git")):
-        return os.path.join(dir, "src")
+      if os.path.exists(os.path.join(dir, 'src', '.git')):
+        return os.path.join(dir, 'src')
       if os.path.dirname(dir) == dir:
         return None
       dir = os.path.dirname(dir)
@@ -646,8 +650,8 @@ def log_test_environment():
     print(f'LLVM git directory: "{llvm_git_root}"')
     print_repository_info(llvm_git_root, 'LLVM')
 
-  clang_version = utils.run_process([shared.CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
-  print(f'Clang: "{shared.CLANG_CC}"\n{clang_version}\n')
+  clang_version = utils.run_process([CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
+  print(f'Clang: "{CLANG_CC}"\n{clang_version}\n')
 
   print(f'EMTEST_BROWSER: {browser_common.EMTEST_BROWSER}')
   if browser_common.is_firefox():
@@ -666,7 +670,7 @@ def log_test_environment():
   emsdk_dir = os.getenv('EMSDK')
   print(f'\nEMSDK: "{emsdk_dir}"')
   if emsdk_dir:
-    if os.path.isdir(os.path.join(emsdk_dir, '.git')):
+    if os.path.exists(os.path.join(emsdk_dir, '.git')):
       print_repository_info(emsdk_dir, 'Emsdk')
 
   print('==================== End of Test Setup =====================')
@@ -705,7 +709,7 @@ def main():
   set_env('EMTEST_CORES', options.cores)
 
   if common.EMTEST_DETECT_TEMPFILE_LEAKS:
-    if shared.DEBUG:
+    if EMCC_DEBUG:
       # In EMCC_DEBUG mode emscripten explicitly leaves stuff in the tmp directory
       utils.exit_with_error('EMTEST_DETECT_TEMPFILE_LEAKS is not compatible with EMCC_DEBUG')
     if common.EMTEST_SAVE_DIR:
@@ -721,13 +725,13 @@ def main():
   # emscripten.lock from shared.py).
   # Note: We only do this in the CI environment, since it prevents multiple
   # emscripten checkouts from running tests at the same time.
-  if os.getenv('CI') and not (shared.DEBUG or common.EMTEST_SAVE_DIR):
+  if RUNNING_IN_CI and not (EMCC_DEBUG or common.EMTEST_SAVE_DIR):
     cleanup_temp_directory()
   utils.delete_file(common.flaky_tests_log_filename)
 
   browser_common.init(options.force_browser_process_termination)
 
-  if options.log_test_environment or os.getenv('CI'):
+  if options.log_test_environment or RUNNING_IN_CI:
     log_test_environment()
 
   def prepend_default(arg):
@@ -775,14 +779,14 @@ if __name__ == '__main__':
   except KeyboardInterrupt:
     logger.warning('KeyboardInterrupt')
     sys.exit(1)
-else:
-  # We are not the main process, and most likely a child process of
-  # the multiprocess pool.  In this mode the modifications made to the
-  # test class by `skip_test` need to be re-applied in each child
-  # subprocess (sad but true).  This is needed in particular on macOS
-  # and Windows where the default mode for multiprocessing is `spawn`
-  # rather than `fork`
-  if 'EMTEST_SKIP' in os.environ:
-    modules = get_and_import_modules()
-    for skip in os.environ['EMTEST_SKIP'].split():
-      skip_test(skip, modules)
+
+# We are not the main process, and most likely a child process of
+# the multiprocess pool.  In this mode the modifications made to the
+# test class by `skip_test` need to be re-applied in each child
+# subprocess (sad but true).  This is needed in particular on macOS
+# and Windows where the default mode for multiprocessing is `spawn`
+# rather than `fork`
+if 'EMTEST_SKIP' in os.environ:
+  modules = get_and_import_modules()
+  for skip in os.environ['EMTEST_SKIP'].split():
+    skip_test(skip, modules)
