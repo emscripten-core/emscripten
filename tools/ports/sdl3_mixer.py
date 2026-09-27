@@ -12,13 +12,6 @@ SUBDIR = f'SDL3_mixer-{TAG}'
 
 deps = ['sdl3']
 
-variants = {
-  'sdl3_mixer-ogg': {'SDL3_MIXER_FORMATS': ['ogg']},
-  'sdl3_mixer-none': {'SDL3_MIXER_FORMATS': []},
-  'sdl3_mixer-ogg-mt': {'SDL3_MIXER_FORMATS': ['ogg'], 'PTHREADS': 1},
-  'sdl3_mixer-none-mt': {'SDL3_MIXER_FORMATS': [], 'PTHREADS': 1},
-}
-
 OPTIONS = {
   'formats': 'A comma separated list of formats (ex: --use-port=sdl3_mixer:formats=ogg,mp3)',
 }
@@ -35,12 +28,8 @@ def needed(settings):
   return settings.USE_SDL_MIXER == 3
 
 
-def get_formats(settings):
-  return opts['formats'].union(settings.SDL3_MIXER_FORMATS)
-
-
 def get_lib_name(settings):
-  formats = '-'.join(sorted(get_formats(settings)))
+  formats = '-'.join(sorted(opts['formats']))
 
   libname = 'libSDL3_mixer'
   if formats:
@@ -73,7 +62,7 @@ def get(ports, settings, shared):
     if settings.PTHREADS:
       flags += ['-pthread']
 
-    formats = get_formats(settings)
+    formats = opts['formats']
 
     if 'ogg' in formats:
       flags += [
@@ -99,7 +88,7 @@ def clear(ports, settings, shared):
 
 def process_dependencies(settings):
   settings.USE_SDL = 3
-  formats = get_formats(settings)
+  formats = opts['formats']
   if 'ogg' in formats:
     deps.append('vorbis')
     settings.USE_VORBIS = 1
