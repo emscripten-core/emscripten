@@ -3165,7 +3165,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl3_canvas_write.c', cflags=['-sUSE_SDL=3'])
 
   @parameterized({
-    '': (['-sUSE_SDL=3', '-sUSE_SDL_MIXER=3'],),
+    '': (['--use-port=sdl3', '--use-port=sdl3_mixer'],),
     'dash_l': (['-lSDL3', '-lSDL3_mixer'],),
   })
   @requires_sound_hardware
@@ -3185,9 +3185,8 @@ Module["preRun"] = () => {
     args = [
       '--preload-file', music_name,
       '-DSOUND_PATH="%s"' % music_name,
-      '-sUSE_SDL=3',
-      '-sUSE_SDL_MIXER=3',
-      '-sSDL3_MIXER_FORMATS=' + ','.join(formats),
+      '--use-port=sdl3',
+      '--use-port=sdl3_mixer:formats=' + ','.join(formats),
     ]
     self.btest_exit('test_sdl3_mixer.c', cflags=args)
 
