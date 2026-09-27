@@ -2370,7 +2370,6 @@ USE_SDL_MIXER
 
 Specify the SDL_mixer version that is being linked against.
 Doesn't *have* to match USE_SDL, but a good idea.
-
 3 = use sdl3_mixer from emscripten-ports
 Alternate syntax: --use-port=sdl3_mixer
                   --use-port=sdl3_mixer:formats=ogg,mp3
