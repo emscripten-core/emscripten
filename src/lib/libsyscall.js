@@ -1080,25 +1080,19 @@ var SyscallsLibrary = {
       atime = now;
       mtime = now;
     } else {
-      var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
-      var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
-        atime = now;
-      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
-        atime = null;
-      } else {
-        atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      function readTimespec(ptr) {
+        var tv_nsec = {{{ makeGetValue('ptr', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+        if (tv_nsec == {{{ cDefs.UTIME_NOW }}}) {
+          return now;
+        }
+        if (tv_nsec == {{{ cDefs.UTIME_OMIT }}}) {
+          return null;
+        }
+        var tv_sec = {{{ makeGetValue('ptr', C_STRUCTS.timespec.tv_sec, 'i53') }}};
+        return (tv_sec*1000) + (tv_nsec/(1000*1000));
       }
-      times += {{{ C_STRUCTS.timespec.__size__ }}};
-      seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
-      nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
-        mtime = now;
-      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
-        mtime = null;
-      } else {
-        mtime = (seconds*1000) + (nanoseconds/(1000*1000));
-      }
+      atime = readTimespec(times);
+      mtime = readTimespec(times + {{{ C_STRUCTS.timespec.__size__ }}});
     }
     // null here means UTIME_OMIT was passed. If both were set to UTIME_OMIT then
     // we can skip the call completely.
