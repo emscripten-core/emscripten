@@ -16,18 +16,21 @@
 _Atomic int got_alarm[3];
 
 void alarm_handler(int dummy) {
-  printf("Received SIGALRM!\n");
   got_alarm[ITIMER_REAL]++;
+  // Printf during a signal handler can block which is problematic
+  // printf("Received SIGALRM [%d]!\n", got_alarm[ITIMER_REAL]);
 }
 
 void vtalarm_handler(int dummy) {
-  printf("Received SIGVTALRM!\n");
   got_alarm[ITIMER_VIRTUAL]++;
+  // Printf during a signal handler can block which is problematic
+  // printf("Received SIGVTALRM [%d]!\n", got_alarm[ITIMER_VIRTUAL]);
 }
 
 void prof_handler(int dummy) {
-  printf("Received SIGPROF!\n");
   got_alarm[ITIMER_PROF]++;
+  // Printf during a signal handler can block which is problematic
+  // printf("Received SIGPROF [%d]!\n", got_alarm[ITIMER_PROF]);
 }
 
 void test_oneoff(int which) {
