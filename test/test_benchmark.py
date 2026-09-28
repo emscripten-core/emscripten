@@ -70,6 +70,14 @@ LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors')
 
 
+# Print directly to stdout, ignoring the usual redirection in our test
+# harness. We want to print benchmark results regardless of whether we are in
+# verbose mode or not (verbose mode does still affect logging of our sub-
+# commands for building etc.)
+def print_result(text='', end='\n'):
+  os.write(1, bytes(text + end, 'utf-8'))
+
+
 class Benchmarker(ABC):
   # Whether to record statistics. Set by SizeBenchmarker.
   record_stats = False
@@ -105,8 +113,8 @@ class Benchmarker(ABC):
         try:
           curr = output_parser(output)
         except Exception as e:
-          print(str(e))
-          print('Parsing benchmark results failed, output was: ' + output)
+          print_result(str(e))
+          print_result('Parsing benchmark results failed, output was: ' + output)
       self.times.append(curr)
 
   def display(self, baseline=None):
@@ -126,14 +134,14 @@ class Benchmarker(ABC):
       else:
         median = sorted_times[count // 2]
 
-      print(f'   {self.name:>10}: mean: {mean:4.3f} (+-{std:4.3f}) secs  median: {median:4.3f}  range: {min(self.times):4.3f}-{max(self.times):4.3f}  (noise: {100 * std / mean:4.3f}%)  ({len(self.times)} runs)', end=' ')
+      print_result(f'   {self.name:>10}: mean: {mean:4.3f} (+-{std:4.3f}) secs  median: {median:4.3f}  range: {min(self.times):4.3f}-{max(self.times):4.3f}  (noise: {100 * std / mean:4.3f}%)  ({len(self.times)} runs)', end=' ')
 
       if baseline:
         mean_baseline = sum(baseline.times) / len(baseline.times)
         final = mean / mean_baseline
-        print(f'  Relative: {final:.2f} X slower')
+        print_result(f'  Relative: {final:.2f} X slower')
       else:
-        print('  Relative: No baseline recorded yet')
+        print_result('  Relative: No baseline recorded yet')
 
     # size
 
@@ -165,11 +173,11 @@ class Benchmarker(ABC):
       if self.record_stats:
         add_stat('total', total_size, total_gzip_size)
 
-      print(f'        size: {total_size:>8}, compressed: {total_gzip_size:>8}', end=' ')
+      print_result(f'        size: {total_size:>8}, compressed: {total_gzip_size:>8}', end=' ')
 
       if self.get_size_text():
-        print('  (' + self.get_size_text() + ')', end=' ')
-      print()
+        print_result('  (' + self.get_size_text() + ')', end=' ')
+      print_result()
 
     return recorded_stats
 
@@ -505,7 +513,7 @@ class benchmark(common.RunnerCore):
     utils.write_file(dest_filename, src)
     filename = dest_filename
 
-    print()
+    print_result()
     baseline = None
     for b in benchmarkers:
       if skip_benchmarkers and b.name in skip_benchmarkers:
@@ -513,7 +521,7 @@ class benchmark(common.RunnerCore):
       if not b.run:
         # If we won't run the benchmark, we don't need repetitions.
         reps = 0
-      print(f'Running benchmarker: {b.__class__.__name__}: {b.name}')
+      print_result(f'Running benchmarker: {b.__class__.__name__}: {b.name}')
       t1 = time.time()
       b.build(self, filename, shared_args, emcc_args, native_args, native_exec, lib_builder)
       build_time = time.time() - t1
@@ -593,7 +601,7 @@ class benchmark(common.RunnerCore):
       named_benchmarkers['emcc-build'],
     ]
     baseline = None
-    print()
+    print_result()
     for b in benchmarkers:
       b.bench(args)
       b.display(baseline)
