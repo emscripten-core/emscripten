@@ -534,16 +534,19 @@ var LibraryBrowser = {
     {{{ runtimeKeepalivePush() }}}
 
     var _file = UTF8ToString(file);
-    var data = FS.analyzePath(_file);
-    if (!data.exists) return -1;
-    // Here we assume data.object.contents is a TypedArray.
+    var contents;
+    try {
+      contents = FS.readFile(_file);
+    } catch (e) {
+      return -1;
+    }
 #if ASSERTIONS
-    assert(data.object.contents.subarray, 'unexpected file content')
+    assert(contents.subarray, 'unexpected file content');
 #endif
     FS.createPreloadedFile(
       PATH.dirname(_file),
       PATH.basename(_file),
-      data.object.contents, /*canRead=*/true, /*canWrite=*/true,
+      contents, /*canRead=*/true, /*canWrite=*/true,
       () => {
         {{{ runtimeKeepalivePop() }}}
         if (onload) {{{ makeDynCall('vp', 'onload') }}}(file);

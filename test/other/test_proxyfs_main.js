@@ -88,8 +88,8 @@ m0.ccall('myread0','number',[],[]);
 section = "parent m0 renames a file in child fs.";
 m0.FS.writeFile('/working/test', 'testme');
 m0.FS.rename('/working/test', '/working/test.bak');
-console.log(section + ":renamed file accessible by the new name:" + m0.FS.analyzePath('/working/test.bak').exists);
-console.log(section + ":renamed file accessible by the old name:" + m0.FS.analyzePath('/working/test').exists);
+console.log(section + ":renamed file accessible by the new name:" + m0.FS.readdir('/working').includes('test.bak'));
+console.log(section + ":renamed file accessible by the old name:" + m0.FS.readdir('/working').includes('test'));
 
 section = "test seek.";
 print("file size");

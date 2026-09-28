@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.11 (in development)
 ----------------------
+- The legacy `FS.findObject` function was removed (#27764) and `FS.analyzePath`
+  was marked as deprecated (`FS.lookupPath` or `FS.stat` should be used
+  instead). (#27765)
 
 6.0.10 - 09/21/26
 -----------------

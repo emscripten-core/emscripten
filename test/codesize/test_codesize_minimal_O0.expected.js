@@ -1147,7 +1147,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'FS_staticInit',
   'FS_init',
   'FS_quit',
-  'FS_analyzePath',
   'FS_createFile',
   'FS_createDataFile',
   'FS_forceLoadFile',
