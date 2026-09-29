@@ -86,10 +86,8 @@ typedef void (*emscripten_async_wait_volatile_callback_t)(volatile void* address
 // https://github.com/WebAssembly/threads/issues/175 for more information.
 // NOTE: This function can be called in both main thread and in Workers.
 // NOTE 2: This function will always acquire the lock asynchronously. That is,
-//         the lock will only be attempted to acquire after current control flow
-//         yields back to the browser, so that the Wasm call stack is empty.
-//         This is to guarantee a uniform control flow. If you use this API in
-//         a Worker, you cannot utilise an infinite loop programming model.
+//         control flow will always return the event loop before the lock
+//         is acquired.
 void emscripten_lock_async_acquire(emscripten_lock_t * _Nonnull lock,
                                    emscripten_async_wait_volatile_callback_t _Nonnull asyncWaitFinished,
                                    void *userData,
@@ -122,7 +120,10 @@ void emscripten_semaphore_init(emscripten_semaphore_t * _Nonnull sem, int num);
 int emscripten_semaphore_try_acquire(emscripten_semaphore_t * _Nonnull sem, int num);
 
 // main thread, poll to try acquire num instances. Returns idx that was
-// acquired. If you use this API in Worker, you cannot run an infinite loop.
+// acquired.
+// NOTE: This function will always acquire the semaphore asynchronously. That
+//       is, control flow will always return the event loop before the semaphore
+//       is acquired.
 void emscripten_semaphore_async_acquire(emscripten_semaphore_t * _Nonnull sem,
                                         int num,
                                         emscripten_async_wait_volatile_callback_t _Nonnull asyncWaitFinished,

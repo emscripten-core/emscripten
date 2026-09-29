@@ -5190,6 +5190,11 @@ Module["preRun"] = () => {
   def test_wasm_worker_semaphore_try_acquire(self):
     self.btest_exit('wasm_worker/semaphore_try_acquire.c', cflags=['-sWASM_WORKERS'])
 
+  # Tests emscripten_semaphore_async_acquire() function when semaphore is acquired both synchronously and asynchronously.
+  @also_with_minimal_runtime
+  def test_wasm_worker_semaphore_async_and_sync_acquire(self):
+    self.btest_exit('wasm_worker/semaphore_async_and_sync_acquire.c', cflags=['-sWASM_WORKERS'])
+
   @also_with_minimal_runtime
   def test_wasm_worker_condvar_waitinf(self):
     self.btest_exit('wasm_worker/condvar_waitinf.c', cflags=['-sWASM_WORKERS'])
