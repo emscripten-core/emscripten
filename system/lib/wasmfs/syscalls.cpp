@@ -1138,13 +1138,10 @@ static double timespec_to_ms(timespec ts) {
   if (ts.tv_nsec == UTIME_NOW) {
     return emscripten_date_now();
   }
-  double secFloat = ts.tv_sec + (double(ts.tv_nsec) / 1e9);
-  double maxSec = ts.tv_sec + 1;
-  // Floating-point rounding can cause secFloat to round up to maxSec when tv_nsec is close to 1e9.
-  if (secFloat >= maxSec) {
-    secFloat = std::nextafter(maxSec, 0.0);
-  }
-  return secFloat * 1000;
+  // Round down tv_nsec to the nearest 10 microseconds (10,000 ns) to prevent
+  // floating-point rounding into the next whole second when converting to host/Windows timestamps.
+  long tv_nsec_10us = (ts.tv_nsec / 10000) * 10000;
+  return (double(ts.tv_sec) + double(tv_nsec_10us) / 1e9) * 1000;
 }
 
 // TODO: Test this with non-AT_FDCWD values.
