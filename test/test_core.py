@@ -5816,6 +5816,7 @@ got: 10
     self.do_runf('utime/test_utime.c', 'done\n')
 
   @also_with_nodefs_both
+  @crossplatform
   def test_futimens(self):
     self.do_runf('utime/test_futimens.c', 'done\n')
 

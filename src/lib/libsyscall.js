@@ -1097,13 +1097,10 @@ var SyscallsLibrary = {
           return null;
         }
         var tv_sec = {{{ makeGetValue('ptr', C_STRUCTS.timespec.tv_sec, 'i53') }}};
-        var secFloat = tv_sec + (tv_nsec / 1e9);
-        var maxSec = tv_sec + 1;
-        // Floating-point rounding can cause secFloat to round up to maxSec when tv_nsec is close to 1e9.
-        if (secFloat >= maxSec) {
-          secFloat = maxSec - Number.EPSILON * maxSec;
-        }
-        return secFloat * 1000;
+        // Round down tv_nsec to the nearest 10 microseconds (10,000 ns) to prevent
+        // floating-point rounding into the next whole second when converting to host/Windows timestamps.
+        tv_nsec = (tv_nsec / 10000 | 0) * 10000;
+        return (tv_sec + (tv_nsec / 1e9)) * 1000;
       }
       atime = readTimespec(times);
       mtime = readTimespec(times + {{{ C_STRUCTS.timespec.__size__ }}});
