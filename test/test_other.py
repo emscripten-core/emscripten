@@ -2191,8 +2191,9 @@ Module['postRun'] = () => {
 
     self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '!*hello.exe', '--exclude-file', '*.exe'])
 
+  @also_with_pthreads
   def test_dylink_strict(self):
-    self.do_runf_out_file('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1', '-Wno-experimental'])
 
   def test_dylink_legacy(self):
     self.do_runf_out_file('hello_world.c', cflags=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
