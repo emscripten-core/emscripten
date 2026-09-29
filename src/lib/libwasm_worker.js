@@ -307,47 +307,46 @@ if (ENVIRONMENT_IS_WASM_WORKER
 
   emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
-    let tryAcquireLock = () => {
+    let tryAcquireLock = (async) => {
       do {
-        var val = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
-        if (!val) return {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, 0, 0/*'ok'*/, userData);
-        var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, val, maxWaitMilliseconds);
-      } while (wait.value === 'not-equal');
+        if (async) {
+          var val = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
+          if (!val) return {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, 0, 0/*'ok'*/, userData);
+        }
+        var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, 1, maxWaitMilliseconds);
+      } while (async && wait.value === 'not-equal');
 #if ASSERTIONS
-      assert(wait.async || wait.value === 'timed-out');
+      assert(!async || wait.async || wait.value === 'timed-out');
 #endif
       if (wait.async) wait.value.then(tryAcquireLock);
-      else return {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, val, 2/*'timed-out'*/, userData);
+      else if (async) {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, 1, 2/*'timed-out'*/, userData);
+      else setTimeout(tryAcquireLock, 0, 1);
     };
-    // Asynchronously dispatch acquiring the lock so that we have uniform control flow in both
-    // cases when the lock is acquired, and when it needs to wait.
-    setTimeout(tryAcquireLock);
+    tryAcquireLock(0);
   },
 
   emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_semaphore_async_acquire: (sem, num, asyncWaitFinished, userData, maxWaitMilliseconds) => {
-    let dispatch = (idx, ret) => {
-      setTimeout(() => {
-        {{{ makeDynCall('viiii', 'asyncWaitFinished') }}}(sem, /*val=*/idx, /*waitResult=*/ret, userData);
-      }, 0);
-    };
-    let tryAcquireSemaphore = () => {
-      let val = num;
+    let tryAcquireSemaphore = (async) => {
+      let val = async ? num : 0;
       do {
-        let ret = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('sem', 'i32') }}},
-                                          val, /* We expect this many semaphore resources to be available*/
-                                          val - num /* Acquire 'num' of them */);
-        if (ret == val) return dispatch(ret/*index of resource acquired*/, 0/*'ok'*/);
-        val = ret;
-        let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('sem', 'i32') }}}, ret, maxWaitMilliseconds);
-      } while (wait.value === 'not-equal');
+        if (async) {
+          let ret = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('sem', 'i32') }}},
+                                            val, /* We expect this many semaphore resources to be available*/
+                                            val - num /* Acquire 'num' of them */);
+          if (ret == val) return {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(sem, /*val=*/ret/*index of resource acquired*/, /*waitResult=*/0/*'ok'*/, userData);
+          val = ret;
+        }
+        var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('sem', 'i32') }}}, val, maxWaitMilliseconds);
+      } while (async && wait.value === 'not-equal');
 #if ASSERTIONS
-      assert(wait.async || wait.value === 'timed-out');
+      assert(!async || wait.async || wait.value === 'timed-out');
 #endif
       if (wait.async) wait.value.then(tryAcquireSemaphore);
-      else dispatch(-1/*idx*/, 2/*'timed-out'*/);
+      else if (async) {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(sem, /*val=*/-1/*idx*/, /*waitResult=*/2/*'timed-out'*/, userData);
+      else setTimeout(tryAcquireSemaphore, 0, 1);
     };
-    tryAcquireSemaphore();
+    tryAcquireSemaphore(0);
   },
 
 #if !PTHREADS
