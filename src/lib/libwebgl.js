@@ -3931,7 +3931,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GLctx.drawElements(mode, count, type, indices);
 
 #if FULL_ES2
-    GL.postDrawHandleClientVertexAttribBindings(count);
+    GL.postDrawHandleClientVertexAttribBindings();
 
     if (!GLctx.currentElementArrayBufferBinding) {
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, null);
