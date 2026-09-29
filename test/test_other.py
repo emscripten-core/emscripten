@@ -55,7 +55,9 @@ from common import (
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
+  WASM_DIS,
   WASM_LD,
+  WASM_SPLIT,
   WEBIDL_BINDER,
   RunnerCore,
   check_node_version,
@@ -12959,8 +12961,7 @@ exec "$@"
     self.assertExists('test_split_module.wasm.orig')
     self.assertExists('profile.data')
 
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    wasm_split_run = [wasm_split, '-g',
+    wasm_split_run = [WASM_SPLIT, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
                       '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
     if self.is_wasm64():
@@ -13002,8 +13003,7 @@ exec "$@"
     self.assertExists('test_split_main_module.wasm.orig')
     self.assertExists('profile.data')
 
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    self.run_process([wasm_split, '-g',
+    self.run_process([WASM_SPLIT, '-g',
                       'test_split_main_module.wasm.orig',
                       '--export-prefix=%',
                       f'--initial-table={initialTableSize}',
@@ -13040,8 +13040,7 @@ exec "$@"
     self.assertExists('test_split_module_embind_jspi.wasm.orig')
     self.assertExists('profile.data')
 
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    wasm_split_run = [wasm_split, '-g',
+    wasm_split_run = [WASM_SPLIT, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
                       '--export-prefix=%', 'test_split_module_embind_jspi.wasm.orig', '-o1', 'test_split_module_embind_jspi.wasm', '-o2', 'test_split_module_embind_jspi.deferred.wasm', '--profile=profile.data']
     self.run_process(wasm_split_run)
@@ -16018,7 +16017,7 @@ addToLibrary({
     # functions first, and the rest is split with the outer path.
     def has_defined_function(file, func):
       func = ''.join('\\' + c if c in {'(', ')'} else c for c in func)
-      self.run_process([common.WASM_DIS, file, '-o', 'test.wast'])
+      self.run_process([WASM_DIS, file, '-o', 'test.wast'])
       pattern = re.compile(r'^\s*\(\s*func\s+\$("?)' + func + r'\1[\s\(\)]', flags=re.MULTILINE)
       return pattern.search(utils.read_file('test.wast')) is not None
 
