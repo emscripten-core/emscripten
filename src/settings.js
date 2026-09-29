@@ -1183,10 +1183,13 @@ var LINKABLE = false;
 //
 //   - STRICT_JS is enabled.
 //   - IGNORE_MISSING_MAIN is disabled.
+//   - INCOMING_MODULE_JS_API is set to empty by default.
 //   - AUTO_JS_LIBRARIES is disabled.
 //   - AUTO_NATIVE_LIBRARIES is disabled.
 //   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
-//   - INCOMING_MODULE_JS_API is set to empty by default.
+//
+// Note: If you build with -sMAIN_MODULE=1 the last 3 are not disabled since
+// they would cause link failures.
 // [compile+link]
 var STRICT = false;
 
@@ -1908,8 +1911,8 @@ var SINGLE_FILE_BINARY_ENCODE = true;
 var AUTO_JS_LIBRARIES = true;
 
 // Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
-// and libhtml5.   If this is disabled it is necessary to explicitly add
-// e.g. -lhtml5 and also to first build the library using ``embuilder``.
+// and libhtml5.  This gets set to 0 in STRICT mode.  If this is disabled it is
+// necessary to explicitly add libraries to the link command (e.g. -lhtml5).
 // [link]
 var AUTO_NATIVE_LIBRARIES = true;
 
