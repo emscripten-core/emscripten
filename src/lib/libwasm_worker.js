@@ -321,7 +321,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     };
     // Asynchronously dispatch acquiring the lock so that we have uniform control flow in both
     // cases when the lock is acquired, and when it needs to wait.
-    setTimeout(tryAcquireLock);
+    Promise.resolve().then(tryAcquireLock);
   },
 
   emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync'],
@@ -344,7 +344,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     };
     // Asynchronously dispatch acquiring the semaphore so that we have uniform control flow in both
     // cases when the semaphore is acquired, and when it needs to wait.
-    setTimeout(tryAcquireSemaphore);
+    Promise.resolve().then(tryAcquireSemaphore);
   },
 
 #if !PTHREADS
