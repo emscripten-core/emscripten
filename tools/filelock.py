@@ -37,6 +37,7 @@ A platform independent file lock that supports the with-statement.
 
 # Modules
 # ------------------------------------------------
+from contextlib import suppress
 import logging
 import os
 import threading
@@ -410,8 +411,12 @@ class UnixFileLock(BaseFileLock):
     def _release(self):
         fd = self._lock_file_fd
         self._lock_file_fd = None
-        os.unlink(self._lock_file)
-        fcntl.flock(fd, fcntl.LOCK_UN)
+        # Probably another instance of the application
+        # that released the file lock.
+        with suppress(FileNotFoundError):
+            os.unlink(self._lock_file)
+        with suppress(OSError):
+            fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
         return None
 
