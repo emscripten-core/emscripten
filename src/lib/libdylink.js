@@ -499,6 +499,7 @@ var LibraryDylink = {
     var WASM_DYLINK_EXPORT_INFO = 0x3;
     var WASM_DYLINK_IMPORT_INFO = 0x4;
     var WASM_DYLINK_RUNTIME_PATH = 0x5;
+    var WASM_DYLINK_TARGET_ARCH = 0x6;
     var WASM_SYMBOL_TLS = 0x100;
     var WASM_SYMBOL_BINDING_MASK = 0x3;
     var WASM_SYMBOL_BINDING_WEAK = 0x1;
@@ -533,6 +534,13 @@ var LibraryDylink = {
         }
       } else if (subsectionType === WASM_DYLINK_RUNTIME_PATH) {
         customSection.runtimePaths = getStringList();
+      } else if (subsectionType === WASM_DYLINK_TARGET_ARCH) {
+        var arch = getStringList();
+#if MEMORY64
+        failIf(arch !== 'wasm64', 'incorrect architecture');
+#else
+        failIf(arch !== 'wasm32', 'incorrect architecture');
+#endif
       } else {
 #if ASSERTIONS
         err('unknown dylink.0 subsection:', subsectionType)
