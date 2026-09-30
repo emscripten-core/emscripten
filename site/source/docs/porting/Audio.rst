@@ -12,6 +12,7 @@ There are some implementation-specific aspects which are worth considering and a
 
 .. warning:: There used to be no additional flag to pass to the compiler in order to use OpenAL. However, specifying ``-lopenal`` as mentioned above should be considered mandatory (at some point in the future, it **will** be)!
 
+.. warning:: As Emscripten ships with its own implementation you must not link to any other implementation!
 
 .. _Audio-openal-extensions-g:
 
