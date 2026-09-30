@@ -1319,11 +1319,11 @@ var LibraryDylink = {
       var filename = UTF8ToString(handle + {{{ C_STRUCTS.dso.name }}});
       dlSetError(`'Could not load dynamic lib: ${filename}\n${e}`);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {{{ makeDynCall('vpp', 'onerror') }}}(handle, user_data));
+      callUserCallback({{{ makeDynCall('vpp', 'onerror') }}}, handle, user_data);
     }
     function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {{{ makeDynCall('vpp', 'onsuccess') }}}(handle, user_data));
+      callUserCallback({{{ makeDynCall('vpp', 'onsuccess') }}}, handle, user_data);
     }
 
     {{{ runtimeKeepalivePush() }}}
