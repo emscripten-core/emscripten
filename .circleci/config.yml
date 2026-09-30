@@ -220,6 +220,7 @@ commands:
           name: embuilder (WASM64)
           command: |
             ./embuilder build MINIMAL --wasm64
+            ./embuilder build libopenmp --wasm64
       - run:
           name: embuilder (PIC)
           command: |
