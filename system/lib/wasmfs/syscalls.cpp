@@ -330,7 +330,7 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
 
 int __syscall_fdatasync(int fd) {
   // TODO: Optimize this to avoid unnecessarily flushing unnecessary metadata.
-  return __wasi_fd_sync(fd);
+  return -__wasi_fd_sync(fd);
 }
 
 backend_t wasmfs_get_backend_by_fd(int fd) {
