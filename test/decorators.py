@@ -427,8 +427,6 @@ def also_with_wasm64(func):
     if with_wasm64:
       self.require_wasm64()
       self.cflags += ['-m64']
-      if self.get_setting('WASM_ESM_INTEGRATION'):
-        self.skipTest('wasm64 requires wasm export wrappers')
     return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),

@@ -88,6 +88,7 @@ MINIMAL_TASKS = [
   'libemmalloc-memvalidate-verbose',
   'libmimalloc',
   'libmimalloc-mt',
+  'libopenmp',
   'libGL',
   'libGL-getprocaddr',
   'libGL-mt-getprocaddr',

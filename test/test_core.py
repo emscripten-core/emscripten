@@ -57,7 +57,6 @@ from decorators import (
   also_with_noderawfs,
   also_with_pthreads,
   also_with_standalone_wasm,
-  also_with_wasm64,
   also_with_wasmfs,
   can_do_standalone,
   crossplatform,
@@ -5622,7 +5621,6 @@ got: 10
     self.cflags += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
-  @also_with_wasm64
   @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
   # We don't use the `requires_pthreads` decorator because we want to test that pthreads is
   # automatically enabled when OpenMP is used.
@@ -5639,7 +5637,6 @@ got: 10
     # ASAN uses `-sALLOW_MEMORY_GROWTH`.
     self.do_run(src, "", cflags=['-fopenmp=libomp', '-Wno-pthreads-mem-growth'])
 
-  @also_with_wasm64
   @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
   def test_openmp_many_microtask_args(self):
     # The OpenMP runtime and worker stacks can exceed the default 16 MiB.
