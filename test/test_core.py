@@ -5639,9 +5639,10 @@ got: 10
 
   @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
   def test_openmp_many_microtask_args(self):
-    # The OpenMP runtime and worker stacks can exceed the default 16 MiB.
+    # The OpenMP runtime and worker stacks can exceed the initial memory on
+    # hosts with many cores.
     self.do_runf('core/test_openmp_many_microtask_args.c',
-                 cflags=['-fopenmp=libomp', '-Wno-pthreads-mem-growth', '-sINITIAL_MEMORY=32mb'])
+                 cflags=['-fopenmp=libomp', '-Wno-pthreads-mem-growth', '-sALLOW_MEMORY_GROWTH'])
 
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
