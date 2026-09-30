@@ -1537,13 +1537,14 @@ addToLibrary({
 
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
-  $nowIsMonotonic__internal: true,
+  ...defineInternalConsts({
 #if AUDIO_WORKLET // // https://github.com/WebAudio/web-audio-api/issues/2413
-  $nowIsMonotonic: `!!globalThis.performance?.now;`,
+    $nowIsMonotonic: `!!globalThis.performance?.now;`,
 #else
-  // Modern environment where performance.now() is supported
-  $nowIsMonotonic: 1,
+    // Modern environment where performance.now() is supported
+    $nowIsMonotonic: 1,
 #endif
+  }),
 
   _emscripten_get_now_is_monotonic__internal: true,
   _emscripten_get_now_is_monotonic__deps: ['$nowIsMonotonic'],
@@ -2540,15 +2541,17 @@ addToLibrary({
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on
   // demand.
-  $STACK_SIZE: {{{ STACK_SIZE }}},
-  $STACK_ALIGN: {{{ STACK_ALIGN }}},
-  $POINTER_SIZE: {{{ POINTER_SIZE }}},
-  $ASSERTIONS: {{{ ASSERTIONS }}},
+  ...defineConsts({
+    $STACK_SIZE: {{{ STACK_SIZE }}},
+    $STACK_ALIGN: {{{ STACK_ALIGN }}},
+    $POINTER_SIZE: {{{ POINTER_SIZE }}},
+    $ASSERTIONS: {{{ ASSERTIONS }}},
+  }),
 });
 
 function autoAddDeps(lib, name) {
   for (const item of Object.keys(lib)) {
-    if (!isDecorator(item)) {
+    if (!isDecorator(item) && item != name && !lib[item + '__const']) {
       lib[item + '__deps'] ??= [];
       lib[item + '__deps'].push(name);
     }

@@ -4,11 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-// Specifies the size of the GL temp buffer pool, in bytes. Must be a multiple
-// of 9 and 16.
 {{{
-  const GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16 // = 288
-
   const isCurrentContextWebGL2 = () => {
     // This function should only be called inside of `#if MAX_WEBGL_VERSION >= 2` blocks
     assert(MAX_WEBGL_VERSION >= 2, 'isCurrentContextWebGL2 called without webgl2 support');
@@ -18,6 +14,12 @@
 }}}
 
 var LibraryGL = {
+  // Specifies the size of the GL temp buffer pool, in bytes. Must be a multiple
+  // of 9 and 16.
+  ...defineInternalConsts({
+    $GL_POOL_TEMP_BUFFERS_SIZE: 2 * 9 * 16, // = 288
+  }),
+
   // For functions such as glDrawBuffers, glInvalidateFramebuffer and
   // glInvalidateSubFramebuffer that need to pass a short array to the WebGL
   // API, create a set of short fixed-length arrays to avoid having to generate
@@ -25,17 +27,19 @@ var LibraryGL = {
   $tempFixedLengthArray__postset: 'for (let i = 0; i < 32; ++i) tempFixedLengthArray.push(new Array(i));',
   $tempFixedLengthArray: [],
 
+  $miniTempWebGLFloatBuffers__deps: ['$GL_POOL_TEMP_BUFFERS_SIZE'],
   $miniTempWebGLFloatBuffers: [],
-  $miniTempWebGLFloatBuffers__postset: `var miniTempWebGLFloatBuffersStorage = new Float32Array({{{ GL_POOL_TEMP_BUFFERS_SIZE }}});
+  $miniTempWebGLFloatBuffers__postset: `var miniTempWebGLFloatBuffersStorage = new Float32Array(GL_POOL_TEMP_BUFFERS_SIZE);
 // Create GL_POOL_TEMP_BUFFERS_SIZE+1 temporary buffers, for uploads of size 0 through GL_POOL_TEMP_BUFFERS_SIZE inclusive
-for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; ++i) {
+for (/**@suppress{duplicate}*/var i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
   miniTempWebGLFloatBuffers[i] = miniTempWebGLFloatBuffersStorage.subarray(0, i);
 }`,
 
+  $miniTempWebGLIntBuffers__deps: ['$GL_POOL_TEMP_BUFFERS_SIZE'],
   $miniTempWebGLIntBuffers: [],
-  $miniTempWebGLIntBuffers__postset: `var miniTempWebGLIntBuffersStorage = new Int32Array({{{ GL_POOL_TEMP_BUFFERS_SIZE }}});
+  $miniTempWebGLIntBuffers__postset: `var miniTempWebGLIntBuffersStorage = new Int32Array(GL_POOL_TEMP_BUFFERS_SIZE);
 // Create GL_POOL_TEMP_BUFFERS_SIZE+1 temporary buffers, for uploads of size 0 through GL_POOL_TEMP_BUFFERS_SIZE inclusive
-for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; ++i) {
+for (/**@suppress{duplicate}*/var i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
   miniTempWebGLIntBuffers[i] = miniTempWebGLIntBuffersStorage.subarray(0, i);
 }`,
 
@@ -2516,7 +2520,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE) {
       // avoid allocation when uploading few enough uniforms
       var view = miniTempWebGLIntBuffers[count];
       for (var i = 0; i < count; ++i) {
@@ -2557,7 +2561,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE / 2) {
       // avoid allocation when uploading few enough uniforms
       count *= 2;
       var view = miniTempWebGLIntBuffers[count];
@@ -2600,7 +2604,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE / 3) {
       // avoid allocation when uploading few enough uniforms
       count *= 3;
       var view = miniTempWebGLIntBuffers[count];
@@ -2644,7 +2648,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE / 4) {
       // avoid allocation when uploading few enough uniforms
       count *= 4;
       var view = miniTempWebGLIntBuffers[count];
@@ -2689,7 +2693,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE) {
       // avoid allocation when uploading few enough uniforms
       var view = miniTempWebGLFloatBuffers[count];
       for (var i = 0; i < count; ++i) {
@@ -2730,7 +2734,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE / 2) {
       // avoid allocation when uploading few enough uniforms
       count *= 2;
       var view = miniTempWebGLFloatBuffers[count];
@@ -2773,7 +2777,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE / 3) {
       // avoid allocation when uploading few enough uniforms
       count *= 3;
       var view = miniTempWebGLFloatBuffers[count];
@@ -2817,7 +2821,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE / 4) {
       // avoid allocation when uploading few enough uniforms
       var view = miniTempWebGLFloatBuffers[4*count];
       // hoist the heap out of the loop for size and for pthreads+growth.
@@ -2866,7 +2870,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE / 4) {
       // avoid allocation when uploading few enough uniforms
       count *= 4;
       var view = miniTempWebGLFloatBuffers[count];
@@ -2911,7 +2915,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 9 }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE / 9) {
       // avoid allocation when uploading few enough uniforms
       count *= 9;
       var view = miniTempWebGLFloatBuffers[count];
@@ -2961,7 +2965,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_POOL_TEMP_BUFFERS
-    if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 16 }}}) {
+    if (count <= GL_POOL_TEMP_BUFFERS_SIZE / 16) {
       // avoid allocation when uploading few enough uniforms
       var view = miniTempWebGLFloatBuffers[16*count];
       // hoist the heap out of the loop for size and for pthreads+growth.
