@@ -18,6 +18,11 @@ OPTIONS = {
 
 SUPPORTED_FORMATS = {'ogg', 'mp3'}
 
+variants = {
+  'sdl3_mixer': {},
+  'sdl3_mixer-mt': {'PTHREADS': 1},
+}
+
 # user options (from --use-port)
 opts: dict[str, set] = {
   'formats': set(),
