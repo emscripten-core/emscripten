@@ -13,7 +13,7 @@ void on_acquire(volatile void* address, uint32_t value,
   printf("on_acquire: releasing semaphore.\n");
   emscripten_semaphore_release(&sem, 1);
   printf("on_acquire: released semaphore.\n");
-  exit(0);
+  emscripten_force_exit(0);
 }
 
 int main() {
