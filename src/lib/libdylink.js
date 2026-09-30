@@ -535,12 +535,9 @@ var LibraryDylink = {
       } else if (subsectionType === WASM_DYLINK_RUNTIME_PATH) {
         customSection.runtimePaths = getStringList();
       } else if (subsectionType === WASM_DYLINK_TARGET_ARCH) {
-        var arch = getStringList();
-#if MEMORY64
-        failIf(arch !== 'wasm64', 'incorrect architecture');
-#else
-        failIf(arch !== 'wasm32', 'incorrect architecture');
-#endif
+        var arch = getString();
+        var expected = '{{{ MEMORY64 ? "wasm64" : "wasm32" }}}';
+        failIf(arch !== expected, `incorrect architecture (${arch} vs ${expected})`);
       } else {
 #if ASSERTIONS
         err('unknown dylink.0 subsection:', subsectionType)
