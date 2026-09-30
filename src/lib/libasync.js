@@ -432,7 +432,9 @@ addToLibrary({
         _free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
-        Asyncify.sleepCallbacks.forEach(callUserCallback);
+        for (var cb of Asyncify.sleepCallbacks) {
+          callUserCallback(cb);
+        }
       } else {
         abort(`invalid state: ${Asyncify.state}`);
       }
