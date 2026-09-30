@@ -23,6 +23,9 @@ See docs/process.md for more on how version tagging works.
 - The legacy `FS.findObject` function was removed (#27764) and `FS.analyzePath`
   was marked as deprecated (`FS.lookupPath` or `FS.stat` should be used
   instead). (#27765)
+- compiler-rt was updated to LLVM 23.1.2. This restores `-fcoverage-mapping`
+  compatibility with the LLVM toolchain, so coverage-enabled programs no
+  longer trap while writing profile data. (#27223)
 
 6.0.10 - 09/21/26
 -----------------
