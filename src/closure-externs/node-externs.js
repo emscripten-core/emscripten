@@ -158,3 +158,8 @@ worker_threads.Worker;
 worker_threads.workerData;
 
 worker_threads.parentPort;
+
+/**
+ * @type {number}
+ */
+process.stdin.fd;
