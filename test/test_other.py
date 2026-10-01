@@ -13938,6 +13938,7 @@ Module.postRun = () => {{
     self.build('fetch/test_fetch_idb_store.c')
     self.build('fetch/test_fetch_redirect.c')
     self.build('fetch/test_fetch_stream_async.c')
+    self.build('fetch/test_fetch_stream_error.c')
     self.build('fetch/test_fetch_sync.c')
     self.build('fetch/test_fetch_progress.c')
 

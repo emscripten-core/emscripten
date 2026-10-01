@@ -4519,6 +4519,9 @@ Module["preRun"] = () => {
     self.make_largefile()
     self.btest_exit('fetch/test_fetch_stream_abort.cpp', cflags=['-sFETCH', '-sFETCH_STREAMING', '-sALLOW_MEMORY_GROWTH'])
 
+  def test_fetch_stream_error(self):
+    self.btest_exit('fetch/test_fetch_stream_error.c', cflags=['-sFETCH', '-sFETCH_STREAMING'])
+
   @also_with_fetch_streaming
   def test_fetch_persist(self):
     create_file('myfile.dat', 'hello world\n')
