@@ -3351,7 +3351,8 @@ More info: https://emscripten.org
     # this test copies the site_scons directory alongside the test
     copytree(test_file('scons/simple'), '.')
     copytree(path_from_root('tools/scons/site_scons'), 'site_scons')
-    self.run_process(['scons'])
+    proc = self.run_process(['scons'], stderr=PIPE)
+    self.assertContained('emscripten: warning: SCons integration is deprecated', proc.stderr)
     output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
@@ -3400,7 +3401,8 @@ More info: https://emscripten.org
   @requires_scons
   def test_emscons(self):
     copytree(test_file('scons/simple'), '.')
-    self.run_process([path_from_root('emscons'), 'scons'])
+    proc = self.run_process([path_from_root('emscons'), 'scons'], stderr=PIPE)
+    self.assertContained('emscons: warning: emscons is deprecated', proc.stderr)
     output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
