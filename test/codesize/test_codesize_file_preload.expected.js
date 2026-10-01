@@ -801,7 +801,7 @@ var FS_stdin_getChar = () => {
         if (e.toString().includes("EOF")) bytesRead = 0; else throw e;
       }
       if (bytesRead > 0) {
-        result = buf.slice(0, bytesRead).toString("utf-8");
+        result = buf.toString("utf-8", 0, bytesRead);
       }
     } else if (globalThis.window?.prompt) {
       // Browser.

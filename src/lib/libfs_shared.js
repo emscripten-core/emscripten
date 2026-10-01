@@ -157,7 +157,7 @@ addToLibrary({
         }
 
         if (bytesRead > 0) {
-          result = buf.slice(0, bytesRead).toString('utf-8');
+          result = buf.toString('utf-8', 0, bytesRead);
         }
       } else
 #endif
