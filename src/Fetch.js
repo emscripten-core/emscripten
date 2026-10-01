@@ -156,6 +156,7 @@ class FetchXHR {
       credentials: this.withCredentials ? 'include' : 'same-origin',
     };
 
+    let failure = null;
     try {
       const response = await fetch(this._url, fetchOptions);
 
@@ -218,23 +219,23 @@ class FetchXHR {
         this.response = allChunks.buffer;
       }
     } catch (error) {
+      failure = error;
+      this.status = 0;
+      this.response = null;
       this.statusText = error.message;
-
-      if (error.name === 'AbortError') {
-        // Do nothing.
-      } else if (error.name === 'TimeoutError') {
-        this.ontimeout?.();
-      } else {
-        // This is a network error
-        this.onerror?.();
-      }
     } finally {
       clearTimeout(timeoutID);
       if (!this._aborted) {
         this._changeReadyState(4); // 4: DONE
         // The XHR 'load' event fires for successful HTTP statuses (2xx) as well as
         // unsuccessful ones (4xx, 5xx). The 'error' event is for network failures.
-        this.onload?.();
+        if (!failure) {
+          this.onload?.();
+        } else if (failure.name === 'TimeoutError') {
+          this.ontimeout?.();
+        } else {
+          this.onerror?.();
+        }
       }
     }
   }
