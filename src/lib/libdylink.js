@@ -535,12 +535,9 @@ var LibraryDylink = {
       } else if (subsectionType === WASM_DYLINK_RUNTIME_PATH) {
         customSection.runtimePaths = getStringList();
       } else if (subsectionType === WASM_DYLINK_TARGET_ARCH) {
-        var arch = getStringList();
-#if MEMORY64
-        failIf(arch !== 'wasm64', 'incorrect architecture');
-#else
-        failIf(arch !== 'wasm32', 'incorrect architecture');
-#endif
+        var arch = getString();
+        var expected = '{{{ MEMORY64 ? "wasm64" : "wasm32" }}}';
+        failIf(arch !== expected, `incorrect architecture (${arch} vs ${expected})`);
       } else {
 #if ASSERTIONS
         err('unknown dylink.0 subsection:', subsectionType)
@@ -1319,11 +1316,11 @@ var LibraryDylink = {
       var filename = UTF8ToString(handle + {{{ C_STRUCTS.dso.name }}});
       dlSetError(`'Could not load dynamic lib: ${filename}\n${e}`);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {{{ makeDynCall('vpp', 'onerror') }}}(handle, user_data));
+      callUserCallback({{{ makeDynCall('vpp', 'onerror') }}}, handle, user_data);
     }
     function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {{{ makeDynCall('vpp', 'onsuccess') }}}(handle, user_data));
+      callUserCallback({{{ makeDynCall('vpp', 'onsuccess') }}}, handle, user_data);
     }
 
     {{{ runtimeKeepalivePush() }}}

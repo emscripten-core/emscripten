@@ -3,6 +3,8 @@
 #include <emscripten/webaudio.h>
 #include <emscripten/threading.h>
 #include <assert.h>
+#include <errno.h>
+#include <time.h>
 #include <unistd.h>
 
 /* Steps to use Wasm-based AudioWorklets:
@@ -55,6 +57,11 @@ bool ProcessAudio(int numInputs,
     emscripten_outf("worklet thread pthread_self: %p\n", pthread_self());
     assert(pthread_self());
 #endif
+    // CLOCK_MONOTONIC is not available inside an AudioWorklet (where
+    // performance.now() is not supported).
+    struct timespec ts;
+    assert(clock_getres(CLOCK_MONOTONIC, &ts) == -1);
+    assert(errno == ENOSYS);
   }
 
 #ifdef TEST_AND_EXIT
@@ -174,6 +181,10 @@ int main() {
   emscripten_outf("main thread pthread_self: %p\n", pthread_self());
   assert(pthread_self());
 #endif
+  struct timespec ts;
+  assert(clock_getres(CLOCK_MONOTONIC, &ts) == 0);
+  assert(ts.tv_sec == 0);
+  assert(ts.tv_nsec == 1000);
 
   // Create an audio context
   context = emscripten_create_audio_context(0 /* use default constructor options */);

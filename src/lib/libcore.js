@@ -1425,7 +1425,7 @@ addToLibrary({
 #if RUNTIME_DEBUG
       dbg(`itimer fired: ${which}`);
 #endif
-      callUserCallback(() => __emscripten_timeout(which, _emscripten_get_now()));
+      callUserCallback(__emscripten_timeout, which, _emscripten_get_now());
     }, timeout_ms);
     timers[which] = { id, timeout_ms };
     return 0;
@@ -1508,10 +1508,10 @@ addToLibrary({
     }
 #endif
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
-    if (globalThis.performance?.now == 'function') {
+    if (globalThis.performance?.now) {
       return 1000; // microseconds (1/1000 of a millisecond)
     }
-    return 1000*1000; // milliseconds
+    return 1_000_000; // milliseconds
 #else
     // Modern environment where performance.now() is supported:
     return 1000; // microseconds (1/1000 of a millisecond)
@@ -2145,7 +2145,7 @@ addToLibrary({
   // as ExitStatus and 'unwind' and prevent these from escaping to the top
   // level.
   $callUserCallback__deps: ['$handleException', '$maybeExit'],
-  $callUserCallback: (func) => {
+  $callUserCallback: (func, ...args) => {
 #if EXIT_RUNTIME
     if (runtimeExited || ABORT) {
 #else
@@ -2157,7 +2157,7 @@ addToLibrary({
       return;
     }
     try {
-      return func();
+      return func(...args);
     } catch (e) {
       handleException(e);
     } finally {
@@ -2212,7 +2212,7 @@ addToLibrary({
   },
 
 #else // MINIMAL_RUNTIME
-  $callUserCallback: (func) => {
+  $callUserCallback: (func, ...args) => {
     // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff, but under
     // some circumstances it supportes `runtimeExited`
 #if EXIT_RUNTIME
@@ -2223,7 +2223,7 @@ addToLibrary({
       return;
     }
 #endif
-    func();
+    func(...args);
   },
 #endif // MINIMAL_RUNTIME
 
@@ -2410,7 +2410,7 @@ addToLibrary({
         if (shown) {
           err('(end of list)');
         }
-      }, 10000);
+      }, 10_000);
 #if ENVIRONMENT_MAY_BE_NODE
       // Prevent this timer from keeping the runtime alive if nothing
       // else is.
