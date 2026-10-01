@@ -373,7 +373,7 @@ FS.staticInit();`;
       // if we failed to find it in the cache, call into the VFS
       return FS.lookup(parent, name);
     },
-    createNode(parent, name, mode, rdev) {
+    createNode(parent, name, mode, rdev = undefined) {
 #if ASSERTIONS
       assert(typeof parent == 'object')
 #endif
