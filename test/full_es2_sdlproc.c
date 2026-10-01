@@ -497,9 +497,14 @@ draw_gear(struct gear *gear, GLfloat *transform,
    glEnableVertexAttribArray(1);
 
    /* Draw the triangle strips that comprise the gear */
-   int n;
-   for (n = 0; n < gear->nstrips; n++)
-      glDrawElements(GL_TRIANGLE_STRIP, gear->strips[n].count, GL_FLOAT, gear->strips[n].first);
+   for (int n = 0; n < gear->nstrips; n++) {
+      GLushort indices[7];
+      assert(gear->strips[n].count <= 7);
+      for (int i = 0; i < gear->strips[n].count; i++) {
+         indices[i] = gear->strips[n].first + i;
+      }
+      glDrawElements(GL_TRIANGLE_STRIP, gear->strips[n].count, GL_UNSIGNED_SHORT, indices);
+   }
 
    /* Disable the attributes */
    glDisableVertexAttribArray(1);
@@ -725,7 +730,9 @@ main(int argc, char *argv[])
 
    gears_idle();
    gears_init();
+   gears_reshape(300, 300);
    gears_draw();
+   assert(glGetError() == GL_NO_ERROR);
 
    return 0;
 }
