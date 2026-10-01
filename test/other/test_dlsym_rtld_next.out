@@ -1,0 +1,2 @@
+dlsym(RTLD_NEXT): RTLD_NEXT is not supported
+done
