@@ -1371,6 +1371,11 @@ int __syscall_ioctl(int fd, int request, ...) {
       // TTY operations that we do nothing for anyhow can just be ignored.
       return 0;
     }
+    case TIOCGPGRP: {
+      // Set argp to 0 just like in JS FS
+      *static_cast<int*>(argp) = 0;
+      return 0;
+    }
     default: {
       return -EINVAL; // not supported
     }
