@@ -108,5 +108,12 @@ int main() {
   int fd7 = open("", O_RDONLY);
   assert(errno == ENOENT);
 
+  int noopFlags[] = {O_NOCTTY, O_SYNC, O_DSYNC};
+  for (int i = 0; i < sizeof(noopFlags) / sizeof(noopFlags[0]); i++) {
+    int fd8 = open("/flags", O_RDWR | O_CREAT | noopFlags[i], 0666);
+    assert(fd8 >= 0);
+    assert(close(fd8) == 0);
+  }
+
   return 0;
 }
