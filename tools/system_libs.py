@@ -2333,20 +2333,16 @@ class libopenmp(Library):
   ]
   src_dir = 'system/lib/openmp/src'
   src_files = [
-    'kmp_alloc.cpp', 'kmp_atomic.cpp', 'kmp_csupport.cpp', 'kmp_debug.cpp',
-    'kmp_itt.cpp', 'kmp_environment.cpp', 'kmp_error.cpp', 'kmp_global.cpp',
+    'kmp_adt.cpp', 'kmp_alloc.cpp', 'kmp_atomic.cpp', 'kmp_csupport.cpp',
+    'kmp_debug.cpp', 'kmp_device_env.cpp', 'kmp_itt.cpp', 'kmp_invoke_microtask.cpp',
+    'kmp_environment.cpp', 'kmp_error.cpp', 'kmp_global.cpp',
     'kmp_i18n.cpp', 'kmp_io.cpp', 'kmp_runtime.cpp', 'kmp_settings.cpp',
-    'kmp_str.cpp', 'kmp_tasking.cpp', 'kmp_threadprivate.cpp', 'kmp_utility.cpp',
-    'kmp_barrier.cpp', 'kmp_wait_release.cpp', 'kmp_affinity.cpp', 'kmp_dispatch.cpp',
-    'kmp_lock.cpp', 'kmp_sched.cpp', 'kmp_collapse.cpp', 'z_Linux_util.cpp',
-    'kmp_gsupport.cpp', 'kmp_taskdeps.cpp', 'kmp_cancel.cpp', 'kmp_ftn_cdecl.cpp',
-    'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S',
+    'kmp_str.cpp', 'kmp_tasking.cpp', 'kmp_threadprivate.cpp', 'kmp_traits.cpp',
+    'kmp_utility.cpp', 'kmp_barrier.cpp', 'kmp_wait_release.cpp', 'kmp_affinity.cpp',
+    'kmp_dispatch.cpp', 'kmp_lock.cpp', 'kmp_sched.cpp', 'kmp_collapse.cpp',
+    'z_Linux_util.cpp', 'kmp_gsupport.cpp', 'kmp_taskdeps.cpp', 'kmp_cancel.cpp',
+    'kmp_ftn_cdecl.cpp', 'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S',
   ]
-
-  def can_build(self):
-    # OpenMP currently doesn't support Wasm64, see
-    # https://github.com/emscripten-core/emscripten/issues/27221
-    return super().can_build() and not settings.MEMORY64
 
 
 def get_libs_to_link():

@@ -69,7 +69,6 @@ from decorators import (
   no_bun,
   no_deno,
   no_highmem,
-  no_wasm64,
   no_windows,
   parameterize,
   parameterized,
@@ -5622,7 +5621,6 @@ got: 10
     self.cflags += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
-  @no_wasm64('https://github.com/emscripten-core/emscripten/issues/27221')
   @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
   # We don't use the `requires_pthreads` decorator because we want to test that pthreads is
   # automatically enabled when OpenMP is used.
@@ -5638,6 +5636,12 @@ got: 10
     # We need to explicitly add the `-Wno-pthreads-mem-growth` flag because
     # ASAN uses `-sALLOW_MEMORY_GROWTH`.
     self.do_run(src, "", cflags=['-fopenmp=libomp', '-Wno-pthreads-mem-growth'])
+
+  @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
+  @requires_pthreads
+  def test_openmp_many_microtask_args(self):
+    self.do_runf('core/test_openmp_many_microtask_args.c',
+                 cflags=['-fopenmp=libomp', '-sALLOW_MEMORY_GROWTH'])
 
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
