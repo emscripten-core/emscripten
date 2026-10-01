@@ -168,6 +168,13 @@ var wasmFSNodeLibrary = {
     });
   },
 
+  _wasmfs_node_fsync: (fd) => {
+    return wasmfsTry(() => {
+      fs.fsyncSync(fd);
+      // implicitly return 0
+    });
+  },
+
   _wasmfs_node_close: (fd) => {
     return wasmfsTry(() => {
       fs.closeSync(fd);
