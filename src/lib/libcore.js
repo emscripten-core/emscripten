@@ -1511,7 +1511,7 @@ addToLibrary({
     if (globalThis.performance?.now) {
       return 1000; // microseconds (1/1000 of a millisecond)
     }
-    return 1000*1000; // milliseconds
+    return 1_000_000; // milliseconds
 #else
     // Modern environment where performance.now() is supported:
     return 1000; // microseconds (1/1000 of a millisecond)
@@ -2410,7 +2410,7 @@ addToLibrary({
         if (shown) {
           err('(end of list)');
         }
-      }, 10000);
+      }, 10_000);
 #if ENVIRONMENT_MAY_BE_NODE
       // Prevent this timer from keeping the runtime alive if nothing
       // else is.

@@ -37,7 +37,7 @@ addToLibrary({
       var nonDstOffset = Math.max(winterOffset, summerOffset);
       var trueOffset = dst > 0 ? dstOffset : nonDstOffset;
       // Don't try setMinutes(date.getMinutes() + ...) -- it's messed up.
-      date.setTime(date.getTime() + (trueOffset - guessedOffset)*60000);
+      date.setTime(date.getTime() + (trueOffset - guessedOffset)*60_000);
       if (isNaN(date.getTime())) {
         return -1;
       }

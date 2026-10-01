@@ -20,7 +20,7 @@ var emscriptenMemoryProfiler = {
   // Allocations from call sites having more than this many outstanding
   // allocated pointers will get their detailed callstack captured and logged at
   // runtime.
-  trackedCallstackMinAllocCount: (typeof new Error().stack == 'undefined') ? Infinity : 10000,
+  trackedCallstackMinAllocCount: (typeof new Error().stack == 'undefined') ? Infinity : 10_000,
 
   // If true, we hook into stackAlloc to be able to catch better estimate of the
   // maximum used STACK space.  You might only ever want to set this to false
