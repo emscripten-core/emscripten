@@ -627,8 +627,7 @@ em_promise_t emscripten_dlopen_promise(const char* filename, int flags) {
 
 void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
   dbg("__dlsym dso:%p sym:%s", p, s);
-  // musl passes a null return address, so the caller's module (and therefore
-  // the "next" one) is unknown.
+  // Emscripten does not yet support RTLD_NEXT
   if (p == RTLD_NEXT) {
     error("RTLD_NEXT is not supported");
     return 0;

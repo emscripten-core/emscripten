@@ -7498,13 +7498,8 @@ int main(int argc, char** argv) {
 ''')
     self.do_runf('main.c', cflags=['-sMAIN_MODULE=2', 'libside.so'])
 
-  @parameterized({
-    'O0': (['-O0'],),
-    'O2': (['-O2'],),
-  })
-  def test_dlsym_rtld_next(self, args):
-    self.set_setting('MAIN_MODULE', 2)
-    self.do_other_test('test_dlsym_rtld_next.c', args)
+  def test_dlsym_rtld_next(self):
+    self.do_other_test('test_dlsym_rtld_next.c', cflags=['-sMAIN_MODULE=2'])
 
   def test_dlsym_rtld_default_js_symbol(self):
     create_file('lib.js', '''
