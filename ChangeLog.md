@@ -26,6 +26,9 @@ See docs/process.md for more on how version tagging works.
 - OpenMP was updated to LLVM commit 9076414489ed. This adds Wasm64 support and
   raises the generic microtask dispatcher limit from 15 to 32 arguments.
   (#27221)
+- compiler-rt was updated to LLVM 23.1.2. This restores `-fcoverage-mapping`
+  compatibility with the LLVM toolchain, so coverage-enabled programs no
+  longer trap while writing profile data. (#27223)
 
 6.0.10 - 09/21/26
 -----------------
