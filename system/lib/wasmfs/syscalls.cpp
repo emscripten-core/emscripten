@@ -1384,7 +1384,12 @@ int __syscall_ioctl(int fd, int request, ...) {
 
 int __syscall_pipe2(int fd[2], int flags) {
   auto* fds = (__wasi_fd_t*)fd;
-  if (flags && flags != O_CLOEXEC) {
+  
+  if (!fds) {
+    return -EFAULT;
+  }
+
+  if (flags & ~(O_CLOEXEC | O_NONBLOCK)) {
     return -ENOTSUP;
   }
 
@@ -1396,9 +1401,11 @@ int __syscall_pipe2(int fd[2], int flags) {
   auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
   auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
+  oflags_t nonBlock = flags & O_NONBLOCK;
+
   std::shared_ptr<OpenFileState> openReader, openWriter;
-  (void)OpenFileState::create(reader, O_RDONLY, openReader);
-  (void)OpenFileState::create(writer, O_WRONLY, openWriter);
+  (void)OpenFileState::create(reader, O_RDONLY | nonBlock, openReader);
+  (void)OpenFileState::create(writer, O_WRONLY | nonBlock, openWriter);
 
   auto fileTable = wasmFS.getFileTable().locked();
   fds[0] = fileTable.addEntry(openReader);
