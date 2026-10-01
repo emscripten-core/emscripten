@@ -9405,6 +9405,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @requires_pthreads
+  def test_pthread_dlsync_reused(self):
+    self.cflags += ['-Wno-experimental', '-pthread']
+    self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
+    self.cflags += ['--embed-file', 'libside.so@libside.so']
+    self.prep_dlfcn_main()
+    self.set_setting('EXIT_RUNTIME')
+    self.do_runf('core/pthread/test_pthread_dlsync_reused.c', 'done\n')
+
+  @needs_dylink
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
     # In other suites, this test is flaky.. but in Wasm64 suite, it is failing

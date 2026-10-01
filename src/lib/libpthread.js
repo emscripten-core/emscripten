@@ -86,6 +86,7 @@ var LibraryPThread = {
                    '$addOnPreRun',
 #if MAIN_MODULE
                    '$markAsFinished',
+                   '_emscripten_thread_has_exited',
 #endif
 #if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE && !PTHREAD_POOL_DELAY_LOAD
                    '$addRunDependency',
@@ -323,7 +324,12 @@ var LibraryPThread = {
             break;
 #if MAIN_MODULE
           case {{{ CMD_MARK_AS_FINISHED }}}:
-            markAsFinished(d.thread);
+            // By the time this arrives the thread may have been joined and
+            // cleaned up, and its pthread_t reused by a new thread that is
+            // still running, which must not be marked.
+            if (PThread.pthreads[d.thread] && __emscripten_thread_has_exited(d.thread)) {
+              markAsFinished(d.thread);
+            }
             break;
 #endif
           case {{{ CMD_LOADED }}}:
