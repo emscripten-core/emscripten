@@ -5637,7 +5637,7 @@ got: 10
     # ASAN uses `-sALLOW_MEMORY_GROWTH`.
     self.do_run(src, "", cflags=['-fopenmp=libomp', '-Wno-pthreads-mem-growth'])
 
-  @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
+  @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
   @requires_pthreads
   def test_openmp_many_microtask_args(self):
     self.do_runf('core/test_openmp_many_microtask_args.c',
