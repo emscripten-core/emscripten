@@ -1668,7 +1668,7 @@ window.close = () => {
 
   @requires_graphics_hardware
   def test_fulles2_sdlproc(self):
-    self.btest_exit('full_es2_sdlproc.c', cflags=['-sGL_TESTING', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS', '-Wno-int-conversion'])
+    self.btest_exit('full_es2_sdlproc.c', cflags=['-sGL_TESTING', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   @requires_graphics_hardware
   @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
