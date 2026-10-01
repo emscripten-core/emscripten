@@ -63,7 +63,6 @@ from decorators import (
   no_2gb,
   no_4gb,
   no_highmem,
-  no_wasm64,
   parameterized,
   requires_dev_dependency,
   requires_wasm2js,
@@ -3427,7 +3426,6 @@ Module["preRun"] = () => {
     self.assertExists('glue.js')
     self.btest('webidl/test.cpp', '1', cflags=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + args)
 
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_dylink(self):
     create_file('main.c', r'''
       #include <assert.h>
@@ -3511,7 +3509,6 @@ Module["preRun"] = () => {
     self._test_dylink_dso_needed(do_run)
 
   @requires_graphics_hardware
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_dylink_glemu(self):
     create_file('main.c', r'''
       #include <stdio.h>
