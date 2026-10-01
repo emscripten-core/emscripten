@@ -78,7 +78,6 @@ from decorators import (
   also_with_asan,
   also_with_minimal_runtime,
   also_with_modularize,
-  also_with_nodefs_both,
   also_with_noderawfs,
   also_with_pthreads,
   also_with_standalone_wasm,
@@ -5718,7 +5717,7 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
     self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
     self.do_runf_out_file('fs/test_fs_base.c')
 
-  @also_with_nodefs_both
+  @with_all_fs
   @crossplatform
   @parameterized({
     '': ([],),
