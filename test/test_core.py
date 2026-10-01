@@ -6295,7 +6295,6 @@ Module.onRuntimeInitialized = () => {
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @also_with_nodefs
-  @no_wasmfs('fails in testing fdatasync, tcgetpgrp and pipe. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_misc(self):
     if self.get_setting('STRICT'):
       self.set_setting('ALLOW_UNIMPLEMENTED_SYSCALLS')

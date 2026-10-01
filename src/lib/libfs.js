@@ -785,9 +785,9 @@ FS.staticInit();`;
       var rtn = {
         bsize: 4096,
         frsize: 4096,
-        blocks: 1e6,
-        bfree: 5e5,
-        bavail: 5e5,
+        blocks: 1_000_000,
+        bfree: 500_000,
+        bavail: 500_000,
         files: FS.nextInode,
         ffree: FS.nextInode - 1,
         fsid: 42,

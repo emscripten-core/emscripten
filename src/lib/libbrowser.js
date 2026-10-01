@@ -132,7 +132,7 @@ var LibraryBrowser = {
           // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
           safeSetTimeout(() => {
             finish(audio); // try to use it even though it is not necessarily ready to play
-          }, 10000);
+          }, 10_000);
         });
       };
       preloadPlugins.push(audioPlugin);

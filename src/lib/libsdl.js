@@ -795,9 +795,9 @@ var LibrarySDL = {
           }
           break;
       }
-      if (SDL.events.length >= 10000) {
+      if (SDL.events.length >= 10_000) {
         err('SDL event queue full, dropping events');
-        SDL.events = SDL.events.slice(0, 10000);
+        SDL.events = SDL.events.slice(0, 10_000);
       }
       // If we have a handler installed, this will push the events to the app
       // instead of the app polling for them.
