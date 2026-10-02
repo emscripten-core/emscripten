@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 6.0.12 (in development)
 ----------------------
+- Added experimental `emscripten_epoll_listener_add` and
+  `emscripten_epoll_listener_remove` in the new `<emscripten/epoll.h>`. These
+  listeners deliver an epoll set's readiness to a callback, supported on the
+  main thread only. The callback itself is then able to collect the events via
+  a zero-timeout `epoll_wait`, without an `ASYNCIFY`/`JSPI` requirement.
+  (#27547)
 
 6.0.11 - 10/02/26
 -----------------
@@ -31,13 +37,6 @@ See docs/process.md for more on how version tagging works.
 - OpenMP was updated to LLVM commit 9076414489ed. This adds Wasm64 support and
   raises the generic microtask dispatcher limit from 15 to 32 arguments.
   (#27221)
-- Added experimental `emscripten_epoll_listener_add` and
-  `emscripten_epoll_listener_remove` in the new `<emscripten/epoll.h>`. These
-  listeners deliver an epoll set's readiness to a callback on the host event
-  loop, with the callback itself then able to collect the events via a
-  zero-timeout `epoll_wait`, without a `ASYNCIFY`/`JSPI` requirement. Supported
-  on the main thread only. (#27547)
-
 
 6.0.10 - 09/21/26
 -----------------

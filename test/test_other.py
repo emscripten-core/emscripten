@@ -13637,15 +13637,26 @@ void foo() {}
     # persistent callback with no blocking and no ASYNCIFY/JSPI.
     self.do_runf('other/test_epoll_callback.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
-  def test_epoll_callback_multi(self):
+  @parameterized({
+    '': ([],),
+    'dup': (['-DMODE_DUP'],),
+  })
+  def test_epoll_callback_multi(self, cflags):
     # Multiple listeners on one epoll: broadcast wake, racing collectors take
     # disjoint slices of the shared ready list (load balancing).
-    self.do_runf('other/test_epoll_callback_multi.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+    self.do_runf('other/test_epoll_callback_multi.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', *cflags])
 
   def test_epoll_callback_dup(self):
     # A registration added via a dup'd epoll fd is delivered to a callback armed
     # on the original fd, since both fds share one epoll instance.
     self.do_runf('other/test_epoll_callback_dup.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  @parameterized({
+    '': ([],),
+    'dup2': (['-DMODE_DUP2'],),
+  })
+  def test_epoll_callback_dup_close(self, cflags):
+    self.do_runf('other/test_epoll_callback_dup_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', *cflags])
 
   def test_epoll_callback_overflow(self):
     # A callback that collects one event per tick (epoll_wait maxevents=1) is

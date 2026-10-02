@@ -52,32 +52,31 @@ var EpollLibrary = {
     var node = new FS.FSNode(0, '', 0, 0);
     var stream = FS.createStream({
       node,
+      listeners: new Map(),
       stream_ops: {
         // Readable when any listed registration is currently ready: this is what
         // lets an epoll fd be polled/nested.
         poll(stream) {
           return epollWouldBlock(stream.shared) ? 0 : {{{ cDefs.POLLIN }}};
         },
-        // dup(2): another fd to the same epoll instance (Linux: another reference
-        // to the eventpoll). The instance state lives on the shared open file
-        // description, already propagated by reference to the dup'd stream, so
-        // there is nothing to copy - just count the new reference.
+        // A dup shares readiness but starts without callbacks.
         dup(stream) {
           stream.shared.refcount++;
+          stream.listeners = new Map();
         },
         // close(2): drop one reference. Only the last close reclaims the
         // instance: drop every registration's listener (a fired EPOLLONESHOT has
         // already dropped its own) from its watched node. A surviving dup keeps
         // it all live.
         close(stream) {
+          for (var it of stream.listeners.values()) {
+            epollClearListener(stream, it);
+          }
           var ep = stream.shared;
           // FS.close already fired POLLNVAL on the (shared) node, waking any
           // parent epoll watching this fd so it re-derives and drops the
           // now-stale registration (via doEpollWait's shared check).
           if (--ep.refcount) return;
-          for (var it of ep.listeners.values()) {
-            epollClearListener(ep, it);
-          }
           for (var reg of ep.epoll.values()) {
             reg.listener?.listeners.delete(reg.listener.entry);
           }
@@ -89,7 +88,6 @@ var EpollLibrary = {
     Object.assign(stream.shared, {
       node,
       epoll: new Map(),
-      listeners: new Map(),
       // Open references (fds) to this instance; the last close reclaims it.
       refcount: 1,
     });
@@ -352,8 +350,8 @@ var EpollLibrary = {
   },
 
   $epollClearListener__internal: true,
-  $epollClearListener: (ep, it) => {
-    ep.listeners.delete(it.key);
+  $epollClearListener: (stream, it) => {
+    stream.listeners.delete(it.key);
     it.cleared = true;
     it.listener.listeners.delete(it.listener.entry);
   },
@@ -371,9 +369,9 @@ var EpollLibrary = {
     if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
     var ep = stream.shared;
     var key = callback + ':' + userdata;
-    if (ep.listeners.has(key)) return {{{ cDefs.EEXIST }}};
+    if (stream.listeners.has(key)) return {{{ cDefs.EEXIST }}};
     var it = {key};
-    ep.listeners.set(key, it);
+    stream.listeners.set(key, it);
 
     // Every delivery is an event-loop task, never under the notifying wasm
     // call's frames. Every wake schedules its own turn; one that finds nothing
@@ -381,7 +379,7 @@ var EpollLibrary = {
     function turn() {
       if (it.cleared || epollWouldBlock(ep)) return;
       callUserCallback(() => {
-        {{{ makeDynCall('vp', 'callback') }}}(userdata);
+        {{{ makeDynCall('vip', 'callback') }}}(epfd, userdata);
         // A still-ready level fd yields to I/O before the next delivery.
         if (!it.cleared && !epollWouldBlock(ep)) emSetImmediate(turn);
       });
@@ -398,10 +396,9 @@ var EpollLibrary = {
 #endif
     var stream = FS.getStream(epfd);
     if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
-    var ep = stream.shared;
-    var it = ep.listeners.get(callback + ':' + userdata);
+    var it = stream.listeners.get(callback + ':' + userdata);
     if (!it) return {{{ cDefs.ENOENT }}};
-    epollClearListener(ep, it);
+    epollClearListener(stream, it);
     return 0;
   },
 };

@@ -21,9 +21,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int ep, rfd, wfd, fires;
+int rfd, wfd, fires;
 
-void on_ready(void* ud) {
+void on_ready(int ep, void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(ep, ev, 4, 0) == 1 && (ev[0].events & EPOLLIN));
 #ifndef MODE_LEAVE_READY
@@ -50,7 +50,7 @@ void at_exit(void) {
 int main() {
   EM_ASM({ Module['onExit'] = (status) => out('exited ' + status); });
   atexit(at_exit);
-  ep = epoll_create1(0);
+  int ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);
   rfd = p[0];

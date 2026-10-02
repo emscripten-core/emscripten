@@ -4,15 +4,7 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * dup(2) of an epoll fd yields another reference to the SAME epoll instance
- * (Linux eventpoll semantics): registrations, the ready list, and the persistent
- * readiness callback are all shared across every fd. This mirrors tokio's
- * single-threaded reactor, which arms an epoll listener callback on one fd
- * and drives epoll_ctl(ADD) through a dup of it.
- *   - A registration added via the dup must be delivered to a callback armed on
- *     the original fd.
- *   - Closing one dup must NOT tear the instance down while another fd is open;
- *     only the last close reclaims it.
+ * Duplicates share epoll interests and readiness, but own their listeners.
  */
 
 #include <sys/epoll.h>
@@ -21,21 +13,23 @@
 #include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 
 int ep_a, ep_b, rfd, wfd;
 int fires;
 
-void on_ready(void* ud) {
+void on_ready(int epfd, void* ud) {
+  assert(epfd == ep_a);
   struct epoll_event events[4];
-  assert(epoll_wait(ep_a, events, 4, 0) == 1);
+  assert(epoll_wait(epfd, events, 4, 0) == 1);
   assert(events[0].events & EPOLLIN);
   assert(events[0].data.u32 == 0x1234);
   fires++;
 
   char b[1];
   assert(read(rfd, b, 1) == 1);
-  assert(emscripten_epoll_listener_remove(ep_a, on_ready, NULL) == 0);
+  assert(emscripten_epoll_listener_remove(epfd, on_ready, NULL) == 0);
   printf("done\n");
   emscripten_runtime_keepalive_pop();
 }
@@ -49,6 +43,11 @@ int main() {
   // dup: a second fd to the SAME epoll instance (like tokio's registry handle).
   ep_b = dup(ep_a);
   assert(ep_b >= 0 && ep_b != ep_a);
+  assert(emscripten_epoll_listener_remove(ep_b, on_ready, NULL) == ENOENT);
+  assert(emscripten_epoll_listener_add(ep_b, on_ready, NULL) == 0);
+  assert(emscripten_epoll_listener_remove(ep_b, on_ready, NULL) == 0);
+  assert(emscripten_epoll_listener_remove(ep_b, on_ready, NULL) == ENOENT);
+  assert(emscripten_epoll_listener_add(ep_a, on_ready, NULL) == EEXIST);
 
   int p[2];
   assert(pipe(p) == 0);

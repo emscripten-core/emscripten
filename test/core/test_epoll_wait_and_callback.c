@@ -39,7 +39,7 @@ int idx(int fd) {
   return -1;
 }
 
-void on_ready(void* ud);
+void on_ready(int epfd, void* ud);
 
 // Both consumers feed into this; whichever completes the set last prints "done".
 // Their completions can interleave in either order, so neither alone can decide.
@@ -60,9 +60,9 @@ void make_ready(void* arg) {
   for (int i = 0; i < 3; i++) assert(write(wfd[i], "x", 1) == 1);
 }
 
-void on_ready(void* ud) {
+void on_ready(int epfd, void* ud) {
   struct epoll_event ev[8];
-  int n = epoll_wait(ep, ev, 8, 0); // collect our slice off the shared list
+  int n = epoll_wait(epfd, ev, 8, 0); // collect our slice off the shared list
   for (int k = 0; k < n; k++) {
     int i = idx(ev[k].data.fd);
     assert(i >= 0 && !seen[i]); // disjoint: never an fd the blocking wait took

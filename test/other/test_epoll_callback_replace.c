@@ -19,10 +19,10 @@
 #include <errno.h>
 #include <stdio.h>
 
-int ep, rfd, wfd;
+int rfd, wfd;
 int fired[3];
 
-void on_ready(void* ud) {
+void on_ready(int ep, void* ud) {
   // Both registrations of on_ready are signalled while the pipe is ready; each
   // takes one of the two bytes.
   fired[(long)ud]++;
@@ -44,7 +44,7 @@ void on_ready(void* ud) {
 }
 
 int main() {
-  ep = epoll_create1(0);
+  int ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);
   rfd = p[0];

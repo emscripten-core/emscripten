@@ -19,9 +19,9 @@
 #include <assert.h>
 #include <stdio.h>
 
-int ep, fires;
+int fires;
 
-void on_ready(void* ud) {
+void on_ready(int ep, void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(ep, ev, 4, 0) == 1);
   assert(ev[0].events & EPOLLOUT);
@@ -33,7 +33,7 @@ void on_ready(void* ud) {
 }
 
 int main() {
-  ep = epoll_create1(0);
+  int ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);
   struct epoll_event ev = { .events = EPOLLOUT }; // level; a write end is always writable

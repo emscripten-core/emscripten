@@ -18,9 +18,9 @@
 #include <assert.h>
 #include <stdio.h>
 
-int epA, epB, rfd, wfd;
+int epB, rfd, wfd;
 
-void on_ready(void* ud) {
+void on_ready(int epA, void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(epA, ev, 4, 0) == 1 && ev[0].data.fd == epB);
   printf("done\n");
@@ -29,7 +29,7 @@ void on_ready(void* ud) {
 }
 
 int main() {
-  epA = epoll_create1(0);
+  int epA = epoll_create1(0);
   epB = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);

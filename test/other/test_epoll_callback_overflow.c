@@ -20,7 +20,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-int ep;
 int rfd[3];
 int fires;
 int seen[3];
@@ -30,7 +29,7 @@ int index_of(int fd) {
   return -1;
 }
 
-void on_ready(void* ud) {
+void on_ready(int ep, void* ud) {
   struct epoll_event ev[1];
   assert(epoll_wait(ep, ev, 1, 0) == 1); // collect one per tick
   int i = index_of(ev[0].data.fd);
@@ -47,7 +46,7 @@ void on_ready(void* ud) {
 }
 
 int main() {
-  ep = epoll_create1(0);
+  int ep = epoll_create1(0);
   for (int i = 0; i < 3; i++) {
     int p[2];
     assert(pipe(p) == 0);

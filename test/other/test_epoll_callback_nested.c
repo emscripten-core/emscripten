@@ -18,11 +18,11 @@
 #include <assert.h>
 #include <stdio.h>
 
-int epA, epB, rfd, wfd;
+int epB, rfd, wfd;
 
 void writer(void* arg) { assert(write(wfd, "x", 1) == 1); }
 
-void on_ready(void* ud) {
+void on_ready(int epA, void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(epA, ev, 4, 0) == 1);
   assert(ev[0].data.fd == epB); // the inner epoll, surfaced through nesting
@@ -35,7 +35,7 @@ void on_ready(void* ud) {
 }
 
 int main() {
-  epA = epoll_create1(0);
+  int epA = epoll_create1(0);
   epB = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);

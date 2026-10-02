@@ -20,7 +20,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-int ep, rfd[2];
+int ep, ep_b, rfd[2];
 int seen[2];
 int fires_a, fires_b, collected;
 
@@ -29,9 +29,9 @@ int idx(int fd) {
   return -1;
 }
 
-void collect(void) {
+void collect(int epfd) {
   struct epoll_event ev[1];
-  int n = epoll_wait(ep, ev, 1, 0); // collect at most one per fire
+  int n = epoll_wait(epfd, ev, 1, 0); // collect at most one per fire
   if (n == 1) {
     int i = idx(ev[0].data.fd);
     assert(i >= 0 && !seen[i]); // disjoint: each fd collected exactly once
@@ -42,8 +42,17 @@ void collect(void) {
   }
 }
 
-void listener_a(void* ud) { fires_a++; collect(); }
-void listener_b(void* ud) { fires_b++; collect(); }
+void listener_a(int epfd, void* ud) {
+  assert(epfd == ep);
+  fires_a++;
+  collect(epfd);
+}
+
+void listener_b(int epfd, void* ud) {
+  assert(epfd == ep_b);
+  fires_b++;
+  collect(epfd);
+}
 
 void check(void* ud) {
   // Both listeners were woken by the same readiness (broadcast) and the split
@@ -51,7 +60,7 @@ void check(void* ud) {
   assert(collected == 2 && seen[0] && seen[1]);
   assert(fires_a == 1 && fires_b == 1);
   assert(emscripten_epoll_listener_remove(ep, listener_a, 0) == 0);
-  assert(emscripten_epoll_listener_remove(ep, listener_b, 0) == 0);
+  assert(emscripten_epoll_listener_remove(ep_b, listener_b, 0) == 0);
   printf("done\n");
 }
 
@@ -68,7 +77,13 @@ int main() {
   }
 
   assert(emscripten_epoll_listener_add(ep, listener_a, 0) == 0);
-  assert(emscripten_epoll_listener_add(ep, listener_b, 0) == 0);
+#ifdef MODE_DUP
+  ep_b = dup(ep);
+  assert(ep_b >= 0 && ep_b != ep);
+#else
+  ep_b = ep;
+#endif
+  assert(emscripten_epoll_listener_add(ep_b, listener_b, 0) == 0);
   // Both fds are already ready: A's delivery collects one, B's the other. The
   // deliveries are immediates queued by listener_add, so an immediate queued
   // after them runs once both have, and verifies the exact one-each split.

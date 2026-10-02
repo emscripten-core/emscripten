@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int ep, rx, tx;
+int rx, tx;
 struct sockaddr_in addr;
 int fires;
 
@@ -33,7 +33,7 @@ void send_one(const char* msg) {
   assert(sendto(tx, msg, 4, 0, (struct sockaddr*)&addr, sizeof addr) == 4);
 }
 
-void on_ready(void* ud) {
+void on_ready(int ep, void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(ep, ev, 4, 0) == 1);
   assert(ev[0].events & EPOLLIN);
@@ -65,11 +65,12 @@ void at_exit(void) {
 
 int main() {
   atexit(at_exit);
-  ep = epoll_create1(0);
+  int ep = epoll_create1(0);
   rx = socket(AF_INET, SOCK_DGRAM, 0);
   tx = socket(AF_INET, SOCK_DGRAM, 0);
   memset(&addr, 0, sizeof addr);
-  addr.sin_family = AF_INET; addr.sin_port = htons(0);
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(0);
   inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
   assert(bind(rx, (struct sockaddr*)&addr, sizeof addr) == 0);
   socklen_t l = sizeof addr;

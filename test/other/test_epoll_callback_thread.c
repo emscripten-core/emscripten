@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <stdio.h>
 
-void on_ready(void* ud) {}
+void on_ready(int epfd, void* ud) {}
 
 int main() {
   int ep = epoll_create1(0);

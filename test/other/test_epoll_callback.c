@@ -5,7 +5,7 @@
  * found in the LICENSE file.
  *
  * emscripten_epoll_listener_add: a persistent, non-blocking, non-suspending epoll
- * readiness callback (no ASYNCIFY/JSPI). The callback receives only its userdata
+ * readiness callback (no ASYNCIFY/JSPI). The callback receives its fd and userdata
  * and collects the ready events itself with a zero-timeout epoll_wait. A single
  * arm delivers repeatedly. The arming itself is an event source - matching Linux,
  * where the set becomes ready with no producer wakeup to follow:
@@ -31,10 +31,11 @@ void arm_rfd(int op) {
   assert(epoll_ctl(ep, op, rfd, &ev) == 0);
 }
 
-void on_ready(void* ud) {
+void on_ready(int epfd, void* ud) {
+  assert(epfd == ep);
   assert((long)ud == 42);
   struct epoll_event events[4];
-  int nready = epoll_wait(ep, events, 4, 0);
+  int nready = epoll_wait(epfd, events, 4, 0);
   assert(nready == 1);
   assert(events[0].events & EPOLLIN);
   assert(events[0].data.u32 == 0x1234);
@@ -53,7 +54,7 @@ void on_ready(void* ud) {
   // cleared there is nothing left to fire, and the runtime exits cleanly.
   char b[1];
   assert(read(rfd, b, 1) == 1);
-  assert(emscripten_epoll_listener_remove(ep, on_ready, (void*)42) == 0);
+  assert(emscripten_epoll_listener_remove(epfd, on_ready, (void*)42) == 0);
   assert(write(wfd, "x", 1) == 1);
   arm_rfd(EPOLL_CTL_MOD);
   printf("done\n");

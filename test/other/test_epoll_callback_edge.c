@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-int ep, rfd, wfd, fires;
+int rfd, wfd, fires;
 
 void second_edge(void* arg) {
   // The fd stayed readable the whole time (fire 1 did not drain it), yet the
@@ -27,7 +27,7 @@ void second_edge(void* arg) {
   assert(write(wfd, "y", 1) == 1); // a fresh edge -> exactly one more delivery
 }
 
-void on_ready(void* ud) {
+void on_ready(int ep, void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(ep, ev, 4, 0) == 1);
   assert(ev[0].data.fd == rfd);
@@ -51,7 +51,7 @@ void on_ready(void* ud) {
 }
 
 int main() {
-  ep = epoll_create1(0);
+  int ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);
   rfd = p[0];

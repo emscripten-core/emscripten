@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-int ep, rfd, wfd;
+int rfd, wfd;
 int write_returned;
 int microtask_ran;
 
@@ -25,7 +25,7 @@ EM_JS(void, queue_microtask_marker, (int* flag), {
   queueMicrotask(() => { HEAP32[flag >> 2] = 1; });
 });
 
-void on_ready(void* ud) {
+void on_ready(int ep, void* ud) {
   // Not under the frames of the write that made the set ready.
   assert(write_returned && "delivery ran inside the call that made the set ready");
   // After a microtask queued after that write: delivery is a macrotask.
@@ -40,7 +40,7 @@ void on_ready(void* ud) {
 }
 
 int main() {
-  ep = epoll_create1(0);
+  int ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);
   rfd = p[0];

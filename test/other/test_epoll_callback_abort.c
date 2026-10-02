@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void on_ready(void* ud) {
+void on_ready(int epfd, void* ud) {
   printf("done\n");
   abort();
 }
