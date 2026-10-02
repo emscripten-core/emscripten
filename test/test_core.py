@@ -6126,6 +6126,8 @@ Module.onRuntimeInitialized = () => {
   def test_fs_rename_on_existing(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
+    else:
+      self.cflags.append('-lproxyfs.js')
     self.do_runf('fs/test_fs_rename_on_existing.c', 'done\n')
 
   @also_with_nodefs_both

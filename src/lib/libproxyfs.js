@@ -106,8 +106,15 @@ addToLibrary({
       rename(oldNode, newDir, newName) {
         var oldPath = PROXYFS.realPath(oldNode);
         var newPath = PATH.join2(PROXYFS.realPath(newDir), newName);
+        var newNode;
+        try {
+          newNode = FS.lookupNode(newDir, newName);
+        } catch (e) {}
         try {
           oldNode.mount.opts.fs.rename(oldPath, newPath);
+          if (newNode) {
+            FS.hashRemoveNode(newNode);
+          }
           oldNode.name = newName;
         } catch(e) {
           if (!e.code) throw e;

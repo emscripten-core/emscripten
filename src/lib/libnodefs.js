@@ -224,10 +224,14 @@ addToLibrary({
       rename(oldNode, newDir, newName) {
         var oldPath = NODEFS.realPath(oldNode);
         var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
+        var newNode;
         try {
-          FS.unlink(newPath);
-        } catch(e) {}
+          newNode = FS.lookupNode(newDir, newName);
+        } catch (e) {}
         NODEFS.tryFSOperation(() => fs.renameSync(oldPath, newPath));
+        if (newNode) {
+          FS.hashRemoveNode(newNode);
+        }
         oldNode.name = newName;
       },
       unlink(parent, name) {
