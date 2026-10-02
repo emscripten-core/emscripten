@@ -221,7 +221,7 @@ addToLibrary({
       updateMemoryViews();
 #endif
 #if MEMORYPROFILER
-      if (typeof emscriptenMemoryProfiler != 'undefined') {
+      if (typeof emscriptenMemoryProfiler !== 'undefined') {
         emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, wasmMemory.buffer.byteLength);
       }
 #endif
@@ -701,7 +701,7 @@ addToLibrary({
 
     offset = 0; z = 0;
     for (w=0; w < words.length; w++) {
-      if (typeof words[w] == 'string') {
+      if (typeof words[w] === 'string') {
         if (words[w] === 'Z') {
           // compressed zeros - write appropriate number of zero words
           for (z = 0; z < (8 - words.length+1); z++) {
@@ -1073,7 +1073,7 @@ addToLibrary({
     // addrinfo per {family, addr} result into *out.
     async function lookupHostname() {
       var entries = await nodeSockHelpers.lookupHost(node, family);
-      if (typeof entries == 'number') return entries;
+      if (typeof entries === 'number') return entries;
       var head = 0, prev = 0;
       for (var entry of entries) {
         var ai = allocaddrinfo(entry.family, type, proto, null, entry.addr, port);
@@ -1580,7 +1580,7 @@ addToLibrary({
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
-    if (typeof ret == 'number' || typeof ret == 'boolean') return ret;
+    if (typeof ret === 'number' || typeof ret === 'boolean') return ret;
 
     var cache = _emscripten_get_compiler_setting.cache ??= {};
     var fullret = cache[name];
@@ -1757,7 +1757,7 @@ addToLibrary({
 #endif
       // Special handling for Wasm globals.  See `create_receiving` for the
       // static version of this code.
-      if (typeof exportedSymbol.value != 'undefined') {
+      if (typeof exportedSymbol.value !== 'undefined') {
 #if MEMORY64
         exportedSymbol = Number(exportedSymbol.value);
 #else
@@ -2579,7 +2579,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
 
   var t = library[x];
-  if (typeof t == 'string') return;
+  if (typeof t === 'string') return;
   t = t.toString();
 
   // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
@@ -2643,7 +2643,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     pre += 'try {\n';
     handler +=
     '} catch (e) {\n' +
-    "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
+    "  if (typeof FS === 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
     '  dbg(`error: syscall failed with ${e.errno} (${strError(e.errno)})`);\n' +

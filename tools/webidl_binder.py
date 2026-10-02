@@ -538,15 +538,15 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,  # ru
         # an array can be received here
         match arg.type.name:
           case 'Byte' | 'Octet':
-            body += "  if (typeof {0} == 'object') {{ {0} = ensureInt8({0}); }}\n".format(js_arg)
+            body += "  if (typeof {0} === 'object') {{ {0} = ensureInt8({0}); }}\n".format(js_arg)
           case 'Short' | 'UnsignedShort':
-            body += "  if (typeof {0} == 'object') {{ {0} = ensureInt16({0}); }}\n".format(js_arg)
+            body += "  if (typeof {0} === 'object') {{ {0} = ensureInt16({0}); }}\n".format(js_arg)
           case 'Long' | 'UnsignedLong':
-            body += "  if (typeof {0} == 'object') {{ {0} = ensureInt32({0}); }}\n".format(js_arg)
+            body += "  if (typeof {0} === 'object') {{ {0} = ensureInt32({0}); }}\n".format(js_arg)
           case 'Float':
-            body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat32({0}); }}\n".format(js_arg)
+            body += "  if (typeof {0} === 'object') {{ {0} = ensureFloat32({0}); }}\n".format(js_arg)
           case 'Double':
-            body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat64({0}); }}\n".format(js_arg)
+            body += "  if (typeof {0} === 'object') {{ {0} = ensureFloat64({0}); }}\n".format(js_arg)
 
   call_args = pre_arg.copy()
 

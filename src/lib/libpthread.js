@@ -259,7 +259,7 @@ var LibraryPThread = {
     },
 #if OFFSCREENCANVAS_SUPPORT
     receiveOffscreenCanvases(data) {
-      if (typeof GL != 'undefined') {
+      if (typeof GL !== 'undefined') {
         Object.assign(GL.offscreenCanvases, data.offscreenCanvases);
         if (!Module['canvas'] && data.moduleCanvasId && GL.offscreenCanvases[data.moduleCanvasId]) {
           Module['canvas'] = GL.offscreenCanvases[data.moduleCanvasId].offscreenCanvas;
@@ -497,7 +497,7 @@ var LibraryPThread = {
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
         if (Module['mainScriptUrlOrBlob']) {
           var pthreadMainJs = Module['mainScriptUrlOrBlob'];
-          if (typeof pthreadMainJs != 'string') {
+          if (typeof pthreadMainJs !== 'string') {
             pthreadMainJs = URL.createObjectURL(pthreadMainJs);
           }
           worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
@@ -536,7 +536,7 @@ var LibraryPThread = {
       // call URL.createObjectURL on the mainScriptUrlOrBlob.
       if (Module['mainScriptUrlOrBlob']) {
         pthreadMainJs = Module['mainScriptUrlOrBlob'];
-        if (typeof pthreadMainJs != 'string') {
+        if (typeof pthreadMainJs !== 'string') {
           pthreadMainJs = URL.createObjectURL(pthreadMainJs);
         }
       }
@@ -840,7 +840,7 @@ var LibraryPThread = {
           name = Module['canvas'].id;
         }
 #if ASSERTIONS
-        assert(typeof GL == 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with \'-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$GL\')');
+        assert(typeof GL === 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with \'-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$GL\')');
 #endif
         if (GL.offscreenCanvases[name]) {
           offscreenCanvasInfo = GL.offscreenCanvases[name];
@@ -1021,7 +1021,7 @@ var LibraryPThread = {
     var b = {{{ getHeapOffset('args', 'i64') }}};
     for (var arg of callArgs) {
 #if WASM_BIGINT
-      if (typeof arg == 'bigint') {
+      if (typeof arg === 'bigint') {
         // The prefix is non-zero to indicate a bigint.
         HEAP64[b++] = 1n;
         HEAP64[b++] = arg;
@@ -1094,7 +1094,7 @@ var LibraryPThread = {
 #if MEMORY64
     // In memory64 mode some proxied functions return bigint/pointer but
     // our return type is i53/double.
-    if (typeof rtn == 'bigint') {
+    if (typeof rtn === 'bigint') {
       rtn = bigintToI53Checked(rtn);
     }
 #endif
@@ -1102,7 +1102,7 @@ var LibraryPThread = {
     // Proxied functions can return any type except bigint.  All other types
     // coerce to f64/double (the return type of this function in C) but not
     // bigint.
-    assert(typeof rtn != 'bigint');
+    assert(typeof rtn !== 'bigint');
 #endif
     return rtn;
   },

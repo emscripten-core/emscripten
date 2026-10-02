@@ -16,7 +16,7 @@
 // `err`.
 var emrun_file_dump = (filename, data) => {};
 
-if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
+if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
   var emrun_register_handlers = () => {
     // When C code exit()s, we may still have remaining stdout and stderr
     // messages in flight. In that case, we can't close the browser until all
