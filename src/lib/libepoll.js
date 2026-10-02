@@ -367,11 +367,10 @@ var EpollLibrary = {
     '$maybeExit',
 #endif
   ],
-  emscripten_epoll_add_listener__proxy: 'sync',
   emscripten_epoll_add_listener: (epfd, callback, userdata) => {
 #if PTHREADS
     // Readiness is tracked on the main thread and the callback runs there.
-    if (PThread.currentProxiedOperationCallerThread) return {{{ cDefs.ENOTSUP }}};
+    if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};
 #endif
     var stream = FS.getStream(epfd);
     // A public API, not a syscall: positive errno.
@@ -440,10 +439,9 @@ var EpollLibrary = {
   },
 
   emscripten_epoll_remove_listener__deps: ['$FS', '$epollClearListener'],
-  emscripten_epoll_remove_listener__proxy: 'sync',
   emscripten_epoll_remove_listener: (epfd, callback, userdata) => {
 #if PTHREADS
-    if (PThread.currentProxiedOperationCallerThread) return {{{ cDefs.ENOTSUP }}};
+    if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};
 #endif
     var stream = FS.getStream(epfd);
     if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
