@@ -47,7 +47,7 @@ void at_exit(void) {
   printf("done\n");
 }
 
-int main(void) {
+int main() {
   EM_ASM({ Module['onExit'] = (status) => out('exited ' + status); });
   atexit(at_exit);
   ep = epoll_create1(0);

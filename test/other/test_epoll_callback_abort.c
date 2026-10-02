@@ -23,7 +23,7 @@ void on_ready(void* ud) {
   abort();
 }
 
-int main(void) {
+int main() {
   EM_ASM({
     process.on('unhandledRejection', () => {
       out('unhandled rejection');

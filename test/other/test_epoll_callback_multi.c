@@ -20,16 +20,16 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int ep, rfd[2];
-static int seen[2];
-static int fires_a, fires_b, collected;
+int ep, rfd[2];
+int seen[2];
+int fires_a, fires_b, collected;
 
-static int idx(int fd) {
+int idx(int fd) {
   for (int i = 0; i < 2; i++) if (rfd[i] == fd) return i;
   return -1;
 }
 
-static void collect(void) {
+void collect(void) {
   struct epoll_event ev[1];
   int n = epoll_wait(ep, ev, 1, 0); // collect at most one per fire
   if (n == 1) {
@@ -42,10 +42,10 @@ static void collect(void) {
   }
 }
 
-static void listener_a(void* ud) { fires_a++; collect(); }
-static void listener_b(void* ud) { fires_b++; collect(); }
+void listener_a(void* ud) { fires_a++; collect(); }
+void listener_b(void* ud) { fires_b++; collect(); }
 
-static void check(void* ud) {
+void check(void* ud) {
   // Both listeners were woken by the same readiness (broadcast) and the split
   // was one event each (load balancing).
   assert(collected == 2 && seen[0] && seen[1]);
@@ -55,7 +55,7 @@ static void check(void* ud) {
   printf("done\n");
 }
 
-int main(void) {
+int main() {
   ep = epoll_create1(0);
   for (int i = 0; i < 2; i++) {
     int p[2];

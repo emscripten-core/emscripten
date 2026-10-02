@@ -19,9 +19,9 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int ep, fires;
+int ep, fires;
 
-static void on_ready(void* ud) {
+void on_ready(void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(ep, ev, 4, 0) == 1);
   assert(ev[0].events & EPOLLOUT);
@@ -32,7 +32,7 @@ static void on_ready(void* ud) {
   }
 }
 
-int main(void) {
+int main() {
   ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);

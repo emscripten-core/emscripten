@@ -17,15 +17,15 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int ep, rfd, wfd;
-static int write_returned;
-static int microtask_ran;
+int ep, rfd, wfd;
+int write_returned;
+int microtask_ran;
 
 EM_JS(void, queue_microtask_marker, (int* flag), {
   queueMicrotask(() => { HEAP32[flag >> 2] = 1; });
 });
 
-static void on_ready(void* ud) {
+void on_ready(void* ud) {
   // Not under the frames of the write that made the set ready.
   assert(write_returned && "delivery ran inside the call that made the set ready");
   // After a microtask queued after that write: delivery is a macrotask.
@@ -39,7 +39,7 @@ static void on_ready(void* ud) {
   emscripten_runtime_keepalive_pop();
 }
 
-int main(void) {
+int main() {
   ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);

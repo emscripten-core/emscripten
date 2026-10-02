@@ -75,7 +75,7 @@ var EpollLibrary = {
           // parent epoll watching this fd so it re-derives and drops the
           // now-stale registration (via doEpollWait's shared check).
           if (--ep.refcount) return;
-          for (var it of ep.interests.values()) {
+          for (var it of ep.listeners.values()) {
             epollClearListener(ep, it);
           }
           for (var reg of ep.epoll.values()) {
@@ -89,7 +89,7 @@ var EpollLibrary = {
     Object.assign(stream.shared, {
       node,
       epoll: new Map(),
-      interests: new Map(), // emscripten_epoll_listener_add listeners
+      listeners: new Map(),
       // Open references (fds) to this instance; the last close reclaims it.
       refcount: 1,
     });
@@ -353,7 +353,7 @@ var EpollLibrary = {
 
   $epollClearListener__internal: true,
   $epollClearListener: (ep, it) => {
-    ep.interests.delete(it.key);
+    ep.listeners.delete(it.key);
     it.cleared = true;
     it.listener.listeners.delete(it.listener.entry);
   },
@@ -371,9 +371,9 @@ var EpollLibrary = {
     if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
     var ep = stream.shared;
     var key = callback + ':' + userdata;
-    if (ep.interests.has(key)) return {{{ cDefs.EEXIST }}};
+    if (ep.listeners.has(key)) return {{{ cDefs.EEXIST }}};
     var it = {key};
-    ep.interests.set(key, it);
+    ep.listeners.set(key, it);
 
     // Every delivery is an event-loop task, never under the notifying wasm
     // call's frames. Every wake schedules its own turn; one that finds nothing
@@ -399,7 +399,7 @@ var EpollLibrary = {
     var stream = FS.getStream(epfd);
     if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
     var ep = stream.shared;
-    var it = ep.interests.get(callback + ':' + userdata);
+    var it = ep.listeners.get(callback + ':' + userdata);
     if (!it) return {{{ cDefs.ENOENT }}};
     epollClearListener(ep, it);
     return 0;

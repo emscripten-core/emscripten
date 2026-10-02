@@ -20,17 +20,17 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int ep;
-static int rfd[3];
-static int fires;
-static int seen[3];
+int ep;
+int rfd[3];
+int fires;
+int seen[3];
 
-static int index_of(int fd) {
+int index_of(int fd) {
   for (int i = 0; i < 3; i++) if (rfd[i] == fd) return i;
   return -1;
 }
 
-static void on_ready(void* ud) {
+void on_ready(void* ud) {
   struct epoll_event ev[1];
   assert(epoll_wait(ep, ev, 1, 0) == 1); // collect one per tick
   int i = index_of(ev[0].data.fd);
@@ -46,7 +46,7 @@ static void on_ready(void* ud) {
   }
 }
 
-int main(void) {
+int main() {
   ep = epoll_create1(0);
   for (int i = 0; i < 3; i++) {
     int p[2];

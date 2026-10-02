@@ -30,20 +30,20 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int ep, rfd[3], wfd[3];
-static int seen[3];      // which fds have been delivered, across BOTH consumers
-static int done_printed; // guard: report "done" exactly once
+int ep, rfd[3], wfd[3];
+int seen[3];      // which fds have been delivered, across BOTH consumers
+int done_printed; // guard: report "done" exactly once
 
-static int idx(int fd) {
+int idx(int fd) {
   for (int i = 0; i < 3; i++) if (rfd[i] == fd) return i;
   return -1;
 }
 
-static void on_ready(void* ud);
+void on_ready(void* ud);
 
 // Both consumers feed into this; whichever completes the set last prints "done".
 // Their completions can interleave in either order, so neither alone can decide.
-static void maybe_done(void) {
+void maybe_done(void) {
   if (seen[0] && seen[1] && seen[2] && !done_printed) {
     done_printed = 1;
     assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == 0);
@@ -52,7 +52,7 @@ static void maybe_done(void) {
   }
 }
 
-static void make_ready(void* arg) {
+void make_ready(void* arg) {
   // Runs after epoll_wait has suspended. The first write wakes the blocking
   // wait, which drains synchronously and resolves with just the one fd ready at
   // that instant; the next two edges land on the shared ready list, with no
@@ -60,7 +60,7 @@ static void make_ready(void* arg) {
   for (int i = 0; i < 3; i++) assert(write(wfd[i], "x", 1) == 1);
 }
 
-static void on_ready(void* ud) {
+void on_ready(void* ud) {
   struct epoll_event ev[8];
   int n = epoll_wait(ep, ev, 8, 0); // collect our slice off the shared list
   for (int k = 0; k < n; k++) {
@@ -71,7 +71,7 @@ static void on_ready(void* ud) {
   maybe_done();
 }
 
-int main(void) {
+int main() {
   ep = epoll_create1(0);
   for (int i = 0; i < 3; i++) {
     int p[2];

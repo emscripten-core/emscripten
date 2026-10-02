@@ -43,7 +43,7 @@ void on_ready(void* ud) {
   }
 }
 
-int main(void) {
+int main() {
   ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);

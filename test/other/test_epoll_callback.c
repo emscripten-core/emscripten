@@ -22,16 +22,16 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int ep, rfd, wfd;
-static int fires;
+int ep, rfd, wfd;
+int fires;
 
-static void arm_rfd(int op) {
+void arm_rfd(int op) {
   struct epoll_event ev = { .events = EPOLLIN | EPOLLONESHOT };
   ev.data.u32 = 0x1234;
   assert(epoll_ctl(ep, op, rfd, &ev) == 0);
 }
 
-static void on_ready(void* ud) {
+void on_ready(void* ud) {
   assert((long)ud == 42);
   struct epoll_event events[4];
   int nready = epoll_wait(ep, events, 4, 0);
@@ -60,7 +60,7 @@ static void on_ready(void* ud) {
   emscripten_runtime_keepalive_pop();
 }
 
-int main(void) {
+int main() {
   ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);

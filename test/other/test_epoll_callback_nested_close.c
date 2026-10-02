@@ -18,9 +18,9 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int epA, epB, rfd, wfd;
+int epA, epB, rfd, wfd;
 
-static void on_ready(void* ud) {
+void on_ready(void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(epA, ev, 4, 0) == 1 && ev[0].data.fd == epB);
   printf("done\n");
@@ -28,7 +28,7 @@ static void on_ready(void* ud) {
   emscripten_runtime_keepalive_pop();
 }
 
-int main(void) {
+int main() {
   epA = epoll_create1(0);
   epB = epoll_create1(0);
   int p[2];

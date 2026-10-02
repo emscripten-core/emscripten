@@ -23,10 +23,10 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int ep_a, ep_b, rfd, wfd;
-static int fires;
+int ep_a, ep_b, rfd, wfd;
+int fires;
 
-static void on_ready(void* ud) {
+void on_ready(void* ud) {
   struct epoll_event events[4];
   assert(epoll_wait(ep_a, events, 4, 0) == 1);
   assert(events[0].events & EPOLLIN);
@@ -40,7 +40,7 @@ static void on_ready(void* ud) {
   emscripten_runtime_keepalive_pop();
 }
 
-int main(void) {
+int main() {
   ep_a = epoll_create1(0);
 
   // Arm the persistent callback on the original fd.

@@ -17,9 +17,9 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int ep, rfd, wfd, fires;
+int ep, rfd, wfd, fires;
 
-static void second_edge(void* arg) {
+void second_edge(void* arg) {
   // The fd stayed readable the whole time (fire 1 did not drain it), yet the
   // edge-triggered callback did not re-fire. A LEVEL fd would have re-delivered
   // (and spun) by now, so fires==1 here is the EPOLLET once-per-edge guarantee.
@@ -27,7 +27,7 @@ static void second_edge(void* arg) {
   assert(write(wfd, "y", 1) == 1); // a fresh edge -> exactly one more delivery
 }
 
-static void on_ready(void* ud) {
+void on_ready(void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(ep, ev, 4, 0) == 1);
   assert(ev[0].data.fd == rfd);
@@ -50,7 +50,7 @@ static void on_ready(void* ud) {
   emscripten_runtime_keepalive_pop();
 }
 
-int main(void) {
+int main() {
   ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);

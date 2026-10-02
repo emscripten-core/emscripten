@@ -63,7 +63,7 @@ void at_exit(void) {
   printf("done\n");
 }
 
-int main(void) {
+int main() {
   atexit(at_exit);
   ep = epoll_create1(0);
   rx = socket(AF_INET, SOCK_DGRAM, 0);
