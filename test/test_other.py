@@ -8490,6 +8490,8 @@ int main() {
     self.assertNotContained('Hello, world!', out)
     # and with memory growth, all should be good
     self.do_runf_out_file('hello_world.c', cflags=['-sINITIAL_MEMORY=16mb', '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sIMPORTED_MEMORY'])
+    # as it should without growth, given a large enough maximum
+    self.do_runf_out_file('hello_world.c', cflags=['-Werror', '-sINITIAL_MEMORY=16mb', '-sMAXIMUM_MEMORY=64mb', '--pre-js', 'pre.js', '-sIMPORTED_MEMORY'])
 
   @parameterized({
     '': ([], 16 * 1024 * 1024), # Default behavior: 16MB initial heap
@@ -8554,7 +8556,7 @@ int main() {
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sMAXIMUM_MEMORY=34603009', '-sALLOW_MEMORY_GROWTH'], expected) # 33MB + 1 byte
 
   def test_invalid_memory_max(self):
-    expected = 'emcc: error: MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH'
+    expected = 'emcc: error: MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH or IMPORTED_MEMORY'
     self.assert_fail([EMCC, '-Werror', test_file('hello_world.c'), '-sMAXIMUM_MEMORY=41943040'], expected)
 
   def test_dasho_invalid_dir(self):
