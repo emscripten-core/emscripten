@@ -219,8 +219,12 @@ MAXIMUM_MEMORY
 ==============
 
 Set the maximum size of memory in the wasm module (in bytes). This is only
-relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
-INITIAL_MEMORY is the final size of memory anyhow.
+relevant when ALLOW_MEMORY_GROWTH or IMPORTED_MEMORY is set, as otherwise the
+size of INITIAL_MEMORY is the final size of memory anyhow. With
+IMPORTED_MEMORY and without growth, the module accepts an imported memory of
+any size up to this maximum, but never grows it. The memory must not be grown
+from outside the module either; create it with its maximum equal to its
+initial size to guarantee that.
 
 Note that the default value here is 2GB, which means that by default if you
 enable memory growth then we can grow up to 2GB but no higher. 2GB is a
