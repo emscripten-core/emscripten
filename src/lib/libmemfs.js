@@ -194,14 +194,11 @@ addToLibrary({
         try {
           new_node = FS.lookupNode(new_dir, new_name);
         } catch (e) {}
-        if (new_node) {
-          if (FS.isDir(old_node.mode)) {
-            // if we're overwriting a directory at new_name, make sure it's empty.
-            for (var i in new_node.contents) {
-              throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
-            }
+        if (new_node && FS.isDir(old_node.mode)) {
+          // if we're overwriting a directory at new_name, make sure it's empty.
+          for (var i in new_node.contents) {
+            throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
           }
-          FS.hashRemoveNode(new_node);
         }
         // do the internal rewiring
         delete old_node.parent.contents[old_node.name];

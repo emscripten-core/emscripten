@@ -224,16 +224,7 @@ addToLibrary({
       rename(oldNode, newDir, newName) {
         var oldPath = NODEFS.realPath(oldNode);
         var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
-        var newNode;
-        try {
-          newNode = FS.lookupNode(newDir, newName);
-        } catch (e) {}
         NODEFS.tryFSOperation(() => fs.renameSync(oldPath, newPath));
-        // Evict only after the host rename succeeded: st_ino is node.id, so a
-        // target re-created after a failed rename would get a new inode.
-        if (newNode) {
-          FS.hashRemoveNode(newNode);
-        }
         oldNode.name = newName;
       },
       unlink(parent, name) {
