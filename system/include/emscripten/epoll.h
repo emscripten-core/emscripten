@@ -50,7 +50,8 @@ extern "C" {
 //
 // A listener is an unref'd handle (like Node's handle.unref()): while the
 // runtime is alive, readiness is delivered to it, but it never keeps the
-// runtime alive by itself. A program whose only reason to stay alive is a
+// runtime alive, even with a delivery pending. Pending callbacks are dropped
+// when the runtime exits. A program whose only reason to stay alive is a
 // listener holds the runtime itself:
 //
 //   emscripten_runtime_keepalive_push();  // e.g. before main() returns

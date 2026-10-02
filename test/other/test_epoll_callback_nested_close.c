@@ -13,6 +13,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -24,6 +25,7 @@ static void on_ready(void* ud) {
   assert(epoll_wait(epA, ev, 4, 0) == 1 && ev[0].data.fd == epB);
   printf("done\n");
   close(epB); // inner epoll gone -> outer evicts its only registration on the wake
+  emscripten_runtime_keepalive_pop();
 }
 
 int main(void) {
@@ -42,5 +44,6 @@ int main(void) {
 
   assert(emscripten_epoll_listener_add(epA, on_ready, 0) == 0);
   assert(write(wfd, "x", 1) == 1); // leaf ready -> propagates up to epA's callback
+  emscripten_runtime_keepalive_push();
   return 0;
 }

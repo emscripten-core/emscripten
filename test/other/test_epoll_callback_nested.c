@@ -13,6 +13,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -30,6 +31,7 @@ static void on_ready(void* ud) {
   assert(read(rfd, b, 1) == 1); // drain the leaf
   assert(emscripten_epoll_listener_remove(epA, on_ready, 0) == 0);
   printf("done\n");
+  emscripten_runtime_keepalive_pop();
 }
 
 int main(void) {
@@ -50,5 +52,6 @@ int main(void) {
   // edge wakes the callback through both levels with no stack switch.
   assert(emscripten_epoll_listener_add(epA, on_ready, 0) == 0);
   emscripten_async_call(writer, NULL, 0);
+  emscripten_runtime_keepalive_push();
   return 0;
 }

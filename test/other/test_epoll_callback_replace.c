@@ -13,6 +13,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
@@ -38,6 +39,7 @@ void on_ready(void* ud) {
     assert(emscripten_epoll_listener_remove(ep, on_ready, (void*)2) == 0);
     assert(write(wfd, "x", 1) == 1);
     printf("done\n");
+    emscripten_runtime_keepalive_pop();
   }
 }
 
@@ -63,5 +65,6 @@ int main(void) {
   assert(emscripten_epoll_listener_add(ep, on_ready, (void*)2) == 0);
   assert(emscripten_epoll_listener_add(ep, on_ready, (void*)1) == EEXIST);
   assert(write(wfd, "xy", 2) == 2); // delivered on the next tick to both
+  emscripten_runtime_keepalive_push();
   return 0;
 }

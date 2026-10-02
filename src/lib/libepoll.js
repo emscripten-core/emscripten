@@ -358,15 +358,9 @@ var EpollLibrary = {
     it.listener.listeners.delete(it.listener.entry);
   },
 
-  // See <emscripten/epoll.h>. A listener is keyed by (callback, userdata),
-  // signals the callback while the set has uncollected ready events, and holds
-  // nothing itself: the only keepalive taken is for a scheduled delivery, which
-  // is pending work like a safeSetTimeout callback.
-  emscripten_epoll_listener_add__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$callUserCallback', '$emSetImmediate',
-#if !MINIMAL_RUNTIME
-    '$maybeExit',
-#endif
-  ],
+  // See <emscripten/epoll.h>. A listener is keyed by (callback, userdata) and
+  // signals the callback while the set has uncollected ready events.
+  emscripten_epoll_listener_add__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$callUserCallback', '$emSetImmediate'],
   emscripten_epoll_listener_add: (epfd, callback, userdata) => {
 #if PTHREADS
     // Readiness is tracked on the main thread and the callback runs there.
@@ -381,54 +375,19 @@ var EpollLibrary = {
     var it = {key};
     ep.interests.set(key, it);
 
-    // Hold the runtime for the delivery scheduled on the next turn. Not once
-    // FS.quit has begun: no delivery can follow and the hold would outlive the
-    // exit.
-    function hold() {
-      if (FS.initialized && !it.held) {
-        it.held = true;
-        {{{ runtimeKeepalivePush() }}}
-      }
-    }
-    // Runs the callback, taking the hold for the next turn if the set is still
-    // ready (undrained, or a re-listed level fd) before callUserCallback's
-    // maybeExit.
-    function deliver() {
-      callUserCallback(() => {
-        {{{ makeDynCall('vp', 'callback') }}}(userdata);
-        if (!it.cleared && !epollWouldBlock(ep)) hold();
-      });
-    }
-    // Runs one turn: releases the turn's hold and, if the set is ready,
-    // delivers.
-    function turn() {
-      if (it.held) {
-        it.held = false;
-        {{{ runtimeKeepalivePop() }}}
-      }
-      if (it.cleared || epollWouldBlock(ep)) {
-        // Not delivering: callUserCallback's maybeExit will not run, and
-        // the hold just released may have been what deferred main's exit.
-#if !MINIMAL_RUNTIME
-        maybeExit();
-#endif
-        return;
-      }
-      deliver();
-      // The delivery took the hold if it left the set ready: another turn, as
-      // a macrotask so a still-ready level fd yields to I/O.
-      if (it.held) emSetImmediate(turn);
-    }
     // Every delivery is an event-loop task, never under the notifying wasm
     // call's frames. Every wake schedules its own turn; one that finds nothing
-    // to deliver is a no-op. A readiness wake holds the runtime for its turn; a
-    // teardown wake (POLLNVAL) does not.
-    function wake(held) {
-      if (held) hold();
-      emSetImmediate(turn);
+    // to deliver is a no-op.
+    function turn() {
+      if (it.cleared || epollWouldBlock(ep)) return;
+      callUserCallback(() => {
+        {{{ makeDynCall('vp', 'callback') }}}(userdata);
+        // A still-ready level fd yields to I/O before the next delivery.
+        if (!it.cleared && !epollWouldBlock(ep)) emSetImmediate(turn);
+      });
     }
-    it.listener = ep.node.addListener((flags) => wake(!(flags & {{{ cDefs.POLLNVAL }}})));
-    wake(!epollWouldBlock(ep));
+    it.listener = ep.node.addListener(() => emSetImmediate(turn));
+    emSetImmediate(turn);
     return 0;
   },
 

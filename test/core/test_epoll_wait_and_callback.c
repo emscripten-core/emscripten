@@ -25,6 +25,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -47,6 +48,7 @@ static void maybe_done(void) {
     done_printed = 1;
     assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == 0);
     printf("done\n");
+    emscripten_runtime_keepalive_pop();
   }
 }
 
@@ -86,6 +88,7 @@ int main(void) {
   // Arm the callback and schedule the writes, then block. Both consumers are now
   // on the epoll's wait-queue with an empty ready list.
   assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
+  emscripten_runtime_keepalive_push();
   emscripten_async_call(make_ready, NULL, 0);
 
   struct epoll_event out[8];
@@ -97,9 +100,8 @@ int main(void) {
   assert(wi >= 0 && !seen[wi]);
   seen[wi] = 1;
 
-  // The callback's delivery (scheduled by those edges, and held until it runs)
-  // collects the remaining two off the shared list; "done" prints once both
-  // slices are in, in either order.
+  // The callback collects the remaining two off the shared list; "done" prints
+  // once both slices are in, in either order.
   maybe_done();
   return 0;
 }

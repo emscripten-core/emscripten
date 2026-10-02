@@ -13685,13 +13685,14 @@ void foo() {}
 
   @parameterized({
     '': ([], 3),
+    'pending': (['-DMODE_PENDING'], 3),
+    'ready': (['-DMODE_READY'], 3),
     'hold': (['-DMODE_HOLD'], 0),
+    'hold_ready': (['-DMODE_HOLD', '-DMODE_LEAVE_READY'], 0),
   })
   def test_epoll_callback_unref(self, cflags, returncode):
-    # A listener is an unref'd handle: with nothing held, main returning exits
-    # at once with its status and the callback never runs. With a
-    # emscripten_runtime_keepalive_push() the delivery runs and the pop from the
-    # callback exits.
+    # A listener is unref'd: even a pending delivery does not keep the runtime
+    # alive. With an explicit keepalive the delivery runs and its pop exits.
     self.do_runf('other/test_epoll_callback_unref.c', 'done\nexited %d\n' % returncode,
                  cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
 
@@ -13706,23 +13707,6 @@ void foo() {}
     # and exit 0 here).
     output = self.do_runf('other/test_epoll_callback_abort.c', 'Aborted(native code called abort())', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'], assert_returncode=NON_ZERO)
     self.assertNotContained('unhandled rejection', output)
-
-  def test_epoll_callback_teardown_wake(self):
-    # A closing watched fd wakes the listener only to evict and holds nothing;
-    # exitRuntime's FS.quit closes every open fd, and a hold taken there would
-    # leave keepRuntimeAlive() set at _proc_exit and skip Module.onExit.
-    self.do_runf('other/test_epoll_callback_teardown_wake.c', 'done\nexited\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
-
-  @parameterized({
-    'drain': (['-DMODE_DRAIN'],),
-    'remove': (['-DMODE_REMOVE'],),
-  })
-  def test_epoll_callback_drain_exit(self, cflags):
-    # A scheduled delivery whose set was drained (or listener removed) before it
-    # ran has nothing to deliver, but releasing its hold must still let main's
-    # deferred exit complete (Module.onExit fires, main's status is returned).
-    self.do_runf('other/test_epoll_callback_drain_exit.c', 'done\nexited\n',
-                 cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=7)
 
   @requires_pthreads
   def test_epoll_callback_thread(self):

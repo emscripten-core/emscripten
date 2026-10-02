@@ -4,12 +4,12 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * A listener is an unref'd handle: it never keeps the runtime alive. Without a
- * hold, main returning exits the runtime at once with main's status and the
- * callback never runs. With MODE_HOLD the program holds the runtime itself with
- * emscripten_runtime_keepalive_push() before returning; the delivery then runs,
- * and the pop from the callback lets the runtime exit, with atexit and onExit
- * both firing.
+ * A listener is an unref'd handle: even a pending delivery never keeps the
+ * runtime alive. Without a hold, main returning exits the runtime at once with
+ * main's status and the callback never runs. With MODE_HOLD the program holds
+ * the runtime itself with emscripten_runtime_keepalive_push() before returning;
+ * the delivery then runs, and the pop from the callback lets the runtime exit,
+ * with atexit and onExit both firing.
  */
 
 #include <sys/epoll.h>
@@ -26,10 +26,14 @@ int ep, rfd, wfd, fires;
 void on_ready(void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(ep, ev, 4, 0) == 1 && (ev[0].events & EPOLLIN));
+#ifndef MODE_LEAVE_READY
   char b;
   assert(read(rfd, &b, 1) == 1);
+#endif
   fires++;
+#ifdef MODE_HOLD
   emscripten_runtime_keepalive_pop();
+#endif
 }
 
 void writer(void* arg) { assert(write(wfd, "x", 1) == 1); }
@@ -54,13 +58,18 @@ int main(void) {
   struct epoll_event ev = { .events = EPOLLIN };
   ev.data.fd = rfd;
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
+#ifdef MODE_READY
+  assert(write(wfd, "x", 1) == 1);
+#endif
   assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
 #ifdef MODE_HOLD
   emscripten_runtime_keepalive_push();
   emscripten_set_timeout(writer, 0, NULL);
   return 0;
 #else
-  // Armed and listening, nothing held: exit now, callback never runs.
+#ifdef MODE_PENDING
+  assert(write(wfd, "x", 1) == 1);
+#endif
   return 3;
 #endif
 }

@@ -14,6 +14,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -27,6 +28,7 @@ static void on_ready(void* ud) {
   if (++fires == 3) { // re-fired every tick despite no new event and no drain
     assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == 0);
     printf("done\n");
+    emscripten_runtime_keepalive_pop();
   }
 }
 
@@ -39,5 +41,6 @@ int main(void) {
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, p[1], &ev) == 0);
 
   assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
+  emscripten_runtime_keepalive_push();
   return 0;
 }

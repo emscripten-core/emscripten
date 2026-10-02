@@ -12,6 +12,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -35,6 +36,7 @@ static void on_ready(void* ud) {
   assert(read(rfd, b, 1) == 1);
   assert(emscripten_epoll_listener_remove(ep, on_ready, NULL) == 0);
   printf("done\n");
+  emscripten_runtime_keepalive_pop();
 }
 
 int main(void) {
@@ -51,5 +53,6 @@ int main(void) {
   assert(write(wfd, "x", 1) == 1);
   write_returned = 1;
   queue_microtask_marker(&microtask_ran);
+  emscripten_runtime_keepalive_push();
   return 0;
 }

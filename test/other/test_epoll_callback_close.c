@@ -13,6 +13,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -25,10 +26,10 @@ static void on_ready(void* ud) {
   char b[1];
   assert(read(rfd, b, 1) == 1);
   printf("done\n");
-  // No unregister: nothing is held, so the callback returning exits the runtime
-  // with the (now fd-less) listener still registered.
+  // Exit with the listener still registered.
   close(rfd);
   close(wfd);
+  emscripten_runtime_keepalive_pop();
 }
 
 int main(void) {
@@ -43,5 +44,6 @@ int main(void) {
 
   assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
   assert(write(wfd, "x", 1) == 1);
+  emscripten_runtime_keepalive_push();
   return 0;
 }

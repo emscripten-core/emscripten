@@ -11,12 +11,13 @@
  * where the set becomes ready with no producer wakeup to follow:
  *   - EPOLL_CTL_ADD of an already-readable fd signals it.
  *   - EPOLL_CTL_MOD re-arming a still-readable EPOLLONESHOT fd signals it again.
- * Clearing the interest (NULL callback) stops delivery and lets the runtime exit.
+ * Removing the listener stops delivery.
  */
 
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -56,6 +57,7 @@ static void on_ready(void* ud) {
   assert(write(wfd, "x", 1) == 1);
   arm_rfd(EPOLL_CTL_MOD);
   printf("done\n");
+  emscripten_runtime_keepalive_pop();
 }
 
 int main(void) {
@@ -72,5 +74,6 @@ int main(void) {
   // wakeup to come, so the ADD itself must trigger the first delivery.
   assert(write(wfd, "x", 1) == 1);
   arm_rfd(EPOLL_CTL_ADD);
+  emscripten_runtime_keepalive_push();
   return 0;
 }

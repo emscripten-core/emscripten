@@ -18,6 +18,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -36,6 +37,7 @@ static void on_ready(void* ud) {
   assert(read(rfd, b, 1) == 1);
   assert(emscripten_epoll_listener_remove(ep_a, on_ready, NULL) == 0);
   printf("done\n");
+  emscripten_runtime_keepalive_pop();
 }
 
 int main(void) {
@@ -65,5 +67,6 @@ int main(void) {
 
   // Make rfd readable. The edge must reach ep_a's callback.
   assert(write(wfd, "x", 1) == 1);
+  emscripten_runtime_keepalive_push();
   return 0;
 }

@@ -15,6 +15,7 @@
 #include <sys/epoll.h>
 #include <emscripten.h>
 #include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdio.h>
@@ -41,6 +42,7 @@ static void on_ready(void* ud) {
   if (++fires == 3) {
     assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == 0);
     printf("done\n");
+    emscripten_runtime_keepalive_pop();
   }
 }
 
@@ -59,5 +61,6 @@ int main(void) {
   // One arm, three ready fds, and a callback that collects one per tick: it must
   // be re-triggered to deliver all three (one per tick), not just the first.
   assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
+  emscripten_runtime_keepalive_push();
   return 0;
 }

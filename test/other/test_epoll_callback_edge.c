@@ -47,6 +47,7 @@ static void on_ready(void* ud) {
   assert(read(rfd, b, 2) == 2); // drain both bytes
   assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == 0);
   printf("done\n");
+  emscripten_runtime_keepalive_pop();
 }
 
 int main(void) {
@@ -61,5 +62,6 @@ int main(void) {
 
   assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
   assert(write(wfd, "x", 1) == 1); // first edge
+  emscripten_runtime_keepalive_push();
   return 0;
 }
