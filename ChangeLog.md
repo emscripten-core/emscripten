@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.11 (in development)
+6.0.12 (in development)
 ----------------------
+
+6.0.11 - 10/02/26
+-----------------
 - Built-in SCons support (`emscons` and `tools/scons`) was marked as deprecated.
   (See #27835)
 - The legacy `FS.findObject` function was removed (#27764) and `FS.analyzePath`
