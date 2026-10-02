@@ -229,6 +229,8 @@ addToLibrary({
           newNode = FS.lookupNode(newDir, newName);
         } catch (e) {}
         NODEFS.tryFSOperation(() => fs.renameSync(oldPath, newPath));
+        // Evict only after the host rename succeeded: st_ino is node.id, so a
+        // target re-created after a failed rename would get a new inode.
         if (newNode) {
           FS.hashRemoveNode(newNode);
         }

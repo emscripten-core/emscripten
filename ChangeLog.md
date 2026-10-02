@@ -20,11 +20,6 @@ See docs/process.md for more on how version tagging works.
 
 6.0.12 (in development)
 ----------------------
-- Fixed renaming a file onto an existing file in NODEFS and PROXYFS: the
-  replaced file no longer lingers in the filesystem after it is removed. In
-  NODEFS with a mount `root` other than the current directory, this also no
-  longer deletes an unrelated file at the VFS path equal to the host path of the
-  target. (#27861)
 
 6.0.11 - 10/02/26
 -----------------

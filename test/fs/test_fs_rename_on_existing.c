@@ -25,6 +25,8 @@ static void create_file(const char *path, const char *buffer) {
 }
 
 #if defined(NODEFS) && !defined(WASMFS)
+// Mount by absolute path so host and VFS paths differ: setup_nodefs.js mounts
+// root '.' at the cwd, where they coincide and hid #27860.
 static void test_absolute_root() {
   EM_ASM({
     var root = process.cwd();
