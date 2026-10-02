@@ -249,7 +249,7 @@ def lld_flags_for_executable(external_symbols):
   if not settings.SIDE_MODULE:
     cmd += ['-z', f'stack-size={settings.STACK_SIZE}']
 
-    if settings.ALLOW_MEMORY_GROWTH:
+    if settings.ALLOW_MEMORY_GROWTH or (settings.IMPORTED_MEMORY and settings.MAXIMUM_MEMORY > settings.INITIAL_MEMORY):
       cmd += [f'--max-memory={settings.MAXIMUM_MEMORY}']
     else:
       cmd += ['--no-growable-memory']
