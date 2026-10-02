@@ -4396,6 +4396,14 @@ function recordGLProcAddressGet(lib) {
       }
     }
   }
+  // Also update any alias targets to point to the emscripten_-prefixed
+  // versions. e.g. both the name of the symbol *and* it's target need updating
+  // in cases such as `glMultiDrawElements: 'glMultiDrawElementsWEBGL'`
+  for (const [sym, target] of Object.entries(lib)) {
+    if (sym.startsWith('emscripten_gl') && typeof target == 'string' && lib.hasOwnProperty('emscripten_' + target)) {
+      lib[sym] = 'emscripten_' + target;
+    }
+  }
 }
 
 recordGLProcAddressGet(LibraryGL);

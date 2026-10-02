@@ -2510,6 +2510,26 @@ int main() {
 }''')
     self.do_runf('test.c', 'done\n', cflags=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
 
+  @requires_pthreads
+  def test_dylink_webgl_alias(self):
+    create_file('test.c', r'''
+#include <GLES3/gl3.h>
+#include <stdio.h>
+
+int main() {
+  printf("glGetVertexAttribIuiv: %p\n", &glGetVertexAttribIuiv);
+  printf("done\n");
+  return 0;
+}''')
+    self.do_runf('test.c', 'done\n', cflags=[
+      '-sMAIN_MODULE=1',
+      '-sMAX_WEBGL_VERSION=2',
+      '-sOFFSCREEN_FRAMEBUFFER=1',
+      '-sEXPORT_ALL=1',
+      '-pthread',
+      '-Wno-experimental',
+    ])
+
   def test_dylink_library_search(self):
     # Test library resolution in the case when both static and dynamic library are present.
     create_file('side_dyn.c', r'''
