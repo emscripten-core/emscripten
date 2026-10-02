@@ -910,7 +910,7 @@ var LibrarySDL = {
 
     // returns false if the event was determined to be irrelevant
     makeCEvent(event, ptr) {
-      if (typeof event == 'number') {
+      if (typeof event === 'number') {
         // This is a pointer to a copy of a native C event that was SDL_PushEvent'ed
         _memcpy(ptr, event, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
         _free(event); // the copy is no longer needed
@@ -1268,13 +1268,13 @@ var LibrarySDL = {
         var state = SDL.getGamepad(joystick - 1);
         var prevState = SDL.lastJoystickState[joystick];
         // If joystick was removed, state returns null.
-        if (typeof state == 'undefined') return;
+        if (typeof state === 'undefined') return;
         if (state === null) return;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
         // NOTE: Timestamp is currently not properly set for the GearVR controller
         //       on Samsung Internet: it is always zero.
-        if (typeof state.timestamp != 'number' || state.timestamp != prevState.timestamp || !state.timestamp) {
+        if (typeof state.timestamp !== 'number' || state.timestamp != prevState.timestamp || !state.timestamp) {
           var i;
           for (i = 0; i < state.buttons.length; i++) {
             var buttonState = state.buttons[i].pressed;
@@ -1611,7 +1611,7 @@ var LibrarySDL = {
       var dst = 0;
       var isScreen = surf == SDL.screen;
       var num;
-      if (typeof CanvasPixelArray != 'undefined' && data instanceof CanvasPixelArray) {
+      if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) {
         // IE10/IE11: ImageData objects are backed by the deprecated CanvasPixelArray,
         // not UInt8ClampedArray. These don't have buffers, so we need to revert
         // to copying a byte at a time. We do the undefined check because modern
@@ -2510,9 +2510,9 @@ var LibrarySDL = {
           // Don't ever start buffer playbacks earlier from current time than a given constant 'SDL.audio.bufferingDelay', since a browser
           // may not be able to mix that audio clip in immediately, and there may be subsequent jitter that might cause the stream to starve.
           var playtime = Math.max(curtime + SDL.audio.bufferingDelay, SDL.audio.nextPlayTime);
-          if (typeof source['start'] != 'undefined') {
+          if (typeof source['start'] !== 'undefined') {
             source['start'](playtime); // New Web Audio API: sound sources are started with a .start() call.
-          } else if (typeof source['noteOn'] != 'undefined') {
+          } else if (typeof source['noteOn'] !== 'undefined') {
             source['noteOn'](playtime); // Support old Web Audio API specification which had the .noteOn() API.
           }
           /*
@@ -3115,7 +3115,7 @@ var LibrarySDL = {
 #if ASSERTIONS
     // Check the final context looks valid. See
     // https://github.com/emscripten-core/emscripten/issues/16242
-    assert(typeof SDL.ttfContext.measureText == 'function', `context ${SDL.ttfContext} must provide valid methods`);
+    assert(typeof SDL.ttfContext.measureText === 'function', `context ${SDL.ttfContext} must provide valid methods`);
 #endif
     return 0;
   },

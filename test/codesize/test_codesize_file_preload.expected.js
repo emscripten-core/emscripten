@@ -44,9 +44,9 @@ Module["expectedDataFileDownloads"]++;
   var isNode = globalThis.process && globalThis.process.versions && globalThis.process.versions.node && globalThis.process.type != "renderer";
   async function loadPackage(metadata) {
     var PACKAGE_PATH = "";
-    if (typeof window === "object") {
+    if (typeof window == "object") {
       PACKAGE_PATH = window["encodeURIComponent"](window.location.pathname.substring(0, window.location.pathname.lastIndexOf("/")) + "/");
-    } else if (typeof process === "undefined" && typeof location !== "undefined") {
+    } else if (typeof process == "undefined" && typeof location != "undefined") {
       // web worker
       PACKAGE_PATH = encodeURIComponent(location.pathname.substring(0, location.pathname.lastIndexOf("/")) + "/");
     }
@@ -1383,10 +1383,10 @@ var FS = {
       this.node = val;
     }
     get isRead() {
-      return (this.flags & 2097155) !== 1;
+      return (this.flags & 2097155) != 1;
     }
     get isWrite() {
-      return (this.flags & 2097155) !== 0;
+      return (this.flags & 2097155) != 0;
     }
     get isAppend() {
       return (this.flags & 1024);
@@ -1633,25 +1633,25 @@ var FS = {
     return !!node.mounted;
   },
   isFile(mode) {
-    return (mode & 61440) === 32768;
+    return (mode & 61440) == 32768;
   },
   isDir(mode) {
-    return (mode & 61440) === 16384;
+    return (mode & 61440) == 16384;
   },
   isLink(mode) {
-    return (mode & 61440) === 40960;
+    return (mode & 61440) == 40960;
   },
   isChrdev(mode) {
-    return (mode & 61440) === 8192;
+    return (mode & 61440) == 8192;
   },
   isBlkdev(mode) {
-    return (mode & 61440) === 24576;
+    return (mode & 61440) == 24576;
   },
   isFIFO(mode) {
-    return (mode & 61440) === 4096;
+    return (mode & 61440) == 4096;
   },
   isSocket(mode) {
-    return (mode & 49152) === 49152;
+    return (mode & 49152) == 49152;
   },
   flagsToPermissionString(flag) {
     var perms = [ "r", "w", "rw" ][flag & 3];
@@ -2310,7 +2310,7 @@ var FS = {
   },
   ftruncate(fd, len) {
     var stream = FS.getStreamChecked(fd);
-    if (len < 0 || (stream.flags & 2097155) === 0) {
+    if (len < 0 || (stream.flags & 2097155) == 0) {
       throw new FS.ErrnoError(28);
     }
     FS.doTruncate(stream, stream.node, len);
@@ -2464,7 +2464,7 @@ var FS = {
     if (FS.isClosed(stream)) {
       throw new FS.ErrnoError(8);
     }
-    if ((stream.flags & 2097155) === 1) {
+    if ((stream.flags & 2097155) == 1) {
       throw new FS.ErrnoError(8);
     }
     if (FS.isDir(stream.node.mode)) {
@@ -2490,7 +2490,7 @@ var FS = {
     if (FS.isClosed(stream)) {
       throw new FS.ErrnoError(8);
     }
-    if ((stream.flags & 2097155) === 0) {
+    if ((stream.flags & 2097155) == 0) {
       throw new FS.ErrnoError(8);
     }
     if (FS.isDir(stream.node.mode)) {
@@ -2520,10 +2520,10 @@ var FS = {
     // to write to file opened in read-only mode with MAP_PRIVATE flag,
     // as all modifications will be visible only in the memory of
     // the current process.
-    if ((prot & 2) && !(flags & 2) && (stream.flags & 2097155) !== 2) {
+    if ((prot & 2) && !(flags & 2) && (stream.flags & 2097155) != 2) {
       throw new FS.ErrnoError(2);
     }
-    if ((stream.flags & 2097155) === 1) {
+    if ((stream.flags & 2097155) == 1) {
       throw new FS.ErrnoError(2);
     }
     if (!stream.stream_ops.mmap) {

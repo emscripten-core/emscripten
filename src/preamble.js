@@ -124,7 +124,7 @@ function preRun() {
 #if expectToReceiveOnModule('preRun')
   var preRun = Module['preRun'];
   if (preRun) {
-    if (typeof preRun == 'function') preRun = [preRun];
+    if (typeof preRun === 'function') preRun = [preRun];
     onPreRuns.push(...preRun);
   }
 #if ASSERTIONS
@@ -230,7 +230,7 @@ function postRun() {
 #if expectToReceiveOnModule('postRun')
   var postRun = Module['postRun'];
   if (postRun) {
-    if (typeof postRun == 'function') postRun = [postRun];
+    if (typeof postRun === 'function') postRun = [postRun];
     onPostRuns.push(...postRun);
   }
 #if ASSERTIONS
@@ -387,7 +387,7 @@ function instrumentWasmExportsWithAbort(exports) {
   var instExports = {};
   for (var name in exports) {
     var original = exports[name];
-    if (typeof original == 'function') {
+    if (typeof original === 'function') {
       instExports[name] = makeAbortWrapper(original);
     } else {
       instExports[name] = original;

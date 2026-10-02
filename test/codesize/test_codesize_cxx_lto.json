@@ -1,10 +1,10 @@
 {
-  "a.out.js": 18500,
-  "a.out.js.gz": 7784,
+  "a.out.js": 18472,
+  "a.out.js.gz": 7783,
   "a.out.nodebug.wasm": 101050,
   "a.out.nodebug.wasm.gz": 38287,
-  "total": 119550,
-  "total_gz": 46071,
+  "total": 119522,
+  "total_gz": 46070,
   "sent": [
     "a (emscripten_resize_heap)",
     "b (_setitimer_js)",

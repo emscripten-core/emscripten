@@ -7,7 +7,7 @@
 var IDBStore = {
   indexedDB() {
 #if ASSERTIONS
-    assert(typeof indexedDB != 'undefined', 'IDBStore used, but indexedDB not supported');
+    assert(typeof indexedDB !== 'undefined', 'IDBStore used, but indexedDB not supported');
 #endif
     return indexedDB;
   },
