@@ -32,6 +32,10 @@ See docs/process.md for more on how version tagging works.
   main thread only. The callback itself is then able to collect the events via
   a zero-timeout `epoll_wait`, without an `ASYNCIFY`/`JSPI` requirement.
   (#27547)
+- Added `emscripten_dns_lookup_async`/`emscripten_dns_lookup_result`, an
+  asynchronous `getaddrinfo` that completes through a pollable fd, so a real
+  DNS lookup under `-sNODERAWSOCKETS` can be awaited without blocking from any
+  stack. (#27742)
 
 6.0.11 - 10/02/26
 -----------------
@@ -67,10 +71,6 @@ See docs/process.md for more on how version tagging works.
   `emscripten_clear_immediate` are no-ops for ids that already fired. (#27720)
 - The `NODE_CODE_CACHING` setting was removed, as node's support for
   serializing WebAssembly modules has been missing for over 5 years now.
-- Added `emscripten_dns_lookup_async`/`emscripten_dns_lookup_result`, an
-  asynchronous `getaddrinfo` that completes through a pollable fd, so a real
-  DNS lookup under `-sNODERAWSOCKETS` can be awaited without blocking from any
-  stack.
 
 6.0.9 - 09/01/26
 ----------------

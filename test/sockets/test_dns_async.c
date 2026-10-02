@@ -86,7 +86,7 @@ void finish(void* arg) {
   printf("done\n");
 }
 
-int main(void) {
+int main() {
   // A numeric address needs no lookup: readable on return.
   fd = start("10.9.8.7", AF_UNSPEC, "80");
   assert(readable(fd));
@@ -130,10 +130,19 @@ int main(void) {
   freeaddrinfo(res);
   assert(close(d) == 0);
 
-  // Closing while a real lookup is still pending is fine: its result is just
-  // dropped.
+  // Closing while a real lookup is still pending drops its result and releases
+  // its runtime hold.
+#ifndef __EMSCRIPTEN_PTHREADS__
+  assert(!emscripten_runtime_keepalive_check());
+#endif
   fd = start("localhost", AF_INET, "80");
+#if defined(REAL_DNS) && !defined(__EMSCRIPTEN_PTHREADS__)
+  assert(emscripten_runtime_keepalive_check());
+#endif
   assert(close(fd) == 0);
+#ifndef __EMSCRIPTEN_PTHREADS__
+  assert(!emscripten_runtime_keepalive_check());
+#endif
 
   // A hostname: pending until node:dns answers, EAI_AGAIN until then. (On a
   // pthread the proxied calls give the main thread's loop turns in between, so

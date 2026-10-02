@@ -884,20 +884,37 @@ addToLibrary({
     try {
       stream = FS.createStream({
         node: new FS.FSNode(0, '', 0, 0),
-        stream_ops: {poll: () => 'result' in dns ? {{{ cDefs.POLLRDNORM | cDefs.POLLIN }}} : 0},
+        stream_ops: {
+          poll: () => 'result' in dns ? {{{ cDefs.POLLRDNORM | cDefs.POLLIN }}} : 0,
+#if NODERAWSOCKETS
+          dup: () => dns.refcount++,
+          close: () => {
+            if (--dns.refcount) return;
+            dns.closed = true;
+            if (dns.held) release();
+          },
+#endif
+        },
       });
     } catch (e) {
       return -1;
     }
     // On the open file description, so dup'd fds share the lookup.
-    var dns = stream.shared.dns = {};
+    var dns = stream.shared.dns = {refcount: 1};
     var desc = getAddrInfo(node, service, hint);
 #if NODERAWSOCKETS
+    function release() {
+      dns.held = false;
+      {{{ runtimeKeepalivePop() }}}
+    }
     if (desc.lookup) {
       // Pending: the lookup holds the runtime until it lands, like a timer.
+      // Closing the last fd first drops the result and releases the hold.
+      dns.held = true;
       {{{ runtimeKeepalivePush() }}}
       desc.lookup().then((result) => {
-        {{{ runtimeKeepalivePop() }}}
+        if (dns.closed) return;
+        release();
         dns.result = result;
         callUserCallback(() => stream.node.notifyListeners({{{ cDefs.POLLRDNORM | cDefs.POLLIN }}}));
       });
