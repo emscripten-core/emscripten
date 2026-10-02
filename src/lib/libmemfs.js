@@ -11,7 +11,7 @@ addToLibrary({
     mount(mount) {
       return MEMFS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
     },
-    createNode(parent, name, mode, dev) {
+    createNode(parent, name, mode, dev = undefined) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
         // not supported
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
@@ -186,7 +186,7 @@ addToLibrary({
         throw MEMFS.doesNotExistError;
 #endif
       },
-      mknod(parent, name, mode, dev) {
+      mknod(parent, name, mode, dev = undefined) {
         return MEMFS.createNode(parent, name, mode, dev);
       },
       rename(old_node, new_dir, new_name) {
