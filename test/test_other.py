@@ -3108,6 +3108,7 @@ More info: https://emscripten.org
     'JSDCE-fors': (['JSDCE'],),
     'JSDCE-objectPattern': (['JSDCE'],),
     'AJSDCE': (['AJSDCE'],),
+    'stripDefaultUndefined': (['stripDefaultUndefined'],),
     'emitDCEGraph': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-closure': (['emitDCEGraph', '--no-print', '--closure-friendly'], 'emitDCEGraph.js'),
     'emitDCEGraph-dynCall': (['emitDCEGraph', '--no-print'],),
