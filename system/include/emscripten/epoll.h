@@ -25,8 +25,9 @@ extern "C" {
 // Unlike epoll_wait it never blocks the calling stack, so it works without
 // ASYNCIFY/JSPI.
 //
-// Listeners must be added from, and are delivered on, the main thread; with
-// pthreads, a call from any other thread fails with ENOTSUP.
+// Listeners are supported only on the main thread. For pthreads, epoll_wait()
+// should be used directly instead - registering a listener from a pthread fails
+// with ENOTSUP.
 //
 // Any number of listeners may be added, identified by the (callback, userdata)
 // pair; adding a pair that is already registered fails with EEXIST. Every

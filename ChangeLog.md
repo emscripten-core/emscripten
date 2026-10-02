@@ -31,6 +31,13 @@ See docs/process.md for more on how version tagging works.
 - OpenMP was updated to LLVM commit 9076414489ed. This adds Wasm64 support and
   raises the generic microtask dispatcher limit from 15 to 32 arguments.
   (#27221)
+- Added experimental `emscripten_epoll_listener_add` and
+  `emscripten_epoll_listener_remove` in the new `<emscripten/epoll.h>`. These
+  listeners deliver an epoll set's readiness to a callback on the host event
+  loop, with the callback itself then able to collect the events via a
+  zero-timeout `epoll_wait`, without a `ASYNCIFY`/`JSPI` requirement. Supported
+  on the main thread only. (#27547)
+
 
 6.0.10 - 09/21/26
 -----------------
@@ -84,13 +91,6 @@ See docs/process.md for more on how version tagging works.
 - `WASM_BIGINT` was deprecated. BigInt integration is standard and enabled by
   default across all supported engines; it should now only ever be disabled
   implicitly when targeting JavaScript via `-sWASM=0`. (#27558)
-- Added `emscripten_epoll_listener_add`/`emscripten_epoll_listener_remove` (in
-  the new `<emscripten/epoll.h>`, experimental), which deliver an epoll set's
-  readiness to a callback on the host event loop (the callback collects the
-  events itself via a zero-timeout `epoll_wait`), with no `ASYNCIFY`/`JSPI`
-  requirement. The listener does not keep the runtime alive; use
-  `emscripten_runtime_keepalive_push`/`pop` for that. Listeners are currently
-  main-thread only. (#27547)
 
 6.0.7 - 08/17/26
 ----------------
