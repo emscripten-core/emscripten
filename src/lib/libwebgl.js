@@ -4228,10 +4228,14 @@ function recordGLProcAddressGet(lib) {
     }
   }
   // Also update any alias targets to point to the emscripten_-prefixed
-  // versions. e.g. both the name of the symbol *and* it's target need updating
-  // in cases such as `glMultiDrawElements: 'glMultiDrawElementsWEBGL'`
+  // versions. e.g. both the name of the symbol *and* its target need updating
+  // in cases such as `glMultiDrawElements: 'glMultiDrawElementsWEBGL'`.
+  // Cross-library targets (such as glGenFramebuffers in LibraryGLEmulation)
+  // are looked up in LibraryManager.library as well.
   for (const [sym, target] of Object.entries(lib)) {
-    if (sym.startsWith('emscripten_gl') && typeof target === 'string' && lib.hasOwnProperty('emscripten_' + target)) {
+    if (sym.startsWith('emscripten_gl') && typeof target === 'string' &&
+        (lib.hasOwnProperty('emscripten_' + target) ||
+         LibraryManager.library.hasOwnProperty('emscripten_' + target))) {
       lib[sym] = 'emscripten_' + target;
     }
   }

@@ -2543,6 +2543,32 @@ int main() {
       '-Wno-experimental',
     ])
 
+  def test_dylink_glemu_alias(self):
+    # In libglemu.js, `glGenFramebuffersOES` is an alias for `glGenFramebuffers` (defined
+    # in libwebgl.js). `recordGLProcAddressGet` renames both to `emscripten_gl*` so that
+    # `glGenFramebuffersOES` -> `emscripten_glGenFramebuffersOES` -> `emscripten_glGenFramebuffers`.
+    # If the cross-library target of `emscripten_glGenFramebuffersOES` is not updated to
+    # `emscripten_glGenFramebuffers` and `glGenFramebuffers` is exported from Wasm, jsifier
+    # mistakes `emscripten_glGenFramebuffersOES` for a native alias and fails to define it
+    # in JS before `_glGenFramebuffersOES = _emscripten_glGenFramebuffersOES` is evaluated.
+    create_file('test.c', r'''
+#define GL_GLEXT_PROTOTYPES 1
+#include <GLES/gl.h>
+#include <GLES/glext.h>
+#include <stdio.h>
+
+// Export a native `glGenFramebuffers` from Wasm (simulating the native GL wrappers in
+// libgl when exported via MAIN_MODULE or EXPORT_ALL) so that an un-prefixed alias target
+// of `'glGenFramebuffers'` would be treated by jsifier as a native Wasm export.
+__attribute__((used)) void glGenFramebuffers(GLsizei n, GLuint* ids) {}
+
+int main() {
+  printf("glGenFramebuffersOES: %p\n", &glGenFramebuffersOES);
+  printf("done\n");
+  return 0;
+}''')
+    self.do_runf('test.c', 'done\n', cflags=['-sMAIN_MODULE=2', '-sLEGACY_GL_EMULATION'])
+
   def test_dylink_library_search(self):
     # Test library resolution in the case when both static and dynamic library are present.
     create_file('side_dyn.c', r'''
