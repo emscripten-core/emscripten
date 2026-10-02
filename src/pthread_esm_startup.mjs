@@ -27,6 +27,19 @@ if ({{{ nodeDetectionCode() }}}) {
     parentPort.on('message', (msg) => globalThis.onmessage?.({ data: msg }));
     globalThis.postMessage = (msg) => parentPort.postMessage(msg);
   }
+  // Node.js Workers do not pass postMessage()s and uncaught exception events to the parent
+  // thread necessarily in the same order where they were generated in sequential program order.
+  // See https://github.com/nodejs/node/issues/59617
+  // To remedy this, capture all uncaughtExceptions in the Worker, and sequentialize those over
+  // to the same postMessage pipe that other messages use.
+  const CMD_UNCAUGHT_EXN = 8;
+  process.on('uncaughtException', (err) => {
+    postMessage({ cmd: CMD_UNCAUGHT_EXN, error: err });
+    // Also shut down the Worker to match the same semantics as if this uncaughtException
+    // handler was not registered.
+    // (n.b. this will not shut down the whole Node.js app process, but just the Worker)
+    process.exit(1);
+  });
 }
 #endif
 

@@ -2667,7 +2667,6 @@ The current type of b is: 9
 
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26199')
-  @flaky('flaky specifically in esm_integration suite. https://github.com/emscripten-core/emscripten/issues/25151')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
