@@ -33,7 +33,7 @@ static void on_ready(void* ud) {
   assert(epoll_wait(ep, events, 1, 0) == 1);
   char b[1];
   assert(read(rfd, b, 1) == 1);
-  assert(emscripten_epoll_remove_listener(ep, on_ready, NULL) == 0);
+  assert(emscripten_epoll_listener_remove(ep, on_ready, NULL) == 0);
   printf("done\n");
 }
 
@@ -45,7 +45,7 @@ int main(void) {
   wfd = p[1];
   struct epoll_event ev = { .events = EPOLLIN };
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
-  assert(emscripten_epoll_add_listener(ep, on_ready, NULL) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, NULL) == 0);
 
   // Readiness schedules the delivery; it runs after this call returns and
   // before the microtask queued next.

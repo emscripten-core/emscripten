@@ -13633,7 +13633,7 @@ void foo() {}
     self.do_runf('other/test_epoll_dup.c', 'done\n')
 
   def test_epoll_callback(self):
-    # emscripten_epoll_add_listener delivers an epoll set's readiness by a
+    # emscripten_epoll_listener_add delivers an epoll set's readiness by a
     # persistent callback with no blocking and no ASYNCIFY/JSPI.
     self.do_runf('other/test_epoll_callback.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 

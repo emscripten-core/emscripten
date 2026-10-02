@@ -5,7 +5,7 @@
  * found in the LICENSE file.
  *
  * A blocking epoll_wait() (suspended under ASYNCIFY/JSPI) and a persistent
- * emscripten_epoll_add_listener on the SAME epoll. Both are consumers on the
+ * emscripten_epoll_listener_add on the SAME epoll. Both are consumers on the
  * epoll's wait-queue, so a readiness edge wakes both - but they share ONE ready
  * list, which is consumed rather than copied. So they take DISJOINT slices: no
  * edge is ever delivered twice, and together they cover the whole ready set.
@@ -45,7 +45,7 @@ static void on_ready(void* ud);
 static void maybe_done(void) {
   if (seen[0] && seen[1] && seen[2] && !done_printed) {
     done_printed = 1;
-    assert(emscripten_epoll_remove_listener(ep, on_ready, 0) == 0);
+    assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == 0);
     printf("done\n");
   }
 }
@@ -85,7 +85,7 @@ int main(void) {
 
   // Arm the callback and schedule the writes, then block. Both consumers are now
   // on the epoll's wait-queue with an empty ready list.
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
   emscripten_async_call(make_ready, NULL, 0);
 
   struct epoll_event out[8];

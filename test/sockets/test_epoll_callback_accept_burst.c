@@ -63,7 +63,7 @@ void arm(void* ud) {
   struct epoll_event ev = { .events = EPOLLIN };
   ev.data.fd = srv;
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, srv, &ev) == 0);
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
 }
 
 int main(void) {

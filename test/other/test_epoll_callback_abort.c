@@ -35,7 +35,7 @@ int main(void) {
   struct epoll_event ev = { .events = EPOLLIN };
   ev.data.fd = p[0];
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, p[0], &ev) == 0);
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
   assert(write(p[1], "x", 1) == 1);
   return 0;
 }

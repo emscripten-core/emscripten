@@ -6,7 +6,7 @@
  *
  * Listener registration identity: a listener is keyed by (callback, userdata),
  * so the same callback registers once per userdata, re-adding a registered pair
- * is EEXIST, and emscripten_epoll_remove_listener removes by pair (ENOENT when
+ * is EEXIST, and emscripten_epoll_listener_remove removes by pair (ENOENT when
  * absent, EBADF on a non-epoll fd).
  */
 
@@ -33,9 +33,9 @@ void on_ready(void* ud) {
     assert(fired[1] == 1 && fired[2] == 1);
     // Remove both, then make the set ready again to prove no further delivery
     // happens.
-    assert(emscripten_epoll_remove_listener(ep, on_ready, (void*)1) == 0);
-    assert(emscripten_epoll_remove_listener(ep, on_ready, (void*)1) == ENOENT);
-    assert(emscripten_epoll_remove_listener(ep, on_ready, (void*)2) == 0);
+    assert(emscripten_epoll_listener_remove(ep, on_ready, (void*)1) == 0);
+    assert(emscripten_epoll_listener_remove(ep, on_ready, (void*)1) == ENOENT);
+    assert(emscripten_epoll_listener_remove(ep, on_ready, (void*)2) == 0);
     assert(write(wfd, "x", 1) == 1);
     printf("done\n");
   }
@@ -52,16 +52,16 @@ int main(void) {
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
 
   // A non-epoll fd is rejected with a positive EBADF.
-  assert(emscripten_epoll_add_listener(rfd, on_ready, 0) == EBADF);
-  assert(emscripten_epoll_remove_listener(rfd, on_ready, 0) == EBADF);
+  assert(emscripten_epoll_listener_add(rfd, on_ready, 0) == EBADF);
+  assert(emscripten_epoll_listener_remove(rfd, on_ready, 0) == EBADF);
   // Removing a never-added listener is ENOENT.
-  assert(emscripten_epoll_remove_listener(ep, on_ready, 0) == ENOENT);
+  assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == ENOENT);
 
   // The same callback with two userdatas is two listeners; the same pair twice
   // is one.
-  assert(emscripten_epoll_add_listener(ep, on_ready, (void*)1) == 0);
-  assert(emscripten_epoll_add_listener(ep, on_ready, (void*)2) == 0);
-  assert(emscripten_epoll_add_listener(ep, on_ready, (void*)1) == EEXIST);
+  assert(emscripten_epoll_listener_add(ep, on_ready, (void*)1) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, (void*)2) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, (void*)1) == EEXIST);
   assert(write(wfd, "xy", 2) == 2); // delivered on the next tick to both
   return 0;
 }

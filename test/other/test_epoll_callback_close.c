@@ -41,7 +41,7 @@ int main(void) {
   ev.data.fd = rfd;
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
 
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
   assert(write(wfd, "x", 1) == 1);
   return 0;
 }

@@ -50,8 +50,8 @@ static void check(void* ud) {
   // was one event each (load balancing).
   assert(collected == 2 && seen[0] && seen[1]);
   assert(fires_a == 1 && fires_b == 1);
-  assert(emscripten_epoll_remove_listener(ep, listener_a, 0) == 0);
-  assert(emscripten_epoll_remove_listener(ep, listener_b, 0) == 0);
+  assert(emscripten_epoll_listener_remove(ep, listener_a, 0) == 0);
+  assert(emscripten_epoll_listener_remove(ep, listener_b, 0) == 0);
   printf("done\n");
 }
 
@@ -67,10 +67,10 @@ int main(void) {
     assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd[i], &ev) == 0);
   }
 
-  assert(emscripten_epoll_add_listener(ep, listener_a, 0) == 0);
-  assert(emscripten_epoll_add_listener(ep, listener_b, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, listener_a, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, listener_b, 0) == 0);
   // Both fds are already ready: A's delivery collects one, B's the other. The
-  // deliveries are immediates queued by add_listener, so an immediate queued
+  // deliveries are immediates queued by listener_add, so an immediate queued
   // after them runs once both have, and verifies the exact one-each split.
   emscripten_set_immediate(check, NULL);
   return 0;

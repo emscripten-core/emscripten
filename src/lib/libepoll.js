@@ -89,7 +89,7 @@ var EpollLibrary = {
     Object.assign(stream.shared, {
       node,
       epoll: new Map(),
-      interests: new Map(), // emscripten_epoll_add_listener listeners
+      interests: new Map(), // emscripten_epoll_listener_add listeners
       // Open references (fds) to this instance; the last close reclaims it.
       refcount: 1,
     });
@@ -362,12 +362,12 @@ var EpollLibrary = {
   // signals the callback while the set has uncollected ready events, and holds
   // nothing itself: the only keepalive taken is for a scheduled delivery, which
   // is pending work like a safeSetTimeout callback.
-  emscripten_epoll_add_listener__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$callUserCallback', '$emSetImmediate',
+  emscripten_epoll_listener_add__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$callUserCallback', '$emSetImmediate',
 #if !MINIMAL_RUNTIME
     '$maybeExit',
 #endif
   ],
-  emscripten_epoll_add_listener: (epfd, callback, userdata) => {
+  emscripten_epoll_listener_add: (epfd, callback, userdata) => {
 #if PTHREADS
     // Readiness is tracked on the main thread and the callback runs there.
     if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};
@@ -438,8 +438,8 @@ var EpollLibrary = {
     return 0;
   },
 
-  emscripten_epoll_remove_listener__deps: ['$FS', '$epollClearListener'],
-  emscripten_epoll_remove_listener: (epfd, callback, userdata) => {
+  emscripten_epoll_listener_remove__deps: ['$FS', '$epollClearListener'],
+  emscripten_epoll_listener_remove: (epfd, callback, userdata) => {
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};
 #endif

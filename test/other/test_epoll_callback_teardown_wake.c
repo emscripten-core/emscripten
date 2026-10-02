@@ -46,7 +46,7 @@ int main(void) {
   struct epoll_event ev = { .events = EPOLLIN };
   ev.data.fd = rfd;
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
   // One pending delivery is held and drained; then, with the pipe and epoll
   // still open, nothing holds the runtime and main's return exits it.
   // Neither end is closed here: FS.quit closes them, pipe ends first.

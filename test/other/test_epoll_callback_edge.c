@@ -45,7 +45,7 @@ static void on_ready(void* ud) {
   assert(fires == 2);
   char b[2];
   assert(read(rfd, b, 2) == 2); // drain both bytes
-  assert(emscripten_epoll_remove_listener(ep, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == 0);
   printf("done\n");
 }
 
@@ -59,7 +59,7 @@ int main(void) {
   ev.data.fd = rfd;
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
 
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
   assert(write(wfd, "x", 1) == 1); // first edge
   return 0;
 }

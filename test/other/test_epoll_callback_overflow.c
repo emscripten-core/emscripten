@@ -4,7 +4,7 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * emscripten_epoll_add_listener drain across ticks: the listener fires while the
+ * emscripten_epoll_listener_add drain across ticks: the listener fires while the
  * poll queue has ready events, so a callback that collects only one per tick
  * (epoll_wait maxevents=1) is re-triggered until the queue drains - there is no
  * app loop to re-call it. Three always-readable fds are all delivered (each
@@ -39,7 +39,7 @@ static void on_ready(void* ud) {
   assert(read(rfd[i], b, 1) == 1); // drain so it is no longer ready
 
   if (++fires == 3) {
-    assert(emscripten_epoll_remove_listener(ep, on_ready, 0) == 0);
+    assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == 0);
     printf("done\n");
   }
 }
@@ -58,6 +58,6 @@ int main(void) {
 
   // One arm, three ready fds, and a callback that collects one per tick: it must
   // be re-triggered to deliver all three (one per tick), not just the first.
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
   return 0;
 }

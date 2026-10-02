@@ -4,7 +4,7 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * emscripten_epoll_add_listener: a persistent, non-blocking, non-suspending epoll
+ * emscripten_epoll_listener_add: a persistent, non-blocking, non-suspending epoll
  * readiness callback (no ASYNCIFY/JSPI). The callback receives only its userdata
  * and collects the ready events itself with a zero-timeout epoll_wait. A single
  * arm delivers repeatedly. The arming itself is an event source - matching Linux,
@@ -52,7 +52,7 @@ static void on_ready(void* ud) {
   // cleared there is nothing left to fire, and the runtime exits cleanly.
   char b[1];
   assert(read(rfd, b, 1) == 1);
-  assert(emscripten_epoll_remove_listener(ep, on_ready, (void*)42) == 0);
+  assert(emscripten_epoll_listener_remove(ep, on_ready, (void*)42) == 0);
   assert(write(wfd, "x", 1) == 1);
   arm_rfd(EPOLL_CTL_MOD);
   printf("done\n");
@@ -66,7 +66,7 @@ int main(void) {
   wfd = p[1];
 
   // Arm the persistent callback on an empty set: nothing ready, no fire.
-  assert(emscripten_epoll_add_listener(ep, on_ready, (void*)42) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, (void*)42) == 0);
 
   // Make rfd readable, then ADD it. The fd is already ready with no producer
   // wakeup to come, so the ADD itself must trigger the first delivery.

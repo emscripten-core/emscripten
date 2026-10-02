@@ -34,7 +34,7 @@ static void on_ready(void* ud) {
 
   char b[1];
   assert(read(rfd, b, 1) == 1);
-  assert(emscripten_epoll_remove_listener(ep_a, on_ready, NULL) == 0);
+  assert(emscripten_epoll_listener_remove(ep_a, on_ready, NULL) == 0);
   printf("done\n");
 }
 
@@ -42,7 +42,7 @@ int main(void) {
   ep_a = epoll_create1(0);
 
   // Arm the persistent callback on the original fd.
-  assert(emscripten_epoll_add_listener(ep_a, on_ready, NULL) == 0);
+  assert(emscripten_epoll_listener_add(ep_a, on_ready, NULL) == 0);
 
   // dup: a second fd to the SAME epoll instance (like tokio's registry handle).
   ep_b = dup(ep_a);

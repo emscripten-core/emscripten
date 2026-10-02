@@ -28,7 +28,7 @@ static void on_ready(void* ud) {
   assert(ev[0].events & EPOLLIN);
   char b[1];
   assert(read(rfd, b, 1) == 1); // drain the leaf
-  assert(emscripten_epoll_remove_listener(epA, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_remove(epA, on_ready, 0) == 0);
   printf("done\n");
 }
 
@@ -48,7 +48,7 @@ int main(void) {
 
   // Arm the callback on the outer epoll, then write after we return: the leaf
   // edge wakes the callback through both levels with no stack switch.
-  assert(emscripten_epoll_add_listener(epA, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(epA, on_ready, 0) == 0);
   emscripten_async_call(writer, NULL, 0);
   return 0;
 }

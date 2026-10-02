@@ -79,7 +79,7 @@ int main(void) {
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rx, &ev) == 0);
   // Arm once (no ASYNCIFY), then send the first datagram; it arrives after we
   // return and wakes the callback. The callback drives the second send itself.
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
   send_one("one");
 #ifndef MODE_UNREF
   emscripten_runtime_keepalive_push();

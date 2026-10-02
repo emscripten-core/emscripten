@@ -18,8 +18,8 @@ void on_ready(void* ud) {}
 
 int main(void) {
   int ep = epoll_create1(0);
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == ENOTSUP);
-  assert(emscripten_epoll_remove_listener(ep, on_ready, 0) == ENOTSUP);
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == ENOTSUP);
+  assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == ENOTSUP);
   printf("done\n");
   return 0;
 }

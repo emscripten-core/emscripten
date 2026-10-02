@@ -57,18 +57,18 @@ extern "C" {
 //   ...
 //   emscripten_runtime_keepalive_pop();   // e.g. from the callback, when done
 //
-// Likewise emscripten_epoll_remove_listener and the last close of the epoll fd
+// Likewise emscripten_epoll_listener_remove and the last close of the epoll fd
 // release nothing, since nothing was held.
 //
 // Listeners are shared instance state: they see registrations made through any
 // dup'd fd, and closing the last fd to the instance removes them all. Returns
 // 0, or a positive errno (EBADF if `epfd` is not an epoll fd).
 typedef void (*em_epoll_callback)(void *userdata);
-int emscripten_epoll_add_listener(int epfd, em_epoll_callback callback, void *userdata);
+int emscripten_epoll_listener_add(int epfd, em_epoll_callback callback, void *userdata);
 
 // Remove the listener for the (callback, userdata) pair. Returns 0, EBADF if
 // `epfd` is not an epoll fd, or ENOENT if no such listener is registered.
-int emscripten_epoll_remove_listener(int epfd, em_epoll_callback callback, void *userdata);
+int emscripten_epoll_listener_remove(int epfd, em_epoll_callback callback, void *userdata);
 
 #ifdef __cplusplus
 }

@@ -44,11 +44,11 @@ int main(void) {
   struct epoll_event ev = { .events = EPOLLIN };
   ev.data.fd = rfd;
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
-  assert(emscripten_epoll_add_listener(ep, nothing_to_collect, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, nothing_to_collect, 0) == 0);
   // Ready: a delivery is now scheduled and holds the runtime.
   assert(write(wfd, "x", 1) == 1);
 #if MODE_REMOVE
-  assert(emscripten_epoll_remove_listener(ep, nothing_to_collect, 0) == 0);
+  assert(emscripten_epoll_listener_remove(ep, nothing_to_collect, 0) == 0);
 #else
   assert(epoll_wait(ep, &ev, 1, 0) == 1 && ev.data.fd == rfd);
   char b;

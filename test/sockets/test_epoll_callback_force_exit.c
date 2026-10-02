@@ -46,7 +46,7 @@ int main(void) {
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rx, &ev) == 0);
   // The listener is armed and the socket left open when the forced exit runs:
   // FS.quit closes the epoll and removes the listener on the way out.
-  assert(emscripten_epoll_add_listener(ep, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
   emscripten_async_call(quit, NULL, 0);
   return 0;
 }

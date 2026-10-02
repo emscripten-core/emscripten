@@ -40,7 +40,7 @@ int main(void) {
   ev.data.fd = epB;
   assert(epoll_ctl(epA, EPOLL_CTL_ADD, epB, &ev) == 0); // inner in the outer
 
-  assert(emscripten_epoll_add_listener(epA, on_ready, 0) == 0);
+  assert(emscripten_epoll_listener_add(epA, on_ready, 0) == 0);
   assert(write(wfd, "x", 1) == 1); // leaf ready -> propagates up to epA's callback
   return 0;
 }
