@@ -136,6 +136,7 @@ MINIMAL_PIC_TASKS = [
   'libGL-mt-emu',
   'libGL-mt-emu-webgl2-getprocaddr',
   'libGL-mt-emu-webgl2-ofb-getprocaddr',
+  'libGL-mt-webgl2-ofb-getprocaddr',
   'libsockets_proxy',
   'libfetch',
   'libfetch-mt',
