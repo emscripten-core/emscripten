@@ -112,7 +112,7 @@ addToLibrary({
       }
       return newFlags;
     },
-    getattr(func, node) {
+    doGetAttr(func, node) {
       var stat = NODEFS.tryFSOperation(func);
       if (NODEFS.isWindows) {
         // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake
@@ -140,18 +140,21 @@ addToLibrary({
         atime: stat.atime,
         mtime: stat.mtime,
         ctime: stat.ctime,
+        atimeMs: stat.atimeMs,
+        mtimeMs: stat.mtimeMs,
+        ctimeMs: stat.ctimeMs,
         blksize: stat.blksize,
         blocks: stat.blocks
       };
     },
     // Common code for both node and stream setattr
-    // For node getattr:
+    // For node setattr:
     //  - arg is a native path
     //  - chmod, utimes, truncate are fs.chmodSync,  fs.utimesSync,  fs.truncateSync
-    // For stream getattr:
+    // For stream setattr:
     //  - arg is a native file descriptor
     //  - chmod, utimes, truncate are fs.fchmodSync, fs.futimesSync, fs.ftruncateSync
-    setattr(arg, node, attr, chmod, utimes, truncate, stat) {
+    doSetAttr(arg, node, attr, chmod, utimes, truncate, stat) {
       NODEFS.tryFSOperation(() => {
         if (attr.mode !== undefined) {
           var mode = attr.mode;
@@ -170,9 +173,14 @@ addToLibrary({
           // this will only keep the value nearly unchanged not exactly
           // unchanged. See:
           // https://github.com/nodejs/node/issues/56492
-          var atime = new Date(attr.atime ?? stat(arg).atime);
-          var mtime = new Date(attr.mtime ?? stat(arg).mtime);
-          utimes(arg, atime, mtime);
+          var atime = attr.atime;
+          var mtime = attr.mtime;
+          if (atime == null || mtime == null) {
+            var st = stat(arg);
+            atime ??= st.atimeMs;
+            mtime ??= st.mtimeMs;
+          }
+          utimes(arg, atime / 1000, mtime / 1000);
         }
         if (attr.size !== undefined) {
           truncate(arg, attr.size);
@@ -182,7 +190,7 @@ addToLibrary({
     node_ops: {
       getattr(node) {
         var path = NODEFS.realPath(node);
-        return NODEFS.getattr(() => fs.lstatSync(path), node);
+        return NODEFS.doGetAttr(() => fs.lstatSync(path), node);
       },
       setattr(node, attr) {
         var path = NODEFS.realPath(node);
@@ -193,7 +201,7 @@ addToLibrary({
         // timestamps are set without the host resolving it, which would
         // otherwise escape the NODEFS mount root.
         var utimes = attr.dontFollow ? fs.lutimesSync : fs.utimesSync;
-        NODEFS.setattr(path, node, attr, fs.chmodSync, utimes, fs.truncateSync, fs.lstatSync);
+        NODEFS.doSetAttr(path, node, attr, fs.chmodSync, utimes, fs.truncateSync, fs.lstatSync);
       },
       lookup(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
@@ -252,10 +260,10 @@ addToLibrary({
     },
     stream_ops: {
       getattr(stream) {
-        return NODEFS.getattr(() => fs.fstatSync(stream.nfd), stream.node);
+        return NODEFS.doGetAttr(() => fs.fstatSync(stream.nfd), stream.node);
       },
       setattr(stream, attr) {
-        NODEFS.setattr(stream.nfd, stream.node, attr, fs.fchmodSync, fs.futimesSync, fs.ftruncateSync, fs.fstatSync);
+        NODEFS.doSetAttr(stream.nfd, stream.node, attr, fs.fchmodSync, fs.futimesSync, fs.ftruncateSync, fs.fstatSync);
       },
       open(stream) {
         var path = NODEFS.realPath(stream.node);

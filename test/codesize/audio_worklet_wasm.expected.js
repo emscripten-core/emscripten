@@ -120,7 +120,7 @@ var L = [], M = a => {
         A.get(g)(b, 0, f);
     };
     if (!n) return d();
-    n.addModule(m.js).then((() => {
+    n.addModule(m.js).then(() => {
         n.port || (n.port = {
             postMessage: e => {
                 e._boot ? (n.F = new AudioWorkletNode(l, "em-bootstrap", {
@@ -140,7 +140,7 @@ var L = [], M = a => {
         });
         n.port.onmessage = ba;
         A.get(g)(b, 1, f);
-    })).catch(d);
+    }).catch(d);
 }, da = (a, b, c, k) => {
     b = Q[b];
     Q[a].connect(b.destination || b, c, k);
@@ -249,7 +249,7 @@ function z() {
     };
     H = WebAssembly.instantiate(m.wasm, {
         a: Z
-    }).then((a => {
+    }).then(a => {
         a = (a.instance || a).exports;
         W = a.n;
         P = a.p;
@@ -261,7 +261,7 @@ function z() {
         u ? (X(v.N, v.M, v.G), t || (removeEventListener("message", N), L = L.forEach(M), 
         addEventListener("message", M))) : a.m();
         u || W();
-    }));
+    });
 }
 
 u || z();

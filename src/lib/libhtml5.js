@@ -1326,9 +1326,9 @@ var LibraryHTML5 = {
       w /= dpr;
       h /= dpr;
       // Round to nearest 4 digits of precision.
-      w = Math.round(w*1e4)/1e4;
-      h = Math.round(h*1e4)/1e4;
-      topMargin = Math.round(topMargin*1e4)/1e4;
+      w = Math.round(w*10_000)/10_000;
+      h = Math.round(h*10_000)/10_000;
+      topMargin = Math.round(topMargin*10_000)/10_000;
     }
 
     if (inCenteredWithoutScalingFullscreenMode) {

@@ -54,11 +54,11 @@ function e(a) {
             u.call(q, a);
         }
     }
-}).then((a => {
+}).then(a => {
     a = a.instance.exports;
     k = a.d;
     l = a.b;
     h = new Uint8Array(l.buffer);
     a.c();
     k();
-}));
+});

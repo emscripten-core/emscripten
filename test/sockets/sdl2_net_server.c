@@ -69,6 +69,11 @@ void main_loop() {
   {
     printf("new server socket activity!\n");
     TCPsocket csd = SDLNet_TCP_Accept(state.sd);
+    if (!csd)
+    {
+      fprintf(stderr, "SDLNet_TCP_Accept: %s\n", SDLNet_GetError());
+      return;
+    }
     /* Now we can communicate with the client using csd socket
      * sd will remain opened waiting other connections */
 
@@ -140,7 +145,7 @@ int main(int argc, char **argv)
   }
 
   /* Resolving the host using NULL make network interface to listen */
-  if (SDLNet_ResolveHost(&ip, INADDR_ANY, SOCKK) < 0)
+  if (SDLNet_ResolveHost(&ip, NULL, SOCKK) < 0)
   {
     fprintf(stderr, "SDLNet_ResolveHost: %s\n", SDLNet_GetError());
     exit(EXIT_FAILURE);

@@ -1175,11 +1175,11 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     if not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
     default_setting('IGNORE_MISSING_MAIN', 0)
-    default_setting('AUTO_NATIVE_LIBRARIES', 0)
     if settings.MAIN_MODULE != 1:
-      # These two settings cannot be disabled with MAIN_MODULE=1 because all symbols
+      # These settings cannot be disabled with MAIN_MODULE=1 because all symbols
       # are needed in this mode.
       default_setting('AUTO_JS_LIBRARIES', 0)
+      default_setting('AUTO_NATIVE_LIBRARIES', 0)
       default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
     limit_incoming_module_api()
 
@@ -1461,7 +1461,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
         '_wasmfs_lchmod',
         '_wasmfs_utime',
         '_wasmfs_llseek',
-        '_wasmfs_identify',
         '_wasmfs_readlink',
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',

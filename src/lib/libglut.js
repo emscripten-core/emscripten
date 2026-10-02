@@ -370,9 +370,6 @@ var LibraryGLUT = {
       window.removeEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
 
       window.removeEventListener('resize', GLUT.onResize, true);
-
-      var canvas = Browser.getCanvas();
-      canvas.width = canvas.height = 1;
     });
   },
 

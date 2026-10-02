@@ -499,6 +499,7 @@ var LibraryDylink = {
     var WASM_DYLINK_EXPORT_INFO = 0x3;
     var WASM_DYLINK_IMPORT_INFO = 0x4;
     var WASM_DYLINK_RUNTIME_PATH = 0x5;
+    var WASM_DYLINK_TARGET_ARCH = 0x6;
     var WASM_SYMBOL_TLS = 0x100;
     var WASM_SYMBOL_BINDING_MASK = 0x3;
     var WASM_SYMBOL_BINDING_WEAK = 0x1;
@@ -533,6 +534,10 @@ var LibraryDylink = {
         }
       } else if (subsectionType === WASM_DYLINK_RUNTIME_PATH) {
         customSection.runtimePaths = getStringList();
+      } else if (subsectionType === WASM_DYLINK_TARGET_ARCH) {
+        var arch = getString();
+        var expected = '{{{ MEMORY64 ? "wasm64" : "wasm32" }}}';
+        failIf(arch !== expected, `incorrect architecture (${arch} vs ${expected})`);
       } else {
 #if ASSERTIONS
         err('unknown dylink.0 subsection:', subsectionType)
@@ -1311,11 +1316,11 @@ var LibraryDylink = {
       var filename = UTF8ToString(handle + {{{ C_STRUCTS.dso.name }}});
       dlSetError(`'Could not load dynamic lib: ${filename}\n${e}`);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {{{ makeDynCall('vpp', 'onerror') }}}(handle, user_data));
+      callUserCallback({{{ makeDynCall('vpp', 'onerror') }}}, handle, user_data);
     }
     function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {{{ makeDynCall('vpp', 'onsuccess') }}}(handle, user_data));
+      callUserCallback({{{ makeDynCall('vpp', 'onsuccess') }}}, handle, user_data);
     }
 
     {{{ runtimeKeepalivePush() }}}

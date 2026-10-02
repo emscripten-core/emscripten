@@ -55,7 +55,9 @@ from common import (
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
+  WASM_DIS,
   WASM_LD,
+  WASM_SPLIT,
   WEBIDL_BINDER,
   RunnerCore,
   check_node_version,
@@ -2189,8 +2191,9 @@ Module['postRun'] = () => {
 
     self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '!*hello.exe', '--exclude-file', '*.exe'])
 
+  @also_with_pthreads
   def test_dylink_strict(self):
-    self.do_runf_out_file('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1', '-Wno-experimental'])
 
   def test_dylink_legacy(self):
     self.do_runf_out_file('hello_world.c', cflags=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
@@ -5715,6 +5718,11 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
   @crossplatform
   def test_fs_bad_lookup(self):
     self.do_runf('fs/test_fs_bad_lookup.c', 'ok')
+
+  def test_fs_base(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
+    self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
+    self.do_runf_out_file('fs/test_fs_base.c')
 
   @also_with_nodefs_both
   @crossplatform
@@ -12733,6 +12741,13 @@ exec "$@"
   def test_compiler_wrapper_ccache(self):
     self.do_runf_out_file('hello_world.c')
 
+  @requires_tool('ccache')
+  @with_env_modify({'_EMCC_CCACHE': '1', 'CCACHE_LOGFILE': 'ccache.log'})
+  def test_emcc_ccache(self):
+    self.do_runf_out_file('hello_world.c')
+    self.assertExists('ccache.log')
+    self.assertContained('=== CCACHE', read_file('ccache.log'))
+
   def test_llvm_option_dash_o(self):
     # emcc used to interpret -mllvm's option value as the output file if it
     # began with -o
@@ -12953,8 +12968,7 @@ exec "$@"
     self.assertExists('test_split_module.wasm.orig')
     self.assertExists('profile.data')
 
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    wasm_split_run = [wasm_split, '-g',
+    wasm_split_run = [WASM_SPLIT, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
                       '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
     if self.is_wasm64():
@@ -12996,8 +13010,7 @@ exec "$@"
     self.assertExists('test_split_main_module.wasm.orig')
     self.assertExists('profile.data')
 
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    self.run_process([wasm_split, '-g',
+    self.run_process([WASM_SPLIT, '-g',
                       'test_split_main_module.wasm.orig',
                       '--export-prefix=%',
                       f'--initial-table={initialTableSize}',
@@ -13034,8 +13047,7 @@ exec "$@"
     self.assertExists('test_split_module_embind_jspi.wasm.orig')
     self.assertExists('profile.data')
 
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    wasm_split_run = [wasm_split, '-g',
+    wasm_split_run = [WASM_SPLIT, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
                       '--export-prefix=%', 'test_split_module_embind_jspi.wasm.orig', '-o1', 'test_split_module_embind_jspi.wasm', '-o2', 'test_split_module_embind_jspi.deferred.wasm', '--profile=profile.data']
     self.run_process(wasm_split_run)
@@ -13614,7 +13626,6 @@ void foo() {}
     self.assertContained('at (test_pthread_trap.wasm.)?thread_main', output, regex=True)
 
   @requires_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/24725')
   def test_pthread_kill(self):
     self.do_runf_out_file('pthread/test_pthread_kill.c')
 
@@ -13932,6 +13943,7 @@ Module.postRun = () => {{
     self.build('fetch/test_fetch_idb_store.c')
     self.build('fetch/test_fetch_redirect.c')
     self.build('fetch/test_fetch_stream_async.c')
+    self.build('fetch/test_fetch_stream_error.c')
     self.build('fetch/test_fetch_sync.c')
     self.build('fetch/test_fetch_progress.c')
 
@@ -16012,7 +16024,7 @@ addToLibrary({
     # functions first, and the rest is split with the outer path.
     def has_defined_function(file, func):
       func = ''.join('\\' + c if c in {'(', ')'} else c for c in func)
-      self.run_process([common.WASM_DIS, file, '-o', 'test.wast'])
+      self.run_process([WASM_DIS, file, '-o', 'test.wast'])
       pattern = re.compile(r'^\s*\(\s*func\s+\$("?)' + func + r'\1[\s\(\)]', flags=re.MULTILINE)
       return pattern.search(utils.read_file('test.wast')) is not None
 

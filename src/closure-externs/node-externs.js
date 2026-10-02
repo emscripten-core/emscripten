@@ -93,14 +93,6 @@ Buffer.alloc = function(size, fill, encoding) {};
 Buffer.isBuffer = function(obj) {};
 
 /**
- * @param {number=} start
- * @param {number=} end
- * @return {Buffer}
- * @nosideeffects
- */
-Buffer.prototype.slice = function(start, end) {};
-
-/**
  * @param {string=} encoding
  * @param {number=} start
  * @param {number=} end
@@ -166,3 +158,8 @@ worker_threads.Worker;
 worker_threads.workerData;
 
 worker_threads.parentPort;
+
+/**
+ * @type {number}
+ */
+process.stdin.fd;

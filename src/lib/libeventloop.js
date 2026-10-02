@@ -116,7 +116,7 @@ LibraryJSEventLoop = {
     {{{ runtimeKeepalivePush(); }}}
     return emSetImmediate(() => {
       {{{ runtimeKeepalivePop(); }}}
-      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
+      callUserCallback({{{ makeDynCall('vp', 'cb') }}}, userData);
     });
   },
 
@@ -176,9 +176,7 @@ LibraryJSEventLoop = {
   emscripten_set_interval__deps: ['$callUserCallback'],
   emscripten_set_interval: (cb, msecs, userData) => {
     {{{ runtimeKeepalivePush() }}}
-    return setInterval(() => {
-      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
-    }, msecs);
+    return setInterval(() => callUserCallback({{{ makeDynCall('vp', 'cb') }}}, userData), msecs);
   },
 
   emscripten_clear_interval: (id) => {

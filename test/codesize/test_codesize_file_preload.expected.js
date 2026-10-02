@@ -785,15 +785,8 @@ var FS_stdin_getChar = () => {
       var BUFSIZE = 256;
       var buf = Buffer.alloc(BUFSIZE);
       var bytesRead = 0;
-      // For some reason we must suppress a closure warning here, even though
-      // fd definitely exists on process.stdin, and is even the proper way to
-      // get the fd of stdin,
-      // https://github.com/nodejs/help/issues/2136#issuecomment-523649904
-      // This started to happen after moving this logic out of library_tty.js,
-      // so it is related to the surrounding code in some unclear manner.
-      /** @suppress {missingProperties} */ var fd = process.stdin.fd;
       try {
-        bytesRead = fs.readSync(fd, buf, 0, BUFSIZE);
+        bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE);
       } catch (e) {
         // Cross-platform differences: on Windows, reading EOF throws an
         // exception, but on other OSes, reading EOF returns 0. Uniformize
@@ -801,7 +794,7 @@ var FS_stdin_getChar = () => {
         if (e.toString().includes("EOF")) bytesRead = 0; else throw e;
       }
       if (bytesRead > 0) {
-        result = buf.slice(0, bytesRead).toString("utf-8");
+        result = buf.toString("utf-8", 0, bytesRead);
       }
     } else if (globalThis.window?.prompt) {
       // Browser.
@@ -2717,46 +2710,6 @@ var FS = {
       }
     }
   },
-  analyzePath(path, dontResolveLastLink) {
-    // operate from within the context of the symlink's target
-    try {
-      var lookup = FS.lookupPath(path, {
-        follow: !dontResolveLastLink
-      });
-      path = lookup.path;
-    } catch (e) {}
-    var ret = {
-      isRoot: false,
-      exists: false,
-      error: 0,
-      name: null,
-      path: null,
-      object: null,
-      parentExists: false,
-      parentPath: null,
-      parentObject: null
-    };
-    try {
-      var lookup = FS.lookupPath(path, {
-        parent: true
-      });
-      ret.parentExists = true;
-      ret.parentPath = lookup.path;
-      ret.parentObject = lookup.node;
-      ret.name = PATH.basename(path);
-      lookup = FS.lookupPath(path, {
-        follow: !dontResolveLastLink
-      });
-      ret.exists = true;
-      ret.path = lookup.path;
-      ret.object = lookup.node;
-      ret.name = lookup.node.name;
-      ret.isRoot = lookup.path === "/";
-    } catch (e) {
-      ret.error = e.errno;
-    }
-    return ret;
-  },
   createPath(parent, path, canRead, canWrite) {
     parent = typeof parent == "string" ? parent : FS.getPath(parent);
     var parts = path.split("/").reverse();
@@ -3081,15 +3034,17 @@ var SYSCALLS = {
     HEAP64[(((buf) + (24)) >> 3)] = BigInt(stat.size);
     HEAP32[(((buf) + (32)) >> 2)] = 4096;
     HEAP32[(((buf) + (36)) >> 2)] = stat.blocks;
-    var atime = stat.atime.getTime();
-    var mtime = stat.mtime.getTime();
-    var ctime = stat.ctime.getTime();
+    // Prefer `*Ms` properties if available (e.g. from NODEFS / host `fs.Stats`)
+    // for sub-millisecond precision; fall back to Date#getTime for other filesystems.
+    var atime = stat.atimeMs ?? stat.atime.getTime();
+    var mtime = stat.mtimeMs ?? stat.mtime.getTime();
+    var ctime = stat.ctimeMs ?? stat.ctime.getTime();
     HEAP64[(((buf) + (40)) >> 3)] = BigInt(Math.floor(atime / 1e3));
-    HEAPU32[(((buf) + (48)) >> 2)] = (atime % 1e3) * 1e3 * 1e3;
+    HEAPU32[(((buf) + (48)) >> 2)] = Math.floor((atime % 1e3) * 1e6);
     HEAP64[(((buf) + (56)) >> 3)] = BigInt(Math.floor(mtime / 1e3));
-    HEAPU32[(((buf) + (64)) >> 2)] = (mtime % 1e3) * 1e3 * 1e3;
+    HEAPU32[(((buf) + (64)) >> 2)] = Math.floor((mtime % 1e3) * 1e6);
     HEAP64[(((buf) + (72)) >> 3)] = BigInt(Math.floor(ctime / 1e3));
-    HEAPU32[(((buf) + (80)) >> 2)] = (ctime % 1e3) * 1e3 * 1e3;
+    HEAPU32[(((buf) + (80)) >> 2)] = Math.floor((ctime % 1e3) * 1e6);
     HEAP64[(((buf) + (88)) >> 3)] = BigInt(stat.ino);
     return 0;
   },

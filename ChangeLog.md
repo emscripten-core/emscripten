@@ -21,6 +21,12 @@ See docs/process.md for more on how version tagging works.
 6.0.11 (in development)
 ----------------------
 - Added SDL3_mixer port. (#26571)
+- The legacy `FS.findObject` function was removed (#27764) and `FS.analyzePath`
+  was marked as deprecated (`FS.lookupPath` or `FS.stat` should be used
+  instead). (#27765)
+- OpenMP was updated to LLVM commit 9076414489ed. This adds Wasm64 support and
+  raises the generic microtask dispatcher limit from 15 to 32 arguments.
+  (#27221)
 
 6.0.10 - 09/21/26
 -----------------

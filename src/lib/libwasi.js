@@ -169,7 +169,7 @@ var WasiLibrary = {
       return {{{ cDefs.ENOSYS }}};
     }
     // "now" is in ms, and wasi times are in ns.
-    var nsec = Math.round(now * 1000 * 1000);
+    var nsec = Math.round(now * 1_000_000);
     {{{ makeSetValue('ptime', 0, 'nsec', 'i64') }}};
     return 0;
   },
@@ -184,7 +184,7 @@ var WasiLibrary = {
     var nsec;
     // all wasi clocks but realtime are monotonic
     if (clk_id === {{{ cDefs.CLOCK_REALTIME }}}) {
-      nsec = 1000 * 1000; // educated guess that it's milliseconds
+      nsec = 1_000_000; // educated guess that it's milliseconds
     } else if (nowIsMonotonic) {
       nsec = _emscripten_get_now_res();
     } else {

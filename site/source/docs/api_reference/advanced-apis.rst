@@ -107,8 +107,9 @@ example, writing a new local file system) or legacy file system compatibility.
 .. js:function:: FS.createDevice(parent, name, input, output)
 .. js:function:: FS.forceLoadFile(obj)
 
-  Legacy v1 compatibility functions.
+  Legacy functions.
 
+.. js:function:: FS.analyzePath(path, dontResolveLastLink)
 
 There are also a small number of additional :ref:`flag modes <fs-read-and-write-flags>`:
 

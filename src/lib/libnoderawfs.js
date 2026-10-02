@@ -177,8 +177,8 @@ addToLibrary({
       // timestamps in order to preserve them.
       if ((atime === null) || (mtime === null)) {
         var st = dontFollow ? fs.lstatSync(path) : fs.statSync(path);
-        atime ||= st.atimeMs;
-        mtime ||= st.mtimeMs;
+        atime ??= st.atimeMs;
+        mtime ??= st.mtimeMs;
       }
       if (dontFollow) {
         fs.lutimesSync(path, atime/1000, mtime/1000);
