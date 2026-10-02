@@ -80,8 +80,8 @@ function escapeJSONKey(x) {
 // JSON.stringify will completely omit function objects.  This function is
 // similar but preserves functions.
 function stringifyWithFunctions(obj) {
-  if (typeof obj == 'function') return obj.toString();
-  if (obj === null || typeof obj != 'object') return JSON.stringify(obj);
+  if (typeof obj === 'function') return obj.toString();
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
   }
@@ -711,7 +711,7 @@ function(${args}) {
         }
       }
 
-      let isFunction = typeof snippet == 'function';
+      let isFunction = typeof snippet === 'function';
       let isNativeAlias = false;
 
       const postsetId = symbol + '__postset';
@@ -719,7 +719,7 @@ function(${args}) {
       if (postset) {
         // A postset is either code to run right now, or some text we should emit.
         // If it's code, it may return some text to emit as well.
-        const postsetString = typeof postset == 'function' ? postset() : postset;
+        const postsetString = typeof postset === 'function' ? postset() : postset;
         if (postsetString && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
           postSets.push(postsetString + ';');
@@ -752,10 +752,10 @@ function(${args}) {
             snippet = `(${sigToArgs(sig)}) => ${snippet}(${sigToArgs(targetSig)})`;
           }
         }
-      } else if (typeof snippet == 'object') {
+      } else if (typeof snippet === 'object') {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet, deps);
-      } else if (typeof snippet == 'string' && (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/))) {
+      } else if (typeof snippet === 'string' && (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/))) {
         // Support functions that are already "stringified"
         isFunction = true;
       }
@@ -771,7 +771,7 @@ function(${args}) {
       debugLog(`adding ${symbol} (referenced by ${dependent})`);
       function addDependency(dep) {
         // dependencies can be JS functions, which we just run
-        if (typeof dep == 'function') {
+        if (typeof dep === 'function') {
           return dep();
         }
         // $noExitRuntime is special since there are conditional usages of it
@@ -807,7 +807,7 @@ function(${args}) {
           // Handle regular (non-arrow) functions
           contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
         }
-      } else if (typeof snippet == 'string' && snippet.startsWith(';')) {
+      } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
         // In JS libraries
         //   foo: ';[code here verbatim]'
         //  emits
@@ -816,7 +816,7 @@ function(${args}) {
         if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') {
           contentText += ';';
         }
-      } else if (typeof snippet == 'undefined') {
+      } else if (typeof snippet === 'undefined') {
         // For JS library functions that are simply aliases of native symbols,
         // we don't need to generate anything here.  Instead these get included
         // and exported alongside native symbols.
@@ -831,7 +831,7 @@ function(${args}) {
         //   foo: '=[value]'
         //  emits
         //   'var foo = [value];'
-        if (typeof snippet == 'string' && snippet[0] == '=') {
+        if (typeof snippet === 'string' && snippet[0] == '=') {
           snippet = snippet.slice(1);
         }
         contentText = `var ${mangled} = ${snippet};`;

@@ -429,6 +429,91 @@ function stripDefaultUndefined(ast) {
   });
 }
 
+// Unwrap ParenthesizedExpression nodes (produced e.g. when Acorn parses with
+// preserveParens: true for --closure-friendly).
+function unwrapParens(node) {
+  while (node && node.type === 'ParenthesizedExpression') {
+    node = node.expression;
+  }
+  return node;
+}
+
+// Return the statically-known primitive type ('string', 'number', 'boolean',
+// 'bigint') of an AST node, or null if the type cannot be determined statically.
+function getKnownPrimitiveType(node) {
+  node = unwrapParens(node);
+  if (!node) return null;
+  if (node.type === 'Literal') {
+    if (typeof node.value === 'string') return 'string';
+    if (typeof node.value === 'number') return 'number';
+    if (typeof node.value === 'boolean') return 'boolean';
+    if (typeof node.value === 'bigint') return 'bigint';
+    return null; // null, RegExp, etc.
+  }
+  if (node.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    return 'string';
+  }
+  if (node.type === 'UnaryExpression') {
+    if (node.operator === 'typeof') return 'string';
+    if (node.operator === '!') return 'boolean';
+    if (node.operator === '+') return 'number';
+    if (node.operator === '-' || node.operator === '~') {
+      const argType = getKnownPrimitiveType(node.argument);
+      if (argType === 'number' || argType === 'bigint') return argType;
+    }
+    return null;
+  }
+  if (node.type === 'BinaryExpression') {
+    const op = node.operator;
+    if (['<', '<=', '>', '>=', 'instanceof', 'in', '==', '!=', '===', '!=='].includes(op)) return 'boolean';
+    if (['|', '&', '^', '<<', '>>', '>>>', '-', '*', '/', '%', '**'].includes(op)) {
+      if (getKnownPrimitiveType(node.left) === 'number' || getKnownPrimitiveType(node.right) === 'number') {
+        return 'number';
+      }
+    }
+    return null;
+  }
+  return null;
+}
+
+// Weaken strict equality (`===` / `!==`) to loose equality (`==` / `!=`) when
+// both operands are statically known to have the same primitive type.
+//
+// Why this is done:
+// In minified JavaScript, `==` and `!=` are 1 byte shorter than `===` and `!==`.
+// Running this optimization during JS minification allows our source codebase
+// to use strict comparisons (`===` / `!==`) without paying a code size penalty
+// in the generated output.
+//
+// Why this is safe:
+// Under the ECMAScript specification for abstract equality comparison
+// (`IsLooselyEqual(x, y)`), the very first step is:
+//   "If Type(x) is the same as Type(y), return the result of x === y."
+// Type coercion in `==` ONLY occurs when the two operands have different types
+// (e.g. `0 == ""` or `null == undefined`). When both operands are guaranteed
+// to evaluate to the same primitive type (e.g. `typeof foo === 'string'`,
+// `typeof a === typeof b`, `+x === 0`, `!x === true`), `==` and `===`
+// have identical semantics.
+// Note: We do NOT weaken comparisons with `null` or `undefined`, because
+// `null == undefined` is true while `null === undefined` is false.
+//
+// TODO: Remoe this pass if closure compiler ever gets this feature:
+// https://github.com/google/closure-compiler/issues/4352
+function weakenComparisonOps(ast) {
+  fullWalk(ast, (node) => {
+    if (
+      node.type === 'BinaryExpression' &&
+      (node.operator === '===' || node.operator === '!==')
+    ) {
+      const leftType = getKnownPrimitiveType(node.left);
+      const rightType = getKnownPrimitiveType(node.right);
+      if (leftType && leftType === rightType) {
+        node.operator = node.operator.slice(0, 2);
+      }
+    }
+  });
+}
+
 function isWasmImportsAssign(node) {
   // var wasmImports = ..
   //   or
@@ -1877,6 +1962,7 @@ const registry = {
   JSDCE,
   AJSDCE,
   stripDefaultUndefined,
+  weakenComparisonOps,
   applyImportAndExportNameChanges,
   emitDCEGraph,
   applyDCEGraphRemovals,

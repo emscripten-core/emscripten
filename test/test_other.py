@@ -3109,6 +3109,7 @@ More info: https://emscripten.org
     'JSDCE-objectPattern': (['JSDCE'],),
     'AJSDCE': (['AJSDCE'],),
     'stripDefaultUndefined': (['stripDefaultUndefined'],),
+    'weakenComparisonOps': (['weakenComparisonOps'],),
     'emitDCEGraph': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-closure': (['emitDCEGraph', '--no-print', '--closure-friendly'], 'emitDCEGraph.js'),
     'emitDCEGraph-dynCall': (['emitDCEGraph', '--no-print'],),
