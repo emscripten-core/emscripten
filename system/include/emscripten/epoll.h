@@ -21,7 +21,7 @@ extern "C" {
 // invokes `callback` on the event loop whenever the epoll set has ready events
 // waiting to be collected. The callback receives only `userdata`; it does not
 // receive the events. To collect them it calls epoll_wait(epfd, ..., 0) itself
-// - a non-blocking, zero-timeout wait - from within the callback (or later).
+// - a non-blocking, zero-timeout wait - from within the callback.
 // Unlike epoll_wait it never blocks the calling stack, so it works without
 // ASYNCIFY/JSPI.
 //
@@ -38,16 +38,15 @@ extern "C" {
 // one listener (load balancing), while a level fd keeps signalling every
 // listener until drained.
 //
-// A listener fires once the call that made the set ready has returned (as a
-// microtask: never from within a running wasm call, and before the host's next
-// turn) while the set has ready events that have not yet been collected, and keeps firing while any remain: it only signals that
-// events are pending, so a callback that does not drain them (via epoll_wait)
-// leaves them pending and re-fires. Whether a given fd is re-reported follows
-// its per-fd trigger mode (set via epoll_ctl) exactly as epoll_wait does. Note
-// that for a level-triggered fd the runtime, not the application, drives the
-// loop, so an fd that is structurally always ready (notably EPOLLOUT on a
-// writable socket) will spin the event loop; use EPOLLET or EPOLLONESHOT for
-// such fds.
+// A listener fires on a later event-loop turn, never from within a running wasm
+// call, while the set has ready events that have not yet been collected, and
+// keeps firing while any remain: it only signals that events are pending, so a
+// callback that does not drain them (via epoll_wait) leaves them pending and
+// re-fires. Whether a given fd is re-reported follows its per-fd trigger mode
+// (set via epoll_ctl) exactly as epoll_wait does. Note that for a level-triggered
+// fd the runtime, not the application, drives the loop, so an fd that is
+// structurally always ready (notably EPOLLOUT on a writable socket) will spin
+// the event loop; use EPOLLET or EPOLLONESHOT for such fds.
 //
 // A listener is an unref'd handle (like Node's handle.unref()): while the
 // runtime is alive, readiness is delivered to it, but it never keeps the

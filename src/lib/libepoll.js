@@ -409,11 +409,8 @@ var EpollLibrary = {
       if (it.cleared || epollWouldBlock(ep)) {
         // Not delivering: callUserCallback's maybeExit will not run, and
         // the hold just released may have been what deferred main's exit.
-        // Deferred: this microtask can run between main returning and
-        // callMain's own exit (under JSPI callMain resumes in a microtask), and
-        // exiting here would re-enter exitRuntime there.
 #if !MINIMAL_RUNTIME
-        emSetImmediate(maybeExit);
+        maybeExit();
 #endif
         return;
       }
@@ -422,16 +419,13 @@ var EpollLibrary = {
       // a macrotask so a still-ready level fd yields to I/O.
       if (it.held) emSetImmediate(turn);
     }
-    // An edge delivers as a microtask: after the notifying stack (a host event
-    // or a wasm call) unwinds, but in the same host turn. A macrotask would
-    // leave that turn, and hosts that scope work to a request (Workers) drop
-    // immediates left over when the request settles, which would silence the
-    // listener. Every wake schedules its own turn; one that finds nothing to
-    // deliver is a no-op. A readiness wake holds the runtime for its turn; a
+    // Every delivery is an event-loop task, never under the notifying wasm
+    // call's frames. Every wake schedules its own turn; one that finds nothing
+    // to deliver is a no-op. A readiness wake holds the runtime for its turn; a
     // teardown wake (POLLNVAL) does not.
     function wake(held) {
       if (held) hold();
-      queueMicrotask(turn);
+      emSetImmediate(turn);
     }
     it.listener = ep.node.addListener((flags) => wake(!(flags & {{{ cDefs.POLLNVAL }}})));
     wake(!epollWouldBlock(ep));

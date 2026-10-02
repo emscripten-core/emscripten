@@ -16,7 +16,7 @@
  * The split is deterministic: the blocking wait's waiter runs synchronously in
  * the producer's stack and drains the ready list immediately, so it wins the one
  * edge ready at the instant it is woken; whatever became ready afterwards is left
- * on the shared list for the callback's deferred (microtask) tick. What is NOT
+ * on the shared list for the callback's deferred event-loop turn. What is NOT
  * guaranteed is the relative order of the two completions - the callback's tick
  * may run before or after the blocking wait's async resumption - so "done" is
  * reported once both slices have arrived, whichever lands last.

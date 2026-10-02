@@ -4,9 +4,9 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * A listener delivery is a microtask: it runs once the call that made the set
- * ready has returned, never under its frames, and before a microtask queued
- * after that call - so it stays within the host turn that produced the edge.
+ * A listener delivery is a macrotask: it runs once the call that made the set
+ * ready and the current microtask checkpoint have completed, never under the
+ * notifying call's frames.
  */
 
 #include <sys/epoll.h>
@@ -27,8 +27,8 @@ EM_JS(void, queue_microtask_marker, (int* flag), {
 static void on_ready(void* ud) {
   // Not under the frames of the write that made the set ready.
   assert(write_returned && "delivery ran inside the call that made the set ready");
-  // But before a microtask queued after that write: a microtask, not a macrotask.
-  assert(!microtask_ran && "delivery ran after a later-queued microtask");
+  // After a microtask queued after that write: delivery is a macrotask.
+  assert(microtask_ran && "delivery ran before a later-queued microtask");
   struct epoll_event events[1];
   assert(epoll_wait(ep, events, 1, 0) == 1);
   char b[1];
@@ -47,8 +47,7 @@ int main(void) {
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
   assert(emscripten_epoll_listener_add(ep, on_ready, NULL) == 0);
 
-  // Readiness schedules the delivery; it runs after this call returns and
-  // before the microtask queued next.
+  // Readiness schedules the delivery after the microtask queued next.
   assert(write(wfd, "x", 1) == 1);
   write_returned = 1;
   queue_microtask_marker(&microtask_ran);
