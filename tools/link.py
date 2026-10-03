@@ -546,9 +546,11 @@ def set_max_memory():
   # With INITIAL_HEAP, we only know the lower bound on initial memory size.
   initial_memory_known = settings.INITIAL_MEMORY != -1
 
-  if not settings.ALLOW_MEMORY_GROWTH:
+  # Without growth, an imported memory can still be any size up to a
+  # user-specified maximum.
+  if not settings.ALLOW_MEMORY_GROWTH and not (settings.IMPORTED_MEMORY and 'MAXIMUM_MEMORY' in user_settings):
     if 'MAXIMUM_MEMORY' in user_settings:
-      diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
+      diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH or IMPORTED_MEMORY')
     # Optimization: lower the default maximum memory to initial memory if possible.
     if initial_memory_known:
       settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
@@ -760,9 +762,9 @@ def get_dylibs(linker_args):
       if search_for_dylibs:
         for ext in DYLIB_EXTENSIONS:
           path = find_library('lib' + arg[2:] + ext, options.lib_dirs)
-          if path and building.is_wasm_dylib(path):
+          if path and webassembly.is_wasm_dylib(path):
             dylibs.append(path)
-    elif building.is_wasm_dylib(arg):
+    elif webassembly.is_wasm_dylib(arg):
       dylibs.append(arg)
   return dylibs
 
@@ -1175,11 +1177,11 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     if not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
     default_setting('IGNORE_MISSING_MAIN', 0)
-    default_setting('AUTO_NATIVE_LIBRARIES', 0)
     if settings.MAIN_MODULE != 1:
-      # These two settings cannot be disabled with MAIN_MODULE=1 because all symbols
+      # These settings cannot be disabled with MAIN_MODULE=1 because all symbols
       # are needed in this mode.
       default_setting('AUTO_JS_LIBRARIES', 0)
+      default_setting('AUTO_NATIVE_LIBRARIES', 0)
       default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
     limit_incoming_module_api()
 
@@ -1461,7 +1463,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
         '_wasmfs_lchmod',
         '_wasmfs_utime',
         '_wasmfs_llseek',
-        '_wasmfs_identify',
         '_wasmfs_readlink',
         '_wasmfs_readdir_start',
         '_wasmfs_readdir_get',
@@ -1735,12 +1736,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # WASM2JS does not support GROWABLE_ARRAYBUFFERS at all
     default_setting('GROWABLE_ARRAYBUFFERS', 0)
 
-  if settings.NODE_CODE_CACHING:
-    if settings.WASM_ASYNC_COMPILATION:
-      exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
-    if not settings.ENVIRONMENT_MAY_BE_NODE:
-      exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
-
   if not js_manipulation.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
 
@@ -1809,8 +1804,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       diagnostics.warning('unused-command-line-argument', 'NODERAWFS ignored since `node` not in `ENVIRONMENT`')
     if settings.NODERAWSOCKETS:
       diagnostics.warning('unused-command-line-argument', 'NODERAWSOCKETS ignored since `node` not in `ENVIRONMENT`')
-    if settings.NODE_CODE_CACHING:
-      diagnostics.warning('unused-command-line-argument', 'NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT`')
 
   settings.PRE_JS_FILES = options.pre_js
   settings.POST_JS_FILES = options.post_js
@@ -1978,7 +1971,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
     # Copy libraries to the temp directory so they can be used when running
     # in node.
     for f in options.input_files:
-      if building.is_wasm_dylib(f):
+      if webassembly.is_wasm_dylib(f):
         safe_copy(f, in_temp(''))
 
   # Ignore any options or settings that can conflict with running the TS
@@ -2741,8 +2734,8 @@ def process_libraries(flags):
 
     js_libs = map_to_js_libs(lib)
     if js_libs is not None:
-      for l in js_libs:
-        add_system_js_lib(l)
+      for js_lib in js_libs:
+        add_system_js_lib(js_lib)
 
     # We don't need to resolve system libraries to absolute paths here, we can just
     # let wasm-ld handle that.  However, we do want to map to the correct variant.
@@ -2775,7 +2768,7 @@ def process_libraries(flags):
       for ext in DYLIB_EXTENSIONS:
         name = 'lib' + lib + ext
         path = find_library(name, options.lib_dirs)
-        if path and not building.is_wasm_dylib(path):
+        if path and not webassembly.is_wasm_dylib(path):
           found_dylib = True
           new_flags.append(path)
           break
@@ -2852,7 +2845,7 @@ class ScriptSource:
 def filter_out_fake_dynamic_libs(inputs):
   """Filter out "fake" dynamic libraries that are really just intermediate object files."""
   def is_fake_dylib(input_file):
-    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and os.path.exists(input_file) and not building.is_wasm_dylib(input_file):
+    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and os.path.exists(input_file) and not webassembly.is_wasm_dylib(input_file):
       if not options.ignore_dynamic_linking:
         diagnostics.warning('emcc', 'ignoring dynamic library %s when generating an object file, this will need to be included explicitly in the final link', os.path.basename(input_file))
       return True
@@ -2870,7 +2863,7 @@ def filter_out_duplicate_fake_dynamic_libs(inputs):
   seen = set()
 
   def check(input_file):
-    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and not building.is_wasm_dylib(input_file):
+    if get_file_suffix(input_file) in DYLIB_EXTENSIONS and not webassembly.is_wasm_dylib(input_file):
       abspath = os.path.abspath(input_file)
       if abspath in seen:
         return False

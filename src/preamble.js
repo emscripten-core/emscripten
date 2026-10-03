@@ -545,40 +545,8 @@ var splitModuleProxyHandler = {
 
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
 function instantiateSync(file, info) {
-  var module;
   var binary = getBinarySync(file);
-#if NODE_CODE_CACHING
-  if (ENVIRONMENT_IS_NODE) {
-    var v8 = require('node:v8');
-    // Include the V8 version in the cache name, so that we don't try to
-    // load cached code from another version, which fails silently (it seems
-    // to load ok, but we do actually recompile the binary every time).
-    var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
-    cachedCodeFile = locateFile(cachedCodeFile);
-    var hasCached = fs.existsSync(cachedCodeFile);
-    if (hasCached) {
-#if RUNTIME_DEBUG
-      dbg('NODE_CODE_CACHING: loading module');
-#endif
-      try {
-        module = v8.deserialize(fs.readFileSync(cachedCodeFile));
-      } catch (e) {
-        err(`NODE_CODE_CACHING: failed to deserialize, bad cache file? (${cachedCodeFile})`);
-        // Save the new compiled code when we have it.
-        hasCached = false;
-      }
-    }
-  }
-  module ||= new WebAssembly.Module(binary);
-  if (ENVIRONMENT_IS_NODE && !hasCached) {
-#if RUNTIME_DEBUG
-    dbg('NODE_CODE_CACHING: saving module');
-#endif
-    fs.writeFileSync(cachedCodeFile, v8.serialize(module));
-  }
-#else // NODE_CODE_CACHING
-  module = new WebAssembly.Module(binary);
-#endif // NODE_CODE_CACHING
+  var module = new WebAssembly.Module(binary);
   var instance = new WebAssembly.Instance(module, info);
   return [instance, module];
 }

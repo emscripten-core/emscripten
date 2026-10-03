@@ -377,8 +377,6 @@ COS is a complement to, not a replacement for, existing browser caches:
 
 - **HTTP cache / Service Worker cache** — still used for per-origin caching.
   COS adds cross-origin sharing on top.
-- **``NODE_CODE_CACHING``** — a Node.js-specific V8 bytecode cache; unrelated
-  to COS.
 - **IndexedDB / OPFS** — per-origin storage; COS shares across origins.
 
 See also

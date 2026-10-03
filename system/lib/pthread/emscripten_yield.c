@@ -18,14 +18,12 @@ void _emscripten_thread_crashed() {
   _emscripten_thread_notify(emscripten_main_runtime_thread_id());
 }
 
-static bool dummy(double now) {
-  return false;
+static void dummy(double now) {
 }
 
 weak_alias(dummy, _emscripten_check_timers);
 
-bool _emscripten_yield(double now) {
-  bool rtn = false;
+void _emscripten_yield(double now) {
   // When a secondary thread crashes, we need to be able to interrupt the main
   // thread even if it's in a blocking/looping on a mutex.  We want to avoid
   // using the normal proxying mechanism to send this message since it can
@@ -43,7 +41,7 @@ bool _emscripten_yield(double now) {
     }
 
     // This is no-op in programs that don't include use of itimer/alarm.
-    rtn = _emscripten_check_timers(now);
+    _emscripten_check_timers(now);
 
     // Assist other threads by executing proxied operations that are effectively
     // singlethreaded.
@@ -54,5 +52,4 @@ bool _emscripten_yield(double now) {
     _emscripten_process_dlopen_queue();
   }
 #endif
-  return rtn;
 }

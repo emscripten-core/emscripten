@@ -268,8 +268,8 @@ def main(args):
 
     def print_loc(loc):
       if isinstance(loc, list):
-        for l in loc:
-          l.print()
+        for item in loc:
+          item.print()
       else:
         loc.print()
 

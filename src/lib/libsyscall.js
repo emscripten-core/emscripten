@@ -17,7 +17,7 @@ var SyscallsLibrary = {
     // global constants
 
     // shared utilities
-    calculateAt(dirfd, path, allowEmpty) {
+    calculateAt(dirfd, path, allowEmpty = false) {
       if (PATH.isAbs(path)) {
         return path;
       }
@@ -48,15 +48,23 @@ var SyscallsLibrary = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
+#if ENVIRONMENT_MAY_BE_NODE
+      // Prefer `*Ms` properties if available (e.g. from NODEFS / host `fs.Stats`)
+      // for sub-millisecond precision; fall back to Date#getTime for other filesystems.
+      var atime = stat.atimeMs ?? stat.atime.getTime();
+      var mtime = stat.mtimeMs ?? stat.mtime.getTime();
+      var ctime = stat.ctimeMs ?? stat.ctime.getTime();
+#else
       var atime = stat.atime.getTime();
       var mtime = stat.mtime.getTime();
       var ctime = stat.ctime.getTime();
+#endif
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(atime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '(atime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, 'Math.floor((atime % 1000) * 1_000_000)', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(mtime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '(mtime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, 'Math.floor((mtime % 1000) * 1_000_000)', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(ctime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '(ctime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, 'Math.floor((ctime % 1000) * 1_000_000)', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
@@ -947,7 +955,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     mode &= ~SYSCALLS.currentUmask;
-    FS.mkdir(path, mode, 0);
+    FS.mkdir(path, mode);
     return 0;
   },
   __syscall_mknodat: (dirfd, path, mode, dev) => {
@@ -1080,25 +1088,22 @@ var SyscallsLibrary = {
       atime = now;
       mtime = now;
     } else {
-      var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
-      var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
-        atime = now;
-      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
-        atime = null;
-      } else {
-        atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      function readTimespec(ptr) {
+        var tv_nsec = {{{ makeGetValue('ptr', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+        if (tv_nsec == {{{ cDefs.UTIME_NOW }}}) {
+          return now;
+        }
+        if (tv_nsec == {{{ cDefs.UTIME_OMIT }}}) {
+          return null;
+        }
+        var tv_sec = {{{ makeGetValue('ptr', C_STRUCTS.timespec.tv_sec, 'i53') }}};
+        // Round down tv_nsec to the nearest 10 microseconds (10,000 ns) to prevent
+        // floating-point rounding into the next whole second when converting to host/Windows timestamps.
+        tv_nsec = (tv_nsec / 10_000 | 0) * 10_000;
+        return (tv_sec + (tv_nsec / 1_000_000_000)) * 1000;
       }
-      times += {{{ C_STRUCTS.timespec.__size__ }}};
-      seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
-      nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
-        mtime = now;
-      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
-        mtime = null;
-      } else {
-        mtime = (seconds*1000) + (nanoseconds/(1000*1000));
-      }
+      atime = readTimespec(times);
+      mtime = readTimespec(times + {{{ C_STRUCTS.timespec.__size__ }}});
     }
     // null here means UTIME_OMIT was passed. If both were set to UTIME_OMIT then
     // we can skip the call completely.

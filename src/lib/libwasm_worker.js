@@ -305,39 +305,34 @@ if (ENVIRONMENT_IS_WASM_WORKER
     return navigator['hardwareConcurrency'];
   },
 
-  emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
+  emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync', '$callUserCallback'],
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let tryAcquireLock = () => {
       do {
         var val = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
-        if (!val) return {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, 0, 0/*'ok'*/, userData);
+        if (!val) return callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, lock, 0, 0/*'ok'*/, userData);
         var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, val, maxWaitMilliseconds);
       } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
 #endif
       if (wait.async) wait.value.then(tryAcquireLock);
-      else return {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, val, 2/*'timed-out'*/, userData);
+      else return callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, lock, val, 2/*'timed-out'*/, userData);
     };
     // Asynchronously dispatch acquiring the lock so that we have uniform control flow in both
     // cases when the lock is acquired, and when it needs to wait.
     setTimeout(tryAcquireLock);
   },
 
-  emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync'],
+  emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync', '$callUserCallback'],
   emscripten_semaphore_async_acquire: (sem, num, asyncWaitFinished, userData, maxWaitMilliseconds) => {
-    let dispatch = (idx, ret) => {
-      setTimeout(() => {
-        {{{ makeDynCall('viiii', 'asyncWaitFinished') }}}(sem, /*val=*/idx, /*waitResult=*/ret, userData);
-      }, 0);
-    };
     let tryAcquireSemaphore = () => {
       let val = num;
       do {
         let ret = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('sem', 'i32') }}},
                                           val, /* We expect this many semaphore resources to be available*/
                                           val - num /* Acquire 'num' of them */);
-        if (ret == val) return dispatch(ret/*index of resource acquired*/, 0/*'ok'*/);
+        if (ret == val) return callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, sem, /*val=*/ret/*index of resource acquired*/, /*waitResult=*/0/*'ok'*/, userData);
         val = ret;
         let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('sem', 'i32') }}}, ret, maxWaitMilliseconds);
       } while (wait.value === 'not-equal');
@@ -345,9 +340,11 @@ if (ENVIRONMENT_IS_WASM_WORKER
       assert(wait.async || wait.value === 'timed-out');
 #endif
       if (wait.async) wait.value.then(tryAcquireSemaphore);
-      else dispatch(-1/*idx*/, 2/*'timed-out'*/);
+      else return callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, sem, /*val=*/-1/*idx*/, /*waitResult=*/2/*'timed-out'*/, userData);
     };
-    tryAcquireSemaphore();
+    // Asynchronously dispatch acquiring the semaphore so that we have uniform control flow in both
+    // cases when the semaphore is acquired, and when it needs to wait.
+    setTimeout(tryAcquireSemaphore);
   },
 
 #if !PTHREADS

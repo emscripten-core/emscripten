@@ -22,6 +22,7 @@ from . import (
   diagnostics,
   feature_matrix,
   js_optimizer,
+  ports,
   response_file,
   shared,
   utils,
@@ -36,10 +37,6 @@ from .shared import (
   EMCC,
   EMRANLIB,
   EMXX,
-  LLVM_DWARFDUMP,
-  LLVM_NM,
-  LLVM_OBJCOPY,
-  LLVM_OBJDUMP,
   asmjs_mangle,
   check_call,
   demangle_c_symbol_name,
@@ -55,8 +52,12 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 132
+EXPECTED_BINARYEN_VERSION = 133
 WASM_LD = shared.llvm_tool_path('wasm-ld')
+LLVM_DWARFDUMP = shared.llvm_tool_path('llvm-dwarfdump')
+LLVM_OBJCOPY = shared.llvm_tool_path('llvm-objcopy')
+LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
+LLVM_NM = shared.llvm_tool_path('llvm-nm')
 
 # the exports the user requested
 user_requested_exports: set[str] = set()
@@ -248,7 +249,7 @@ def lld_flags_for_executable(external_symbols):
   if not settings.SIDE_MODULE:
     cmd += ['-z', f'stack-size={settings.STACK_SIZE}']
 
-    if settings.ALLOW_MEMORY_GROWTH:
+    if settings.ALLOW_MEMORY_GROWTH or (settings.IMPORTED_MEMORY and settings.MAXIMUM_MEMORY > settings.INITIAL_MEMORY):
       cmd += [f'--max-memory={settings.MAXIMUM_MEMORY}']
     else:
       cmd += ['--no-growable-memory']
@@ -332,8 +333,6 @@ def lld_flags(args):
   for a in llvm_backend_args():
     args += ['-mllvm', a]
 
-  if settings.WASM_EXCEPTIONS:
-    args += ['-mllvm', '-wasm-enable-eh']
   if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     args += ['-mllvm', '-exception-model=wasm']
   elif not settings.DISABLE_EXCEPTION_CATCHING:
@@ -569,6 +568,13 @@ def version_split(v):
   return f'{int(major)}.{int(minor)}.{int(rev)}'
 
 
+def filter_closure_args(args):
+  # Closure compiler includes WebGPU externs natively (w3c_webgpu.js).
+  # Exclude webgpu-externs.js (provided by emdawnwebgpu) to avoid duplicate definition errors.
+  # TODO: Remove this after https://g-issues.chromium.org/issues/562078433 is resolved.
+  return [a for a in args if not (a.startswith('--externs=') and a.endswith('webgpu-externs.js'))]
+
+
 @ToolchainProfiler.profile()
 def closure_compiler(filename, advanced=True, extra_closure_args=None):
   user_args = []
@@ -577,6 +583,8 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     user_args += shlex.split(env_args)
   if extra_closure_args:
     user_args += extra_closure_args
+  if any('emdawnwebgpu' in p.name for p in ports.get_needed_ports(settings)):
+    user_args = filter_closure_args(user_args)
 
   closure_cmd, env = get_closure_compiler_and_env(user_args)
 
@@ -785,6 +793,8 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   passes = []
   if not settings.LINKABLE:
     passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
+  if not settings.USE_CLOSURE_COMPILER:
+    passes.append('stripDefaultUndefined')
   # Don't minify if we are going to run closure compiler afterwards
   minify = settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER
   if minify:
@@ -1165,37 +1175,6 @@ def write_symbol_map(wasm_file, symbols_file):
   utils.write_file(symbols_file, contents)
 
 
-def is_ar(filename):
-  """Return True if the given filename is an ar archive, False otherwise."""
-  try:
-    header = open(filename, 'rb').read(8)
-  except Exception as e:
-    logger.debug(f'is_ar failed to test whether file \'{filename}\' is a llvm archive file! Failed on exception: {e}')
-    return False
-
-  return header in {b'!<arch>\n', b'!<thin>\n'}
-
-
-def is_wasm(filename):
-  if not os.path.isfile(filename):
-    return False
-  header = open(filename, 'rb').read(webassembly.HEADER_SIZE)
-  return header == webassembly.MAGIC + webassembly.VERSION
-
-
-def is_wasm_dylib(filename):
-  """Detect wasm dynamic libraries by the presence of the "dylink" custom section."""
-  if not is_wasm(filename):
-    return False
-  with webassembly.Module(filename) as module:
-    section = next(module.sections())
-    if section.type == webassembly.SecType.CUSTOM:
-      module.seek(section.offset)
-      if module.read_string() in {'dylink', 'dylink.0'}:
-        return True
-  return False
-
-
 def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
@@ -1344,7 +1323,7 @@ def run_wasm_bindgen(infile):
   # Don't try to predict the .wasm filename that wasm-bindgen outputs. Instead
   # just grab the .wasm file itself.
   all_output_files = os.listdir(bindgen_out_dir)
-  new_wasm_file = [x for x in all_output_files if x.endswith('.wasm')][0]
+  new_wasm_file = next(x for x in all_output_files if x.endswith('.wasm'))
   new_wasm_path = os.path.join(bindgen_out_dir, new_wasm_file)
 
   exports_after = {e.name for e in webassembly.get_exports(new_wasm_path)}

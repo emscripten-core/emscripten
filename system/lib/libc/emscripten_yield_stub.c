@@ -10,15 +10,13 @@
 
 #include "threading_internal.h"
 
-static bool dummy(double now) {
-  return false;
+static void dummy(double now) {
 }
 
 weak_alias(dummy, _emscripten_check_timers);
 
-bool _emscripten_yield(double now) {
+void _emscripten_yield(double now) {
   if (emscripten_is_main_runtime_thread()) {
-    return _emscripten_check_timers(now);
+    _emscripten_check_timers(now);
   }
-  return false;
 }

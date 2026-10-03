@@ -43,7 +43,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   kw.setdefault('text', True)
   if kw['text']:
     kw.setdefault('encoding', 'utf-8')
-  ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
+  ret = subprocess.run(cmd, *args, check=check, input=input, **kw)
   debug_text = f"{'successfully ' if check else ''}executed {shlex.join(cmd)}"
   logger.debug(debug_text)
   return ret
@@ -177,6 +177,18 @@ def read_binary(file_path):
   """Read from a file opened in binary mode."""
   with open(file_path, 'rb') as fh:
     return fh.read()
+
+
+def is_ar(filename):
+  """Return True if the given filename is an ar archive, False otherwise."""
+  try:
+    with open(filename, 'rb') as f:
+      header = f.read(8)
+  except Exception as e:
+    logger.debug(f'is_ar failed to test whether file \'{filename}\' is a llvm archive file! Failed on exception: {e}')
+    return False
+
+  return header in {b'!<arch>\n', b'!<thin>\n'}
 
 
 def write_file(file_path, text, line_endings=None):

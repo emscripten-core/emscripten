@@ -769,7 +769,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // version field in above check.
       if (!canvas.getContextSafariWebGL2Fixed) {
         canvas.getContextSafariWebGL2Fixed = canvas.getContext;
-        /** @type {function(this:HTMLCanvasElement, string, (Object|null)=): (Object|null)} */
+        /** @type {function(this:HTMLCanvasElement, string, (Object|null)=): (RenderingContext|null)} */
         function fixedGetContext(ver, attrs) {
           var gl = canvas.getContextSafariWebGL2Fixed(ver, attrs);
           return ((ver == 'webgl') == (gl instanceof WebGLRenderingContext)) ? gl : null;
@@ -3931,7 +3931,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GLctx.drawElements(mode, count, type, indices);
 
 #if FULL_ES2
-    GL.postDrawHandleClientVertexAttribBindings(count);
+    GL.postDrawHandleClientVertexAttribBindings();
 
     if (!GLctx.currentElementArrayBufferBinding) {
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, null);
@@ -4394,6 +4394,14 @@ function recordGLProcAddressGet(lib) {
       if (sig) {
         lib[newSym + '__sig'] = sig;
       }
+    }
+  }
+  // Also update any alias targets to point to the emscripten_-prefixed
+  // versions. e.g. both the name of the symbol *and* it's target need updating
+  // in cases such as `glMultiDrawElements: 'glMultiDrawElementsWEBGL'`
+  for (const [sym, target] of Object.entries(lib)) {
+    if (sym.startsWith('emscripten_gl') && typeof target == 'string' && lib.hasOwnProperty('emscripten_' + target)) {
+      lib[sym] = 'emscripten_' + target;
     }
   }
 }

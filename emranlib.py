@@ -14,4 +14,6 @@ import sys
 
 from tools import shared
 
-shared.exec_process([shared.LLVM_RANLIB, *sys.argv[1:]])
+LLVM_RANLIB = shared.llvm_tool_path('llvm-ranlib')
+
+shared.exec_process([LLVM_RANLIB, *sys.argv[1:]])

@@ -7,6 +7,7 @@
 
 #define _LARGEFILE64_SOURCE // For F_GETLK64 etc
 
+#include <cmath>
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
@@ -329,7 +330,8 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
 
 int __syscall_fdatasync(int fd) {
   // TODO: Optimize this to avoid unnecessarily flushing unnecessary metadata.
-  return __wasi_fd_sync(fd);
+  // Translate from WASI positive error codes to negative error codes.
+  return -__wasi_fd_sync(fd);
 }
 
 backend_t wasmfs_get_backend_by_fd(int fd) {
@@ -1137,7 +1139,10 @@ static double timespec_to_ms(timespec ts) {
   if (ts.tv_nsec == UTIME_NOW) {
     return emscripten_date_now();
   }
-  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
+  // Round down tv_nsec to the nearest 10 microseconds (10,000 ns) to prevent
+  // floating-point rounding into the next whole second when converting to host/Windows timestamps.
+  long tv_nsec_10us = (ts.tv_nsec / 10000) * 10000;
+  return (double(ts.tv_sec) + double(tv_nsec_10us) / 1e9) * 1000;
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -1366,6 +1371,11 @@ int __syscall_ioctl(int fd, int request, ...) {
       // TTY operations that we do nothing for anyhow can just be ignored.
       return 0;
     }
+    case TIOCGPGRP: {
+      // Set argp to 0 just like in JS FS
+      *static_cast<int*>(argp) = 0;
+      return 0;
+    }
     default: {
       return -EINVAL; // not supported
     }
@@ -1374,7 +1384,12 @@ int __syscall_ioctl(int fd, int request, ...) {
 
 int __syscall_pipe2(int fd[2], int flags) {
   auto* fds = (__wasi_fd_t*)fd;
-  if (flags && flags != O_CLOEXEC) {
+  
+  if (!fds) {
+    return -EFAULT;
+  }
+
+  if (flags & ~(O_CLOEXEC | O_NONBLOCK)) {
     return -ENOTSUP;
   }
 
@@ -1386,9 +1401,11 @@ int __syscall_pipe2(int fd[2], int flags) {
   auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
   auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
+  oflags_t nonBlock = flags & O_NONBLOCK;
+
   std::shared_ptr<OpenFileState> openReader, openWriter;
-  (void)OpenFileState::create(reader, O_RDONLY, openReader);
-  (void)OpenFileState::create(writer, O_WRONLY, openWriter);
+  (void)OpenFileState::create(reader, O_RDONLY | nonBlock, openReader);
+  (void)OpenFileState::create(writer, O_WRONLY | nonBlock, openWriter);
 
   auto fileTable = wasmFS.getFileTable().locked();
   fds[0] = fileTable.addEntry(openReader);

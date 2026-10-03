@@ -88,6 +88,7 @@ MINIMAL_TASKS = [
   'libemmalloc-memvalidate-verbose',
   'libmimalloc',
   'libmimalloc-mt',
+  'libopenmp',
   'libGL',
   'libGL-getprocaddr',
   'libGL-mt-getprocaddr',
@@ -135,6 +136,7 @@ MINIMAL_PIC_TASKS = [
   'libGL-mt-emu',
   'libGL-mt-emu-webgl2-getprocaddr',
   'libGL-mt-emu-webgl2-ofb-getprocaddr',
+  'libGL-mt-webgl2-ofb-getprocaddr',
   'libsockets_proxy',
   'libfetch',
   'libfetch-mt',
@@ -189,8 +191,8 @@ def get_port_variant(name):
 
 
 def clear_port(port_name):
-  with get_port_variant(port_name) as port_name:
-    ports.clear_port(port_name, settings)
+  with get_port_variant(port_name) as port_name_base:
+    ports.clear_port(port_name_base, settings)
 
 
 def build_port(port_name):

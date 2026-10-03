@@ -18,11 +18,10 @@ from subprocess import Popen
 
 import clang_native
 import common
-from common import EMCC, PYTHON
+from common import CLANG_CC, EMCC, PYTHON
 from decorators import test_file
 
 from tools import config
-from tools.shared import CLANG_CC
 from tools.utils import run_process
 
 npm_checked = False

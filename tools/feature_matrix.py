@@ -112,7 +112,6 @@ min_browser_versions = {
   # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
   # https://caniuse.com/mdn-webassembly_api_memory_toresizablebuffer
   Feature.GROWABLE_ARRAYBUFFERS: {
-
     'chrome': 144,
     'firefox': 145,
     'safari': 260200,

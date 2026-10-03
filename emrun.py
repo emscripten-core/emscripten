@@ -476,7 +476,6 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   # queued message, ignoring the proper order.  This ensures that if any
   # messages are actually lost, that the message queue will be orderly flushed.
   def print_timed_out_messages(self):
-    global last_message_time
     with http_mutex:
       now = tick()
       max_message_queue_time = 5
@@ -748,7 +747,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
 # Returns stdout by running command with text=True
 def check_output(cmd, *args, **kwargs):
-  return subprocess.run(cmd, text=True, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
+  return subprocess.run(cmd, *args, text=True, stdout=subprocess.PIPE, check=True, **kwargs).stdout
 
 
 # From http://stackoverflow.com/questions/4842448/getting-processor-information-in-python
@@ -779,9 +778,9 @@ def get_cpu_info():
     elif LINUX:
       for line in open('/proc/cpuinfo', encoding='utf-8').readlines():
         if 'model name' in line:
-          cpu_name = re.sub('.*model name.*:', '', line, count=1).strip()
+          cpu_name = re.sub(r'.*model name.*:', '', line, count=1).strip()
       lscpu = check_output(['lscpu'])
-      frequency = math.ceil(float(re.search('CPU (max )?MHz: (.*)', lscpu).group(2).strip()))
+      frequency = math.ceil(float(re.search(r'CPU (max )?MHz: (.*)', lscpu).group(2).strip()))
       sockets = int(re.search(r'Socket\(s\): (.*)', lscpu).group(1).strip())
       physical_cores = sockets * int(re.search(r'Core\(s\) per socket: (.*)', lscpu).group(1).strip())
       logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
@@ -890,10 +889,10 @@ def linux_get_gpu_info():
   adapterinfo = ''
   try:
     vgainfo = check_output(['lshw', '-C', 'display'], stderr=subprocess.PIPE)
-    vendor = re.search("vendor: (.*)", vgainfo).group(1).strip()
-    product = re.search("product: (.*)", vgainfo).group(1).strip()
-    description = re.search("description: (.*)", vgainfo).group(1).strip()
-    clock = re.search("clock: (.*)", vgainfo).group(1).strip()
+    vendor = re.search(r"vendor: (.*)", vgainfo).group(1).strip()
+    product = re.search(r"product: (.*)", vgainfo).group(1).strip()
+    description = re.search(r"description: (.*)", vgainfo).group(1).strip()
+    clock = re.search(r"clock: (.*)", vgainfo).group(1).strip()
     adapterinfo = vendor + ' ' + product + ', ' + description + ' (' + clock + ')'
   except Exception as e:
     logv(e)
@@ -919,8 +918,8 @@ def macos_get_gpu_info():
     for gpu in info:
       model_name = gpu.split('\n')[0].strip()
       if 'Bus' in gpu and 'VRAM' in gpu:
-        bus = re.search("Bus: (.*)", gpu).group(1).strip()
-        memory = int(re.search("VRAM (.*?): (.*) MB", gpu).group(2).strip())
+        bus = re.search(r"Bus: (.*)", gpu).group(1).strip()
+        memory = int(re.search(r"VRAM (.*?): (.*) MB", gpu).group(2).strip())
         gpus += [{'model': model_name + ' (' + bus + ')', 'ram': memory * 1024 * 1024}]
       else:
         gpus += [{'model': model_name, 'ram': 0}]
@@ -1054,19 +1053,19 @@ def get_computer_model():
       try:
         # http://apple.stackexchange.com/questions/98080/can-a-macs-model-year-be-determined-via-terminal-command
         serial = check_output(['system_profiler', 'SPHardwareDataType'])
-        serial = re.search("Serial Number (.*): (.*)", serial)
+        serial = re.search(r"Serial Number (.*): (.*)", serial)
         serial = serial.group(2).strip()[-4:]
         cmd = ['curl', '-s', 'http://support-sp.apple.com/sp/product?cc=' + serial]
         logv(str(cmd))
         model = check_output(cmd)
-        model = re.search('<configCode>(.*)</configCode>', model)
+        model = re.search(r'<configCode>(.*)</configCode>', model)
         model = model.group(1).strip()
         with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'w', encoding='utf-8') as fh:
           fh.write(model) # Cache the hardware model to disk
         return model
       except Exception:
         hwmodel = check_output(['sysctl', 'hw.model'])
-        hwmodel = re.search('hw.model: (.*)', hwmodel).group(1).strip()
+        hwmodel = re.search(r'hw.model: (.*)', hwmodel).group(1).strip()
         return hwmodel
     elif WINDOWS:
       manufacturer = check_output(['wmic', 'baseboard', 'get', 'manufacturer']).split('\n')[1].strip()

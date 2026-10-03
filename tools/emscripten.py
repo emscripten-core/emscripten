@@ -578,7 +578,7 @@ def finalize_wasm(infile, outfile, js_syms):
       with shared.get_temp_files().get_file('.bin') as url_file:
         utils.write_binary(url_file,
                            leb128.u.encode(len(base_url)) + base_url.encode('utf-8'))
-        cmd = [shared.LLVM_OBJCOPY,
+        cmd = [building.LLVM_OBJCOPY,
                '--add-section',
                'sourceMappingURL=' + url_file,
                infile]
@@ -1065,7 +1065,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
         continue
       receiving.append(f"  assert(typeof wasmExports['{sym}'] != 'undefined', 'missing Wasm export: {sym}');")
   for sym, info in exports.items():
-    is_function = type(info) == webassembly.FuncType
+    is_function = isinstance(info, webassembly.FuncType)
     mangled = asmjs_mangle(sym)
     assignment = mangled
     if generate_dyncall_assignment and is_function and sym.startswith('dynCall_'):

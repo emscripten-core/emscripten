@@ -48,10 +48,10 @@ import common
 import jsrun
 import parallel_testsuite
 from color_runner import ColorTextRunner
-from common import errlog
+from common import CLANG_CC, errlog
 from single_line_runner import SingleLineTestRunner
 
-from tools import building, colored_logger, config, shared, utils
+from tools import colored_logger, config, shared, utils
 
 logger = logging.getLogger("runner")
 
@@ -410,11 +410,6 @@ def load_test_suite(args, modules, options):
       except AttributeError:
         pass
     if names_in_module:
-      # Ensure verbose output for the benchmark suite, as otherwise no benchmark
-      # results are emitted.
-      if m.__name__ == 'test_benchmark':
-        options.verbose = max(options.verbose, 1)
-
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests += flattened_tests(loaded_tests)
       is_parallel_module = use_parallel_suite(m)
@@ -621,7 +616,7 @@ def log_test_environment():
 
   print(f'JS_ENGINES: {config.JS_ENGINES}')
   print(f'BINARYEN_ROOT: {config.BINARYEN_ROOT}')
-  wasm_opt_version = building.get_binaryen_version(building.get_binaryen_bin()).strip()
+  wasm_opt_version = utils.run_process([common.WASM_OPT, '--version'], stdout=subprocess.PIPE).stdout.strip()
   print(f'wasm-opt version: {wasm_opt_version}')
 
   binaryen_git_dir = config.BINARYEN_ROOT
@@ -650,8 +645,8 @@ def log_test_environment():
     print(f'LLVM git directory: "{llvm_git_root}"')
     print_repository_info(llvm_git_root, 'LLVM')
 
-  clang_version = utils.run_process([shared.CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
-  print(f'Clang: "{shared.CLANG_CC}"\n{clang_version}\n')
+  clang_version = utils.run_process([CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
+  print(f'Clang: "{CLANG_CC}"\n{clang_version}\n')
 
   print(f'EMTEST_BROWSER: {browser_common.EMTEST_BROWSER}')
   if browser_common.is_firefox():

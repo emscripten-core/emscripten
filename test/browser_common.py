@@ -209,7 +209,7 @@ def get_firefox_version():
 def get_chrome_version():
   if not is_chrome():
     return UNSUPPORTED
-  exe = shlex.split(EMTEST_BROWSER, posix=not WINDOWS)[0]
+  exe = shlex.split(EMTEST_BROWSER)[0]
   if WINDOWS:
     cmd = ['powershell', '-NoProfile', '-Command', f'(Get-Item "{exe}").VersionInfo.ProductVersion']
   else:

@@ -21,15 +21,18 @@ if __name__ == '__main__':
 import clang_native
 import common
 from common import (
+  CLANG_CXX,
   EMAR,
   EMBUILDER,
   EMCC,
   EMXX,
   FILE_PACKAGER,
   LLVM_COV,
+  LLVM_DWARFDUMP,
   LLVM_PROFDATA,
   NON_ZERO,
   PYTHON,
+  WASM_OPT,
   WEBIDL_BINDER,
   RunnerCore,
   compiler_for,
@@ -66,7 +69,6 @@ from decorators import (
   no_bun,
   no_deno,
   no_highmem,
-  no_wasm64,
   no_windows,
   parameterize,
   parameterized,
@@ -85,7 +87,7 @@ from decorators import (
   with_env_modify,
 )
 
-from tools import building, config, shared, utils, webassembly
+from tools import config, shared, utils, webassembly
 from tools.utils import LINUX, MACOS, WINDOWS, delete_file, write_file
 
 # decorators for limiting which modes a test can run in
@@ -2665,7 +2667,6 @@ The current type of b is: 9
 
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26199')
-  @flaky('flaky specifically in esm_integration suite. https://github.com/emscripten-core/emscripten/issues/25151')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
@@ -3368,8 +3369,8 @@ Var: 42
     def get_data_exports(wasm):
       wat = self.get_wasm_text(wasm)
       lines = wat.splitlines()
-      exports = [l for l in lines if l.strip().startswith('(export ')]
-      data_exports = [l for l in exports if '(global ' in l]
+      exports = [line for line in lines if line.strip().startswith('(export ')]
+      data_exports = [exp for exp in exports if '(global ' in exp]
       data_exports = [d.split()[1].strip('"') for d in data_exports]
       return data_exports
 
@@ -5619,7 +5620,6 @@ got: 10
     self.cflags += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
-  @no_wasm64('https://github.com/emscripten-core/emscripten/issues/27221')
   @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
   # We don't use the `requires_pthreads` decorator because we want to test that pthreads is
   # automatically enabled when OpenMP is used.
@@ -5635,6 +5635,12 @@ got: 10
     # We need to explicitly add the `-Wno-pthreads-mem-growth` flag because
     # ASAN uses `-sALLOW_MEMORY_GROWTH`.
     self.do_run(src, "", cflags=['-fopenmp=libomp', '-Wno-pthreads-mem-growth'])
+
+  @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
+  @requires_pthreads
+  def test_openmp_many_microtask_args(self):
+    self.do_runf('core/test_openmp_many_microtask_args.c',
+                 cflags=['-fopenmp=libomp', '-sALLOW_MEMORY_GROWTH'])
 
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
@@ -5813,7 +5819,7 @@ got: 10
     self.do_runf('utime/test_utime.c', 'done\n')
 
   @also_with_nodefs_both
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25280')
+  @crossplatform
   def test_futimens(self):
     self.do_runf('utime/test_futimens.c', 'done\n')
 
@@ -5871,12 +5877,6 @@ got: 10
 
   def test_istream(self):
     self.do_core_test('test_istream.cpp')
-
-  @no_wasmfs('depends on FS.makedev which WASMFS does not have')
-  def test_fs_base(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
-    self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
-    self.do_runf_out_file('fs/test_fs_base.c')
 
   @also_with_noderawfs
   @is_slow_test
@@ -6126,6 +6126,8 @@ Module.onRuntimeInitialized = () => {
   def test_fs_rename_on_existing(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
+    else:
+      self.cflags.append('-lproxyfs.js')
     self.do_runf('fs/test_fs_rename_on_existing.c', 'done\n')
 
   @also_with_nodefs_both
@@ -6298,7 +6300,6 @@ Module.onRuntimeInitialized = () => {
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @also_with_nodefs
-  @no_wasmfs('fails in testing fdatasync, tcgetpgrp and pipe. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_misc(self):
     if self.get_setting('STRICT'):
       self.set_setting('ALLOW_UNIMPLEMENTED_SYSCALLS')
@@ -6714,7 +6715,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse1(self, args):
     src = test_file('sse/test_sse1.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse1', stdout=PIPE).stdout
 
     self.maybe_closure()
@@ -6735,7 +6736,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse2(self, args):
     src = test_file('sse/test_sse2.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse2', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-msse2', '-fno-inline-functions', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
@@ -6749,7 +6750,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse3(self):
     src = test_file('sse/test_sse3.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse3', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-msse3', '-Wno-argument-outside-range']
@@ -6763,7 +6764,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_ssse3(self):
     src = test_file('sse/test_ssse3.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_ssse3', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-mssse3', '-Wno-argument-outside-range']
@@ -6780,7 +6781,7 @@ void* operator new(size_t size) {
   def test_sse4_1(self):
     src = test_file('sse/test_sse4_1.cpp')
     # Run with inlining disabled to avoid slow LLVM behavior with lots of macro expanded loops inside a function body.
-    self.run_process([shared.CLANG_CXX, src, '-msse4.1', '-fno-inline-functions', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([CLANG_CXX, src, '-msse4.1', '-fno-inline-functions', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse4_1', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-msse4.1', '-fno-inline-functions', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB']
@@ -6799,7 +6800,7 @@ void* operator new(size_t size) {
   def test_sse4(self, use_4_2):
     msse4 = '-msse4.2' if use_4_2 else '-msse4'
     src = test_file('sse/test_sse4_2.cpp')
-    self.run_process([shared.CLANG_CXX, src, msse4, '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([CLANG_CXX, src, msse4, '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse4_2', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), msse4, '-Wno-argument-outside-range']
@@ -6820,7 +6821,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_avx(self, args):
     src = test_file('sse/test_avx.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_avx', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-mavx', '-fno-inline-functions', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
@@ -6841,7 +6842,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_avx2(self, args):
     src = test_file('sse/test_avx2.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_avx2', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-mavx2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
@@ -6865,7 +6866,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_fma_relaxed(self):
     src = test_file('sse/test_fma_relaxed.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-mfma', '-mavx', '-o', 'test_fma_relaxed', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args())
+    self.run_process([CLANG_CXX, src, '-mfma', '-mavx', '-o', 'test_fma_relaxed', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args())
     native_result = self.run_process('./test_fma_relaxed', stdout=PIPE).stdout
 
     self.do_runf(src, native_result,
@@ -8000,7 +8001,7 @@ void* operator new(size_t size) {
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
     no_maps_file = read_file(no_maps_filename)
-    no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
+    no_maps_file = re.sub(r' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
     self.cflags.append('-gsource-map')
 
     self.emcc(os.path.abspath('src.cpp'), ['-o', out_filename])
@@ -8077,7 +8078,7 @@ void* operator new(size_t size) {
 
     self.emcc('test_dwarf.c')
 
-    out = self.run_process([shared.LLVM_DWARFDUMP, 'a.out.wasm', '-all'], stdout=PIPE).stdout
+    out = self.run_process([LLVM_DWARFDUMP, 'a.out.wasm', '-all'], stdout=PIPE).stdout
 
     # parse the sections
     sections = {}
@@ -8142,8 +8143,7 @@ void* operator new(size_t size) {
     self.assertLess(get_dwarf_addr(7, 3), get_dwarf_addr(8, 3))
 
     # Get the wat, printing with -g which has binary offsets
-    wat = self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'),
-                           'a.out.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout
+    wat = self.run_process([WASM_OPT, 'a.out.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout
 
     # We expect to see a pattern like this in optimized builds (there isn't
     # much that can change with such calls to JS (they can't be reordered or
@@ -9755,6 +9755,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_epoll_blocking_asyncify.c', 'done\n')
+
+  @with_asyncify_and_jspi
+  @needs_epoll
+  def test_epoll_wait_and_callback(self):
+    # A suspended blocking epoll_wait and a persistent callback on one epoll
+    # share a single ready list: they take disjoint slices, never the same edge.
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_epoll_wait_and_callback.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
 
   @parameterized({
     '': ([],),

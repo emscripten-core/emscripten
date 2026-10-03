@@ -39,7 +39,7 @@ def read_size_from_json(content):
     return json_data['total']
   # If `total` if not in the json dict then just use the first key.  This happens when only one
   # file size is reported (in this case we don't calculate or store the `total`).
-  first_key = list(json_data.keys())[0]
+  first_key = next(iter(json_data.keys()))
   return json_data[first_key]
 
 

@@ -44,14 +44,15 @@ class sockets_browser(BrowserCore):
   # consecutive server listen ports, because server teardown might not occur deterministically
   # (python dtor time) and is a bit racy.
   # WebsockifyServerHarness uses two port numbers, x and x-1, so increment it by two.
-  # CompiledServerHarness only uses one. Start with 49160 & 49159 as the first server port
-  # addresses. If adding new tests, increment the used port addresses below.
+  # CompiledServerHarness only uses one. Start with 24160 & 24159 as the first server port
+  # addresses (below 32768 to avoid Linux ephemeral client ports). If adding new tests,
+  # increment the used port addresses below.
   @parameterized({
-    'websockify': (WebsockifyServerHarness, 49160, ['-DTEST_DGRAM=0']),
-    'tcp': (CompiledServerHarness, 49161, ['-DTEST_DGRAM=0']),
-    'udp': (CompiledServerHarness, 49162, ['-DTEST_DGRAM=1']),
+    'websockify': (WebsockifyServerHarness, 24160, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 24161, ['-DTEST_DGRAM=0']),
+    'udp': (CompiledServerHarness, 24162, ['-DTEST_DGRAM=1']),
     # The following forces non-NULL addr and addlen parameters for the accept call
-    'accept_addr': (CompiledServerHarness, 49163, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']),
+    'accept_addr': (CompiledServerHarness, 24163, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']),
   })
   def test_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -66,20 +67,20 @@ class sockets_browser(BrowserCore):
 
   @requires_dev_dependency('ws')
   def test_sockets_echo_pthreads(self):
-    with CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 49161) as harness:
+    with CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 24164) as harness:
       self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD', f'-DSOCKK={harness.listen_port}'])
 
   @requires_dev_dependency('ws')
   def test_sdl2_sockets_echo(self):
-    with CompiledServerHarness('sockets/sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164) as harness:
+    with CompiledServerHarness('sockets/sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 24165) as harness:
       self.btest_exit('sockets/sdl2_net_client.c', cflags=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', f'-DSOCKK={harness.listen_port}'])
 
   @parameterized({
-    'websockify': (WebsockifyServerHarness, 49166, ['-DTEST_DGRAM=0']),
-    'tcp': (CompiledServerHarness, 49167, ['-DTEST_DGRAM=0']),
-    'udp': (CompiledServerHarness, 49168, ['-DTEST_DGRAM=1']),
+    'websockify': (WebsockifyServerHarness, 24167, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 24168, ['-DTEST_DGRAM=0']),
+    'udp': (CompiledServerHarness, 24169, ['-DTEST_DGRAM=1']),
     # The following forces non-NULL addr and addlen parameters for the accept call
-    'accept_addr': (CompiledServerHarness, 49169, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']),
+    'accept_addr': (CompiledServerHarness, 24170, ['-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1']),
   })
   def test_sockets_async_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -96,12 +97,12 @@ class sockets_browser(BrowserCore):
   def test_sockets_async_bad_port(self):
     # Deliberately attempt a connection on a port that will fail to test the error callback and
     # getsockopt
-    self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-DSOCKK=49169', '-DTEST_ASYNC=1'])
+    self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-DSOCKK=24171', '-DTEST_ASYNC=1'])
 
   @parameterized({
-    'websockify': (WebsockifyServerHarness, 49171, ['-DTEST_DGRAM=0']),
-    'tcp': (CompiledServerHarness, 49172, ['-DTEST_DGRAM=0']),
-    'udp': (CompiledServerHarness, 49173, ['-DTEST_DGRAM=1']),
+    'websockify': (WebsockifyServerHarness, 24173, ['-DTEST_DGRAM=0']),
+    'tcp': (CompiledServerHarness, 24174, ['-DTEST_DGRAM=0']),
+    'udp': (CompiledServerHarness, 24175, ['-DTEST_DGRAM=1']),
   })
   def test_sockets_echo_bigdata(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -129,8 +130,8 @@ class sockets_browser(BrowserCore):
   @requires_dev_dependency('ws')
   def test_sockets_partial(self):
     for harness in [
-      WebsockifyServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 49180),
-      CompiledServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 49181),
+      WebsockifyServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 24180),
+      CompiledServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 24181),
     ]:
       with harness:
         self.btest_exit('sockets/test_sockets_partial_client.c', assert_returncode=165, cflags=[f'-DSOCKK={harness.listen_port}'])
@@ -140,8 +141,8 @@ class sockets_browser(BrowserCore):
   @requires_dev_dependency('ws')
   def test_sockets_select_server_down(self):
     for harness in [
-      WebsockifyServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49190, do_server_check=False),
-      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191, do_server_check=False),
+      WebsockifyServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 24190, do_server_check=False),
+      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 24191, do_server_check=False),
     ]:
       with harness:
         self.btest_exit('sockets/test_sockets_select_server_down_client.c', cflags=[f'-DSOCKK={harness.listen_port}'])
@@ -151,8 +152,8 @@ class sockets_browser(BrowserCore):
   @requires_dev_dependency('ws')
   def test_sockets_select_server_closes_connection_rw(self):
     for harness in [
-      WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49200),
-      CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 49201),
+      WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 24200),
+      CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), ['-DCLOSE_CLIENT_AFTER_ECHO'], 24201),
     ]:
       with harness:
         self.btest_exit('sockets/test_sockets_select_server_closes_connection_client_rw.c', cflags=[f'-DSOCKK={harness.listen_port}'])
@@ -167,7 +168,7 @@ class sockets_browser(BrowserCore):
       self.run_process([common.EMMAKE, 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
 
-    with CompiledServerHarness(test_file('sockets/test_enet_server.c'), enet, 49210) as harness:
+    with CompiledServerHarness(test_file('sockets/test_enet_server.c'), enet, 24210) as harness:
       self.btest_exit('sockets/test_enet_client.c', cflags=[*enet, f'-DSOCKK={harness.listen_port}'])
 
   # Test Emscripten WebSockets API to send and receive text and binary messages against an echo server.

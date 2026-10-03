@@ -53,6 +53,6 @@ jobs:
           cd site/emscripten-site
           git push -f origin update
           gh pr create --fill --head update --base gh-pages --reviewer sbc100,kripken
-          # TODO: Enable this once we figure out how to enforce review
-          # requirment
-          #gh pr merge --squash --auto
+          # Enable auto-submit.  Currently there is no review requirement so
+          # these changes are effectively landed with TBR.
+          gh pr merge --squash --auto

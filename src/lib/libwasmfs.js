@@ -133,7 +133,7 @@ addToLibrary({
                                            // on other code including the
                                            // __wasmfs_* method properly.
     readFile(path, opts = {}) {
-      opts.encoding = opts.encoding || 'binary';
+      opts.encoding ??= 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         throw new Error(`Invalid encoding type "${opts.encoding}"`);
       }
@@ -159,19 +159,6 @@ addToLibrary({
 #endif
 
 #if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // see comment above
-    // Full JS API support
-
-    analyzePath(path) {
-      // TODO: Consider simplifying this API, which for now matches the JS FS.
-      var exists = !!FS.findObject(path);
-      return {
-        exists,
-        object: {
-          contents: exists ? FS.readFile(path) : null
-        }
-      };
-    },
-
     // libc methods
 
     mkdir: (path, mode) => FS_mkdir(path, mode),
@@ -309,16 +296,6 @@ addToLibrary({
     },
     ftruncate(fd, len) {
       return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
-    },
-    findObject(path) {
-      var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(path)));
-      if (result == {{{ cDefs.ENOENT }}}) {
-        return null;
-      }
-      return {
-        isFolder: result == {{{ cDefs.EISDIR }}},
-        isDevice: false, // TODO: wasmfs support for devices
-      };
     },
     readdir: (path) => withStackSave(() => {
       var pathBuffer = stringToUTF8OnStack(path);

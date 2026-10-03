@@ -18,8 +18,34 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.10 (in development)
+6.0.12 (in development)
 ----------------------
+
+- `MAXIMUM_MEMORY` is now honored with `IMPORTED_MEMORY` even without
+  `ALLOW_MEMORY_GROWTH`: the module accepts an imported memory of any size up to
+  the maximum, but never grows it. Previously the maximum was ignored, with a
+  warning, and only a memory of exactly `INITIAL_MEMORY` was accepted.
+  (#27859)
+- Added experimental `emscripten_epoll_listener_add` and
+  `emscripten_epoll_listener_remove` in the new `<emscripten/epoll.h>`. These
+  listeners deliver an epoll set's readiness to a callback, supported on the
+  main thread only. The callback itself is then able to collect the events via
+  a zero-timeout `epoll_wait`, without an `ASYNCIFY`/`JSPI` requirement.
+  (#27547)
+
+6.0.11 - 10/02/26
+-----------------
+- Built-in SCons support (`emscons` and `tools/scons`) was marked as deprecated.
+  (See #27835)
+- The legacy `FS.findObject` function was removed (#27764) and `FS.analyzePath`
+  was marked as deprecated (`FS.lookupPath` or `FS.stat` should be used
+  instead). (#27765)
+- OpenMP was updated to LLVM commit 9076414489ed. This adds Wasm64 support and
+  raises the generic microtask dispatcher limit from 15 to 32 arguments.
+  (#27221)
+
+6.0.10 - 09/21/26
+-----------------
 - The SDL3 port is no longer considered experimental, and the compiler
   diagnostic warning has been removed. (#27646)
 - `WASM=0` and `WASM=2` (wasm2js) were marked as deprecated. (See #27608)
@@ -39,6 +65,8 @@ See docs/process.md for more on how version tagging works.
 - `emscripten_clear_timeout` now releases the runtime keepalive held by the
   pending timeout, and both `emscripten_clear_timeout` and
   `emscripten_clear_immediate` are no-ops for ids that already fired. (#27720)
+- The `NODE_CODE_CACHING` setting was removed, as node's support for
+  serializing WebAssembly modules has been missing for over 5 years now.
 
 6.0.9 - 09/01/26
 ----------------

@@ -189,8 +189,12 @@ var INITIAL_HEAP = 16777216;
 var INITIAL_MEMORY = -1;
 
 // Set the maximum size of memory in the wasm module (in bytes). This is only
-// relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
-// INITIAL_MEMORY is the final size of memory anyhow.
+// relevant when ALLOW_MEMORY_GROWTH or IMPORTED_MEMORY is set, as otherwise the
+// size of INITIAL_MEMORY is the final size of memory anyhow. With
+// IMPORTED_MEMORY and without growth, the module accepts an imported memory of
+// any size up to this maximum, but never grows it. The memory must not be grown
+// from outside the module either; create it with its maximum equal to its
+// initial size to guarantee that.
 //
 // Note that the default value here is 2GB, which means that by default if you
 // enable memory growth then we can grow up to 2GB but no higher. 2GB is a
@@ -1060,25 +1064,6 @@ var NODERAWFS = false;
 // also be controlled separately.
 var NODE_HOST_ENV = false;
 
-// This saves the compiled wasm module in a file with name
-// ``$WASM_BINARY_NAME.$V8_VERSION.cached``
-// and loads it on subsequent runs. This caches the compiled wasm code from
-// v8 in node, which saves compiling on subsequent runs, making them start up
-// much faster.
-// The V8 version used in node is included in the cache name so that we don't
-// try to load cached code from another version, which fails silently (it seems
-// to load ok, but we do actually recompile).
-//
-// - The only version known to work for sure is node 12.9.1, as this has
-//   regressed, see
-//   https://github.com/nodejs/node/issues/18265#issuecomment-622971547
-// - The default location of the .cached files is alongside the wasm binary,
-//   as mentioned earlier. If that is in a read-only directory, you may need
-//   to place them elsewhere. You can use the locateFile() hook to do so.
-//
-// [link]
-var NODE_CODE_CACHING = false;
-
 // Symbols that are explicitly exported. These symbols are kept alive through
 // LLVM dead code elimination, and also made accessible outside of the
 // generated code even after running closure compiler (on "Module").  Native
@@ -1202,10 +1187,13 @@ var LINKABLE = false;
 //
 //   - STRICT_JS is enabled.
 //   - IGNORE_MISSING_MAIN is disabled.
+//   - INCOMING_MODULE_JS_API is set to empty by default.
 //   - AUTO_JS_LIBRARIES is disabled.
 //   - AUTO_NATIVE_LIBRARIES is disabled.
 //   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
-//   - INCOMING_MODULE_JS_API is set to empty by default.
+//
+// Note: If you build with -sMAIN_MODULE=1 the last 3 are not disabled since
+// they would cause link failures.
 // [compile+link]
 var STRICT = false;
 
@@ -1927,8 +1915,8 @@ var SINGLE_FILE_BINARY_ENCODE = true;
 var AUTO_JS_LIBRARIES = true;
 
 // Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
-// and libhtml5.   If this is disabled it is necessary to explicitly add
-// e.g. -lhtml5 and also to first build the library using ``embuilder``.
+// and libhtml5.  This gets set to 0 in STRICT mode.  If this is disabled it is
+// necessary to explicitly add libraries to the link command (e.g. -lhtml5).
 // [link]
 var AUTO_NATIVE_LIBRARIES = true;
 
@@ -2273,8 +2261,8 @@ var JS_BASE64_API = false;
 // to completely remove the overhead of growable memory + pthreads.
 //
 // Note that while browser support for this feature is widespread
-// (https://caniuse.com/?search=sharedarraybuffer.resize), it was not usable on
-// Firefox until Firefox 154,
+// (https://caniuse.com/mdn-webassembly_api_memory_toresizablebuffer), it
+// was not usable on Firefox until Firefox 154,
 // https://bugzilla.mozilla.org/show_bug.cgi?id=2021136
 //
 // This settings does nothing unless ALLOW_MEMORY_GROWTH is set.

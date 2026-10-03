@@ -785,15 +785,8 @@ var FS_stdin_getChar = () => {
       var BUFSIZE = 256;
       var buf = Buffer.alloc(BUFSIZE);
       var bytesRead = 0;
-      // For some reason we must suppress a closure warning here, even though
-      // fd definitely exists on process.stdin, and is even the proper way to
-      // get the fd of stdin,
-      // https://github.com/nodejs/help/issues/2136#issuecomment-523649904
-      // This started to happen after moving this logic out of library_tty.js,
-      // so it is related to the surrounding code in some unclear manner.
-      /** @suppress {missingProperties} */ var fd = process.stdin.fd;
       try {
-        bytesRead = fs.readSync(fd, buf, 0, BUFSIZE);
+        bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE);
       } catch (e) {
         // Cross-platform differences: on Windows, reading EOF throws an
         // exception, but on other OSes, reading EOF returns 0. Uniformize
@@ -801,7 +794,7 @@ var FS_stdin_getChar = () => {
         if (e.toString().includes("EOF")) bytesRead = 0; else throw e;
       }
       if (bytesRead > 0) {
-        result = buf.slice(0, bytesRead).toString("utf-8");
+        result = buf.toString("utf-8", 0, bytesRead);
       }
     } else if (globalThis.window?.prompt) {
       // Browser.
@@ -1122,14 +1115,11 @@ var MEMFS = {
       try {
         new_node = FS.lookupNode(new_dir, new_name);
       } catch (e) {}
-      if (new_node) {
-        if (FS.isDir(old_node.mode)) {
-          // if we're overwriting a directory at new_name, make sure it's empty.
-          for (var i in new_node.contents) {
-            throw new FS.ErrnoError(55);
-          }
+      if (new_node && FS.isDir(old_node.mode)) {
+        // if we're overwriting a directory at new_name, make sure it's empty.
+        for (var i in new_node.contents) {
+          throw new FS.ErrnoError(55);
         }
-        FS.hashRemoveNode(new_node);
       }
       // do the internal rewiring
       delete old_node.parent.contents[old_node.name];
@@ -1361,7 +1351,7 @@ var FS = {
   devices: {},
   streams: [],
   nextInode: 1,
-  nameTable: null,
+  nameTable: [],
   currentPath: "/",
   initialized: false,
   ignorePermissions: true,
@@ -1994,7 +1984,7 @@ var FS = {
     mode |= 16384;
     return FS.mknod(path, mode, 0);
   },
-  mkdirTree(path, mode) {
+  mkdirTree(path, mode = 511) {
     var dirs = path.split("/");
     var d = "";
     for (var dir of dirs) {
@@ -2130,6 +2120,11 @@ var FS = {
     // do the underlying fs rename
     try {
       old_dir.node_ops.rename(old_node, new_dir, new_name);
+      // The replaced node is stale now. Evict it only after the rename
+      // succeeded: backends like NODEFS report node.id as st_ino.
+      if (new_node) {
+        FS.hashRemoveNode(new_node);
+      }
       // update old node (we do this here to avoid each backend
       // needing to)
       old_node.parent = new_dir;
@@ -2206,7 +2201,7 @@ var FS = {
     }
     return link.node_ops.readlink(link);
   },
-  stat(path, dontFollow) {
+  stat(path, dontFollow = false) {
     var lookup = FS.lookupPath(path, {
       follow: !dontFollow
     });
@@ -2226,14 +2221,14 @@ var FS = {
   lstat(path) {
     return FS.stat(path, true);
   },
-  doChmod(stream, node, mode, dontFollow) {
+  doChmod(stream, node, mode, dontFollow = false) {
     FS.doSetAttr(stream, node, {
       mode: (mode & 4095) | (node.mode & ~4095),
       ctime: Date.now(),
       dontFollow
     });
   },
-  chmod(path, mode, dontFollow) {
+  chmod(path, mode, dontFollow = false) {
     var node;
     if (typeof path == "string") {
       var lookup = FS.lookupPath(path, {
@@ -2252,13 +2247,13 @@ var FS = {
     var stream = FS.getStreamChecked(fd);
     FS.doChmod(stream, stream.node, mode, false);
   },
-  doChown(stream, node, dontFollow) {
+  doChown(stream, node, dontFollow = false) {
     FS.doSetAttr(stream, node, {
       timestamp: Date.now(),
       dontFollow
     });
   },
-  chown(path, uid, gid, dontFollow) {
+  chown(path, uid, gid, dontFollow = false) {
     var node;
     if (typeof path == "string") {
       var lookup = FS.lookupPath(path, {
@@ -2315,7 +2310,7 @@ var FS = {
     }
     FS.doTruncate(stream, stream.node, len);
   },
-  utime(path, atime, mtime, dontFollow) {
+  utime(path, atime, mtime, dontFollow = false) {
     var lookup = FS.lookupPath(path, {
       follow: !dontFollow
     });
@@ -2547,8 +2542,8 @@ var FS = {
     return stream.stream_ops.ioctl(stream, cmd, arg);
   },
   readFile(path, opts = {}) {
-    opts.flags = opts.flags ?? 0;
-    opts.encoding = opts.encoding ?? "binary";
+    opts.flags ??= 0;
+    opts.encoding ??= "binary";
     if (opts.encoding !== "utf8" && opts.encoding !== "binary") {
       abort(`Invalid encoding type "${opts.encoding}"`);
     }
@@ -2564,7 +2559,7 @@ var FS = {
     return buf;
   },
   writeFile(path, data, opts = {}) {
-    opts.flags = opts.flags ?? 577;
+    opts.flags ??= 577;
     var stream = FS.open(path, opts.flags, opts.mode);
     data = FS_fileDataToTypedArray(data);
     FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
@@ -2693,7 +2688,7 @@ var FS = {
     var stderr = FS.open("/dev/stderr", 1);
   },
   staticInit() {
-    FS.nameTable = new Array(4096);
+    FS.nameTable.length = 4096;
     FS.mount(MEMFS, {}, "/");
     FS.createDefaultDirectories();
     FS.createDefaultDevices();
@@ -2716,53 +2711,6 @@ var FS = {
         FS.close(stream);
       }
     }
-  },
-  findObject(path, dontResolveLastLink) {
-    var ret = FS.analyzePath(path, dontResolveLastLink);
-    if (!ret.exists) {
-      return null;
-    }
-    return ret.object;
-  },
-  analyzePath(path, dontResolveLastLink) {
-    // operate from within the context of the symlink's target
-    try {
-      var lookup = FS.lookupPath(path, {
-        follow: !dontResolveLastLink
-      });
-      path = lookup.path;
-    } catch (e) {}
-    var ret = {
-      isRoot: false,
-      exists: false,
-      error: 0,
-      name: null,
-      path: null,
-      object: null,
-      parentExists: false,
-      parentPath: null,
-      parentObject: null
-    };
-    try {
-      var lookup = FS.lookupPath(path, {
-        parent: true
-      });
-      ret.parentExists = true;
-      ret.parentPath = lookup.path;
-      ret.parentObject = lookup.node;
-      ret.name = PATH.basename(path);
-      lookup = FS.lookupPath(path, {
-        follow: !dontResolveLastLink
-      });
-      ret.exists = true;
-      ret.path = lookup.path;
-      ret.object = lookup.node;
-      ret.name = lookup.node.name;
-      ret.isRoot = lookup.path === "/";
-    } catch (e) {
-      ret.error = e.errno;
-    }
-    return ret;
   },
   createPath(parent, path, canRead, canWrite) {
     parent = typeof parent == "string" ? parent : FS.getPath(parent);
@@ -3058,7 +3006,7 @@ var FS = {
 
 var SYSCALLS = {
   currentUmask: 18,
-  calculateAt(dirfd, path, allowEmpty) {
+  calculateAt(dirfd, path, allowEmpty = false) {
     if (PATH.isAbs(path)) {
       return path;
     }
@@ -3088,15 +3036,17 @@ var SYSCALLS = {
     HEAP64[(((buf) + (24)) >> 3)] = BigInt(stat.size);
     HEAP32[(((buf) + (32)) >> 2)] = 4096;
     HEAP32[(((buf) + (36)) >> 2)] = stat.blocks;
-    var atime = stat.atime.getTime();
-    var mtime = stat.mtime.getTime();
-    var ctime = stat.ctime.getTime();
+    // Prefer `*Ms` properties if available (e.g. from NODEFS / host `fs.Stats`)
+    // for sub-millisecond precision; fall back to Date#getTime for other filesystems.
+    var atime = stat.atimeMs ?? stat.atime.getTime();
+    var mtime = stat.mtimeMs ?? stat.mtime.getTime();
+    var ctime = stat.ctimeMs ?? stat.ctime.getTime();
     HEAP64[(((buf) + (40)) >> 3)] = BigInt(Math.floor(atime / 1e3));
-    HEAPU32[(((buf) + (48)) >> 2)] = (atime % 1e3) * 1e3 * 1e3;
+    HEAPU32[(((buf) + (48)) >> 2)] = Math.floor((atime % 1e3) * 1e6);
     HEAP64[(((buf) + (56)) >> 3)] = BigInt(Math.floor(mtime / 1e3));
-    HEAPU32[(((buf) + (64)) >> 2)] = (mtime % 1e3) * 1e3 * 1e3;
+    HEAPU32[(((buf) + (64)) >> 2)] = Math.floor((mtime % 1e3) * 1e6);
     HEAP64[(((buf) + (72)) >> 3)] = BigInt(Math.floor(ctime / 1e3));
-    HEAPU32[(((buf) + (80)) >> 2)] = (ctime % 1e3) * 1e3 * 1e3;
+    HEAPU32[(((buf) + (80)) >> 2)] = Math.floor((ctime % 1e3) * 1e6);
     HEAP64[(((buf) + (88)) >> 3)] = BigInt(stat.ino);
     return 0;
   },

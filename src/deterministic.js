@@ -10,7 +10,7 @@ Math.random = () => {
   return MAGIC;
 };
 
-var TIME = 10000;
+var TIME = 10_000;
 function deterministicNow() {
   return TIME++;
 }

@@ -162,7 +162,7 @@ class Scope:
       for field in struct:
         if isinstance(field, dict):
           # We have to recurse to inspect the nested dict.
-          fname = list(field.keys())[0]
+          fname = next(iter(field.keys()))
           self.gen_inspect_code([*path, fname], field[fname])
         else:
           member = ".".join([*path[1:], field])

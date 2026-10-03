@@ -55,7 +55,7 @@ public:
   // PipeFiles do not have or need a backend. Pass NullBackend to the parent for
   // that.
   PipeFile(mode_t mode, std::shared_ptr<PipeData> data)
-    : DataFile(mode, NullBackend), data(data) {
+    : DataFile(mode, NullBackend, S_IFIFO), data(data) {
     // Reads are always from the front; writes always to the end.
     seekable = false;
   }

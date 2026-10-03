@@ -55,7 +55,6 @@ def check_engine(engine):
     engine_path = engine[0]
   else:
     engine_path = engine
-  global WORKING_ENGINES
   if engine_path not in WORKING_ENGINES:
     logging.debug(f'Checking JS engine {engine}')
     try:

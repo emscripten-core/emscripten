@@ -20,9 +20,9 @@ var LibraryWebSocket = {
     getSocketEvent(socketId) {
       // Singleton event pointer.  Use EmscriptenWebSocketCloseEvent, which is
       // the largest event struct
-      this.socketEvent ||= _malloc({{{ C_STRUCTS.EmscriptenWebSocketCloseEvent.__size__ }}});
-      {{{ makeSetValue('this.socketEvent', 0, 'socketId', 'u32') }}};
-      return this.socketEvent;
+      WS.socketEvent ||= _malloc({{{ C_STRUCTS.EmscriptenWebSocketCloseEvent.__size__ }}});
+      {{{ makeSetValue('WS.socketEvent', 0, 'socketId', 'u32') }}};
+      return WS.socketEvent;
     },
   },
 

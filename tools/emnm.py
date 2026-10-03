@@ -15,4 +15,6 @@ sys.path.insert(0, __rootdir__)
 
 from tools import shared
 
-shared.exec_process([shared.LLVM_NM, *sys.argv[1:]])
+LLVM_NM = shared.llvm_tool_path('llvm-nm')
+
+shared.exec_process([LLVM_NM, *sys.argv[1:]])
