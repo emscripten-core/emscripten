@@ -20,11 +20,18 @@ See docs/process.md for more on how version tagging works.
 
 6.0.12 (in development)
 ----------------------
+
 - `MAXIMUM_MEMORY` is now honored with `IMPORTED_MEMORY` even without
   `ALLOW_MEMORY_GROWTH`: the module accepts an imported memory of any size up to
   the maximum, but never grows it. Previously the maximum was ignored, with a
   warning, and only a memory of exactly `INITIAL_MEMORY` was accepted.
   (#27859)
+- Added experimental `emscripten_epoll_listener_add` and
+  `emscripten_epoll_listener_remove` in the new `<emscripten/epoll.h>`. These
+  listeners deliver an epoll set's readiness to a callback, supported on the
+  main thread only. The callback itself is then able to collect the events via
+  a zero-timeout `epoll_wait`, without an `ASYNCIFY`/`JSPI` requirement.
+  (#27547)
 
 6.0.11 - 10/02/26
 -----------------

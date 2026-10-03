@@ -13634,6 +13634,99 @@ void foo() {}
     # the instance down.
     self.do_runf('other/test_epoll_dup.c', 'done\n')
 
+  def test_epoll_callback(self):
+    # emscripten_epoll_listener_add delivers an epoll set's readiness by a
+    # persistent callback with no blocking and no ASYNCIFY/JSPI.
+    self.do_runf('other/test_epoll_callback.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  @parameterized({
+    '': ([],),
+    'dup': (['-DMODE_DUP'],),
+  })
+  def test_epoll_callback_multi(self, cflags):
+    # Multiple listeners on one epoll: broadcast wake, racing collectors take
+    # disjoint slices of the shared ready list (load balancing).
+    self.do_runf('other/test_epoll_callback_multi.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', *cflags])
+
+  def test_epoll_callback_dup(self):
+    # A registration added via a dup'd epoll fd is delivered to a callback armed
+    # on the original fd, since both fds share one epoll instance.
+    self.do_runf('other/test_epoll_callback_dup.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  @parameterized({
+    '': ([],),
+    'dup2': (['-DMODE_DUP2'],),
+  })
+  def test_epoll_callback_dup_close(self, cflags):
+    self.do_runf('other/test_epoll_callback_dup_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', *cflags])
+
+  def test_epoll_callback_overflow(self):
+    # A callback that collects one event per tick (epoll_wait maxevents=1) is
+    # re-triggered to drain the remainder across ticks (no app loop to re-call it).
+    self.do_runf('other/test_epoll_callback_overflow.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_replace(self):
+    # Listener identity is (callback, userdata): the same callback registers
+    # once per userdata, a duplicate pair is EEXIST; removal is by pair
+    # (ENOENT/EBADF errors).
+    self.do_runf('other/test_epoll_callback_replace.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_close(self):
+    # Closing the watched fd from the callback wakes the epoll only to evict the
+    # stale registration; the process exits with the listener still registered.
+    self.do_runf('other/test_epoll_callback_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_nested(self):
+    # A callback on an outer epoll fires when a leaf edge propagates through an
+    # inner (nested) epoll.
+    self.do_runf('other/test_epoll_callback_nested.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_nested_close(self):
+    # Closing the inner epoll wakes the outer to drop its stale registration
+    # rather than deliver; the same close -> wake -> evict path one level up.
+    self.do_runf('other/test_epoll_callback_nested_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_edge(self):
+    # EPOLLET on the callback path: fires once per edge, stays silent while
+    # continuously readable, re-fires only on a fresh edge.
+    self.do_runf('other/test_epoll_callback_edge.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_level(self):
+    # A structurally-always-ready level fd (EPOLLOUT on a writable end) re-fires
+    # the callback every tick: documents the spin contract (use EPOLLET/unregister).
+    self.do_runf('other/test_epoll_callback_level.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  @parameterized({
+    '': ([], 3),
+    'pending': (['-DMODE_PENDING'], 3),
+    'ready': (['-DMODE_READY'], 3),
+    'hold': (['-DMODE_HOLD'], 0),
+    'hold_ready': (['-DMODE_HOLD', '-DMODE_LEAVE_READY'], 0),
+  })
+  def test_epoll_callback_unref(self, cflags, returncode):
+    # A listener is unref'd: even a pending delivery does not keep the runtime
+    # alive. With an explicit keepalive the delivery runs and its pop exits.
+    self.do_runf('other/test_epoll_callback_unref.c', 'done\nexited %d\n' % returncode,
+                 cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
+
+  def test_epoll_callback_macrotask(self):
+    # A delivery runs on a later event-loop turn, after the call that made the
+    # set ready and the current microtask checkpoint have completed.
+    self.do_runf('other/test_epoll_callback_macrotask.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_abort(self):
+    # A fatal error in the callback is an uncaught exception from the delivery
+    # task, not an unhandled rejection (which would be reported differently
+    # and exit 0 here).
+    output = self.do_runf('other/test_epoll_callback_abort.c', 'Aborted(native code called abort())', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'], assert_returncode=NON_ZERO)
+    self.assertNotContained('unhandled rejection', output)
+
+  @requires_pthreads
+  def test_epoll_callback_thread(self):
+    # Listeners are main-thread only: registration from another thread is
+    # ENOTSUP.
+    self.do_runf('other/test_epoll_callback_thread.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD'])
+
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_pthread_trap(self):
