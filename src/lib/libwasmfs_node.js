@@ -190,6 +190,14 @@ var wasmFSNodeLibrary = {
     });
   },
 
+  _wasmfs_node_fsync__deps: ['$wasmfsTry'],
+  _wasmfs_node_fsync: (fd) => {
+    return wasmfsTry(() => {
+      fs.fsyncSync(fd);
+      // implicitly return 0
+    });
+  },
+
   _wasmfs_node_close__deps: ['$wasmfsTry'],
   _wasmfs_node_close: (fd) => {
     return wasmfsTry(() => {

@@ -421,6 +421,7 @@ sigs = {
   _wasmfs_jsimpl_write__sig: 'ippppj',
   _wasmfs_node_close__sig: 'ii',
   _wasmfs_node_fstat_size__sig: 'iip',
+  _wasmfs_node_fsync__sig: 'ii',
   _wasmfs_node_ftruncate__sig: 'iij',
   _wasmfs_node_get_mode__sig: 'ipp',
   _wasmfs_node_insert_directory__sig: 'ipi',
