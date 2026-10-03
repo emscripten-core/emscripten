@@ -15,14 +15,18 @@
 
 // FIXME: Merge with other existing close and open tests.
 
+#ifndef S_IWUGO
+#define S_IWUGO (S_IWUSR | S_IWGRP | S_IWOTH)
+#define S_IRUGO (S_IRUSR | S_IRGRP | S_IROTH)
+#define S_IXUGO (S_IXUSR | S_IXGRP | S_IXOTH)
+#endif
+
 int main() {
-  // Test writing to a file with a trailing slash.
+  // Test that opening a file with a trailing slash fails with ENOTDIR.
+  errno = 0;
   int fd = open("/dev/stdout/", O_WRONLY);
-
-  dprintf(fd, "WORKING WITH TRAILING BACKSLASH\n");
-
-  // Close open file
-  close(fd);
+  assert(fd == -1);
+  assert(errno == ENOTDIR);
 
   // Test writing to a file with no trailing backslash.
   int fd2 = open("/dev/stdout", O_WRONLY);
