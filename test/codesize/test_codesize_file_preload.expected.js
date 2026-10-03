@@ -1115,14 +1115,11 @@ var MEMFS = {
       try {
         new_node = FS.lookupNode(new_dir, new_name);
       } catch (e) {}
-      if (new_node) {
-        if (FS.isDir(old_node.mode)) {
-          // if we're overwriting a directory at new_name, make sure it's empty.
-          for (var i in new_node.contents) {
-            throw new FS.ErrnoError(55);
-          }
+      if (new_node && FS.isDir(old_node.mode)) {
+        // if we're overwriting a directory at new_name, make sure it's empty.
+        for (var i in new_node.contents) {
+          throw new FS.ErrnoError(55);
         }
-        FS.hashRemoveNode(new_node);
       }
       // do the internal rewiring
       delete old_node.parent.contents[old_node.name];
@@ -2123,6 +2120,11 @@ var FS = {
     // do the underlying fs rename
     try {
       old_dir.node_ops.rename(old_node, new_dir, new_name);
+      // The replaced node is stale now. Evict it only after the rename
+      // succeeded: backends like NODEFS report node.id as st_ino.
+      if (new_node) {
+        FS.hashRemoveNode(new_node);
+      }
       // update old node (we do this here to avoid each backend
       // needing to)
       old_node.parent = new_dir;
