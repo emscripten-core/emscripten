@@ -21,6 +21,10 @@ See docs/process.md for more on how version tagging works.
 6.0.12 (in development)
 ----------------------
 
+- Added new `emld` tool as a linker entry point. `emld` acts as a drop-in
+  replacement for `ld` or `wasm-ld`, performing the wasm link and Emscripten
+  post-link steps. `emcc` now uses `clang -fuse-ld=emld` under the hood to drive
+  the linking phase. (#15703)
 - `MAXIMUM_MEMORY` is now honored with `IMPORTED_MEMORY` even without
   `ALLOW_MEMORY_GROWTH`: the module accepts an imported memory of any size up to
   the maximum, but never grows it. Previously the maximum was ignored, with a

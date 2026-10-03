@@ -632,6 +632,7 @@ CLANG_CXX = clang_tool_path('clang++')
 LLVM_AR = llvm_tool_path('llvm-ar')
 
 EMCC = exe_path_from_root('emcc')
+EMLD = exe_path_from_root('emld')
 EMXX = exe_path_from_root('em++')
 EMAR = exe_path_from_root('emar')
 EMRANLIB = exe_path_from_root('emranlib')

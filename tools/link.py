@@ -25,7 +25,6 @@ from . import (
   extract_metadata,
   feature_matrix,
   js_manipulation,
-  ports,
   shared,
   system_libs,
   utils,
@@ -817,6 +816,47 @@ def add_required_heap_symbols():
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append(h)
 
 
+def linker_setup_minimal(options):
+  if options.oformat == OFormat.WASM and not settings.SIDE_MODULE:
+    # if the output is just a wasm file, it will normally be a standalone one,
+    # as there is no JS. an exception are side modules, as we can't tell at
+    # compile time whether JS will be involved or not - the main module may
+    # have JS, and the side module is expected to link against that.
+    # we also do not support standalone mode in fastcomp.
+    settings.STANDALONE_WASM = 1
+
+  if settings.PURE_WASI:
+    settings.STANDALONE_WASM = 1
+    settings.ALLOW_MEMORY_GROWTH = 1
+    settings.WASM_BIGINT = 1
+    # WASI does not support Emscripten (JS-based) exception catching, which the
+    # JS-based longjmp support also uses. Emscripten EH is by default disabled
+    # so we don't need to do anything here.
+    if not settings.WASM_EXCEPTIONS:
+      default_setting('SUPPORT_LONGJMP', 0)
+
+  if options.no_entry:
+    settings.EXPECT_MAIN = 0
+  elif settings.STANDALONE_WASM:
+    if '_main' in settings.EXPORTED_FUNCTIONS:
+      # TODO(sbc): Make this into a warning?
+      logger.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
+  else:  # ruff: ignore[collapsible-else-if]
+    # In normal non-standalone mode we have special handling of `_main` in EXPORTED_FUNCTIONS.
+    # 1. If the user specifies exports, but doesn't include `_main` we assume they want to build a
+    #    reactor.
+    # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
+    #    is specified (see above).
+    if 'EXPORTED_FUNCTIONS' in user_settings:
+      if '_main' in settings.USER_EXPORTS:
+        settings.EXPORTED_FUNCTIONS.remove('_main')
+        settings.EXPORT_IF_DEFINED.append('main')
+      else:
+        settings.EXPECT_MAIN = 0
+    else:
+      settings.EXPORT_IF_DEFINED.append('main')
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
   """Future modifications should consider refactoring to reduce complexity.
@@ -831,6 +871,10 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
   apply_library_settings(linker_args)
 
+  linker_setup_minimal(options)
+
+  if settings.SIDE_MODULE or settings.MAIN_MODULE:
+    default_setting('FAKE_DYLIBS', 0)
   if options.shared and not settings.FAKE_DYLIBS:
     default_setting('SIDE_MODULE', 1)
 
@@ -912,22 +956,17 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.GENERATE_SOURCE_MAP = 0
 
   # options.output_file is the user-specified one, target is what we will generate
-  if options.output_file:
-    target = options.output_file
-    # check for the existence of the output directory now, to avoid having
-    # to do so repeatedly when each of the various output files (.mem, .wasm,
-    # etc) are written. This gives a more useful error message than the
-    # IOError and python backtrace that users would otherwise see.
-    dirname = os.path.dirname(target)
-    if dirname and not os.path.isdir(dirname):
-      exit_with_error(f"specified output file ({target}) is in a directory that does not exist")
-  elif autoconf:
-    # Autoconf expects the executable output file to be called `a.out`
-    target = 'a.out'
-  elif settings.SIDE_MODULE:
-    target = 'a.out.wasm'
-  else:
-    target = 'a.out.js'
+  target = options.output_file
+  if not target:
+    exit_with_error('no output file specified')
+
+  # check for the existence of the output directory now, to avoid having
+  # to do so repeatedly when each of the various output files (.mem, .wasm,
+  # etc) are written. This gives a more useful error message than the
+  # IOError and python backtrace that users would otherwise see.
+  dirname = os.path.dirname(target)
+  if dirname and not os.path.isdir(dirname):
+    exit_with_error(f"specified output file ({target}) is in a directory that does not exist")
 
   final_suffix = get_file_suffix(target)
 
@@ -1055,47 +1094,8 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       exit_with_error('WASM_BIGINT=1 is not compatible with wasm2js')
     settings.WASM_BIGINT = 0
 
-  if options.oformat == OFormat.WASM and not settings.SIDE_MODULE:
-    # if the output is just a wasm file, it will normally be a standalone one,
-    # as there is no JS. an exception are side modules, as we can't tell at
-    # compile time whether JS will be involved or not - the main module may
-    # have JS, and the side module is expected to link against that.
-    # we also do not support standalone mode in fastcomp.
-    settings.STANDALONE_WASM = 1
-
   if settings.LZ4:
     settings.EXPORTED_RUNTIME_METHODS += ['LZ4']
-
-  if settings.PURE_WASI:
-    settings.STANDALONE_WASM = 1
-    settings.ALLOW_MEMORY_GROWTH = 1
-    settings.WASM_BIGINT = 1
-    # WASI does not support Emscripten (JS-based) exception catching, which the
-    # JS-based longjmp support also uses. Emscripten EH is by default disabled
-    # so we don't need to do anything here.
-    if not settings.WASM_EXCEPTIONS:
-      default_setting('SUPPORT_LONGJMP', 0)
-
-  if options.no_entry:
-    settings.EXPECT_MAIN = 0
-  elif settings.STANDALONE_WASM:
-    if '_main' in settings.EXPORTED_FUNCTIONS:
-      # TODO(sbc): Make this into a warning?
-      logger.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
-  else:  # ruff: ignore[collapsible-else-if]
-    # In normal non-standalone mode we have special handling of `_main` in EXPORTED_FUNCTIONS.
-    # 1. If the user specifies exports, but doesn't include `_main` we assume they want to build a
-    #    reactor.
-    # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
-    #    is specified (see above).
-    if 'EXPORTED_FUNCTIONS' in user_settings:
-      if '_main' in settings.USER_EXPORTS:
-        settings.EXPORTED_FUNCTIONS.remove('_main')
-        settings.EXPORT_IF_DEFINED.append('main')
-      else:
-        settings.EXPECT_MAIN = 0
-    else:
-      settings.EXPORT_IF_DEFINED.append('main')
 
   if settings.STANDALONE_WASM:
     # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -1823,17 +1823,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   check_settings()
 
   return target, wasm_target
-
-
-@ToolchainProfiler.profile_block('calculate system libraries')
-def phase_calculate_system_libraries():
-  extra_files_to_link = []
-  # Link in ports and system libraries, if necessary
-  if not settings.SIDE_MODULE:
-    # Ports are always linked into the main module, never the side module.
-    extra_files_to_link += ports.get_libs(settings)
-  extra_files_to_link += system_libs.calculate()
-  return extra_files_to_link
 
 
 @ToolchainProfiler.profile_block('link')
@@ -2721,10 +2710,6 @@ def process_libraries(flags):
   system_libs_map = system_libs.Library.get_usable_variations()
 
   for flag in flags:
-    if flag.startswith('--js-library='):
-      js_lib = flag.split('=', 1)[1]
-      settings.JS_LIBRARIES.append(js_lib)
-      continue
     if not flag.startswith('-l'):
       new_flags.append(flag)
       continue
@@ -3122,8 +3107,11 @@ def run(linker_args):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
 
-  linker_inputs = [f.value for f in linker_args if f.is_file]
-  linker_args = [f.value for f in linker_args]
+  if linker_args and hasattr(linker_args[0], 'is_file'):
+    linker_inputs = [f.value for f in linker_args if f.is_file]
+    linker_args = [f.value for f in linker_args]
+  else:
+    linker_inputs = [f for f in linker_args if not f.startswith('-') and os.path.exists(f)]
 
   if settings.RUNTIME_LINKED_LIBS:
     linker_args += settings.RUNTIME_LINKED_LIBS
@@ -3150,16 +3138,6 @@ def run(linker_args):
     building.link_to_object(linker_args, target)
     logger.debug('stopping after linking to object file')
     return 0
-
-  system_libs = phase_calculate_system_libraries()
-  # Only add system libraries that have not already been specified.
-  # This avoids issues where the user explicitly includes, for example, `-lGL`.
-  # This is not normally a problem except in the case of -sMAIN_MODULE=1 where
-  # the duplicate library would result in duplicate symbols.
-  for s in system_libs:
-    if s.startswith('-l') and s in linker_args:
-      continue
-    linker_args.append(s)
 
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:
