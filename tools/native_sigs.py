@@ -540,6 +540,7 @@ native_sigs = {
   '_emscripten_stack_restore': '_p',
   '_emscripten_thread_exit': '_p',
   '_emscripten_thread_free_data': '_p',
+  '_emscripten_thread_has_exited': '_p',
   '_emscripten_thread_init': '_p_____',
   '_emscripten_thread_is_valid': '_p',
   '_emscripten_thread_mailbox_init': '_p',
