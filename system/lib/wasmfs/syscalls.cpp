@@ -438,9 +438,11 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   }
 
   // TODO: remove assert when all functionality is complete.
+  // O_NOCTTY, O_SYNC and O_DSYNC are accepted but have no effect.
   assert((flags & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
                     O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE | O_NOFOLLOW |
-                    O_CLOEXEC | O_NONBLOCK)) == 0);
+                    O_CLOEXEC | O_NONBLOCK | O_NOCTTY | O_SYNC | O_DSYNC)) ==
+         0);
 
   if (auto err = parsed.getError()) {
     return err;
