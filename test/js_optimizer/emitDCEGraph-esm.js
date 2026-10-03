@@ -44,6 +44,13 @@ var HEAP32;
 var baz = () => {};
 export { HEAP32, baz };
 
+// A reserved-word runtime export (from the reserved-export-names support): the
+// local is legalized to `$default` and aliased back to `default`. Though
+// aliased like a wasm import edge, a wasm import name can never be `default`,
+// so this must be treated as a plain runtime export, not a wasm import.
+var $default = {};
+export { $default as default };
+
 // Top-level uses: root the memory export (via the alias) and one wasm export.
 wasmMemory.buffer;
 _used_export();

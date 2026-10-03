@@ -31,4 +31,9 @@ export { _main };
 var HEAP32;
 export { HEAP32 };
 
+// A reserved-word runtime export (aliased `$default as default`) must never be
+// treated as a wasm import and dropped, even though it is aliased.
+var $default = {};
+export { $default as default };
+
 // EXTRA_INFO: { "unusedImports": ["unused_import"], "unusedExports": ["unused_export", "__indirect_function_table"] }
