@@ -25,33 +25,39 @@ static void create_file(const char *path, const char *buffer) {
 }
 
 #if defined(NODEFS) && !defined(WASMFS)
-// Mount by absolute path so host and VFS paths differ: setup_nodefs.js mounts
-// root '.' at the cwd, where they coincide and hid #27860.
-static void test_absolute_root() {
+static int file_contains(const char *path, const char *expected) {
+  char buffer[16] = {0};
+  int fd = open(path, O_RDONLY);
+  if (fd < 0) {
+    return 0;
+  }
+  read(fd, buffer, sizeof(buffer) - 1);
+  close(fd);
+  return strcmp(buffer, expected) == 0;
+}
+
+// Mount the host cwd a second time and rename there while the VFS cwd is a
+// MEMFS directory, so the target's host path ('other_b') and VFS path differ.
+// setup_nodefs.js mounts root '.' at the cwd, where they coincide and hid
+// #27860. Avoid absolute host paths: PATH is POSIX-only and doesn't handle
+// Windows drive letters.
+static void test_second_mount() {
   EM_ASM({
-    var root = process.cwd();
-    FS.mkdirTree(root);
-    FS.writeFile(root + '/abs_b', 'memfs');
-    FS.mkdir('/abs');
-    FS.mount(NODEFS, { root }, '/abs');
+    FS.mkdir('/other');
+    FS.mount(NODEFS, { root: '.' }, '/other');
   });
+  assert(mkdir("/memcwd", 0777) == 0);
+  create_file("/memcwd/other_b", "memfs");
+  assert(chdir("/memcwd") == 0);
 
-  create_file("/abs/abs_a", "abc");
-  create_file("/abs/abs_b", "xyz");
-  assert(rename("/abs/abs_a", "/abs/abs_b") == 0);
+  create_file("/other/other_a", "abc");
+  create_file("/other/other_b", "xyz");
+  assert(rename("/other/other_a", "/other/other_b") == 0);
+  assert(file_contains("/memcwd/other_b", "memfs"));
 
-  int memfs_file_intact = EM_ASM_INT({
-    try {
-      return FS.readFile(process.cwd() + '/abs_b', { encoding: 'utf8' }) === 'memfs';
-    } catch (e) {
-      return false;
-    }
-  });
-  assert(memfs_file_intact);
-
-  assert(unlink("/abs/abs_b") == 0);
-  assert(access("/abs/abs_b", F_OK) == -1 && errno == ENOENT);
-  create_file("/abs/abs_b", "xyz");
+  assert(unlink("/other/other_b") == 0);
+  assert(access("/other/other_b", F_OK) == -1 && errno == ENOENT);
+  create_file("/other/other_b", "xyz");
 }
 #endif
 
@@ -80,7 +86,7 @@ int main() {
   assert(unlink("b") == 0);
   create_file("b", "xyz");
 #if defined(NODEFS) && !defined(WASMFS)
-  test_absolute_root();
+  test_second_mount();
 #endif
 #if defined(MEMFS) && !defined(WASMFS)
   test_proxyfs();
