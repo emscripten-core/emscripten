@@ -13099,7 +13099,6 @@ exec "$@"
                   result)
 
   @crossplatform
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25206')
   def test_gen_struct_info(self):
     # This test will start failing whenever the struct info changes (e.g. offset or defines
     # change).  However it's easy to rebaseline with --rebaseline.
