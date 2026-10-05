@@ -97,6 +97,10 @@ void* _dlsym_catchup_js(struct dso* handle, int sym_index);
 
 int _setitimer_js(int which, double timeout);
 
+// emscripten_fd_promise (system/lib/libc/emscripten_fd_promise.c)
+struct fd_wait;
+void _emscripten_fd_wait_js(struct fd_wait* w, int fd, int events);
+
 // Synchronize loaded modules across threads.
 // Runs _emscripten_dlsync_self on each of the threads that are running at
 // the time of the call.

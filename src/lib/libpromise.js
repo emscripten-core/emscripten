@@ -247,6 +247,30 @@ addToLibrary({
     return id;
   },
 
+  // emscripten_fd_promise: wait for one fd on its wait-queue, reporting the
+  // ready events to _emscripten_fd_wait_done once any requested one is ready
+  // (at once if already so). A bad fd reports POLLNVAL. The done call only
+  // settles a promise or enqueues a proxied callback, so the listener runs no
+  // user code synchronously (see notifyListeners).
+#if WASMFS
+  _emscripten_fd_wait_js: (w, fd, events) => {
+    abort('emscripten_fd_promise is not supported with WASMFS');
+  },
+#else
+  _emscripten_fd_wait_js__deps: ['$FDS', '$pollOne', '_emscripten_fd_wait_done'],
+  _emscripten_fd_wait_js: (w, fd, events) => {
+    var revents = pollOne(fd, events);
+    var stream = FDS.getStream(fd);
+    if (revents || !stream) return __emscripten_fd_wait_done(w, revents);
+    var reg = stream.node.addListener(() => {
+      var revents = pollOne(fd, events);
+      if (!revents) return;
+      reg.listeners.delete(reg.entry);
+      __emscripten_fd_wait_done(w, revents);
+    });
+  },
+#endif
+
 #if ASYNCIFY
   emscripten_promise_await__async: 'auto',
   emscripten_promise_await__deps: ['$getPromise', '$setPromiseResult'],

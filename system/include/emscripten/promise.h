@@ -136,6 +136,15 @@ typedef struct em_settled_result_t {
 [[nodiscard]] em_promise_t emscripten_promise_race(em_promise_t* promises,
                                                    size_t num_promises);
 
+// Create a promise, on the calling thread, of the readiness of file descriptor
+// `fd`: it is fulfilled with the ready poll(2) events (those of `events` that
+// are ready, plus POLLERR/POLLHUP/POLLNVAL) once any of them is, at once if
+// already so. The readiness is observed on the main thread where descriptors
+// live; a promise created on another thread settles once that thread next
+// runs its event loop (or proxying queue). The returned promise handle must
+// eventually be freed with `emscripten_promise_destroy`.
+[[nodiscard]] em_promise_t emscripten_fd_promise(int fd, int events);
+
 // Suspend the current Wasm execution context until the given promise has been
 // settled.
 //

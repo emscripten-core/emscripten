@@ -9795,6 +9795,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_promise_await(self):
     self.do_core_test('test_promise_await.c')
 
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_fd_promise(self, args):
+    # The promise is created on the pthread and the readiness observed on main.
+    self.do_runf('core/test_fd_promise.c', 'done\n', cflags=args + ['-sEXIT_RUNTIME'])
+
+  @with_asyncify_and_jspi
+  def test_fd_promise_await(self):
+    # emscripten_promise_await on an fd promise is a blocking poll() of one fd.
+    self.do_runf('core/test_fd_promise_await.c', 'done\n')
+
   def test_promise_await_error(self):
     # Check that the API is not available when ASYNCIFY is not set
     self.do_runf('core/test_promise_await.c', 'emscripten_promise_await is only available with ASYNCIFY',

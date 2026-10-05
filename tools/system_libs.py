@@ -1389,6 +1389,7 @@ class libc(MuslInternalLibrary,
         path='system/lib/libc',
         filenames=[
           'emscripten_console.c',
+          'emscripten_fd_promise.c',
           'emscripten_fiber.c',
           'emscripten_get_heap_size.c',
           'emscripten_memcpy.c',
