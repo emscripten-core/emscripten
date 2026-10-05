@@ -28,12 +28,9 @@ To display the gathered coverage information, use one of the three subcommands:
 report, html, xml.
 """
 
-import contextlib
-import errno
 import os
 import shutil
 import sys
-import uuid
 from glob import glob
 
 import coverage.cmdline  # type: ignore
@@ -45,27 +42,25 @@ def main():
   # We set EMSDK_PYTHON to point to this file, which is executable via #! line.
   # Emscripten uses EMSDK_PYTHON to invoke all python subprocesses. By making this
   # script run all python subprocesses, all of them will execute under the
-  # watchful eye of emcoverage.py, and resulting in their code coverage being
+  # watchful eye of emcoverage.py, resulting in their code coverage being
   # tracked.
   os.environ['EMSDK_PYTHON'] = os.path.abspath(__file__)
 
   store = os.path.join(SCRIPT_DIR, 'coverage')
+  os.environ['COVERAGE_FILE'] = os.path.join(store, 'coverage')
 
-  if len(sys.argv) < 2 or sys.argv[1] == 'help':
+  if len(sys.argv) < 2 or sys.argv[1] in {'help', '-h', '--help'}:
     print(__doc__.replace('emcoverage.py', sys.argv[0]).strip())
-    return
+    return 0
 
   if sys.argv[1] == 'reset':
     shutil.rmtree(store, ignore_errors=True)
-    return
+    return 0
 
   if sys.argv[1] in {'html', 'report', 'xml'}:
-    old_argv = sys.argv
-    sys.argv = ['coverage', 'combine', *glob(os.path.join(store, '*'))]
-    with contextlib.suppress(SystemExit):
-      coverage.cmdline.main()
-    sys.argv = [*old_argv, '-i']
-    return coverage.cmdline.main()
+    if glob(os.path.join(store, 'coverage.*')):
+      coverage.cmdline.main(['combine'])
+    return coverage.cmdline.main([*sys.argv[1:], '-i'])
 
   if sys.argv[1] == '-E':
     sys.argv.pop(1)
@@ -76,15 +71,8 @@ def main():
   if os.path.exists(candidate):
     sys.argv[1] = candidate
 
-  try:
-    os.mkdir(store)
-  except OSError as e:
-    if e.errno != errno.EEXIST:
-      raise
-  os.environ['COVERAGE_FILE'] = os.path.join(store, str(uuid.uuid4()))
-  sys.argv[0:1] = ['coverage', 'run', '--parallel-mode', '--']
-
-  return coverage.cmdline.main()
+  os.makedirs(store, exist_ok=True)
+  return coverage.cmdline.main(['run', '--parallel-mode', '--', *sys.argv[1:]])
 
 
 if __name__ == '__main__':

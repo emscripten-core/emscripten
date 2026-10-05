@@ -5,6 +5,7 @@
 # Install with `pip3 install -r requirements-dev.txt`
 
 coverage[toml]==7.15.0
+diff-cover==10.6.0
 mypy==2.3.0
 psutil==7.0.0
 ruff==0.16.6
