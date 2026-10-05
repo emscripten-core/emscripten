@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 
-static int current_exception_id = 0;
+int current_exception_id = 0;
 
 typedef struct {
   int jmp;

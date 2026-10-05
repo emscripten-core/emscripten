@@ -27,7 +27,7 @@
 #include <emscripten.h>
 #endif
 
-static const char* SOCK_PATH = "/tmp/emscripten_unix_server.sock";
+const char* SOCK_PATH = "/tmp/emscripten_unix_server.sock";
 
 int listen_fd = -1;
 int client_fd = -1;

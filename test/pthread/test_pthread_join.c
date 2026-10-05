@@ -19,7 +19,7 @@ long fib(long n) {
   return fib(n-1) + fib(n-2);
 }
 
-static void *thread_start(void *arg) {
+void *thread_start(void *arg) {
   long n = (long)arg;
   emscripten_outf("Thread: Computing fib(%ld)...", n);
   long fibn = fib(n);

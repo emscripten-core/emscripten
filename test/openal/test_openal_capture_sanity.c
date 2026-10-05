@@ -34,11 +34,11 @@
 // OfflineAudioContexts are required to support sample rates ranging
 // from 22050 to 96000.
 // Should we test for purposefully-ugly sample rates within that range, too ?
-static const ALCuint SAMPLE_RATES[] = {
+const ALCuint SAMPLE_RATES[] = {
   22050, 32000, 37800, 44100, 48000, 88200, 96000
 };
 
-static const ALenum FORMATS[] = {
+const ALenum FORMATS[] = {
   AL_FORMAT_MONO8, 
   AL_FORMAT_MONO16,
   AL_FORMAT_STEREO8,
@@ -49,7 +49,7 @@ static const ALenum FORMATS[] = {
 #endif
 };
 
-static const char* alformat_string(ALenum format) {
+const char* alformat_string(ALenum format) {
   switch(format) {
 #define CASE(X) case X: return #X;
   CASE(AL_FORMAT_MONO8)
@@ -65,7 +65,7 @@ static const char* alformat_string(ALenum format) {
   return "<no_string_available>";
 }
 
-static void check_device_sanity_with_params(const char* name,
+void check_device_sanity_with_params(const char* name,
                                             ALCuint sample_rate,
                                             ALenum format,
                                             ALCsizei buffer_size) {
@@ -102,7 +102,7 @@ static void check_device_sanity_with_params(const char* name,
   exit(1);
 }
 
-static void check_device_sanity(const char *name) {
+void check_device_sanity(const char *name) {
   for (int si=0 ; si<countof(SAMPLE_RATES) ; ++si) {
     for (int fi=0 ; fi<countof(FORMATS) ; ++fi) {
       // 8 seconds of data
@@ -113,7 +113,7 @@ static void check_device_sanity(const char *name) {
   }
 }
 
-static bool is_defaultname_in_names(const char *dft, const char *names) {
+bool is_defaultname_in_names(const char *dft, const char *names) {
   for (const char *name = names; *name ; name += 1+strlen(name)) {
     if (!strcmp(dft, name)) {
       return true;

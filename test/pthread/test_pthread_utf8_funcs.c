@@ -15,7 +15,7 @@ char stringBuffer[1024];
 
 EM_JS_DEPS(deps, "$stringToUTF8");
 
-static void *thread1_start(void *arg) {
+void *thread1_start(void *arg) {
   EM_ASM({
    var mystr = UTF8ToString($0);
    stringToUTF8(mystr, $1, 1024);

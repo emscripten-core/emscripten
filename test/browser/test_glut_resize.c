@@ -16,10 +16,10 @@ typedef struct {
   int32_t height;
 } rect_size_t;
 
-static rect_size_t browser_window_size = { 0, 0 };
-static rect_size_t glut_init_size =      { 0, 0 };
-static rect_size_t glut_reshape_size =   { 0, 0 };
-static rect_size_t target_size =         { 0, 0 };
+rect_size_t browser_window_size = { 0, 0 };
+rect_size_t glut_init_size =      { 0, 0 };
+rect_size_t glut_reshape_size =   { 0, 0 };
+rect_size_t target_size =         { 0, 0 };
 
 /*
  * Set run_async_verification to 0 for sync test cases, and 1 for async tests.
@@ -35,7 +35,7 @@ static rect_size_t target_size =         { 0, 0 };
  * confirmation in GLUT.reshapeFunc.  And after verification is done, we move on to the next test.
  *
  */
-static int run_async_verification = 0;
+int run_async_verification = 0;
 
 void print_size_test(int test_num, const char* name, rect_size_t rect_size) {
   printf("Test %d: %s = %d x %d\n", test_num, name, rect_size.width, rect_size.height);

@@ -14,7 +14,7 @@
 #include <emscripten/threading.h>
 #include <emscripten/posix_socket.h>
 
-static EMSCRIPTEN_WEBSOCKET_T bridgeSocket = 0;
+EMSCRIPTEN_WEBSOCKET_T bridgeSocket = 0;
 #endif
 
 int lookup_host(const char *host) {

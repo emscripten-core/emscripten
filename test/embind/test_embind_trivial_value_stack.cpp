@@ -20,8 +20,8 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
 
-static int allocCount = 0;
-static int freeCount = 0;
+int allocCount = 0;
+int freeCount = 0;
 
 void* malloc(size_t size) {
   ++allocCount;

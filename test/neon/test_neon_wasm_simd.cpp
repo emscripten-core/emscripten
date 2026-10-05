@@ -11,7 +11,7 @@
 #include <string.h>
 #include <arm_neon.h>
 
-static int
+int
 test_simde_vaddq_s32 () {
         struct {
                 int32_t a[4];
@@ -56,7 +56,7 @@ test_simde_vaddq_s32 () {
         return 0;
 }
 
-static int
+int
 test_simde_vsubq_s16 () {
         struct {
                 int16_t a[8];
@@ -101,7 +101,7 @@ test_simde_vsubq_s16 () {
         return 0;
 }
 
-static int
+int
 test_simde_vmulq_u32 () {
         struct {
                 uint32_t a[4];
@@ -145,7 +145,7 @@ test_simde_vmulq_u32 () {
         return 0;
 }
 
-static int
+int
 test_simde_vbslq_s8 () {
         struct {
                 uint8_t a[16];
@@ -234,7 +234,7 @@ test_simde_vbslq_s8 () {
         return 0;
 }
 
-static int
+int
 test_simde_vshl_s64 () {
   struct {
     int64_t a[1];
@@ -279,7 +279,7 @@ test_simde_vshl_s64 () {
   return 0;
 }
 
-static int
+int
 test_simde_vdotq_s32 () {
   static const struct {
     int32_t a[4];

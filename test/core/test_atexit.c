@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void cleanA() { printf("A\n"); }
-static void cleanB() { printf("B\n"); }
+void cleanA() { printf("A\n"); }
+void cleanB() { printf("B\n"); }
 
 int main() {
   atexit(cleanA);
