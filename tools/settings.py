@@ -126,6 +126,7 @@ DEPRECATED_SETTINGS = {
 INTERNAL_SETTINGS = {
   'SIDE_MODULE_IMPORTS',
 }
+NO_EXTERNALIZE_SETTINGS = INTERNAL_SETTINGS
 
 # List of incompatible settings, of the form (SETTINGS_A, SETTING_B, OPTIONAL_REASON_FOR_INCOMPAT)
 INCOMPATIBLE_SETTINGS = [
@@ -358,12 +359,14 @@ class SettingsManager:
   def dict(self):
     return self.attrs
 
-  def external_dict(self, skip_keys={}): # ruff: ignore[mutable-argument-default]
+  def external_dict(self, skip_keys={}, legacy=True, external_only=False): # ruff: ignore[mutable-argument-default]
     external_settings = {}
     for key, value in self.dict().items():
-      if value != self.defaults.get(key) and key not in INTERNAL_SETTINGS and key not in skip_keys:
-        external_settings[key] = value # ruff: ignore[manual-dict-comprehension]
-    if not self.attrs['STRICT']:
+      if external_only and key in self.internal_settings:
+        continue
+      if value != self.defaults.get(key) and key not in NO_EXTERNALIZE_SETTINGS and key not in skip_keys:
+        external_settings[key] = value
+    if legacy and not self.attrs['STRICT']:
       # When not running in strict mode we also externalize all legacy settings
       # (Since the external tools do process LEGACY_SETTINGS themselves)
       for key in self.legacy_settings:

@@ -113,6 +113,7 @@ class EmccOptions:
   use_preload_cache = False
   use_preload_plugins = False
   valid_abspaths: list[str] = []
+  consumed_args: list[str] = []
 
 
 # Global/singleton EmccOptions
@@ -236,6 +237,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
     def check_flag(value):
       # Check for and consume a flag
       if arg == value:
+        options.consumed_args.append(arg)
         newargs[i] = ''
         return True
       return False
@@ -258,6 +260,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
     def consume_arg():
       nonlocal arg_value
       assert arg_value is not None
+      options.consumed_args.append(arg + '=' + arg_value)
       rtn = arg_value
       arg_value = None
       return rtn
@@ -285,6 +288,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
         newargs[i + 1] = ''
       newargs[i] = ''
       options.s_args.append(s_arg)
+      options.consumed_args.append(s_arg)
     elif arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
       opt_level = arg.removeprefix('-O') or '2'
@@ -332,6 +336,8 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       options.js_transform = consume_arg()
     elif check_arg('--reproduce'):
       options.reproduce = consume_arg()
+    elif check_arg('--js-library'):
+      settings.JS_LIBRARIES.append(consume_arg())
     elif check_arg('--pre-js'):
       options.pre_js.append(consume_arg_file())
     elif check_arg('--post-js'):
@@ -792,7 +798,8 @@ def normalize_args(args):
   In other cases they are joined by an equals sign.  For example ['--js-library`, `foo.js`]
   becomes `--js-library=foo.js`.
   """
-  equals_args = {'--js-library'}
+  equals_args = {'--extern-pre-js', '--extern-post-js', '--pre-js', '--post-js', '--js-library',
+                 '--compiler-wrapper', '--closure-args', '--output-eol'}
   join_args = {'-l', '-L', '-I', '-z', '-o', '-x', '-u'} | equals_args
   for i in range(len(args)):
     if args[i] in join_args:
