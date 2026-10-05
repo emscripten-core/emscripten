@@ -335,7 +335,7 @@ var printChar = (stream, curr) => {
 /** @type {!Uint32Array} */ var HEAPU32;
 
 var _fd_write = (fd, iov, iovcnt, pnum) => {
-  // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
+  // hack to support printf in SYSCALLS_REQUIRE_FDS=0
   var num = 0;
   for (var i = 0; i < iovcnt; i++) {
     var ptr = HEAPU32[((iov) >> 2)];

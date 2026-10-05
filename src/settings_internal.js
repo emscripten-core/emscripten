@@ -54,6 +54,11 @@ var TARGET_JS_NAME = '';
 // never used, then we don't actually need to support operations on streams.
 var SYSCALLS_REQUIRE_FILESYSTEM = true;
 
+// Whether the syscalls need the file descriptor table (FDS): sockets, pipes,
+// epoll, poll and close. Implied by SYSCALLS_REQUIRE_FILESYSTEM; without it,
+// descriptor-only programs get the fd core and no filesystem namespace.
+var SYSCALLS_REQUIRE_FDS = true;
+
 // Whether EMCC_AUTODEBUG is on, which automatically instruments code for
 // runtime logging that can help in debugging.
 var AUTODEBUG = false;

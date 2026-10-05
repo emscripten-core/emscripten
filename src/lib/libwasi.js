@@ -194,7 +194,14 @@ var WasiLibrary = {
     return 0;
   },
 
+#if SYSCALLS_REQUIRE_FDS
 #if SYSCALLS_REQUIRE_FILESYSTEM
+  $doReadv__deps: ['$FS'],
+  $doWritev__deps: ['$FS'],
+#else
+  $doReadv__deps: ['$FDS'],
+  $doWritev__deps: ['$FDS'],
+#endif
   $doReadv__docs: '/** @param {number=} offset */',
   $doReadv: (stream, iov, iovcnt, offset) => {
     var ret = 0;
@@ -203,12 +210,12 @@ var WasiLibrary = {
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
       try {
-        var curr = FS.read(stream, HEAP8, ptr, len, offset);
+        var curr = {{{ SYSCALLS_REQUIRE_FILESYSTEM ? 'FS' : 'FDS' }}}.read(stream, HEAP8, ptr, len, offset);
       } catch (e) {
         // On a non-blocking stream a subsequent read may would-block after we
         // already gathered data. POSIX readv is a single gather-read: return
         // what we have rather than failing the whole call.
-        if (ret > 0 && e instanceof FS.ErrnoError &&
+        if (ret > 0 && e.name === 'ErrnoError' &&
             (e.errno == {{{ cDefs.EAGAIN }}} || e.errno == {{{ cDefs.EWOULDBLOCK }}})) {
           break;
         }
@@ -231,7 +238,7 @@ var WasiLibrary = {
     // socket send into multiple segments, breaking stream byte semantics.
     if (iovcnt == 1) {
       // Single iovec: write directly from HEAP8, no gather buffer needed.
-      return FS.write(stream, HEAP8, {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}}, {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}}, offset);
+      return {{{ SYSCALLS_REQUIRE_FILESYSTEM ? 'FS' : 'FDS' }}}.write(stream, HEAP8, {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}}, {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}}, offset);
     }
     var total = 0;
     for (var i = 0, p = iov; i < iovcnt; i++, p += {{{ C_STRUCTS.iovec.__size__ }}}) {
@@ -245,9 +252,10 @@ var WasiLibrary = {
       view.set(HEAPU8.subarray(ptr, ptr + len), voff);
       voff += len;
     }
-    return FS.write(stream, view, 0, total, offset);
+    return {{{ SYSCALLS_REQUIRE_FILESYSTEM ? 'FS' : 'FDS' }}}.write(stream, view, 0, total, offset);
   },
-#else
+#endif // SYSCALLS_REQUIRE_FDS
+#if !SYSCALLS_REQUIRE_FILESYSTEM
   // MEMFS filesystem disabled lite handling of stdout and stderr:
   $printCharBuffers: [null, [], []], // 1 => stdout, 2 => stderr
   $printCharBuffers__internal: true,
@@ -267,7 +275,7 @@ var WasiLibrary = {
   },
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
 
-#if SYSCALLS_REQUIRE_FILESYSTEM
+#if SYSCALLS_REQUIRE_FDS
   fd_write__deps: ['$doWritev'],
 #elif (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers'],
@@ -285,11 +293,11 @@ var WasiLibrary = {
   fd_write__deps: ['$printChar'],
 #endif
   fd_write: (fd, iov, iovcnt, pnum) => {
-#if SYSCALLS_REQUIRE_FILESYSTEM
+#if SYSCALLS_REQUIRE_FDS
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = doWritev(stream, iov, iovcnt);
 #else
-    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
+    // hack to support printf in SYSCALLS_REQUIRE_FDS=0
     var num = 0;
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
@@ -300,7 +308,7 @@ var WasiLibrary = {
       }
       num += len;
     }
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FDS
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
     return 0;
   },
@@ -328,6 +336,10 @@ var WasiLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.close(stream);
     return 0;
+#elif SYSCALLS_REQUIRE_FDS
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    FDS.close(stream);
+    return 0;
 #elif PROXY_POSIX_SOCKETS
     // close() is a tricky function because it can be used to close both regular file descriptors
     // and POSIX network socket handles, hence an implementation would need to track for each
@@ -342,20 +354,20 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-#if SYSCALLS_REQUIRE_FILESYSTEM
+#if SYSCALLS_REQUIRE_FDS
   fd_read__deps: ['$doReadv'],
 #endif
   fd_read: (fd, iov, iovcnt, pnum) => {
-#if SYSCALLS_REQUIRE_FILESYSTEM
+#if SYSCALLS_REQUIRE_FDS
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = doReadv(stream, iov, iovcnt);
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
     return 0;
 #elif ASSERTIONS
-    abort('fd_read called without SYSCALLS_REQUIRE_FILESYSTEM');
+    abort('fd_read called without SYSCALLS_REQUIRE_FDS');
 #else
     return {{{ cDefs.ENOSYS }}};
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FDS
   },
 
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -519,16 +531,16 @@ var WasiLibrary = {
     } else
 #endif
     {
-#if SYSCALLS_REQUIRE_FILESYSTEM
+#if SYSCALLS_REQUIRE_FDS
       var stream = SYSCALLS.getStreamFromFD(fd);
       // All character devices are terminals (other things a Linux system would
       // assume is a character device, like the mouse, we have special APIs for).
       var type = stream.tty ? {{{ cDefs.__WASI_FILETYPE_CHARACTER_DEVICE }}} :
-                 FS.isDir(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_DIRECTORY }}} :
-                 FS.isLink(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_SYMBOLIC_LINK }}} :
+                 FDS.isDir(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_DIRECTORY }}} :
+                 FDS.isLink(stream.mode) ? {{{ cDefs.__WASI_FILETYPE_SYMBOLIC_LINK }}} :
                  {{{ cDefs.__WASI_FILETYPE_REGULAR_FILE }}};
 #else
-      // Hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0. We support at
+      // Hack to support printf in SYSCALLS_REQUIRE_FDS=0. We support at
       // least stdin, stdout, stderr in a simple way.
 #if ASSERTIONS
       assert(fd == 0 || fd == 1 || fd == 2);
