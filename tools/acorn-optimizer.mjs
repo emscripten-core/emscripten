@@ -410,6 +410,25 @@ function AJSDCE(ast) {
   JSDCE(ast, /* aggressive= */ true);
 }
 
+// Strip `= undefined` default values from function parameters and destructuring
+// patterns. These default values have no runtime semantic effect (since
+// `undefined` is already the default), and are only needed by Closure Compiler
+// for arity/type checking.
+function stripDefaultUndefined(ast) {
+  fullWalk(ast, (node) => {
+    if (
+      node.type === 'AssignmentPattern' &&
+      node.right.type === 'Identifier' &&
+      node.right.name === 'undefined'
+    ) {
+      const left = node.left;
+      delete node.left;
+      delete node.right;
+      Object.assign(node, left);
+    }
+  });
+}
+
 function isWasmImportsAssign(node) {
   // var wasmImports = ..
   //   or
@@ -1857,6 +1876,7 @@ if (closureFriendly) {
 const registry = {
   JSDCE,
   AJSDCE,
+  stripDefaultUndefined,
   applyImportAndExportNameChanges,
   emitDCEGraph,
   applyDCEGraphRemovals,

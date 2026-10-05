@@ -22,6 +22,7 @@ from . import (
   diagnostics,
   feature_matrix,
   js_optimizer,
+  ports,
   response_file,
   shared,
   utils,
@@ -248,7 +249,7 @@ def lld_flags_for_executable(external_symbols):
   if not settings.SIDE_MODULE:
     cmd += ['-z', f'stack-size={settings.STACK_SIZE}']
 
-    if settings.ALLOW_MEMORY_GROWTH:
+    if settings.ALLOW_MEMORY_GROWTH or (settings.IMPORTED_MEMORY and settings.MAXIMUM_MEMORY > settings.INITIAL_MEMORY):
       cmd += [f'--max-memory={settings.MAXIMUM_MEMORY}']
     else:
       cmd += ['--no-growable-memory']
@@ -567,6 +568,13 @@ def version_split(v):
   return f'{int(major)}.{int(minor)}.{int(rev)}'
 
 
+def filter_closure_args(args):
+  # Closure compiler includes WebGPU externs natively (w3c_webgpu.js).
+  # Exclude webgpu-externs.js (provided by emdawnwebgpu) to avoid duplicate definition errors.
+  # TODO: Remove this after https://g-issues.chromium.org/issues/562078433 is resolved.
+  return [a for a in args if not (a.startswith('--externs=') and a.endswith('webgpu-externs.js'))]
+
+
 @ToolchainProfiler.profile()
 def closure_compiler(filename, advanced=True, extra_closure_args=None):
   user_args = []
@@ -575,6 +583,8 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     user_args += shlex.split(env_args)
   if extra_closure_args:
     user_args += extra_closure_args
+  if any('emdawnwebgpu' in p.name for p in ports.get_needed_ports(settings)):
+    user_args = filter_closure_args(user_args)
 
   closure_cmd, env = get_closure_compiler_and_env(user_args)
 
@@ -783,6 +793,8 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   passes = []
   if not settings.LINKABLE:
     passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
+  if not settings.USE_CLOSURE_COMPILER:
+    passes.append('stripDefaultUndefined')
   # Don't minify if we are going to run closure compiler afterwards
   minify = settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER
   if minify:

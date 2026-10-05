@@ -2510,6 +2510,26 @@ int main() {
 }''')
     self.do_runf('test.c', 'done\n', cflags=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
 
+  @requires_pthreads
+  def test_dylink_webgl_alias(self):
+    create_file('test.c', r'''
+#include <GLES3/gl3.h>
+#include <stdio.h>
+
+int main() {
+  printf("glGetVertexAttribIuiv: %p\n", &glGetVertexAttribIuiv);
+  printf("done\n");
+  return 0;
+}''')
+    self.do_runf('test.c', 'done\n', cflags=[
+      '-sMAIN_MODULE=1',
+      '-sMAX_WEBGL_VERSION=2',
+      '-sOFFSCREEN_FRAMEBUFFER=1',
+      '-sEXPORT_ALL=1',
+      '-pthread',
+      '-Wno-experimental',
+    ])
+
   def test_dylink_library_search(self):
     # Test library resolution in the case when both static and dynamic library are present.
     create_file('side_dyn.c', r'''
@@ -3108,6 +3128,7 @@ More info: https://emscripten.org
     'JSDCE-fors': (['JSDCE'],),
     'JSDCE-objectPattern': (['JSDCE'],),
     'AJSDCE': (['AJSDCE'],),
+    'stripDefaultUndefined': (['stripDefaultUndefined'],),
     'emitDCEGraph': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-closure': (['emitDCEGraph', '--no-print', '--closure-friendly'], 'emitDCEGraph.js'),
     'emitDCEGraph-dynCall': (['emitDCEGraph', '--no-print'],),
@@ -3351,7 +3372,8 @@ More info: https://emscripten.org
     # this test copies the site_scons directory alongside the test
     copytree(test_file('scons/simple'), '.')
     copytree(path_from_root('tools/scons/site_scons'), 'site_scons')
-    self.run_process(['scons'])
+    proc = self.run_process(['scons'], stderr=PIPE)
+    self.assertContained('emscripten: warning: SCons integration is deprecated', proc.stderr)
     output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
@@ -3400,7 +3422,8 @@ More info: https://emscripten.org
   @requires_scons
   def test_emscons(self):
     copytree(test_file('scons/simple'), '.')
-    self.run_process([path_from_root('emscons'), 'scons'])
+    proc = self.run_process([path_from_root('emscons'), 'scons'], stderr=PIPE)
+    self.assertContained('emscons: warning: emscons is deprecated', proc.stderr)
     output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
@@ -8487,6 +8510,8 @@ int main() {
     self.assertNotContained('Hello, world!', out)
     # and with memory growth, all should be good
     self.do_runf_out_file('hello_world.c', cflags=['-sINITIAL_MEMORY=16mb', '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sIMPORTED_MEMORY'])
+    # as it should without growth, given a large enough maximum
+    self.do_runf_out_file('hello_world.c', cflags=['-Werror', '-sINITIAL_MEMORY=16mb', '-sMAXIMUM_MEMORY=64mb', '--pre-js', 'pre.js', '-sIMPORTED_MEMORY'])
 
   @parameterized({
     '': ([], 16 * 1024 * 1024), # Default behavior: 16MB initial heap
@@ -8551,7 +8576,7 @@ int main() {
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sMAXIMUM_MEMORY=34603009', '-sALLOW_MEMORY_GROWTH'], expected) # 33MB + 1 byte
 
   def test_invalid_memory_max(self):
-    expected = 'emcc: error: MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH'
+    expected = 'emcc: error: MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH or IMPORTED_MEMORY'
     self.assert_fail([EMCC, '-Werror', test_file('hello_world.c'), '-sMAXIMUM_MEMORY=41943040'], expected)
 
   def test_dasho_invalid_dir(self):
@@ -12426,6 +12451,27 @@ int main(void) {
       else:
         self.assertContained(outcome, proc.stderr)
 
+  @parameterized({
+    '': ([],),
+    'nodefs_sockfs': (['-lnodefs.js', '-lsockfs.js'],),
+  })
+  def test_closure_fs_es6(self, args):
+    # TODO: Delete this test once test_closure_full_js_library can run with
+    # -sEXPORT_ES6. Currently -sINCLUDE_FULL_LIBRARY + -sEXPORT_ES6 fails due
+    # to Closure internal compiler errors (JSC_ILLEGAL_MODULE_RENAMING_CONFLICT):
+    # https://github.com/google/closure-compiler/issues/4344
+    self.build('hello_world.c', output_suffix='.mjs', cflags=[
+      '-O2',
+      '-sEXPORT_ES6',
+      '-sFORCE_FILESYSTEM',
+      '--closure=1',
+    ] + args)
+    create_file('run.mjs', '''
+      import Module from './hello_world.mjs';
+      await Module();
+    ''')
+    self.assertContained('Hello, world!\n', self.run_js('run.mjs'))
+
   def test_bitcode_input(self):
     # Verify that bitcode files are accepted as input
     create_file('main.c', 'void foo(); int main() { return 0; }')
@@ -13608,6 +13654,99 @@ void foo() {}
     # the instance down.
     self.do_runf('other/test_epoll_dup.c', 'done\n')
 
+  def test_epoll_callback(self):
+    # emscripten_epoll_listener_add delivers an epoll set's readiness by a
+    # persistent callback with no blocking and no ASYNCIFY/JSPI.
+    self.do_runf('other/test_epoll_callback.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  @parameterized({
+    '': ([],),
+    'dup': (['-DMODE_DUP'],),
+  })
+  def test_epoll_callback_multi(self, cflags):
+    # Multiple listeners on one epoll: broadcast wake, racing collectors take
+    # disjoint slices of the shared ready list (load balancing).
+    self.do_runf('other/test_epoll_callback_multi.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', *cflags])
+
+  def test_epoll_callback_dup(self):
+    # A registration added via a dup'd epoll fd is delivered to a callback armed
+    # on the original fd, since both fds share one epoll instance.
+    self.do_runf('other/test_epoll_callback_dup.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  @parameterized({
+    '': ([],),
+    'dup2': (['-DMODE_DUP2'],),
+  })
+  def test_epoll_callback_dup_close(self, cflags):
+    self.do_runf('other/test_epoll_callback_dup_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', *cflags])
+
+  def test_epoll_callback_overflow(self):
+    # A callback that collects one event per tick (epoll_wait maxevents=1) is
+    # re-triggered to drain the remainder across ticks (no app loop to re-call it).
+    self.do_runf('other/test_epoll_callback_overflow.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_replace(self):
+    # Listener identity is (callback, userdata): the same callback registers
+    # once per userdata, a duplicate pair is EEXIST; removal is by pair
+    # (ENOENT/EBADF errors).
+    self.do_runf('other/test_epoll_callback_replace.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_close(self):
+    # Closing the watched fd from the callback wakes the epoll only to evict the
+    # stale registration; the process exits with the listener still registered.
+    self.do_runf('other/test_epoll_callback_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_nested(self):
+    # A callback on an outer epoll fires when a leaf edge propagates through an
+    # inner (nested) epoll.
+    self.do_runf('other/test_epoll_callback_nested.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_nested_close(self):
+    # Closing the inner epoll wakes the outer to drop its stale registration
+    # rather than deliver; the same close -> wake -> evict path one level up.
+    self.do_runf('other/test_epoll_callback_nested_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_edge(self):
+    # EPOLLET on the callback path: fires once per edge, stays silent while
+    # continuously readable, re-fires only on a fresh edge.
+    self.do_runf('other/test_epoll_callback_edge.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_level(self):
+    # A structurally-always-ready level fd (EPOLLOUT on a writable end) re-fires
+    # the callback every tick: documents the spin contract (use EPOLLET/unregister).
+    self.do_runf('other/test_epoll_callback_level.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  @parameterized({
+    '': ([], 3),
+    'pending': (['-DMODE_PENDING'], 3),
+    'ready': (['-DMODE_READY'], 3),
+    'hold': (['-DMODE_HOLD'], 0),
+    'hold_ready': (['-DMODE_HOLD', '-DMODE_LEAVE_READY'], 0),
+  })
+  def test_epoll_callback_unref(self, cflags, returncode):
+    # A listener is unref'd: even a pending delivery does not keep the runtime
+    # alive. With an explicit keepalive the delivery runs and its pop exits.
+    self.do_runf('other/test_epoll_callback_unref.c', 'done\nexited %d\n' % returncode,
+                 cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
+
+  def test_epoll_callback_macrotask(self):
+    # A delivery runs on a later event-loop turn, after the call that made the
+    # set ready and the current microtask checkpoint have completed.
+    self.do_runf('other/test_epoll_callback_macrotask.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_abort(self):
+    # A fatal error in the callback is an uncaught exception from the delivery
+    # task, not an unhandled rejection (which would be reported differently
+    # and exit 0 here).
+    output = self.do_runf('other/test_epoll_callback_abort.c', 'Aborted(native code called abort())', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'], assert_returncode=NON_ZERO)
+    self.assertNotContained('unhandled rejection', output)
+
+  @requires_pthreads
+  def test_epoll_callback_thread(self):
+    # Listeners are main-thread only: registration from another thread is
+    # ENOTSUP.
+    self.do_runf('other/test_epoll_callback_thread.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD'])
+
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_pthread_trap(self):
@@ -13620,7 +13759,6 @@ void foo() {}
     self.assertContained('at (test_pthread_trap.wasm.)?thread_main', output, regex=True)
 
   @requires_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/24725')
   def test_pthread_kill(self):
     self.do_runf_out_file('pthread/test_pthread_kill.c')
 
@@ -13938,6 +14076,7 @@ Module.postRun = () => {{
     self.build('fetch/test_fetch_idb_store.c')
     self.build('fetch/test_fetch_redirect.c')
     self.build('fetch/test_fetch_stream_async.c')
+    self.build('fetch/test_fetch_stream_error.c')
     self.build('fetch/test_fetch_sync.c')
     self.build('fetch/test_fetch_progress.c')
 

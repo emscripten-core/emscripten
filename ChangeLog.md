@@ -18,17 +18,34 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.11 (in development)
+6.0.12 (in development)
 ----------------------
+
+- `MAXIMUM_MEMORY` is now honored with `IMPORTED_MEMORY` even without
+  `ALLOW_MEMORY_GROWTH`: the module accepts an imported memory of any size up to
+  the maximum, but never grows it. Previously the maximum was ignored, with a
+  warning, and only a memory of exactly `INITIAL_MEMORY` was accepted.
+  (#27859)
+- Added experimental `emscripten_epoll_listener_add` and
+  `emscripten_epoll_listener_remove` in the new `<emscripten/epoll.h>`. These
+  listeners deliver an epoll set's readiness to a callback, supported on the
+  main thread only. The callback itself is then able to collect the events via
+  a zero-timeout `epoll_wait`, without an `ASYNCIFY`/`JSPI` requirement.
+  (#27547)
+- compiler-rt was updated to LLVM 23.1.2. This restores `-fcoverage-mapping`
+  compatibility with the LLVM toolchain, so coverage-enabled programs no
+  longer trap while writing profile data. (#27223)
+
+6.0.11 - 10/02/26
+-----------------
+- Built-in SCons support (`emscons` and `tools/scons`) was marked as deprecated.
+  (See #27835)
 - The legacy `FS.findObject` function was removed (#27764) and `FS.analyzePath`
   was marked as deprecated (`FS.lookupPath` or `FS.stat` should be used
   instead). (#27765)
 - OpenMP was updated to LLVM commit 9076414489ed. This adds Wasm64 support and
   raises the generic microtask dispatcher limit from 15 to 32 arguments.
   (#27221)
-- compiler-rt was updated to LLVM 23.1.2. This restores `-fcoverage-mapping`
-  compatibility with the LLVM toolchain, so coverage-enabled programs no
-  longer trap while writing profile data. (#27223)
 
 6.0.10 - 09/21/26
 -----------------

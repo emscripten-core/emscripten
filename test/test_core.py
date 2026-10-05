@@ -2667,7 +2667,6 @@ The current type of b is: 9
 
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26199')
-  @flaky('flaky specifically in esm_integration suite. https://github.com/emscripten-core/emscripten/issues/25151')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
@@ -6127,6 +6126,8 @@ Module.onRuntimeInitialized = () => {
   def test_fs_rename_on_existing(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
+    else:
+      self.cflags.append('-lproxyfs.js')
     self.do_runf('fs/test_fs_rename_on_existing.c', 'done\n')
 
   @also_with_nodefs_both
@@ -9754,6 +9755,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_epoll_blocking_asyncify.c', 'done\n')
+
+  @with_asyncify_and_jspi
+  @needs_epoll
+  def test_epoll_wait_and_callback(self):
+    # A suspended blocking epoll_wait and a persistent callback on one epoll
+    # share a single ready list: they take disjoint slices, never the same edge.
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_epoll_wait_and_callback.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
 
   @parameterized({
     '': ([],),

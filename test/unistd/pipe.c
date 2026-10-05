@@ -100,9 +100,12 @@ void test_most() {
 
   assert(pipe(fd) == 0);
 
-  // Test that pipe is statable
+  // Test that both ends of the pipe are statable and are FIFOs
   struct stat st;
   assert(fstat(fd[0], &st) == 0);
+  assert(S_ISFIFO(st.st_mode));
+  assert(fstat(fd[1], &st) == 0);
+  assert(S_ISFIFO(st.st_mode));
 
   // Test that pipe is not seekable
 

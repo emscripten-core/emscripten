@@ -1644,12 +1644,11 @@ window.close = () => {
     'pthreads': (['-pthread'],),
   })
   def test_glgears(self, args):
-    self.reftest('hello_world_gles.c', 'gears.png', reference_slack=3, cflags=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + args)
+    self.reftest('hello_world_gles.c', 'gears.png', reference_slack=3, cflags=['-lGL', '-lglut'] + args)
 
   @requires_graphics_hardware
   def test_glgears_long(self):
-    args = ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
-    self.btest('hello_world_gles.c', expected='0', cflags=args)
+    self.btest('hello_world_gles.c', expected='0', cflags=['-DLONGTEST', '-lGL', '-lglut', '-DANIMATE'])
 
   @requires_graphics_hardware
   @parameterized({
@@ -1660,8 +1659,7 @@ window.close = () => {
   @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_animation(self, filename):
     copy_asset('browser/fake_events.js')
-    args = ['-o', 'something.html',
-            '-DHAVE_BUILTIN_SINCOS', '-sGL_TESTING', '-lGL', '-lglut',
+    args = ['-o', 'something.html', '-sGL_TESTING', '-lGL', '-lglut',
             '--shell-file', test_file('hello_world_gles_shell.html')]
     if 'full' in filename:
       args += ['-sFULL_ES2']
@@ -1670,14 +1668,13 @@ window.close = () => {
 
   @requires_graphics_hardware
   def test_fulles2_sdlproc(self):
-    self.btest_exit('full_es2_sdlproc.c', cflags=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS', '-Wno-int-conversion'])
+    self.btest_exit('full_es2_sdlproc.c', cflags=['-sGL_TESTING', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   @requires_graphics_hardware
   @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_deriv(self):
-    self.reftest('hello_world_gles_deriv.c', 'gears.png', reference_slack=2,
-                 cflags=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'])
-    assert 'gl-matrix' not in read_file('test.html'), 'Should not include glMatrix when not needed'
+    self.reftest('hello_world_gles_deriv.c', 'gears.png', reference_slack=2, cflags=['-lGL', '-lglut'])
+    self.assertNotIn('gl-matrix', read_file('test.html'), 'Should not include glMatrix when not needed')
 
   @requires_graphics_hardware
   @parameterized({
@@ -4518,6 +4515,9 @@ Module["preRun"] = () => {
   def test_fetch_stream_abort(self):
     self.make_largefile()
     self.btest_exit('fetch/test_fetch_stream_abort.cpp', cflags=['-sFETCH', '-sFETCH_STREAMING', '-sALLOW_MEMORY_GROWTH'])
+
+  def test_fetch_stream_error(self):
+    self.btest_exit('fetch/test_fetch_stream_error.c', cflags=['-sFETCH', '-sFETCH_STREAMING'])
 
   @also_with_fetch_streaming
   def test_fetch_persist(self):

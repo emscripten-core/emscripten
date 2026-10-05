@@ -844,7 +844,7 @@ function(${args}) {
       }
 
       // Dynamic linking needs signatures to create proper wrappers.
-      if (sig && MAIN_MODULE) {
+      if (sig && MAIN_MODULE && !isNativeAlias) {
         if (!WASM_BIGINT) {
           sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
         }

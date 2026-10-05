@@ -546,9 +546,11 @@ def set_max_memory():
   # With INITIAL_HEAP, we only know the lower bound on initial memory size.
   initial_memory_known = settings.INITIAL_MEMORY != -1
 
-  if not settings.ALLOW_MEMORY_GROWTH:
+  # Without growth, an imported memory can still be any size up to a
+  # user-specified maximum.
+  if not settings.ALLOW_MEMORY_GROWTH and not (settings.IMPORTED_MEMORY and 'MAXIMUM_MEMORY' in user_settings):
     if 'MAXIMUM_MEMORY' in user_settings:
-      diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
+      diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH or IMPORTED_MEMORY')
     # Optimization: lower the default maximum memory to initial memory if possible.
     if initial_memory_known:
       settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY

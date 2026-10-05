@@ -1501,7 +1501,6 @@ var LibraryGLFW = {
     if (GLFW.devicePixelRatioMQL)
       GLFW.devicePixelRatioMQL.removeEventListener('change', GLFW.onDevicePixelRatioChange);
 
-    canvas.width = canvas.height = 1;
     GLFW.windows = null;
     GLFW.active = null;
   },
