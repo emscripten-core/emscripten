@@ -896,9 +896,8 @@ var SyscallsLibrary = {
       }
       case {{{ cDefs.F_GETLK }}}: {
         var arg = syscallGetVarargP();
-        var offset = {{{ C_STRUCTS.flock.l_type }}};
         // We're always unlocked.
-        {{{ makeSetValue('arg', 'offset', cDefs.F_UNLCK, 'i16') }}};
+        {{{ makeSetValue('arg', C_STRUCTS.flock.l_type, cDefs.F_UNLCK, 'i16') }}};
         return 0;
       }
       case {{{ cDefs.F_SETLK }}}:
