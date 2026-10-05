@@ -6122,6 +6122,7 @@ Module.onRuntimeInitialized = () => {
       self.skipTest('No symlinks on Windows')
     self.do_runf('fs/test_fs_symlink_resolution.c', 'done\n')
 
+  @crossplatform
   @with_all_fs
   def test_fs_rename_on_existing(self):
     if self.get_setting('WASMFS'):
