@@ -428,6 +428,324 @@ function stripDefaultUndefined(ast) {
     }
   });
 }
+// Inlines immutable primitive constants (numbers, booleans, bigints) defined via
+// `const` into their expression uses. This allows constants defined in library code
+// (such as pthread/worker command IDs, socket states, etc.) to be inlined and then
+// eliminated by JSDCE in builds that do not run Closure Compiler.
+function inlineConstants(ast) {
+  function isInlinableConstant(node) {
+    if (!node) return false;
+    if (node.type === 'Literal') {
+      const val = node.value;
+      return (
+        (typeof val === 'number' && Number.isFinite(val)) ||
+        typeof val === 'boolean' ||
+        typeof val === 'bigint'
+      );
+    }
+    if (
+      node.type === 'UnaryExpression' &&
+      node.prefix === true &&
+      (node.operator === '-' || node.operator === '+') &&
+      node.argument.type === 'Literal'
+    ) {
+      const val = node.argument.value;
+      return (typeof val === 'number' && Number.isFinite(val)) || typeof val === 'bigint';
+    }
+    return false;
+  }
+
+  function cloneConstant(node) {
+    if (node.type === 'Literal') {
+      return {
+        type: 'Literal',
+        value: node.value,
+        raw: node.raw,
+        bigint: node.bigint,
+      };
+    }
+    if (node.type === 'UnaryExpression') {
+      return {
+        type: 'UnaryExpression',
+        operator: node.operator,
+        prefix: true,
+        argument: cloneConstant(node.argument),
+      };
+    }
+    throw new Error('unexpected constant node type: ' + node.type);
+  }
+
+  function replaceIdentifier(node, val) {
+    const replacement = cloneConstant(val);
+    for (const k of Object.keys(node)) {
+      delete node[k];
+    }
+    Object.assign(node, replacement);
+  }
+
+  class Scope {
+    constructor(isFunctionOrProgram = false) {
+      this.isFunctionOrProgram = isFunctionOrProgram;
+      this.bindings = new Map();
+    }
+  }
+
+  const scopes = [];
+
+  function addVarBinding(name) {
+    for (let i = scopes.length - 1; i >= 0; i--) {
+      if (scopes[i].isFunctionOrProgram) {
+        scopes[i].bindings.set(name, null);
+        return;
+      }
+    }
+    scopes[0].bindings.set(name, null);
+  }
+
+  function lookup(name) {
+    for (let i = scopes.length - 1; i >= 0; i--) {
+      if (scopes[i].bindings.has(name)) {
+        return scopes[i].bindings.get(name);
+      }
+    }
+    return null;
+  }
+
+  function collectDeclarations(bodyList, scope) {
+    if (!Array.isArray(bodyList)) return;
+    const pendingConsts = [];
+
+    for (const stmt of bodyList) {
+      let declNode = null;
+      if (stmt.type === 'VariableDeclaration') {
+        declNode = stmt;
+      } else if (stmt.type === 'ExportNamedDeclaration' && stmt.declaration?.type === 'VariableDeclaration') {
+        declNode = stmt.declaration;
+      } else if (stmt.type === 'FunctionDeclaration') {
+        if (stmt.id) scope.bindings.set(stmt.id.name, null);
+      } else if (stmt.type === 'ExportNamedDeclaration' && stmt.declaration?.type === 'FunctionDeclaration') {
+        if (stmt.declaration.id) scope.bindings.set(stmt.declaration.id.name, null);
+      } else if (stmt.type === 'ClassDeclaration') {
+        if (stmt.id) scope.bindings.set(stmt.id.name, null);
+      } else if (stmt.type === 'ExportNamedDeclaration' && stmt.declaration?.type === 'ClassDeclaration') {
+        if (stmt.declaration.id) scope.bindings.set(stmt.declaration.id.name, null);
+      }
+
+      if (declNode) {
+        if (declNode.kind === 'const') {
+          for (const decl of declNode.declarations) {
+            if (decl.id.type === 'Identifier') {
+              if (isInlinableConstant(decl.init)) {
+                scope.bindings.set(decl.id.name, cloneConstant(decl.init));
+              } else if (decl.init?.type === 'Identifier') {
+                pendingConsts.push({ name: decl.id.name, initName: decl.init.name });
+              } else {
+                scope.bindings.set(decl.id.name, null);
+              }
+            } else {
+              walkPattern(decl.id, () => {}, (name) => scope.bindings.set(name, null));
+            }
+          }
+        } else if (declNode.kind === 'let') {
+          for (const decl of declNode.declarations) {
+            walkPattern(decl.id, () => {}, (name) => scope.bindings.set(name, null));
+          }
+        } else if (declNode.kind === 'var') {
+          for (const decl of declNode.declarations) {
+            walkPattern(decl.id, () => {}, (name) => addVarBinding(name));
+          }
+        }
+      }
+    }
+
+    // Resolve any const aliases: const A = B;
+    let progress = true;
+    while (progress && pendingConsts.length > 0) {
+      progress = false;
+      for (let i = pendingConsts.length - 1; i >= 0; i--) {
+        const { name, initName } = pendingConsts[i];
+        const val = lookup(initName) || scope.bindings.get(initName);
+        if (val) {
+          scope.bindings.set(name, cloneConstant(val));
+          pendingConsts.splice(i, 1);
+          progress = true;
+        }
+      }
+    }
+    for (const { name } of pendingConsts) {
+      scope.bindings.set(name, null);
+    }
+  }
+
+  function handleFunction(node, c) {
+    const scope = new Scope(true /* isFunctionOrProgram */);
+    scopes.push(scope);
+    if (node.type === 'FunctionExpression' && node.id) {
+      scope.bindings.set(node.id.name, null);
+    }
+    for (const param of node.params) {
+      walkPattern(param, (expr) => c(expr), (name) => scope.bindings.set(name, null));
+    }
+    c(node.body);
+    scopes.pop();
+  }
+
+  const rootScope = new Scope(true /* isFunctionOrProgram */);
+  scopes.push(rootScope);
+  collectDeclarations(ast.body, rootScope);
+
+  recursiveWalk(ast, {
+    BlockStatement(node, c) {
+      const scope = new Scope(false);
+      scopes.push(scope);
+      collectDeclarations(node.body, scope);
+      for (const stmt of node.body) {
+        c(stmt);
+      }
+      scopes.pop();
+    },
+    FunctionDeclaration(node, c) {
+      handleFunction(node, c);
+    },
+    FunctionExpression(node, c) {
+      handleFunction(node, c);
+    },
+    ArrowFunctionExpression(node, c) {
+      handleFunction(node, c);
+    },
+    ForStatement(node, c) {
+      const scope = new Scope(false);
+      scopes.push(scope);
+      if (node.init?.type === 'VariableDeclaration') {
+        if (node.init.kind === 'var') {
+          for (const decl of node.init.declarations) {
+            walkPattern(decl.id, () => {}, (name) => addVarBinding(name));
+          }
+        } else {
+          for (const decl of node.init.declarations) {
+            walkPattern(decl.id, () => {}, (name) => scope.bindings.set(name, null));
+          }
+        }
+      }
+      visitChildren(node, c);
+      scopes.pop();
+    },
+    ForInStatement(node, c) {
+      const scope = new Scope(false);
+      scopes.push(scope);
+      if (node.left.type === 'VariableDeclaration') {
+        if (node.left.kind === 'var') {
+          for (const decl of node.left.declarations) {
+            walkPattern(decl.id, () => {}, (name) => addVarBinding(name));
+          }
+        } else {
+          for (const decl of node.left.declarations) {
+            walkPattern(decl.id, () => {}, (name) => scope.bindings.set(name, null));
+          }
+        }
+      }
+      visitChildren(node, c);
+      scopes.pop();
+    },
+    ForOfStatement(node, c) {
+      const scope = new Scope(false);
+      scopes.push(scope);
+      if (node.left.type === 'VariableDeclaration') {
+        if (node.left.kind === 'var') {
+          for (const decl of node.left.declarations) {
+            walkPattern(decl.id, () => {}, (name) => addVarBinding(name));
+          }
+        } else {
+          for (const decl of node.left.declarations) {
+            walkPattern(decl.id, () => {}, (name) => scope.bindings.set(name, null));
+          }
+        }
+      }
+      visitChildren(node, c);
+      scopes.pop();
+    },
+    CatchClause(node, c) {
+      const scope = new Scope(false);
+      scopes.push(scope);
+      if (node.param) {
+        walkPattern(node.param, () => {}, (name) => scope.bindings.set(name, null));
+      }
+      c(node.body);
+      scopes.pop();
+    },
+    VariableDeclarator(node, c) {
+      if (node.init) c(node.init);
+    },
+    ExportNamedDeclaration(node, c) {
+      if (node.declaration) c(node.declaration);
+    },
+    ExportDefaultDeclaration(node, c) {
+      c(node.declaration);
+    },
+    ExportSpecifier() {},
+    ImportDeclaration() {},
+    MemberExpression(node, c) {
+      c(node.object);
+      if (node.computed) c(node.property);
+    },
+    ObjectExpression(node, c) {
+      for (const prop of node.properties) {
+        if (prop.type === 'Property') {
+          if (prop.computed) c(prop.key);
+          if (prop.value) {
+            if (prop.shorthand && prop.value.type === 'Identifier') {
+              const val = lookup(prop.value.name);
+              if (val) {
+                prop.shorthand = false;
+                replaceIdentifier(prop.value, val);
+                continue;
+              }
+            }
+            c(prop.value);
+          }
+        } else if (prop.type === 'SpreadElement') {
+          c(prop.argument);
+        }
+      }
+    },
+    AssignmentExpression(node, c) {
+      if (node.left.type !== 'Identifier') c(node.left);
+      c(node.right);
+    },
+    UpdateExpression(node, c) {
+      if (node.argument.type !== 'Identifier') c(node.argument);
+    },
+    ClassDeclaration(node, c) {
+      if (node.superClass) c(node.superClass);
+      c(node.body);
+    },
+    ClassExpression(node, c) {
+      if (node.superClass) c(node.superClass);
+      c(node.body);
+    },
+    MethodDefinition(node, c) {
+      if (node.computed) c(node.key);
+      c(node.value);
+    },
+    PropertyDefinition(node, c) {
+      if (node.computed) c(node.key);
+      if (node.value) c(node.value);
+    },
+    BreakStatement() {},
+    ContinueStatement() {},
+    LabeledStatement(node, c) {
+      c(node.body);
+    },
+    Identifier(node, _c) {
+      const val = lookup(node.name);
+      if (val) {
+        replaceIdentifier(node, val);
+      }
+    },
+  });
+
+  scopes.pop();
+}
 
 function isWasmImportsAssign(node) {
   // var wasmImports = ..
@@ -1877,6 +2195,7 @@ const registry = {
   JSDCE,
   AJSDCE,
   stripDefaultUndefined,
+  inlineConstants,
   applyImportAndExportNameChanges,
   emitDCEGraph,
   applyDCEGraphRemovals,

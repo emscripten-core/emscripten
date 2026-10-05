@@ -286,7 +286,7 @@ EMSCRIPTEN_FUNCS();
         elif cleanup:
           if DEBUG:
             print('running cleanup on shell code', file=sys.stderr)
-          acorn_passes = ['JSDCE']
+          acorn_passes = ['inlineConstants', 'JSDCE']
           if '--minify-whitespace' in passes:
             acorn_passes.append('--minify-whitespace')
           cld = building.acorn_optimizer(cld, acorn_passes)

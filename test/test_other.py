@@ -3121,6 +3121,8 @@ More info: https://emscripten.org
   @parameterized({
     'minifyGlobals': (['minifyGlobals'],),
     'minifyLocals': (['minifyLocals'],),
+    'inlineConstants': (['inlineConstants', '--export-es6'],),
+    'inlineConstants-dce': (['inlineConstants', 'JSDCE', '--export-es6'], 'inlineConstants-dce.js'),
     'JSDCE': (['JSDCE', '--export-es6'],),
     'JSDCE-sourcePhaseImports': (['JSDCE', '--export-es6'],),
     'JSDCE-hasOwnProperty': (['JSDCE'],),
