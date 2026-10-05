@@ -583,7 +583,8 @@
           "SDL_HWSURFACE",
           "SDL_OPENGL",
           "SDL_BUTTON_WHEELUP",
-          "SDL_BUTTON_WHEELDOWN"
+          "SDL_BUTTON_WHEELDOWN",
+          "SDL_FULLSCREEN"
         ]
     },
     {

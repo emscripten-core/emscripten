@@ -458,7 +458,7 @@ var LibraryBrowser = {
       // check if SDL is available
       if (typeof SDL != 'undefined') {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
-        flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
+        flags = flags | {{{ cDefs.SDL_FULLSCREEN }}};
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
       Browser.updateCanvasDimensions(Browser.getCanvas());
@@ -469,7 +469,7 @@ var LibraryBrowser = {
       // check if SDL is available
       if (typeof SDL != 'undefined') {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
-        flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
+        flags = flags & ~{{{ cDefs.SDL_FULLSCREEN }}};
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
       Browser.updateCanvasDimensions(Browser.getCanvas());
