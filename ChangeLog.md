@@ -32,6 +32,9 @@ See docs/process.md for more on how version tagging works.
   main thread only. The callback itself is then able to collect the events via
   a zero-timeout `epoll_wait`, without an `ASYNCIFY`/`JSPI` requirement.
   (#27547)
+- compiler-rt was updated to LLVM 23.1.2. This restores `-fcoverage-mapping`
+  compatibility with the LLVM toolchain, so coverage-enabled programs no
+  longer trap while writing profile data. (#27223)
 
 6.0.11 - 10/02/26
 -----------------
