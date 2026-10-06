@@ -10,6 +10,9 @@ var SyscallsLibrary = {
                    '$PATH',
                    '$FS',
 #endif
+#if SYSCALLS_REQUIRE_FDS
+                   '$FDS',
+#endif
   ],
   $SYSCALLS: {
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -91,15 +94,17 @@ var SyscallsLibrary = {
       var buffer = HEAPU8.subarray(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
-    // Just like `FS.getStream` but will throw EBADF if stream is undefined.
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
+#if SYSCALLS_REQUIRE_FDS
+    // Just like `FDS.getStream` but will throw EBADF if stream is undefined.
     getStreamFromFD(fd) {
-      var stream = FS.getStreamChecked(fd);
+      var stream = FDS.getStreamChecked(fd);
 #if SYSCALL_DEBUG
       dbg(`    (stream: "${stream.path}")`);
 #endif
       return stream;
     },
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FDS
 
     varargs: undefined,
 
@@ -201,23 +206,23 @@ var SyscallsLibrary = {
   },
   __syscall_dup: (fd) => {
     var old = SYSCALLS.getStreamFromFD(fd);
-    return FS.dupStream(old).fd;
+    return FDS.dupStream(old).fd;
   },
   __syscall_pipe2__deps: ['$PIPEFS'],
   __syscall_pipe2: (fdPtr, flags) => {
     if (fdPtr == 0) {
-      throw new FS.ErrnoError({{{ cDefs.EFAULT }}});
+      throw new FDS.ErrnoError({{{ cDefs.EFAULT }}});
     }
     var validFlags = {{{ cDefs.O_CLOEXEC }}} | {{{ cDefs.O_NONBLOCK }}};
     if (flags & ~validFlags) {
-      throw new FS.ErrnoError({{{ cDefs.ENOTSUP }}});
+      throw new FDS.ErrnoError({{{ cDefs.ENOTSUP }}});
     }
 
     var res = PIPEFS.createPipe();
 
     if (flags & {{{ cDefs.O_NONBLOCK }}}) {
-      FS.getStream(res.readable_fd).flags |= {{{ cDefs.O_NONBLOCK }}};
-      FS.getStream(res.writable_fd).flags |= {{{ cDefs.O_NONBLOCK }}};
+      FDS.getStream(res.readable_fd).flags |= {{{ cDefs.O_NONBLOCK }}};
+      FDS.getStream(res.writable_fd).flags |= {{{ cDefs.O_NONBLOCK }}};
     }
 
     {{{ makeSetValue('fdPtr', 0, 'res.readable_fd', 'i32') }}};
@@ -226,13 +231,13 @@ var SyscallsLibrary = {
     return 0;
   },
 
-#if SYSCALLS_REQUIRE_FILESYSTEM
+#if SYSCALLS_REQUIRE_FDS
   __syscall_ioctl__deps: ['$syscallGetVarargP'],
 #endif
   __syscall_ioctl: (fd, op, varargs) => {
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+#if SYSCALLS_REQUIRE_FDS == 0
 #if SYSCALL_DEBUG
-    dbg('no-op in ioctl syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
+    dbg('no-op in ioctl syscall due to SYSCALLS_REQUIRE_FDS=0');
 #endif
     return 0;
 #else
@@ -301,7 +306,8 @@ var SyscallsLibrary = {
       case {{{ cDefs.FIONBIO }}}:
       case {{{ cDefs.FIONREAD }}}: {
         var argp = syscallGetVarargP();
-        return FS.ioctl(stream, op, argp);
+        if (!stream.stream_ops.ioctl) return -{{{ cDefs.ENOTTY }}};
+        return stream.stream_ops.ioctl(stream, op, argp);
       }
       case {{{ cDefs.TIOCGWINSZ }}}: {
         // TODO: in theory we should write to the winsize struct that gets
@@ -328,7 +334,7 @@ var SyscallsLibrary = {
       }
       default: return -{{{ cDefs.EINVAL }}}; // not supported
     }
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FDS
   },
   __syscall_fchmod: (fd, mode) => {
     FS.fchmod(fd, mode);
@@ -339,19 +345,19 @@ var SyscallsLibrary = {
 // When building with WASMFS the socket syscalls are implemented natively in
 // libwasmfs.a.
 #if PROXY_POSIX_SOCKETS == 0 && WASMFS == 0
-  $getSocketFromFD__deps: ['$SOCKFS', '$FS'],
+  $getSocketFromFD__deps: ['$SOCKFS', '$FDS'],
   $getSocketFromFD: (fd) => {
     var socket = SOCKFS.getSocket(fd);
-    if (!socket) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+    if (!socket) throw new FDS.ErrnoError({{{ cDefs.EBADF }}});
 #if SYSCALL_DEBUG
     dbg(`    (socket: "${socket.path}")`);
 #endif
     return socket;
   },
-  $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
+  $getSocketAddress__deps: ['$readSockaddr', '$FDS', '$DNS'],
   $getSocketAddress: (addrp, addrlen) => {
     var info = readSockaddr(addrp, addrlen);
-    if (info.errno) throw new FS.ErrnoError(info.errno);
+    if (info.errno) throw new FDS.ErrnoError(info.errno);
 #if NODERAWSOCKETS
     // AF_UNIX addresses are filesystem paths, not IP names; pass them verbatim.
     if (info.family != {{{ cDefs.AF_UNIX }}})
@@ -467,7 +473,7 @@ var SyscallsLibrary = {
     var sock = getSocketFromFD(fd);
     if (!addr) {
       // send, no address provided
-      return FS.write(sock.stream, HEAP8, buf, len);
+      return FDS.write(sock.stream, HEAP8, buf, len);
     }
     var dest = getSocketAddress(addr, alen);
     // sendto an address
@@ -617,9 +623,9 @@ var SyscallsLibrary = {
   // POLLERR/POLLHUP/POLLNVAL are output-only conditions reported regardless of
   // `events` (a bad fd reports POLLNVAL even if the caller didn't ask for it).
   $pollOne__internal: true,
-  $pollOne__deps: ['$FS'],
+  $pollOne__deps: ['$FDS'],
   $pollOne: (fd, events) => {
-    var stream = FS.getStream(fd);
+    var stream = FDS.getStream(fd);
     if (!stream) return {{{ cDefs.POLLNVAL }}};
     // Streams without a poll handler (regular files, incl. NODERAWFS/NODEFS
     // which leave stream_ops unset) are treated as always readable+writable.
@@ -679,7 +685,7 @@ var SyscallsLibrary = {
   // the trigger), resolving then or, for a positive `timeout`, once it elapses.
   // A negative `timeout` waits forever. Returns a Promise of the ready count.
   $doPollAsync__internal: true,
-  $doPollAsync__deps: ['$FS', '$pollOne'],
+  $doPollAsync__deps: ['$FDS', '$pollOne'],
   $doPollAsync: (fds, nfds, timeout) => new Promise((resolve) => {
     var regs = [];
     var timer;
@@ -712,7 +718,7 @@ var SyscallsLibrary = {
         if (c) finish(c);
       }
       for (var i = 0, pollfd = fds; i < nfds; i++, pollfd += {{{ C_STRUCTS.pollfd.__size__ }}}) {
-        var stream = FS.getStream({{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}});
+        var stream = FDS.getStream({{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}});
         if (stream) regs.push(stream.node.addListener(recheck));
       }
       if (timeout > 0) timer = setTimeout(() => finish(0), timeout);
@@ -738,18 +744,18 @@ var SyscallsLibrary = {
     if (flags & ~{{{ cDefs.EPOLL_CLOEXEC }}}) return -{{{ cDefs.EINVAL }}};
     return epollNewInstance().fd;
   },
-  __syscall_epoll_ctl__deps: ['$FS', '$epollCtl'],
+  __syscall_epoll_ctl__deps: ['$FDS', '$epollCtl'],
   __syscall_epoll_ctl__proxy: 'sync',
   __syscall_epoll_ctl: (epfd, op, fd, ev) => {
-    var ep = FS.getStream(epfd);
+    var ep = FDS.getStream(epfd);
     if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
     return epollCtl(ep.shared, op, fd, ev);
   },
   __syscall_epoll_pwait__proxy: 'sync',
   __syscall_epoll_pwait__async: 'auto',
-  __syscall_epoll_pwait__deps: ['$FS', '$epollPwait'],
+  __syscall_epoll_pwait__deps: ['$FDS', '$epollPwait'],
   __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => {
-    var ep = FS.getStream(epfd);
+    var ep = FDS.getStream(epfd);
     if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
     if (maxevents <= 0) return -{{{ cDefs.EINVAL }}};
     return epollPwait(ep.shared, ev, maxevents, timeout);
@@ -760,9 +766,9 @@ var SyscallsLibrary = {
   // from a stack that wasn't entered through a promising export). Mirrors
   // __syscall_poll_nonblocking.
   __syscall_epoll_pwait_nonblocking__proxy: 'sync',
-  __syscall_epoll_pwait_nonblocking__deps: ['$FS', '$doEpollWait'],
+  __syscall_epoll_pwait_nonblocking__deps: ['$FDS', '$doEpollWait'],
   __syscall_epoll_pwait_nonblocking: (epfd, ev, maxevents) => {
-    var ep = FS.getStream(epfd);
+    var ep = FDS.getStream(epfd);
     if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
     if (maxevents <= 0) return -{{{ cDefs.EINVAL }}};
     return doEpollWait(ep.shared, ev, maxevents);
@@ -859,13 +865,13 @@ var SyscallsLibrary = {
     FS.llseek(stream, idx * struct_size, {{{ cDefs.SEEK_SET }}});
     return pos;
   },
-#if SYSCALLS_REQUIRE_FILESYSTEM
+#if SYSCALLS_REQUIRE_FDS
   __syscall_fcntl64__deps: ['$syscallGetVarargP', '$syscallGetVarargI'],
 #endif
   __syscall_fcntl64: (fd, cmd, varargs) => {
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+#if SYSCALLS_REQUIRE_FDS == 0
 #if SYSCALL_DEBUG
-    dbg('no-op in fcntl syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
+    dbg('no-op in fcntl syscall due to SYSCALLS_REQUIRE_FDS=0');
 #endif
     return 0;
 #else
@@ -876,11 +882,11 @@ var SyscallsLibrary = {
         if (arg < 0) {
           return -{{{ cDefs.EINVAL }}};
         }
-        while (FS.streams[arg]) {
+        while (FDS.streams[arg]) {
           arg++;
         }
         var newStream;
-        newStream = FS.dupStream(stream, arg);
+        newStream = FDS.dupStream(stream, arg);
         return newStream.fd;
       }
       case {{{ cDefs.F_GETFD }}}:
@@ -918,7 +924,7 @@ var SyscallsLibrary = {
 #endif
     }
     return -{{{ cDefs.EINVAL }}};
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FDS
   },
 
   __syscall_statfs64: (path, size, buf) => {
@@ -1166,10 +1172,14 @@ var SyscallsLibrary = {
     if (flags & ~{{{ cDefs.O_CLOEXEC }}}) return -{{{ cDefs.EINVAL }}};
     var old = SYSCALLS.getStreamFromFD(fd);
     // Check newfd is within range of valid open file descriptors.
-    if (newfd < 0 || newfd >= FS.MAX_OPEN_FDS) return -{{{ cDefs.EBADF }}};
-    var existing = FS.getStream(newfd);
+    if (newfd < 0 || newfd >= FDS.MAX_OPEN_FDS) return -{{{ cDefs.EBADF }}};
+    var existing = FDS.getStream(newfd);
+#if SYSCALLS_REQUIRE_FILESYSTEM
     if (existing) FS.close(existing);
-    var stream = FS.dupStream(old, newfd);
+#else
+    if (existing) FDS.close(existing);
+#endif
+    var stream = FDS.dupStream(old, newfd);
     if (flags & {{{ cDefs.O_CLOEXEC }}}) {
       stream.flags |= {{{ cDefs.O_CLOEXEC }}};
     }

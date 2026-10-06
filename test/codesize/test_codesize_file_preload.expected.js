@@ -486,35 +486,265 @@ var callRuntimeCallbacks = callbacks => {
 
 var onPreRuns = [];
 
-/** @type {!Int8Array} */ var HEAP8;
-
-/** @type {!Uint8Array} */ var HEAPU8;
-
-/** @type {!Uint32Array} */ var HEAPU32;
-
-/** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
-  // Gather all iovecs into one contiguous buffer and issue a single
-  // FS.write, matching POSIX writev's single gather-write semantics (as
-  // __syscall_sendmsg already does). Per-iovec writes fragment a stream
-  // socket send into multiple segments, breaking stream byte semantics.
-  if (iovcnt == 1) {
-    // Single iovec: write directly from HEAP8, no gather buffer needed.
-    return FS.write(stream, HEAP8, HEAPU32[((iov) >> 2)], HEAPU32[(((iov) + (4)) >> 2)], offset);
+var FDS = {
+  streams: [],
+  nextInode: 1,
+  MAX_OPEN_FDS: 4096,
+  ErrnoError: class {
+    name="ErrnoError";
+    // We set the `name` property to be able to identify `FS.ErrnoError`
+    // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
+    // - when using PROXYFS, an error can come from an underlying FS
+    // as different FS objects have their own FS.ErrnoError each,
+    // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
+    // we'll use the reliable test `err.name == "ErrnoError"` instead
+    constructor(errno) {
+      this.errno = errno;
+    }
+  },
+  Stream: class {
+    shared={};
+    get object() {
+      return this.node;
+    }
+    set object(val) {
+      this.node = val;
+    }
+    get isRead() {
+      return (this.flags & 2097155) !== 1;
+    }
+    get isWrite() {
+      return (this.flags & 2097155) !== 0;
+    }
+    get isAppend() {
+      return (this.flags & 1024);
+    }
+    get flags() {
+      return this.shared.flags;
+    }
+    set flags(val) {
+      this.shared.flags = val;
+    }
+    get position() {
+      return this.shared.position;
+    }
+    set position(val) {
+      this.shared.position = val;
+    }
+  },
+  Node: class {
+    constructor(mode) {
+      this.id = FDS.nextInode++;
+      this.mode = mode;
+    }
+    // The per-inode readiness wait-queue. The node carries a Set of listener
+    // entries {cb}; producers (SOCKFS, PIPEFS) call notifyListeners on a
+    // readiness transition, and poll()/epoll consume it. It lives on the node
+    // (not the fd) so dup'd fds share one queue. Only nodes that derive real
+    // readiness (sockets, pipes, and an epoll's own node) ever use this -
+    // always-ready types (regular files, ttys) never register or notify.
+    addListener(cb, exclusive = false) {
+      var entry = {
+        cb,
+        exclusive
+      };
+      var listeners = (this.listeners ??= new Set);
+      listeners.add(entry);
+      return {
+        listeners,
+        entry
+      };
+    }
+    notifyListeners(flags) {
+      // Iterates the set without copying, which is safe ONLY under a
+      // load-bearing contract that every internal listener must honour:
+      //   1. A listener must not run user code synchronously (a poll waiter only
+      //      resolves a Promise; an epoll registration only re-lists +
+      //      re-notifies; the epoll callback only schedules a tick). User code
+      //      runs on a later tick, never inside this loop.
+      //   2. A listener may delete entries only from ITS OWN waiter, never from
+      //      a sibling node's set that may be mid-iteration. (Deleting an entry
+      //      of the set being iterated here is fine - a Set tolerates removal of
+      //      a not-yet-visited entry mid-iteration; mutating a *different* node's
+      //      set is fine because that set is not being iterated.)
+      // Violating either gives silently skipped wakeups that are near-impossible
+      // to reproduce. Any new producer/listener must preserve it.
+      if (!this.listeners) return;
+      // Fire every non-exclusive listener. Among EPOLLEXCLUSIVE registrations
+      // (one fd watched by several epolls) wake only one, rotating round-robin
+      // per node, to avoid a thundering herd. (Only epoll registrations are ever
+      // exclusive; poll waiters and a node's own consumers are not.)
+      var excl;
+      for (var entry of this.listeners) {
+        if (entry.exclusive) (excl ||= []).push(entry); else entry.cb(flags);
+      }
+      if (excl) {
+        var i = (this.exclTurn || 0) % excl.length;
+        this.exclTurn = i + 1;
+        excl[i].cb(flags);
+      }
+    }
+  },
+  isFile(mode) {
+    return (mode & 61440) === 32768;
+  },
+  isDir(mode) {
+    return (mode & 61440) === 16384;
+  },
+  isLink(mode) {
+    return (mode & 61440) === 40960;
+  },
+  isChrdev(mode) {
+    return (mode & 61440) === 8192;
+  },
+  isBlkdev(mode) {
+    return (mode & 61440) === 24576;
+  },
+  isFIFO(mode) {
+    return (mode & 61440) === 4096;
+  },
+  isSocket(mode) {
+    return (mode & 49152) === 49152;
+  },
+  nextfd() {
+    for (var fd = 0; fd <= FDS.MAX_OPEN_FDS; fd++) {
+      if (!FDS.streams[fd]) {
+        return fd;
+      }
+    }
+    throw new FDS.ErrnoError(33);
+  },
+  getStreamChecked(fd) {
+    var stream = FDS.getStream(fd);
+    if (!stream) {
+      throw new FDS.ErrnoError(8);
+    }
+    return stream;
+  },
+  getStream: fd => FDS.streams[fd],
+  createStream(stream, fd = -1) {
+    // clone it, so we can return an instance of Stream
+    stream = Object.assign(new FDS.Stream, stream);
+    if (fd == -1) {
+      fd = FDS.nextfd();
+    }
+    stream.fd = fd;
+    FDS.streams[fd] = stream;
+    return stream;
+  },
+  closeStream(fd) {
+    FDS.streams[fd] = null;
+  },
+  dupStream(origStream, fd = -1) {
+    var stream = FDS.createStream(origStream, fd);
+    stream.stream_ops?.dup?.(stream);
+    return stream;
+  },
+  close(stream) {
+    if (FDS.isClosed(stream)) {
+      throw new FDS.ErrnoError(8);
+    }
+    // The fd is going away: wake anything waiting on it (poll/epoll) with
+    // POLLNVAL so a blocking wait unblocks and an epoll registration is evicted
+    // on its next derive. Only sockets/pipes/epoll ever carry a wait-queue, so
+    // for every other stream (incl. nodeless noderawfs stdio) this is a no-op.
+    stream.node?.notifyListeners(32);
+    try {
+      if (stream.stream_ops.close) {
+        stream.stream_ops.close(stream);
+      }
+    } catch (e) {
+      throw e;
+    } finally {
+      FDS.closeStream(stream.fd);
+    }
+    stream.fd = null;
+  },
+  isClosed(stream) {
+    return stream.fd === null;
+  },
+  llseek(stream, offset, whence) {
+    if (FDS.isClosed(stream)) {
+      throw new FDS.ErrnoError(8);
+    }
+    if (!stream.seekable || !stream.stream_ops.llseek) {
+      throw new FDS.ErrnoError(70);
+    }
+    if (whence != 0 && whence != 1 && whence != 2) {
+      throw new FDS.ErrnoError(28);
+    }
+    stream.position = stream.stream_ops.llseek(stream, offset, whence);
+    stream.ungotten = [];
+    return stream.position;
+  },
+  read(stream, buffer, offset, length, position) {
+    if (length < 0 || position < 0) {
+      throw new FDS.ErrnoError(28);
+    }
+    if (FDS.isClosed(stream)) {
+      throw new FDS.ErrnoError(8);
+    }
+    if ((stream.flags & 2097155) === 1) {
+      throw new FDS.ErrnoError(8);
+    }
+    if (FDS.isDir(stream.node.mode)) {
+      throw new FDS.ErrnoError(31);
+    }
+    if (!stream.stream_ops.read) {
+      throw new FDS.ErrnoError(28);
+    }
+    var seeking = typeof position != "undefined";
+    if (!seeking) {
+      position = stream.position;
+    } else if (!stream.seekable) {
+      throw new FDS.ErrnoError(70);
+    }
+    var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
+    if (!seeking) stream.position += bytesRead;
+    return bytesRead;
+  },
+  write(stream, buffer, offset, length, position, canOwn) {
+    if (length < 0 || position < 0) {
+      throw new FDS.ErrnoError(28);
+    }
+    if (FDS.isClosed(stream)) {
+      throw new FDS.ErrnoError(8);
+    }
+    if ((stream.flags & 2097155) === 0) {
+      throw new FDS.ErrnoError(8);
+    }
+    if (FDS.isDir(stream.node.mode)) {
+      throw new FDS.ErrnoError(31);
+    }
+    if (!stream.stream_ops.write) {
+      throw new FDS.ErrnoError(28);
+    }
+    if (stream.seekable && stream.flags & 1024) {
+      // seek to the end before writing in append mode
+      FDS.llseek(stream, 0, 2);
+    }
+    var seeking = typeof position != "undefined";
+    if (!seeking) {
+      position = stream.position;
+    } else if (!stream.seekable) {
+      throw new FDS.ErrnoError(70);
+    }
+    var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
+    if (!seeking) stream.position += bytesWritten;
+    return bytesWritten;
   }
-  var total = 0;
-  for (var i = 0, p = iov; i < iovcnt; i++, p += 8) {
-    total += HEAPU32[(((p) + (4)) >> 2)];
-  }
-  var view = new Uint8Array(total);
-  var voff = 0;
-  for (var i = 0; i < iovcnt; i++, iov += 8) {
-    var ptr = HEAPU32[((iov) >> 2)];
-    var len = HEAPU32[(((iov) + (4)) >> 2)];
-    view.set(HEAPU8.subarray(ptr, ptr + len), voff);
-    voff += len;
-  }
-  return FS.write(stream, view, 0, total, offset);
 };
+
+var initRandomFill = () => {
+  // This block is not needed on v19+ since crypto.getRandomValues is builtin
+  if (ENVIRONMENT_IS_NODE) {
+    var nodeCrypto = require("node:crypto");
+    return view => (nodeCrypto.randomFillSync(view), 0);
+  }
+  return view => (crypto.getRandomValues(view), 0);
+};
+
+var randomFill = view => (randomFill = initRandomFill())(view);
 
 var PATH = {
   isAbs: path => path.charAt(0) === "/",
@@ -573,17 +803,6 @@ var PATH = {
   join: (...paths) => PATH.normalize(paths.join("/")),
   join2: (l, r) => PATH.normalize(l + "/" + r)
 };
-
-var initRandomFill = () => {
-  // This block is not needed on v19+ since crypto.getRandomValues is builtin
-  if (ENVIRONMENT_IS_NODE) {
-    var nodeCrypto = require("node:crypto");
-    return view => (nodeCrypto.randomFillSync(view), 0);
-  }
-  return view => (crypto.getRandomValues(view), 0);
-};
-
-var randomFill = view => (randomFill = initRandomFill())(view);
 
 var PATH_FS = {
   resolve: (...args) => {
@@ -941,6 +1160,8 @@ var TTY = {
 var mmapAlloc = size => {
   abort();
 };
+
+/** @type {!Int8Array} */ var HEAP8;
 
 var MEMFS = {
   ops_table: null,
@@ -1349,71 +1570,26 @@ var FS = {
   root: null,
   mounts: [],
   devices: {},
-  streams: [],
-  nextInode: 1,
   nameTable: [],
   currentPath: "/",
   initialized: false,
   ignorePermissions: true,
   filesystems: null,
   syncFSRequests: 0,
-  ErrnoError: class {
-    name="ErrnoError";
-    // We set the `name` property to be able to identify `FS.ErrnoError`
-    // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
-    // - when using PROXYFS, an error can come from an underlying FS
-    // as different FS objects have their own FS.ErrnoError each,
-    // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
-    // we'll use the reliable test `err.name == "ErrnoError"` instead
-    constructor(errno) {
-      this.errno = errno;
-    }
-  },
-  FSStream: class {
-    shared={};
-    get object() {
-      return this.node;
-    }
-    set object(val) {
-      this.node = val;
-    }
-    get isRead() {
-      return (this.flags & 2097155) !== 1;
-    }
-    get isWrite() {
-      return (this.flags & 2097155) !== 0;
-    }
-    get isAppend() {
-      return (this.flags & 1024);
-    }
-    get flags() {
-      return this.shared.flags;
-    }
-    set flags(val) {
-      this.shared.flags = val;
-    }
-    get position() {
-      return this.shared.position;
-    }
-    set position(val) {
-      this.shared.position = val;
-    }
-  },
-  FSNode: class {
+  FSNode: class extends FDS.Node {
     node_ops={};
     stream_ops={};
     readMode=292 | 73;
     writeMode=146;
     mounted=null;
     constructor(parent, name, mode, rdev) {
+      super(mode);
       if (!parent) {
         parent = this;
       }
       this.parent = parent;
       this.mount = parent.mount;
-      this.id = FS.nextInode++;
       this.name = name;
-      this.mode = mode;
       this.rdev = rdev;
       this.atime = this.mtime = this.ctime = Date.now();
     }
@@ -1434,53 +1610,6 @@ var FS = {
     }
     get isDevice() {
       return FS.isChrdev(this.mode);
-    }
-    // The per-inode readiness wait-queue. The node carries a Set of listener
-    // entries {cb}; producers (SOCKFS, PIPEFS) call notifyListeners on a
-    // readiness transition, and poll()/epoll consume it. It lives on the node
-    // (not the fd) so dup'd fds share one queue. Only nodes that derive real
-    // readiness (sockets, pipes, and an epoll's own node) ever use this -
-    // always-ready types (regular files, ttys) never register or notify.
-    addListener(cb, exclusive = false) {
-      var entry = {
-        cb,
-        exclusive
-      };
-      var listeners = (this.listeners ??= new Set);
-      listeners.add(entry);
-      return {
-        listeners,
-        entry
-      };
-    }
-    notifyListeners(flags) {
-      // Iterates the set without copying, which is safe ONLY under a
-      // load-bearing contract that every internal listener must honour:
-      //   1. A listener must not run user code synchronously (a poll waiter only
-      //      resolves a Promise; an epoll registration only re-lists +
-      //      re-notifies; the epoll callback only schedules a tick). User code
-      //      runs on a later tick, never inside this loop.
-      //   2. A listener may delete entries only from ITS OWN waiter, never from
-      //      a sibling node's set that may be mid-iteration. (Deleting an entry
-      //      of the set being iterated here is fine - a Set tolerates removal of
-      //      a not-yet-visited entry mid-iteration; mutating a *different* node's
-      //      set is fine because that set is not being iterated.)
-      // Violating either gives silently skipped wakeups that are near-impossible
-      // to reproduce. Any new producer/listener must preserve it.
-      if (!this.listeners) return;
-      // Fire every non-exclusive listener. Among EPOLLEXCLUSIVE registrations
-      // (one fd watched by several epolls) wake only one, rotating round-robin
-      // per node, to avoid a thundering herd. (Only epoll registrations are ever
-      // exclusive; poll waiters and a node's own consumers are not.)
-      var excl;
-      for (var entry of this.listeners) {
-        if (entry.exclusive) (excl ||= []).push(entry); else entry.cb(flags);
-      }
-      if (excl) {
-        var i = (this.exclTurn || 0) % excl.length;
-        this.exclTurn = i + 1;
-        excl[i].cb(flags);
-      }
     }
   },
   lookupPath(path, opts = {}) {
@@ -1627,27 +1756,6 @@ var FS = {
   isMountpoint(node) {
     return !!node.mounted;
   },
-  isFile(mode) {
-    return (mode & 61440) === 32768;
-  },
-  isDir(mode) {
-    return (mode & 61440) === 16384;
-  },
-  isLink(mode) {
-    return (mode & 61440) === 40960;
-  },
-  isChrdev(mode) {
-    return (mode & 61440) === 8192;
-  },
-  isBlkdev(mode) {
-    return (mode & 61440) === 24576;
-  },
-  isFIFO(mode) {
-    return (mode & 61440) === 4096;
-  },
-  isSocket(mode) {
-    return (mode & 49152) === 49152;
-  },
   flagsToPermissionString(flag) {
     var perms = [ "r", "w", "rw" ][flag & 3];
     if ((flag & 512)) {
@@ -1733,41 +1841,6 @@ var FS = {
       throw new FS.ErrnoError(err);
     }
     return op;
-  },
-  MAX_OPEN_FDS: 4096,
-  nextfd() {
-    for (var fd = 0; fd <= FS.MAX_OPEN_FDS; fd++) {
-      if (!FS.streams[fd]) {
-        return fd;
-      }
-    }
-    throw new FS.ErrnoError(33);
-  },
-  getStreamChecked(fd) {
-    var stream = FS.getStream(fd);
-    if (!stream) {
-      throw new FS.ErrnoError(8);
-    }
-    return stream;
-  },
-  getStream: fd => FS.streams[fd],
-  createStream(stream, fd = -1) {
-    // clone it, so we can return an instance of FSStream
-    stream = Object.assign(new FS.FSStream, stream);
-    if (fd == -1) {
-      fd = FS.nextfd();
-    }
-    stream.fd = fd;
-    FS.streams[fd] = stream;
-    return stream;
-  },
-  closeStream(fd) {
-    FS.streams[fd] = null;
-  },
-  dupStream(origStream, fd = -1) {
-    var stream = FS.createStream(origStream, fd);
-    stream.stream_ops?.dup?.(stream);
-    return stream;
   },
   doSetAttr(stream, node, attr) {
     var setattr = stream?.stream_ops.setattr;
@@ -1963,8 +2036,8 @@ var FS = {
       blocks: 1e6,
       bfree: 5e5,
       bavail: 5e5,
-      files: FS.nextInode,
-      ffree: FS.nextInode - 1,
+      files: FDS.nextInode,
+      ffree: FDS.nextInode - 1,
       fsid: 42,
       flags: 2,
       namelen: 255
@@ -2414,99 +2487,9 @@ var FS = {
     return stream;
   },
   close(stream) {
-    if (FS.isClosed(stream)) {
-      throw new FS.ErrnoError(8);
-    }
     if (stream.getdents) stream.getdents = null;
     // free readdir state
-    // The fd is going away: wake anything waiting on it (poll/epoll) with
-    // POLLNVAL so a blocking wait unblocks and an epoll registration is evicted
-    // on its next derive. Only sockets/pipes/epoll ever carry a wait-queue, so
-    // for every other stream (incl. nodeless noderawfs stdio) this is a no-op.
-    stream.node?.notifyListeners(32);
-    try {
-      if (stream.stream_ops.close) {
-        stream.stream_ops.close(stream);
-      }
-    } catch (e) {
-      throw e;
-    } finally {
-      FS.closeStream(stream.fd);
-    }
-    stream.fd = null;
-  },
-  isClosed(stream) {
-    return stream.fd === null;
-  },
-  llseek(stream, offset, whence) {
-    if (FS.isClosed(stream)) {
-      throw new FS.ErrnoError(8);
-    }
-    if (!stream.seekable || !stream.stream_ops.llseek) {
-      throw new FS.ErrnoError(70);
-    }
-    if (whence != 0 && whence != 1 && whence != 2) {
-      throw new FS.ErrnoError(28);
-    }
-    stream.position = stream.stream_ops.llseek(stream, offset, whence);
-    stream.ungotten = [];
-    return stream.position;
-  },
-  read(stream, buffer, offset, length, position) {
-    if (length < 0 || position < 0) {
-      throw new FS.ErrnoError(28);
-    }
-    if (FS.isClosed(stream)) {
-      throw new FS.ErrnoError(8);
-    }
-    if ((stream.flags & 2097155) === 1) {
-      throw new FS.ErrnoError(8);
-    }
-    if (FS.isDir(stream.node.mode)) {
-      throw new FS.ErrnoError(31);
-    }
-    if (!stream.stream_ops.read) {
-      throw new FS.ErrnoError(28);
-    }
-    var seeking = typeof position != "undefined";
-    if (!seeking) {
-      position = stream.position;
-    } else if (!stream.seekable) {
-      throw new FS.ErrnoError(70);
-    }
-    var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
-    if (!seeking) stream.position += bytesRead;
-    return bytesRead;
-  },
-  write(stream, buffer, offset, length, position, canOwn) {
-    if (length < 0 || position < 0) {
-      throw new FS.ErrnoError(28);
-    }
-    if (FS.isClosed(stream)) {
-      throw new FS.ErrnoError(8);
-    }
-    if ((stream.flags & 2097155) === 0) {
-      throw new FS.ErrnoError(8);
-    }
-    if (FS.isDir(stream.node.mode)) {
-      throw new FS.ErrnoError(31);
-    }
-    if (!stream.stream_ops.write) {
-      throw new FS.ErrnoError(28);
-    }
-    if (stream.seekable && stream.flags & 1024) {
-      // seek to the end before writing in append mode
-      FS.llseek(stream, 0, 2);
-    }
-    var seeking = typeof position != "undefined";
-    if (!seeking) {
-      position = stream.position;
-    } else if (!stream.seekable) {
-      throw new FS.ErrnoError(70);
-    }
-    var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
-    if (!seeking) stream.position += bytesWritten;
-    return bytesWritten;
+    FDS.close(stream);
   },
   mmap(stream, length, position, prot, flags) {
     // User requests writing to file (prot & PROT_WRITE != 0).
@@ -2986,6 +2969,34 @@ var FS = {
   }
 };
 
+/** @type {!Uint8Array} */ var HEAPU8;
+
+/** @type {!Uint32Array} */ var HEAPU32;
+
+/** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
+  // Gather all iovecs into one contiguous buffer and issue a single
+  // FS.write, matching POSIX writev's single gather-write semantics (as
+  // __syscall_sendmsg already does). Per-iovec writes fragment a stream
+  // socket send into multiple segments, breaking stream byte semantics.
+  if (iovcnt == 1) {
+    // Single iovec: write directly from HEAP8, no gather buffer needed.
+    return FS.write(stream, HEAP8, HEAPU32[((iov) >> 2)], HEAPU32[(((iov) + (4)) >> 2)], offset);
+  }
+  var total = 0;
+  for (var i = 0, p = iov; i < iovcnt; i++, p += 8) {
+    total += HEAPU32[(((p) + (4)) >> 2)];
+  }
+  var view = new Uint8Array(total);
+  var voff = 0;
+  for (var i = 0; i < iovcnt; i++, iov += 8) {
+    var ptr = HEAPU32[((iov) >> 2)];
+    var len = HEAPU32[(((iov) + (4)) >> 2)];
+    view.set(HEAPU8.subarray(ptr, ptr + len), voff);
+    voff += len;
+  }
+  return FS.write(stream, view, 0, total, offset);
+};
+
 /**
    * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
    * emscripten HEAP, returns a copy of that string as a Javascript String object.
@@ -3075,7 +3086,7 @@ var SYSCALLS = {
     FS.msync(stream, buffer, offset, len, flags);
   },
   getStreamFromFD(fd) {
-    var stream = FS.getStreamChecked(fd);
+    var stream = FDS.getStreamChecked(fd);
     return stream;
   },
   varargs: undefined,
@@ -3092,7 +3103,7 @@ function _fd_write(fd, iov, iovcnt, pnum) {
     HEAPU32[((pnum) >> 2)] = num;
     return 0;
   } catch (e) {
-    if (typeof FS == "undefined" || !(e.name === "ErrnoError")) throw e;
+    if (e.name !== "ErrnoError") throw e;
     return e.errno;
   }
 }
@@ -3131,6 +3142,50 @@ var FS_unlink = (...args) => FS.unlink(...args);
 var FS_createLazyFile = (...args) => FS.createLazyFile(...args);
 
 var FS_createDevice = (...args) => FS.createDevice(...args);
+
+// The descriptor table, open file descriptions, readiness wait-queue and the
+// mode predicates live in FDS; FS keeps its historical names for them.
+FS.ErrnoError = FDS.ErrnoError;
+
+FS.FSStream = FDS.Stream;
+
+FS.streams = FDS.streams;
+
+FS.MAX_OPEN_FDS = FDS.MAX_OPEN_FDS;
+
+FS.nextfd = FDS.nextfd;
+
+FS.getStreamChecked = FDS.getStreamChecked;
+
+FS.getStream = FDS.getStream;
+
+FS.createStream = FDS.createStream;
+
+FS.closeStream = FDS.closeStream;
+
+FS.dupStream = FDS.dupStream;
+
+FS.isClosed = FDS.isClosed;
+
+FS.isFile = FDS.isFile;
+
+FS.isDir = FDS.isDir;
+
+FS.isLink = FDS.isLink;
+
+FS.isChrdev = FDS.isChrdev;
+
+FS.isBlkdev = FDS.isBlkdev;
+
+FS.isFIFO = FDS.isFIFO;
+
+FS.isSocket = FDS.isSocket;
+
+FS.llseek = FDS.llseek;
+
+FS.read = FDS.read;
+
+FS.write = FDS.write;
 
 FS.createPreloadedFile = FS_createPreloadedFile;
 

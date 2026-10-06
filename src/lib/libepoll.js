@@ -5,7 +5,7 @@
  */
 
 // epoll(7) for the JS filesystem. The epoll syscalls build on the per-inode
-// readiness wait-queue (FSNode.addListener/notifyListeners) and the synchronous
+// readiness wait-queue (FDS.Node.addListener/notifyListeners) and the synchronous
 // readiness derivation ($pollOne) defined in libsyscall.js.
 
 var EpollLibrary = {
@@ -29,11 +29,11 @@ var EpollLibrary = {
   // one left after its fd was drained then closed) is not a ready event, so it
   // never reports one.
   $epollWouldBlock__internal: true,
-  $epollWouldBlock__deps: ['$FS', '$pollOne', '$epollEvict'],
+  $epollWouldBlock__deps: ['$FDS', '$pollOne', '$epollEvict'],
   $epollWouldBlock: (ep) => {
     for (var reg = ep.rdlHead, next; reg; reg = next) {
       next = reg.rdlNext;
-      if (FS.getStream(reg.fd)?.shared !== reg.shared) {
+      if (FDS.getStream(reg.fd)?.shared !== reg.shared) {
         epollEvict(ep, reg);
         continue;
       }
@@ -45,12 +45,12 @@ var EpollLibrary = {
   },
 
   $epollNewInstance__internal: true,
-  $epollNewInstance__deps: ['$FS', '$epollWouldBlock', '$epollClearListener'],
+  $epollNewInstance__deps: ['$FDS', '$epollWouldBlock', '$epollClearListener'],
   $epollNewInstance: () => {
     // Its own (detached) node, so the epoll fd can be watched by a parent epoll
     // (nesting) and carry the readiness wait-queue methods. Shared across dups.
-    var node = new FS.FSNode(0, '', 0, 0);
-    var stream = FS.createStream({
+    var node = new FDS.Node(0);
+    var stream = FDS.createStream({
       node,
       listeners: new Map(),
       stream_ops: {
@@ -73,7 +73,7 @@ var EpollLibrary = {
             epollClearListener(stream, it);
           }
           var ep = stream.shared;
-          // FS.close already fired POLLNVAL on the (shared) node, waking any
+          // FDS.close already fired POLLNVAL on the (shared) node, waking any
           // parent epoll watching this fd so it re-derives and drops the
           // now-stale registration (via doEpollWait's shared check).
           if (--ep.refcount) return;
@@ -139,9 +139,9 @@ var EpollLibrary = {
   // points stay in libsyscall.js (like every other syscall) and resolve the
   // epoll stream before calling in here, so `ep` is a known-valid epoll stream.
   $epollCtl__internal: true,
-  $epollCtl__deps: ['$FS', '$pollOne', '$readyListAdd', '$epollEvict'],
+  $epollCtl__deps: ['$FDS', '$pollOne', '$readyListAdd', '$epollEvict'],
   $epollCtl: (ep, op, fd, ev) => {
-    var target = FS.getStream(fd);
+    var target = FDS.getStream(fd);
     if (!target) return -{{{ cDefs.EBADF }}};
     if (op != {{{ cDefs.EPOLL_CTL_ADD }}} && op != {{{ cDefs.EPOLL_CTL_MOD }}} && op != {{{ cDefs.EPOLL_CTL_DEL }}}) {
       return -{{{ cDefs.EINVAL }}};
@@ -184,7 +184,7 @@ var EpollLibrary = {
           if (!inst?.epoll || seen.has(inst)) return false;
           seen.add(inst);
           for (var f of inst.epoll.keys()) {
-            if (reaches(FS.getStream(f), goal, seen)) return true;
+            if (reaches(FDS.getStream(f), goal, seen)) return true;
           }
           return false;
         };
@@ -193,7 +193,7 @@ var EpollLibrary = {
           if (!inst?.epoll || seen.has(inst)) return 0;
           seen.add(inst);
           var max = 0;
-          for (var f of inst.epoll.keys()) max = Math.max(max, depth(FS.getStream(f), seen));
+          for (var f of inst.epoll.keys()) max = Math.max(max, depth(FDS.getStream(f), seen));
           seen.delete(inst);
           return 1 + max;
         };
@@ -249,7 +249,7 @@ var EpollLibrary = {
   // EPOLL_CTL_MOD; a no-longer-ready (spurious) edge is dropped; a closed/reused
   // fd is evicted.
   $doEpollWait__internal: true,
-  $doEpollWait__deps: ['$FS', '$pollOne', '$readyListAdd', '$epollEvict'],
+  $doEpollWait__deps: ['$FDS', '$pollOne', '$readyListAdd', '$epollEvict'],
   $doEpollWait: (ep, ev, maxevents) => {
     // Detach the list and drain from the head: re-armed level triggers and the
     // unprocessed remainder go back onto ep's now-empty list, so a single pass
@@ -262,7 +262,7 @@ var EpollLibrary = {
       node.onList = false;
       node.rdlPrev = node.rdlNext = null;
       var fd = node.fd;
-      if (FS.getStream(fd)?.shared !== node.shared) {
+      if (FDS.getStream(fd)?.shared !== node.shared) {
         // The fd closed, or its number was reused for a different open: evict the
         // now-stale registration (a surviving dup keeps the open file alive).
         // Already detached from the list above, so epollEvict just unlinks the
@@ -358,13 +358,13 @@ var EpollLibrary = {
 
   // See <emscripten/epoll.h>. A listener is keyed by (callback, userdata) and
   // signals the callback while the set has uncollected ready events.
-  emscripten_epoll_listener_add__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$callUserCallback', '$emSetImmediate'],
+  emscripten_epoll_listener_add__deps: ['$FDS', '$epollWouldBlock', '$epollClearListener', '$callUserCallback', '$emSetImmediate'],
   emscripten_epoll_listener_add: (epfd, callback, userdata) => {
 #if PTHREADS
     // Readiness is tracked on the main thread and the callback runs there.
     if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};
 #endif
-    var stream = FS.getStream(epfd);
+    var stream = FDS.getStream(epfd);
     // A public API, not a syscall: positive errno.
     if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
     var ep = stream.shared;
@@ -389,12 +389,12 @@ var EpollLibrary = {
     return 0;
   },
 
-  emscripten_epoll_listener_remove__deps: ['$FS', '$epollClearListener'],
+  emscripten_epoll_listener_remove__deps: ['$FDS', '$epollClearListener'],
   emscripten_epoll_listener_remove: (epfd, callback, userdata) => {
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};
 #endif
-    var stream = FS.getStream(epfd);
+    var stream = FDS.getStream(epfd);
     if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
     var it = stream.listeners.get(callback + ':' + userdata);
     if (!it) return {{{ cDefs.ENOENT }}};

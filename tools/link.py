@@ -1420,6 +1420,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.WASMFS:
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
+    settings.SYSCALLS_REQUIRE_FDS = 0
     add_system_js_lib('libwasmfs.js')
     if settings.ASSERTIONS:
       # used in assertion checks for unflushed content

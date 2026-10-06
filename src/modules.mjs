@@ -93,6 +93,7 @@ function calculateLibraries() {
   }
 
   if (!WASMFS) {
+    libraries.push('libfd.js');
     libraries.push('libsyscall.js');
   }
 

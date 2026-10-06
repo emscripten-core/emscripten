@@ -5,7 +5,7 @@
  */
 
 addToLibrary({
-  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$TTY', '$mmapAlloc', '$FS_modeStringToFlags', '$NODERAWFS_stream_funcs'],
+  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$FDS', '$NODEFS', '$TTY', '$mmapAlloc', '$FS_modeStringToFlags', '$NODERAWFS_stream_funcs'],
   $NODERAWFS__postset: `
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error('NODERAWFS is currently only supported on Node.js environment.')
@@ -47,7 +47,10 @@ addToLibrary({
     }
     for (const [key, value] of Object.entries(NODERAWFS_stream_funcs)) {
       FS[key] = _wrapNodeStreamFunc(value, FS[key]);
-    }`,
+    }
+    // dup goes through the descriptor table directly, so it must see the
+    // refcounting createStream above.
+    FDS.createStream = FS.createStream;`,
   $NODERAWFS: {
     lookup(parent, name) {
 #if ASSERTIONS

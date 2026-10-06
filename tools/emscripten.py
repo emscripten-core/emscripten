@@ -68,6 +68,7 @@ def maybe_disable_filesystem(imports):
   if settings.FILESYSTEM == 0:
     # without filesystem support, it doesn't matter what syscalls need
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
+    settings.SYSCALLS_REQUIRE_FDS = 0
   else:
     # TODO(sbc): Find a better way to identify wasi syscalls
     syscall_prefixes = ('__syscall_', 'fd_')
@@ -77,15 +78,57 @@ def maybe_disable_filesystem(imports):
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
-    if syscalls.issubset({
+    trivial_syscalls = {
       '__syscall_ioctl',
       'fd_seek',
       'fd_write',
       'fd_close',
       'fd_fdstat_get',
-    }):
+    }
+    # Syscalls that need only the descriptor table (sockets, pipes, epoll),
+    # not the filesystem namespace. A program qualifies for that tier only if
+    # it creates such descriptors: with just stdio, fd_read means stdin, which
+    # the filesystem provides (Module['stdin'], tty).
+    fd_creating_syscalls = {
+      '__syscall_pipe2',
+      '__syscall_socket',
+      '__syscall_epoll_create1',
+    }
+    fd_syscalls = fd_creating_syscalls | {
+      'fd_read',
+      '__syscall_fcntl64',
+      '__syscall_dup',
+      '__syscall_dup3',
+      '__syscall_poll',
+      '__syscall_poll_nonblocking',
+      '__syscall_epoll_ctl',
+      '__syscall_epoll_pwait',
+      '__syscall_epoll_pwait_nonblocking',
+      '__syscall_bind',
+      '__syscall_connect',
+      '__syscall_listen',
+      '__syscall_accept4',
+      '__syscall_shutdown',
+      '__syscall_getsockname',
+      '__syscall_getpeername',
+      '__syscall_getsockopt',
+      '__syscall_setsockopt',
+      '__syscall_recvfrom',
+      '__syscall_sendto',
+      '__syscall_recvmsg',
+      '__syscall_sendmsg',
+    }
+    if DEBUG:
+      logger.debug('syscalls: %s', ', '.join(sorted(syscalls)))
+    if syscalls.issubset(trivial_syscalls):
       if DEBUG:
         logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
+      settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
+      settings.SYSCALLS_REQUIRE_FDS = 0
+    elif (syscalls.issubset(trivial_syscalls | fd_syscalls) and syscalls & fd_creating_syscalls
+          and not settings.NODERAWFS):
+      if DEBUG:
+        logger.debug('descriptor-only syscalls (%s) so disabling the filesystem namespace', ', '.join(str(s) for s in syscalls))
       settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
 
 

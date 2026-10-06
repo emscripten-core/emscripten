@@ -162,7 +162,7 @@ var NodeSockFSLibrary = {
             host: addr, port, ipv6Only: o.ipv6Only, reusePort: o.reusePort,
           });
         }
-        catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
+        catch (e) { throw new FDS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
         var n = bh.address();
         sock.bound = bh;
         sock.saddr = n.address;
@@ -173,7 +173,7 @@ var NodeSockFSLibrary = {
       try {
         tcp = process.binding('tcp_wrap');
       } catch (e) {
-        throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        throw new FDS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
       }
       var handle = new tcp.TCP(tcp.constants.SOCKET);
       // bind6 for IPv6 literals, honoring IPV6_V6ONLY via the bind flags.
@@ -191,7 +191,7 @@ var NodeSockFSLibrary = {
         }
       }
       try { handle.close(); } catch (e) {}
-      throw new FS.ErrnoError(nodeSockHelpers.codeToErrno(code));
+      throw new FDS.ErrnoError(nodeSockHelpers.codeToErrno(code));
     },
     // AF_UNIX stream sockets bind through net.BoundSocket when node offers a
     // path-capable one, else the private pipe_wrap binding - the same
@@ -208,7 +208,7 @@ var NodeSockFSLibrary = {
         try {
           nodeSockHelpers.pipeModule = process.binding('pipe_wrap');
         } catch (e) {
-          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+          throw new FDS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
         }
       }
       return nodeSockHelpers.pipeModule;
@@ -226,7 +226,7 @@ var NodeSockFSLibrary = {
         try {
           var bh = new (nodeSockHelpers.getNet().BoundSocket)({ path });
         }
-        catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
+        catch (e) { throw new FDS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
         sock.bound = bh;
         sock.saddr = path;
         return;
@@ -236,7 +236,7 @@ var NodeSockFSLibrary = {
       var code = handle.bind(path);
       if (code) {
         try { handle.close(); } catch (e) {}
-        throw new FS.ErrnoError(nodeSockHelpers.codeToErrno(code));
+        throw new FDS.ErrnoError(nodeSockHelpers.codeToErrno(code));
       }
       sock.bound = handle;
       sock.saddr = path;
@@ -251,7 +251,7 @@ var NodeSockFSLibrary = {
     // so it keeps returning 0 (callers such as Rust std treat EINPROGRESS from a
     // blocking connect as an error).
     connectInProgress(sock) {
-      if (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}) throw new FS.ErrnoError({{{ cDefs.EINPROGRESS }}});
+      if (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}) throw new FDS.ErrnoError({{{ cDefs.EINPROGRESS }}});
     },
     // Operations that would block return EAGAIN even on a blocking fd, since
     // there is no way to block here.
@@ -261,7 +261,7 @@ var NodeSockFSLibrary = {
         warnOnce('NODERAWSOCKETS: a blocking socket operation would block, returning EAGAIN instead (blocking I/O is not supported, use O_NONBLOCK with poll/epoll)');
       }
 #endif
-      return new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+      return new FDS.ErrnoError({{{ cDefs.EAGAIN }}});
     },
     // The UDP backing object. With a synchronous dgram bindSync available we use
     // a public node:dgram socket (sock.udpPublic); otherwise we fall back to a
@@ -530,7 +530,7 @@ var NodeSockFSLibrary = {
     },
     // how: SHUT_RD 0, SHUT_WR 1, SHUT_RDWR 2 (musl sys/socket.h).
     shutdown(sock, how) {
-      if (!sock.connection) throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
+      if (!sock.connection) throw new FDS.ErrnoError({{{ cDefs.ENOTCONN }}});
       if (!how || how === 2) {
         // No more reads: subsequent recv returns EOF.
         sock.readClosed = true;
@@ -545,7 +545,7 @@ var NodeSockFSLibrary = {
     },
     bind(sock, addr, port) {
       if (sock.saddr !== undefined || sock.sport !== undefined) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}}); // already bound
+        throw new FDS.ErrnoError({{{ cDefs.EINVAL }}}); // already bound
       }
       if (sock.family === {{{ cDefs.AF_UNIX }}}) {
         // addr is a filesystem path (or an abstract '\0...' name). Bind
@@ -561,15 +561,15 @@ var NodeSockFSLibrary = {
           // bindSync throws synchronously (e.g. EADDRINUSE) and returns the
           // bound address, including the OS-assigned port for port 0.
           try { a = udp.bindSync({ address: addr, port }); }
-          catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
+          catch (e) { throw new FDS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
           sock.saddr = a.address;
           sock.sport = a.port;
         } else {
           var ucode = addr.includes(':') ? udp.bind6(addr, port, 0) : udp.bind(addr, port, 0);
-          if (ucode) throw new FS.ErrnoError(nodeSockHelpers.codeToErrno(ucode));
+          if (ucode) throw new FDS.ErrnoError(nodeSockHelpers.codeToErrno(ucode));
           var uname = {};
           ucode = udp.getsockname(uname);
-          if (ucode) throw new FS.ErrnoError(nodeSockHelpers.codeToErrno(ucode));
+          if (ucode) throw new FDS.ErrnoError(nodeSockHelpers.codeToErrno(ucode));
           sock.saddr = uname.address;
           sock.sport = uname.port;
         }
@@ -585,9 +585,9 @@ var NodeSockFSLibrary = {
     },
     connect(sock, addr, port) {
       if (sock.family === {{{ cDefs.AF_UNIX }}}) {
-        if (sock.server) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        if (sock.server) throw new FDS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
         if (sock.connection) {
-          throw new FS.ErrnoError(sock.state === {{{ SOCK_STATE_CONNECTING }}} ? {{{ cDefs.EALREADY }}} : {{{ cDefs.EISCONN }}});
+          throw new FDS.ErrnoError(sock.state === {{{ SOCK_STATE_CONNECTING }}} ? {{{ cDefs.EALREADY }}} : {{{ cDefs.EISCONN }}});
         }
         // addr is the peer path. node reports no name back, so record it as the
         // peer name ourselves; the local end is unnamed unless bind() named it.
@@ -619,7 +619,7 @@ var NodeSockFSLibrary = {
           // replaces the peer.
           if (sock.udpConnected) udp.disconnect();
           try { udp.connectSync(port, addr); }
-          catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
+          catch (e) { throw new FDS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
           sock.udpConnected = true;
           var a = udp.address();
           sock.saddr = a.address;
@@ -633,9 +633,9 @@ var NodeSockFSLibrary = {
         // the socket is bound (an explicit bind or the auto-bind on first send).
         return;
       }
-      if (sock.server) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+      if (sock.server) throw new FDS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
       if (sock.connection) {
-        throw new FS.ErrnoError(sock.state === {{{ SOCK_STATE_CONNECTING }}} ? {{{ cDefs.EALREADY }}} : {{{ cDefs.EISCONN }}});
+        throw new FDS.ErrnoError(sock.state === {{{ SOCK_STATE_CONNECTING }}} ? {{{ cDefs.EALREADY }}} : {{{ cDefs.EISCONN }}});
       }
       sock.daddr = addr;
       sock.dport = port;
@@ -669,14 +669,14 @@ var NodeSockFSLibrary = {
       nodeSockHelpers.connectInProgress(sock);
     },
     listen(sock, backlog) {
-      if (sock.type !== {{{ cDefs.SOCK_STREAM }}}) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}}); // not a stream socket
-      if (sock.server) throw new FS.ErrnoError({{{ cDefs.EINVAL }}}); // already listening
-      if (sock.connection) throw new FS.ErrnoError({{{ cDefs.EINVAL }}}); // a connected socket cannot listen
+      if (sock.type !== {{{ cDefs.SOCK_STREAM }}}) throw new FDS.ErrnoError({{{ cDefs.EOPNOTSUPP }}}); // not a stream socket
+      if (sock.server) throw new FDS.ErrnoError({{{ cDefs.EINVAL }}}); // already listening
+      if (sock.connection) throw new FDS.ErrnoError({{{ cDefs.EINVAL }}}); // a connected socket cannot listen
       // AF_UNIX has no autobind for listen(): the socket must have been named by
       // a prior bind() (which produced the bound Pipe handle we listen on).
       var isUnix = sock.family === {{{ cDefs.AF_UNIX }}};
       if (isUnix) {
-        if (!sock.bound) throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+        if (!sock.bound) throw new FDS.ErrnoError({{{ cDefs.EINVAL }}});
       } else if (!sock.bound) {
         // POSIX listen without a prior bind auto-binds an ephemeral port. The
         // bind is eager and synchronous (bindHandle), so the assigned port is
@@ -717,13 +717,13 @@ var NodeSockFSLibrary = {
       server.listen(sock.bound, backlog || 511);
     },
     accept(listensock) {
-      if (!listensock.server) throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      if (!listensock.server) throw new FDS.ErrnoError({{{ cDefs.EINVAL }}});
       // Surface a real listen error (e.g. late address-in-use) rather than
       // masking it as would-block.
       if (listensock.error) {
         var e = listensock.error;
         listensock.error = null;
-        throw new FS.ErrnoError(e);
+        throw new FDS.ErrnoError(e);
       }
       if (!listensock.pending.length) throw nodeSockHelpers.wouldBlock(listensock);
       return listensock.pending.shift();
@@ -732,12 +732,12 @@ var NodeSockFSLibrary = {
       if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
         // A connected datagram socket rejects an explicit destination.
         if (sock.daddr !== undefined && addr !== undefined) {
-          throw new FS.ErrnoError({{{ cDefs.EISCONN }}});
+          throw new FDS.ErrnoError({{{ cDefs.EISCONN }}});
         }
         if (addr === undefined || port === undefined) {
           addr = sock.daddr;
           port = sock.dport;
-          if (addr === undefined || port === undefined) throw new FS.ErrnoError({{{ cDefs.EDESTADDRREQ }}});
+          if (addr === undefined || port === undefined) throw new FDS.ErrnoError({{{ cDefs.EDESTADDRREQ }}});
         }
         var handle = nodeSockHelpers.ensureUdpHandle(sock);
         // A public dgram send() would do an async implicit bind, so bind (and
@@ -758,7 +758,7 @@ var NodeSockFSLibrary = {
           var code = addr.includes(':')
             ? handle.send6(new sock.sendWrap(), [msg], 1, port, addr, false)
             : handle.send(new sock.sendWrap(), [msg], 1, port, addr, false);
-          if (code < 0) throw new FS.ErrnoError(nodeSockHelpers.codeToErrno(code));
+          if (code < 0) throw new FDS.ErrnoError(nodeSockHelpers.codeToErrno(code));
           // The send auto-bound an unbound socket, so replies can be received.
           nodeSockHelpers.startUdpRecv(sock);
         }
@@ -766,18 +766,18 @@ var NodeSockFSLibrary = {
       }
       // Writing after a write-shutdown is a broken pipe, regardless of peer.
       if (sock.writeShutdown) {
-        throw new FS.ErrnoError({{{ cDefs.EPIPE }}});
+        throw new FDS.ErrnoError({{{ cDefs.EPIPE }}});
       }
       var conn = sock.connection;
       if (!conn || sock.state === {{{ SOCK_STATE_CLOSED }}}) {
-        throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
+        throw new FDS.ErrnoError({{{ cDefs.ENOTCONN }}});
       }
       // Bound node's write buffer to its high-water mark: a non-blocking socket
       // only accepts up to the remaining headroom, would-blocking when there is
       // none, and short-writes the rest (which POSIX send() is allowed to do).
       if (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}) {
         var headroom = conn.writableHighWaterMark - conn.writableLength;
-        if (headroom <= 0) throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+        if (headroom <= 0) throw new FDS.ErrnoError({{{ cDefs.EAGAIN }}});
         if (length > headroom) length = headroom;
       }
       offset += buffer.byteOffset;
@@ -787,7 +787,7 @@ var NodeSockFSLibrary = {
       try {
         ok = conn.write(data);
       } catch (e) {
-        throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e));
+        throw new FDS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e));
       }
       if (!ok) sock.writeBlocked = true; // cleared on 'drain', gates poll's POLLOUT
       return length;
@@ -805,7 +805,7 @@ var NodeSockFSLibrary = {
           if (sock.error) {
             var derr = sock.error;
             sock.error = null;
-            throw new FS.ErrnoError(derr);
+            throw new FDS.ErrnoError(derr);
           }
           throw nodeSockHelpers.wouldBlock(sock);
         }
@@ -819,7 +819,7 @@ var NodeSockFSLibrary = {
       if (!queued) {
         if (sock.readClosed) return null; // EOF
         if (!sock.connection) {
-          throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
+          throw new FDS.ErrnoError({{{ cDefs.ENOTCONN }}});
         }
         throw nodeSockHelpers.wouldBlock(sock);
       }
