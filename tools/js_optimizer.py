@@ -15,7 +15,7 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import building, config, shared, utils
+from tools import config, shared, utils
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import path_from_root
 
@@ -172,14 +172,6 @@ def run_on_file(filename, passes):
       end_asm = js.rfind(end_asm_marker)
       assert (start_asm >= 0) == (end_asm >= 0)
 
-    closure = 'closure' in passes
-    if closure:
-      passes = [p for p in passes if p != 'closure'] # we will do it manually
-
-    cleanup = 'cleanup' in passes
-    if cleanup:
-      passes = [p for p in passes if p != 'cleanup'] # we will do it manually
-
   if not minify_globals:
     with ToolchainProfiler.profile_block('js_optimizer.no_minify_globals'):
       pre = js[:start_funcs + len(start_funcs_marker)]
@@ -264,51 +256,6 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('run_optimizer'):
     commands = [[*get_acorn_cmd(), f, *passes] for f in filenames]
     filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
-
-  with ToolchainProfiler.profile_block('split_closure_cleanup'):
-    if closure or cleanup:
-      # run on the shell code, everything but what we acorn-optimize
-      cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(wakaGlobal,wakaEnv,wakaBuffer)\n'
-
-      with temp_files.get_file('.cl.js') as cle:
-        pre_1, pre_2 = pre.split(start_asm_marker)
-        post_1, post_2 = post.split(end_asm_marker)
-        with open(cle, 'w', encoding='utf-8') as f:
-          f.write(pre_1)
-          f.write(cl_sep)
-          f.write(post_2)
-        cld = cle
-        if closure:
-          if DEBUG:
-            print('running closure on shell code', file=sys.stderr)
-          cld = building.closure_compiler(cld, pretty='--minify-whitespace' not in passes)
-          temp_files.note(cld)
-        elif cleanup:
-          if DEBUG:
-            print('running cleanup on shell code', file=sys.stderr)
-          acorn_passes = ['JSDCE']
-          if '--minify-whitespace' in passes:
-            acorn_passes.append('--minify-whitespace')
-          cld = building.acorn_optimizer(cld, acorn_passes)
-          temp_files.note(cld)
-        coutput = utils.read_file(cld)
-
-      coutput = coutput.replace('wakaUnknownBefore();', start_asm_marker)
-      after = 'wakaUnknownAfter'
-      start = coutput.find(after)
-      end = coutput.find(')', start)
-      # If the closure comment to suppress useless code is present, we need to look one
-      # brace past it, as the first is in there. Otherwise, the first brace is the
-      # start of the function body (what we want).
-      USELESS_CODE_COMMENT = '/** @suppress {uselessCode} */ '
-      USELESS_CODE_COMMENT_BODY = 'uselessCode'
-      brace = pre_2.find('{') + 1
-      has_useless_code_comment = False
-      if pre_2[brace:brace + len(USELESS_CODE_COMMENT_BODY)] == USELESS_CODE_COMMENT_BODY:
-        brace = pre_2.find('{', brace) + 1
-        has_useless_code_comment = True
-      pre = coutput[:start] + '(' + (USELESS_CODE_COMMENT if has_useless_code_comment else '') + 'function(global,env,buffer) {\n' + pre_2[brace:]
-      post = post_1 + end_asm_marker + coutput[end + 1:]
 
   filename += '.jo.js'
   temp_files.note(filename)
