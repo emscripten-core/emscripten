@@ -5,7 +5,7 @@
 #include <emscripten.h>
 #endif
 
-static int test_thread(void *data)
+int test_thread(void *data)
 {
 	return 2 + 2;
 }

@@ -9,9 +9,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static int totalAllocs;
-static int totalFrees;
-static int totalReallocs;
+int totalAllocs;
+int totalFrees;
+int totalReallocs;
 
 void *malloc(size_t size) {
   ++totalAllocs;

@@ -17,12 +17,12 @@
 #include <errno.h>
 #include <stdio.h>
 
-static int ready(int ep) {
+int ready(int ep) {
   struct epoll_event out[4];
   return epoll_wait(ep, out, 4, 0);
 }
 
-static void test_oneshot(void) {
+void test_oneshot(void) {
   int ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);
@@ -42,7 +42,7 @@ static void test_oneshot(void) {
   close(ep); close(p[0]); close(p[1]);
 }
 
-static void test_edge(void) {
+void test_edge(void) {
   int ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);
@@ -61,7 +61,7 @@ static void test_edge(void) {
   close(ep); close(p[0]); close(p[1]);
 }
 
-static void test_exclusive(void) {
+void test_exclusive(void) {
   int ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);
@@ -81,7 +81,7 @@ static void test_exclusive(void) {
   close(ep); close(p[0]); close(p[1]);
 }
 
-static void test_exclusive_wakeup(void) {
+void test_exclusive_wakeup(void) {
   // One fd watched by two epolls with EPOLLEXCLUSIVE: each readiness edge wakes
   // only one of them, rotating - not both (no thundering herd). Edge-triggered so
   // a delivered item is not re-listed, making "who was woken" unambiguous.
@@ -104,7 +104,7 @@ static void test_exclusive_wakeup(void) {
   close(epA); close(epB); close(p[0]); close(p[1]);
 }
 
-static void test_nesting(void) {
+void test_nesting(void) {
   int epA = epoll_create1(0);
   int epB = epoll_create1(0);
   int p[2];
@@ -129,7 +129,7 @@ static void test_nesting(void) {
   close(epA); close(epB); close(p[0]); close(p[1]);
 }
 
-static void test_eloop(void) {
+void test_eloop(void) {
   struct epoll_event ev = { .events = EPOLLIN };
 
   // A direct cycle is rejected: a watches b, then b watching a closes the loop.
@@ -153,7 +153,7 @@ static void test_eloop(void) {
   for (int i = 0; i < 6; i++) close(e[i]);
 }
 
-static void test_autoremove(void) {
+void test_autoremove(void) {
   int ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);

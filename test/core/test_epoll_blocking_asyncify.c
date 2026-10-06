@@ -14,8 +14,8 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int wfd;
-static void writer(void* arg) { assert(write(wfd, "x", 1) == 1); }
+int wfd;
+void writer(void* arg) { assert(write(wfd, "x", 1) == 1); }
 
 int main(void) {
   int ep = epoll_create1(0);

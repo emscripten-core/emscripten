@@ -82,13 +82,13 @@ test_t g_tests[] = {
     #endif
 };
 
-static unsigned int g_test_actual = 0;
-static unsigned int g_test_count = sizeof(g_tests) / sizeof(test_t);
+unsigned int g_test_actual = 0;
+unsigned int g_test_count = sizeof(g_tests) / sizeof(test_t);
 
 #if USE_GLFW == 2
-static void on_mouse_button_callback(int button, int action) {
+void on_mouse_button_callback(int button, int action) {
 #else
-static void on_mouse_button_callback(GLFWwindow* window, int button, int action, int modify) {
+void on_mouse_button_callback(GLFWwindow* window, int button, int action, int modify) {
 #endif
   test_args_t args = g_tests[g_test_actual].args;
   assert(args.button == button);
@@ -96,9 +96,9 @@ static void on_mouse_button_callback(GLFWwindow* window, int button, int action,
 }
 
 #if USE_GLFW == 2
-static void on_mouse_move(int x, int y) {
+void on_mouse_move(int x, int y) {
 #else
-static void on_mouse_move(GLFWwindow* window, double x, double y) {
+void on_mouse_move(GLFWwindow* window, double x, double y) {
 #endif
   test_args_t args = g_tests[g_test_actual].args;
   assert(args.x == x);
@@ -106,9 +106,9 @@ static void on_mouse_move(GLFWwindow* window, double x, double y) {
 }
 
 #if USE_GLFW == 2
-static void on_key_callback(int key, int action) {
+void on_key_callback(int key, int action) {
 #else
-static void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 #endif
   test_args_t args = g_tests[g_test_actual].args;
   assert(args.button == key);
@@ -116,9 +116,9 @@ static void on_key_callback(GLFWwindow* window, int key, int scancode, int actio
 }
 
 #if USE_GLFW == 2
-static void on_char_callback(int character, int action) {
+void on_char_callback(int character, int action) {
 #else
-static void on_char_callback(GLFWwindow* window, unsigned int character) {
+void on_char_callback(GLFWwindow* window, unsigned int character) {
 #endif
   test_args_t args = g_tests[g_test_actual].args;
   assert(args.character != -1);
@@ -126,13 +126,13 @@ static void on_char_callback(GLFWwindow* window, unsigned int character) {
 }
 
 #if USE_GLFW == 3
-static void on_mouse_wheel(GLFWwindow* window, double x, double y) {
+void on_mouse_wheel(GLFWwindow* window, double x, double y) {
   test_args_t args = g_tests[g_test_actual].args;
   assert(args.x == x);
   assert(args.y == y);
 }
 
-static void on_error(int error, const char *msg) {
+void on_error(int error, const char *msg) {
   printf("%d: %s\n", error, msg);
 }
 #endif

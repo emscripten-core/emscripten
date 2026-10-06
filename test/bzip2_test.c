@@ -42,7 +42,7 @@ uchar zbuf[M_BLOCK + 600 + (M_BLOCK / 100)];
 
 int nIn, nOut, nZ;
 
-static char *bzerrorstrings[] = {
+char *bzerrorstrings[] = {
        "OK"
       ,"SEQUENCE_ERROR"
       ,"PARAM_ERROR"

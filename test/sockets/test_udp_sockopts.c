@@ -18,14 +18,14 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-static int get_int(int fd, int level, int opt) {
+int get_int(int fd, int level, int opt) {
   int val = -1;
   socklen_t len = sizeof(val);
   assert(getsockopt(fd, level, opt, &val, &len) == 0);
   return val;
 }
 
-static void set_int(int fd, int level, int opt, int val) {
+void set_int(int fd, int level, int opt, int val) {
   assert(setsockopt(fd, level, opt, &val, sizeof(val)) == 0);
 }
 

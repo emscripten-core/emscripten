@@ -10,7 +10,7 @@
 **
 ** The available command-line options are described below:
 */
-static const char zHelp[] =
+const char zHelp[] =
   "Usage: %s [--options] DATABASE\n"
   "Options:\n"
   "  --autovacuum        Enable AUTOVACUUM mode\n"
@@ -50,7 +50,7 @@ static const char zHelp[] =
 #include <ctype.h>
 
 /* All global state is held in this structure */
-static struct Global {
+struct Global {
   sqlite3 *db;               /* The open database connection */
   sqlite3_stmt *pStmt;       /* Current SQL statement */
   sqlite3_int64 iStart;      /* Start-time for the current test */
@@ -71,7 +71,7 @@ static struct Global {
 
 
 /* Print an error message and exit */
-static void fatal_error(const char *zMsg, ...){
+void fatal_error(const char *zMsg, ...){
   va_list ap;
   va_start(ap, zMsg);
   vfprintf(stderr, zMsg, ap);
@@ -83,7 +83,7 @@ static void fatal_error(const char *zMsg, ...){
 ** Return the value of a hexadecimal digit.  Return -1 if the input
 ** is not a hex digit.
 */
-static int hexDigitValue(char c){
+int hexDigitValue(char c){
   if( c>='0' && c<='9' ) return c - '0';
   if( c>='a' && c<='f' ) return c - 'a' + 10;
   if( c>='A' && c<='F' ) return c - 'A' + 10;
@@ -99,7 +99,7 @@ static int hexDigitValue(char c){
 /*
 ** Interpret zArg as an integer value, possibly with suffixes.
 */
-static int integerValue(const char *zArg){
+int integerValue(const char *zArg){
   sqlite3_int64 v = 0;
   static const struct { char *zSuffix; int iMult; } aMult[] = {
     { "KiB", 1024 },
@@ -253,7 +253,7 @@ int speedtest1_numbername(unsigned int n, char *zOut, int nOut){
 
 /* Start a new test case */
 #define NAMEWIDTH 60
-static const char zDots[] =
+const char zDots[] =
   ".......................................................................";
 void speedtest1_begin_test(int iTestNum, const char *zTestName, ...){
   int n = (int)strlen(zTestName);
@@ -302,7 +302,7 @@ void speedtest1_final(void){
 }
 
 /* Print an SQL statement to standard output */
-static void printSql(const char *zSql){
+void printSql(const char *zSql){
   int n = (int)strlen(zSql);
   while( n>0 && (zSql[n-1]==';' || isspace(zSql[n-1])) ){ n--; }
   if( g.bExplain ) printf("EXPLAIN ");
@@ -387,7 +387,7 @@ void speedtest1_execute(void){
 }
 
 /* The sqlite3_trace() callback function */
-static void traceCallback(void *NotUsed, const char *zSql){
+void traceCallback(void *NotUsed, const char *zSql){
   int n = (int)strlen(zSql);
   while( n>0 && (zSql[n-1]==';' || isspace(zSql[n-1])) ) n--;
   fprintf(stderr,"%.*s;\n", n, zSql);
@@ -395,7 +395,7 @@ static void traceCallback(void *NotUsed, const char *zSql){
 
 /* Substitute random() function that gives the same random
 ** sequence on each run, for repeatability. */
-static void randomFunc1(
+void randomFunc1(
   sqlite3_context *context,
   int NotUsed,
   sqlite3_value **NotUsed2
@@ -404,7 +404,7 @@ static void randomFunc1(
 }
 
 /* Estimate the square root of an integer */
-static int est_square_root(int x){
+int est_square_root(int x){
   int y0 = x/2;
   int y1;
   int n;
@@ -946,7 +946,7 @@ void testset_cte(void){
 ** the second.  Usually the numbers are near each other but can sometimes
 ** be far apart.
 */
-static void twoCoords(
+void twoCoords(
   int p1, int p2,                   /* Parameters adjusting sizes */
   unsigned mx,                      /* Range of 1..mx */
   unsigned *pX0, unsigned *pX1      /* OUT: write results here */
@@ -973,7 +973,7 @@ static void twoCoords(
 **
 **     SELECT count(*) FROM rt1 WHERE y1>=10 AND y0<=20;
 */
-static int xsliceGeometryCallback(
+int xsliceGeometryCallback(
   sqlite3_rtree_geometry *p,
   int nCoord,
   double *aCoord,

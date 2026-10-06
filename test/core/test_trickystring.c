@@ -15,7 +15,7 @@ typedef struct {
 
 int f(void *user) { return 0; }
 
-static LMEXFunctionStruct const a[] = {{f, (void *)(int)'a', "aa"}};
+LMEXFunctionStruct const a[] = {{f, (void *)(int)'a', "aa"}};
 
 int main() {
   printf("ok\n");

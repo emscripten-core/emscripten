@@ -31,7 +31,7 @@ void write_and_read(const char* msg, int fd, const char* expected) {
   assert(strcmp(buf, expected) == 0);
 }
 
-static backend_t make_js_file_backend(void* arg) {
+backend_t make_js_file_backend(void* arg) {
   return wasmfs_create_js_file_backend();
 }
 
