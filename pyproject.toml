@@ -91,11 +91,20 @@ lint.pylint.max-statements = 142 # Recommended: 50
 
 [tool.coverage.run]
 source = [ "." ]
+parallel = true
+concurrency = [ "multiprocessing" ]
 omit = [
-  "./test/*",
-  "./third_party/*",
-  "./tools/emcoverage.py",
+  "test/*",
+  "third_party/*",
+  "tools/emcoverage.py",
   "test.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+  "if __name__ == '__main__':",
+  "raise NotImplementedError",
 ]
 
 [tool.mypy]

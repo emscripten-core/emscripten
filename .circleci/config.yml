@@ -313,6 +313,10 @@ commands:
         description: "Extra EMCC_CFLAGS"
         type: string
         default: ""
+      coverage:
+        description: "Whether to collect python code coverage"
+        type: boolean
+        default: false
     steps:
       - run:
           name: run tests (<< parameters.title >>)
@@ -320,8 +324,28 @@ commands:
             EMCC_CFLAGS: << parameters.extra-cflags >>
           command: |
             env
-            ./test/runner << parameters.test_targets >>
+            if [ "<< parameters.coverage >>" = "true" ]; then
+              ./tools/emcoverage.py ./test/runner << parameters.test_targets >>
+            else
+              ./test/runner << parameters.test_targets >>
+            fi
             $EMSDK_PYTHON ./test/check_clean.py
+      - when:
+          condition: << parameters.coverage >>
+          steps:
+            - run:
+                name: generate coverage report
+                command: |
+                  ./tools/emcoverage.py report
+                  ./tools/emcoverage.py xml
+                  ./tools/emcoverage.py html
+                  if [ -n "$CIRCLE_PULL_REQUEST" ]; then
+                    diff-cover coverage.xml --compare-branch=origin/main || true
+                  fi
+            - store_artifacts:
+                path: coverage.xml
+            - store_artifacts:
+                path: htmlcov
   freeze-cache:
     description: "Freeze emscripten cache"
     steps:
@@ -348,6 +372,10 @@ commands:
         description: "Name of given test suite"
         type: string
         default: ""
+      coverage:
+        description: "Whether to collect python code coverage"
+        type: boolean
+        default: false
     steps:
       - prepare-for-tests
       - when:
@@ -357,6 +385,7 @@ commands:
       - run-tests:
           test_targets: << parameters.test_targets >>
           title: << parameters.title >>
+          coverage: << parameters.coverage >>
       - upload-test-results
   run-tests-chrome:
     description: "Runs browser tests under chrome"
@@ -1043,6 +1072,7 @@ jobs:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other jslib skip:other.test_native_link_error_message"
+          coverage: true
       - run-tests-linux:
           # Include a single test from test_benchmark.py to ensure it's always
           # kept functional. Must be run separately from above because we cannot
