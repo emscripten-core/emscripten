@@ -405,7 +405,7 @@ class SettingsManager:
         exit_with_error(f'invalid command line setting `-s{name}={value}`: {error_message}')
       diagnostics.warning('legacy-settings', 'use of legacy setting: %s (%s)', name, error_message)
 
-    if name in self.alt_names:
+    if name in self.alt_names and not self.attrs['STRICT']:
       alt_name = self.alt_names[name]
       self.attrs[alt_name] = value
 
