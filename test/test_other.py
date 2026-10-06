@@ -11093,6 +11093,15 @@ ok.
   def test_gethostbyname(self):
     self.do_runf_out_file('sockets/test_gethostbyname.c')
 
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_dns_table(self, args):
+    # gethostbyname, getaddrinfo and getnameinfo share one DNS table, also
+    # when called from a pthread.
+    self.do_runf('sockets/test_dns_table.c', 'done\n', cflags=args)
+    
   def test_getprotobyname(self):
     self.do_runf('sockets/test_getprotobyname.c', 'done\n')
 
