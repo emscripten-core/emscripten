@@ -11,12 +11,10 @@ var LibraryBrowser = {
   $workerHandles: 'new HandleAllocator();',
 
   $Browser__deps: [
-    '$callUserCallback',
     '$getFullscreenElement',
-    '$safeSetTimeout',
-    '$warnOnce',
 #if FILESYSTEM
     '$preloadPlugins',
+    '$safeSetTimeout',
 #if MAIN_MODULE
     '$preloadedWasm',
 #endif
@@ -443,8 +441,6 @@ var LibraryBrowser = {
       if (!noUpdates) Browser.updateResizeListeners();
     },
 
-    windowedWidth: 0,
-    windowedHeight: 0,
     setFullscreenCanvasSize() {
       // check if SDL is available
       if (typeof SDL != 'undefined') {
@@ -586,7 +582,7 @@ var LibraryBrowser = {
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
-  emscripten_async_load_script__deps: ['$UTF8ToString', '$runDependencies', '$resolveRunDependencies'],
+  emscripten_async_load_script__deps: ['$UTF8ToString', '$runDependencies', '$resolveRunDependencies', '$callUserCallback'],
   emscripten_async_load_script: async (url, onload, onerror) => {
     url = UTF8ToString(url);
 #if PTHREADS
@@ -807,7 +803,7 @@ var LibraryBrowser = {
   emscripten_get_preloaded_image_data: (path, w, h) => getPreloadedImageData(UTF8ToString(path), w, h),
 
   $getPreloadedImageData__internal: true,
-  $getPreloadedImageData__data: ['$PATH_FS', 'malloc'],
+  $getPreloadedImageData__deps: ['$PATH_FS', 'malloc'],
   $getPreloadedImageData: (path, w, h) => {
     path = PATH_FS.resolve(path);
 

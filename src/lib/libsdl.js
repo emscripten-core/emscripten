@@ -19,6 +19,7 @@ var LibrarySDL = {
   $SDL__deps: [
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
     '$MainLoop',
+    '$warnOnce',
     // For makeCEvent().
     '$stringToUTF8',
     // Many SDL functions depend on malloc/free
