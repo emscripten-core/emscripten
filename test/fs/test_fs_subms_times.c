@@ -42,7 +42,6 @@ int main() {
   check("fstat mtime", st.st_mtim);
 
   close(fd);
-  unlink(path);
   puts("done");
   return 0;
 }
