@@ -400,7 +400,5 @@ _Noreturn void __pthread_exit(void* retval) {
   emscripten_unwind_to_js_event_loop();
 }
 
-weak_alias(__pthread_create, emscripten_builtin_pthread_create);
 weak_alias(__pthread_create, pthread_create);
-weak_alias(__pthread_exit, emscripten_builtin_pthread_exit);
 weak_alias(__pthread_exit, pthread_exit);

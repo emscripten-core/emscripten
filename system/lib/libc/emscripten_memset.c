@@ -34,5 +34,4 @@ static void *__memset(void *dest, int c, size_t n) {
 
 #endif
 
-weak_alias(__memset, emscripten_builtin_memset);
 weak_alias(__memset, memset);

@@ -37,5 +37,4 @@ static void *__memmove(void *dest, const void *src, size_t n) {
 
 #endif
 
-weak_alias(__memmove, emscripten_builtin_memmove);
 weak_alias(__memmove, memmove);
