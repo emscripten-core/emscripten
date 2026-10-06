@@ -104,15 +104,6 @@ WebAssembly.Function = function(type, func) {};
  */
 WebAssembly.Function.type = function(func) {};
 
-/**
- * @suppress {undefinedVars}
- */
-var wakaUnknownAfter;
-/**
- * @suppress {undefinedVars}
- */
-var wakaUnknownBefore;
-
 // Module loaders externs, for AMD etc.
 
 /**
@@ -148,21 +139,6 @@ var removeEventListener = function (type, listener) {};
  * @type {Function}
  */
 var close;
-
-// Closure run on asm.js uses a hack to execute only on shell code, declare externs needed for it.
-/**
- * @suppress {undefinedVars}
- */
-var wakaGlobal;
-/**
- * @suppress {undefinedVars}
- */
-var wakaEnv;
-/**
- * @suppress {undefinedVars}
- */
-var wakaBuffer;
-
 
 // Browser externs on global window object.
 var pageXOffset;
