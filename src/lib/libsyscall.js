@@ -48,17 +48,12 @@ var SyscallsLibrary = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
-#if ENVIRONMENT_MAY_BE_NODE
-      // Prefer `*Ms` properties if available (e.g. from NODEFS / host `fs.Stats`)
-      // for sub-millisecond precision; fall back to Date#getTime for other filesystems.
+      // Prefer `*Ms` properties if available (e.g. from MEMFS, or NODEFS / host
+      // `fs.Stats`) for sub-millisecond precision; fall back to Date#getTime for
+      // other filesystems.
       var atime = stat.atimeMs ?? stat.atime.getTime();
       var mtime = stat.mtimeMs ?? stat.mtime.getTime();
       var ctime = stat.ctimeMs ?? stat.ctime.getTime();
-#else
-      var atime = stat.atime.getTime();
-      var mtime = stat.mtime.getTime();
-      var ctime = stat.ctime.getTime();
-#endif
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(atime / 1000)', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, 'Math.floor((atime % 1000) * 1_000_000)', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(mtime / 1000)', 'i64') }}};
