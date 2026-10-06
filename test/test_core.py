@@ -5981,6 +5981,7 @@ got: 10
 
   @crossplatform
   @with_all_fs
+  @no_deno('https://github.com/emscripten-core/emscripten/pull/27890')
   def test_fs_subms_times(self):
     self.do_runf('fs/test_fs_subms_times.c', 'done\n')
 
