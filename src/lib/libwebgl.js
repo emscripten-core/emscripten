@@ -565,8 +565,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return size * typeSize * count;
     },
 
-    usedTempBuffers: [],
-
     preDrawHandleClientVertexAttribBindings: (count) => {
       GL.resetBufferBinding = false;
 
