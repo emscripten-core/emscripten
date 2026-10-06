@@ -108,7 +108,7 @@ LibraryJSEventLoop = {
     }`,
   $emSetImmediate: undefined,
 
-  $emClearImmediate_deps: ['$emSetImmediate'],
+  $emClearImmediate__deps: ['$emSetImmediate'],
   $emClearImmediate: undefined,
 
   emscripten_set_immediate__deps: ['$emSetImmediate', '$callUserCallback'],

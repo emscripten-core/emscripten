@@ -1488,7 +1488,7 @@ var LibraryEmbind = {
 
   $finalizationRegistry: false,
 
-  $detachFinalizer_deps: ['$finalizationRegistry'],
+  $detachFinalizer__deps: ['$finalizationRegistry'],
   $detachFinalizer: (handle) => {},
 
   $attachFinalizer__deps: [
