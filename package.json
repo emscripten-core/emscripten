@@ -20,7 +20,8 @@
     "acorn": "^8.18.0",
     "acorn-import-phases": "^1.0.4",
     "google-closure-compiler": "20260909.0.0",
-    "html-minifier-terser": "7.2.0"
+    "html-minifier-terser": "7.2.0",
+    "terser": "^5.51.2"
   },
   "scripts": {
     "lint": "eslint .",
