@@ -107,6 +107,22 @@ legacyFuncs = {
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
+
+#if EMBIND
+  $getInheritedInstanceCount__deps: ['$registeredInstances'],
+  $getInheritedInstanceCount: () => Object.keys(registeredInstances).length,
+
+  $getLiveInheritedInstances__deps: ['$registeredInstances'],
+  $getLiveInheritedInstances: () => {
+    var rv = [];
+    for (var k in registeredInstances) {
+      if (registeredInstances.hasOwnProperty(k)) {
+        rv.push(registeredInstances[k]);
+      }
+    }
+    return rv;
+  },
+#endif
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {
