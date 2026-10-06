@@ -11101,7 +11101,7 @@ ok.
     # gethostbyname, getaddrinfo and getnameinfo share one DNS table, also
     # when called from a pthread.
     self.do_runf('sockets/test_dns_table.c', 'done\n', cflags=args)
-    
+
   def test_getprotobyname(self):
     self.do_runf('sockets/test_getprotobyname.c', 'done\n')
 
