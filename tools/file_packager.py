@@ -445,11 +445,11 @@ def main():  # ruff: ignore[complex-structure, too-many-branches, too-many-state
         data_files.append(DataFile(srcpath=srcpath, dstpath=dstpath, mode=mode,
                                    explicit_dst_path=uses_at_notation))
       else:
-        diagnostics.error(f'${arg} does not exist')
+        diagnostics.error(f'{arg} does not exist')
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
-      diagnostics.error('Unknown parameter:', arg)
+      diagnostics.error(f'unknown argument: {arg}')
 
   options.has_preloaded = any(f.mode == 'preload' for f in data_files)
   options.has_embedded = any(f.mode == 'embed' for f in data_files)
