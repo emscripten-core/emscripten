@@ -624,16 +624,6 @@ var LibraryDylink = {
     }
   },
 
-#if DYLINK_DEBUG
-  $dumpTable__deps: ['$wasmTable'],
-  $dumpTable: () => {
-    var len = wasmTable.length;
-    for (var i = {{{ toIndexType(0) }}} ; i < len; i++) {
-      dbg(`table: ${i} : ${wasmTable.get(i)}`);
-    }
-  },
-#endif
-
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__docs: `

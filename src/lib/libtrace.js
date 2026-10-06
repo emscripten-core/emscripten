@@ -33,7 +33,6 @@ var LibraryTracing = {
     EVENT_ENTER_CONTEXT: 'enter-context',
     EVENT_EXIT_CONTEXT: 'exit-context',
     EVENT_FRAME_END: 'frame-end',
-    EVENT_FRAME_RATE: 'frame-rate',
     EVENT_FRAME_START: 'frame-start',
     EVENT_FREE: 'free',
     EVENT_LOG_MESSAGE: 'log-message',
