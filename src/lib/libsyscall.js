@@ -1090,7 +1090,7 @@ var SyscallsLibrary = {
     // Use a sub-millisecond clock for "now" if possible. This is needed to
     // ensure that a later UTIME_NOW doesn't set the time earlier than an
     // earlier UTIME_NOW, see test_utime_now.c
-    var now = globalThis.performance?.timeOrigin ? performance.timeOrigin + performance.now() : Date.now();
+    var now = emscripten_get_now();
     var atime, mtime;
     if (!times) {
       atime = now;
