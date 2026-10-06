@@ -1360,7 +1360,6 @@ var FS = {
   currentPath: "/",
   initialized: false,
   ignorePermissions: true,
-  filesystems: null,
   syncFSRequests: 0,
   ErrnoError: class {
     name="ErrnoError";

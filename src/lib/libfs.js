@@ -65,7 +65,6 @@ FS.staticInit();`;
 #if FS_DEBUG
     trackingDelegate: {},
 #endif
-    filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
 #if expectToReceiveOnModule('logReadFiles')
     readFiles: {},
