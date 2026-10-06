@@ -1369,27 +1369,6 @@ addToLibrary({
     return result;
   },
 
-  // ==========================================================================
-  // sockets. Note that the implementation assumes all sockets are always
-  // nonblocking
-  // ==========================================================================
-  $Sockets: {
-    BUFFER_SIZE: 10*1024, // initial size
-    MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
-
-    nextFd: 1,
-    fds: {},
-    nextport: 1,
-    maxport: 65535,
-    peer: null,
-    connections: {},
-    portmap: {},
-    localAddr: 0xfe00000a, // Local address is always 10.0.0.254
-    addrPool: [            0x0200000a, 0x0300000a, 0x0400000a, 0x0500000a,
-               0x0600000a, 0x0700000a, 0x0800000a, 0x0900000a, 0x0a00000a,
-               0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a] /* 0x0100000a is reserved */
-  },
-
 #endif // PROXY_POSIX_SOCKETS == 0
 
   $timers: {},

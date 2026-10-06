@@ -1005,7 +1005,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'ERRNO_CODES',
   'DNS',
   'Protocols',
-  'Sockets',
   'timers',
   'warnOnce',
   'readEmAsmArgsArray',
