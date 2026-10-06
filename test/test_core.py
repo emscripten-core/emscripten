@@ -5980,6 +5980,10 @@ got: 10
     self.do_runf_out_file('fs/test_fs_write.c')
 
   @with_all_fs
+  def test_fs_subms_times(self):
+    self.do_runf('fs/test_fs_subms_times.c', 'done\n')
+
+  @with_all_fs
   def test_fs_access_mode(self):
     # Writing to an O_RDONLY fd and reading from an O_WRONLY fd must fail with
     # EBADF, consistently across all filesystems.
