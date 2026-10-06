@@ -1032,7 +1032,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'setCanvasSize',
   'getUserMedia',
   'createContext',
-  'getPreloadedImageData__data',
   'wget',
   'MONTH_DAYS_REGULAR',
   'MONTH_DAYS_LEAP',
