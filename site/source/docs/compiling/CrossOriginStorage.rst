@@ -186,7 +186,8 @@ Runtime (web only)
 
 When the page loads, the generated JavaScript follows this logic:
 
-1. **Feature detection** — check ``'crossOriginStorage' in navigator``.
+1. **Feature detection** — check that
+   ``navigator.crossOriginStorage?.getFileHandle`` exists.
    If the API is absent, skip to the normal fetch path immediately.
 
 2. **Cache hit** — call
@@ -331,7 +332,7 @@ via a reference to that config object:
        // `this` inside the callback is Emscripten's internal Module object;
        // read the hash via the outer Module reference instead.
        const cosHash = Module['wasmHash'];
-       if (cosHash?.value && globalThis.navigator?.crossOriginStorage) {
+       if (cosHash?.value && globalThis.navigator?.crossOriginStorage?.getFileHandle) {
          const wasmHeaders = { headers: { 'Content-Type': 'application/wasm' } };
          navigator.crossOriginStorage.getFileHandle(cosHash)
            .then(handle => handle.getFile())

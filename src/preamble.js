@@ -608,7 +608,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
   // https://github.com/WICG/cross-origin-storage
   // Any error (not found, not allowed, network failure, …) falls through
   // to the standard Emscripten streaming path so the page always loads.
-  if (globalThis.navigator?.crossOriginStorage) {
+  if (globalThis.navigator?.crossOriginStorage?.getFileHandle) {
     var cosHash = Module['wasmHash'];
     try {
       var cosHandle = await navigator.crossOriginStorage.getFileHandle(cosHash);
