@@ -63,9 +63,7 @@ var LibrarySDL = {
       volume: 1.0
     },
     mixerFrequency: 22050,
-    mixerFormat: {{{ cDefs.AUDIO_S16LSB }}},
     mixerNumChannels: 2,
-    mixerChunkSize: 1024,
     channelMinimumNumber: 0,
 
     // Set to true if we call SDL_SetVideoMode with SDL_OPENGL, and if so, we do
@@ -337,18 +335,12 @@ var LibrarySDL = {
       var rgba = {{{ makeGetValue('color', 0, 'i32') }}};
       return 'rgb(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ')';
     },
-    loadColorToCSSRGBA(color) {
-      var rgba = {{{ makeGetValue('color', 0, 'i32') }}};
-      return 'rgba(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ',' + (((rgba >> 24)&255)/255) + ')';
-    },
 
     translateColorToCSSRGBA: (rgba) =>
       'rgba(' + (rgba&0xff) + ',' + (rgba>>8 & 0xff) + ',' + (rgba>>16 & 0xff) + ',' + (rgba>>>24)/0xff + ')',
 
     translateRGBAToCSSRGBA: (r, g, b, a) =>
       'rgba(' + (r&0xff) + ',' + (g&0xff) + ',' + (b&0xff) + ',' + (a&0xff)/255 + ')',
-
-    translateRGBAToColor: (r, g, b, a) => r | g << 8 | b << 16 | a << 24,
 
     makeSurface(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       var is_SDL_HWSURFACE = flags & {{{ cDefs.SDL_HWSURFACE }}};
@@ -1226,20 +1218,6 @@ var LibrarySDL = {
       }
     },
 
-    // Debugging
-
-#if ASSERTIONS
-    debugSurface(surfData) {
-      dbg('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
-      var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
-      var data = image.data;
-      var num = Math.min(surfData.width, surfData.height);
-      for (var i = 0; i < num; i++) {
-        dbg('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
-      }
-    },
-#endif
-
     // Joystick helper methods and state
 
     joystickEventState: 1, // SDL_ENABLE
@@ -1559,23 +1537,6 @@ var LibrarySDL = {
     if (SDL.defaults.copyOnLock && !SDL.defaults.discardOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
       if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
-        // If this is needed then
-        // we should compact the data from 32bpp to 8bpp index.
-        // I think the best way to implement this is to use
-        // an additional colorMap hash (color->index).
-        // Something like this:
-        //
-        // var size = surfData.width * surfData.height;
-        // var data = '';
-        // for (var i = 0; i<size; i++) {
-        //   var color = SDL.translateRGBAToColor(
-        //     surfData.image.data[i*4   ],
-        //     surfData.image.data[i*4 +1],
-        //     surfData.image.data[i*4 +2],
-        //     255);
-        //   var index = surfData.colorMap[color];
-        //   {{{ makeSetValue('surfData.buffer', 'i', 'index', 'i8') }}};
-        // }
         abort('CopyOnLock is not supported for SDL_LockSurface with SDL_HWPALETTE flag set');
       } else {
         HEAPU8.set(surfData.image.data, surfData.buffer);
@@ -2635,9 +2596,7 @@ var LibrarySDL = {
     SDL.allocateChannels(32);
     // Just record the values for a later call to Mix_QuickLoad_RAW
     SDL.mixerFrequency = frequency;
-    SDL.mixerFormat = format;
     SDL.mixerNumChannels = channels;
-    SDL.mixerChunkSize = chunksize;
     return 0;
   },
 
