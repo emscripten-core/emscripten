@@ -3047,12 +3047,21 @@ var SYSCALLS = {
     var atime = stat.atimeMs ?? stat.atime.getTime();
     var mtime = stat.mtimeMs ?? stat.mtime.getTime();
     var ctime = stat.ctimeMs ?? stat.ctime.getTime();
-    HEAP64[(((buf) + (40)) >> 3)] = BigInt(Math.floor(atime / 1e3));
-    HEAPU32[(((buf) + (48)) >> 2)] = Math.floor((atime % 1e3) * 1e6);
-    HEAP64[(((buf) + (56)) >> 3)] = BigInt(Math.floor(mtime / 1e3));
-    HEAPU32[(((buf) + (64)) >> 2)] = Math.floor((mtime % 1e3) * 1e6);
-    HEAP64[(((buf) + (72)) >> 3)] = BigInt(Math.floor(ctime / 1e3));
-    HEAPU32[(((buf) + (80)) >> 2)] = Math.floor((ctime % 1e3) * 1e6);
+    // Round to the nearest 10 microseconds.  This matches the granularity
+    // that __syscall_utimensat rounds down to when setting timestamps, so
+    // that values read via stat() round-trip through utimensat().
+    var atime10Us = Math.round(atime * 100);
+    var mtime10Us = Math.round(mtime * 100);
+    var ctime10Us = Math.round(ctime * 100);
+    var atimeSec = Math.floor(atime10Us / 1e5);
+    var mtimeSec = Math.floor(mtime10Us / 1e5);
+    var ctimeSec = Math.floor(ctime10Us / 1e5);
+    HEAP64[(((buf) + (40)) >> 3)] = BigInt(atimeSec);
+    HEAPU32[(((buf) + (48)) >> 2)] = (atime10Us - atimeSec * 1e5) * 1e4;
+    HEAP64[(((buf) + (56)) >> 3)] = BigInt(mtimeSec);
+    HEAPU32[(((buf) + (64)) >> 2)] = (mtime10Us - mtimeSec * 1e5) * 1e4;
+    HEAP64[(((buf) + (72)) >> 3)] = BigInt(ctimeSec);
+    HEAPU32[(((buf) + (80)) >> 2)] = (ctime10Us - ctimeSec * 1e5) * 1e4;
     HEAP64[(((buf) + (88)) >> 3)] = BigInt(stat.ino);
     return 0;
   },

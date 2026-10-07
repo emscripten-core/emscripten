@@ -54,12 +54,21 @@ var SyscallsLibrary = {
       var atime = stat.atimeMs ?? stat.atime.getTime();
       var mtime = stat.mtimeMs ?? stat.mtime.getTime();
       var ctime = stat.ctimeMs ?? stat.ctime.getTime();
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(atime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, 'Math.floor((atime % 1000) * 1_000_000)', SIZE_TYPE) }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(mtime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, 'Math.floor((mtime % 1000) * 1_000_000)', SIZE_TYPE) }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(ctime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, 'Math.floor((ctime % 1000) * 1_000_000)', SIZE_TYPE) }}};
+      // Round to the nearest 10 microseconds.  This matches the granularity
+      // that __syscall_utimensat rounds down to when setting timestamps, so
+      // that values read via stat() round-trip through utimensat().
+      var atime10Us = Math.round(atime * 100);
+      var mtime10Us = Math.round(mtime * 100);
+      var ctime10Us = Math.round(ctime * 100);
+      var atimeSec = Math.floor(atime10Us / 100_000);
+      var mtimeSec = Math.floor(mtime10Us / 100_000);
+      var ctimeSec = Math.floor(ctime10Us / 100_000);
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'atimeSec', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '(atime10Us - atimeSec * 100_000) * 10_000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'mtimeSec', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '(mtime10Us - mtimeSec * 100_000) * 10_000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'ctimeSec', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '(ctime10Us - ctimeSec * 100_000) * 10_000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
@@ -1078,7 +1087,11 @@ var SyscallsLibrary = {
     var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path, true);
-    var now = Date.now(), atime, mtime;
+    // Use a sub-millisecond clock for "now" if possible. This is needed to
+    // ensure that a later UTIME_NOW doesn't set the time earlier than an
+    // earlier UTIME_NOW, see test_utime_now.c
+    var now = globalThis.performance?.timeOrigin ? performance.timeOrigin + performance.now() : Date.now();
+    var atime, mtime;
     if (!times) {
       atime = now;
       mtime = now;
