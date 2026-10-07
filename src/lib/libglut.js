@@ -24,8 +24,6 @@ var LibraryGLUT = {
     initWindowHeight: 256,
     initDisplayMode: 0x0000 /*GLUT_RGBA*/ | 0x0002 /*GLUT_DOUBLE*/ | 0x0010 /*GLUT_DEPTH*/,
     // Set when going fullscreen
-    windowX: 0,
-    windowY: 0,
     windowWidth: 0,
     windowHeight: 0,
     requestedAnimationFrame: false,
@@ -286,8 +284,9 @@ var LibraryGLUT = {
         height = GLUT.windowHeight;
         // TODO set position
         document.removeEventListener('fullscreenchange', GLUT.onFullscreenEventChange, true);
-        document.removeEventListener('mozfullscreenchange', GLUT.onFullscreenEventChange, true);
+#if MIN_SAFARI_VERSION < 160400
         document.removeEventListener('webkitfullscreenchange', GLUT.onFullscreenEventChange, true);
+#endif
       }
       Browser.setCanvasSize(width, height, true); // N.B. GLUT.reshapeFunc is also registered as a canvas resize callback.
                                                   // Just call it once here.
@@ -612,14 +611,13 @@ var LibraryGLUT = {
   glutFullScreen__proxy: 'sync',
   glutFullScreen__deps: ['$GLUT'],
   glutFullScreen: () => {
-    GLUT.windowX = 0; // TODO
-    GLUT.windowY = 0; // TODO
     var canvas = Browser.getCanvas();
     GLUT.windowWidth = canvas.width;
     GLUT.windowHeight = canvas.height;
     document.addEventListener('fullscreenchange', GLUT.onFullscreenEventChange, true);
-    document.addEventListener('mozfullscreenchange', GLUT.onFullscreenEventChange, true);
+#if MIN_SAFARI_VERSION < 160400
     document.addEventListener('webkitfullscreenchange', GLUT.onFullscreenEventChange, true);
+#endif
     Browser.requestFullscreen(/*lockPointer=*/false, /*resizeCanvas=*/false);
   },
 

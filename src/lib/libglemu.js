@@ -88,7 +88,6 @@ var LibraryGLEmulation = {
     lightingEnabled: false,
 
     lightModelAmbient: null,
-    lightModelLocalViewer: false,
     lightModelTwoSide: false,
 
     materialAmbient: null,
@@ -1976,7 +1975,6 @@ var LibraryGLEmulation = {
     vertexData: null, // current vertex data. either tempData (glBegin etc.) or a view into the heap (gl*Pointer). Default view is F32
     vertexDataU8: null, // U8 view
     tempData: null,
-    indexData: null,
     vertexCounter: 0,
     mode: -1,
 
@@ -1992,7 +1990,6 @@ var LibraryGLEmulation = {
     matrix: [],
     matrixStack: [],
     currentMatrix: 0, // 0: modelview, 1: projection, 2+i, texture matrix i.
-    tempMatrix: null,
     matricesModified: false,
     useTextureMatrix: false,
 
@@ -2839,10 +2836,8 @@ var LibraryGLEmulation = {
     },
 
     // Main functions
-    initted: false,
     init() {
       err('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
-      GLImmediate.initted = true;
 
       if (!Browser.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
 
@@ -2880,7 +2875,6 @@ var LibraryGLEmulation = {
 
       // Buffers for data
       GLImmediate.tempData = new Float32Array(GL.MAX_TEMP_BUFFER_SIZE >> 2);
-      GLImmediate.indexData = new Uint16Array(GL.MAX_TEMP_BUFFER_SIZE >> 1);
 
       GLImmediate.vertexDataU8 = new Uint8Array(GLImmediate.tempData.buffer);
 

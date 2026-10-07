@@ -5,7 +5,7 @@
 
 import * as fs from 'node:fs';
 import * as acorn from 'acorn';
-import * as terser from '../third_party/terser/terser.js';
+import {minify_sync} from 'terser';
 import {parseArgs} from 'node:util';
 
 // Starting at the AST node 'root', calls the given callback function 'func' on all children and grandchildren of 'root'
@@ -220,14 +220,18 @@ function runOnJsText(js, pretty = false) {
 
   optPassSimplifyModularizeFunction(ast);
 
-  const terserAst = terser.AST_Node.from_mozilla_ast(ast);
-  const output = terserAst.print_to_string({
-    wrap_func_args: false,
-    beautify: pretty,
-    indent_level: pretty ? 2 : 0,
+  const {code} = minify_sync(ast, {
+    parse: {spidermonkey: true},
+    compress: false,
+    mangle: false,
+    format: {
+      wrap_func_args: false,
+      beautify: pretty,
+      indent_level: pretty ? 2 : 0,
+    },
   });
 
-  return output;
+  return code;
 }
 
 function runOnFile(input, pretty = false, output = null) {
