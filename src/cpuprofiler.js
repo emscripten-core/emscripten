@@ -751,11 +751,6 @@ setTimeout = (fn, delay, ...args) => {
   return realSetTimeout(wrappedSetTimeout, delay, ...args);
 }
 
-// Backwards compatibility with previously compiled code. Don't call this anymore!
-function cpuprofiler_add_hooks() {
-  emscriptenCpuProfiler.initialize();
-}
-
 if (globalThis.document) {
   emscriptenCpuProfiler.initialize();
 }

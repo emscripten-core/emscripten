@@ -629,12 +629,6 @@ var emscriptenMemoryProfiler = {
   }
 };
 
-// Backwards compatibility with previously compiled code. Don't call this
-// anymore!
-function memoryprofiler_add_hooks() {
-  emscriptenMemoryProfiler.initialize();
-}
-
 if (globalThis.document && globalThis.window && !globalThis.process) {
   emscriptenMemoryProfiler.initialize();
 }
