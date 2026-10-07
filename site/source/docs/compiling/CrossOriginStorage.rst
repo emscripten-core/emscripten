@@ -67,7 +67,7 @@ Controlling which origins can read the cached file
 --------------------------------------------------
 
 The :ref:`CROSS_ORIGIN_STORAGE_ORIGINS` setting controls the ``origins`` field
-passed to ``requestFileHandle()`` on the write (cache-miss) path.  It has no
+passed to ``getFileHandle()`` on the write (cache-miss) path.  It has no
 effect on the read (cache-hit) path.  Three modes are available:
 
 **Globally available** (default, no explicit setting needed) — any origin
@@ -190,7 +190,7 @@ When the page loads, the generated JavaScript follows this logic:
    If the API is absent, skip to the normal fetch path immediately.
 
 2. **Cache hit** — call
-   ``navigator.crossOriginStorage.requestFileHandle(cosHash)``.
+   ``navigator.crossOriginStorage.getFileHandle(cosHash)``.
    If the handle is returned (the module is already in COS), invoke
    ``Module['onCOSCacheHit'](hash)`` if defined, then wrap
    ``handle.getFile().stream()`` in a ``Response`` with an ``application/wasm``
@@ -333,7 +333,7 @@ via a reference to that config object:
        const cosHash = Module['wasmHash'];
        if (cosHash?.value && globalThis.navigator?.crossOriginStorage) {
          const wasmHeaders = { headers: { 'Content-Type': 'application/wasm' } };
-         navigator.crossOriginStorage.requestFileHandle(cosHash)
+         navigator.crossOriginStorage.getFileHandle(cosHash)
            .then(handle => handle.getFile())
            // stream from the stored file so compilation overlaps reading
            .then(f => WebAssembly.instantiateStreaming(
@@ -351,7 +351,7 @@ via a reference to that config object:
                // fire-and-forget store; pipeTo() closes the writable and COS
                // verifies the hash on close
                navigator.crossOriginStorage
-                 .requestFileHandle(cosHash, { create: true, origins: '*' })
+                 .getFileHandle(cosHash, { create: true, origins: '*' })
                  .then(wh => wh.createWritable())
                  .then(w => storeStream.pipeTo(w))
                  .catch(() => storeStream.cancel());

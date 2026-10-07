@@ -611,7 +611,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
   if (globalThis.navigator?.crossOriginStorage) {
     var cosHash = Module['wasmHash'];
     try {
-      var cosHandle = await navigator.crossOriginStorage.requestFileHandle(cosHash);
+      var cosHandle = await navigator.crossOriginStorage.getFileHandle(cosHash);
       // Cache hit. getFile() resolves to a lazy File reference; no bytes are
       // read until the stream is consumed by the compiler below.
       var cosFile = await cosHandle.getFile();
@@ -639,7 +639,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
         // pipeTo() closes the writable, and COS verifies the hash on close.
         (async () => {
           try {
-            var writeHandle = await navigator.crossOriginStorage.requestFileHandle(
+            var writeHandle = await navigator.crossOriginStorage.getFileHandle(
               cosHash,
 #if CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*'
               { create: true, origins: '*' },
