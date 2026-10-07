@@ -33,9 +33,6 @@ See docs/process.md for more on how version tagging works.
   main thread only. The callback itself is then able to collect the events via
   a zero-timeout `epoll_wait`, without an `ASYNCIFY`/`JSPI` requirement.
   (#27547)
-- The `-sCROSS_ORIGIN_STORAGE` runtime now calls
-  `navigator.crossOriginStorage.getFileHandle()`, following the API's rename
-  from `requestFileHandle()`. (#27907)
 
 6.0.11 - 10/02/26
 -----------------
