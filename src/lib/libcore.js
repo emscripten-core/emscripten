@@ -1001,6 +1001,9 @@ addToLibrary({
   },
 
   _emscripten_lookup_name__deps: ['$UTF8ToString', '$DNS', '$inetPton4'],
+  // Proxied so that there is a single DNS table, on the main thread, shared
+  // with getaddrinfo, getnameinfo and the socket syscalls.
+  _emscripten_lookup_name__proxy: 'sync',
   _emscripten_lookup_name: (name) => {
     // uint32_t _emscripten_lookup_name(const char *name);
     var nameString = UTF8ToString(name);
@@ -1235,6 +1238,7 @@ addToLibrary({
   },
 
   getnameinfo__deps: ['$DNS', '$readSockaddr', '$stringToUTF8'],
+  getnameinfo__proxy: 'sync',
   getnameinfo: (sa, salen, node, nodelen, serv, servlen, flags) => {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
