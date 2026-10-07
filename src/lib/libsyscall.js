@@ -340,15 +340,17 @@ var SyscallsLibrary = {
 #endif
     return socket;
   },
-  $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
+  $getSocketAddress__deps: ['$readSockaddr', '$FS',
+#if !NODERAWSOCKETS
+    '$DNS',
+#endif
+  ],
   $getSocketAddress: (addrp, addrlen) => {
     var info = readSockaddr(addrp, addrlen);
     if (info.errno) throw new FS.ErrnoError(info.errno);
-#if NODERAWSOCKETS
-    // AF_UNIX addresses are filesystem paths, not IP names; pass them verbatim.
-    if (info.family != {{{ cDefs.AF_UNIX }}})
-#endif
+#if !NODERAWSOCKETS
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
+#endif
 #if SYSCALL_DEBUG
     dbg(`    (socketaddress: "${[info.addr, info.port]}")`);
 #endif

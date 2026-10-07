@@ -8,7 +8,8 @@
  * synchronously, and any hostname goes to node:dns, returning every address as
  * a linked list. That lookup is asynchronous, so it blocks where the calling
  * stack can wait (a proxied pthread, JSPI) and is EAI_AGAIN where it cannot
- * (built with -DNO_WAIT).
+ * (built with -DNO_WAIT). gethostbyname() resolves through the same path, and
+ * getnameinfo()/gethostbyaddr() are node:dns reverse lookups.
  */
 
 #include <arpa/inet.h>
@@ -51,14 +52,36 @@ int count_v4(struct addrinfo* res, const char* addr) {
 int ticked = 0;
 void tick(void* arg) { ticked = 1; }
 
+int reverse(const char* addr, int flags, char* host, size_t hostlen) {
+  struct sockaddr_in sa = {0};
+  sa.sin_family = AF_INET;
+  sa.sin_addr.s_addr = inet_addr(addr);
+  return getnameinfo(
+    (struct sockaddr*)&sa, sizeof(sa), host, hostlen, NULL, 0, flags);
+}
+
 int main(void) {
+  char host[256];
   struct addrinfo* res = lookup("10.9.8.7", AF_UNSPEC, 0);
   assert(count_v4(res, "10.9.8.7") == 1 && !res->ai_next);
   freeaddrinfo(res);
 
+  // gethostbyname() of a numeric address needs no lookup either.
+  struct hostent* h = gethostbyname("10.9.8.7");
+  assert(h && h->h_addrtype == AF_INET && h->h_length == 4);
+  assert(((struct in_addr*)h->h_addr_list[0])->s_addr == inet_addr("10.9.8.7"));
+  assert(!h->h_addr_list[1]);
+  assert(!strcmp(h->h_name, "10.9.8.7"));
+
   // A hostname is a real node:dns lookup.
 #ifdef NO_WAIT
   lookup("localhost", AF_INET, EAI_AGAIN);
+  assert(!gethostbyname("localhost") && h_errno == TRY_AGAIN);
+  // A reverse lookup that cannot wait is numeric, or EAI_AGAIN if a name is
+  // required.
+  assert(reverse("127.0.0.1", 0, host, sizeof(host)) == 0);
+  assert(!strcmp(host, "127.0.0.1"));
+  assert(reverse("127.0.0.1", NI_NAMEREQD, host, sizeof(host)) == EAI_AGAIN);
 #else
   // A user callback completing while main() is suspended in the lookup must
   // not exit the runtime (EXIT_RUNTIME). Under PROXY_TO_PTHREAD the calling
@@ -95,6 +118,31 @@ int main(void) {
   int err = getaddrinfo("nonexistent.invalid", NULL, &hints, &res);
   assert(err == EAI_NONAME || err == EAI_AGAIN);
   assert(!res);
+
+  // gethostbyname() resolves through the same lookup.
+  h = gethostbyname("localhost");
+  assert(h && h->h_addrtype == AF_INET && h->h_length == 4);
+  assert(!strcmp(h->h_name, "localhost"));
+  int found = 0;
+  for (char** a = h->h_addr_list; *a; a++) {
+    if (((struct in_addr*)*a)->s_addr == inet_addr("127.0.0.1"))
+      found++;
+  }
+  assert(found == 1);
+  assert(!gethostbyname("nonexistent.invalid"));
+  assert(h_errno == HOST_NOT_FOUND || h_errno == TRY_AGAIN);
+
+  // Reverse lookups through getnameinfo() and gethostbyaddr(). The loopback
+  // name is whatever the host's resolver says (localhost, or e.g. the
+  // machine's own name), but it is a name.
+  assert(reverse("127.0.0.1", NI_NAMEREQD, host, sizeof(host)) == 0);
+  printf("getnameinfo(127.0.0.1) -> %s\n", host);
+  assert(strcmp(host, "127.0.0.1"));
+  struct in_addr loopback = {.s_addr = inet_addr("127.0.0.1")};
+  h = gethostbyaddr(&loopback, sizeof(loopback), AF_INET);
+  assert(h && !strcmp(h->h_name, host));
+  assert(reverse("127.0.0.1", NI_NUMERICHOST, host, sizeof(host)) == 0);
+  assert(!strcmp(host, "127.0.0.1"));
 #endif
 
   printf("done\n");
