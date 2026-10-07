@@ -328,8 +328,22 @@
              "AF_UNIX",
              "SOL_SOCKET",
              "SO_ERROR",
-             "SO_REUSEPORT"
+             "SO_REUSEPORT",
+             "SO_RCVTIMEO",
+             "SO_SNDTIMEO",
+             "SO_ACCEPTCONN",
+             "SO_DOMAIN",
+             "SO_PROTOCOL"
         ]
+    },
+    {
+        "file": "sys/time.h",
+        "structs": {
+            "timeval": [
+                "tv_sec",
+                "tv_usec"
+            ]
+        }
     },
     {
         "file": "sys/un.h",

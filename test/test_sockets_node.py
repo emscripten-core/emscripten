@@ -329,9 +329,17 @@ class sockets_node(RunnerCore):
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_socket_options(self):
-    # Socket metadata/options on a fresh socket: fstat reports S_ISSOCK, SO_TYPE
-    # reports the socket type, and SO_LINGER round-trips a struct linger.
+    # Socket metadata/options on a fresh socket: fstat reports S_ISSOCK, the
+    # read-only identity options, SO_LINGER/SO_RCVTIMEO/SO_SNDTIMEO struct
+    # round-trips, flag options, and symmetric ENOPROTOOPT for unknown options.
     self.do_runf('sockets/test_socket_options.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_udp_reuseaddr(self):
+    # SO_REUSEADDR/SO_REUSEPORT on UDP are applied at bind so sockets can share
+    # a port.
+    self.do_runf('sockets/test_udp_reuseaddr.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @requires_native_clang
