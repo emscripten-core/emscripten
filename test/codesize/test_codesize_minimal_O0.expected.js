@@ -1030,7 +1030,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'Browser',
   'requestFullscreen',
   'setCanvasSize',
-  'getUserMedia',
   'createContext',
   'wget',
   'MONTH_DAYS_REGULAR',

@@ -308,10 +308,6 @@ var LibraryBrowser = {
       }[name.slice(name.lastIndexOf('.')+1)];
     },
 
-    getUserMedia(func) {
-      return navigator.mediaDevices.getUserMedia(func);
-    },
-
     // Browsers specify wheel direction according to the page CSS pixel Y direction:
     // Scrolling mouse wheel down (==towards user/away from screen) on Windows/Linux (and macOS without 'natural scroll' enabled)
     // is the positive wheel direction. Scrolling mouse wheel up (towards the screen) is the negative wheel direction.
@@ -512,7 +508,6 @@ var LibraryBrowser = {
 
   $requestFullscreen: 'Browser.requestFullscreen',
   $setCanvasSize: 'Browser.setCanvasSize',
-  $getUserMedia: 'Browser.getUserMedia',
   $createContext: 'Browser.createContext',
 
   emscripten_run_preload_plugins__deps: ['$PATH'],
