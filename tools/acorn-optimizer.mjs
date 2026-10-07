@@ -1268,11 +1268,8 @@ function makeCallGrowMemViews() {
 
 function makeSequence(...expressions) {
   return {
-    type: 'ParenthesizedExpression',
-    expression: {
-      type: 'SequenceExpression',
-      expressions,
-    }
+    type: 'SequenceExpression',
+    expressions,
   };
 }
 
@@ -1794,18 +1791,11 @@ function reattachComments(ast, commentsMap) {
     symbols[j].start.comments_before ??= [];
     for (const comment of comments) {
       trace('reattaching comment');
-      symbols[j].start.comments_before.push(
-        new terser.AST_Token(
-          comment.type == 'Line' ? 'comment1' : 'comment2',
-          comment.value,
-          undefined,
-          undefined,
-          false,
-          undefined,
-          undefined,
-          '0',
-        ),
-      );
+      symbols[j].start.comments_before.push({
+        type: comment.type == 'Line' ? 'comment1' : 'comment2',
+        value: comment.value,
+        nlb: false,
+      });
     }
   }
 }
