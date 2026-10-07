@@ -14,7 +14,7 @@
 
 int print = 1;
 
-static int callback(void *NotUsed, int argc, char **argv, char **azColName){
+int callback(void *NotUsed, int argc, char **argv, char **azColName){
   int i;
   if (!print) return 0;
   for(i=0; i<argc; i++){

@@ -7,7 +7,7 @@
 // Tests that calling emscripten_terminate_all_wasm_workers() properly terminates
 // each child Wasm Worker of the calling thread.
 
-static volatile int worker_started = 0;
+volatile int worker_started = 0;
 
 void this_function_should_not_be_called(void *userData) {
   worker_started = -1;

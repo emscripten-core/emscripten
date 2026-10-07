@@ -5979,6 +5979,12 @@ got: 10
       self.set_setting("FORCE_FILESYSTEM")
     self.do_runf_out_file('fs/test_fs_write.c')
 
+  @crossplatform
+  @with_all_fs
+  @no_deno('https://github.com/emscripten-core/emscripten/pull/27890')
+  def test_fs_subms_times(self):
+    self.do_runf('fs/test_fs_subms_times.c', 'done\n')
+
   @with_all_fs
   def test_fs_access_mode(self):
     # Writing to an O_RDONLY fd and reading from an O_WRONLY fd must fail with

@@ -1,8 +1,8 @@
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 typeof define === 'function' && define.amd ? define(['exports'], factory) :
-(global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.Terser = {}));
-})(this, (function (exports) { 'use strict';
+(global = global || self, factory(global.Terser = {}));
+}(this, (function (exports) { 'use strict';
 
 /***********************************************************************
 
@@ -77,7 +77,7 @@ function defaults(args, defs, croak) {
     for (const i in defs) if (HOP(defs, i)) {
         if (!args || !HOP(args, i)) {
             ret[i] = defs[i];
-        } else if (i === "ecma") {
+        } else if (i === "ecma" || i === "builtins_ecma") {
             let ecma = args[i] | 0;
             if (ecma > 5 && ecma < 2015) ecma += 2009;
             ret[i] = ecma;
@@ -216,6 +216,130 @@ function set_annotation(node, annotation) {
     node._annotations |= annotation;
 }
 
+// surrogate safe regexps adapted from https://github.com/mathiasbynens/unicode-8.0.0/tree/89b412d8a71ecca9ed593d9e9fa073ab64acfebe/Binary_Property
+/** Used for checking if a string is an identifier during output.
+ * We don't use \p{ID_Start} and \p{ID_Continue} because that's a moving target
+ * and Terser's output should run on old browsers.
+ */
+var UNICODE_NARROW = {
+    ID_Start: /[$A-Z_a-z\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0370-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u05D0-\u05EA\u05F0-\u05F2\u0620-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06E5\u06E6\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0815\u081A\u0824\u0828\u0840-\u0858\u08A0-\u08B4\u0904-\u0939\u093D\u0950\u0958-\u0961\u0971-\u0980\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0AF9\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D\u0C58-\u0C5A\u0C60\u0C61\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D5F-\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E46\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1877\u1880-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191E\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A16\u1A20-\u1A54\u1AA7\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C7D\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u1D00-\u1DBF\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2118-\u211D\u2124\u2126\u2128\u212A-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u3005-\u3007\u3021-\u3029\u3031-\u3035\u3038-\u303C\u3041-\u3096\u309B-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA67F-\uA69D\uA6A0-\uA6EF\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AD\uA7B0-\uA7B7\uA7F7-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9CF\uA9E0-\uA9E4\uA9E6-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA76\uAA7A\uAA7E-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEA\uAAF2-\uAAF4\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF30-\uDF4A\uDF50-\uDF75\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD801[\uDC00-\uDC9D\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00\uDE10-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD804[\uDC03-\uDC37\uDC83-\uDCAF\uDCD0-\uDCE8\uDD03-\uDD26\uDD50-\uDD72\uDD76\uDD83-\uDDB2\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE2B\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEDE\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D\uDF50\uDF5D-\uDF61]|\uD805[\uDC80-\uDCAF\uDCC4\uDCC5\uDCC7\uDD80-\uDDAE\uDDD8-\uDDDB\uDE00-\uDE2F\uDE44\uDE80-\uDEAA\uDF00-\uDF19]|\uD806[\uDCA0-\uDCDF\uDCFF\uDEC0-\uDEF8]|\uD808[\uDC00-\uDF99]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|[\uD80C\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]|\uD811[\uDC00-\uDE46]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF2F\uDF40-\uDF43\uDF63-\uDF77\uDF7D-\uDF8F]|\uD81B[\uDF00-\uDF44\uDF50\uDF93-\uDF9F]|\uD82C[\uDC00\uDC01]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB]|\uD83A[\uDC00-\uDCC4]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEA1]|\uD87E[\uDC00-\uDE1D]/,
+    ID_Continue: /(?:[$0-9A-Z_a-z\xAA\xB5\xB7\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0300-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u0483-\u0487\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u05D0-\u05EA\u05F0-\u05F2\u0610-\u061A\u0620-\u0669\u066E-\u06D3\u06D5-\u06DC\u06DF-\u06E8\u06EA-\u06FC\u06FF\u0710-\u074A\u074D-\u07B1\u07C0-\u07F5\u07FA\u0800-\u082D\u0840-\u085B\u08A0-\u08B4\u08E3-\u0963\u0966-\u096F\u0971-\u0983\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BC-\u09C4\u09C7\u09C8\u09CB-\u09CE\u09D7\u09DC\u09DD\u09DF-\u09E3\u09E6-\u09F1\u0A01-\u0A03\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A59-\u0A5C\u0A5E\u0A66-\u0A75\u0A81-\u0A83\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABC-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AD0\u0AE0-\u0AE3\u0AE6-\u0AEF\u0AF9\u0B01-\u0B03\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3C-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B5C\u0B5D\u0B5F-\u0B63\u0B66-\u0B6F\u0B71\u0B82\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD0\u0BD7\u0BE6-\u0BEF\u0C00-\u0C03\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C58-\u0C5A\u0C60-\u0C63\u0C66-\u0C6F\u0C81-\u0C83\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBC-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CDE\u0CE0-\u0CE3\u0CE6-\u0CEF\u0CF1\u0CF2\u0D01-\u0D03\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D-\u0D44\u0D46-\u0D48\u0D4A-\u0D4E\u0D57\u0D5F-\u0D63\u0D66-\u0D6F\u0D7A-\u0D7F\u0D82\u0D83\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DE6-\u0DEF\u0DF2\u0DF3\u0E01-\u0E3A\u0E40-\u0E4E\u0E50-\u0E59\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB9\u0EBB-\u0EBD\u0EC0-\u0EC4\u0EC6\u0EC8-\u0ECD\u0ED0-\u0ED9\u0EDC-\u0EDF\u0F00\u0F18\u0F19\u0F20-\u0F29\u0F35\u0F37\u0F39\u0F3E-\u0F47\u0F49-\u0F6C\u0F71-\u0F84\u0F86-\u0F97\u0F99-\u0FBC\u0FC6\u1000-\u1049\u1050-\u109D\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u135D-\u135F\u1369-\u1371\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1714\u1720-\u1734\u1740-\u1753\u1760-\u176C\u176E-\u1770\u1772\u1773\u1780-\u17D3\u17D7\u17DC\u17DD\u17E0-\u17E9\u180B-\u180D\u1810-\u1819\u1820-\u1877\u1880-\u18AA\u18B0-\u18F5\u1900-\u191E\u1920-\u192B\u1930-\u193B\u1946-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u19D0-\u19DA\u1A00-\u1A1B\u1A20-\u1A5E\u1A60-\u1A7C\u1A7F-\u1A89\u1A90-\u1A99\u1AA7\u1AB0-\u1ABD\u1B00-\u1B4B\u1B50-\u1B59\u1B6B-\u1B73\u1B80-\u1BF3\u1C00-\u1C37\u1C40-\u1C49\u1C4D-\u1C7D\u1CD0-\u1CD2\u1CD4-\u1CF6\u1CF8\u1CF9\u1D00-\u1DF5\u1DFC-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u200C\u200D\u203F\u2040\u2054\u2071\u207F\u2090-\u209C\u20D0-\u20DC\u20E1\u20E5-\u20F0\u2102\u2107\u210A-\u2113\u2115\u2118-\u211D\u2124\u2126\u2128\u212A-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D7F-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2DE0-\u2DFF\u3005-\u3007\u3021-\u302F\u3031-\u3035\u3038-\u303C\u3041-\u3096\u3099-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA62B\uA640-\uA66F\uA674-\uA67D\uA67F-\uA6F1\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AD\uA7B0-\uA7B7\uA7F7-\uA827\uA840-\uA873\uA880-\uA8C4\uA8D0-\uA8D9\uA8E0-\uA8F7\uA8FB\uA8FD\uA900-\uA92D\uA930-\uA953\uA960-\uA97C\uA980-\uA9C0\uA9CF-\uA9D9\uA9E0-\uA9FE\uAA00-\uAA36\uAA40-\uAA4D\uAA50-\uAA59\uAA60-\uAA76\uAA7A-\uAAC2\uAADB-\uAADD\uAAE0-\uAAEF\uAAF2-\uAAF6\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABEA\uABEC\uABED\uABF0-\uABF9\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE00-\uFE0F\uFE20-\uFE2F\uFE33\uFE34\uFE4D-\uFE4F\uFE70-\uFE74\uFE76-\uFEFC\uFF10-\uFF19\uFF21-\uFF3A\uFF3F\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDDFD\uDE80-\uDE9C\uDEA0-\uDED0\uDEE0\uDF00-\uDF1F\uDF30-\uDF4A\uDF50-\uDF7A\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD801[\uDC00-\uDC9D\uDCA0-\uDCA9\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00-\uDE03\uDE05\uDE06\uDE0C-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE38-\uDE3A\uDE3F\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE6\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD804[\uDC00-\uDC46\uDC66-\uDC6F\uDC7F-\uDCBA\uDCD0-\uDCE8\uDCF0-\uDCF9\uDD00-\uDD34\uDD36-\uDD3F\uDD50-\uDD73\uDD76\uDD80-\uDDC4\uDDCA-\uDDCC\uDDD0-\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE37\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEEA\uDEF0-\uDEF9\uDF00-\uDF03\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3C-\uDF44\uDF47\uDF48\uDF4B-\uDF4D\uDF50\uDF57\uDF5D-\uDF63\uDF66-\uDF6C\uDF70-\uDF74]|\uD805[\uDC80-\uDCC5\uDCC7\uDCD0-\uDCD9\uDD80-\uDDB5\uDDB8-\uDDC0\uDDD8-\uDDDD\uDE00-\uDE40\uDE44\uDE50-\uDE59\uDE80-\uDEB7\uDEC0-\uDEC9\uDF00-\uDF19\uDF1D-\uDF2B\uDF30-\uDF39]|\uD806[\uDCA0-\uDCE9\uDCFF\uDEC0-\uDEF8]|\uD808[\uDC00-\uDF99]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|[\uD80C\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]|\uD811[\uDC00-\uDE46]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDE60-\uDE69\uDED0-\uDEED\uDEF0-\uDEF4\uDF00-\uDF36\uDF40-\uDF43\uDF50-\uDF59\uDF63-\uDF77\uDF7D-\uDF8F]|\uD81B[\uDF00-\uDF44\uDF50-\uDF7E\uDF8F-\uDF9F]|\uD82C[\uDC00\uDC01]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99\uDC9D\uDC9E]|\uD834[\uDD65-\uDD69\uDD6D-\uDD72\uDD7B-\uDD82\uDD85-\uDD8B\uDDAA-\uDDAD\uDE42-\uDE44]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB\uDFCE-\uDFFF]|\uD836[\uDE00-\uDE36\uDE3B-\uDE6C\uDE75\uDE84\uDE9B-\uDE9F\uDEA1-\uDEAF]|\uD83A[\uDC00-\uDCC4\uDCD0-\uDCD6]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEA1]|\uD87E[\uDC00-\uDE1D]|\uDB40[\uDD00-\uDDEF])+/,
+};
+
+/** For detecting and bounding identifiers in source text. Broader than
+ * UNICODE_NARROW depending on the JS runtime's unicode version */
+var UNICODE_BROAD = UNICODE_NARROW;
+try {
+    UNICODE_BROAD = {
+        // https://262.ecma-international.org/13.0/#prod-IdentifierStartChar
+        // $, _, ID_Start
+        ID_Start: new RegExp("[_$\\p{ID_Start}]", "u"),
+        // https://262.ecma-international.org/13.0/#prod-IdentifierPartChar
+        // $, zero-width-joiner, zero-width-non-joiner, ID_Continue
+        ID_Continue: new RegExp("[$\\u200C\\u200D\\p{ID_Continue}]+", "u"),
+    };
+} catch(e) {
+    // Could not use modern JS \p{...}.
+}
+
+const BASIC_IDENT = /^[a-z_$][a-z0-9_$]*$/i;
+
+function is_basic_identifier_string(str) {
+    return BASIC_IDENT.test(str);
+}
+
+function get_full_char(str, pos) {
+    if (is_surrogate_pair_head(str.charCodeAt(pos))) {
+        if (is_surrogate_pair_tail(str.charCodeAt(pos + 1))) {
+            return str.charAt(pos) + str.charAt(pos + 1);
+        }
+    } else if (is_surrogate_pair_tail(str.charCodeAt(pos))) {
+        if (is_surrogate_pair_head(str.charCodeAt(pos - 1))) {
+            return str.charAt(pos - 1) + str.charAt(pos);
+        }
+    }
+    return str.charAt(pos);
+}
+
+function get_full_char_code(str, pos) {
+    // https://en.wikipedia.org/wiki/Universal_Character_Set_characters#Surrogates
+    const char_code = str.charCodeAt(pos);
+    if (is_surrogate_pair_head(char_code)) {
+        return 0x10000 + (char_code - 0xd800 << 10) + str.charCodeAt(pos + 1) - 0xdc00;
+    }
+    return char_code;
+}
+
+function get_full_char_length(str) {
+    var surrogates = 0;
+
+    for (var i = 0; i < str.length; i++) {
+        if (is_surrogate_pair_head(str.charCodeAt(i)) && is_surrogate_pair_tail(str.charCodeAt(i + 1))) {
+            surrogates++;
+            i++;
+        }
+    }
+
+    return str.length - surrogates;
+}
+
+function from_char_code(code) {
+    // Based on https://github.com/mathiasbynens/String.fromCodePoint/blob/master/fromcodepoint.js
+    if (code > 0xFFFF) {
+        code -= 0x10000;
+        return (String.fromCharCode((code >> 10) + 0xD800) +
+            String.fromCharCode((code % 0x400) + 0xDC00));
+    }
+    return String.fromCharCode(code);
+}
+
+function is_surrogate_pair_head(code) {
+    return code >= 0xd800 && code <= 0xdbff;
+}
+
+function is_surrogate_pair_tail(code) {
+    return code >= 0xdc00 && code <= 0xdfff;
+}
+
+function is_identifier_start(ch) {
+    return UNICODE_NARROW.ID_Start.test(ch);
+}
+
+function is_identifier_char(ch) {
+    return UNICODE_NARROW.ID_Continue.test(ch);
+}
+
+/** supports a "wider" range of identifiers -- as unicode evolves, new characters are accepted */
+function is_identifier_start_broad(ch) {
+    return UNICODE_BROAD.ID_Start.test(ch);
+}
+
+/** supports a "wider" range of identifiers -- as unicode evolves, new characters are accepted */
+function is_identifier_char_broad(ch) {
+    return UNICODE_BROAD.ID_Continue.test(ch);
+}
+
+function is_identifier_string(str, allow_surrogates) {
+    if (BASIC_IDENT.test(str)) {
+        return true;
+    }
+    if (!allow_surrogates && /[\ud800-\udfff]/.test(str)) {
+        return false;
+    }
+    var match = UNICODE_NARROW.ID_Start.exec(str);
+    if (!match || match.index !== 0) {
+        return false;
+    }
+
+    str = str.slice(match[0].length);
+    if (!str) {
+        return true;
+    }
+
+    match = UNICODE_NARROW.ID_Continue.exec(str);
+    return !!match && match[0].length === str.length;
+}
+
 /***********************************************************************
 
   A JavaScript tokenizer / parser / beautifier / compressor.
@@ -277,13 +401,14 @@ ALL_RESERVED_WORDS = makePredicate(ALL_RESERVED_WORDS);
 
 var OPERATOR_CHARS = makePredicate(characters("+-*&%=<>!?|~^"));
 
-var RE_NUM_LITERAL = /[0-9a-f]/i;
 var RE_HEX_NUMBER = /^0x[0-9a-f]+$/i;
 var RE_OCT_NUMBER = /^0[0-7]+$/;
 var RE_ES6_OCT_NUMBER = /^0o[0-7]+$/i;
 var RE_BIN_NUMBER = /^0b[01]+$/i;
 var RE_DEC_NUMBER = /^\d*\.?\d*(?:e[+-]?\d*(?:\d\.?|\.?\d)\d*)?$/i;
 var RE_BIG_INT = /^(0[xob])?[0-9a-f]+n$/i;
+
+var RE_KEYWORD_RELATIONAL_OPERATORS = /in(?:stanceof)?/y;
 
 var OPERATORS = makePredicate([
     "in",
@@ -350,114 +475,8 @@ var PUNC_CHARS = makePredicate(characters("[]{}(),;:"));
 
 /* -----[ Tokenizer ]----- */
 
-// surrogate safe regexps adapted from https://github.com/mathiasbynens/unicode-8.0.0/tree/89b412d8a71ecca9ed593d9e9fa073ab64acfebe/Binary_Property
-var UNICODE = {
-    ID_Start: /[$A-Z_a-z\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0370-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u05D0-\u05EA\u05F0-\u05F2\u0620-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06E5\u06E6\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0815\u081A\u0824\u0828\u0840-\u0858\u08A0-\u08B4\u0904-\u0939\u093D\u0950\u0958-\u0961\u0971-\u0980\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0AF9\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D\u0C58-\u0C5A\u0C60\u0C61\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D5F-\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E46\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1877\u1880-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191E\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A16\u1A20-\u1A54\u1AA7\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C7D\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u1D00-\u1DBF\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2118-\u211D\u2124\u2126\u2128\u212A-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u3005-\u3007\u3021-\u3029\u3031-\u3035\u3038-\u303C\u3041-\u3096\u309B-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA67F-\uA69D\uA6A0-\uA6EF\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AD\uA7B0-\uA7B7\uA7F7-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9CF\uA9E0-\uA9E4\uA9E6-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA76\uAA7A\uAA7E-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEA\uAAF2-\uAAF4\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF30-\uDF4A\uDF50-\uDF75\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD801[\uDC00-\uDC9D\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00\uDE10-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD804[\uDC03-\uDC37\uDC83-\uDCAF\uDCD0-\uDCE8\uDD03-\uDD26\uDD50-\uDD72\uDD76\uDD83-\uDDB2\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE2B\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEDE\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D\uDF50\uDF5D-\uDF61]|\uD805[\uDC80-\uDCAF\uDCC4\uDCC5\uDCC7\uDD80-\uDDAE\uDDD8-\uDDDB\uDE00-\uDE2F\uDE44\uDE80-\uDEAA\uDF00-\uDF19]|\uD806[\uDCA0-\uDCDF\uDCFF\uDEC0-\uDEF8]|\uD808[\uDC00-\uDF99]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|[\uD80C\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]|\uD811[\uDC00-\uDE46]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF2F\uDF40-\uDF43\uDF63-\uDF77\uDF7D-\uDF8F]|\uD81B[\uDF00-\uDF44\uDF50\uDF93-\uDF9F]|\uD82C[\uDC00\uDC01]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB]|\uD83A[\uDC00-\uDCC4]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEA1]|\uD87E[\uDC00-\uDE1D]/,
-    ID_Continue: /(?:[$0-9A-Z_a-z\xAA\xB5\xB7\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0300-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u0483-\u0487\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u05D0-\u05EA\u05F0-\u05F2\u0610-\u061A\u0620-\u0669\u066E-\u06D3\u06D5-\u06DC\u06DF-\u06E8\u06EA-\u06FC\u06FF\u0710-\u074A\u074D-\u07B1\u07C0-\u07F5\u07FA\u0800-\u082D\u0840-\u085B\u08A0-\u08B4\u08E3-\u0963\u0966-\u096F\u0971-\u0983\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BC-\u09C4\u09C7\u09C8\u09CB-\u09CE\u09D7\u09DC\u09DD\u09DF-\u09E3\u09E6-\u09F1\u0A01-\u0A03\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A59-\u0A5C\u0A5E\u0A66-\u0A75\u0A81-\u0A83\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABC-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AD0\u0AE0-\u0AE3\u0AE6-\u0AEF\u0AF9\u0B01-\u0B03\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3C-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B5C\u0B5D\u0B5F-\u0B63\u0B66-\u0B6F\u0B71\u0B82\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD0\u0BD7\u0BE6-\u0BEF\u0C00-\u0C03\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C58-\u0C5A\u0C60-\u0C63\u0C66-\u0C6F\u0C81-\u0C83\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBC-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CDE\u0CE0-\u0CE3\u0CE6-\u0CEF\u0CF1\u0CF2\u0D01-\u0D03\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D-\u0D44\u0D46-\u0D48\u0D4A-\u0D4E\u0D57\u0D5F-\u0D63\u0D66-\u0D6F\u0D7A-\u0D7F\u0D82\u0D83\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DE6-\u0DEF\u0DF2\u0DF3\u0E01-\u0E3A\u0E40-\u0E4E\u0E50-\u0E59\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB9\u0EBB-\u0EBD\u0EC0-\u0EC4\u0EC6\u0EC8-\u0ECD\u0ED0-\u0ED9\u0EDC-\u0EDF\u0F00\u0F18\u0F19\u0F20-\u0F29\u0F35\u0F37\u0F39\u0F3E-\u0F47\u0F49-\u0F6C\u0F71-\u0F84\u0F86-\u0F97\u0F99-\u0FBC\u0FC6\u1000-\u1049\u1050-\u109D\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u135D-\u135F\u1369-\u1371\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1714\u1720-\u1734\u1740-\u1753\u1760-\u176C\u176E-\u1770\u1772\u1773\u1780-\u17D3\u17D7\u17DC\u17DD\u17E0-\u17E9\u180B-\u180D\u1810-\u1819\u1820-\u1877\u1880-\u18AA\u18B0-\u18F5\u1900-\u191E\u1920-\u192B\u1930-\u193B\u1946-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u19D0-\u19DA\u1A00-\u1A1B\u1A20-\u1A5E\u1A60-\u1A7C\u1A7F-\u1A89\u1A90-\u1A99\u1AA7\u1AB0-\u1ABD\u1B00-\u1B4B\u1B50-\u1B59\u1B6B-\u1B73\u1B80-\u1BF3\u1C00-\u1C37\u1C40-\u1C49\u1C4D-\u1C7D\u1CD0-\u1CD2\u1CD4-\u1CF6\u1CF8\u1CF9\u1D00-\u1DF5\u1DFC-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u200C\u200D\u203F\u2040\u2054\u2071\u207F\u2090-\u209C\u20D0-\u20DC\u20E1\u20E5-\u20F0\u2102\u2107\u210A-\u2113\u2115\u2118-\u211D\u2124\u2126\u2128\u212A-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D7F-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2DE0-\u2DFF\u3005-\u3007\u3021-\u302F\u3031-\u3035\u3038-\u303C\u3041-\u3096\u3099-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA62B\uA640-\uA66F\uA674-\uA67D\uA67F-\uA6F1\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AD\uA7B0-\uA7B7\uA7F7-\uA827\uA840-\uA873\uA880-\uA8C4\uA8D0-\uA8D9\uA8E0-\uA8F7\uA8FB\uA8FD\uA900-\uA92D\uA930-\uA953\uA960-\uA97C\uA980-\uA9C0\uA9CF-\uA9D9\uA9E0-\uA9FE\uAA00-\uAA36\uAA40-\uAA4D\uAA50-\uAA59\uAA60-\uAA76\uAA7A-\uAAC2\uAADB-\uAADD\uAAE0-\uAAEF\uAAF2-\uAAF6\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABEA\uABEC\uABED\uABF0-\uABF9\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE00-\uFE0F\uFE20-\uFE2F\uFE33\uFE34\uFE4D-\uFE4F\uFE70-\uFE74\uFE76-\uFEFC\uFF10-\uFF19\uFF21-\uFF3A\uFF3F\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDDFD\uDE80-\uDE9C\uDEA0-\uDED0\uDEE0\uDF00-\uDF1F\uDF30-\uDF4A\uDF50-\uDF7A\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD801[\uDC00-\uDC9D\uDCA0-\uDCA9\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00-\uDE03\uDE05\uDE06\uDE0C-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE38-\uDE3A\uDE3F\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE6\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD804[\uDC00-\uDC46\uDC66-\uDC6F\uDC7F-\uDCBA\uDCD0-\uDCE8\uDCF0-\uDCF9\uDD00-\uDD34\uDD36-\uDD3F\uDD50-\uDD73\uDD76\uDD80-\uDDC4\uDDCA-\uDDCC\uDDD0-\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE37\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEEA\uDEF0-\uDEF9\uDF00-\uDF03\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3C-\uDF44\uDF47\uDF48\uDF4B-\uDF4D\uDF50\uDF57\uDF5D-\uDF63\uDF66-\uDF6C\uDF70-\uDF74]|\uD805[\uDC80-\uDCC5\uDCC7\uDCD0-\uDCD9\uDD80-\uDDB5\uDDB8-\uDDC0\uDDD8-\uDDDD\uDE00-\uDE40\uDE44\uDE50-\uDE59\uDE80-\uDEB7\uDEC0-\uDEC9\uDF00-\uDF19\uDF1D-\uDF2B\uDF30-\uDF39]|\uD806[\uDCA0-\uDCE9\uDCFF\uDEC0-\uDEF8]|\uD808[\uDC00-\uDF99]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|[\uD80C\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]|\uD811[\uDC00-\uDE46]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDE60-\uDE69\uDED0-\uDEED\uDEF0-\uDEF4\uDF00-\uDF36\uDF40-\uDF43\uDF50-\uDF59\uDF63-\uDF77\uDF7D-\uDF8F]|\uD81B[\uDF00-\uDF44\uDF50-\uDF7E\uDF8F-\uDF9F]|\uD82C[\uDC00\uDC01]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99\uDC9D\uDC9E]|\uD834[\uDD65-\uDD69\uDD6D-\uDD72\uDD7B-\uDD82\uDD85-\uDD8B\uDDAA-\uDDAD\uDE42-\uDE44]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB\uDFCE-\uDFFF]|\uD836[\uDE00-\uDE36\uDE3B-\uDE6C\uDE75\uDE84\uDE9B-\uDE9F\uDEA1-\uDEAF]|\uD83A[\uDC00-\uDCC4\uDCD0-\uDCD6]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEA1]|\uD87E[\uDC00-\uDE1D]|\uDB40[\uDD00-\uDDEF])+/,
-};
-
-try {
-    UNICODE = {
-        // https://262.ecma-international.org/13.0/#prod-IdentifierStartChar
-        // $, _, ID_Start
-        ID_Start: new RegExp("[_$\\p{ID_Start}]", "u"),
-        // https://262.ecma-international.org/13.0/#prod-IdentifierPartChar
-        // $, zero-width-joiner, zero-width-non-joiner, ID_Continue
-        ID_Continue: new RegExp("[$\\u200C\\u200D\\p{ID_Continue}]+", "u"),
-    };
-} catch(e) {
-    // Could not use modern JS \p{...}. UNICODE is already defined above so let's continue
-}
-
-function get_full_char(str, pos) {
-    if (is_surrogate_pair_head(str.charCodeAt(pos))) {
-        if (is_surrogate_pair_tail(str.charCodeAt(pos + 1))) {
-            return str.charAt(pos) + str.charAt(pos + 1);
-        }
-    } else if (is_surrogate_pair_tail(str.charCodeAt(pos))) {
-        if (is_surrogate_pair_head(str.charCodeAt(pos - 1))) {
-            return str.charAt(pos - 1) + str.charAt(pos);
-        }
-    }
-    return str.charAt(pos);
-}
-
-function get_full_char_code(str, pos) {
-    // https://en.wikipedia.org/wiki/Universal_Character_Set_characters#Surrogates
-    if (is_surrogate_pair_head(str.charCodeAt(pos))) {
-        return 0x10000 + (str.charCodeAt(pos) - 0xd800 << 10) + str.charCodeAt(pos + 1) - 0xdc00;
-    }
-    return str.charCodeAt(pos);
-}
-
-function get_full_char_length(str) {
-    var surrogates = 0;
-
-    for (var i = 0; i < str.length; i++) {
-        if (is_surrogate_pair_head(str.charCodeAt(i)) && is_surrogate_pair_tail(str.charCodeAt(i + 1))) {
-            surrogates++;
-            i++;
-        }
-    }
-
-    return str.length - surrogates;
-}
-
-function from_char_code(code) {
-    // Based on https://github.com/mathiasbynens/String.fromCodePoint/blob/master/fromcodepoint.js
-    if (code > 0xFFFF) {
-        code -= 0x10000;
-        return (String.fromCharCode((code >> 10) + 0xD800) +
-            String.fromCharCode((code % 0x400) + 0xDC00));
-    }
-    return String.fromCharCode(code);
-}
-
-function is_surrogate_pair_head(code) {
-    return code >= 0xd800 && code <= 0xdbff;
-}
-
-function is_surrogate_pair_tail(code) {
-    return code >= 0xdc00 && code <= 0xdfff;
-}
-
 function is_digit(code) {
     return code >= 48 && code <= 57;
-}
-
-function is_identifier_start(ch) {
-    return UNICODE.ID_Start.test(ch);
-}
-
-function is_identifier_char(ch) {
-    return UNICODE.ID_Continue.test(ch);
-}
-
-const BASIC_IDENT = /^[a-z_$][a-z0-9_$]*$/i;
-
-function is_basic_identifier_string(str) {
-    return BASIC_IDENT.test(str);
-}
-
-function is_identifier_string(str, allow_surrogates) {
-    if (BASIC_IDENT.test(str)) {
-        return true;
-    }
-    if (!allow_surrogates && /[\ud800-\udfff]/.test(str)) {
-        return false;
-    }
-    var match = UNICODE.ID_Start.exec(str);
-    if (!match || match.index !== 0) {
-        return false;
-    }
-
-    str = str.slice(match[0].length);
-    if (!str) {
-        return true;
-    }
-
-    match = UNICODE.ID_Continue.exec(str);
-    return !!match && match[0].length === str.length;
 }
 
 function parse_js_number(num, allow_e = true) {
@@ -622,6 +641,56 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
             next();
     }
 
+    function peek_next_token_start_or_newline() {
+        var pos = S.pos;
+        for (var in_multiline_comment = false; pos < S.text.length; ) {
+            var ch = get_full_char(S.text, pos);
+            if (NEWLINE_CHARS.has(ch)) {
+                return { char: ch, pos: pos };
+            } else if (in_multiline_comment) {
+                if (ch == "*" && get_full_char(S.text, pos + 1) == "/") {
+                    pos += 2;
+                    in_multiline_comment = false;
+                } else {
+                    pos++;
+                }
+            } else if (!WHITESPACE_CHARS.has(ch)) {
+                if (ch == "/") {
+                    var next_ch = get_full_char(S.text, pos + 1);
+                    if (next_ch == "/") {
+                        pos = find_eol();
+                        return { char: get_full_char(S.text, pos), pos: pos };
+                    } else if (next_ch == "*") {
+                        in_multiline_comment = true;
+                        pos += 2;
+                        continue;
+                    }
+                }
+                return { char: ch, pos: pos };
+            } else {
+                pos++;
+            }
+        }
+        return { char: null, pos: pos };
+    }
+
+    function ch_starts_binding_identifier(ch, pos) {
+        if (ch == "\\") {
+            return true;
+        } else if (is_identifier_start_broad(ch)) {
+            RE_KEYWORD_RELATIONAL_OPERATORS.lastIndex = pos;
+            if (RE_KEYWORD_RELATIONAL_OPERATORS.test(S.text)) {
+                var after = get_full_char(S.text, RE_KEYWORD_RELATIONAL_OPERATORS.lastIndex);
+                if (!is_identifier_char_broad(after) && after != "\\") {
+                    // "in" or "instanceof" are keywords, not binding identifiers
+                    return false; 
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
     function read_while(pred) {
         var ret = "", ch, i = 0;
         while ((ch = peek()) && pred(ch, i++))
@@ -655,15 +724,16 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
                 return after_e;
               case (after_e = false, 46): // .
                 return (!has_dot && !has_x && !has_e) ? (has_dot = true) : false;
-            }
-
-            if (ch === "n") {
+              case 110: // n
                 is_big_int = true;
-
                 return true;
             }
 
-            return RE_NUM_LITERAL.test(ch);
+            return (
+                code >= 48 && code <= 57 // 0-9
+                || code >= 97 && code <= 102 // a-f
+                || code >= 65 && code <= 70 // A-F
+            );
         });
         if (prefix) num = prefix + num;
 
@@ -680,7 +750,7 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
             }
             num = num.replace(/_/g, "");
         }
-        if (num.endsWith("n")) {
+        if (is_big_int) {
             const without_n = num.slice(0, -1);
             const allow_e = RE_HEX_NUMBER.test(without_n);
             const valid = parse_js_number(without_n, allow_e);
@@ -804,7 +874,7 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
             } else if (ch == "$" && peek() == "{") {
                 next(true, true);
                 S.brace_counter++;
-                tok = token(begin ? "template_head" : "template_substitution", content);
+                tok = token(begin ? "template_head" : "template_cont", content);
                 TEMPLATE_RAWS.set(tok, raw);
                 tok.template_end = false;
                 return tok;
@@ -821,7 +891,7 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
             content += ch;
         }
         S.template_braces.pop();
-        tok = token(begin ? "template_head" : "template_substitution", content);
+        tok = token(begin ? "template_head" : "template_cont", content);
         TEMPLATE_RAWS.set(tok, raw);
         tok.template_end = true;
         return tok;
@@ -855,7 +925,25 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
         return next_token;
     });
 
-    var read_name = with_eof_error("Unterminated identifier name", function() {
+    var read_name = function () {
+        let start = S.pos, end = start - 1, ch = "c";
+
+        while (
+            (ch = S.text.charAt(++end))
+            && (ch >= "a" && ch <= "z" || ch >= "A" && ch <= "Z")
+        );
+
+        // 0x7F is very rare in actual code, so we compare it to "~" (0x7E)
+        if (end > start + 1 && ch && ch !== "\\" && !is_identifier_char_broad(ch) && ch <= "~") {
+            S.pos += end - start;
+            S.col += end - start;
+            return S.text.slice(start, S.pos);
+        }
+
+        return read_name_hard();
+    };
+
+    var read_name_hard = with_eof_error("Unterminated identifier name", function() {
         var name = [], ch, escaped = false;
         var read_escaped_identifier_char = function() {
             escaped = true;
@@ -869,10 +957,10 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
         // Read first character (ID_Start)
         if ((ch = peek()) === "\\") {
             ch = read_escaped_identifier_char();
-            if (!is_identifier_start(ch)) {
+            if (!is_identifier_start_broad(ch)) {
                 parse_error("First identifier char is an invalid identifier char");
             }
-        } else if (is_identifier_start(ch)) {
+        } else if (is_identifier_start_broad(ch)) {
             next();
         } else {
             return "";
@@ -884,11 +972,11 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
         while ((ch = peek()) != null) {
             if ((ch = peek()) === "\\") {
                 ch = read_escaped_identifier_char();
-                if (!is_identifier_char(ch)) {
+                if (!is_identifier_char_broad(ch)) {
                     parse_error("Invalid escaped identifier char");
                 }
             } else {
-                if (!is_identifier_char(ch)) {
+                if (!is_identifier_char_broad(ch)) {
                     break;
                 }
                 next();
@@ -907,7 +995,12 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
         while ((ch = next(true))) if (NEWLINE_CHARS.has(ch)) {
             parse_error("Unexpected line terminator");
         } else if (prev_backslash) {
-            source += "\\" + ch;
+            if (/^[\u0000-\u007F]$/.test(ch)) {
+                source += "\\" + ch;
+            } else {
+                // Remove the useless slash before the escape, but only for characters that won't be added to regexp syntax
+                source += ch;
+            }
             prev_backslash = false;
         } else if (ch == "[") {
             in_class = true;
@@ -1059,7 +1152,7 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
             if (is_digit(code)) return read_num();
             if (PUNC_CHARS.has(ch)) return token("punc", next());
             if (OPERATOR_CHARS.has(ch)) return read_operator();
-            if (code == 92 || is_identifier_start(ch)) return read_word();
+            if (code == 92 || is_identifier_start_broad(ch)) return read_word();
             if (code == 35) return read_private_word();
             break;
         }
@@ -1102,6 +1195,76 @@ function tokenizer($TEXT, filename, html5_comments, shebang) {
         return S.directives[directive] > 0;
     };
 
+    next_token.peek_next_token_start_or_newline = peek_next_token_start_or_newline;
+    next_token.ch_starts_binding_identifier = ch_starts_binding_identifier;
+    next_token.typescript_is_type_parameters_before_call = () => {
+        const stack = [">"]; // We start at the opening "<"
+        const peek = () => get_full_char(S.text, i + 1);
+        const next = () => get_full_char(S.text, ++i);
+        let i = S.pos;
+        for (; stack.length; i++) {
+            let ch = get_full_char(S.text, i);
+
+            if (!ch) return false;
+
+            if (ch === stack[stack.length - 1]) {
+                stack.pop();
+                continue;
+            }
+
+            // Skip comments
+            if (ch === "/") {
+                ch = next();
+                if (ch === "/") {
+                    while ((ch = next()) && ch !== "\n");
+                } else if (ch === "*") {
+                    while ((ch = next()) && !(ch === "*" && peek() === "/"));
+                }
+            }
+
+            // Skip strings
+            if (ch === "'" || ch === '"') {
+                const start = ch;
+                do {
+                    ch = next();
+                    if (ch === "\\") ++i; // skip over \"
+                } while (ch && ch !== start && ch !== "\n");
+            }
+
+            // Skip template strings
+            if (
+                ch === "`"
+                || ch === "}" && stack[stack.length - 1] === "${" && stack.pop()
+            ) {
+                do {
+                    ch = next();
+
+                    if (ch === "$" && peek() === "{") {
+                        next();
+                        stack.push("${");
+                        break;
+                    }
+                } while (ch && ch !== "`");
+            }
+
+            // for each opener, push the closer
+            if (ch === "<") { stack.push(">"); continue; }
+            if (ch === "[") { stack.push("]"); continue; }
+            if (ch === "(") { stack.push(")"); continue; }
+            if (ch === "{") { stack.push("}"); continue; }
+
+            // When we see a closer, see if it's the same as the opener
+            if (ch === ">" || ch === "]" || ch === ")" || ch === "}") {
+                if (stack.pop() !== ch) return false;
+                continue;
+            }
+        }
+
+        while (WHITESPACE_CHARS.has(get_full_char(S.text, i))) i++;
+
+        return S.text[i] === "(" || S.text.slice(i, i + 2) === "?.";
+    };
+
     return next_token;
 
 }
@@ -1128,9 +1291,8 @@ var LOGICAL_ASSIGNMENT = makePredicate([ "??=", "&&=", "||=" ]);
 
 var PRECEDENCE = (function(a, ret) {
     for (var i = 0; i < a.length; ++i) {
-        var b = a[i];
-        for (var j = 0; j < b.length; ++j) {
-            ret[b[j]] = i + 1;
+        for (const op of a[i]) {
+            ret[op] = i + 1;
         }
     }
     return ret;
@@ -1161,7 +1323,7 @@ function parse($TEXT, options) {
     // Example: /* I count */ ( /* I don't */ foo() )
     // Useful because comments_before property of call with parens outside
     // contains both comments inside and outside these parens. Used to find the
-    
+    // right #__PURE__ comments for an expression
     const outer_comments_before_counts = new WeakMap();
 
     options = defaults(options, {
@@ -1174,6 +1336,7 @@ function parse($TEXT, options) {
         shebang        : true,
         strict         : false,
         toplevel       : null,
+        experimental_typescript: false,
     }, true);
 
     var S = {
@@ -1324,17 +1487,15 @@ function parse($TEXT, options) {
             return simple_statement();
 
           case "name":
-          case "privatename":
-            if(is("privatename") && !S.in_class)
-                croak("Private field must be used in an enclosing class");
-
             if (S.token.value == "async" && is_token(peek(), "keyword", "function")) {
                 next();
                 next();
                 if (is_for_body) {
                     croak("functions are not allowed as the body of a loop");
                 }
-                return function_(AST_Defun, false, true, is_export_default);
+                const func = function_(AST_Defun, false, true, is_export_default);
+                if (func == typescript_ellide) return new AST_EmptyStatement();
+                return func;
             }
             if (S.token.value == "import" && !is_token(peek(), "punc", "(") && !is_token(peek(), "punc", ".")) {
                 next();
@@ -1342,9 +1503,38 @@ function parse($TEXT, options) {
                 semicolon();
                 return node;
             }
+            if (S.token.value == "using" && is_token(peek(), "name") && !has_newline_before(peek())) {
+                next();
+                var node = using_();
+                semicolon();
+                return node;
+            }
+            if (S.token.value == "await" && can_await() && is_token(peek(), "name", "using") && !has_newline_before(peek())) {
+                var next_next = S.input.peek_next_token_start_or_newline();
+                if (S.input.ch_starts_binding_identifier(next_next.char, next_next.pos)) {
+                    next();
+                    // The "using" token will be consumed by the await_using_ function.
+                    var node = await_using_();
+                    semicolon();
+                    return node;
+                }
+            }
+            if (S.token.value === "type" && is_token(peek(), "name") && !has_newline_before(peek())) {
+                typescript_type_statement();
+                return new AST_EmptyStatement();
+            }
+            if (S.token.value === "interface" && is_token(peek(), "name") && !has_newline_before(peek())) {
+                typescript_interface_statement();
+                return new AST_EmptyStatement();
+            }
             return is_token(peek(), "punc", ":")
                 ? labeled_statement()
                 : simple_statement();
+
+          case "privatename":
+            if(!S.in_class)
+              croak("Private field must be used in an enclosing class");
+            return simple_statement();
 
           case "punc":
             switch (S.token.value) {
@@ -1417,7 +1607,9 @@ function parse($TEXT, options) {
                 if (is_for_body) {
                     croak("functions are not allowed as the body of a loop");
                 }
-                return function_(AST_Defun, false, false, is_export_default);
+                const func = function_(AST_Defun, false, false, is_export_default);
+                if (func == typescript_ellide) return new AST_EmptyStatement();
+                return func;
 
               case "if":
                 next();
@@ -1570,6 +1762,8 @@ function parse($TEXT, options) {
                 is("keyword", "var") ? (next(), var_(true)) :
                 is("keyword", "let") ? (next(), let_(true)) :
                 is("keyword", "const") ? (next(), const_(true)) :
+                is("name", "using") && is_token(peek(), "name") && (peek().value != "of" || S.input.peek_next_token_start_or_newline().char == "=") ? (next(), using_(true)) :
+                is("name", "await") && can_await() && is_token(peek(), "name", "using") ? (next(), await_using_(true)) :
                                        expression(true, true);
             var is_in = is("operator", "in");
             var is_of = is("name", "of");
@@ -1577,9 +1771,12 @@ function parse($TEXT, options) {
                 token_error(await_tok, for_await_error);
             }
             if (is_in || is_of) {
-                if (init instanceof AST_Definitions) {
+                if (init instanceof AST_DefinitionsLike) {
                     if (init.definitions.length > 1)
                         token_error(init.start, "Only one variable declaration allowed in for..in loop");
+                    if (is_in && init instanceof AST_Using) {
+                        token_error(init.start, "Invalid using declaration in for..in loop");
+                    }
                 } else if (!(is_assignable(init) || (init = to_destructuring(init)) instanceof AST_Destructuring)) {
                     token_error(init.start, "Invalid left-hand side in for..in loop");
                 }
@@ -1611,7 +1808,7 @@ function parse($TEXT, options) {
     }
 
     function for_of(init, is_await) {
-        var lhs = init instanceof AST_Definitions ? init.definitions[0].name : null;
+        var lhs = init instanceof AST_DefinitionsLike ? init.definitions[0].name : null;
         var obj = expression(true);
         expect(")");
         return new AST_ForOf({
@@ -1641,25 +1838,21 @@ function parse($TEXT, options) {
         expect_token("arrow", "=>");
 
         var body = _function_body(is("punc", "{"), false, is_async);
-
-        var end =
-            body instanceof Array && body.length ? body[body.length - 1].end :
-            body instanceof Array ? start :
-                body.end;
+        // (should never return typescript_ellide)
 
         return new AST_Arrow({
             start    : start,
-            end      : end,
+            end      : body.end,
             async    : is_async,
             argnames : argnames,
             body     : body
         });
     };
 
-    var function_ = function(ctor, is_generator_property, is_async, is_export_default) {
+    var function_ = function(ctor, is_generator, is_async, is_export_default) {
         var in_statement = ctor === AST_Defun;
-        var is_generator = is("operator", "*");
-        if (is_generator) {
+        if (is("operator", "*")) {
+            is_generator = true;
             next();
         }
 
@@ -1675,16 +1868,22 @@ function parse($TEXT, options) {
         if (name && ctor !== AST_Accessor && !(name instanceof AST_SymbolDeclaration))
             unexpected(prev());
 
+        if (is("operator", "<")) {
+            typescript_type_parameters();
+        }
+
         var args = [];
-        var body = _function_body(true, is_generator || is_generator_property, is_async, name, args);
+        const start = S.token;
+        var body = _function_body(true, is_generator, is_async, name, args);
+        if (body == typescript_ellide) return body;
         return new ctor({
-            start : args.start,
-            end   : body.end,
+            start,
             is_generator: is_generator,
             async : is_async,
             name  : name,
             argnames: args,
-            body  : body
+            body  : body,
+            end   : prev(),
         });
     };
 
@@ -1752,6 +1951,10 @@ function parse($TEXT, options) {
         expect("(");
 
         while (!is("punc", ")")) {
+            if (is("name", "this") && typescript_skip_this_type()) {
+                continue;
+            }
+
             var param = parameter(used_parameters);
             params.push(param);
 
@@ -1778,7 +1981,12 @@ function parse($TEXT, options) {
             used_parameters.mark_spread(S.token);
             next();
         }
+
         param = binding_element(used_parameters, symbol_type);
+
+        if (is("punc", ":") || is("operator", "?")) {
+            typescript_maybe_annotation();
+        }
 
         if (is("operator", "=") && expand === false) {
             used_parameters.mark_default_assignment(S.token);
@@ -2000,6 +2208,11 @@ function parse($TEXT, options) {
             } else {
                 a.push(expression());
             }
+
+            if (is("punc", ":") || is("operator", "?")) {
+                typescript_maybe_annotation();
+            }
+
             if (!is("punc", ")")) {
                 expect(",");
                 if (is("punc", ")")) {
@@ -2009,6 +2222,9 @@ function parse($TEXT, options) {
             }
         }
         expect(")");
+        if (allow_arrows && is("punc", ":")) {
+            typescript_type_annotation();
+        }
         if (allow_arrows && is("arrow", "=>")) {
             if (spread_token && trailing_comma) unexpected(trailing_comma);
         } else if (invalid_sequence) {
@@ -2027,7 +2243,13 @@ function parse($TEXT, options) {
             S.in_generator = S.in_function;
         if (is_async)
             S.in_async = S.in_function;
-        if (args) parameters(args);
+        if (args) {
+            parameters(args);
+            if (is("punc", ":")) typescript_type_annotation();
+            if (block && !is("punc", "{") && typescript_is_function_no_body()) {
+                return typescript_ellide;
+            }
+        }
         if (block)
             S.in_directives = true;
         S.in_loop = 0;
@@ -2068,11 +2290,6 @@ function parse($TEXT, options) {
     }
 
     function _yield_expression() {
-        // Previous token must be keyword yield and not be interpret as an identifier
-        if (!is_in_generator()) {
-            croak("Unexpected yield expression outside generator function",
-                S.prev.line, S.prev.col, S.prev.pos);
-        }
         var start = S.token;
         var star = false;
         var has_expression = true;
@@ -2087,10 +2304,12 @@ function parse($TEXT, options) {
         // Note 1: It isn't allowed for yield* to close without an expression
         // Note 2: If there is a nlb between yield and star, it is interpret as
         //         yield <explicit undefined> <inserted automatic semicolon> *
-        if (can_insert_semicolon() ||
-            (is("punc") && PUNC_AFTER_EXPRESSION.has(S.token.value))) {
+        if (
+            can_insert_semicolon()
+            || is("punc") && PUNC_AFTER_EXPRESSION.has(S.token.value)
+            || is("template_cont")
+        ) {
             has_expression = false;
-
         } else if (is("operator", "*")) {
             star = true;
             next();
@@ -2210,32 +2429,39 @@ function parse($TEXT, options) {
      */
     function vardefs(no_in, kind) {
         var var_defs = [];
-        var def;
         for (;;) {
             var sym_type =
                 kind === "var" ? AST_SymbolVar :
                 kind === "const" ? AST_SymbolConst :
-                kind === "let" ? AST_SymbolLet : null;
-            // var { a } = b
-            if (is("punc", "{") || is("punc", "[")) {
-                def = new AST_VarDef({
-                    start: S.token,
-                    name: binding_element(undefined, sym_type),
-                    value: is("operator", "=") ? (expect_token("operator", "="), expression(false, no_in)) : null,
-                    end: prev()
-                });
-            } else {
-                def = new AST_VarDef({
-                    start : S.token,
-                    name  : as_symbol(sym_type),
-                    value : is("operator", "=")
-                        ? (next(), expression(false, no_in))
-                        : !no_in && kind === "const"
-                            ? croak("Missing initializer in const declaration") : null,
-                    end   : prev()
-                });
-                if (def.name.name == "import") croak("Unexpected token: import");
+                kind === "let" ? AST_SymbolLet :
+                kind === "using" ? AST_SymbolUsing :
+                kind === "await using" ? AST_SymbolUsing : null;
+            var def_type = kind === "using" || kind === "await using" ? AST_UsingDef : AST_VarDef;
+            var start = S.token;
+            var name = is("punc", "{") || is("punc", "[")
+                ? binding_element(undefined, sym_type)
+                : as_symbol(sym_type);
+
+            if (name.name == "import") croak("Unexpected token: import");
+
+            if (is("punc", ":")) {
+                typescript_type_annotation();
             }
+
+            var value = is("operator", "=")
+                ? (next(), expression(false, no_in))
+                : null;
+
+            if (!value && !no_in && (kind === "const" || kind === "using" || kind === "await using")) {
+                croak("Missing initializer in " + kind + " declaration");
+            }
+
+            var def = new def_type({
+                start,
+                name,
+                value,
+                end: prev()
+            });
             var_defs.push(def);
             if (!is("punc", ","))
                 break;
@@ -2264,6 +2490,25 @@ function parse($TEXT, options) {
         return new AST_Const({
             start       : prev(),
             definitions : vardefs(no_in, "const"),
+            end         : prev()
+        });
+    };
+
+    var using_ = function(no_in) {
+        return new AST_Using({
+            start       : prev(),
+            await       : false,
+            definitions : vardefs(no_in, "using"),
+            end         : prev()
+        });
+    };
+
+    var await_using_ = function(no_in) {
+        // Assumption: When await_using_ is called, only the `await` token has been consumed.
+        return new AST_Using({
+            start       : prev(),
+            await       : true,
+            definitions : (next(), vardefs(no_in, "await using")),
             end         : prev()
         });
     };
@@ -2303,15 +2548,28 @@ function parse($TEXT, options) {
             ret = _make_symbol(AST_SymbolRef);
             break;
           case "num":
-            ret = new AST_Number({
+            if (tok.value === Infinity) {
+                // very large float values are parsed as Infinity
+                ret = new AST_Infinity({
+                    start: tok,
+                    end: tok,
+                });
+            } else {
+                ret = new AST_Number({
+                    start: tok,
+                    end: tok,
+                    value: tok.value,
+                    raw: LATEST_RAW
+                });
+            }
+            break;
+          case "big_int":
+            ret = new AST_BigInt({
                 start: tok,
                 end: tok,
                 value: tok.value,
-                raw: LATEST_RAW
+                raw: LATEST_RAW,
             });
-            break;
-          case "big_int":
-            ret = new AST_BigInt({ start: tok, end: tok, value: tok.value });
             break;
           case "string":
             ret = new AST_String({
@@ -2400,11 +2658,14 @@ function parse($TEXT, options) {
     }
 
     var expr_atom = function(allow_calls, allow_arrows) {
+        if (is("operator", "<")) {
+            typescript_skip_type_parameters_before_call();
+        }
         if (is("operator", "new")) {
             return new_(allow_calls);
         }
-        if (is("name", "import") && is_token(peek(), "punc", ".")) {
-            return parse_import_expr(allow_calls);
+        if (is("name", "import")) {
+            return import_expr(allow_calls);
         }
         var start = S.token;
         var peeked;
@@ -2412,20 +2673,25 @@ function parse($TEXT, options) {
             && (peeked = peek()).value != "["
             && peeked.type != "arrow"
             && as_atom_node();
+        if (async && is("operator", "<")) {
+            // async <T>() => null
+            typescript_skip_type_parameters_before_call();
+        }
         if (is("punc")) {
             switch (S.token.value) {
               case "(":
                 if (async && !allow_calls) break;
                 var exprs = params_or_seq_(allow_arrows, !async);
+                if (allow_arrows && is("punc", ":")) {
+                    typescript_type_annotation();
+                }
                 if (allow_arrows && is("arrow", "=>")) {
                     return arrow_function(start, exprs.map(e => to_fun_args(e)), !!async);
                 }
                 var ex = async ? new AST_Call({
                     expression: async,
                     args: exprs
-                }) : exprs.length == 1 ? exprs[0] : new AST_Sequence({
-                    expressions: exprs
-                });
+                }) : to_expr_or_sequence(start, exprs);
                 if (ex.start) {
                     const outer_comments_before = start.comments_before.length;
                     outer_comments_before_counts.set(start, outer_comments_before);
@@ -2469,6 +2735,7 @@ function parse($TEXT, options) {
         if (is("keyword", "function")) {
             next();
             var func = function_(AST_Function, false, !!async);
+            if (func == typescript_ellide) typescript_croak();
             func.start = start;
             func.end = prev();
             return subscripts(func, allow_calls);
@@ -2483,29 +2750,6 @@ function parse($TEXT, options) {
         }
         if (is("template_head")) {
             return subscripts(template_string(), allow_calls);
-        }
-        if (is("privatename")) {
-            if(!S.in_class) {
-                croak("Private field must be used in an enclosing class");
-            }
-
-            const start = S.token;
-            const key = new AST_SymbolPrivateProperty({
-                start,
-                name: start.value,
-                end: start
-            });
-            next();
-            expect_token("operator", "in");
-
-            const private_in = new AST_PrivateIn({
-                start,
-                key,
-                value: subscripts(as_atom_node(), allow_calls),
-                end: prev()
-            });
-
-            return subscripts(private_in, allow_calls);
         }
         if (ATOMIC_START_TOKEN.has(S.token.type)) {
             return subscripts(as_atom_node(), allow_calls);
@@ -2569,9 +2813,9 @@ function parse($TEXT, options) {
         });
     });
 
-    var create_accessor = embed_tokens((is_generator, is_async) => {
+    var create_accessor = (is_generator, is_async) => {
         return function_(AST_Accessor, is_generator, is_async);
-    });
+    };
 
     var object_or_destructuring_ = embed_tokens(function object_or_destructuring_() {
         var start = S.token, first = true, a = [];
@@ -2600,7 +2844,10 @@ function parse($TEXT, options) {
 
             // Check property and fetch value
             if (!is("punc", ":")) {
-                var concise = concise_method_or_getset(name, start);
+                var concise = object_or_class_property(name, start);
+                if (concise === typescript_ellide) {
+                    continue;
+                }
                 if (concise) {
                     a.push(concise);
                     continue;
@@ -2635,7 +2882,7 @@ function parse($TEXT, options) {
             const kv = new AST_ObjectKeyVal({
                 start: start,
                 quote: start.quote,
-                key: name instanceof AST_Node ? name : "" + name,
+                key: name,
                 value: value,
                 end: prev()
             });
@@ -2646,7 +2893,7 @@ function parse($TEXT, options) {
     });
 
     function class_(KindOfClass, is_export_default) {
-        var start, method, class_name, extends_, a = [];
+        var start, method, class_name, extends_, properties = [];
 
         S.input.push_directives_stack(); // Push directive stack, but not scope stack
         S.input.add_directive("use strict");
@@ -2663,9 +2910,17 @@ function parse($TEXT, options) {
             }
         }
 
+        if (is("operator", "<")) {
+            typescript_type_parameters();
+        }
+
         if (S.token.value == "extends") {
             next();
             extends_ = expression(true);
+        }
+
+        if (is("name", "implements")) {
+            typescript_extends_implements();
         }
 
         expect("{");
@@ -2675,9 +2930,12 @@ function parse($TEXT, options) {
         while (is("punc", ";")) { next(); }  // Leading semicolons are okay in class bodies.
         while (!is("punc", "}")) {
             start = S.token;
-            method = concise_method_or_getset(as_property_name(), start, true);
+            method = object_or_class_property(as_property_name(true), start, true);
             if (!method) { unexpected(); }
-            a.push(method);
+            if (method !== typescript_ellide) {
+                properties.push(method);
+            }
+
             while (is("punc", ";")) { next(); }
         }
         // mark in class feild,
@@ -2691,42 +2949,50 @@ function parse($TEXT, options) {
             start: start,
             name: class_name,
             extends: extends_,
-            properties: a,
+            properties: properties,
             end: prev(),
         });
     }
 
-    function concise_method_or_getset(name, start, is_class) {
-        const get_symbol_ast = (name, SymbolClass = AST_SymbolMethod) => {
-            if (typeof name === "string" || typeof name === "number") {
-                return new SymbolClass({
-                    start,
-                    name: "" + name,
-                    end: prev()
-                });
+    function object_or_class_property(name, start, is_class) {
+        const get_symbol_ast = (name, SymbolClass) => {
+            if (typeof name === "string") {
+                return new SymbolClass({ start, name, end: prev() });
             } else if (name === null) {
                 unexpected();
             }
             return name;
         };
 
+        var is_private = prev().type === "privatename";
         const is_not_method_start = () =>
-            !is("punc", "(") && !is("punc", ",") && !is("punc", "}") && !is("punc", ";") && !is("operator", "=");
+            !is("punc", "(") && !is("punc", ",") && !is("punc", "}") && !is("punc", ";") && !is("operator", "=") && !is_private;
 
         var is_async = false;
         var is_static = false;
         var is_generator = false;
-        var is_private = false;
         var accessor_type = null;
 
+        if (name === typescript_ellide) return name;
+
+        if (is_class && (name === "public" || name === "private" || name === "protected") && is_not_method_start()) {
+            const did_eat = typescript_is_accessibility_modifier();
+            if (did_eat) name = as_property_name(true);
+        }
+        if (name === typescript_ellide) return name;
         if (is_class && name === "static" && is_not_method_start()) {
             const static_block = class_static_block();
             if (static_block != null) {
                 return static_block;
             }
             is_static = true;
-            name = as_property_name();
+            name = as_property_name(true);
         }
+        if (name === typescript_ellide) return name;
+        if (name === "readonly" && typescript_is_readonly() && is_not_method_start()) {
+            name = as_property_name(true);
+        }
+        if (name === typescript_ellide) return name;
         if (name === "async" && is_not_method_start()) {
             is_async = true;
             name = as_property_name();
@@ -2739,11 +3005,15 @@ function parse($TEXT, options) {
             accessor_type = name;
             name = as_property_name();
         }
-        if (prev().type === "privatename") {
+        if (!is_private && prev().type === "privatename") {
             is_private = true;
         }
 
         const property_token = prev();
+
+        if (is("punc", ":")) {
+            typescript_type_annotation();
+        }
 
         if (accessor_type != null) {
             if (!is_private) {
@@ -2751,13 +3021,17 @@ function parse($TEXT, options) {
                     ? AST_ObjectGetter
                     : AST_ObjectSetter;
 
-                name = get_symbol_ast(name);
+                name = get_symbol_ast(name, AST_SymbolMethod);
+
+                const accessor = create_accessor();
+                if (accessor == typescript_ellide) return accessor;
+
                 return annotate(new AccessorClass({
                     start,
                     static: is_static,
                     key: name,
                     quote: name instanceof AST_SymbolMethod ? property_token.quote : undefined,
-                    value: create_accessor(),
+                    value: accessor,
                     end: prev()
                 }));
             } else {
@@ -2765,43 +3039,59 @@ function parse($TEXT, options) {
                     ? AST_PrivateGetter
                     : AST_PrivateSetter;
 
+                name = get_symbol_ast(name, AST_SymbolMethod);
+
+                const accessor = create_accessor();
+                if (accessor == typescript_ellide) return accessor;
+
                 return annotate(new AccessorClass({
                     start,
                     static: is_static,
-                    key: get_symbol_ast(name),
-                    value: create_accessor(),
+                    key: name,
+                    value: accessor,
                     end: prev(),
                 }));
             }
         }
 
+        if (is_class && is("operator", "<")) {
+            typescript_type_parameters();
+        }
+
         if (is("punc", "(")) {
-            name = get_symbol_ast(name);
+            name = get_symbol_ast(name, AST_SymbolMethod);
+
             const AST_MethodVariant = is_private
                 ? AST_PrivateMethod
                 : AST_ConciseMethod;
+
+            const accessor = create_accessor(is_generator, is_async);
+            if (accessor == typescript_ellide) return accessor;
+
             var node = new AST_MethodVariant({
                 start       : start,
                 static      : is_static,
-                is_generator: is_generator,
-                async       : is_async,
                 key         : name,
                 quote       : name instanceof AST_SymbolMethod ?
                               property_token.quote : undefined,
-                value       : create_accessor(is_generator, is_async),
+                value       : accessor,
                 end         : prev()
             });
             return annotate(node);
         }
 
         if (is_class) {
-            const key = get_symbol_ast(name, AST_SymbolClassProperty);
-            const quote = key instanceof AST_SymbolClassProperty
-                ? property_token.quote
-                : undefined;
+            const AST_SymbolVariant = is_private
+                ? AST_SymbolPrivateProperty
+                : AST_SymbolClassProperty;
             const AST_ClassPropertyVariant = is_private
                 ? AST_ClassPrivateProperty
                 : AST_ClassProperty;
+
+            const key = get_symbol_ast(name, AST_SymbolVariant);
+            const quote = key instanceof AST_SymbolClassProperty
+                ? property_token.quote
+                : undefined;
             if (is("operator", "=")) {
                 next();
                 return annotate(
@@ -2817,9 +3107,13 @@ function parse($TEXT, options) {
             } else if (
                 is("name")
                 || is("privatename")
+                || is("punc", "[")
                 || is("operator", "*")
                 || is("punc", ";")
                 || is("punc", "}")
+                || is("string")
+                || is("num")
+                || is("big_int")
             ) {
                 return annotate(
                     new AST_ClassPropertyVariant({
@@ -2853,8 +3147,11 @@ function parse($TEXT, options) {
         return new AST_ClassStaticBlock({ start, body, end: prev() });
     }
 
-    function maybe_import_assertion() {
-        if (is("name", "assert") && !has_newline_before(S.token)) {
+    function maybe_import_attributes() {
+        if (
+            (is("keyword", "with") || is("name", "assert"))
+            && !has_newline_before(S.token)
+        ) {
             next();
             return object_or_destructuring_();
         }
@@ -2875,6 +3172,13 @@ function parse($TEXT, options) {
             }
         }
 
+        if (
+            is("name", "type")
+            && typescript_import_type_statement()
+        ) {
+            return new AST_EmptyStatement({ start, end: prev() });
+        }
+
         var imported_name;
         var imported_names;
         if (is("name")) {
@@ -2890,13 +3194,13 @@ function parse($TEXT, options) {
         if (imported_names || imported_name) {
             expect_token("name", "from");
         }
-        var mod_str = S.token;
+        var mod_str = S.token; // expect_token("string");
         if (mod_str.type !== "string") {
             unexpected();
         }
         next();
 
-        const assert_clause = maybe_import_assertion();
+        const attributes = maybe_import_attributes();
 
         return new AST_Import({
             start,
@@ -2908,18 +3212,29 @@ function parse($TEXT, options) {
                 quote: mod_str.quote,
                 end: mod_str,
             }),
-            assert_clause,
+            attributes,
             phase,
             end: S.token,
         });
     }
 
-    //   import.meta
+    //   import()
     //   import.source("module")
     //   import.defer("module")
-    function parse_import_expr(allow_calls) {
+    //   import.meta
+    function import_expr(allow_calls) {
         var start = S.token;
         expect_token("name", "import");
+        if (is("punc", "(")) {
+            next();
+            const args = expr_list(")");
+            return subscripts(new AST_DynamicImport({
+                start: start,
+                args,
+                phase: null,
+                end: prev(),
+            }), allow_calls);
+        }
         expect_token("punc", ".");
         if (is("name", "source") || is("name", "defer")) {
             var phase = S.token.value;
@@ -2971,10 +3286,12 @@ function parse($TEXT, options) {
             } else {
                 foreign_name = make_symbol(foreign_type, S.token.quote);
             }
-        } else if (is_import) {
-            name = new type(foreign_name);
         } else {
-            foreign_name = new foreign_type(name);
+            if (is_import) {
+                name = new type(foreign_name);
+            } else {
+                foreign_name = new foreign_type(name);
+            }
         }
 
         return new AST_NameMapping({
@@ -3024,9 +3341,15 @@ function parse($TEXT, options) {
             next();
             names = [];
             while (!is("punc", "}")) {
-                names.push(map_name(is_import));
-                if (is("punc", ",")) {
-                    next();
+                if (
+                    is("name", "type")
+                    && !(is_token(peek(), "name", "as") || is_token(peek(), "punc", ",") || is_token(peek(), "punc", "}"))
+                    && typescript_import_named_type()
+                ) ; else {
+                    names.push(map_name(is_import));
+                }
+                if (!is("punc", "}")) {
+                    expect_token("punc", ",");
                 }
             }
             next();
@@ -3047,6 +3370,11 @@ function parse($TEXT, options) {
         var is_default;
         var exported_names;
 
+        if ((is("name", "type") || is("name", "interface"))) {
+            typescript_export_type_statement();
+            return new AST_EmptyStatement({ start, end: prev() });
+        }
+
         if (is("keyword", "default")) {
             is_default = true;
             next();
@@ -3060,7 +3388,7 @@ function parse($TEXT, options) {
                 }
                 next();
 
-                const assert_clause = maybe_import_assertion();
+                const attributes = maybe_import_attributes();
 
                 return new AST_Export({
                     start: start,
@@ -3073,7 +3401,7 @@ function parse($TEXT, options) {
                         end: mod_str,
                     }),
                     end: prev(),
-                    assert_clause
+                    attributes
                 });
             } else {
                 return new AST_Export({
@@ -3119,17 +3447,22 @@ function parse($TEXT, options) {
             exported_value: exported_value,
             exported_definition: exported_definition,
             end: prev(),
-            assert_clause: null
+            attributes: null
         });
     }
 
-    function as_property_name() {
+    function as_property_name(typescript_class_index_notation = false) {
         var tmp = S.token;
         switch (tmp.type) {
           case "punc":
             if (tmp.value === "[") {
                 next();
                 var ex = expression(false);
+                if (typescript_class_index_notation && is("punc", ":") && typescript_type_annotation()) {
+                    expect("]");
+                    if (is("punc", ":")) typescript_type_annotation();
+                    return typescript_ellide;
+                }
                 expect("]");
                 return ex;
             } else unexpected(tmp);
@@ -3145,12 +3478,14 @@ function parse($TEXT, options) {
           case "name":
           case "privatename":
           case "string":
-          case "num":
-          case "big_int":
           case "keyword":
           case "atom":
             next();
             return tmp.value;
+          case "num":
+          case "big_int":
+            next();
+            return "" + tmp.value;
           default:
             unexpected(tmp);
         }
@@ -3261,26 +3596,27 @@ function parse($TEXT, options) {
             if(is("privatename") && !S.in_class) 
                 croak("Private field must be used in an enclosing class");
             const AST_DotVariant = is("privatename") ? AST_DotHash : AST_Dot;
-            return subscripts(new AST_DotVariant({
+            return annotate(subscripts(new AST_DotVariant({
                 start      : start,
                 expression : expr,
                 optional   : false,
                 property   : as_name(),
                 end        : prev()
-            }), allow_calls, is_chain);
+            }), allow_calls, is_chain));
         }
         if (is("punc", "[")) {
             next();
             var prop = expression(true);
             expect("]");
-            return subscripts(new AST_Sub({
+            return annotate(subscripts(new AST_Sub({
                 start      : start,
                 expression : expr,
                 optional   : false,
                 property   : prop,
                 end        : prev()
-            }), allow_calls, is_chain);
+            }), allow_calls, is_chain));
         }
+        if (allow_calls && is("operator", "<")) typescript_skip_type_parameters_before_call();
         if (allow_calls && is("punc", "(")) {
             next();
             var call = new AST_Call({
@@ -3294,10 +3630,13 @@ function parse($TEXT, options) {
             return subscripts(call, true, is_chain);
         }
 
+        // Optional chain
         if (is("punc", "?.")) {
             next();
 
             let chain_contents;
+
+            if (allow_calls && is("operator", "<")) typescript_type_parameters();
 
             if (allow_calls && is("punc", "(")) {
                 next();
@@ -3316,24 +3655,24 @@ function parse($TEXT, options) {
                 if(is("privatename") && !S.in_class) 
                     croak("Private field must be used in an enclosing class");
                 const AST_DotVariant = is("privatename") ? AST_DotHash : AST_Dot;
-                chain_contents = subscripts(new AST_DotVariant({
+                chain_contents = annotate(subscripts(new AST_DotVariant({
                     start,
                     expression: expr,
                     optional: true,
                     property: as_name(),
                     end: prev()
-                }), allow_calls, true);
+                }), allow_calls, true));
             } else if (is("punc", "[")) {
                 next();
                 const property = expression(true);
                 expect("]");
-                chain_contents = subscripts(new AST_Sub({
+                chain_contents = annotate(subscripts(new AST_Sub({
                     start,
                     expression: expr,
                     optional: true,
                     property,
                     end: prev()
-                }), allow_calls, true);
+                }), allow_calls, true));
             }
 
             if (!chain_contents) unexpected();
@@ -3406,6 +3745,9 @@ function parse($TEXT, options) {
             val.end = S.token;
             next();
         }
+        if (is("name", "as") || is("name", "satisfies")) {
+            typescript_as_satisfies();
+        }
         return val;
     };
 
@@ -3436,7 +3778,7 @@ function parse($TEXT, options) {
         var prec = op != null ? PRECEDENCE[op] : null;
         if (prec != null && (prec > min_prec || (op === "**" && min_prec === prec))) {
             next();
-            var right = expr_op(maybe_unary(true), prec, no_in);
+            var right = expr_ops(no_in, prec, true);
             return expr_op(new AST_Binary({
                 start    : left.start,
                 left     : left,
@@ -3448,15 +3790,43 @@ function parse($TEXT, options) {
         return left;
     };
 
-    function expr_ops(no_in) {
-        return expr_op(maybe_unary(true, true), 0, no_in);
+    function expr_ops(no_in, min_prec, allow_calls, allow_arrows) {
+        // maybe_unary won't return us a AST_SymbolPrivateProperty
+        if (!no_in && min_prec < PRECEDENCE["in"] && is("privatename")) {
+            if(!S.in_class) {
+                croak("Private field must be used in an enclosing class");
+            }
+
+            const start = S.token;
+            const key = new AST_SymbolPrivateProperty({
+                start,
+                name: start.value,
+                end: start
+            });
+            next();
+            expect_token("operator", "in");
+
+            const private_in = new AST_PrivateIn({
+                start,
+                key,
+                value: expr_ops(no_in, PRECEDENCE["in"], true),
+                end: prev()
+            });
+
+            return expr_op(private_in, 0, no_in);
+        } else {
+            return expr_op(maybe_unary(allow_calls, allow_arrows), min_prec, no_in);
+        }
     }
 
     var maybe_conditional = function(no_in) {
         var start = S.token;
-        var expr = expr_ops(no_in);
+        var expr = expr_ops(no_in, 0, true, true);
         if (is("operator", "?")) {
             next();
+            if (is("punc", ":") && typescript_maybe_annotation()) {
+                return expr;
+            }
             var yes = expression(false);
             expect(":");
             return new AST_Conditional({
@@ -3552,6 +3922,16 @@ function parse($TEXT, options) {
         return left;
     };
 
+    var to_expr_or_sequence = function(start, exprs) {
+        if (exprs.length === 1) {
+            return exprs[0];
+        } else if (exprs.length > 1) {
+            return new AST_Sequence({ start, expressions: exprs, end: peek() });
+        } else {
+            croak("Invalid parenthesized expression");
+        }
+    };
+
     var expression = function(commas, no_in) {
         var start = S.token;
         var exprs = [];
@@ -3561,11 +3941,7 @@ function parse($TEXT, options) {
             next();
             commas = true;
         }
-        return exprs.length == 1 ? exprs[0] : new AST_Sequence({
-            start       : start,
-            expressions : exprs,
-            end         : peek()
-        });
+        return to_expr_or_sequence(start, exprs);
     };
 
     function in_loop(cont) {
@@ -3573,6 +3949,420 @@ function parse($TEXT, options) {
         var ret = cont();
         --S.in_loop;
         return ret;
+    }
+
+    // TS type stripping
+    // These functions are called when we know S.token begins some TS fluff
+    // Just call next() and friends, skipping TypeScript information
+
+    // Typescript entrypoints, from the rest of the parser
+    function typescript_type_parameters() {
+        if (!options.experimental_typescript) return;
+
+        expect_token("operator", "<");
+        do {
+            _ts_type_parameter();
+        } while (is("punc", ",") && next());
+        if (!_ts_gt_operator()) typescript_croak();
+    }
+    const typescript_ellide = Symbol("typescript_ellide");
+    function typescript_as_satisfies() {
+        if (!options.experimental_typescript) return;
+
+        while (is("name", "as") || is("name", "satisfies")) {
+            next();
+            _ts_type();
+        }
+    }
+    function typescript_type_statement() {
+        if (!options.experimental_typescript) return;
+
+        expect_token("name", "type");
+        expect_token("name");
+        if (is("operator", "<")) {
+            typescript_type_parameters();
+        }
+        expect_token("operator", "=");
+        _ts_type();
+    }
+    function typescript_interface_statement() {
+        if (!options.experimental_typescript) return;
+
+        expect_token("name", "interface");
+        expect_token("name");
+        if (is("operator", "<")) {
+            typescript_type_parameters();
+        }
+        if (is("keyword", "extends") || is("keyword", "implements")) {
+            typescript_extends_implements();
+        }
+        _ts_object_body();
+    }
+    function typescript_import_type_statement() {
+        if (!options.experimental_typescript) return;
+
+        if (
+            is_token(peek(), "name", "from")
+            || is_token(peek(), "punc", ",")
+        ) {
+            // not TS: `import type from ...`, `import type, { ...`
+            return false;
+        }
+
+        expect_token("name", "type");
+
+        if (!is("punc", "{")) {
+            next(); // star or name
+            if (is("name", "as")) {
+                next();
+                _ts_type_name(); // import type 'string' as NotString
+            }
+
+            if (is("punc", ",")) {
+                next();
+                _ts_import_export_name_mapping();
+            }
+        } else if (is("punc", "{")) {
+            _ts_import_export_name_mapping();
+        }
+
+        expect_token("name", "from");
+        expect_token("string");
+
+        return true;
+    }
+    function typescript_export_type_statement() {
+        if (!options.experimental_typescript) return;
+
+        if (is("name", "type") && is_token(peek(), "name")) {
+            typescript_type_statement();
+            return;
+        }
+        if (is("name", "interface")) {
+            typescript_interface_statement();
+            return;
+        }
+
+        expect_token("name", "type");
+
+        if (is("operator", "*")) {
+            next();
+            if (is("name", "as")) {
+                next();
+                next();
+            }
+        }
+
+        if (is("punc", "{")) {
+            _ts_import_export_name_mapping();
+        }
+
+        if (is("name", "from")) {
+            expect_token("name", "from");
+            expect_token("string");
+        }
+    }
+    function typescript_maybe_annotation() {
+        if (!options.experimental_typescript) return;
+
+        if (
+            is("operator", "?") && is_token(peek(), "punc", ":") && next()
+            || is("punc", ":")
+        ) {
+            typescript_type_annotation();
+            return true;
+        }
+        return false;
+    }
+    function typescript_import_named_type() {
+        if (!options.experimental_typescript) return false;
+
+        expect_token("name", "type");
+        next(); // name or string
+        if (is("name", "as")) {
+            next();
+            if (is("keyword", "default")) next();
+            else _ts_type();
+        }
+
+        return true;
+    }
+    function typescript_type_annotation() {
+        if (!options.experimental_typescript) return;
+
+        expect_token("punc", ":");
+        _ts_type();
+        return true;
+    }
+    function typescript_skip_this_type() {
+        if (!options.experimental_typescript) return;
+
+        if (is("name", "this")) {
+            next();
+            typescript_type_annotation();
+            if (is("punc", ",")) next();
+            return true;
+        }
+    }
+    function typescript_extends_implements() {
+        if (!options.experimental_typescript) return;
+
+        next(); // "extends" / "implements"
+        _ts_commatized_while("name", _ts_type);
+    }
+    function typescript_is_accessibility_modifier() {
+        if (!options.experimental_typescript) return;
+
+        // Known to be 'private', 'public' or 'protected'
+        return true;
+    }
+    function typescript_is_readonly() {
+        if (!options.experimental_typescript) return;
+
+        // Known to be 'readonly'
+        return true;
+    }
+    function typescript_is_function_no_body() {
+        if (!options.experimental_typescript) return;
+
+        // There's no body. Is this okay?
+        return true;
+    }
+    function typescript_skip_type_parameters_before_call() {
+        if (!options.experimental_typescript) return;
+
+        // Skip type parameters without parsing ahead. Differentiates between comparisons and type parameters: varname < T > (1)
+        // Go until "?." or "("
+        const matches = S.input.typescript_is_type_parameters_before_call();
+        if (matches) typescript_type_parameters();
+    }
+    function typescript_croak() {
+        croak("invalid or unsupported TypeScript syntax");
+    }
+
+    // Internal stuff
+
+    function _ts_gt_operator() {
+        // HACK: JS has >, >>, >>>. TS only knows >
+        if (S.token.type === "operator" && S.token.value.startsWith(">")) {
+            if (S.token.value === ">") {
+                return next();
+            } else {
+                S.token.value = S.token.value.slice(1);
+                return true;
+            }
+        }
+    }
+    function _ts_type_parameter() {
+        _ts_type();
+        _ts_constraint();
+    }
+    function _ts_constraint() {
+        if (is("keyword", "extends")) {
+            expect_token("keyword", "extends");
+            _ts_type();
+
+            if (is("operator", "=")) {
+                expect_token("operator", "=");
+                _ts_type();
+            }
+        }
+    }
+    function _ts_type() {
+        if (is("operator", "new")) {
+            // new(...args) => Type
+            next();
+            if (is("operator", "<")) typescript_type_parameters();
+            _ts_parenthesized_params();
+            expect_token("arrow", "=>");
+            _ts_type();
+        } else if (is("punc", "(")) {
+            // (...args) => Type
+            _ts_parenthesized_params();
+            expect_token("arrow", "=>");
+            _ts_type();
+            expect_token("punc", ")");
+        } else {
+            do {
+                if (is("operator", "|") || is("operator", "&")) next();
+                _ts_primary_type();
+            } while (is("operator", "|") || is("operator", "&"));
+        }
+    }
+    var _TS_PREDEFINED_TYPES = makePredicate(["any", "unknown", "const", "number", "boolean", "string", "symbol", "void"]);
+    function _ts_primary_type() {
+        if (is("name", "readonly")) next();
+
+        if (is("name", "import") && is_token(peek(), "punc", "(")) {
+            next();
+            expect("(");
+            _ts_type();
+            expect(")");
+            _ts_subscripts();
+        } else if (is("punc", "(")) {
+            next();
+            _ts_type();
+            expect(")");
+        } else if (is("name") && _TS_PREDEFINED_TYPES.has(S.token.value)) {
+            next();
+        } else if (is("template_head")) {
+            _ts_template_string();
+        } else if (is("string") || is("num") || is("big_int") || is("atom")) {
+            next();
+        } else if (is("name")) {
+            _ts_type_name();
+            if (is("operator", "<")) typescript_type_parameters();
+        } else if (is("punc", "{")) {
+            _ts_object_body();
+        } else if (is("punc", "[")) {
+            next();
+            _ts_tuple_types();
+            expect_token("punc", "]");
+        } else if (is("operator", "typeof")) {
+            next();
+            _ts_type_name();
+        } else {
+            typescript_croak();
+        }
+
+        // NestedArraySuffixes[][][][]
+        while (is("punc", "[") && is_token(peek(), "punc", "]")) {
+            next();
+            next();
+        }
+    }
+    // Also used as `typeof`'s argument
+    function _ts_type_name() {
+        expect_token("name");
+        _ts_subscripts();
+    }
+    function _ts_subscripts() {
+        if (is("punc", ".")) {
+            next();
+            expect_token("name");
+            return _ts_subscripts();
+        }
+        if (is("punc", "[") && !is_token(peek(), "punc", "]")) {
+            expect_token("punc", "[");
+            _ts_type();
+            expect_token("punc", "]");
+            return _ts_subscripts();
+        }
+    }
+    function _ts_object_body() {
+        const is_method_key = (token) =>
+            is_token(token, "name")
+            || is_token(token, "num")
+            || is_token(token, "string")
+            || is_token(token, "operator", "new");
+        expect_token("punc", "{");
+        _ts_commas_or_semicolons("punc", "}", () => {
+            // SKIP `readonly` WHEN IT'S A KEYWORD
+            if (
+                is("name", "readonly")
+                && (is_method_key(peek())
+                    || is_token(peek(), "template_head")
+                    || is_token(peek(), "punc", "["))
+            ) {
+                next();
+            }
+
+            // KEY
+            if (is_method_key(S.token)) {
+                next();
+            } else if (is("template_head")) {
+                _ts_template_string();
+            } else if (is("punc", "[")) {
+                next();
+                if (is_method_key(S.token)) next();
+                typescript_maybe_annotation();
+                expect("]");
+            }
+
+            // OPTIONAL
+            if (is("operator", "?")) next();
+
+            // TYPE PARAMETERS
+            if (is("operator", "<")) {
+                typescript_type_parameters();
+            }
+
+            // VALUE (method or thing)
+            if (is("punc", "(")) {
+                _ts_parenthesized_params();
+                typescript_maybe_annotation();
+            } else if (is("punc", ":")) {
+                next();
+                _ts_type();
+            } else {
+                typescript_croak();
+            }
+        });
+        expect_token("punc", "}");
+    }
+    function _ts_tuple_types() {
+        _ts_commatized("punc", "]", () => {
+            if (is("expand", "...")) next(); // [...T]
+            _ts_type();
+            if (is("punc", ":") || is("operator", "?")) {
+                typescript_maybe_annotation(); // [name?: T]
+            }
+            if (is("operator", "?")) next(); // ["value"?]
+        });
+    }
+    function _ts_parenthesized_params() {
+        expect("(");
+        _ts_commatized("punc", ")", () => {
+            if (is("expand", "...")) next();
+            expect_token("name");
+            if (is("operator", "?")) next();
+            expect(":");
+            _ts_type();
+        });
+        expect(")");
+    }
+    function _ts_import_export_name_mapping() {
+        expect("{");
+        _ts_commatized("punc", "}", () => {
+            next();
+            if (is("name", "as")) {
+                next();
+                if (is("string") || is("keyword")) next();
+                else _ts_type_name();
+            }
+        });
+        expect("}");
+    }
+    function _ts_commatized(till_type, till, cb) {
+        while (!(is(till_type, till))) {
+            cb();
+            if (!is(till_type, till)) expect(",");
+        }
+    }
+    function _ts_commatized_while(while_type, cb) {
+        while (is(while_type)) {
+            cb();
+            if (!is("punc", ",")) break;
+            next();
+        }
+    }
+    function _ts_commas_or_semicolons(till_type, till, cb) {
+        while (!is(till_type, till)) {
+            cb();
+            if (!is(till_type, till)) {
+                if (is("punc", ",") || is("punc", ";")) next();
+                else if (S.token.nlb) ; // ASI
+                else typescript_croak();
+            }
+        }
+    }
+    function _ts_template_string() {
+        while (!S.token.template_end) {
+            next(); // eat "string" part
+            _ts_type(); // eat "code" part
+            if (!is("template_cont")) typescript_croak();
+        }
+        next(); // eat last part
     }
 
     if (options.expression) {
@@ -3863,6 +4653,9 @@ var AST_ParenthesizedExpression = DEFNODE("ParenthesizedExpression", "body", fun
         return visitor._visit(this, function() {
             this.body._walk(visitor);
         });
+    },
+    _children_backwards(push) {
+        push(this.body);
     }
 }, AST_Statement);
 // XXX End of Emscripten localmod
@@ -4189,12 +4982,13 @@ var AST_With = DEFNODE("With", "expression", function AST_With(props) {
 
 var AST_Scope = DEFNODE(
     "Scope",
-    "variables uses_with uses_eval parent_scope enclosed cname",
+    "variables uses_with uses_eval screwy_argnames_scope parent_scope enclosed cname",
     function AST_Scope(props) {
         if (props) {
             this.variables = props.variables;
             this.uses_with = props.uses_with;
             this.uses_eval = props.uses_eval;
+            this.screwy_argnames_scope = props.screwy_argnames_scope;
             this.parent_scope = props.parent_scope;
             this.enclosed = props.enclosed;
             this.cname = props.cname;
@@ -4348,14 +5142,24 @@ var AST_Lambda = DEFNODE(
             name: "[AST_SymbolDeclaration?] the name of this function",
             argnames: "[AST_SymbolFunarg|AST_Destructuring|AST_Expansion|AST_DefaultAssign*] array of function arguments, destructurings, or expanding arguments",
             uses_arguments: "[boolean/S] tells whether this function accesses the arguments array",
+            screwy_argnames_scope: "[boolean/S] argnames contain a reference to a name that's shadowed in the function",
             is_generator: "[boolean] is this a generator method",
             async: "[boolean] is this method async",
         },
         args_as_names: function () {
+            // fast-path
+            if (this.argnames.every(a => a instanceof AST_SymbolDeclaration)) {
+                return this.argnames;
+            }
+
             var out = [];
             for (var i = 0; i < this.argnames.length; i++) {
                 if (this.argnames[i] instanceof AST_Destructuring) {
                     out.push(...this.argnames[i].all_symbols());
+                } else if (this.argnames[i] instanceof AST_Expansion) {
+                    out.push(...this.argnames[i].expression.all_symbols());
+                } else if (this.argnames[i] instanceof AST_DefaultAssign) {
+                    out.push(...this.argnames[i].left.all_symbols());
                 } else {
                     out.push(this.argnames[i]);
                 }
@@ -4975,7 +5779,7 @@ var AST_Finally = DEFNODE("Finally", null, function AST_Finally(props) {
 
 /* -----[ VAR/CONST ]----- */
 
-var AST_Definitions = DEFNODE("Definitions", "definitions", function AST_Definitions(props) {
+var AST_DefinitionsLike = DEFNODE("DefinitionsLike", "definitions", function AST_DefinitionsLike(props) {
     if (props) {
         this.definitions = props.definitions;
         this.start = props.start;
@@ -4984,9 +5788,9 @@ var AST_Definitions = DEFNODE("Definitions", "definitions", function AST_Definit
 
     this.flags = 0;
 }, {
-    $documentation: "Base class for `var` or `const` nodes (variable declarations/initializations)",
+    $documentation: "Base class for variable definitions and `using`",
     $propdoc: {
-        definitions: "[AST_VarDef*] array of variable definitions"
+        definitions: "[AST_VarDef*|AST_UsingDef*] array of variable definitions"
     },
     _walk: function(visitor) {
         return visitor._visit(this, function() {
@@ -5001,6 +5805,18 @@ var AST_Definitions = DEFNODE("Definitions", "definitions", function AST_Definit
         while (i--) push(this.definitions[i]);
     },
 }, AST_Statement);
+
+var AST_Definitions = DEFNODE("Definitions", null, function AST_Definitions(props) {
+    if (props) {
+        this.definitions = props.definitions;
+        this.start = props.start;
+        this.end = props.end;
+    }
+
+    this.flags = 0;
+}, {
+    $documentation: "Base class for `var` or `const` nodes (variable declarations/initializations)",
+}, AST_DefinitionsLike);
 
 var AST_Var = DEFNODE("Var", null, function AST_Var(props) {
     if (props) {
@@ -5038,7 +5854,23 @@ var AST_Const = DEFNODE("Const", null, function AST_Const(props) {
     $documentation: "A `const` statement"
 }, AST_Definitions);
 
-var AST_VarDef = DEFNODE("VarDef", "name value", function AST_VarDef(props) {
+var AST_Using = DEFNODE("Using", "await", function AST_Using(props) {
+    if (props) {
+        this.await = props.await;
+        this.definitions = props.definitions;
+        this.start = props.start;
+        this.end = props.end;
+    }
+
+    this.flags = 0;
+}, {
+    $documentation: "A `using` statement",
+    $propdoc: {
+        await: "[boolean] Whether it's `await using`"
+    },
+}, AST_DefinitionsLike);
+
+var AST_VarDefLike = DEFNODE("VarDefLike", "name value", function AST_VarDefLike(props) {
     if (props) {
         this.name = props.name;
         this.value = props.value;
@@ -5048,9 +5880,9 @@ var AST_VarDef = DEFNODE("VarDef", "name value", function AST_VarDef(props) {
 
     this.flags = 0;
 }, {
-    $documentation: "A variable declaration; only appears in a AST_Definitions node",
+    $documentation: "A name=value pair in a variable definition statement or `using`",
     $propdoc: {
-        name: "[AST_Destructuring|AST_SymbolConst|AST_SymbolLet|AST_SymbolVar] name of the variable",
+        name: "[AST_Destructuring|AST_SymbolDeclaration] name of the variable",
         value: "[AST_Node?] initializer, or null of there's no initializer"
     },
     _walk: function(visitor) {
@@ -5065,12 +5897,38 @@ var AST_VarDef = DEFNODE("VarDef", "name value", function AST_VarDef(props) {
     },
     declarations_as_names() {
         if (this.name instanceof AST_SymbolDeclaration) {
-            return [this];
+            return [this.name];
         } else {
             return this.name.all_symbols();
         }
     }
 });
+
+var AST_VarDef = DEFNODE("VarDef", null, function AST_VarDef(props) {
+    if (props) {
+        this.name = props.name;
+        this.value = props.value;
+        this.start = props.start;
+        this.end = props.end;
+    }
+
+    this.flags = 0;
+}, {
+    $documentation: "A variable declaration; only appears in a AST_Definitions node",
+}, AST_VarDefLike);
+
+var AST_UsingDef = DEFNODE("UsingDef", null, function AST_UsingDef(props) {
+    if (props) {
+        this.name = props.name;
+        this.value = props.value;
+        this.start = props.start;
+        this.end = props.end;
+    }
+
+    this.flags = 0;
+}, {
+    $documentation: "Like VarDef but specific to AST_Using",
+}, AST_VarDefLike);
 
 var AST_NameMapping = DEFNODE("NameMapping", "foreign_name name", function AST_NameMapping(props) {
     if (props) {
@@ -5101,14 +5959,14 @@ var AST_NameMapping = DEFNODE("NameMapping", "foreign_name name", function AST_N
 
 var AST_Import = DEFNODE(
     "Import",
-    "phase imported_name imported_names module_name assert_clause",
+    "phase imported_name imported_names module_name attributes",
     function AST_Import(props) {
         if (props) {
             this.phase = props.phase;
             this.imported_name = props.imported_name;
             this.imported_names = props.imported_names;
             this.module_name = props.module_name;
-            this.assert_clause = props.assert_clause;
+            this.attributes = props.attributes;
             this.start = props.start;
             this.end = props.end;
         }
@@ -5122,7 +5980,7 @@ var AST_Import = DEFNODE(
             imported_name: "[AST_SymbolImport] The name of the variable holding the module's default export.",
             imported_names: "[AST_NameMapping*] The names of non-default imported variables",
             module_name: "[AST_String] String literal describing where this module came from",
-            assert_clause: "[AST_Object?] The import assertion"
+            attributes: "[AST_Object?] The import attributes (with {...})"
         },
         _walk: function(visitor) {
             return visitor._visit(this, function() {
@@ -5173,9 +6031,9 @@ var AST_DynamicImport = DEFNODE(
         this.flags = 0;
     },
     {
-        $documentation: "A phased dynamic import expression: `import.source(specifier [, options])` or `import.defer(specifier [, options])`. Plain `import(x)` continues to be parsed as an AST_Call with a synthetic `import` SymbolRef callee.",
+        $documentation: "A dynamic import expression",
         $propdoc: {
-            phase: "[string] Phase keyword ('source' or 'defer').",
+            phase: "[string?] Phase keyword ('source' or 'defer') if present",
             args: "[AST_Node*] specifier followed by optional options argument"
         },
         _walk: function(visitor) {
@@ -5195,7 +6053,7 @@ var AST_DynamicImport = DEFNODE(
 
 var AST_Export = DEFNODE(
     "Export",
-    "exported_definition exported_value is_default exported_names module_name assert_clause",
+    "exported_definition exported_value is_default exported_names module_name attributes",
     function AST_Export(props) {
         if (props) {
             this.exported_definition = props.exported_definition;
@@ -5203,7 +6061,7 @@ var AST_Export = DEFNODE(
             this.is_default = props.is_default;
             this.exported_names = props.exported_names;
             this.module_name = props.module_name;
-            this.assert_clause = props.assert_clause;
+            this.attributes = props.attributes;
             this.start = props.start;
             this.end = props.end;
         }
@@ -5218,7 +6076,7 @@ var AST_Export = DEFNODE(
             exported_names: "[AST_NameMapping*?] List of exported names",
             module_name: "[AST_String?] Name of the file to load exports from",
             is_default: "[Boolean] Whether this is the default exported value of this module",
-            assert_clause: "[AST_Object?] The import assertion"
+            attributes: "[AST_Object?] The import attributes"
         },
         _walk: function (visitor) {
             return visitor._visit(this, function () {
@@ -5370,6 +6228,7 @@ var AST_Dot = DEFNODE("Dot", "quote", function AST_Dot(props) {
         this.expression = props.expression;
         this.property = props.property;
         this.optional = props.optional;
+        this._annotations = props._annotations;
         this.start = props.start;
         this.end = props.end;
     }
@@ -5417,6 +6276,7 @@ var AST_Sub = DEFNODE("Sub", null, function AST_Sub(props) {
         this.expression = props.expression;
         this.property = props.property;
         this.optional = props.optional;
+        this._annotations = props._annotations;
         this.start = props.start;
         this.end = props.end;
     }
@@ -5604,7 +6464,10 @@ var AST_DefaultAssign = DEFNODE("DefaultAssign", null, function AST_DefaultAssig
 
     this.flags = 0;
 }, {
-    $documentation: "A default assignment expression like in `(a = 3) => a`"
+    $documentation: "A default assignment expression like in `(a = 3) => a`",
+    all_symbols() {
+        return this.left.all_symbols();
+    },
 }, AST_Binary);
 
 /* -----[ LITERALS ]----- */
@@ -5663,6 +6526,11 @@ var AST_Object = DEFNODE("Object", "properties", function AST_Object(props) {
     },
 });
 
+/* -----[ OBJECT/CLASS PROPERTIES ]----- */
+
+/**
+ * Everything inside the curly braces of an object/class is a subclass of AST_ObjectProperty, except for AST_ClassStaticBlock.
+ **/
 var AST_ObjectProperty = DEFNODE("ObjectProperty", "key value", function AST_ObjectProperty(props) {
     if (props) {
         this.key = props.key;
@@ -5677,7 +6545,7 @@ var AST_ObjectProperty = DEFNODE("ObjectProperty", "key value", function AST_Obj
     $documentation: "Base class for literal object properties",
     $propdoc: {
         key: "[string|AST_Node] property name. For ObjectKeyVal this is a string. For getters, setters and computed property this is an AST_Node.",
-        value: "[AST_Node] property value.  For getters and setters this is an AST_Accessor."
+        value: "[AST_Node] property value.  For getters, setters and methods this is an AST_Accessor."
     },
     _walk: function(visitor) {
         return visitor._visit(this, function() {
@@ -5689,7 +6557,7 @@ var AST_ObjectProperty = DEFNODE("ObjectProperty", "key value", function AST_Obj
     _children_backwards(push) {
         push(this.value);
         if (this.key instanceof AST_Node) push(this.key);
-    }
+    },
 });
 
 var AST_ObjectKeyVal = DEFNODE("ObjectKeyVal", "quote", function AST_ObjectKeyVal(props) {
@@ -5799,45 +6667,32 @@ var AST_ObjectGetter = DEFNODE("ObjectGetter", "quote static", function AST_Obje
     }
 }, AST_ObjectProperty);
 
-var AST_ConciseMethod = DEFNODE(
-    "ConciseMethod",
-    "quote static is_generator async",
-    function AST_ConciseMethod(props) {
-        if (props) {
-            this.quote = props.quote;
-            this.static = props.static;
-            this.is_generator = props.is_generator;
-            this.async = props.async;
-            this.key = props.key;
-            this.value = props.value;
-            this.start = props.start;
-            this.end = props.end;
-            this._annotations = props._annotations;
-        }
-
-        this.flags = 0;
-    },
-    {
-        $propdoc: {
-            quote: "[string|undefined] the original quote character, if any",
-            static: "[boolean] is this method static (classes only)",
-            is_generator: "[boolean] is this a generator method",
-            async: "[boolean] is this method async",
-        },
-        $documentation: "An ES6 concise method inside an object or class",
-        computed_key() {
-            return !(this.key instanceof AST_SymbolMethod);
-        }
-    },
-    AST_ObjectProperty
-);
-
-var AST_PrivateMethod = DEFNODE("PrivateMethod", "", function AST_PrivateMethod(props) {
+var AST_ConciseMethod = DEFNODE("ConciseMethod", "quote static", function AST_ConciseMethod(props) {
     if (props) {
         this.quote = props.quote;
         this.static = props.static;
-        this.is_generator = props.is_generator;
-        this.async = props.async;
+        this.key = props.key;
+        this.value = props.value;
+        this.start = props.start;
+        this.end = props.end;
+        this._annotations = props._annotations;
+    }
+
+    this.flags = 0;
+}, {
+    $propdoc: {
+        quote: "[string|undefined] the original quote character, if any",
+        static: "[boolean] is this method static (classes only)",
+    },
+    $documentation: "An ES6 concise method inside an object or class",
+    computed_key() {
+        return !(this.key instanceof AST_SymbolMethod);
+    }
+}, AST_ObjectProperty);
+
+var AST_PrivateMethod = DEFNODE("PrivateMethod", "static", function AST_PrivateMethod(props) {
+    if (props) {
+        this.static = props.static;
         this.key = props.key;
         this.value = props.value;
         this.start = props.start;
@@ -5847,7 +6702,13 @@ var AST_PrivateMethod = DEFNODE("PrivateMethod", "", function AST_PrivateMethod(
     this.flags = 0;
 }, {
     $documentation: "A private class method inside a class",
-}, AST_ConciseMethod);
+    $propdoc: {
+        static: "[boolean] is this a static private method",
+    },
+    computed_key() {
+        return false;
+    },
+}, AST_ObjectProperty);
 
 var AST_Class = DEFNODE("Class", "name extends properties", function AST_Class(props) {
     if (props) {
@@ -5871,7 +6732,7 @@ var AST_Class = DEFNODE("Class", "name extends properties", function AST_Class(p
     $propdoc: {
         name: "[AST_SymbolClass|AST_SymbolDefClass?] optional class name.",
         extends: "[AST_Node]? optional parent class",
-        properties: "[AST_ObjectProperty*] array of properties"
+        properties: "[AST_ObjectProperty|AST_ClassStaticBlock]* array of properties or static blocks"
     },
     $documentation: "An ES6 class",
     _walk: function(visitor) {
@@ -5906,7 +6767,10 @@ var AST_Class = DEFNODE("Class", "name extends properties", function AST_Class(p
                 prop.key._walk(visitor);
                 visitor.pop();
             }
-            if ((prop instanceof AST_ClassPrivateProperty || prop instanceof AST_ClassProperty) && prop.static && prop.value) {
+            if (
+                prop instanceof AST_ClassPrivateProperty && prop.static && prop.value
+                || prop instanceof AST_ClassProperty && prop.static && prop.value
+            ) {
                 visitor.push(prop);
                 prop.value._walk(visitor);
                 visitor.pop();
@@ -5916,14 +6780,38 @@ var AST_Class = DEFNODE("Class", "name extends properties", function AST_Class(p
     /** go through the bits that are executed later, when the class is `new`'d or a static method is called */
     visit_deferred_class_parts(visitor) {
         this.properties.forEach((prop) => {
-            if (prop instanceof AST_ConciseMethod) {
+            if (
+                prop instanceof AST_ConciseMethod
+                || prop instanceof AST_PrivateMethod
+            ) {
                 prop.walk(visitor);
-            } else if (prop instanceof AST_ClassProperty && !prop.static && prop.value) {
+            } else if (
+                prop instanceof AST_ClassProperty && !prop.static && prop.value
+                || prop instanceof AST_ClassPrivateProperty && !prop.static && prop.value
+            ) {
                 visitor.push(prop);
                 prop.value._walk(visitor);
                 visitor.pop();
             }
         });
+    },
+    is_self_referential: function() {
+        const this_id = this.name && this.name.definition().id;
+        let found = false;
+        let class_this = true;
+        this.visit_nondeferred_class_parts(new TreeWalker((node, descend) => {
+            if (found) return true;
+            if (node instanceof AST_This) return (found = class_this);
+            if (node instanceof AST_SymbolRef) return (found = node.definition().id === this_id);
+            if (node instanceof AST_Lambda && !(node instanceof AST_Arrow)) {
+                const class_this_save = class_this;
+                class_this = false;
+                descend();
+                class_this = class_this_save;
+                return true;
+            }
+        }));
+        return found;
     },
 }, AST_Scope /* TODO a class might have a scope but it's not a scope */);
 
@@ -5965,7 +6853,6 @@ var AST_ClassProperty = DEFNODE("ClassProperty", "static quote", function AST_Cl
 var AST_ClassPrivateProperty = DEFNODE("ClassPrivateProperty", "", function AST_ClassPrivateProperty(props) {
     if (props) {
         this.static = props.static;
-        this.quote = props.quote;
         this.key = props.key;
         this.value = props.value;
         this.start = props.start;
@@ -5975,7 +6862,19 @@ var AST_ClassPrivateProperty = DEFNODE("ClassPrivateProperty", "", function AST_
     this.flags = 0;
 }, {
     $documentation: "A class property for a private property",
-}, AST_ClassProperty);
+    _walk: function(visitor) {
+        return visitor._visit(this, function() {
+            if (this.value instanceof AST_Node)
+                this.value._walk(visitor);
+        });
+    },
+    _children_backwards(push) {
+        if (this.value instanceof AST_Node) push(this.value);
+    },
+    computed_key() {
+        return false;
+    },
+}, AST_ObjectProperty);
 
 var AST_PrivateIn = DEFNODE("PrivateIn", "key value", function AST_PrivateIn(props) {
     if (props) {
@@ -6042,7 +6941,9 @@ var AST_ClassStaticBlock = DEFNODE("ClassStaticBlock", "body block_scope", funct
         while (i--) push(this.body[i]);
     },
     clone: clone_block_scope,
-    computed_key: () => false
+    computed_key() {
+        return false;
+    },
 }, AST_Scope);
 
 var AST_ClassExpression = DEFNODE("ClassExpression", null, function AST_ClassExpression(props) {
@@ -6110,6 +7011,9 @@ var AST_SymbolDeclaration = DEFNODE("SymbolDeclaration", "init", function AST_Sy
     this.flags = 0;
 }, {
     $documentation: "A declaration symbol (symbol in var/const, function name or argument, symbol in catch)",
+    all_symbols() {
+        return [this];
+    },
 }, AST_Symbol);
 
 var AST_SymbolVar = DEFNODE("SymbolVar", null, function AST_SymbolVar(props) {
@@ -6161,6 +7065,21 @@ var AST_SymbolConst = DEFNODE("SymbolConst", null, function AST_SymbolConst(prop
     this.flags = 0;
 }, {
     $documentation: "A constant declaration"
+}, AST_SymbolBlockDeclaration);
+
+var AST_SymbolUsing = DEFNODE("SymbolUsing", null, function AST_SymbolUsing(props) {
+    if (props) {
+        this.init = props.init;
+        this.scope = props.scope;
+        this.name = props.name;
+        this.thedef = props.thedef;
+        this.start = props.start;
+        this.end = props.end;
+    }
+
+    this.flags = 0;
+}, {
+    $documentation: "A `using` declaration"
 }, AST_SymbolBlockDeclaration);
 
 var AST_SymbolLet = DEFNODE("SymbolLet", null, function AST_SymbolLet(props) {
@@ -6311,12 +7230,12 @@ var AST_SymbolImport = DEFNODE("SymbolImport", null, function AST_SymbolImport(p
     $documentation: "Symbol referring to an imported name",
 }, AST_SymbolBlockDeclaration);
 
-var AST_SymbolImportForeign = DEFNODE("SymbolImportForeign", null, function AST_SymbolImportForeign(props) {
+var AST_SymbolImportForeign = DEFNODE("SymbolImportForeign", "quote", function AST_SymbolImportForeign(props) {
     if (props) {
+        this.quote = props.quote;
         this.scope = props.scope;
         this.name = props.name;
         this.thedef = props.thedef;
-        this.quote = props.quote;
         this.start = props.start;
         this.end = props.end;
     }
@@ -6363,12 +7282,12 @@ var AST_SymbolRef = DEFNODE("SymbolRef", null, function AST_SymbolRef(props) {
     $documentation: "Reference to some symbol (not definition/declaration)",
 }, AST_Symbol);
 
-var AST_SymbolExport = DEFNODE("SymbolExport", null, function AST_SymbolExport(props) {
+var AST_SymbolExport = DEFNODE("SymbolExport", "quote", function AST_SymbolExport(props) {
     if (props) {
+        this.quote = props.quote;
         this.scope = props.scope;
         this.name = props.name;
         this.thedef = props.thedef;
-        this.quote = props.quote;
         this.start = props.start;
         this.end = props.end;
     }
@@ -6378,12 +7297,12 @@ var AST_SymbolExport = DEFNODE("SymbolExport", null, function AST_SymbolExport(p
     $documentation: "Symbol referring to a name to export",
 }, AST_SymbolRef);
 
-var AST_SymbolExportForeign = DEFNODE("SymbolExportForeign", null, function AST_SymbolExportForeign(props) {
+var AST_SymbolExportForeign = DEFNODE("SymbolExportForeign", "quote", function AST_SymbolExportForeign(props) {
     if (props) {
+        this.quote = props.quote;
         this.scope = props.scope;
         this.name = props.name;
         this.thedef = props.thedef;
-        this.quote = props.quote;
         this.start = props.start;
         this.end = props.end;
     }
@@ -6498,9 +7417,10 @@ var AST_Number = DEFNODE("Number", "value raw", function AST_Number(props) {
     }
 }, AST_Constant);
 
-var AST_BigInt = DEFNODE("BigInt", "value", function AST_BigInt(props) {
+var AST_BigInt = DEFNODE("BigInt", "value raw", function AST_BigInt(props) {
     if (props) {
         this.value = props.value;
+        this.raw = props.raw;
         this.start = props.start;
         this.end = props.end;
     }
@@ -6509,7 +7429,8 @@ var AST_BigInt = DEFNODE("BigInt", "value", function AST_BigInt(props) {
 }, {
     $documentation: "A big int literal",
     $propdoc: {
-        value: "[string] big int value"
+        value: "[string] big int value, represented as a string",
+        raw: "[string] the original format preserved"
     }
 }, AST_Constant);
 
@@ -6551,7 +7472,7 @@ var AST_Null = DEFNODE("Null", null, function AST_Null(props) {
     value: null
 }, AST_Atom);
 
-DEFNODE("NaN", null, function AST_NaN(props) {
+var AST_NaN = DEFNODE("NaN", null, function AST_NaN(props) {
     if (props) {
         this.start = props.start;
         this.end = props.end;
@@ -6563,7 +7484,7 @@ DEFNODE("NaN", null, function AST_NaN(props) {
     value: 0/0
 }, AST_Atom);
 
-DEFNODE("Undefined", null, function AST_Undefined(props) {
+var AST_Undefined = DEFNODE("Undefined", null, function AST_Undefined(props) {
     if (props) {
         this.start = props.start;
         this.end = props.end;
@@ -6587,7 +7508,7 @@ var AST_Hole = DEFNODE("Hole", null, function AST_Hole(props) {
     value: (function() {}())
 }, AST_Atom);
 
-DEFNODE("Infinity", null, function AST_Infinity(props) {
+var AST_Infinity = DEFNODE("Infinity", null, function AST_Infinity(props) {
     if (props) {
         this.start = props.start;
         this.end = props.end;
@@ -6719,6 +7640,28 @@ class TreeWalker {
         }
     }
 
+    is_within_loop() {
+        let i = this.stack.length - 1;
+        let child = this.stack[i];
+        while (i--) {
+            const node = this.stack[i];
+
+            if (node instanceof AST_Lambda) return false;
+            if (
+                node instanceof AST_IterationStatement
+                // exclude for-loop bits that only run once
+                && !((node instanceof AST_For) && child === node.init)
+                && !((node instanceof AST_ForIn || node instanceof AST_ForOf) && child === node.object)
+            ) {
+                return true;
+            }
+
+            child = node;
+        }
+
+        return false;
+    }
+
     find_scope() {
         var stack = this.stack;
         for (var i = stack.length; --i >= 0;) {
@@ -6771,9 +7714,6 @@ const _INLINE     = 0b00000010;
 const _NOINLINE   = 0b00000100;
 const _KEY        = 0b00001000;
 const _MANGLEPROP = 0b00010000;
-
-// XXX Emscripten: export TreeWalker for walking through AST in acorn-optimizer.js.
-exports.TreeWalker = TreeWalker;
 
 /***********************************************************************
 
@@ -6914,11 +7854,11 @@ def_transform(AST_Catch, function(self, tw) {
     self.body = MAP(self.body, tw);
 });
 
-def_transform(AST_Definitions, function(self, tw) {
+def_transform(AST_DefinitionsLike, function(self, tw) {
     self.definitions = MAP(self.definitions, tw);
 });
 
-def_transform(AST_VarDef, function(self, tw) {
+def_transform(AST_VarDefLike, function(self, tw) {
     self.name = self.name.transform(tw);
     if (self.value) self.value = self.value.transform(tw);
 });
@@ -7030,6 +7970,10 @@ def_transform(AST_Import, function(self, tw) {
     self.module_name = self.module_name.transform(tw);
 });
 
+def_transform(AST_DynamicImport, function(self, tw) {
+    self.args = MAP(self.args, tw);
+});
+
 def_transform(AST_Export, function(self, tw) {
     if (self.exported_definition) self.exported_definition = self.exported_definition.transform(tw);
     if (self.exported_value) self.exported_value = self.exported_value.transform(tw);
@@ -7092,40 +8036,39 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
 (function() {
 
     var normalize_directives = function(body) {
-        var in_directive = true;
-
         for (var i = 0; i < body.length; i++) {
-            if (in_directive && body[i] instanceof AST_Statement && body[i].body instanceof AST_String) {
+            if (body[i] instanceof AST_Statement && body[i].body instanceof AST_String) {
                 body[i] = new AST_Directive({
                     start: body[i].start,
                     end: body[i].end,
+                    quote: '"',
                     value: body[i].body.value
                 });
-            } else if (in_directive && !(body[i] instanceof AST_Statement && body[i].body instanceof AST_String)) {
-                in_directive = false;
+            } else {
+                return body;
             }
         }
 
         return body;
     };
 
-    const assert_clause_from_moz = (assertions) => {
-        if (assertions && assertions.length > 0) {
+    function import_attributes_from_moz(attributes) {
+        if (attributes && attributes.length > 0) {
             return new AST_Object({
-                start: my_start_token(assertions),
-                end: my_end_token(assertions),
-                properties: assertions.map((assertion_kv) =>
+                start: my_start_token(attributes),
+                end: my_end_token(attributes),
+                properties: attributes.map((attr) =>
                     new AST_ObjectKeyVal({
-                        start: my_start_token(assertion_kv),
-                        end: my_end_token(assertion_kv),
-                        key: assertion_kv.key.name || assertion_kv.key.value,
-                        value: from_moz(assertion_kv.value)
+                        start: my_start_token(attr),
+                        end: my_end_token(attr),
+                        key: attr.key.name || attr.key.value,
+                        value: from_moz(attr.value)
                     })
                 )
             });
         }
         return null;
-    };
+    }
 
     var MOZ_TO_ME = {
         Program: function(M) {
@@ -7222,8 +8165,8 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             return new AST_Defun({
                 start: my_start_token(M),
                 end: my_end_token(M),
-                name: from_moz(M.id),
-                argnames: M.params.map(from_moz),
+                name: M.id && from_moz_symbol(AST_SymbolDefun, M.id),
+                argnames: M.params.map(M => from_moz_pattern(M, AST_SymbolFunarg)),
                 is_generator: M.generator,
                 async: M.async,
                 body: normalize_directives(from_moz(M.body).body)
@@ -7231,15 +8174,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         },
 
         FunctionExpression: function(M) {
-            return new AST_Function({
-                start: my_start_token(M),
-                end: my_end_token(M),
-                name: from_moz(M.id),
-                argnames: M.params.map(from_moz),
-                is_generator: M.generator,
-                async: M.async,
-                body: normalize_directives(from_moz(M.body).body)
-            });
+            return from_moz_lambda(M, /*is_method=*/false);
         },
 
         ArrowFunctionExpression: function(M) {
@@ -7249,7 +8184,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             return new AST_Arrow({
                 start: my_start_token(M),
                 end: my_end_token(M),
-                argnames: M.params.map(from_moz),
+                argnames: M.params.map(p => from_moz_pattern(p, AST_SymbolFunarg)),
                 body,
                 async: M.async,
             });
@@ -7289,57 +8224,48 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         },
 
         Property: function(M) {
-            var key = M.key;
-            var args = {
-                start    : my_start_token(key || M.value),
-                end      : my_end_token(M.value),
-                key      : key.type == "Identifier" ? key.name : key.value,
-                value    : from_moz(M.value)
-            };
-            if (M.computed) {
-                args.key = from_moz(M.key);
-            }
-            if (M.method) {
-                args.is_generator = M.value.generator;
-                args.async = M.value.async;
-                if (!M.computed) {
-                    args.key = new AST_SymbolMethod({ name: args.key });
-                } else {
-                    args.key = from_moz(M.key);
-                }
-                return new AST_ConciseMethod(args);
-            }
-            if (M.kind == "init") {
-                if (key.type != "Identifier" && key.type != "Literal") {
-                    args.key = from_moz(key);
-                }
+            if (M.kind == "init" && !M.method) {
+                var args = {
+                    start    : my_start_token(M.key || M.value),
+                    end      : my_end_token(M.value),
+                    key      : M.computed
+                                ? from_moz(M.key)
+                                : M.key.name || String(M.key.value),
+                    quote    : from_moz_quote(M.key, M.computed),
+                    static   : false, // always an object
+                    value    : from_moz(M.value)
+                };
+
                 return new AST_ObjectKeyVal(args);
-            }
-            if (typeof args.key === "string" || typeof args.key === "number") {
-                args.key = new AST_SymbolMethod({
-                    name: args.key
-                });
-            }
-            args.value = new AST_Accessor(args.value);
-            if (M.kind == "get") return new AST_ObjectGetter(args);
-            if (M.kind == "set") return new AST_ObjectSetter(args);
-            if (M.kind == "method") {
-                args.async = M.value.async;
-                args.is_generator = M.value.generator;
-                args.quote = M.computed ? "\"" : null;
-                return new AST_ConciseMethod(args);
+            } else {
+                var value = from_moz_lambda(M.value, /*is_method=*/true);
+                var args = {
+                    start    : my_start_token(M.key || M.value),
+                    end      : my_end_token(M.value),
+                    key      : M.computed
+                                ? from_moz(M.key)
+                                : from_moz_symbol(AST_SymbolMethod, M.key),
+                    quote    : from_moz_quote(M.key, M.computed),
+                    static   : false, // always an object
+                    value,
+                };
+
+                if (M.kind == "get") return new AST_ObjectGetter(args);
+                if (M.kind == "set") return new AST_ObjectSetter(args);
+                if (M.method) return new AST_ConciseMethod(args);
             }
         },
 
         MethodDefinition: function(M) {
             const is_private = M.key.type === "PrivateIdentifier";
-            const key = M.computed ? from_moz(M.key) : new AST_SymbolMethod({ name: M.key.name || M.key.value });
+            const key = M.computed ? from_moz(M.key) : new AST_SymbolMethod({ name: M.key.name || String(M.key.value) });
 
             var args = {
                 start    : my_start_token(M),
                 end      : my_end_token(M),
                 key,
-                value    : from_moz(M.value),
+                quote    : from_moz_quote(M.key, M.computed),
+                value    : from_moz_lambda(M.value, /*is_method=*/true),
                 static   : M.static,
             };
             if (M.kind == "get") {
@@ -7348,8 +8274,6 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             if (M.kind == "set") {
                 return new (is_private ? AST_PrivateSetter : AST_ObjectSetter)(args);
             }
-            args.is_generator = M.value.generator;
-            args.async = M.value.async;
             return new (is_private ? AST_PrivateMethod : AST_ConciseMethod)(args);
         },
 
@@ -7364,6 +8288,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             return new AST_ClassProperty({
                 start    : my_start_token(M),
                 end      : my_end_token(M),
+                quote    : from_moz_quote(M.key, M.computed),
                 key,
                 value    : from_moz(M.value),
                 static   : M.static,
@@ -7383,15 +8308,13 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                     static   : M.static,
                 });
             } else {
-                if (M.key.type !== "Identifier") {
-                    throw new Error("Non-Identifier key in PropertyDefinition");
-                }
-                key = from_moz(M.key);
+                key = from_moz_symbol(AST_SymbolClassProperty, M.key);
             }
 
             return new AST_ClassProperty({
                 start    : my_start_token(M),
                 end      : my_end_token(M),
+                quote    : from_moz_quote(M.key, M.computed),
                 key,
                 value    : from_moz(M.value),
                 static   : M.static,
@@ -7433,14 +8356,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                         return from_moz(prop);
                     }
                     prop.type = "Property";
-                    // XXX EMSCRIPTEN preserve quoted properties
-                    // https://github.com/mishoo/UglifyJS2/pull/3323
-                    var ret = from_moz(prop);
-                    if (prop.key.type === "Literal" &&
-                        (prop.key.raw[0] === '"' || prop.key.raw[0] === "'")) {
-                        ret.quote = true;
-                    }
-                    return ret;
+                    return from_moz(prop);
                 })
             });
         },
@@ -7490,11 +8406,42 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         },
 
         VariableDeclaration: function(M) {
-            return new (M.kind === "const" ? AST_Const :
-                        M.kind === "let" ? AST_Let : AST_Var)({
+            let decl_type;
+            let defs_type = AST_VarDef;
+            let sym_type;
+            let await_using = false;
+            if (M.kind === "const") {
+                decl_type = AST_Const;
+                sym_type = AST_SymbolConst;
+            } else if (M.kind === "let") {
+                decl_type = AST_Let;
+                sym_type = AST_SymbolLet;
+            } else if (M.kind === "using") {
+                decl_type = AST_Using;
+                defs_type = AST_UsingDef;
+                sym_type = AST_SymbolUsing;
+            } else if (M.kind === "await using") {
+                decl_type = AST_Using;
+                defs_type = AST_UsingDef;
+                sym_type = AST_SymbolUsing;
+                await_using = true;
+            } else {
+                decl_type = AST_Var;
+                sym_type = AST_SymbolVar;
+            }
+            const definitions = M.declarations.map(M => {
+                return new defs_type({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    name: from_moz_pattern(M.id, sym_type),
+                    value: from_moz(M.init),
+                });
+            });
+            return new decl_type({
                 start       : my_start_token(M),
                 end         : my_end_token(M),
-                definitions : M.declarations.map(from_moz)
+                definitions : definitions,
+                await       : await_using,
             });
         },
 
@@ -7515,7 +8462,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                 imported_name: imported_name,
                 imported_names : imported_names,
                 module_name : from_moz(M.source),
-                assert_clause: assert_clause_from_moz(M.assertions),
+                attributes: import_attributes_from_moz(M.attributes || M.assertions),
                 phase: M.phase || null
             });
         },
@@ -7524,13 +8471,13 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             return new AST_NameMapping({
                 start: my_start_token(M),
                 end: my_end_token(M),
-                foreign_name: from_moz(M.imported),
-                name: from_moz(M.local)
+                foreign_name: from_moz_symbol(AST_SymbolImportForeign, M.imported, M.imported.type === "Literal"),
+                name: from_moz_symbol(AST_SymbolImport, M.local)
             });
         },
 
         ImportDefaultSpecifier: function(M) {
-            return from_moz(M.local);
+            return from_moz_symbol(AST_SymbolImport, M.local);
         },
 
         ImportNamespaceSpecifier: function(M) {
@@ -7538,7 +8485,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                 start: my_start_token(M),
                 end: my_end_token(M),
                 foreign_name: new AST_SymbolImportForeign({ name: "*" }),
-                name: from_moz(M.local)
+                name: from_moz_symbol(AST_SymbolImport, M.local)
             });
         },
 
@@ -7547,55 +8494,55 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             if (M.options) {
                 args.push(from_moz(M.options));
             }
-            if (M.phase) {
-                return new AST_DynamicImport({
-                    start: my_start_token(M),
-                    end: my_end_token(M),
-                    phase: M.phase,
-                    args: args
-                });
-            }
-            return new AST_Call({
+            return new AST_DynamicImport({
                 start: my_start_token(M),
                 end: my_end_token(M),
-                expression: from_moz({
-                    type: "Identifier",
-                    name: "import"
-                }),
-                optional: false,
-                args
+                phase: M.phase,
+                args: args,
             });
         },
 
         ExportAllDeclaration: function(M) {
-            var foreign_name = M.exported == null ? 
+            var foreign_name = M.exported == null ?
                 new AST_SymbolExportForeign({ name: "*" }) :
-                from_moz(M.exported);
+                from_moz_symbol(AST_SymbolExportForeign, M.exported, M.exported.type === "Literal");
             return new AST_Export({
                 start: my_start_token(M),
                 end: my_end_token(M),
                 exported_names: [
                     new AST_NameMapping({
-                        name: new AST_SymbolExportForeign({ name: "*" }),
+                        start: my_start_token(M),
+                        end: my_end_token(M),
+                        name: new AST_SymbolExport({ name: "*" }),
                         foreign_name: foreign_name
                     })
                 ],
                 module_name: from_moz(M.source),
-                assert_clause: assert_clause_from_moz(M.assertions)
+                attributes: import_attributes_from_moz(M.attributes || M.assertions)
             });
         },
 
         ExportNamedDeclaration: function(M) {
-            return new AST_Export({
-                start: my_start_token(M),
-                end: my_end_token(M),
-                exported_definition: from_moz(M.declaration),
-                exported_names: M.specifiers && M.specifiers.length ? M.specifiers.map(function (specifier) {
-                    return from_moz(specifier);
-                }) : null,
-                module_name: from_moz(M.source),
-                assert_clause: assert_clause_from_moz(M.assertions)
-            });
+            if (M.declaration) {
+                // export const, export function, ...
+                return new AST_Export({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    exported_definition: from_moz(M.declaration),
+                    exported_names: null,
+                    module_name: null,
+                    attributes: null,
+                });
+            } else {
+                return new AST_Export({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    exported_definition: null,
+                    exported_names: M.specifiers && M.specifiers.length ? M.specifiers.map(from_moz) : [],
+                    module_name: from_moz(M.source),
+                    attributes: import_attributes_from_moz(M.attributes || M.assertions),
+                });
+            }
         },
 
         ExportDefaultDeclaration: function(M) {
@@ -7609,8 +8556,10 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
 
         ExportSpecifier: function(M) {
             return new AST_NameMapping({
-                foreign_name: from_moz(M.exported),
-                name: from_moz(M.local)
+                start: my_start_token(M),
+                end: my_end_token(M),
+                foreign_name: from_moz_symbol(AST_SymbolExportForeign, M.exported, M.exported.type === "Literal"),
+                name: from_moz_symbol(AST_SymbolExport, M.local, M.local.type === "Literal"),
             });
         },
 
@@ -7636,25 +8585,16 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                 args.value = { source, flags };
                 return new AST_RegExp(args);
             }
+            const bi = typeof M.value === "bigint" ? M.value.toString() : M.bigint;
+            if (typeof bi === "string") {
+                args.value = bi;
+                args.raw = M.raw;
+                return new AST_BigInt(args);
+            }
             if (val === null) return new AST_Null(args);
             switch (typeof val) {
               case "string":
                 args.quote = "\"";
-                var p = FROM_MOZ_STACK[FROM_MOZ_STACK.length - 2];
-                if (p.type == "ImportSpecifier") {
-                    args.name = val;
-                    return new AST_SymbolImportForeign(args);
-                } else if (p.type == "ExportSpecifier") {
-                    args.name = val;
-                    if (M == p.exported) {
-                        return new AST_SymbolExportForeign(args);
-                    } else {
-                        return new AST_SymbolExport(args);
-                    }
-                } else if (p.type == "ExportAllDeclaration" && M == p.exported) {
-                    args.name = val;
-                    return new AST_SymbolExportForeign(args);
-                }
                 args.value = val;
                 return new AST_String(args);
               case "number":
@@ -7663,13 +8603,6 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                 return new AST_Number(args);
               case "boolean":
                 return new (val ? AST_True : AST_False)(args);
-              case "bigint":
-                args.value = val;
-                return new AST_BigInt(args);
-              case "undefined":
-                return undefined;
-              default:
-                throw new Error("Unhandled value type: " + typeof val);
             }
         },
 
@@ -7688,33 +8621,10 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         },
 
         Identifier: function(M) {
-            var p = FROM_MOZ_STACK[FROM_MOZ_STACK.length - 2];
-            return new (  p.type == "LabeledStatement" ? AST_Label
-                        : p.type == "VariableDeclarator" && p.id === M ? (p.kind == "const" ? AST_SymbolConst : p.kind == "let" ? AST_SymbolLet : AST_SymbolVar)
-                        : /Import.*Specifier/.test(p.type) ? (p.local === M ? AST_SymbolImport : AST_SymbolImportForeign)
-                        : p.type == "ExportSpecifier" ? (p.local === M ? AST_SymbolExport : AST_SymbolExportForeign)
-                        : p.type == "FunctionExpression" ? (p.id === M ? AST_SymbolLambda : AST_SymbolFunarg)
-                        : p.type == "FunctionDeclaration" ? (p.id === M ? AST_SymbolDefun : AST_SymbolFunarg)
-                        : p.type == "ArrowFunctionExpression" ? (p.params.includes(M)) ? AST_SymbolFunarg : AST_SymbolRef
-                        : p.type == "ClassExpression" ? (p.id === M ? AST_SymbolClass : AST_SymbolRef)
-                        : p.type == "Property" ? (p.key === M && p.computed || p.value === M ? AST_SymbolRef : AST_SymbolMethod)
-                        : p.type == "PropertyDefinition" || p.type === "FieldDefinition" ? (p.key === M && p.computed || p.value === M ? AST_SymbolRef : AST_SymbolClassProperty)
-                        : p.type == "ClassDeclaration" ? (p.id === M ? AST_SymbolDefClass : AST_SymbolRef)
-                        : p.type == "MethodDefinition" ? (p.computed ? AST_SymbolRef : AST_SymbolMethod)
-                        : p.type == "CatchClause" ? AST_SymbolCatch
-                        : p.type == "BreakStatement" || p.type == "ContinueStatement" ? AST_LabelRef
-                        : AST_SymbolRef)({
-                            start : my_start_token(M),
-                            end   : my_end_token(M),
-                            name  : M.name
-                        });
-        },
-
-        BigIntLiteral(M) {
-            return new AST_BigInt({
+            return new AST_SymbolRef({
                 start : my_start_token(M),
                 end   : my_end_token(M),
-                value : M.value
+                name  : M.name
             });
         },
 
@@ -7744,19 +8654,28 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         },
 
         LabeledStatement: function(M) {
-            return new AST_LabeledStatement({
-                start: my_start_token(M),
-                end: my_end_token(M),
-                label: from_moz(M.label),
-                body: from_moz(M.body)
-            });
+            try {
+                const label = from_moz_symbol(AST_Label, M.label);
+                FROM_MOZ_LABELS.push(label);
+
+                const stat = new AST_LabeledStatement({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    label,
+                    body: from_moz(M.body)
+                });
+
+                return stat;
+            } finally {
+                FROM_MOZ_LABELS.pop();
+            }
         },
 
         BreakStatement: function(M) {
             return new AST_Break({
                 start: my_start_token(M),
                 end: my_end_token(M),
-                label: from_moz(M.label)
+                label: from_moz_label_ref(M.label),
             });
         },
 
@@ -7764,7 +8683,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             return new AST_Continue({
                 start: my_start_token(M),
                 end: my_end_token(M),
-                label: from_moz(M.label)
+                label: from_moz_label_ref(M.label),
             });
         },
 
@@ -7876,20 +8795,11 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             });
         },
 
-        VariableDeclarator: function(M) {
-            return new AST_VarDef({
-                start: my_start_token(M),
-                end: my_end_token(M),
-                name: from_moz(M.id),
-                value: from_moz(M.init)
-            });
-        },
-
         CatchClause: function(M) {
             return new AST_Catch({
                 start: my_start_token(M),
                 end: my_end_token(M),
-                argname: from_moz(M.param),
+                argname: M.param ? from_moz_pattern(M.param, AST_SymbolCatch) : null,
                 body: from_moz(M.body).body
             });
         },
@@ -7897,6 +8807,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         ThisExpression: function(M) {
             return new AST_This({
                 start: my_start_token(M),
+                name: "this",
                 end: my_end_token(M)
             });
         },
@@ -7904,7 +8815,8 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         Super: function(M) {
             return new AST_Super({
                 start: my_start_token(M),
-                end: my_end_token(M)
+                end: my_end_token(M),
+                name: "super",
             });
         },
 
@@ -7945,6 +8857,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                 start: my_start_token(M),
                 end: my_end_token(M),
                 operator: M.operator,
+                logical: M.operator === "??=" || M.operator === "&&=" || M.operator === "||=",
                 left: from_moz(M.left),
                 right: from_moz(M.right)
             });
@@ -7977,8 +8890,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                 optional: M.optional,
                 args: M.arguments.map(from_moz)
             });
-        },
-
+        }
     };
 
     MOZ_TO_ME.UpdateExpression =
@@ -7998,7 +8910,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         return new (M.type === "ClassDeclaration" ? AST_DefClass : AST_ClassExpression)({
             start    : my_start_token(M),
             end      : my_end_token(M),
-            name     : from_moz(M.id),
+            name     : M.id && from_moz_symbol(M.type === "ClassDeclaration" ? AST_SymbolDefClass : AST_SymbolClass, M.id),
             extends  : from_moz(M.superClass),
             properties: M.body.body.map(from_moz)
         });
@@ -8126,18 +9038,11 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             type: "DebuggerStatement"
         };
     });
-    def_to_moz(AST_VarDef, function To_Moz_VariableDeclarator(M) {
+    def_to_moz(AST_VarDefLike, function To_Moz_VariableDeclarator(M) {
         return {
             type: "VariableDeclarator",
             id: to_moz(M.name),
             init: to_moz(M.value)
-        };
-    });
-    def_to_moz(AST_Catch, function To_Moz_CatchClause(M) {
-        return {
-            type: "CatchClause",
-            param: to_moz(M.argname),
-            body: to_moz_block(M)
         };
     });
 
@@ -8149,30 +9054,6 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
     def_to_moz(AST_Super, function To_Moz_Super() {
         return {
             type: "Super"
-        };
-    });
-    def_to_moz(AST_Binary, function To_Moz_BinaryExpression(M) {
-        return {
-            type: "BinaryExpression",
-            operator: M.operator,
-            left: to_moz(M.left),
-            right: to_moz(M.right)
-        };
-    });
-    def_to_moz(AST_Binary, function To_Moz_LogicalExpression(M) {
-        return {
-            type: "LogicalExpression",
-            operator: M.operator,
-            left: to_moz(M.left),
-            right: to_moz(M.right)
-        };
-    });
-    def_to_moz(AST_Assign, function To_Moz_AssignmentExpression(M) {
-        return {
-            type: "AssignmentExpression",
-            operator: M.operator,
-            left: to_moz(M.left),
-            right: to_moz(M.right)
         };
     });
     def_to_moz(AST_Conditional, function To_Moz_ConditionalExpression(M) {
@@ -8256,36 +9137,36 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         return {
             type: "FunctionDeclaration",
             id: to_moz(M.name),
-            params: M.argnames.map(to_moz),
+            params: M.argnames.map(to_moz_pattern),
             generator: M.is_generator,
             async: M.async,
             body: to_moz_scope("BlockStatement", M)
         };
     });
 
-    def_to_moz(AST_Function, function To_Moz_FunctionExpression(M, parent) {
-        var is_generator = parent.is_generator !== undefined ?
-            parent.is_generator : M.is_generator;
+    def_to_moz(AST_Function, function To_Moz_FunctionExpression(M) {
         return {
             type: "FunctionExpression",
             id: to_moz(M.name),
-            params: M.argnames.map(to_moz),
-            generator: is_generator,
-            async: M.async,
+            params: M.argnames.map(to_moz_pattern),
+            generator: M.is_generator || false,
+            async: M.async || false,
             body: to_moz_scope("BlockStatement", M)
         };
     });
 
     def_to_moz(AST_Arrow, function To_Moz_ArrowFunctionExpression(M) {
-        var body = {
-            type: "BlockStatement",
-            body: M.body.map(to_moz)
-        };
+        var body = M.body.length === 1 && M.body[0] instanceof AST_Return && M.body[0].value
+            ? to_moz(M.body[0].value)
+            : {
+                type: "BlockStatement",
+                body: M.body.map(to_moz)
+            };
         return {
             type: "ArrowFunctionExpression",
-            params: M.argnames.map(to_moz),
+            params: M.argnames.map(to_moz_pattern),
             async: M.async,
-            body: body
+            body: body,
         };
     });
 
@@ -8293,12 +9174,39 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         if (M.is_array) {
             return {
                 type: "ArrayPattern",
-                elements: M.names.map(to_moz)
+                elements: M.names.map(
+                    M => M instanceof AST_Hole ? null : to_moz_pattern(M)
+                ),
             };
         }
         return {
             type: "ObjectPattern",
-            properties: M.names.map(to_moz)
+            properties: M.names.map(M => {
+                if (M instanceof AST_ObjectKeyVal) {
+                    var computed = M.computed_key();
+                    const [shorthand, key] = to_moz_property_key(M.key, computed, M.quote, M.value);
+
+                    return {
+                        type: "Property",
+                        computed,
+                        kind: "init",
+                        key: key,
+                        method: false,
+                        shorthand,
+                        value: to_moz_pattern(M.value)
+                    };
+                } else {
+                    return to_moz_pattern(M);
+                }
+            }),
+        };
+    });
+
+    def_to_moz(AST_DefaultAssign, function To_Moz_AssignmentExpression(M) {
+        return {
+            type: "AssignmentPattern",
+            left: to_moz_pattern(M.left),
+            right: to_moz(M.right),
         };
     });
 
@@ -8342,44 +9250,44 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
     def_to_moz(AST_Catch, function To_Moz_CatchClause(M) {
         return {
             type: "CatchClause",
-            param: to_moz(M.argname),
-            guard: null,
+            param: M.argname != null ? to_moz_pattern(M.argname) : null,
             body: to_moz_block(M)
         };
     });
 
-    def_to_moz(AST_Definitions, function To_Moz_VariableDeclaration(M) {
+    def_to_moz(AST_DefinitionsLike, function To_Moz_VariableDeclaration(M) {
         return {
             type: "VariableDeclaration",
             kind:
                 M instanceof AST_Const ? "const" :
-                M instanceof AST_Let ? "let" : "var",
+                M instanceof AST_Let ? "let" :
+                M instanceof AST_Using ? (M.await ? "await using" : "using") :
+                "var",
             declarations: M.definitions.map(to_moz)
         };
     });
 
-    const assert_clause_to_moz = assert_clause => {
-        const assertions = [];
-        if (assert_clause) {
-            for (const { key, value } of assert_clause.properties) {
+    function import_attributes_to_moz(attribute) {
+        const import_attributes = [];
+        if (attribute) {
+            for (const { key, value } of attribute.properties) {
                 const key_moz = is_basic_identifier_string(key)
                     ? { type: "Identifier", name: key }
                     : { type: "Literal", value: key, raw: JSON.stringify(key) };
-                assertions.push({
+                import_attributes.push({
                     type: "ImportAttribute",
                     key: key_moz,
                     value: to_moz(value)
                 });
             }
         }
-        return assertions;
-    };
+        return import_attributes;
+    }
 
     def_to_moz(AST_Export, function To_Moz_ExportDeclaration(M) {
         if (M.exported_names) {
             var first_exported = M.exported_names[0];
-            var first_exported_name = first_exported.name;
-            if (first_exported_name.name === "*" && !first_exported_name.quote) {
+            if (first_exported && first_exported.name.name === "*" && !first_exported.name.quote) {
                 var foreign_name = first_exported.foreign_name;
                 var exported = foreign_name.name === "*" && !foreign_name.quote
                     ? null
@@ -8388,7 +9296,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                     type: "ExportAllDeclaration",
                     source: to_moz(M.module_name),
                     exported: exported,
-                    assertions: assert_clause_to_moz(M.assert_clause)
+                    attributes: import_attributes_to_moz(M.attributes)
                 };
             }
             return {
@@ -8402,13 +9310,23 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                 }),
                 declaration: to_moz(M.exported_definition),
                 source: to_moz(M.module_name),
-                assertions: assert_clause_to_moz(M.assert_clause)
+                attributes: import_attributes_to_moz(M.attributes)
             };
         }
-        return {
-            type: M.is_default ? "ExportDefaultDeclaration" : "ExportNamedDeclaration",
-            declaration: to_moz(M.exported_value || M.exported_definition)
-        };
+
+        if (M.is_default) {
+            return {
+                type: "ExportDefaultDeclaration",
+                declaration: to_moz(M.exported_value || M.exported_definition),
+            };
+        } else {
+            return {
+                type: "ExportNamedDeclaration",
+                declaration: to_moz(M.exported_value || M.exported_definition),
+                specifiers: [],
+                source: null,
+            };
+        }
     });
 
     def_to_moz(AST_Import, function To_Moz_ImportDeclaration(M) {
@@ -8420,8 +9338,8 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             });
         }
         if (M.imported_names) {
-            var first_imported_foreign_name = M.imported_names[0].foreign_name;
-            if (first_imported_foreign_name.name === "*" && !first_imported_foreign_name.quote) {
+            var first_foreign_name = M.imported_names[0] && M.imported_names[0].foreign_name;
+            if (first_foreign_name && first_foreign_name.name === "*" && !first_foreign_name.quote) {
                 specifiers.push({
                     type: "ImportNamespaceSpecifier",
                     local: to_moz(M.imported_names[0].name)
@@ -8440,7 +9358,7 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             type: "ImportDeclaration",
             specifiers: specifiers,
             source: to_moz(M.module_name),
-            assertions: assert_clause_to_moz(M.assert_clause)
+            attributes: import_attributes_to_moz(M.attributes)
         };
         if (M.phase) moz.phase = M.phase;
         return moz;
@@ -8528,6 +9446,15 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         };
     });
 
+    def_to_moz(AST_Assign, function To_Moz_AssignmentExpression(M) {
+        return {
+            type: "AssignmentExpression",
+            operator: M.operator,
+            left: to_moz(M.left),
+            right: to_moz(M.right)
+        };
+    });
+
     def_to_moz(AST_PrivateIn, function To_Moz_BinaryExpression_PrivateIn(M) {
         return {
             type: "BinaryExpression",
@@ -8552,29 +9479,10 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
     });
 
     def_to_moz(AST_ObjectProperty, function To_Moz_Property(M, parent) {
-        var key = M.key instanceof AST_Node ? to_moz(M.key) : {
-            type: "Identifier",
-            value: M.key
-        };
-        if (typeof M.key === "number") {
-            key = {
-                type: "Literal",
-                value: Number(M.key)
-            };
-        }
-        if (typeof M.key === "string") {
-            key = {
-                type: "Identifier",
-                name: M.key
-            };
-        }
+        var computed = M.computed_key();
+        const [shorthand, key] = to_moz_property_key(M.key, computed, M.quote, M.value);
+
         var kind;
-        var string_or_num = typeof M.key === "string" || typeof M.key === "number";
-        var computed = string_or_num ? false : !(M.key instanceof AST_Symbol) || M.key instanceof AST_SymbolRef;
-        if (M instanceof AST_ObjectKeyVal) {
-            kind = "init";
-            computed = !string_or_num;
-        } else
         if (M instanceof AST_ObjectGetter) {
             kind = "get";
         } else
@@ -8629,38 +9537,62 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         return {
             type: "Property",
             computed: computed,
+            method: false,
+            shorthand,
             kind: kind,
             key: key,
             value: to_moz(M.value)
         };
     });
 
+    def_to_moz(AST_ObjectKeyVal, function To_Moz_Property(M) {
+        var computed = M.computed_key();
+        const [shorthand, key] = to_moz_property_key(M.key, computed, M.quote, M.value);
+
+        return {
+            type: "Property",
+            computed: computed,
+            shorthand: shorthand,
+            method: false,
+            kind: "init",
+            key: key,
+            value: to_moz(M.value)
+        };
+    });
+
     def_to_moz(AST_ConciseMethod, function To_Moz_MethodDefinition(M, parent) {
+        const computed = M.computed_key();
+        const [_always_false, key] = to_moz_property_key(M.key, computed, M.quote, M.value);
+
         if (parent instanceof AST_Object) {
             return {
                 type: "Property",
-                computed: !(M.key instanceof AST_Symbol) || M.key instanceof AST_SymbolRef,
                 kind: "init",
+                computed,
                 method: true,
                 shorthand: false,
-                key: to_moz(M.key),
-                value: to_moz(M.value)
+                key,
+                value: to_moz(M.value),
             };
         }
 
-        const key = M instanceof AST_PrivateMethod
-            ? {
-                type: "PrivateIdentifier",
-                name: M.key.name
-            }
-            : to_moz(M.key);
-
         return {
             type: "MethodDefinition",
-            kind: M.key === "constructor" ? "constructor" : "method",
+            kind: !computed && M.key.name === "constructor" ? "constructor" : "method",
+            computed,
             key,
             value: to_moz(M.value),
-            computed: !(M.key instanceof AST_Symbol) || M.key instanceof AST_SymbolRef,
+            static: M.static,
+        };
+    });
+
+    def_to_moz(AST_PrivateMethod, function To_Moz_MethodDefinition(M) {
+        return {
+            type: "MethodDefinition",
+            kind: "method",
+            key: { type: "PrivateIdentifier", name: M.key.name },
+            value: to_moz(M.value),
+            computed: false,
             static: M.static,
         };
     });
@@ -8748,8 +9680,14 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
     });
 
     def_to_moz(AST_BigInt, M => ({
-        type: "BigIntLiteral",
-        value: M.value
+        type: "Literal",
+        // value cannot be represented natively
+        // see: https://github.com/estree/estree/blob/master/es2020.md#bigintliteral
+        value: null,
+        // `M.value` is a string that may be a hex number representation.
+        // but "bigint" property should have only decimal digits
+        bigint: typeof BigInt === "function" ? BigInt(M.value).toString() : M.value,
+        raw: M.raw,
     }));
 
     AST_Boolean.DEFMETHOD("to_mozilla_ast", AST_Constant.prototype.to_mozilla_ast);
@@ -8793,20 +9731,133 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         );
     }
 
-    var FROM_MOZ_STACK = null;
+    var FROM_MOZ_LABELS = null;
 
     function from_moz(node) {
-        FROM_MOZ_STACK.push(node);
-        var ret = node != null ? MOZ_TO_ME[node.type](node) : null;
-        FROM_MOZ_STACK.pop();
-        return ret;
+        if (node == null) return null;
+        return MOZ_TO_ME[node.type](node);
+    }
+
+    function from_moz_quote(moz_key, computed) {
+        if (!computed && moz_key.type === "Literal" && typeof moz_key.value === "string") {
+            return '"';
+        } else {
+            return "";
+        }
+    }
+
+    function from_moz_symbol(symbol_type, M, has_quote) {
+        return new symbol_type({
+            start: my_start_token(M),
+            quote: has_quote ? '"' : undefined,
+            name: M.type === "Identifier" ? M.name : String(M.value),
+            end: my_end_token(M),
+        });
+    }
+
+    function from_moz_lambda(M, is_method) {
+        return new (is_method ? AST_Accessor : AST_Function)({
+            start: my_start_token(M),
+            end: my_end_token(M),
+            name: M.id && from_moz_symbol(is_method ? AST_SymbolMethod : AST_SymbolLambda, M.id),
+            argnames: M.params.map(M => from_moz_pattern(M, AST_SymbolFunarg)),
+            is_generator: M.generator,
+            async: M.async,
+            body: normalize_directives(from_moz(M.body).body)
+        });
+    }
+
+    function from_moz_pattern(M, sym_type) {
+        switch (M.type) {
+            case "ObjectPattern":
+                return new AST_Destructuring({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    names: M.properties.map(p => from_moz_pattern(p, sym_type)),
+                    is_array: false
+                });
+
+            case "Property":
+                var key = M.key;
+                var args = {
+                    start    : my_start_token(key || M.value),
+                    end      : my_end_token(M.value),
+                    key      : key.type == "Identifier" ? key.name : String(key.value),
+                    quote    : !M.computed && key.type === "Literal" && typeof key.value === "string"
+                                ? '"'
+                                : "",
+                    value    : from_moz_pattern(M.value, sym_type)
+                };
+                if (M.computed) {
+                    args.key = from_moz(M.key);
+                }
+                return new AST_ObjectKeyVal(args);
+
+            case "ArrayPattern":
+                return new AST_Destructuring({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    names: M.elements.map(function(elm) {
+                        if (elm === null) {
+                            return new AST_Hole();
+                        }
+                        return from_moz_pattern(elm, sym_type);
+                    }),
+                    is_array: true
+                });
+
+            case "SpreadElement":
+            case "RestElement":
+                return new AST_Expansion({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    expression: from_moz_pattern(M.argument, sym_type),
+                });
+
+            case "AssignmentPattern":
+                return new AST_DefaultAssign({
+                    start : my_start_token(M),
+                    end   : my_end_token(M),
+                    left  : from_moz_pattern(M.left, sym_type),
+                    operator: "=",
+                    right : from_moz(M.right),
+                });
+
+            case "Identifier":
+                return new sym_type({
+                    start : my_start_token(M),
+                    end   : my_end_token(M),
+                    name  : M.name,
+                });
+
+            default:
+                throw new Error("Invalid node type for destructuring: " + M.type);
+        }
+    }
+
+    function from_moz_label_ref(m_label) {
+        if (!m_label) return null;
+
+        const label = from_moz_symbol(AST_LabelRef, m_label);
+
+        let i = FROM_MOZ_LABELS.length;
+        while (i--) {
+            const label_origin = FROM_MOZ_LABELS[i];
+
+            if (label.name === label_origin.name) {
+                label.thedef = label_origin;
+                break;
+            }
+        }
+
+        return label;
     }
 
     AST_Node.from_mozilla_ast = function(node) {
-        var save_stack = FROM_MOZ_STACK;
-        FROM_MOZ_STACK = [];
+        var save_labels = FROM_MOZ_LABELS;
+        FROM_MOZ_LABELS = [];
         var ast = from_moz(node);
-        FROM_MOZ_STACK = save_stack;
+        FROM_MOZ_LABELS = save_labels;
         return ast;
     };
 
@@ -8846,6 +9897,52 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
         TO_MOZ_STACK.pop();
         if (TO_MOZ_STACK.length === 0) { TO_MOZ_STACK = null; }
         return ast;
+    }
+
+    /** Object property keys can be number literals, string literals, or raw names. Additionally they can be shorthand. We decide that here. */
+    function to_moz_property_key(key, computed = false, quote = false, value = null) {
+        if (computed) {
+            return [false, to_moz(key)];
+        }
+
+        const key_name = typeof key === "string" ? key : key.name;
+        let moz_key;
+        if (quote) {
+            moz_key = { type: "Literal", value: key_name, raw: JSON.stringify(key_name) };
+        } else if ("" + +key_name === key_name && +key_name >= 0) {
+            // representable as a number
+            moz_key = { type: "Literal", value: +key_name, raw: JSON.stringify(+key_name) };
+        } else {
+            moz_key = { type: "Identifier", name: key_name };
+        }
+
+        const shorthand =
+            moz_key.type === "Identifier"
+            && moz_key.name === key_name
+            && (value instanceof AST_Symbol && value.name === key_name
+                || value instanceof AST_DefaultAssign && value.left.name === key_name);
+        return [shorthand, moz_key];
+    }
+
+    function to_moz_pattern(node) {
+        if (node instanceof AST_Expansion) {
+            return {
+                type: "RestElement",
+                argument: to_moz_pattern(node.expression),
+            };
+        }
+
+        if ((
+            node instanceof AST_Symbol
+            || node instanceof AST_Destructuring
+            || node instanceof AST_DefaultAssign
+            || node instanceof AST_PropAccess
+        )) {
+            // Plain translation
+            return to_moz(node);
+        }
+
+        throw new Error(node.TYPE);
     }
 
     function to_moz_in_destructuring() {
@@ -8959,11 +10056,10 @@ function left_is_object(node) {
 
  ***********************************************************************/
 
-const EXPECT_DIRECTIVE = /^$|[;{][\s\n]*$/;
 const CODE_LINE_BREAK = 10;
 const CODE_SPACE = 32;
 
-const r_annotation = /[@#]__(PURE|INLINE|NOINLINE)__/g;
+const r_annotation = /[@#]__(PURE|INLINE|NOINLINE)__/;
 
 function is_some_comments(comment) {
     // multiline comment
@@ -8973,6 +10069,7 @@ function is_some_comments(comment) {
     );
 }
 
+const ROPE_COMMIT_WHEN = 8 * 1000;
 class Rope {
     constructor() {
         this.committed = "";
@@ -8980,7 +10077,13 @@ class Rope {
     }
 
     append(str) {
-        this.current += str;
+        /** When `this.current` is too long, commit it. */
+        if (this.current.length > ROPE_COMMIT_WHEN) {
+            this.committed += this.current + str;
+            this.current = "";
+        } else {
+            this.current += str;
+        }
     }
 
     insertAt(char, index) {
@@ -9002,13 +10105,44 @@ class Rope {
         return this.current[index - committed.length];
     }
 
-    curLength() {
-        return this.current.length;
+    charCodeAt(index) {
+        const { committed } = this;
+        if (index < committed.length) return committed.charCodeAt(index);
+        return this.current.charCodeAt(index - committed.length);
     }
 
     length() {
         return this.committed.length + this.current.length;
     }
+
+    expectDirective() {
+        // /^$|[;{][\s\n]*$/
+
+        let ch, n = this.length();
+
+        if (n <= 0) return true;
+
+        // Skip N whitespace from the end
+        while (
+            (ch = this.charCodeAt(--n))
+            && (ch == CODE_SPACE || ch == CODE_LINE_BREAK)
+        );
+
+        // either ";", or "{", or the string ended
+        return !ch || ch === 59 || ch === 123;
+    }
+
+    hasNLB() {
+        let n = this.length() - 1;
+        while (n >= 0) {
+            const code = this.charCodeAt(n--);
+
+            if (code === CODE_LINE_BREAK) return true;
+            if (code !== CODE_SPACE) return false;
+        }
+        return true;
+    }
+
 
     toString() {
         return this.committed + this.current;
@@ -9043,7 +10177,7 @@ function OutputStream(options) {
         webkit               : false,
         width                : 80,
         wrap_iife            : false,
-        wrap_func_args       : true,
+        wrap_func_args       : false,
 
         _destroy_ast         : false
     }, true);
@@ -9077,6 +10211,13 @@ function OutputStream(options) {
         }
     }
 
+    if (options.preserve_annotations) {
+        let prev_comment_filter = comment_filter;
+        comment_filter = function (comment) {
+            return r_annotation.test(comment.value) || prev_comment_filter.apply(this, arguments);
+        };
+    }
+
     var indentation = 0;
     var current_col = 0;
     var current_line = 1;
@@ -9108,6 +10249,56 @@ function OutputStream(options) {
             }
             return match;
         });
+    };
+
+    /** Matches an identifier with non-ascii characters */
+    var re_high_identifier = (() => {
+        try {
+            return new RegExp("^(?![\\u0000-\\u00ff]+$)([\\p{ID_Start}][\\p{ID_Continue}]*)$", "u");
+        } catch (_) {
+            return undefined; /* \p in regex above is unsupported */
+        }
+    })();
+
+    var ident_to_utf8 = (options.ascii_only || !re_high_identifier) ? to_utf8 : function (str) {
+        if (re_high_identifier.test(str)) {
+            str = str.replace(/[\ud800-\udbff][\udc00-\udfff]|([\ud800-\udbff]|[\udc00-\udfff])/g, function(match, lone) {
+                if (lone) {
+                    return "\\u" + lone.charCodeAt(0).toString(16).padStart(4, "0");
+                }
+                return match;
+            });
+
+            // Escape identifier characters from higher unicode versions
+            var char = get_full_char(str, 0);
+            var escaped = char;
+            if (
+                is_identifier_start_broad(char)
+                && !is_identifier_start(char)
+            ) {
+                const code_point = char.codePointAt(0);
+                escaped = code_point <= 0xffff
+                    ? `\\u${code_point.toString(16).padStart(4, "0")}`
+                    : `\\u{${code_point.toString(16)}}`;
+            }
+            for (var i = char.length; i < str.length; i += char.length) {
+                char = get_full_char(str, i);
+                if (
+                    is_identifier_char_broad(char)
+                    && !is_identifier_char(char)
+                ) {
+                    const code_point = char.codePointAt(0);
+                    escaped += code_point <= 0xffff
+                        ? `\\u${code_point.toString(16).padStart(4, "0")}`
+                        : `\\u{${code_point.toString(16)}}`;
+                } else {
+                    escaped += char;
+                }
+            }
+            return escaped;
+        } else {
+            return str;
+        }
     };
 
     function make_string(str, quote) {
@@ -9167,7 +10358,7 @@ function OutputStream(options) {
 
     function make_name(name) {
         name = name.toString();
-        name = to_utf8(name, true);
+        name = ident_to_utf8(name, true);
         return name;
     }
 
@@ -9191,10 +10382,12 @@ function OutputStream(options) {
         mappings.forEach(function(mapping) {
             try {
                 let { name, token } = mapping;
-                if (token.type == "name" || token.type === "privatename") {
-                    name = token.value;
-                } else if (name instanceof AST_Symbol) {
-                    name = token.type === "string" ? token.value : name.name;
+                if (name !== false) {
+                    if (token.type == "name" || token.type === "privatename") {
+                        name = token.value;
+                    } else if (name instanceof AST_Symbol) {
+                        name = token.type === "string" ? token.value : name.name;
+                    }
                 }
                 options.source_map.add(
                     mapping.token.file,
@@ -9213,9 +10406,9 @@ function OutputStream(options) {
         if (current_col > options.max_line_len) {
             if (might_add_newline) {
                 OUTPUT.insertAt("\n", might_add_newline);
-                const curLength = OUTPUT.curLength();
+                const len_after_newline = OUTPUT.length() - might_add_newline - 1;
                 if (mappings) {
-                    var delta = curLength - current_col;
+                    var delta = len_after_newline - current_col;
                     mappings.forEach(function(mapping) {
                         mapping.line++;
                         mapping.col += delta;
@@ -9223,7 +10416,7 @@ function OutputStream(options) {
                 }
                 current_line++;
                 current_pos++;
-                current_col = curLength;
+                current_col = len_after_newline;
             }
         }
         if (might_add_newline) {
@@ -9282,8 +10475,8 @@ function OutputStream(options) {
         }
 
         if (might_need_space) {
-            if ((is_identifier_char(prev)
-                    && (is_identifier_char(ch) || ch == "\\"))
+            if ((is_identifier_char_broad(prev)
+                    && (is_identifier_char_broad(ch) || ch == "\\"))
                 || (ch == "/" && ch == prev)
                 || ((ch == "+" || ch == "-") && ch == last)
             ) {
@@ -9422,23 +10615,6 @@ function OutputStream(options) {
         return OUTPUT.toString();
     }
 
-    function has_nlb() {
-        const output = OUTPUT.toString();
-        let n = output.length - 1;
-        while (n >= 0) {
-            const code = output.charCodeAt(n);
-            if (code === CODE_LINE_BREAK) {
-                return true;
-            }
-
-            if (code !== CODE_SPACE) {
-                return false;
-            }
-            n--;
-        }
-        return true;
-    }
-
     function filter_comment(comment) {
         if (!options.preserve_annotations) {
             comment = comment.replace(r_annotation, " ");
@@ -9519,7 +10695,7 @@ function OutputStream(options) {
 
         comments = comments.filter(comment_filter, node).filter(c => !printed_comments.has(c));
         if (comments.length == 0) return;
-        var last_nlb = has_nlb();
+        var last_nlb = OUTPUT.hasNLB();
         comments.forEach(function(c, i) {
             printed_comments.add(c);
             if (!last_nlb) {
@@ -9577,7 +10753,7 @@ function OutputStream(options) {
                 print("\n");
                 indent();
                 need_newline_indented = false;
-            } else if (c.nlb && (i > 0 || !has_nlb())) {
+            } else if (c.nlb && (i > 0 || !OUTPUT.hasNLB())) {
                 print("\n");
                 indent();
             } else if (i > 0 || !tail) {
@@ -9639,7 +10815,7 @@ function OutputStream(options) {
             var encoded = encode_string(str, quote);
             if (escape_directive === true && !encoded.includes("\\")) {
                 // Insert semicolons to break directive prologue
-                if (!EXPECT_DIRECTIVE.test(OUTPUT.toString())) {
+                if (!OUTPUT.expectDirective()) {
                     force_semicolon();
                 }
                 force_semicolon();
@@ -9771,7 +10947,8 @@ function OutputStream(options) {
         ) {
             return true;
         }
-        return p instanceof AST_PropAccess && p.expression === this;
+        return p instanceof AST_PropAccess && p.expression === this
+            || p instanceof AST_Conditional && p.condition === this;
     });
 
     // same goes for an object literal (as in AST_Function), because
@@ -9804,21 +10981,21 @@ function OutputStream(options) {
 
     PARENS(AST_Sequence, function(output) {
         var p = output.parent();
-        return p instanceof AST_Call                          // (foo, bar)() or foo(1, (2, 3), 4)
-            || p instanceof AST_Unary                         // !(foo, bar, baz)
-            || p instanceof AST_Binary                        // 1 + (2, 3) + 4 ==> 8
-            || p instanceof AST_VarDef                        // var a = (1, 2), b = a + a; ==> b == 4
-            || p instanceof AST_PropAccess                    // (1, {foo:2}).foo or (1, {foo:2})["foo"] ==> 2
-            || p instanceof AST_Array                         // [ 1, (2, 3), 4 ] ==> [ 1, 3, 4 ]
-            || p instanceof AST_ObjectProperty                // { foo: (1, 2) }.foo ==> 2
-            || p instanceof AST_Conditional                   /* (false, true) ? (a = 10, b = 20) : (c = 30)
-                                                               * ==> 20 (side effect, set a := 10 and b := 20) */
-            || p instanceof AST_Arrow                         // x => (x, x)
-            || p instanceof AST_DefaultAssign                 // x => (x = (0, function(){}))
-            || p instanceof AST_Expansion                     // [...(a, b)]
-            || p instanceof AST_ForOf && this === p.object    // for (e of (foo, bar)) {}
-            || p instanceof AST_Yield                         // yield (foo, bar)
-            || p instanceof AST_Export                        // export default (foo, bar)
+        return p instanceof AST_Call                              // (foo, bar)() or foo(1, (2, 3), 4)
+            || p instanceof AST_Unary                             // !(foo, bar, baz)
+            || p instanceof AST_Binary                            // 1 + (2, 3) + 4 ==> 8
+            || p instanceof AST_VarDefLike                        // var a = (1, 2), b = a + a; ==> b == 4
+            || p instanceof AST_PropAccess && this !== p.property // (1, {foo:2}).foo, (1, {foo:2})["foo"], not foo[1, 2]
+            || p instanceof AST_Array                             // [ 1, (2, 3), 4 ] ==> [ 1, 3, 4 ]
+            || p instanceof AST_ObjectProperty                    // { foo: (1, 2) }.foo ==> 2
+            || p instanceof AST_Conditional                       /* (false, true) ? (a = 10, b = 20) : (c = 30)
+                                                                   * ==> 20 (side effect, set a := 10 and b := 20) */
+            || p instanceof AST_Arrow                             // x => (x, x)
+            || p instanceof AST_DefaultAssign                     // x => (x = (0, function(){}))
+            || p instanceof AST_Expansion                         // [...(a, b)]
+            || p instanceof AST_ForOf && this === p.object        // for (e of (foo, bar)) {}
+            || p instanceof AST_Yield                             // yield (foo, bar)
+            || p instanceof AST_Export                            // export default (foo, bar)
         ;
     });
 
@@ -9835,24 +11012,65 @@ function OutputStream(options) {
             return true;
         // this deals with precedence: 3 * (2 + 1)
         if (p instanceof AST_Binary) {
-            const po = p.operator;
-            const so = this.operator;
+            const parent_op = p.operator;
+            const op = this.operator;
 
-            if (so === "??" && (po === "||" || po === "&&")) {
+            // It is forbidden for ?? to be used with || or && without parens.
+            if (op === "??" && (parent_op === "||" || parent_op === "&&")) {
+                return true;
+            }
+            if (parent_op === "??" && (op === "||" || op === "&&")) {
                 return true;
             }
 
-            if (po === "??" && (so === "||" || so === "&&")) {
-                return true;
-            }
-
-            const pp = PRECEDENCE[po];
-            const sp = PRECEDENCE[so];
+            const pp = PRECEDENCE[parent_op];
+            const sp = PRECEDENCE[op];
             if (pp > sp
                 || (pp == sp
-                    && (this === p.right || po == "**"))) {
+                    && (this === p.right || parent_op == "**"))) {
                 return true;
             }
+        }
+        if (p instanceof AST_PrivateIn) {
+            const op = this.operator;
+
+            const pp = PRECEDENCE["in"];
+            const sp = PRECEDENCE[op];
+            if (pp > sp || (pp == sp && this === p.value)) {
+                return true;
+            }
+        }
+    });
+
+    PARENS(AST_PrivateIn, function(output) {
+        var p = output.parent();
+        // (#x in this)()
+        if (p instanceof AST_Call && p.expression === this) {
+            return true;
+        }
+        // typeof (#x in this)
+        if (p instanceof AST_Unary) {
+            return true;
+        }
+        // (#x in this)["prop"], (#x in this).prop
+        if (p instanceof AST_PropAccess && p.expression === this) {
+            return true;
+        }
+        // same precedence as regular in operator
+        if (p instanceof AST_Binary) {
+            const parent_op = p.operator;
+
+            const pp = PRECEDENCE[parent_op];
+            const sp = PRECEDENCE["in"];
+            if (pp > sp
+                || (pp == sp
+                    && (this === p.right || parent_op == "**"))) {
+                return true;
+            }
+        }
+        // rules are the same as binary in, but the class differs
+        if (p instanceof AST_PrivateIn && this === p.value) {
+            return true;
         }
     });
 
@@ -9899,6 +11117,13 @@ function OutputStream(options) {
                     return walk_abort;  // makes walk() return true.
                 }
             });
+        }
+    });
+
+    PARENS(AST_PrefixedTemplateString, function(output) {
+        var p = output.parent();
+        if (p instanceof AST_New && p.expression === this) {
+            return true; // new (foo()`bar`)
         }
     });
 
@@ -10053,9 +11278,9 @@ function OutputStream(options) {
 // XXX Emscripten localmod: Add a node type for a parenthesized expression so that we can retain
 // Closure annotations that need a form "/**annotation*/(expression)"
     DEFPRINT(AST_ParenthesizedExpression, function(self, output) {
-        output.print("(");
+        output.print('(');
         self.body.print(output);
-        output.print(")");
+        output.print(')');
     });
 // XXX End Emscripten localmod
     function print_braced_empty(self, output) {
@@ -10106,7 +11331,7 @@ function OutputStream(options) {
         output.space();
         output.with_parens(function() {
             if (self.init) {
-                if (self.init instanceof AST_Definitions) {
+                if (self.init instanceof AST_DefinitionsLike) {
                     self.init.print(output);
                 } else {
                     parenthesize_for_noin(self.init, output, true);
@@ -10231,7 +11456,9 @@ function OutputStream(options) {
     AST_Arrow.DEFMETHOD("_do_print", function(output) {
         var self = this;
         var parent = output.parent();
-        var needs_parens = (parent instanceof AST_Binary && !(parent instanceof AST_Assign)) ||
+        var needs_parens = (parent instanceof AST_Binary &&
+                !(parent instanceof AST_Assign) &&
+                !(parent instanceof AST_DefaultAssign)) ||
             parent instanceof AST_Unary ||
             (parent instanceof AST_Call && self === parent.expression);
         if (needs_parens) { output.print("("); }
@@ -10464,7 +11691,7 @@ function OutputStream(options) {
     });
 
     /* -----[ var/const ]----- */
-    AST_Definitions.DEFMETHOD("_do_print", function(output, kind) {
+    AST_DefinitionsLike.DEFMETHOD("_do_print", function(output, kind) {
         output.print(kind);
         output.space();
         this.definitions.forEach(function(def, i) {
@@ -10485,6 +11712,9 @@ function OutputStream(options) {
     });
     DEFPRINT(AST_Const, function(self, output) {
         self._do_print(output, "const");
+    });
+    DEFPRINT(AST_Using, function(self, output) {
+        self._do_print(output, self.await ? "await using" : "using");
     });
     DEFPRINT(AST_Import, function(self, output) {
         output.print("import");
@@ -10524,9 +11754,9 @@ function OutputStream(options) {
             output.space();
         }
         self.module_name.print(output);
-        if (self.assert_clause) {
-            output.print("assert");
-            self.assert_clause.print(output);
+        if (self.attributes) {
+            output.print("with");
+            self.attributes.print(output);
         }
         output.semicolon();
     });
@@ -10534,7 +11764,9 @@ function OutputStream(options) {
         output.print("import.meta");
     });
     DEFPRINT(AST_DynamicImport, function(self, output) {
-        output.print("import." + self.phase);
+        if (self.phase) output.print("import." + self.phase);
+        else output.print("import");
+
         output.with_parens(function() {
             self.args.forEach(function(arg, i) {
                 if (i) output.comma();
@@ -10552,11 +11784,11 @@ function OutputStream(options) {
             foreign_name.name;
         if (!names_are_different &&
             foreign_name.name === "*" &&
-            foreign_name.quote != self.name.quote) {
+            !!foreign_name.quote != !!self.name.quote) {
                 // export * as "*"
             names_are_different = true;
         }
-        var foreign_name_is_name = foreign_name.quote == null;
+        var foreign_name_is_name = !foreign_name.quote;
         if (names_are_different) {
             if (is_import) {
                 if (foreign_name_is_name) {
@@ -10565,7 +11797,7 @@ function OutputStream(options) {
                     output.print_string(foreign_name.name, foreign_name.quote);
                 }
             } else {
-                if (self.name.quote == null) {
+                if (!self.name.quote) {
                     self.name.print(output);
                 } else {
                     output.print_string(self.name.name, self.name.quote);
@@ -10585,7 +11817,7 @@ function OutputStream(options) {
                 }
             }
         } else {
-            if (self.name.quote == null) {
+            if (!self.name.quote) {
                 self.name.print(output);
             } else {
                 output.print_string(self.name.name, self.name.quote);
@@ -10629,9 +11861,9 @@ function OutputStream(options) {
             output.space();
             self.module_name.print(output);
         }
-        if (self.assert_clause) {
-            output.print("assert");
-            self.assert_clause.print(output);
+        if (self.attributes) {
+            output.print("with");
+            self.attributes.print(output);
         }
         if (self.exported_value
                 && !(self.exported_value instanceof AST_Defun ||
@@ -10666,7 +11898,7 @@ function OutputStream(options) {
         node.print(output, parens);
     }
 
-    DEFPRINT(AST_VarDef, function(self, output) {
+    DEFPRINT(AST_VarDefLike, function(self, output) {
         self.name.print(output);
         if (self.value) {
             output.space();
@@ -10775,6 +12007,10 @@ function OutputStream(options) {
     });
     DEFPRINT(AST_UnaryPrefix, function(self, output) {
         var op = self.operator;
+        if (op === "--" && output.last().endsWith("!")) {
+            // avoid printing "<!--"
+            output.print(" ");
+        }
         output.print(op);
         if (/^[a-z]/i.test(op)
             || (/[+-]$/.test(op)
@@ -10792,8 +12028,7 @@ function OutputStream(options) {
         var op = self.operator;
         self.left.print(output);
         if (op[0] == ">" /* ">>" ">>>" ">" ">=" */
-            && self.left instanceof AST_UnaryPostfix
-            && self.left.operator == "--") {
+            && output.last().endsWith("--")) {
             // space is mandatory to avoid outputting -->
             output.print(" ");
         } else {
@@ -10801,17 +12036,7 @@ function OutputStream(options) {
             output.space();
         }
         output.print(op);
-        if ((op == "<" || op == "<<")
-            && self.right instanceof AST_UnaryPrefix
-            && self.right.operator == "!"
-            && self.right.expression instanceof AST_UnaryPrefix
-            && self.right.expression.operator == "--") {
-            // space is mandatory to avoid outputting <!--
-            output.print(" ");
-        } else {
-            // the space is optional depending on "beautify"
-            output.space();
-        }
+        output.space();
         self.right.print(output);
     });
     DEFPRINT(AST_Conditional, function(self, output) {
@@ -10981,7 +12206,7 @@ function OutputStream(options) {
 
         output.print("#");
         
-        print_property_name(self.key.name, self.quote, output);
+        print_property_name(self.key.name, undefined, output);
 
         if (self.value) {
             output.print("=");
@@ -11024,6 +12249,7 @@ function OutputStream(options) {
         if (self.key instanceof AST_SymbolMethod) {
             if (is_private) output.print("#");
             print_property_name(self.key.name, self.quote, output);
+            self.key.add_source_map(output);
         } else {
             output.with_square(function() {
                 self.key.print(output);
@@ -11043,13 +12269,24 @@ function OutputStream(options) {
     DEFPRINT(AST_PrivateGetter, function(self, output) {
         self._print_getter_setter("get", true, output);
     });
+    DEFPRINT(AST_ConciseMethod, function(self, output) {
+        var type;
+        if (self.value.is_generator && self.value.async) {
+            type = "async*";
+        } else if (self.value.is_generator) {
+            type = "*";
+        } else if (self.value.async) {
+            type = "async";
+        }
+        self._print_getter_setter(type, false, output);
+    });
     DEFPRINT(AST_PrivateMethod, function(self, output) {
         var type;
-        if (self.is_generator && self.async) {
+        if (self.value.is_generator && self.value.async) {
             type = "async*";
-        } else if (self.is_generator) {
+        } else if (self.value.is_generator) {
             type = "*";
-        } else if (self.async) {
+        } else if (self.value.async) {
             type = "async";
         }
         self._print_getter_setter(type, true, output);
@@ -11063,17 +12300,6 @@ function OutputStream(options) {
     });
     DEFPRINT(AST_SymbolPrivateProperty, function(self, output) {
         output.print("#" + self.name);
-    });
-    DEFPRINT(AST_ConciseMethod, function(self, output) {
-        var type;
-        if (self.is_generator && self.async) {
-            type = "async*";
-        } else if (self.is_generator) {
-            type = "*";
-        } else if (self.async) {
-            type = "async";
-        }
-        self._print_getter_setter(type, false, output);
     });
     DEFPRINT(AST_ClassStaticBlock, function (self, output) {
         output.print("static");
@@ -11108,16 +12334,26 @@ function OutputStream(options) {
         }
     });
     DEFPRINT(AST_BigInt, function(self, output) {
-        output.print(self.getValue() + "n");
+        if (output.option("keep_numbers") && self.raw) {
+            output.print(self.raw);
+        } else {
+            output.print(self.getValue() + "n");
+        }
     });
 
     const r_slash_script = /(<\s*\/\s*script)/i;
+    const r_starts_with_script = /^\s*script/i;
     const slash_script_replace = (_, $1) => $1.replace("/", "\\/");
     DEFPRINT(AST_RegExp, function(self, output) {
         let { source, flags } = self.getValue();
         source = regexp_source_fix(source);
         flags = flags ? sort_regexp_flags(flags) : "";
+
+        // Avoid outputting end of script tag
         source = source.replace(r_slash_script, slash_script_replace);
+        if (r_starts_with_script.test(source) && output.last().endsWith("<")) {
+            output.print(" ");
+        }
 
         output.print(output.to_utf8(`/${source}/${flags}`, false, true));
 
@@ -11138,7 +12374,7 @@ function OutputStream(options) {
         } else {
             if (!stat || stat instanceof AST_EmptyStatement)
                 output.force_semicolon();
-            else if (stat instanceof AST_Let || stat instanceof AST_Const || stat instanceof AST_Class)
+            else if ((stat instanceof AST_DefinitionsLike && !(stat instanceof AST_Var)) || stat instanceof AST_Class)
                 make_block(stat, output);
             else
                 stat.print(output);
@@ -11218,7 +12454,7 @@ function OutputStream(options) {
         AST_Class,
         AST_Constant,
         AST_Debugger,
-        AST_Definitions,
+        AST_DefinitionsLike,
         AST_Directive,
         AST_Finally,
         AST_Jump,
@@ -11241,8 +12477,22 @@ function OutputStream(options) {
         AST_ObjectSetter,
         AST_PrivateGetter,
         AST_PrivateSetter,
+        AST_ConciseMethod,
+        AST_PrivateMethod,
     ], function(output) {
-        output.add_mapping(this.key.end, this.key.name);
+        output.add_mapping(this.start, false /*name handled below*/);
+    });
+
+    DEFMAP([
+        AST_SymbolMethod,
+        AST_SymbolPrivateProperty
+    ], function(output) {
+        const tok_type = this.end && this.end.type;
+        if (tok_type === "name" || tok_type === "privatename") {
+            output.add_mapping(this.end, this.name);
+        } else {
+            output.add_mapping(this.end);
+        }
     });
 
     DEFMAP([ AST_ObjectProperty ], function(output) {
@@ -11381,11 +12631,12 @@ function redefined_catch_def(def) {
     }
 }
 
-AST_Scope.DEFMETHOD("figure_out_scope", function(options, { parent_scope = null, toplevel = this } = {}) {
+AST_Scope.DEFMETHOD("figure_out_scope", function(options, { parent_scope = undefined, toplevel = this } = {}) {
     options = defaults(options, {
         cache: null,
         ie8: false,
         safari10: false,
+        module: false,
     });
 
     if (!(toplevel instanceof AST_Toplevel)) {
@@ -11450,6 +12701,9 @@ AST_Scope.DEFMETHOD("figure_out_scope", function(options, { parent_scope = null,
             scope = save_scope;
             defun = save_defun;
             labels = save_labels;
+            if (node instanceof AST_Lambda) {
+                detect_screwy_argnames_scope(node, scope);
+            }
             return true;        // don't descend again in TreeWalker
         }
         if (node instanceof AST_LabeledStatement) {
@@ -11502,6 +12756,7 @@ AST_Scope.DEFMETHOD("figure_out_scope", function(options, { parent_scope = null,
             node instanceof AST_SymbolVar
             || node instanceof AST_SymbolLet
             || node instanceof AST_SymbolConst
+            || node instanceof AST_SymbolUsing
             || node instanceof AST_SymbolCatch
         ) {
             var def;
@@ -11515,7 +12770,7 @@ AST_Scope.DEFMETHOD("figure_out_scope", function(options, { parent_scope = null,
                 if (node instanceof AST_SymbolBlockDeclaration) {
                     return sym instanceof AST_SymbolLambda;
                 }
-                return !(sym instanceof AST_SymbolLet || sym instanceof AST_SymbolConst);
+                return !(sym instanceof AST_SymbolLet || sym instanceof AST_SymbolConst || sym instanceof AST_SymbolUsing);
             })) {
                 js_error(
                     `"${node.name}" is redeclared`,
@@ -11553,6 +12808,11 @@ AST_Scope.DEFMETHOD("figure_out_scope", function(options, { parent_scope = null,
             );
         }
     });
+
+    if (options.module) {
+        tw.directives["use strict"] = true;
+    }
+
     this.walk(tw);
 
     function mark_export(def, level) {
@@ -11651,6 +12911,47 @@ AST_Scope.DEFMETHOD("figure_out_scope", function(options, { parent_scope = null,
             });
         }
     }
+
+    // Arguments have their own scope, different from the scope of `var`.
+    // This is apparent when default args are used.
+    function detect_screwy_argnames_scope(lambda, parent_scope) {
+        let cached_argnames;
+
+        for (const arg of lambda.argnames) {
+            walk(arg, sym => {
+                if (sym instanceof AST_SymbolRef) {
+                    const in_lambda = lambda.variables.get(sym.name);
+                    if (!in_lambda) return;
+
+                    // In funargs and also a `var` inside
+                    // (sym, x = sym) => { var sym }
+                    if (in_lambda.orig.length > 1 && find_name_in_arg_names(sym.name)) {
+                        mark_screwy(sym.definition());
+                    }
+
+                    // Outside and in a `var`
+                    // var sym = ...; (x = sym) => { var sym }
+                    const outside_lambda = parent_scope.find_variable(sym.name);
+                    if (outside_lambda) {
+                        mark_screwy(sym.definition());
+                        mark_screwy(outside_lambda);
+                    }
+                }
+            });
+        }
+
+        function find_name_in_arg_names(name) {
+            if (!cached_argnames) cached_argnames = lambda.args_as_names();
+
+            return cached_argnames.some(s => s.name === name);
+        }
+
+        function mark_screwy(def) {
+            if (def) def.scope.screwy_argnames_scope = true;
+
+            lambda.screwy_argnames_scope = true;
+        }
+    }
 });
 
 AST_Toplevel.DEFMETHOD("def_global", function(node) {
@@ -11670,6 +12971,7 @@ AST_Scope.DEFMETHOD("init_scope_vars", function(parent_scope) {
     this.variables = new Map();         // map name to AST_SymbolVar (variables defined in this scope; includes functions)
     this.uses_with = false;             // will be set to true if this or some nested scope uses the `with` statement
     this.uses_eval = false;             // will be set to true if this or nested scope uses the global `eval`
+    this.screwy_argnames_scope = false;
     this.parent_scope = parent_scope;   // the parent scope
     this.enclosed = [];                 // a list of variables from this or outer scope(s) that are referenced from this or inner scopes
     this.cname = -1;                    // the current index for mangling functions/variables
@@ -11699,7 +13001,7 @@ AST_Scope.DEFMETHOD("add_child_scope", function (scope) {
     scope.parent_scope = this;
 
     // Propagate to this.uses_arguments from arrow functions
-    if ((scope instanceof AST_Arrow) && !this.uses_arguments) {
+    if ((scope instanceof AST_Arrow) && (this instanceof AST_Lambda && !this.uses_arguments)) {
         this.uses_arguments = walk(scope, node => {
             if (
                 node instanceof AST_SymbolRef
@@ -12031,6 +13333,7 @@ AST_Toplevel.DEFMETHOD("mangle_names", function(options) {
         if (
             function_defs
             && node instanceof AST_VarDef
+            && node.name instanceof AST_Symbol
             && node.value instanceof AST_Lambda
             && !node.value.name
             && keep_name(options.keep_fnames, node.name.name)
@@ -12237,5 +13540,6 @@ const base54 = (() => {
 
 exports.AST_Node = AST_Node;
 exports.AST_Token = AST_Token;
+exports.TreeWalker = TreeWalker;
 
-}));
+})));

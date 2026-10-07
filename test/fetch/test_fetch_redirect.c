@@ -41,8 +41,8 @@ void onsuccess(emscripten_fetch_t *fetch);
 void onreadystatechange(emscripten_fetch_t *fetch);
 
 // State for async test
-static int async_code_idx = 0;
-static int async_method_idx = 0;
+int async_code_idx = 0;
+int async_method_idx = 0;
 const char *methods[] = {"GET", "POST"};
 const int num_methods = 2;
 

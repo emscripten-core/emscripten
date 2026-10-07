@@ -21,7 +21,7 @@
 #include <string.h>
 #include <sys/socket.h>
 
-static struct addrinfo* lookup(const char* name, int family, int expect) {
+struct addrinfo* lookup(const char* name, int family, int expect) {
   struct addrinfo hints = {0};
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
@@ -34,7 +34,7 @@ static struct addrinfo* lookup(const char* name, int family, int expect) {
   return res;
 }
 
-static int count_v4(struct addrinfo* res, const char* addr) {
+int count_v4(struct addrinfo* res, const char* addr) {
   int n = 0;
   for (struct addrinfo* ai = res; ai; ai = ai->ai_next) {
     assert(ai->ai_socktype == SOCK_STREAM);

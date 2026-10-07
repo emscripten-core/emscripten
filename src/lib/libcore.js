@@ -62,7 +62,7 @@ addToLibrary({
   // functions to continue to work in `__deps` entries.
   stackAlloc: '$stackAlloc',
   stackSave: '$stackSave',
-  stackRestore: '$stackSave',
+  stackRestore: '$stackRestore',
   setTempRet0: '$setTempRet0',
   getTempRet0: '$getTempRet0',
 

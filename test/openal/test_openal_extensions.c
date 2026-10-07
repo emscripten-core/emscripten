@@ -18,14 +18,14 @@
 #include <AL/alext.h>
 
 #define NUM_ALC_EXTENSIONS 3
-static const ALCchar *alc_extensions[NUM_ALC_EXTENSIONS] = {
+const ALCchar *alc_extensions[NUM_ALC_EXTENSIONS] = {
   "ALC_EXT_capture",
   "ALC_SOFT_pause_device",
   "ALC_SOFT_HRTF",
 };
 
 #define NUM_AL_EXTENSIONS 5
-static const ALCchar *al_extensions[NUM_AL_EXTENSIONS] = {
+const ALCchar *al_extensions[NUM_AL_EXTENSIONS] = {
   "AL_EXT_float32",
   "AL_SOFT_loop_points",
   "AL_SOFT_source_length",
@@ -33,7 +33,7 @@ static const ALCchar *al_extensions[NUM_AL_EXTENSIONS] = {
   "AL_SOFT_source_spatialize",
 };
 
-static void check_alc_extension(const ALCchar *extension) {
+void check_alc_extension(const ALCchar *extension) {
   printf("checking: %s\n", extension);
   ALCdevice *device = alcOpenDevice(NULL);
 
@@ -41,7 +41,7 @@ static void check_alc_extension(const ALCchar *extension) {
   assert(alcIsExtensionPresent(device, extension) == ALC_TRUE);
 }
 
-static void check_al_extension(const ALchar *extension) {
+void check_al_extension(const ALchar *extension) {
   printf("checking: %s\n", extension);
   assert(alIsExtensionPresent(extension) == ALC_TRUE);
 }

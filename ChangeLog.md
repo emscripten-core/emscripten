@@ -20,7 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 6.0.12 (in development)
 ----------------------
-
+- The embind library functions `getInheritedInstanceCount` and
+  `getLiveInheritedInstances` were marked as deprecated. (#27899)
 - `MAXIMUM_MEMORY` is now honored with `IMPORTED_MEMORY` even without
   `ALLOW_MEMORY_GROWTH`: the module accepts an imported memory of any size up to
   the maximum, but never grows it. Previously the maximum was ignored, with a

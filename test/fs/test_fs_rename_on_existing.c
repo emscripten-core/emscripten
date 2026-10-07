@@ -12,7 +12,7 @@
 #include <emscripten.h>
 #endif
 
-static void create_file(const char *path, const char *buffer) {
+void create_file(const char *path, const char *buffer) {
   printf("creating: %s\n", path);
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0666);
   printf("error: %s\n", strerror(errno));
@@ -27,7 +27,7 @@ static void create_file(const char *path, const char *buffer) {
 #if defined(NODEFS) && !defined(WASMFS)
 // Rename in a second mount of the host cwd while the VFS cwd is elsewhere, so
 // host and VFS paths differ (#27860). No absolute host path: PATH is POSIX-only.
-static void test_second_mount() {
+void test_second_mount() {
   EM_ASM({
     FS.mkdir('/other');
     FS.mount(NODEFS, { root: '.' }, '/other');
@@ -48,7 +48,7 @@ static void test_second_mount() {
 #endif
 
 #if defined(MEMFS) && !defined(WASMFS)
-static void test_proxyfs() {
+void test_proxyfs() {
   EM_ASM({
     FS.mkdir('/proxied');
     FS.mkdir('/proxy');

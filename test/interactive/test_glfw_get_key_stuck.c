@@ -16,8 +16,8 @@
 
 GLFWwindow *window;
 
-static int step = 1;
-static int last_state = -1;
+int step = 1;
+int last_state = -1;
 void render() {
     // http://www.glfw.org/docs/latest/input_guide.html#input_key
     int state = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;

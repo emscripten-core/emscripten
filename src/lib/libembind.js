@@ -175,20 +175,6 @@ var LibraryEmbind = {
     return registeredInstances[ptr];
   },
 
-  $getInheritedInstanceCount__deps: ['$registeredInstances'],
-  $getInheritedInstanceCount: () => Object.keys(registeredInstances).length,
-
-  $getLiveInheritedInstances__deps: ['$registeredInstances'],
-  $getLiveInheritedInstances: () => {
-    var rv = [];
-    for (var k in registeredInstances) {
-      if (registeredInstances.hasOwnProperty(k)) {
-        rv.push(registeredInstances[k]);
-      }
-    }
-    return rv;
-  },
-
   // class typeID -> {pointerType: ..., constPointerType: ...}
   $registeredPointers: {},
 
@@ -1488,7 +1474,7 @@ var LibraryEmbind = {
 
   $finalizationRegistry: false,
 
-  $detachFinalizer_deps: ['$finalizationRegistry'],
+  $detachFinalizer__deps: ['$finalizationRegistry'],
   $detachFinalizer: (handle) => {},
 
   $attachFinalizer__deps: [

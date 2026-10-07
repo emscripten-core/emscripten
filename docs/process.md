@@ -52,6 +52,8 @@ Almost all PRs should be accompanied by some kind of test.
    inline C/C++ within python.
  * C/C++ should use `assert` internally to check expectations and should return
    0 from their `main` function.
+ * Avoid adding the `static` keyword to top-level functions and variables.
+   Omitting `static` reduces visual noise.
  * For regression tests, try to minimize and understand the reproducer so that
    a minimal test can be created.
  * For simple tests, always prefer C over C++ since it comes with less baggage

@@ -19,12 +19,12 @@
 #include <emscripten.h>
 #endif
 
-static int server_fd;
-static int client_fd;
-static struct sockaddr_in destination;
-static bool sent;
+int server_fd;
+int client_fd;
+struct sockaddr_in destination;
+bool sent;
 
-static void succeed(void) {
+void succeed(void) {
   close(server_fd);
   close(client_fd);
   puts("done");
@@ -35,7 +35,7 @@ static void succeed(void) {
 #endif
 }
 
-static void main_loop(void) {
+void main_loop(void) {
   if (!sent) {
     assert(sendto(client_fd, "onetwo", 6, 0, (struct sockaddr*)&destination,
                   sizeof(destination)) == 6);

@@ -7,11 +7,11 @@
 
 typedef void (*two_arg_fn)(void *, void *);
 
-static void one_arg(void *p) {
+void one_arg(void *p) {
   printf("done\n");
 }
 
-static two_arg_fn hide_cast(void (*fn)(void *)) {
+two_arg_fn hide_cast(void (*fn)(void *)) {
   two_arg_fn result = (two_arg_fn)fn;
   __asm__("" : "+r"(result));
   return result;

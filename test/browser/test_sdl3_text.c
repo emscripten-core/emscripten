@@ -11,9 +11,9 @@
 #include <assert.h>
 #include <emscripten.h>
 
-static int result = 0;
+int result = 0;
 
-static void process_events() {
+void process_events() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
     switch (event.type) {

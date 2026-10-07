@@ -51,7 +51,7 @@
  */
 
 // installing mock devicePixelRatio (independent of the browser/screen resolution)
-static void installMockDevicePixelRatio() {
+void installMockDevicePixelRatio() {
   printf("installing mock devicePixelRatio...\n");
   EM_ASM(
       GLFW.mockDevicePixelRatio = 1.0;
@@ -59,7 +59,7 @@ static void installMockDevicePixelRatio() {
       );
 }
 
-static void setDevicePixelRatio(float ratio) {
+void setDevicePixelRatio(float ratio) {
   printf("setDevicePixelRatio %.0f\n", ratio);
   EM_ASM({
     GLFW.mockDevicePixelRatio = $0;
@@ -70,12 +70,12 @@ static void setDevicePixelRatio(float ratio) {
   }, ratio);
 }
 
-static void setGLFWIsHiDPIAware(GLFWwindow *window, bool isHiDPIAware) {
+void setGLFWIsHiDPIAware(GLFWwindow *window, bool isHiDPIAware) {
   printf("setGLFWIsHiDPIAware %s\n", isHiDPIAware ? "true" : "false");
   glfwSetWindowAttrib(window, GLFW_SCALE_TO_MONITOR, isHiDPIAware ? GLFW_TRUE : GLFW_FALSE);
 }
 
-static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedHeight, float ratio) {
+void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedHeight, float ratio) {
   // first check the window size
   int w, h;
   glfwGetWindowSize(window, &w, &h);
@@ -89,11 +89,11 @@ static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedH
   assert(fbw == (int) (expectedWidth * ratio) && fbh == (int) (expectedHeight * ratio));
 }
 
-static bool getGLFWIsHiDPIAware() {
+bool getGLFWIsHiDPIAware() {
   return EM_ASM_INT(return GLFW.isHiDPIAware() ? 1 : 0) != 0;
 }
 
-static void checkHiDPIAware(GLFWwindow *window, bool expectedAwareness) {
+void checkHiDPIAware(GLFWwindow *window, bool expectedAwareness) {
   assert(getGLFWIsHiDPIAware() == expectedAwareness);
   assert(glfwGetWindowAttrib(window, GLFW_SCALE_TO_MONITOR) == (expectedAwareness ? GLFW_TRUE : GLFW_FALSE));
 }

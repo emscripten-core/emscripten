@@ -11381,6 +11381,13 @@ int main () {
     with env_modify({'EMCC_STRICT': '1'}):
       self.assert_fail(cmd, 'ReferenceError: SPLIT_MEMORY is not defined')
 
+    # Also test a renamed legacy setting (TOTAL_MEMORY -> INITIAL_MEMORY), where
+    # the new setting name is modified after STRICT is enabled.
+    create_file('lib_renamed.js', 'var foo = {{{TOTAL_MEMORY}}};')
+    cmd = [EMCC, test_file('hello_world.c'), '-o', 'out.js', '--js-library', 'lib_renamed.js']
+    self.run_process(cmd)
+    self.assert_fail(cmd + ['-sSTRICT'], 'ReferenceError: TOTAL_MEMORY is not defined')
+
   def test_strict_mode_link_cxx(self):
     # In strict mode C++ programs fail to link unless run with `em++`.
     self.run_process([EMXX, '-sSTRICT', test_file('hello_libcxx.cpp')])
