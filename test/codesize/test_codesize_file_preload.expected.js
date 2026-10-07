@@ -36,7 +36,7 @@ if (!Module["expectedDataFileDownloads"]) Module["expectedDataFileDownloads"] = 
 
 Module["expectedDataFileDownloads"]++;
 
-(() => {
+((() => {
   // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
   var isPthread = typeof ENVIRONMENT_IS_PTHREAD != "undefined" && ENVIRONMENT_IS_PTHREAD;
   var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != "undefined" && ENVIRONMENT_IS_WASM_WORKER;
@@ -151,7 +151,7 @@ Module["expectedDataFileDownloads"]++;
     } ],
     "remote_package_size": 5
   });
-})();
+}))();
 
 // end include: <FILENAME REPLACED>
 var programArgs = [];
