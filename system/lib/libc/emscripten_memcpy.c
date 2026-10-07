@@ -30,5 +30,4 @@ static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
 
 #endif
 
-weak_alias(__memcpy, emscripten_builtin_memcpy);
 weak_alias(__memcpy, memcpy);

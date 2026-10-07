@@ -116,14 +116,12 @@ int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*star
   return ENOTSUP;
 }
 
-weak_alias(__pthread_create, emscripten_builtin_pthread_create);
 weak_alias(__pthread_create, pthread_create);
 
 int __pthread_join(pthread_t thread, void **retval) {
   return EINVAL;
 }
 
-weak_alias(__pthread_join, emscripten_builtin_pthread_join);
 weak_alias(__pthread_join, pthread_join);
 
 static void* tls_entries[PTHREAD_KEYS_MAX];
@@ -241,14 +239,12 @@ _Noreturn void __pthread_exit(void* status) {
    exit(0);
 }
 
-weak_alias(__pthread_exit, emscripten_builtin_pthread_exit);
 weak_alias(__pthread_exit, pthread_exit);
 
 int __pthread_detach(pthread_t t) {
   return 0;
 }
 
-weak_alias(__pthread_detach, emscripten_builtin_pthread_detach);
 weak_alias(__pthread_detach, pthread_detach);
 weak_alias(__pthread_detach, thrd_detach);
 

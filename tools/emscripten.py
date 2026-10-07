@@ -1182,21 +1182,22 @@ function applySignatureConversions(wasmExports) {
       sig.insert(1, 'p')
       sig = ''.join(sig)
       native_sigs[symbol] = sig
-    sig = native_sigs.get(symbol)
+    # `emscripten_builtin_` aliases are omitted from `native_sigs` and share the
+    # signature of the underlying unprefixed symbol.
+    sig = native_sigs.get(symbol) or native_sigs.get(symbol.removeprefix('emscripten_builtin_'))
     if sig:
       if settings.MEMORY64:
         if sig not in sigs_seen:
           wrappers += js_manipulation.make_wasm64_wrapper(sig)
           sigs_seen.add(sig)
-        wrap_functions.append(symbol)
+        wrap_functions.append((symbol, sig))
       elif sig[0] == 'p':
         if sig not in sigs_seen:
           wrappers += js_manipulation.make_unsign_pointer_wrapper(sig)
           sigs_seen.add(sig)
-        wrap_functions.append(symbol)
+        wrap_functions.append((symbol, sig))
 
-  for f in wrap_functions:
-    sig = native_sigs[f]
+  for f, sig in wrap_functions:
     wrappers += f"\n  wasmExports['{f}'] = makeWrapper_{sig}(wasmExports['{f}']);"
   wrappers += '\n  return wasmExports;\n}'
 
