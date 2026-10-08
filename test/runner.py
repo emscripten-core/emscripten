@@ -114,6 +114,8 @@ misc_tests = [
   'jslib',
 ]
 
+aliases = {'misc': misc_tests}
+
 # All test modes aside from passing_core_test_modes. These modes might be wip
 # and not all pass yet, or they might be non-'core' (e.g., if they open a
 # browser window or otherwise have custom functionality). Random tests are not
@@ -676,6 +678,16 @@ def log_test_environment():
   print('==================== End of Test Setup =====================')
 
 
+def expand_aliases(tests):
+  new_tests = []
+  for t in tests:
+    if t in aliases:
+      new_tests += aliases[t]
+    else:
+      new_tests.append(t)
+  return new_tests
+
+
 def main():
   options = parse_args()
 
@@ -745,13 +757,7 @@ def main():
     errlog(f"Using default tests: {' '.join(default_tests)}")
     tests = default_tests
 
-  new_tests = []
-  for t in tests:
-    if t == 'misc':
-      new_tests += misc_tests
-    else:
-      new_tests.append(t)
-  tests = new_tests
+  tests = expand_aliases(tests)
 
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
