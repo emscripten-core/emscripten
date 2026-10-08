@@ -1597,17 +1597,16 @@ doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   }
 
   // NOTE: None of the constants here are true. We're just returning safe and
-  //       sane values, that match the long-existing JS FS behavior (except for
-  //       the inode number, where we can do better).
+  //       sane values, that match the long-existing JS FS behavior.
   buf->f_type = 0;
   buf->f_bsize = 4096;
   buf->f_frsize = 4096;
   buf->f_blocks = 1000000;
   buf->f_bfree = 500000;
   buf->f_bavail = 500000;
-  buf->f_files = file->getIno();
-  buf->f_ffree = 1000000;
-  buf->f_fsid = {0, 0};
+  buf->f_files = 1000000;
+  buf->f_ffree = 500000;
+  buf->f_fsid = {42, 0};
   buf->f_flags = ST_NOSUID;
   buf->f_namelen = 255;
   return 0;
