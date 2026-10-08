@@ -180,11 +180,11 @@ var LibraryOpenAL = {
 
           audioSrc.connect(src.gain);
 
-          if (typeof audioSrc.start != 'undefined') {
+          if (typeof audioSrc.start !== 'undefined') {
             // Sample the current time as late as possible to mitigate drift
             startTime = Math.max(startTime, src.context.audioCtx.currentTime);
             audioSrc.start(startTime, startOffset);
-          } else if (typeof audioSrc.noteOn != 'undefined') {
+          } else if (typeof audioSrc.noteOn !== 'undefined') {
             startTime = Math.max(startTime, src.context.audioCtx.currentTime);
             audioSrc.noteOn(startTime);
 #if OPENAL_DEBUG
@@ -2149,7 +2149,7 @@ var LibraryOpenAL = {
     autoResumeAudioContext(ac);
 
     // Old Web Audio API (e.g. Safari 6.0.5) had an inconsistently named createGainNode function.
-    if (typeof ac.createGain == 'undefined') {
+    if (typeof ac.createGain === 'undefined') {
       ac.createGain = ac.createGainNode;
     }
 

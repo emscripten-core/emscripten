@@ -15,12 +15,12 @@ var emscriptenMemoryProfiler = {
 
   // Allocations of memory blocks larger than this threshold will get their
   // detailed callstack captured and logged at runtime.
-  trackedCallstackMinSizeBytes: (typeof new Error().stack == 'undefined') ? Infinity : 16*1024*1024,
+  trackedCallstackMinSizeBytes: (typeof new Error().stack === 'undefined') ? Infinity : 16*1024*1024,
 
   // Allocations from call sites having more than this many outstanding
   // allocated pointers will get their detailed callstack captured and logged at
   // runtime.
-  trackedCallstackMinAllocCount: (typeof new Error().stack == 'undefined') ? Infinity : 10_000,
+  trackedCallstackMinAllocCount: (typeof new Error().stack === 'undefined') ? Infinity : 10_000,
 
   // If true, we hook into stackAlloc to be able to catch better estimate of the
   // maximum used STACK space.  You might only ever want to set this to false
@@ -163,7 +163,7 @@ var emscriptenMemoryProfiler = {
   },
 
   recordStackWatermark() {
-    if (typeof runtimeInitialized == 'undefined' || runtimeInitialized) {
+    if (typeof runtimeInitialized === 'undefined' || runtimeInitialized) {
       var self = emscriptenMemoryProfiler;
       self.stackTopWatermark = Math.min(self.stackTopWatermark, _emscripten_stack_get_current());
     }
@@ -256,7 +256,7 @@ var emscriptenMemoryProfiler = {
     Module['preRun'] ??= [];
     Module['preRun'].push(emscriptenMemoryProfiler.onPreloadComplete);
 
-    if (emscriptenMemoryProfiler.hookStackAlloc && typeof stackAlloc == 'function') {
+    if (emscriptenMemoryProfiler.hookStackAlloc && typeof stackAlloc === 'function') {
       // Inject stack allocator.
       var prevStackAlloc = stackAlloc;
       var hookedStackAlloc = (size) => {
@@ -374,7 +374,7 @@ var emscriptenMemoryProfiler = {
   },
 
   countOpenALAudioDataSize() {
-    if (typeof AL == 'undefined' || !AL.currentContext) return 0;
+    if (typeof AL === 'undefined' || !AL.currentContext) return 0;
 
     var totalMemory = 0;
 
@@ -492,7 +492,7 @@ var emscriptenMemoryProfiler = {
       self.canvas.width = document.documentElement.clientWidth - 32;
     }
 
-    if (typeof runtimeInitialized != 'undefined' && !runtimeInitialized) {
+    if (typeof runtimeInitialized !== 'undefined' && !runtimeInitialized) {
       return;
     }
     var stackBase = _emscripten_stack_get_base();

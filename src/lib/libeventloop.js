@@ -202,12 +202,12 @@ LibraryJSEventLoop = {
 
   $registerPostMainLoop: (f) => {
     // Does nothing unless $MainLoop is included/used.
-    typeof MainLoop != 'undefined' && MainLoop.postMainLoop.push(f);
+    typeof MainLoop !== 'undefined' && MainLoop.postMainLoop.push(f);
   },
 
   $registerPreMainLoop: (f) => {
     // Does nothing unless $MainLoop is included/used.
-    typeof MainLoop != 'undefined' && MainLoop.preMainLoop.push(f);
+    typeof MainLoop !== 'undefined' && MainLoop.preMainLoop.push(f);
   },
 
   $MainLoop__internal: true,

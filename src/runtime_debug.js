@@ -9,7 +9,7 @@ var runtimeDebug = true; // Switch to false at runtime to disable logging at the
 
 // Used by XXXXX_DEBUG settings to output debug messages.
 function dbg(...args) {
-  if (!runtimeDebug && typeof runtimeDebug != 'undefined') return;
+  if (!runtimeDebug && typeof runtimeDebug !== 'undefined') return;
 #if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
   // Avoid using the console for debugging in multi-threaded node applications
   // See https://github.com/emscripten-core/emscripten/issues/14804
@@ -200,7 +200,7 @@ function initWorkerLogging() {
 #endif
 #if PTHREADS
     var t = 0;
-    if (runtimeInitialized && typeof _pthread_self != 'undefined'
+    if (runtimeInitialized && typeof _pthread_self !== 'undefined'
 #if EXIT_RUNTIME
     && !runtimeExited
 #endif
@@ -261,8 +261,8 @@ var checkInt64 = (value) => checkInt(value, 64, MIN_INT64, MAX_UINT64);
 var printObjectList = [];
 
 function prettyPrint(arg) {
-  if (typeof arg == 'undefined') return 'undefined';
-  if (typeof arg == 'boolean') arg = arg + 0;
+  if (typeof arg === 'undefined') return 'undefined';
+  if (typeof arg === 'boolean') arg = arg + 0;
   if (!arg) return arg;
   var index = printObjectList.indexOf(arg);
   if (index >= 0) return `<${arg}|${index}>`;
@@ -272,12 +272,12 @@ function prettyPrint(arg) {
   if (arg.byteLength) {
     return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 400)) + '}';
   }
-  if (typeof arg == 'function') {
+  if (typeof arg === 'function') {
     return '<function>';
-  } else if (typeof arg == 'object') {
+  } else if (typeof arg === 'object') {
     printObjectList.push(arg);
     return `<${arg}|${printObjectList.length-1}>`;
-  } else if (typeof arg == 'number') {
+  } else if (typeof arg === 'number') {
     if (arg > 0) return `${ptrToString(arg)} (${arg})`;
   }
   return arg;
