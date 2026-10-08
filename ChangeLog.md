@@ -25,6 +25,10 @@ See docs/process.md for more on how version tagging works.
 - `MEMORY64=2` was marked as deprecated. (#27952)
 - The undocumented `FS.filesystems` object was removed. Replace things like
   `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
+- Added `emscripten_dns_lookup_promise` and `emscripten_dns_lookup_callback`,
+  asynchronous variants of `getaddrinfo` completing through an `em_promise_t`
+  or a callback, so a real DNS lookup under `-sNODERAWSOCKETS` can be awaited
+  without blocking from any stack.
 
 6.0.12 - 10/08/26
 -----------------

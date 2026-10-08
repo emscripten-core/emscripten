@@ -1550,6 +1550,11 @@ class libsockets(MuslInternalLibrary, MTLibrary):
   src_files = LIBC_SOCKETS
   cflags = ['-Os', '-fno-builtin', '-Wno-shift-op-parentheses']
 
+  def get_files(self):
+    # getaddrinfo() is the synchronous form of emscripten_dns_lookup; with
+    # PROXY_POSIX_SOCKETS libsockets_proxy provides it instead.
+    return super().get_files() + [utils.path_from_root('system/lib/libc/getaddrinfo.c')]
+
   def can_use(self):
     return super().can_use() and not settings.PROXY_POSIX_SOCKETS
 
