@@ -50,6 +50,11 @@ See docs/process.md for more on how version tagging works.
   This speeds up startup for programs with many exports (e.g. `MAIN_MODULE`).
   Code that enumerates `wasmExports` should use `for...in` rather than
   `Object.keys`/`Object.entries`. (#27996)
+- compiler-rt was updated to LLVM 23.1.3. (#28011)
+- Added `emscripten_dns_lookup_promise` and `emscripten_dns_lookup_callback`,
+  asynchronous variants of `getaddrinfo` completing through an `em_promise_t`
+  or a callback, so a real DNS lookup under `-sNODERAWSOCKETS` can be awaited
+  without blocking from any stack.
 
 6.0.12 - 10/08/26
 -----------------
