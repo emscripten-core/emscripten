@@ -243,7 +243,7 @@ class codesize(RunnerCore):
     outfile = 'a.out.mjs' if esm else 'a.out.js'
     js_file = 'a.out.support.mjs' if esm else outfile
 
-    # Run once without closure and parse output to find the JS->wasm imports.
+    # Run once without closure or terser minification and parse output to find the JS->wasm imports.
     build_cmd = [compiler_for(filename), filename, '-o', outfile, '--output-eol=linux', '--emit-minification-map=minify.map'] + cflags + self.get_cflags()
     self.run_process(build_cmd + ['-g2'])
     # find the imports we send from JS
