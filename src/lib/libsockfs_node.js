@@ -270,13 +270,15 @@ var NodeSockFSLibrary = {
     // udpDeliver, so bind/send/recv/poll/close stay backend-agnostic.
     ensureUdpHandle(sock) {
       if (sock.udp) return sock.udp;
-      var o = sock.opts || {};
-      var v6 = sock.family === {{{ cDefs.AF_INET6 }}};
       if (nodeSockHelpers.useDgram()) {
+        var o = sock.opts ?? {};
+        var v6 = sock.family === {{{ cDefs.AF_INET6 }}};
         // The bind-time flags are constructor options here, applied by bindSync.
         var socket = nodeSockHelpers.getDgram().createSocket({
           type: v6 ? 'udp6' : 'udp4',
-          reuseAddr: !!o.reuseAddr, reusePort: !!o.reusePort, ipv6Only: v6 && !!o.ipv6Only,
+          reuseAddr: !!o.reuseAddr,
+          reusePort: !!o.reusePort,
+          ipv6Only: v6 && !!o.ipv6Only,
         });
         socket.on('message', (msg, rinfo) => {
           var data = new Uint8Array(msg.length);
@@ -562,7 +564,6 @@ var NodeSockFSLibrary = {
       }
       if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
         var udp = nodeSockHelpers.ensureUdpHandle(sock);
-        var o = sock.opts || {};
         if (sock.udpPublic) {
           var a;
           // bindSync throws synchronously (e.g. EADDRINUSE) and returns the
@@ -572,6 +573,7 @@ var NodeSockFSLibrary = {
           sock.saddr = a.address;
           sock.sport = a.port;
         } else {
+          var o = sock.opts ?? {};
           var uc = nodeSockHelpers.udpWrap.constants;
           var flags = (o.reuseAddr ? uc.UV_UDP_REUSEADDR : 0) | (o.reusePort ? uc.UV_UDP_REUSEPORT : 0);
           var ucode = addr.includes(':')
@@ -889,7 +891,7 @@ var NodeSockFSLibrary = {
             // kernel does; a negative tv_sec clears the timeout.
             if (optlen < {{{ C_STRUCTS.timeval.__size__ }}}) return -{{{ cDefs.EINVAL }}};
             var sec = {{{ makeGetValue('optval', C_STRUCTS.timeval.tv_sec, 'i53') }}};
-            var usec = {{{ makeGetValue('optval', C_STRUCTS.timeval.tv_usec, MEMORY64 ? 'i53' : 'i32') }}};
+            var usec = {{{ makeGetValue('optval', C_STRUCTS.timeval.tv_usec, 'i32') }}};
             if (usec < 0 || usec >= 1000000) return -{{{ cDefs.EDOM }}};
             if (sec < 0) sec = usec = 0;
             sock.opts[optname === {{{ cDefs.SO_RCVTIMEO }}} ? 'rcvTimeo' : 'sndTimeo'] = [sec, usec];
@@ -971,7 +973,7 @@ var NodeSockFSLibrary = {
             if ({{{ makeGetValue('optlen', 0, 'i32') }}} < {{{ C_STRUCTS.timeval.__size__ }}}) return -{{{ cDefs.EINVAL }}};
             var tv = sock.opts[optname === {{{ cDefs.SO_RCVTIMEO }}} ? 'rcvTimeo' : 'sndTimeo'] || [0, 0];
             {{{ makeSetValue('optval', C_STRUCTS.timeval.tv_sec, 'tv[0]', 'i53') }}};
-            {{{ makeSetValue('optval', C_STRUCTS.timeval.tv_usec, 'tv[1]', MEMORY64 ? 'i53' : 'i32') }}};
+            {{{ makeSetValue('optval', C_STRUCTS.timeval.tv_usec, 'tv[1]', 'i32') }}};
             {{{ makeSetValue('optlen', 0, C_STRUCTS.timeval.__size__, 'i32') }}};
             return 0;
           }
