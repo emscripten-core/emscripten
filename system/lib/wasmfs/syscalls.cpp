@@ -1605,9 +1605,9 @@ doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   buf->f_blocks = 1000000;
   buf->f_bfree = 500000;
   buf->f_bavail = 500000;
-  buf->f_files = file->getIno();
-  buf->f_ffree = 1000000;
-  buf->f_fsid = {0, 0};
+  buf->f_files = 1000000;
+  buf->f_ffree = 500000;
+  buf->f_fsid = {42, 0};
   buf->f_flags = ST_NOSUID;
   buf->f_namelen = 255;
   return 0;

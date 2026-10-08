@@ -5808,7 +5808,6 @@ got: 10
     # layer must not dereference a missing poll handler (poll/epoll on a file).
     self.do_runf('core/test_epoll_noderawfs.c', 'done\n', cflags=['-sNODERAWFS'])
 
-  @no_wasmfs('st.f_ffree > st.f_files, same issue than in wasmfs.test_fs_nodefs_statvfs. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_statvfs(self):
     self.do_core_test('test_statvfs.c')
 
@@ -5937,7 +5936,6 @@ got: 10
 
   @requires_node
   @crossplatform
-  @no_wasmfs('Assertion failed: st.f_ffree <= st.f_files && "Free inodes should not exceed total inodes". https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_nodefs_statvfs(self):
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
