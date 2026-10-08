@@ -229,22 +229,31 @@ Async auto call variants
 ########################
 
 All ``__async: 'auto'`` defined library functions support a calling convention
-for being called with a ``_promise`` suffix to obtain the promise value directly
-without suspending, so it can be called from any stack.
+for being called with a ``_promise`` or ``_fd`` suffix to obtain the result as
+a promise or file descriptor directly without suspending, which can be called
+from any stack.
 
 The same ``lookup`` definition from the example in the previous section above
-defines both C variants:
+defines all three C variants:
 
 .. code-block:: c
 
    intptr_t lookup(const char* name);
    em_promise_t lookup_promise(const char* name);
+   int lookup_fd(const char* name);
 
 Calling ``lookup_promise()`` runs the same body (with ``sync`` always
 ``false``) and returns a promise handle (``em_promise_t``, see
 ``<emscripten/promise.h>``) on the calling thread, fulfilled with the result or
-rejected with ``NULL``.  These
-variants are only generated when explicitly used.
+rejected with ``NULL``.
+
+Calling ``lookup_fd()`` likewise returns a file descriptor that becomes readable
+(``poll()``, ``select()``, ``epoll``) once the result is available, with
+``POLLERR`` if the promise was rejected.  ``read()`` of ``sizeof(intptr_t)``
+bytes takes the value (``EIO`` if rejected); the fd is then at EOF, and must be
+``close()``\d.  This variant is not currently available under ``WASMFS``.
+
+These variants are only generated when explicitly used.
 
 Ways to use Asyncify APIs in older engines
 ##########################################

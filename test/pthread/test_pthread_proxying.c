@@ -4,11 +4,14 @@
 #include <emscripten/console.h>
 #include <emscripten/eventloop.h>
 #include <emscripten/proxying.h>
+#include <emscripten/threading.h>
+#include <poll.h>
 #include <pthread.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <threads.h>
+#include <unistd.h>
 
 // The worker threads we will use. `looper` sits in a loop, continuously
 // processing work as it becomes available, while `returner` returns to the JS
@@ -80,7 +83,9 @@ void run_widget(widget* w) {
                      : pthread_equal(self, looper)    ? "looper"
                      : pthread_equal(self, returner)  ? "returner"
                      : pthread_equal(self, worker)    ? "worker"
-                                                      : "unknown";
+                     : pthread_equal(self, emscripten_main_runtime_thread_id())
+                       ? "runtime main"
+                       : "unknown";
   printf("running widget %d on %s\n", w->val, name);
   pthread_mutex_lock(&w->mutex);
   if (w->out) {
@@ -662,6 +667,33 @@ void test_proxying_queue_growth(void) {
   em_proxying_queue_destroy(arg.queue);
 }
 
+void test_proxy_fd_with_ctx() {
+  printf("Testing fd_with_ctx proxying\n");
+
+  int i = 0;
+  widget w20;
+  init_widget(&w20, &i, 20);
+
+  // Only the runtime main thread, whose event loop is free here under
+  // PROXY_TO_PTHREAD, can be the target.
+  int fd = emscripten_proxy_fd_with_ctx(emscripten_proxy_get_system_queue(),
+                                        emscripten_main_runtime_thread_id(),
+                                        start_running_widget,
+                                        &w20);
+  assert(fd >= 0);
+  struct pollfd p = {.fd = fd, .events = POLLIN};
+  assert(poll(&p, 1, -1) == 1);
+  assert(p.revents == POLLIN);
+  assert(w20.done);
+  assert(i == 20);
+  intptr_t v = 1;
+  assert(read(fd, &v, sizeof v) == sizeof v && v == 0);
+  assert(read(fd, &v, sizeof v) == 0);
+  assert(close(fd) == 0);
+
+  destroy_widget(&w20);
+}
+
 int main(int argc, char* argv[]) {
   main_thread = pthread_self();
 
@@ -678,6 +710,7 @@ int main(int argc, char* argv[]) {
   test_proxy_callback_with_ctx();
   test_proxy_promise();
   test_proxy_promise_with_ctx();
+  test_proxy_fd_with_ctx();
 
   should_quit = 1;
   pthread_join(looper, NULL);

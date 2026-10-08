@@ -1,10 +1,10 @@
 {
   "a.out.js": 7423,
   "a.out.js.gz": 3667,
-  "a.out.nodebug.wasm": 19201,
-  "a.out.nodebug.wasm.gz": 8860,
-  "total": 26624,
-  "total_gz": 12527,
+  "a.out.nodebug.wasm": 19296,
+  "a.out.nodebug.wasm.gz": 8894,
+  "total": 26719,
+  "total_gz": 12561,
   "sent": [
     "a (memory)",
     "b (exit)",

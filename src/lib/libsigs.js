@@ -342,6 +342,8 @@ sigs = {
   _emscripten_log_formatted__sig: 'vip',
   _emscripten_lookup_name__sig: 'ip',
   _emscripten_notify_mailbox_postmessage__sig: 'vpp',
+  _emscripten_proxy_fd_create__sig: 'ip',
+  _emscripten_proxy_fd_settle__sig: 'vipi',
   _emscripten_push_main_loop_blocker__sig: 'vppp',
   _emscripten_push_uncounted_main_loop_blocker__sig: 'vppp',
   _emscripten_receive_on_main_thread_js__sig: 'dippippp',
