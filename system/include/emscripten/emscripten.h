@@ -68,6 +68,20 @@ void emscripten_set_socket_connection_callback(void *userData, em_socket_callbac
 void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
 void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
 
+// getaddrinfo() as one asynchronous lookup in three variants. Each resolves
+// to the head of a newly allocated addrinfo list (free with freeaddrinfo()),
+// or a (negative) EAI_* code. emscripten_dns_lookup() is synchronous (it is
+// what getaddrinfo() calls): where the stack cannot wait for a real lookup -
+// the main thread without ASYNCIFY/JSPI - it returns EAI_AGAIN.
+// emscripten_dns_lookup_promise() returns an em_promise_t fulfilled with the
+// result; emscripten_dns_lookup_callback() calls callback(err, result, arg) on
+// the calling thread with it, after returning (err is never set: a failed
+// lookup is an EAI_* result).
+struct addrinfo;
+intptr_t emscripten_dns_lookup(const char *name, const char *service, const struct addrinfo *hints);
+em_promise_t emscripten_dns_lookup_promise(const char *name, const char *service, const struct addrinfo *hints);
+void emscripten_dns_lookup_callback(const char *name, const char *service, const struct addrinfo *hints, void (*callback)(bool err, intptr_t result, void *arg), void *arg);
+
 void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 #define emscripten_push_main_loop_blocker(func, arg) \
