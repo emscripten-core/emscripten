@@ -1010,34 +1010,15 @@ addToLibrary({
     return inetPton4(DNS.lookup_name(nameString));
   },
 
-  getaddrinfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl',
-#if NODERAWSOCKETS
-    '$nodeSockHelpers',
-#endif
-#if NODERAWSOCKETS && ASYNCIFY
-    '$Asyncify',
-#endif
-  ],
-  getaddrinfo__proxy: 'sync',
-#if NODERAWSOCKETS && (PTHREADS || ASYNCIFY)
-  // Returns an EAI_* code synchronously, or - for a hostname needing a real
-  // DNS lookup - a Promise of one, which a sync-proxied pthread awaits and
-  // ASYNCIFY/JSPI suspend on.
-  getaddrinfo__async: true,
-#endif
-  getaddrinfo: (node, service, hint, out) => {
-    // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
-    // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
-    // really should provide a linked list of suitable addrinfo values.
-    var addrs = [];
+  // Complete a getAddrInfo result: an EAI_* code (negative) is returned as is;
+  // a resolved descriptor is allocated as an addrinfo list (freed by
+  // freeaddrinfo) and its head returned.
+  $allocAddrInfo__internal: true,
+  $allocAddrInfo__deps: ['$inetNtop4', '$inetNtop6', '$writeSockaddr', 'malloc'],
+  $allocAddrInfo: (desc) => {
+    if (typeof desc === 'number') return desc;
+    var {type, proto, port} = desc;
     var canon = null;
-    var addr = 0;
-    var port = 0;
-    var flags = 0;
-    var family = {{{ cDefs.AF_UNSPEC }}};
-    var type = 0;
-    var proto = 0;
-    var ai, last;
 
     function allocaddrinfo(family, type, proto, canon, addr, port) {
       var sa, salen, ai;
@@ -1071,26 +1052,40 @@ addToLibrary({
       return ai;
     }
 
-#if NODERAWSOCKETS
-    // Resolve via node:dns (which honors the host's /etc/hosts), chaining one
-    // addrinfo per {family, addr} result into *out.
-    async function lookupHostname() {
-      var entries = await nodeSockHelpers.lookupHost(node, family);
-      if (typeof entries === 'number') return entries;
-      var head = 0, prev = 0;
-      for (var entry of entries) {
-        var ai = allocaddrinfo(entry.family, type, proto, null, entry.addr, port);
-        if (prev) {
-          {{{ makeSetValue('prev', C_STRUCTS.addrinfo.ai_next, 'ai', '*') }}};
-        } else {
-          head = ai;
-        }
-        prev = ai;
+    var head = 0, prev = 0;
+    for (var {family, addr} of desc.entries) {
+      var ai = allocaddrinfo(family, type, proto, canon, addr, port);
+      if (prev) {
+        {{{ makeSetValue('prev', C_STRUCTS.addrinfo.ai_next, 'ai', '*') }}};
+      } else {
+        head = ai;
       }
-      {{{ makeSetValue('out', '0', 'head', '*') }}};
-      return 0;
+      prev = ai;
     }
+    return head;
+  },
+
+  // The getaddrinfo body, allocating nothing. Returns an EAI_* code or a
+  // descriptor {type, proto, port, entries: [{family, addr}]}. Under
+  // NODERAWSOCKETS a hostname needs an asynchronous node:dns lookup: the
+  // descriptor then has `lookup` instead of `entries`, an async function
+  // resolving to a code or entries, for the caller to wait on.
+  $getAddrInfo__internal: true,
+  $getAddrInfo__deps: ['$DNS', '$inetPton4', '$inetPton6', 'htonl',
+#if NODERAWSOCKETS
+    '$nodeSockHelpers',
 #endif
+  ],
+  $getAddrInfo: (node, service, hint) => {
+    // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
+    // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
+    // really should provide a linked list of suitable addrinfo values.
+    var addr = 0;
+    var port = 0;
+    var flags = 0;
+    var family = {{{ cDefs.AF_UNSPEC }}};
+    var type = 0;
+    var proto = 0;
 
     if (hint) {
       flags = {{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}};
@@ -1160,9 +1155,7 @@ addToLibrary({
           addr = [0, 0, 0, _htonl(1)];
         }
       }
-      ai = allocaddrinfo(family, type, proto, null, addr, port);
-      {{{ makeSetValue('out', '0', 'ai', '*') }}};
-      return 0;
+      return {type, proto, port, entries: [{family, addr}]};
     }
 
     //
@@ -1193,9 +1186,7 @@ addToLibrary({
       }
     }
     if (addr != null) {
-      ai = allocaddrinfo(family, type, proto, node, addr, port);
-      {{{ makeSetValue('out', '0', 'ai', '*') }}};
-      return 0;
+      return {type, proto, port, entries: [{family, addr}]};
     }
     if (flags & {{{ cDefs.AI_NUMERICHOST }}}) {
       return {{{ cDefs.EAI_NONAME }}};
@@ -1205,23 +1196,11 @@ addToLibrary({
     // try as a hostname
     //
 #if NODERAWSOCKETS
-    // The lookup is asynchronous, so only start it where the calling stack can
-    // wait on the Promise: a sync-proxied pthread (PROXY_SYNC_ASYNC) awaits it,
-    // ASYNCIFY/JSPI suspend on it. Otherwise (the event-loop thread itself) it
-    // must not start at all, since it would write to *out after we have
-    // returned.
-#if PTHREADS
-    if (PThread.currentProxiedOperationCallerThread) return lookupHostname();
-#endif
-#if ASYNCIFY
-    // handleAsync holds a runtime keepalive across the suspension, so a user
-    // callback completing meanwhile does not exit the runtime under main().
-    // Everything above this point is pure, so the ASYNCIFY rewind re-running
-    // this body reaches handleAsync again and takes the stored result.
-    return Asyncify.handleAsync(lookupHostname);
-#else
-    return {{{ cDefs.EAI_AGAIN }}};
-#endif
+    // node:dns honors the host's /etc/hosts.
+    return {type, proto, port, lookup: async () => {
+      var entries = await nodeSockHelpers.lookupHost(node, family);
+      return typeof entries === 'number' ? entries : {type, proto, port, entries};
+    }};
 #else
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
@@ -1231,10 +1210,28 @@ addToLibrary({
     } else if (family === {{{ cDefs.AF_INET6 }}}) {
       addr = [0, 0, _htonl(0xffff), addr];
     }
-    ai = allocaddrinfo(family, type, proto, null, addr, port);
-    {{{ makeSetValue('out', '0', 'ai', '*') }}};
-    return 0;
+    return {type, proto, port, entries: [{family, addr}]};
 #endif
+  },
+
+  // getaddrinfo() as one asynchronous body with variants: resolves to the
+  // head of a newly allocated addrinfo list (freed with freeaddrinfo), or an
+  // EAI_* code (negative). Numeric addresses and errors complete
+  // synchronously; under NODERAWSOCKETS a hostname awaits node:dns, or is
+  // EAI_AGAIN where the caller cannot wait. getaddrinfo() itself
+  // (system/lib/libc/getaddrinfo.c) calls the synchronous form.
+  emscripten_dns_lookup__deps: ['$getAddrInfo', '$allocAddrInfo'],
+  emscripten_dns_lookup__async: 'auto',
+  emscripten_dns_lookup__proxy: 'sync',
+  emscripten_dns_lookup: (node, service, hint, sync) => {
+    var desc = getAddrInfo(node, service, hint);
+#if NODERAWSOCKETS
+    if (desc.lookup) {
+      if (sync) return {{{ cDefs.EAI_AGAIN }}};
+      return desc.lookup().then(allocAddrInfo);
+    }
+#endif
+    return allocAddrInfo(desc);
   },
 
   getnameinfo__deps: ['$DNS', '$readSockaddr', '$stringToUTF8'],

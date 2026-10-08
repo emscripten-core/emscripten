@@ -1004,6 +1004,7 @@ native_sigs = {
   'get_avphys_pages': 'p',
   'get_current_dir_name': 'p',
   'get_phys_pages': 'p',
+  'getaddrinfo': '_pppp',
   'getc': '_p',
   'getc_unlocked': '_p',
   'getcwd': 'ppp',

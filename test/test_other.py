@@ -11087,6 +11087,11 @@ ok.
   def test_getaddrinfo(self):
     self.do_runf('sockets/test_getaddrinfo.c', 'done\n')
 
+  def test_dns_lookup_async(self):
+    # emscripten_dns_lookup_fd/_promise without NODERAWSOCKETS: every lookup
+    # completes synchronously (fake addresses), readable on return.
+    self.do_runf('sockets/test_dns_async.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
   def test_getnameinfo(self):
     self.do_runf('sockets/test_getnameinfo.c', 'done\n')
 
