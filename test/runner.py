@@ -108,15 +108,20 @@ passing_core_test_modes = [
 # The default core test mode, used when none is specified
 default_core_test_mode = 'core0'
 
+# The 'misc' test alias encompasses `other` plus any suites split out from `test_other.py`.
+misc_tests = [
+  'other',
+  'jslib',
+]
+
 # All test modes aside from passing_core_test_modes. These modes might be wip
 # and not all pass yet, or they might be non-'core' (e.g., if they open a
 # browser window or otherwise have custom functionality). Random tests are not
 # picked from here, but you can force them to be, using something like
 # randombrowser10 (which runs 10 random tests from 'browser').
-misc_test_modes = [
+non_core_test_modes = [
+  *misc_tests,
   'codesize',
-  'other',
-  'jslib',
   'browser',
   'sanity',
   'sockets_node',
@@ -137,7 +142,7 @@ misc_test_modes = [
   'llvmlibc',
 ]
 
-default_tests = ['jslib', 'other', 'core0']
+default_tests = ['misc', 'core0']
 
 
 def check_js_engines():
@@ -162,7 +167,7 @@ def get_and_import_modules():
 def get_all_tests(modules):
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
-  suites = passing_core_test_modes + misc_test_modes
+  suites = passing_core_test_modes + non_core_test_modes
   for m in modules:
     for s in suites:
       if hasattr(m, s):
@@ -172,7 +177,7 @@ def get_all_tests(modules):
 
 
 def get_crossplatform_tests(modules):
-  suites = ['core0', 'other', 'sanity'] # We don't need all versions of every test
+  suites = ['core0', 'sanity'] + misc_tests # We don't need all versions of every test
   crossplatform_tests = []
   # Walk over the test suites and find the test functions with the
   # is_crossplatform_test attribute applied by @crossplatform decorator
@@ -251,7 +256,7 @@ def get_random_test_parameters(arg):
   relevant_modes = passing_core_test_modes
   if len(arg):
     num_str = arg
-    for mode in passing_core_test_modes + misc_test_modes:
+    for mode in passing_core_test_modes + non_core_test_modes:
       if arg.startswith(mode):
         base_module = mode
         relevant_modes = [mode]
@@ -739,6 +744,14 @@ def main():
   if not tests:
     errlog(f"Using default tests: {' '.join(default_tests)}")
     tests = default_tests
+
+  new_tests = []
+  for t in tests:
+    if t == 'misc':
+      new_tests += misc_tests
+    else:
+      new_tests.append(t)
+  tests = new_tests
 
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
