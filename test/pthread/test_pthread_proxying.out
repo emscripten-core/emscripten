@@ -24,6 +24,8 @@ Testing promise_with_ctx proxying
 running widget 17 on worker
 running widget 18 on looper
 running widget 19 on returner
+Testing fd_with_ctx proxying
+running widget 20 on runtime main
 Testing tasks queue growth
 Testing proxying queue growth
 work

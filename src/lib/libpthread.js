@@ -1045,6 +1045,15 @@ var LibraryPThread = {
     __emscripten_run_js_on_main_thread_callback(funcIndex, emAsmAddr, bufSize, bufPtr, callback, arg);
   }),
 
+  // As proxyToMainThread, returning an fd readable once the main thread has
+  // the result (the _fd variant, emscripten_proxy_fd_with_ctx).
+  $proxyToMainThreadFd__deps: ['_emscripten_run_js_on_main_thread_fd'],
+  $proxyToMainThreadFd__docs: '/** @type{function(number, (number|boolean), ...number)} */',
+  $proxyToMainThreadFd: (funcIndex, emAsmAddr, ...callArgs) => withStackSave(() => {
+    var [bufPtr, bufSize] = serializeProxiedArgs(callArgs);
+    return __emscripten_run_js_on_main_thread_fd(funcIndex, emAsmAddr, bufSize, bufPtr);
+  }),
+
   // Reuse global JS array to avoid creating JS garbage for each proxied call
   $proxiedJSCallArgs: [],
 
