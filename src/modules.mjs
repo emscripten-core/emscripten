@@ -41,7 +41,7 @@ const systemLibdir = path.join(srcDir, 'lib');
 
 // Return type and trailing parameters of each async variant by suffix (see
 // expandAsyncVariants).
-const ASYNC_VARIANTS = new Map([['promise', ['p', '']], ['callback', ['v', 'pp']]]);
+const ASYNC_VARIANTS = new Map([['promise', ['p', '']], ['callback', ['v', 'pp']], ['fd', ['i', '']]]);
 
 function isBeneath(childPath, parentPath) {
   const relativePath = path.relative(parentPath, childPath);
@@ -296,15 +296,16 @@ export const LibraryManager = {
   },
 
   /**
-   * `__async: ['promise', 'callback', ...]` is `__async: 'auto'` along with the
-   * listed variants. An 'auto' function returns a pointer-sized value or
+   * `__async: ['promise', 'callback', 'fd']` is `__async: 'auto'` along with
+   * the listed variants. An 'auto' function returns a pointer-sized value or
    * nothing, or a Promise of either, unless its trailing `sync` argument
    * forbids (see jsifier). Its `foo_promise` variant runs the same body,
    * returning an em_promise_t of the result (NULL for a void function) on the
-   * calling thread, and its `foo_callback` variant takes
+   * calling thread, its `foo_callback` variant takes
    * `callback(err, result, arg)` and `arg` to call on the calling thread with it
-   * (see $callbackFromPromise); both can always wait. Variants are emitted only
-   * where used.
+   * (see $callbackFromPromise), and its `foo_fd` variant returns an fd readable
+   * once the result is available (see $fdFromPromise); all can always wait.
+   * Variants are emitted only where used.
    */
   expandAsyncVariants() {
     for (const [key, variants] of Object.entries(this.library)) {
@@ -340,7 +341,7 @@ export const LibraryManager = {
           }
         }
         if (PTHREADS && this.library[base + '__proxy'] == 'sync') {
-          const proxyFunc = variant == 'promise' ? '$proxyToMainThreadPromise' : '$proxyToMainThreadCallback';
+          const proxyFunc = {promise: '$proxyToMainThreadPromise', callback: '$proxyToMainThreadCallback', fd: '$proxyToMainThreadFd'}[variant];
           this.library[name + '__deps'] = [...(this.library[name + '__deps'] ?? []), proxyFunc];
         }
       }
