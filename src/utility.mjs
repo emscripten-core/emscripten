@@ -223,6 +223,7 @@ export const decoratorSuffixes = [
   '__i53abi',
   '__export',
   '__force',
+  '__async_variant',
 ];
 
 export function isDecorator(ident) {

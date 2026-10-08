@@ -126,6 +126,102 @@ addToLibrary({
     ''')
     self.do_runf('src.c', 'main\ndone\n', cflags=['-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
 
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY', '-DASYNC'],),
+    'jspi': (['-sJSPI', '-DASYNC'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_jslib_async_auto_variants(self, args):
+    # An `__async: 'auto'` function `answer(ms, value)` resolving to `value`
+    # after `ms` milliseconds (synchronously if `ms` is 0, rejecting if `value`
+    # is 0), and its `answer_promise` variant. Where the caller cannot wait,
+    # `answer()` is -1.
+    if '-sJSPI' in args:
+      self.require_jspi()
+    if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    create_file('lib.js', r'''
+addToLibrary({
+  answer__sig: 'pip',
+  answer__async: 'auto',
+  answer__proxy: 'sync',
+  answer: (ms, value, sync) => {
+    if (!ms) return value;
+    if (sync) return -1;
+    return new Promise((resolve, reject) =>
+      setTimeout(() => value ? resolve(value) : reject(new Error('zero')), ms));
+  },
+});
+''')
+    create_file('src.c', r'''
+#include <assert.h>
+#include <emscripten.h>
+#include <emscripten/promise.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+intptr_t answer(int ms, intptr_t value);
+em_promise_t answer_promise(int ms, intptr_t value);
+
+int stage;
+
+em_promise_result_t fail(void** result, void* data, void* value) {
+  assert(0 && "promise rejected");
+}
+
+em_promise_result_t on_rejected(void** result, void* data, void* value) {
+  assert(stage++ == 2);
+  assert(value == NULL);
+  printf("done\n");
+#ifdef __EMSCRIPTEN_PTHREADS__
+  exit(0);
+#endif
+  return EM_PROMISE_FULFILL;
+}
+
+em_promise_result_t on_fulfilled(void** result, void* data, void* value) {
+  assert(stage++ == 1);
+  assert((intptr_t)value == 42);
+  // A rejected promise.
+  em_promise_t p = answer_promise(5, 0);
+  em_promise_t next = emscripten_promise_then(p, fail, on_rejected, NULL);
+  emscripten_promise_destroy(p);
+  emscripten_promise_destroy(next);
+  return EM_PROMISE_FULFILL;
+}
+
+em_promise_result_t on_sync(void** result, void* data, void* value) {
+  assert(stage++ == 0);
+  assert((intptr_t)value == 7);
+  em_promise_t p = answer_promise(5, 42);
+  em_promise_t next = emscripten_promise_then(p, on_fulfilled, fail, NULL);
+  emscripten_promise_destroy(p);
+  emscripten_promise_destroy(next);
+  return EM_PROMISE_FULFILL;
+}
+
+int main() {
+  assert(answer(0, 7) == 7);
+#if defined(__EMSCRIPTEN_PTHREADS__) || defined(ASYNC)
+  assert(answer(5, 42) == 42);
+#else
+  // Where the stack cannot wait, the body is told so.
+  assert(answer(5, 42) == -1);
+#endif
+
+  // A synchronous completion is a fulfilled promise.
+  em_promise_t p = answer_promise(0, 7);
+  em_promise_t next = emscripten_promise_then(p, on_sync, fail, NULL);
+  emscripten_promise_destroy(p);
+  emscripten_promise_destroy(next);
+  return 0;
+}
+''')
+    self.do_runf('src.c', 'done\n', cflags=args + ['-sEXIT_RUNTIME', '--js-library', 'lib.js'])
+
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
 addToLibrary({

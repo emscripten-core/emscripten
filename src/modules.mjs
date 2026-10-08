@@ -39,6 +39,10 @@ export const nativeAliases = {};
 const srcDir = fileURLToPath(new URL('.', import.meta.url));
 const systemLibdir = path.join(srcDir, 'lib');
 
+// Suffix and return type of each async variant of an `__async: 'auto'`
+// function (see expandAsyncVariants).
+const ASYNC_VARIANTS = [['promise', 'p']];
+
 function isBeneath(childPath, parentPath) {
   const relativePath = path.relative(parentPath, childPath);
   return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
@@ -285,9 +289,46 @@ export const LibraryManager = {
     }
     timer.stop('executeJS')
 
+    this.expandAsyncVariants();
     this.addAliasDependencies();
 
     timer.stop('load')
+  },
+
+  /**
+   * Async variants of `__async: 'auto'` functions. Such a function returns a
+   * pointer-sized value or a Promise of one, unless its trailing `sync`
+   * argument forbids (see jsifier). Each also has a `foo_promise` variant, the
+   * same body returning an em_promise_t of the result on the calling
+   * thread, which can always wait. Variants are emitted only where used; an
+   * explicit library entry of the same name takes precedence.
+   */
+  expandAsyncVariants() {
+    const bases = [];
+    for (const [base, impl] of Object.entries(this.library)) {
+      if (base[0] == '$' || isDecorator(base) || typeof impl !== 'function') continue;
+      if (this.library[base + '__async'] != 'auto') continue;
+      const sig = this.library[base + '__sig'];
+      if (!sig || !'pi'.includes(sig[0])) continue;
+      bases.push([base, impl, sig]);
+    }
+    for (const [base, impl, sig] of bases) {
+      for (const [variant, rtn] of ASYNC_VARIANTS) {
+        const name = `${base}_${variant}`;
+        if (this.library.hasOwnProperty(name)) continue;
+        this.library[name] = impl;
+        this.library[name + '__async_variant'] = variant;
+        this.library[name + '__sig'] = rtn + sig.slice(1);
+        for (const decorator of ['__async', '__proxy', '__deps', '__i53abi', '__user']) {
+          if (this.library.hasOwnProperty(base + decorator)) {
+            this.library[name + decorator] = this.library[base + decorator];
+          }
+        }
+        if (PTHREADS && variant == 'promise' && this.library[base + '__proxy'] == 'sync') {
+          this.library[name + '__deps'] = [...(this.library[name + '__deps'] ?? []), '$proxyToMainThreadPromise'];
+        }
+      }
+    }
   },
 
   isAlias(entry) {

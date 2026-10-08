@@ -67,7 +67,9 @@ that the promise resolves to will be returned to the caller. This allows
 functions that would require :ref:`ASYNCIFY` (when called from the main browser
 thread) to be called without :ref:`ASYNCIFY` from a background thread.  In other
 words, background threads can block on proxied work even without :ref:`ASYNCIFY`
-enabled.
+enabled.  :ref:`async_auto_call_variants` are generated for ``__async: 'auto'``
+functions to support non-suspending callers, for example to obtain a promise
+handle (``em_promise_t``) for the main thread's result directly.
 
 .. note:: Proxying can cause problems, such as deadlocks, in certain cases, see
   the section on blocking below.
