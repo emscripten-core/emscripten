@@ -1,9 +1,9 @@
 {
-  "a.out.js": 6925,
+  "a.out.js": 6930,
   "a.out.js.gz": 3435,
   "a.out.nodebug.wasm": 19139,
   "a.out.nodebug.wasm.gz": 8818,
-  "total": 26064,
+  "total": 26069,
   "total_gz": 12253,
   "sent": [
     "a (memory)",

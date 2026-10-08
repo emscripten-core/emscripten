@@ -228,7 +228,7 @@ function makeStub(x, library) {
   }
 
   var t = library[x];
-  if (typeof t == 'string') return;
+  if (typeof t === 'string') return;
   t = t.toString();
 
   delete library[x + '__i53abi'];

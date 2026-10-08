@@ -20,7 +20,7 @@ export function safeQuote(x) {
 export function dump(item) {
   let funcData;
   try {
-    if (typeof item == 'object' && item != null && item.funcData) {
+    if (typeof item === 'object' && item != null && item.funcData) {
       funcData = item.funcData;
       item.funcData = null;
     }
@@ -28,7 +28,7 @@ export function dump(item) {
   } catch {
     const ret = [];
     for (const [i, j] of Object.entries(item)) {
-      if (typeof j == 'string' || typeof j == 'number') {
+      if (typeof j === 'string' || typeof j === 'number') {
         ret.push(`${i}: ${j}`);
       } else {
         ret.push(`${i}: [?]`);

@@ -437,7 +437,7 @@ function ensureDot(value) {
 
 export function isNumber(x) {
   // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
-  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
+  return x == parseFloat(x) || (typeof x === 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
 // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
@@ -573,13 +573,13 @@ function getFastValue(a, op, b) {
 
   let aNumber = null;
   let bNumber = null;
-  if (typeof a == 'number') {
+  if (typeof a === 'number') {
     aNumber = a;
     a = a.toString();
   } else if (isNumber(a)) {
     aNumber = parseFloat(a);
   }
-  if (typeof b == 'number') {
+  if (typeof b === 'number') {
     bNumber = b;
     b = b.toString();
   } else if (isNumber(b)) {

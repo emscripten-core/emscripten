@@ -175,7 +175,7 @@ var LibraryBrowser = {
 #if MIN_WEBGL_VERSION >= 2
           majorVersion: 2,
 #elif MAX_WEBGL_VERSION >= 2 // libbrowser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
-          majorVersion: (typeof WebGL2RenderingContext != 'undefined') ? 2 : 1,
+          majorVersion: (typeof WebGL2RenderingContext !== 'undefined') ? 2 : 1,
 #else
           majorVersion: 1,
 #endif
@@ -190,7 +190,7 @@ var LibraryBrowser = {
         // This check of existence of GL is here to satisfy Closure compiler, which yells if variable GL is referenced below but GL object is not
         // actually compiled in because application is not doing any GL operations. TODO: Ideally if GL is not being used, this function
         // Browser.createContext() should not even be emitted.
-        if (typeof GL != 'undefined') {
+        if (typeof GL !== 'undefined') {
           contextHandle = GL.createContext(canvas, contextAttributes);
           if (contextHandle) {
             ctx = GL.getContext(contextHandle).GLctx;
@@ -204,7 +204,7 @@ var LibraryBrowser = {
 
       if (setInModule) {
 #if ASSERTIONS
-        if (!useWebGL) assert(typeof GLctx == 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
+        if (!useWebGL) assert(typeof GLctx === 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
 #endif
         Module['ctx'] = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
@@ -221,8 +221,8 @@ var LibraryBrowser = {
     requestFullscreen(lockPointer, resizeCanvas) {
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
-      if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
-      if (typeof Browser.resizeCanvas == 'undefined') Browser.resizeCanvas = false;
+      if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
+      if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
 
       var canvas = Browser.getCanvas();
       function fullscreenChange() {
@@ -439,7 +439,7 @@ var LibraryBrowser = {
 
     setFullscreenCanvasSize() {
       // check if SDL is available
-      if (typeof SDL != 'undefined') {
+      if (typeof SDL !== 'undefined') {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
         flags = flags | {{{ cDefs.SDL_FULLSCREEN }}};
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
@@ -450,7 +450,7 @@ var LibraryBrowser = {
 
     setWindowedCanvasSize() {
       // check if SDL is available
-      if (typeof SDL != 'undefined') {
+      if (typeof SDL !== 'undefined') {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
         flags = flags & ~{{{ cDefs.SDL_FULLSCREEN }}};
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
@@ -478,7 +478,7 @@ var LibraryBrowser = {
         }
       }
 #endif
-      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen != 'undefined')) {
+      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen !== 'undefined')) {
          var factor = Math.min(screen.width / w, screen.height / h);
          w = Math.round(w * factor);
          h = Math.round(h * factor);
@@ -486,14 +486,14 @@ var LibraryBrowser = {
       if (Browser.resizeCanvas) {
         if (canvas.width  != w) canvas.width  = w;
         if (canvas.height != h) canvas.height = h;
-        if (typeof canvas.style != 'undefined') {
+        if (typeof canvas.style !== 'undefined') {
           canvas.style.removeProperty( 'width');
           canvas.style.removeProperty('height');
         }
       } else {
         if (canvas.width  != wNative) canvas.width  = wNative;
         if (canvas.height != hNative) canvas.height = hNative;
-        if (typeof canvas.style != 'undefined') {
+        if (typeof canvas.style !== 'undefined') {
           if (w != wNative || h != hNative) {
             canvas.style.setProperty( 'width', w + 'px', 'important');
             canvas.style.setProperty('height', h + 'px', 'important');

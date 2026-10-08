@@ -25,7 +25,7 @@
 
   // We skip the node version checking when running on Bun/Deno since the node
   // version they report doesn't seem to be useful.
-  if (typeof process !== 'undefined' && !process.versions?.bun && typeof Deno == "undefined") {
+  if (typeof process !== 'undefined' && !process.versions?.bun && typeof Deno === "undefined") {
     var currentNodeVersion = process.versions?.node ? humanReadableVersionToPacked(process.versions.node) : TARGET_NOT_SUPPORTED;
 #if MIN_NODE_VERSION == TARGET_NOT_SUPPORTED
     if (currentNodeVersion < TARGET_NOT_SUPPORTED) {

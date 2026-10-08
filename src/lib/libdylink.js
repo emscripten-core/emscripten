@@ -235,9 +235,9 @@ var LibraryDylink = {
         dbg(`updateGOT: before: ${symName} : ${GOT[symName]?.value}`);
 #endif
         var newValue;
-        if (typeof value == 'function') {
+        if (typeof value === 'function') {
           newValue = {{{ to64('addFunction(value)') }}};
-        } else if (typeof value.value == {{{ POINTER_JS_TYPE }}}) {
+        } else if (typeof value.value === {{{ POINTER_JS_TYPE }}}) {
           newValue = value;
         } else {
           // The GOT can only contain addresses (i.e data addresses or function
@@ -334,15 +334,15 @@ var LibraryDylink = {
 #if DYLINK_DEBUG == 2
         dbg(`assigning dynamic symbol from main module: ${symName} -> ${prettyPrint(value)}`);
 #endif
-        if (typeof value == 'function') {
+        if (typeof value === 'function') {
           /** @suppress {checkTypes} */
           entry.value = {{{ to64('addFunction(value, value.sig)') }}};
 #if DYLINK_DEBUG == 2
           dbg(`assigning table entry for : ${symName} -> ${entry.value}`);
 #endif
-        } else if (typeof value == 'number') {
+        } else if (typeof value === 'number') {
           entry.value = {{{ to64('value') }}};
-        } else if (typeof value.value == {{{ POINTER_JS_TYPE }}}) {
+        } else if (typeof value.value === {{{ POINTER_JS_TYPE }}}) {
           entry.value = value;
         } else {
           throw new Error(`bad export type for '${symName}': ${typeof value} (${value})`);
@@ -585,7 +585,7 @@ var LibraryDylink = {
       if (isSymbolDefined(sym)) {
         var curr = wasmImports[sym], next = exp;
         // don't warn on functions - might be odr, linkonce_odr, etc.
-        if (!(typeof curr == 'function' && typeof next == 'function')) {
+        if (!(typeof curr === 'function' && typeof next === 'function')) {
           err(`warning: symbol '${sym}' from '${libName}' already exists (duplicate symbol? or weak linking, which isn't supported yet?)`); // + [curr, ' vs ', next]);
         }
       }
@@ -1378,7 +1378,7 @@ var LibraryDylink = {
 #endif
     result = lib.exports[symbol];
 
-    if (typeof result == 'function') {
+    if (typeof result === 'function') {
 #if DYLINK_DEBUG
       dbg(`dlsym_js: ${symbol} getting table slot for: ${result}`);
 #endif

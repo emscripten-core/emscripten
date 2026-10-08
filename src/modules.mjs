@@ -291,7 +291,7 @@ export const LibraryManager = {
   },
 
   isAlias(entry) {
-    return (typeof entry == 'string' && entry[0] != '=' && (this.library.hasOwnProperty(entry) || WASM_EXPORTS.has(entry)));
+    return (typeof entry === 'string' && entry[0] != '=' && (this.library.hasOwnProperty(entry) || WASM_EXPORTS.has(entry)));
   },
 
   /**

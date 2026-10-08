@@ -217,7 +217,7 @@ var WasiLibrary = {
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
-      if (typeof offset != 'undefined') {
+      if (typeof offset !== 'undefined') {
         offset += curr;
       }
     }
