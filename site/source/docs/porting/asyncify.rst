@@ -168,7 +168,7 @@ Marking JS library functions as async
 If you mark a JS library function as async using the ``__async`` decorator then
 the compiler will take a care of all the details of using the ``Asyncify`` API
 for you.  The function will also automatically be included in
-:ref:`ASYNCIFY_IMPORTS`.  All you need to do is write normal async JS function
+:ref:`ASYNCIFY_IMPORTS`.  All you need to do is write a normal async JS function
 (either using the explict ``async`` JS keyword or returning a ``Promise``
 object).  For example:
 
@@ -200,6 +200,51 @@ You can use ``__async: 1`` if you just want to include the function in
 :ref:`ASYNCIFY_IMPORTS` or ``__async: 'auto'`` if you also want the function to
 wrapper in ``Asyncify.handleAsync``.
 
+``__async: 'auto'`` allows the same function to work synchronously without
+``ASYNCIFY``.  Whether the function must return synchronously is provided as
+the last argument to the JS function via a ``sync`` boolean.  This is ``false``
+under ``ASYNCIFY``/JSPI, and when called from a pthread with ``__proxy:
+'sync'`` (the main thread awaits the result on its behalf); it is ``true``
+otherwise, where a returned ``Promise`` could not be waited for:
+
+.. code-block:: js
+
+   addToLibrary({
+     lookup__sig: 'pp',
+     lookup__async: 'auto',
+     lookup__proxy: 'sync',
+     lookup: (name, sync) => {
+       if (sync) return -EAGAIN;
+       return fetchSomething(name);  // returns a Promise
+     },
+   });
+
+In the above example, the same ``lookup`` supports the async promise-returning
+path for ``ASYNCIFY`` and a pthread, while returning the ``EAGAIN`` error when
+called synchronously.
+
+.. _async_auto_call_variants:
+
+Async auto call variants
+########################
+
+All ``__async: 'auto'`` defined library functions support a calling convention
+for being called with a ``_promise`` suffix to obtain the promise value directly
+without suspending, so it can be called from any stack.
+
+The same ``lookup`` definition from the example in the previous section above
+defines both C variants:
+
+.. code-block:: c
+
+   intptr_t lookup(const char* name);
+   em_promise_t lookup_promise(const char* name);
+
+Calling ``lookup_promise()`` runs the same body (with ``sync`` always
+``false``) and returns a promise handle (``em_promise_t``, see
+``<emscripten/promise.h>``) on the calling thread, fulfilled with the result or
+rejected with ``NULL``.  These
+variants are only generated when explicitly used.
 
 Ways to use Asyncify APIs in older engines
 ##########################################

@@ -306,19 +306,14 @@ var EpollLibrary = {
   // stream and `maxevents` already validated by the entry point.
   $epollPwait__internal: true,
   $epollPwait__deps: ['$doEpollWait'],
-  $epollPwait: (ep, ev, maxevents, timeout) => {
+  $epollPwait: (ep, ev, maxevents, timeout, sync) => {
 #if PTHREADS || ASYNCIFY
-#if PTHREADS
-    const isAsyncContext = PThread.currentProxiedOperationCallerThread;
-#else
-    const isAsyncContext = true;
-#endif
     // Always resolve through a Promise here: when proxied from a worker the
     // result is delivered by promise resolution, so a bare value would break
     // the proxy (it has no `.then`). Block on the epoll's own readiness - each
     // registration's persistent listener wakes ep.node on a leaf edge - and
     // re-derive on wake, resolving the count or 0 after `timeout`.
-    if (isAsyncContext) {
+    if (!sync) {
       return new Promise((resolve) => {
         var count = doEpollWait(ep, ev, maxevents);
         if (count || !timeout) {

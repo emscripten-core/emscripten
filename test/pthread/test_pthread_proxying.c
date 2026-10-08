@@ -460,6 +460,40 @@ test_promise_ctx_returner(void** result, void* data, void* value) {
   return EM_PROMISE_MATCH_RELEASE;
 }
 
+void finish_with_result(em_proxying_ctx* ctx, void* arg) {
+  emscripten_proxy_finish_result(ctx, arg);
+}
+
+void fail(em_proxying_ctx* ctx, void* arg) { emscripten_proxy_fail(ctx); }
+
+em_promise_result_t check_result(void** result, void* data, void* value) {
+  assert(value == data);
+  return EM_PROMISE_FULFILL;
+}
+
+em_promise_result_t check_rejected(void** result, void* data, void* value) {
+  assert(value == NULL);
+  return EM_PROMISE_FULFILL;
+}
+
+em_promise_result_t
+test_promise_ctx_result(void** result, void* data, void* value) {
+  em_promise_t promise = emscripten_proxy_promise_with_ctx(
+    proxy_queue, looper, finish_with_result, data);
+  *result = emscripten_promise_then(promise, check_result, explode, data);
+  emscripten_promise_destroy(promise);
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
+em_promise_result_t
+test_promise_ctx_fail(void** result, void* data, void* value) {
+  em_promise_t promise =
+    emscripten_proxy_promise_with_ctx(proxy_queue, looper, fail, data);
+  *result = emscripten_promise_then(promise, explode, check_rejected, data);
+  emscripten_promise_destroy(promise);
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
 struct promise_ctx_widgets {
   widget w17, w18, w19;
 };
@@ -474,13 +508,19 @@ void* do_test_proxy_promise_with_ctx(void* arg) {
     test1, test_promise_ctx_looper, explode, &widgets->w18);
   em_promise_t test3 = emscripten_promise_then(
     test2, test_promise_ctx_returner, explode, &widgets->w19);
-  em_promise_t end = emscripten_promise_then(test3, exit_thread, explode, NULL);
+  em_promise_t test4 = emscripten_promise_then(
+    test3, test_promise_ctx_result, explode, &widgets->w17);
+  em_promise_t test5 =
+    emscripten_promise_then(test4, test_promise_ctx_fail, explode, NULL);
+  em_promise_t end = emscripten_promise_then(test5, exit_thread, explode, NULL);
 
   emscripten_promise_resolve(start, EM_PROMISE_FULFILL, NULL);
   emscripten_promise_destroy(start);
   emscripten_promise_destroy(test1);
   emscripten_promise_destroy(test2);
   emscripten_promise_destroy(test3);
+  emscripten_promise_destroy(test4);
+  emscripten_promise_destroy(test5);
   emscripten_promise_destroy(end);
 
   emscripten_runtime_keepalive_push();

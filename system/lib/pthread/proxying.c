@@ -214,6 +214,8 @@ struct em_proxying_ctx {
       pthread_t caller_thread;
       void (*callback)(void*);
       void (*cancel)(void*);
+      // Of emscripten_proxy_finish_result.
+      void* result;
     } cb;
   };
 
@@ -350,6 +352,17 @@ static void call_callback_then_free_ctx(void* arg) {
   free_ctx(ctx);
 }
 
+void emscripten_proxy_finish_result(em_proxying_ctx* ctx, void* result) {
+  switch (ctx->kind) {
+    case SYNC:
+      break;
+    case CALLBACK:
+      ctx->cb.result = result;
+      break;
+  }
+  emscripten_proxy_finish(ctx);
+}
+
 void emscripten_proxy_finish(em_proxying_ctx* ctx) {
   if (ctx->kind == SYNC) {
     pthread_mutex_lock(&ctx->sync.mutex);
@@ -377,6 +390,11 @@ static void call_cancel_then_free_ctx(void* arg) {
   em_proxying_ctx* ctx = arg;
   ctx->cb.cancel(ctx->arg);
   free_ctx(ctx);
+}
+
+void emscripten_proxy_fail(em_proxying_ctx* ctx) {
+  remove_active_ctx(ctx);
+  cancel_ctx(ctx);
 }
 
 static void cancel_ctx(void* arg) {
@@ -527,16 +545,19 @@ typedef struct promise_ctx {
   void (*func)(em_proxying_ctx*, void*);
   void* arg;
   em_promise_t promise;
+  em_proxying_ctx* ctx;
 } promise_ctx;
 
 static void promise_call(em_proxying_ctx* ctx, void* arg) {
   promise_ctx* promise_ctx = arg;
+  promise_ctx->ctx = ctx;
   promise_ctx->func(ctx, promise_ctx->arg);
 }
 
 static void promise_fulfill(void* arg) {
   promise_ctx* promise_ctx = arg;
-  emscripten_promise_resolve(promise_ctx->promise, EM_PROMISE_FULFILL, NULL);
+  emscripten_promise_resolve(
+    promise_ctx->promise, EM_PROMISE_FULFILL, promise_ctx->ctx->cb.result);
   emscripten_promise_destroy(promise_ctx->promise);
 }
 
@@ -643,17 +664,23 @@ static void run_js_func_with_ctx(em_proxying_ctx* ctx, void* arg) {
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
   _emscripten_receive_on_main_thread_js(
     f->funcIndex, f->emAsmAddr, f->callingThread, f->bufSize, f->argBuffer, ctx, arg);
-
-  // run_js_func_with_ctx is always synchronously proxied and therefore arg
-  // should never be owned on the main thread (i.e. the argument here always
-  // exists on the stack of the calling thread, it's never copied/malloced).
-  assert(!f->owned);
 }
 
-void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result) {
+// Completion of a function run with a context, once its result (a value or a
+// settled Promise) is known. A rejection fails the task; a PROXY_SYNC_ASYNC
+// caller sees that as 0.
+void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result, bool fulfilled) {
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
   f->result = result;
-  emscripten_proxy_finish(ctx);
+  if (f->owned) {
+    free(f->argBuffer);
+    free(f);
+  }
+  if (fulfilled) {
+    emscripten_proxy_finish_result(ctx, (void*)(intptr_t)result);
+  } else {
+    emscripten_proxy_fail(ctx);
+  }
 }
 
 /*
@@ -716,4 +743,28 @@ double _emscripten_run_js_on_main_thread(int func_index,
     assert(false && "emscripten_proxy_async failed");
   }
   return 0;
+}
+
+// Returns immediately on the calling thread with an em_promise_t; async on the
+// main thread, whose result settles it once the calling thread runs its queue
+// (emscripten_proxy_promise_with_ctx). Rejected with NULL if the function's
+// Promise rejected.
+em_promise_t _emscripten_run_js_on_main_thread_promise(int func_index,
+                                                       void* em_asm_addr,
+                                                       int buf_size,
+                                                       double* buffer) {
+  proxied_js_func_t* arg = malloc(sizeof(proxied_js_func_t));
+  *arg = (proxied_js_func_t){
+    .funcIndex = func_index,
+    .emAsmAddr = em_asm_addr,
+    .callingThread = pthread_self(),
+    .bufSize = buf_size,
+    .argBuffer = malloc(buf_size),
+    .owned = true,
+  };
+  memcpy(arg->argBuffer, buffer, buf_size);
+  return emscripten_proxy_promise_with_ctx(emscripten_proxy_get_system_queue(),
+                                           emscripten_main_runtime_thread_id(),
+                                           run_js_func_with_ctx,
+                                           arg);
 }
