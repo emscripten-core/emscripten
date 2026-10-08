@@ -34,22 +34,18 @@ def deminify_syms(names, minification_map):
 
 class codesize(RunnerCore):
   @parameterized({
-    'audio_worklet': ('audio_worklet', False, True),
-    'hello_world_wasm': ('hello_world', False, True),
-    'hello_world_wasm2js': ('hello_world', True, True),
-    'random_printf_wasm': ('random_printf', False),
-    'random_printf_wasm2js': ('random_printf', True),
-    'hello_webgl_wasm': ('hello_webgl', False),
-    'hello_webgl_wasm2js': ('hello_webgl', True),
-    'hello_webgl2_wasm_singlefile': ('hello_webgl2_wasm_singlefile', False),
-    'hello_webgl2_wasm': ('hello_webgl2', False),
-    'hello_webgl2_wasm2js': ('hello_webgl2', True),
-    'math': ('math', False),
-    'hello_wasm_worker': ('hello_wasm_worker', False, True),
-    'hello_embind_val': ('embind_val', False),
-    'hello_embind': ('embind_hello', False),
+    'audio_worklet': ('audio_worklet', True),
+    'hello_world': ('hello_world', True),
+    'random_printf': ('random_printf',),
+    'hello_webgl': ('hello_webgl',),
+    'hello_webgl2_singlefile': ('hello_webgl2_singlefile',),
+    'hello_webgl2': ('hello_webgl2',),
+    'math': ('math',),
+    'hello_wasm_worker': ('hello_wasm_worker', True),
+    'hello_embind_val': ('embind_val',),
+    'hello_embind': ('embind_hello',),
   })
-  def test_minimal_runtime_code_size(self, test_name, wasm2js, compare_js_output=False):
+  def test_minimal_runtime_code_size(self, test_name, compare_js_output=False):
     smallest_code_size_args = ['-sMINIMAL_RUNTIME=2',
                                '-sENVIRONMENT=web',
                                '-sTEXTDECODER=2',
@@ -86,7 +82,7 @@ class codesize(RunnerCore):
                            '-lGL',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
-    hello_webgl2_wasm_singlefile_sources = hello_webgl2_sources + ['-sSINGLE_FILE']
+    hello_webgl2_singlefile_sources = hello_webgl2_sources + ['-sSINGLE_FILE']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web']
     audio_worklet_sources = [test_file('webaudio/audioworklet.c'), '-sWASM_WORKERS', '-sAUDIO_WORKLET', '-sENVIRONMENT=web', '-sTEXTDECODER=1']
     embind_hello_sources = [test_file('codesize/embind_hello_world.cpp'), '-lembind']
@@ -98,22 +94,15 @@ class codesize(RunnerCore):
       'hello_webgl': hello_webgl_sources,
       'math': math_sources,
       'hello_webgl2': hello_webgl2_sources,
-      'hello_webgl2_wasm_singlefile': hello_webgl2_wasm_singlefile_sources,
+      'hello_webgl2_singlefile': hello_webgl2_singlefile_sources,
       'hello_wasm_worker': hello_wasm_worker_sources,
       'audio_worklet': audio_worklet_sources,
       'embind_val': embind_val_sources,
       'embind_hello': embind_hello_sources,
     }[test_name]
 
-    outputs = ['a.html', 'a.js']
+    outputs = ['a.html', 'a.js', 'a.wasm']
     args = smallest_code_size_args[:]
-
-    if wasm2js:
-      args += ['-sWASM=0']
-      test_name += '_wasm2js'
-    else:
-      outputs += ['a.wasm']
-      test_name += '_wasm'
 
     if '-sSINGLE_FILE' in sources:
       outputs = ['a.html']

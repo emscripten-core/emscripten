@@ -41,7 +41,6 @@ export default [{
     'src/emrun_postjs.js',
     'src/wasm_worker.js',
     'src/audio_worklet.js',
-    'src/wasm2js.js',
     'src/webGLClient.js',
     'src/webGLWorker.js',
     'src/*_shell_read.js',

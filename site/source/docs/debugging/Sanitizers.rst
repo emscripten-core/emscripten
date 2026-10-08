@@ -25,8 +25,7 @@ By default, with Emscripten, dereferencing a null pointer does not immediately
 cause a segmentation fault, unlike traditional platforms, as 0 is just a normal
 address in a WebAssembly memory. 0 is also a normal location in a
 JavaScript Typed Array, which is an issue in the JavaScript alongside the
-WebAssembly (runtime support code, JS library methods, ``EM_ASM/EM_JS``, etc.),
-and also for the compiled code if you build with ``-sWASM=0``.
+WebAssembly (runtime support code, JS library methods, ``EM_ASM/EM_JS``, etc.).
 
 In builds with ``ASSERTIONS`` enabled, a magic cookie stored at address 0 is
 checked at the end of the program execution. That is, it will notify you if
@@ -397,9 +396,7 @@ The specific things ``SAFE_HEAP`` errors on include:
   annoying in WebAssembly and JavaScript because 0 is just a normal address, so
   you don't get an immediate segfault, which can be confusing.
 * **Unaligned reads or writes**. These work in WebAssembly, but on some platforms
-  an incorrectly-aligned read or write may be much slower, and with wasm2js
-  (``WASM=0``) it will be incorrect, as JavaScript Typed Arrays do not allow
-  unaligned operations.
+  an incorrectly-aligned read or write may be much slower.
 * **Reads or writes past the top of valid memory** as managed by ``sbrk()``, that is,
   memory that was not properly allocated by ``malloc()``. This is not specific
   to Wasm, however, in JavaScript if the address is big enough to be outside the

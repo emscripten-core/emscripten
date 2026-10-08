@@ -520,10 +520,6 @@ def finalize_wasm(infile, outfile, js_syms):
   modify_wasm = False
   need_name_section = False
 
-  if settings.WASM2JS:
-    # wasm2js requires full legalization (and will do extra wasm binary
-    # later processing later anyhow)
-    modify_wasm = True
   if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.EMIT_NAME_SECTION:
     need_name_section = True
     args.append('-g')

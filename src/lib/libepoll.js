@@ -209,7 +209,7 @@ var EpollLibrary = {
     }
 
     // `data` is opaque user data echoed back by epoll_wait; keep its 8 bytes as
-    // an i32 pair so this also works without WASM_BIGINT (e.g. wasm2js).
+    // an i32 pair so this also works without WASM_BIGINT.
     var reg = cur ?? {};
     reg.fd = fd;
     reg.shared = target.shared; // open file description: the dup-shared identity

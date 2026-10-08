@@ -6,7 +6,7 @@
 from subprocess import PIPE
 
 from common import EMCC, RunnerCore, copy_asset, create_file, read_file, test_file
-from decorators import also_with_wasm2js, also_with_wasm64, parameterized, requires_node_25
+from decorators import also_with_wasm64, parameterized, requires_node_25
 
 from tools.utils import delete_file
 
@@ -374,7 +374,6 @@ addToLibrary({
                      "lib.js: Decorator (jslibfunc__export) has wrong type. Expected 'boolean' not 'string'")
 
   @also_with_wasm64
-  @also_with_wasm2js
   def test_jslib_i53abi(self):
     create_file('lib.js', r'''
 addToLibrary({
@@ -450,7 +449,7 @@ int main() {
     # verify that the settings can be specified more than once, and that the last one wins.
     self.do_runf(test_file_path, '2\n', cflags=['--js-library', js_lib, '-jsDCUSTOM_JS_OPTION=1', '-jsDCUSTOM_JS_OPTION=2'])
 
-    self.assert_fail([EMCC, '-jsDWASM=1'], 'cannot change built-in settings values with a -jsD directive')
+    self.assert_fail([EMCC, '-jsDASSERTIONS=1'], 'cannot change built-in settings values with a -jsD directive')
 
   def test_jslib_native_deps(self):
     # Verify that memset (which lives in compiled code), can be specified as a JS library
@@ -596,7 +595,6 @@ extraLibraryFuncs.push('jsfunc');
     self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'foo.js'], 'foo.js:5: file not found: inc.js')
 
   @also_with_wasm64
-  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'closure': (['--closure=1'],),

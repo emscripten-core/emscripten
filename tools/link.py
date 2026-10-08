@@ -1026,8 +1026,8 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       exit_with_error('Wasm only output is not compatible with --emit-tsd')
     # If the user asks directly for a wasm file then this *is* the target
     wasm_target = target
-  elif settings.SINGLE_FILE or settings.WASM == 0:
-    # In SINGLE_FILE or WASM2JS mode the wasm file is not part of the output at
+  elif settings.SINGLE_FILE:
+    # In SINGLE_FILE mode the wasm file is not part of the output at
     # all so we generate it the temp directory.
     wasm_target = in_temp(utils.replace_suffix(target, '.wasm'))
   else:
@@ -1036,24 +1036,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
   if settings.SAFE_HEAP not in {0, 1, 2}:
     exit_with_error('SAFE_HEAP must be 0, 1 or 2')
-
-  if not settings.WASM:
-    # When the user requests non-wasm output, we enable wasm2js. that is,
-    # we still compile to wasm normally, but we compile the final output
-    # to js.
-    settings.WASM = 1
-    settings.WASM2JS = 1
-
-  if settings.WASM == 2:
-    # Requesting both Wasm and Wasm2JS support
-    settings.WASM2JS = 1
-
-  if settings.WASM2JS:
-    # Wasm bigint doesn't make sense with wasm2js, since it controls how the
-    # wasm and JS interact.
-    if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
-      exit_with_error('WASM_BIGINT=1 is not compatible with wasm2js')
-    settings.WASM_BIGINT = 0
 
   if options.oformat == OFormat.WASM and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
@@ -1218,9 +1200,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # MODULE_MODULE=1 adds`--whole-archive` around all the system libraries which
     # results in duplicate math symbols when JS_MATH is used.
     exit_with_error('JS_MATH is not compatible with dynamic linking (MAIN_MODULE=1)')
-
-  if settings.WASM == 2 and settings.SINGLE_FILE:
-    exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
 
   if settings.CROSS_ORIGIN_STORAGE:
     setup_cross_origin_storage()
@@ -1625,7 +1604,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     diagnostics.warning('emcc', 'SINGLE_FILE disables source map support (which requires a .map file)')
     settings.GENERATE_SOURCE_MAP = 0
 
-  if options.use_closure_compiler == 2 and not settings.WASM2JS:
+  if options.use_closure_compiler == 2:
     exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
 
   if settings.AUTODEBUG:
@@ -1727,14 +1706,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       return 'env.' + name
 
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
-
-  if settings.WASM2JS:
-    if settings.GENERATE_SOURCE_MAP:
-      exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
-    if settings.CAN_ADDRESS_2GB:
-      exit_with_error('wasm2js does not support >2gb address space')
-    # WASM2JS does not support GROWABLE_ARRAYBUFFERS at all
-    default_setting('GROWABLE_ARRAYBUFFERS', 0)
 
   if not js_manipulation.isidentifier(settings.EXPORT_NAME):
     exit_with_error(f'EXPORT_NAME is not a valid JS identifier: `{settings.EXPORT_NAME}`')
@@ -1947,9 +1918,7 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
   # Emscripten
   logger.debug('emscript')
 
-  # No need to support base64 embedding in wasm2js mode since
-  # the module is already in JS format.
-  if settings.SINGLE_FILE and not settings.SINGLE_FILE_BINARY_ENCODE and not settings.WASM2JS:
+  if settings.SINGLE_FILE and not settings.SINGLE_FILE_BINARY_ENCODE:
     settings.SUPPORT_BASE64_EMBEDDING = 1
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$base64Decode')
 
@@ -1998,8 +1967,6 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   settings.PROXY_TO_PTHREAD = False
   settings.PTHREAD_POOL_SIZE = 0
   settings.GROWABLE_ARRAYBUFFERS = 0
-  # Assume wasm support at binding generation time
-  settings.WASM2JS = 0
   # Disable minify since the binaryen pass has not been run yet to change the
   # import names.
   settings.MINIFY_WASM_IMPORTED_MODULES = False
@@ -2378,54 +2345,15 @@ def phase_binaryen(target, wasm_target):
   if options.emit_symbol_map:
     symbols_file = shared.replace_or_append_suffix(target, '.symbols')
 
-  if settings.WASM2JS:
-    symbols_file_js = None
-    if settings.WASM == 2:
-      # With normal wasm2js mode this file gets included as part of the
-      # preamble, but with WASM=2 its a separate file.
-      wasm2js_polyfill = building.read_and_preprocess(utils.path_from_root('src/wasm2js.js'), expand_macros=True)
-      wasm2js_template = wasm_target + '.js'
-      write_file(wasm2js_template, wasm2js_polyfill)
-      # generate secondary file for JS symbols
-      if options.emit_symbol_map:
-        symbols_file_js = shared.replace_or_append_suffix(wasm2js_template, '.symbols')
-    else:
-      wasm2js_template = final_js
-      if options.emit_symbol_map:
-        symbols_file_js = shared.replace_or_append_suffix(target, '.symbols')
-
-    wasm2js = building.wasm2js(wasm2js_template,
-                               wasm_target,
-                               opt_level=settings.OPT_LEVEL,
-                               use_closure_compiler=options.use_closure_compiler,
-                               debug_info=debug_function_names,
-                               symbols_file=symbols_file,
-                               symbols_file_js=symbols_file_js)
-
-    shared.get_temp_files().note(wasm2js)
-
-    if settings.WASM == 2:
-      safe_copy(wasm2js, wasm2js_template)
-
-    if settings.WASM != 2:
-      final_js = wasm2js
-
-    save_intermediate('wasm2js')
-
-  generating_wasm = settings.WASM == 2 or not settings.WASM2JS
-
   # emit the final symbols, either in the binary or in a symbol map.
   # this will also remove debug info if we only kept it around in the intermediate invocations.
-  # note that if we aren't emitting a binary (like in wasm2js) then we don't
-  # have anything to do here.
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
-    if generating_wasm:
-      building.write_symbol_map(wasm_target, symbols_file)
-      if not intermediate_debug_info:
-        building.strip_sections(wasm_target, wasm_target, ['name'])
+    building.write_symbol_map(wasm_target, symbols_file)
+    if not intermediate_debug_info:
+      building.strip_sections(wasm_target, wasm_target, ['name'])
 
-  if settings.GENERATE_DWARF and settings.SEPARATE_DWARF and generating_wasm:
+  if settings.GENERATE_DWARF and settings.SEPARATE_DWARF:
     # if the dwarf filename wasn't provided, use the default target + a suffix
     wasm_file_with_dwarf = settings.SEPARATE_DWARF
     if wasm_file_with_dwarf is True:
@@ -2440,11 +2368,11 @@ def phase_binaryen(target, wasm_target):
     intermediate_debug_info -= 1
   assert intermediate_debug_info == 0
   # strip debug info if it was not already stripped by the last command
-  if not debug_function_names and building.binaryen_kept_debug_info and generating_wasm:
+  if not debug_function_names and building.binaryen_kept_debug_info:
     building.strip_sections(wasm_target, wasm_target, ['name'])
 
   # replace placeholder strings with correct subresource locations
-  if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
+  if final_js and settings.SINGLE_FILE:
     js = read_file(final_js)
 
     if settings.SINGLE_FILE_BINARY_ENCODE:
@@ -2487,7 +2415,7 @@ def module_export_name_substitution():
   final_js += '.module_export_name_substitution.js'
   if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL and not settings.ENVIRONMENT_MAY_BE_AUDIO_WORKLET:
     # On the web, with MINIMAL_RUNTIME, the Module object is always provided
-    # via the shell html in order to provide the .asm.js/.wasm content.
+    # via the shell html in order to provide the .wasm content.
     replacement = settings.EXPORT_NAME
   else:
     replacement = f"typeof {settings.EXPORT_NAME} !== 'undefined' ? {settings.EXPORT_NAME} : {{}}"
@@ -2527,28 +2455,6 @@ def generate_traditional_runtime_html(target, js_target, wasm_target):
                              Module.wasmBinary = buf;
                              {script.inline};
                            }});
-'''
-
-    if settings.WASM == 2:
-      # If target browser does not support WebAssembly, we need to load
-      # the .wasm.js file before the main .js file.
-      script.un_src()
-      wasm2js_src = get_subresource_location_js(wasm_target + '.js')
-      script.inline = f'''
-          function loadMainJs() {{
-{script.inline}
-          }}
-          if (!window.WebAssembly || location.search.indexOf('_rwasm=0') > 0) {{
-            // Current browser does not support WebAssembly, load the .wasm.js JavaScript fallback
-            // before the main JS runtime.
-            var wasm2js = document.createElement('script');
-            wasm2js.src = {wasm2js_src};
-            wasm2js.onload = loadMainJs;
-            document.body.appendChild(wasm2js);
-          }} else {{
-            // Current browser supports Wasm, proceed with loading the main JS runtime.
-            loadMainJs();
-          }}
 '''
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
@@ -3009,17 +2915,13 @@ def binary_encode(filename):
 
 
 # Returns the subresource location for run-time access
-def get_subresource_location(path, mimetype='application/octet-stream'):
+def get_subresource_location(path):
   if settings.SINGLE_FILE:
     if settings.SINGLE_FILE_BINARY_ENCODE:
       return binary_encode(path)
-    return f'"data:{mimetype};base64,{base64_encode(path)}"'
+    return f'"data:application/octet-stream;base64,{base64_encode(path)}"'
   else:
     return f'"{os.path.basename(path)}"'
-
-
-def get_subresource_location_js(path):
-  return get_subresource_location(path, 'text/javascript')
 
 
 @ToolchainProfiler.profile()

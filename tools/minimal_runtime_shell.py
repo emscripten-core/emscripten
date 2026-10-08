@@ -40,25 +40,16 @@ def generate_minimal_runtime_load_statement(target_basename):
   files_to_load = [f"script('{settings.TARGET_JS_NAME}')"]
 
   # Download .wasm file
-  if (settings.WASM == 1 and settings.WASM2JS == 0) or not download_wasm:
-    if settings.MODULARIZE:
-      modularize_imports += [f'wasm: r[{len(files_to_load)}]']
-    else:
-      then_statements += [f"{settings.EXPORT_NAME}.wasm = r[{len(files_to_load)}];"]
-    if download_wasm:
-      files_to_load += [download_wasm]
+  if settings.MODULARIZE:
+    modularize_imports += [f'wasm: r[{len(files_to_load)}]']
+  else:
+    then_statements += [f"{settings.EXPORT_NAME}.wasm = r[{len(files_to_load)}];"]
+  if download_wasm:
+    files_to_load += [download_wasm]
 
   # Download wasm_worker file
   if settings.WASM_WORKERS and settings.MODULARIZE:
     modularize_imports += ['js: js']
-
-  # Download Wasm2JS code if target browser does not support WebAssembly
-  if settings.WASM == 2:
-    if settings.MODULARIZE:
-      modularize_imports += [f'wasm: supportsWasm ? r[{len(files_to_load)}] : 0']
-    else:
-      then_statements += [f"if (supportsWasm) {settings.EXPORT_NAME}.wasm = r[{len(files_to_load)}];"]
-    files_to_load += [f"supportsWasm ? {download_wasm} : script('{target_basename}.wasm.js')"]
 
   # Execute compiled output when building with MODULARIZE
   if settings.MODULARIZE:
@@ -91,24 +82,9 @@ def generate_minimal_runtime_load_statement(target_basename):
       s.src = url;
       s.onload = () => {
 #if MODULARIZE
-#if WASM == 2
-        // In MODULARIZEd WASM==2 builds, we use this same function to download
-        // both .js and .asm.js that are structured with {{{ EXPORT_NAME }}}
-        // at the top level, but also use this function to download the Wasm2JS
-        // file that does not have an {{{ EXPORT_NAME }}} function, hence the
-        // variable typeof check:
-        if (typeof {{{ EXPORT_NAME }}} !== 'undefined') {
-          var c = {{{ EXPORT_NAME }}};
-          delete {{{ EXPORT_NAME }}};
-          ok(c);
-        } else {
-          ok();
-        }
-#else
         var c = {{{ EXPORT_NAME }}};
         delete {{{ EXPORT_NAME }}};
         ok(c);
-#endif
 #else
         ok();
 #endif

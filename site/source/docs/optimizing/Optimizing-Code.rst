@@ -81,11 +81,6 @@ Advanced compiler settings
 
 There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>` to affect code generation, which will also affect performance — for example :ref:`DISABLE_EXCEPTION_CATCHING <optimizing-code-exception-catching>`. These are documented in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
-WebAssembly
-===========
-
-Emscripten emits WebAssembly by default. You can switch that off with ``-sWASM=0`` (in which case emscripten will emit JavaScript), which is necessary if you want the output to run in places where Wasm support is not present yet, but the downside is larger and slower code.
-
 .. _optimizing-code-size:
 
 Code size

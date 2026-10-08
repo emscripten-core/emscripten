@@ -117,8 +117,6 @@ DEPRECATED_SETTINGS = {
   'USE_PTHREADS': 'prefer the standard -pthread flag',
   'MEMORY64': 'prefer the standard -m64 or --target=wasm64 flags',
   'SOCKET_WEBRTC': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27366)',
-  'WASM=0': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27608)',
-  'WASM=2': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27608)',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
@@ -131,14 +129,8 @@ INTERNAL_SETTINGS = {
 INCOMPATIBLE_SETTINGS = [
   ('MINIMAL_RUNTIME', 'MAIN_MODULE', None),
   ('WASM_WORKERS', 'MAIN_MODULE', 'dynamic linking is not supported with -sWASM_WORKERS'),
-  ('WASM2JS', 'MAIN_MODULE', 'wasm2js does not support dynamic linking'),
-  ('WASM2JS', 'SIDE_MODULE', 'wasm2js does not support dynamic linking'),
-  ('WASM2JS', 'GROWABLE_ARRAYBUFFERS', None),
-  ('WASM2JS', 'SUPPORT_BIG_ENDIAN', None),
-  ('WASM2JS', 'MEMORY64', None),
   ('MAIN_MODULE', 'NO_WASM_ASYNC_COMPILATION', 'dynamic linking requires async wasm compilation'),
   ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
-  ('EVAL_CTORS', 'WASM2JS', None),
   # In Asyncify exports can be called more than once, and this seems to not
   # work properly yet (see test_emscripten_scan_registers).
   ('EVAL_CTORS', 'ASYNCIFY', None),
@@ -149,7 +141,6 @@ INCOMPATIBLE_SETTINGS = [
   ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'they are mutually exclusive'),
   ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'SINGLE_FILE', None),
   ('MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'SINGLE_FILE', None),
-  ('SEPARATE_DWARF', 'WASM2JS', 'as there is no wasm file'),
   ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
   ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
   ('CROSS_ORIGIN', 'NO_DYNAMIC_EXECUTION', None),
@@ -164,7 +155,6 @@ INCOMPATIBLE_SETTINGS = [
   ('WASM_ESM_INTEGRATION', 'ASYNCIFY', None),
   ('WASM_ESM_INTEGRATION', 'WASM_WORKERS', None),
   ('WASM_ESM_INTEGRATION', 'NO_WASM_ASYNC_COMPILATION', None),
-  ('WASM_ESM_INTEGRATION', 'WASM2JS', None),
   ('WASM_ESM_INTEGRATION', 'ABORT_ON_WASM_EXCEPTIONS', None),
   ('FORCE_FILESYSTEM', 'NO_FILESYSTEM', None),
 ]
@@ -192,7 +182,7 @@ EXPERIMENTAL_SETTINGS = {
 # we can set POSSIBLE_VALUES to an impossible value (like "disallowed" for a
 # numeric setting, or -1 for a string setting).
 LEGACY_SETTINGS = [
-  ['BINARYEN', 'WASM'],
+  ['BINARYEN', [1], 'Compiling to JS (wasm2js) is no longer supported'],
   ['TOTAL_STACK', 'STACK_SIZE'],
   ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
@@ -205,7 +195,7 @@ LEGACY_SETTINGS = [
   ['BUILD_AS_SHARED_LIB', [0], 'Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433)'],
   ['SAFE_SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SAFE_SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
   ['SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
-  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-sWASM - default), or to JavaScript (-sWASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
+  ['BINARYEN_METHOD', ['native-wasm'], 'No longer supported'],
   ['BINARYEN_TRAP_MODE', [-1], 'The wasm backend does not support a trap mode (it always clamps, in effect)'],
   ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
@@ -263,7 +253,7 @@ LEGACY_SETTINGS = [
   ['EXTRA_EXPORTED_RUNTIME_METHODS', [[]], 'No longer supported, use EXPORTED_RUNTIME_METHODS'],
   ['SUPPORT_ERRNO', [0], 'No longer supported'],
   ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
-  ['MAYBE_WASM2JS', [0], 'No longer supported (use -sWASM=2)'],
+  ['MAYBE_WASM2JS', [0], 'No longer supported'],
   ['HEADLESS', [0], 'No longer supported, use headless browsers or Node.js with JSDOM'],
   ['USE_OFFSET_COVERTER', [0], 'No longer supported, not needed with modern v8 versions'],
   ['ASYNCIFY_LAZY_LOAD_CODE', [0], 'No longer supported'],
@@ -278,6 +268,7 @@ LEGACY_SETTINGS = [
   ['LEGALIZE_JS_FFI', [0], 'legacy JS FFI legalization is no longer supported'],
   ['SOCKET_WEBRTC', [0], 'No longer supported'],
   ['NODE_CODE_CACHING', [0], 'No longer supported'],
+  ['WASM', [1], 'Compiling to JS (wasm2js) is no longer supported'],
 ]
 
 user_settings: dict[str, str] = {}

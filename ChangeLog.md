@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 6.0.13 (in development)
 ----------------------
+- Support for `wasm2js` (`-sWASM=0` and `-sWASM=2`) was removed. (#27608)
 
 6.0.12 - 10/08/26
 -----------------

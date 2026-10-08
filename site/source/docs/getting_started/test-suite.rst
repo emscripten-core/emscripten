@@ -40,13 +40,13 @@ individual test, or use wildcards to run some tests in some modes. For example:
   # run a bunch of tests in one mode (here, all i64 tests in -O3)
   test/runner core3.test_*i64*
 
-  # run all tests in a specific mode (here, wasm2gs -O1)
-  test/runner wasm2js1
+  # run all tests in a specific mode (here, wasm64)
+  test/runner wasm64
 
 The *core* test modes (defined at the bottom of `test/test_core.py
 <https://github.com/emscripten-core/emscripten/blob/main/test/test_core.py>`_)
 let you run the tests in variety of different configurations and with different
-optimization flags.  For example, wasm2js or wasm64.  There are also non-core
+optimization flags.  For example, LTO or wasm64.  There are also non-core
 test suites, that run tests in more special manner (in particular, in those tests
 it is not possible to say "run the test with a different optimization flag" -
 that is what the core tests are for).  The non-core test suites include

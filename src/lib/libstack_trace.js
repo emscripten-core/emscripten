@@ -96,8 +96,8 @@ var LibraryStackTrace = {
   },
 
   // Generates a representation of the program counter from a line of stack trace.
-  // The exact return value depends in whether we are running WASM or JS, and whether
-  // the engine supports offsets into WASM. See the function body for details.
+  // The exact return value depends on whether the frame is in Wasm or JS.
+  // See the function body for details.
   $convertFrameToPC__docs: '/** @returns {number} */',
   $convertFrameToPC__internal: true,
   $convertFrameToPC: (frame) => {
@@ -115,8 +115,7 @@ var LibraryStackTrace = {
 #endif
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
       // If we are in js, we can use the js line number as the "return address".
-      // This should work for wasm2js.  We tag the high bit to distinguish this
-      // from wasm addresses.
+      // We tag the high bit to distinguish this from wasm addresses.
       return 0x80000000 | +match[1];
     }
     // return 0 if we can't find any

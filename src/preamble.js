@@ -20,20 +20,7 @@
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 
-#if WASM2JS
-#if WASM != 2
-// WASM == 2 includes wasm2js.js separately.
-#include "wasm2js.js"
-#endif
-
-if (WebAssembly.isWasm2js) {
-  // We don't need to actually download a wasm binary, mark it as present but
-  // empty.
-  wasmBinary = [];
-}
-#endif
-
-#if ASSERTIONS && WASM == 1
+#if ASSERTIONS
 if (!globalThis.WebAssembly) {
   err('no native wasm support detected');
 }
@@ -418,17 +405,8 @@ function instrumentWasmTableWithAbort() {
 #if !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 var wasmBinaryFile;
 
-#if WASM2JS && WASM != 2
-
-// When building with wasm2js these 3 functions all no-ops.
-function findWasmBinary(file) {}
-function getBinarySync(file) {}
-function getWasmBinary(file) {}
-
-#else
-
 function findWasmBinary() {
-#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
   return binaryDecode("<<< WASM_BINARY_DATA >>>");
 #elif SINGLE_FILE
   return base64Decode('<<< WASM_BINARY_DATA >>>');
@@ -467,7 +445,7 @@ function getBinarySync(file) {
     return file;
   }
 #endif
-#if expectToReceiveOnModule('wasmBinary') || WASM2JS
+#if expectToReceiveOnModule('wasmBinary')
   if (file == wasmBinaryFile && wasmBinary) {
     return new Uint8Array(wasmBinary);
   }
@@ -502,7 +480,6 @@ async function getWasmBinary(binaryFile) {
   // Otherwise, getBinarySync should be able to get it synchronously
   return getBinarySync(binaryFile);
 }
-#endif
 
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, JSPI ? '(secondaryFile, imports) => instantiateAsync(null, secondaryFile, imports)' : 'instantiateSync') }}}
@@ -560,23 +537,6 @@ async function instantiateArrayBuffer(binaryFile, imports) {
     return instance;
   } catch (reason) {
     err(`failed to asynchronously prepare wasm: ${reason}`);
-#if WASM == 2
-#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    if (globalThis.location) {
-#endif
-      // WebAssembly compilation failed, try running the JS fallback instead.
-      var search = location.search;
-      if (search.indexOf('_rwasm=0') < 0) {
-        // Reload the page with the `_rwasm=0` argument
-        location.href += (search ? search + '&' : '?') + '_rwasm=0';
-        // Return a promise that never resolves.  We don't want to
-        // call abort below, or return an error to our caller.
-        return new Promise(() => {});
-      }
-#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    }
-#endif
-#endif // WASM == 2
 
 #if ASSERTIONS && !SINGLE_FILE
     // Warn on some common problems.

@@ -105,8 +105,6 @@ class stress(RunnerCore):
   @is_slow_test
   def test_stress_pthread_proxying(self):
     if '-sMODULARIZE' in self.cflags:
-      if self.get_setting('WASM') == 0:
-        self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
       self.set_setting('EXPORT_NAME=ModuleFactory')
     self.set_setting('PROXY_TO_PTHREAD')
     if not self.has_changed_setting('INITIAL_MEMORY'):

@@ -17,10 +17,6 @@ extern "C" {
 
 #define _EM_INLINE static __inline__ __attribute__((always_inline, nodebug))
 
-// Note on 64bit atomics ops: All 64-bit atomic ops defined here, while single
-// instruction under wasm, will be emulated by using locks in wasm2js mode.
-// This is also true for C/C++ native atomics as well as intrinsics.
-
 // Atomically stores the given value to the memory location, and returns the
 // value that was there prior to the store.
 _EM_INLINE uint8_t emscripten_atomic_exchange_u8(void /*uint8_t*/* _Nonnull addr, uint8_t newVal) {

@@ -56,7 +56,6 @@ from decorators import (
   also_with_minimal_runtime,
   also_with_proxy_to_pthread,
   also_with_pthreads,
-  also_with_wasm2js,
   also_with_wasmfs,
   disabled,
   flaky,
@@ -65,7 +64,6 @@ from decorators import (
   no_highmem,
   parameterized,
   requires_dev_dependency,
-  requires_wasm2js,
   skip_if,
   skip_if_simple,
   with_all_sjlj,
@@ -2270,7 +2268,6 @@ void *getBindBuffer() {
     self.run_process([EMCC, 'supp.c', '-o', 'supp.wasm', '-sSIDE_MODULE', '-O2'] + self.get_cflags())
     self.btest_exit('main.c', cflags=['-sMAIN_MODULE=2', '-O2', 'supp.wasm'])
 
-  @also_with_wasm2js
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
@@ -2287,7 +2284,6 @@ void *getBindBuffer() {
 
     self.btest('test_pre_run_deps.c', expected='10', cflags=['--pre-js', 'pre.js'])
 
-  @also_with_wasm2js
   @parameterized({
     '': ([], '600'),
     'no_main': (['-DNO_MAIN', '--pre-js', 'pre_runtime.js'], '601'), # 601, because no main means we *do* run another call after exit()
@@ -2765,7 +2761,6 @@ Module["preRun"] = () => {
   def test_sdl_mousewheel(self, opts):
     self.btest_exit('test_sdl_mousewheel.c', cflags=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
 
-  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'es6': (['-sEXPORT_ES6'],),
@@ -2795,8 +2790,7 @@ Module["preRun"] = () => {
     # put pre.js first, then the file packager data, so locateFile is there for the file loading code
     self.compile_btest('src.c', ['-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-sFORCE_FILESYSTEM'] + args, reporting=Reporting.JS_ONLY)
     ensure_dir('sub')
-    if self.is_wasm():
-      shutil.move('page.wasm', Path('sub/page.wasm'))
+    shutil.move('page.wasm', Path('sub/page.wasm'))
     shutil.move('test.data', Path('sub/test.data'))
     self.run_browser('page.html', '/report_result?exit:0')
 
@@ -2817,8 +2811,7 @@ Module["preRun"] = () => {
 
     def in_html(expected):
       self.compile_btest('src.c', ['-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-sSAFE_HEAP', '-sASSERTIONS', '-sFORCE_FILESYSTEM'] + args, reporting=Reporting.JS_ONLY)
-      if self.is_wasm():
-        shutil.move('page.wasm', Path('sub/page.wasm'))
+      shutil.move('page.wasm', Path('sub/page.wasm'))
       self.run_browser('page.html', '/report_result?exit:' + expected)
 
     in_html('0')
@@ -2857,7 +2850,6 @@ Module["preRun"] = () => {
     self.btest_exit('test_glfw3_css_scaling.c', cflags=['-sUSE_GLFW=3'])
 
   @requires_graphics_hardware
-  @also_with_wasm2js
   def test_sdl2_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file
     copy_asset('browser/screenshot.jpg')
@@ -3369,7 +3361,6 @@ Module["preRun"] = () => {
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
-  @requires_wasm2js
   @also_with_wasmfs
   @parameterized({
     '': ([],),
@@ -3379,8 +3370,6 @@ Module["preRun"] = () => {
   })
   def test_modularize_and_preload_files(self, args):
     self.set_setting('EXIT_RUNTIME')
-    # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
-    self.ldflags.append('-Wno-error=closure')
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
 
@@ -3400,8 +3389,7 @@ Module["preRun"] = () => {
     # generate a dummy file
     create_file('dummy_file', 'dummy')
     # compile the code with the modularize feature and the preload-file option enabled
-    # no wasm, since this tests customizing total memory at runtime
-    self.compile_btest('test.c', ['-sWASM=0', '-sIMPORTED_MEMORY', '-sMODULARIZE', '-sEXPORT_NAME=Foo', '--preload-file', 'dummy_file'] + args, reporting=Reporting.JS_ONLY)
+    self.compile_btest('test.c', ['-sIMPORTED_MEMORY', '-sMODULARIZE', '-sEXPORT_NAME=Foo', '--preload-file', 'dummy_file'] + args, reporting=Reporting.JS_ONLY)
     create_file('a.html', '''
       <script src="a.out.js"></script>
       <script>
@@ -3694,35 +3682,25 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_gcc_atomic_fetch_and_op.c', cflags=args + ['-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
-  @also_with_wasm2js
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
-    if self.is_wasm2js():
-      self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
     self.cflags += ['-Wno-sync-fetch-and-nand-semantics-changed']
     self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
-  @also_with_wasm2js
-  @requires_safari_version(170601, 'TODO: browser.test_pthread_gcc_atomic_op_and_fetch_wasm2js fails with "abort:Assertion failed: nand_and_fetch_data == -1"') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), passes in Safari 18.5 (20621.2.5.11.8) and Safari 26.0.1 (21622.1.22.11.15)
   def test_pthread_gcc_atomic_op_and_fetch(self):
     self.cflags += ['-Wno-sync-fetch-and-nand-semantics-changed']
     self.btest_exit('pthread/test_pthread_gcc_atomic_op_and_fetch.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
-  @also_with_wasm2js
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
-    if self.is_wasm2js():
-      self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
     self.cflags += ['-Wno-sync-fetch-and-nand-semantics-changed', '--profiling-funcs']
     self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.c', cflags=['-pthread', '-O2', '-sPTHREAD_POOL_SIZE=8'])
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
-  @also_with_wasm2js
   def test_pthread_gcc_atomics(self):
     self.btest_exit('pthread/test_pthread_gcc_atomics.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
-  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'em_instrinsics': (['-DUSE_EMSCRIPTEN_INTRINSICS'],),
@@ -3861,7 +3839,6 @@ Module["preRun"] = () => {
     self.btest_exit('unistd/io.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test that the main thread is able to use pthread_set/getspecific.
-  @also_with_wasm2js
   def test_pthread_setspecific_mainthread(self):
     self.btest_exit('pthread/test_pthread_setspecific_mainthread.c', cflags=['-O3', '-pthread'])
 
@@ -3950,7 +3927,6 @@ Module["preRun"] = () => {
   def test_pthread_global_data_initialization(self, args):
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
-  @requires_wasm2js
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=['-sWASM_ASYNC_COMPILATION=0', '-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
@@ -3965,7 +3941,6 @@ Module["preRun"] = () => {
 
   # Test the emscripten_futex_wake(addr, INT_MAX); functionality to wake all
   # waiters
-  @also_with_wasm2js
   def test_pthread_wake_all(self):
     self.btest_exit('pthread/test_futex_wake_all.c', cflags=['-O3', '-pthread'])
 
@@ -4369,16 +4344,7 @@ Module["preRun"] = () => {
     self.set_setting('DEFAULT_TO_CXX')  # emdawnwebgpu uses C++ internally
     self.btest_exit('webgpu_required_limits.c', cflags=['--use-port=emdawnwebgpu'])
 
-  # Tests the feature that shell html page can preallocate the typed array and place it
-  # to Module.buffer before loading the script page.
-  # In this build mode, the -sINITIAL_MEMORY=xxx option will be ignored.
-  # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
-  @requires_wasm2js
-  def test_preallocated_heap(self):
-    self.btest_exit('test_preallocated_heap.c', cflags=['-sWASM=0', '-sIMPORTED_MEMORY', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('browser/test_preallocated_heap_shell.html')])
-
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
-  @also_with_wasm2js
   @also_with_fetch_streaming
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
@@ -4391,7 +4357,6 @@ Module["preRun"] = () => {
       self.btest_exit('fetch/test_fetch_to_memory.cpp',
                       cflags=['-sFETCH_DEBUG', '-sFETCH'] + arg)
 
-  @also_with_wasm2js
   @also_with_fetch_streaming
   @parameterized({
     '': ([],),
@@ -4403,14 +4368,12 @@ Module["preRun"] = () => {
     self.btest_exit('fetch/test_fetch_from_thread.cpp',
                     cflags=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'])
 
-  @also_with_wasm2js
   @also_with_fetch_streaming
   def test_fetch_to_indexdb(self):
     copy_asset('gears.png')
     self.btest_exit('fetch/test_fetch_to_indexeddb.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
-  @also_with_wasm2js
   @also_with_fetch_streaming
   def test_fetch_cached_xhr(self):
     copy_asset('gears.png')
@@ -4418,7 +4381,6 @@ Module["preRun"] = () => {
 
   # Tests that response headers get set on emscripten_fetch_t values.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm2js
   @also_with_fetch_streaming
   @parameterized({
     '': ([],),
@@ -4440,7 +4402,6 @@ Module["preRun"] = () => {
 
   # Test emscripten_fetch() usage to stream a fetch in to memory without storing the full file in memory
   # Streaming only works the fetch backend.
-  @also_with_wasm2js
   def test_fetch_stream_file(self):
     # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
     # won't fully fit in the heap. This verifies that streaming works properly.
@@ -4460,7 +4421,6 @@ Module["preRun"] = () => {
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm2js
   def test_fetch_sync_xhr(self):
     copy_asset('gears.png')
     self.btest_exit('fetch/test_fetch_sync_xhr.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
@@ -4473,7 +4433,6 @@ Module["preRun"] = () => {
 
   # Tests that the Fetch API works for synchronous XHRs when program is run in a worker
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm2js
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     copy_asset('gears.png')
     self.btest_exit('fetch/test_fetch_sync_xhr.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH'], run_in_worker=True)
@@ -4485,7 +4444,7 @@ Module["preRun"] = () => {
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_delete(self):
     copy_asset('gears.png')
-    self.btest_exit('fetch/test_fetch_idb_delete.cpp', cflags=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_idb_delete.cpp', cflags=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sPROXY_TO_PTHREAD'])
 
   @also_with_fetch_streaming
   @also_with_proxy_to_pthread
@@ -4696,7 +4655,6 @@ Module["preRun"] = () => {
     self.assertNotExists('test.wasm')
 
   # Tests that SINGLE_FILE works as intended in generated HTML with MINIMAL_RUNTIME
-  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'O3': (['-O3'],),
@@ -4706,8 +4664,6 @@ Module["preRun"] = () => {
     self.assertExists('test.html')
     self.assertNotExists('test.js')
     self.assertNotExists('test.wasm')
-    self.assertNotExists('test.asm.js')
-    self.assertNotExists('test.js')
     self.assertNotExists('test.worker.js')
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
@@ -4715,7 +4671,6 @@ Module["preRun"] = () => {
     self.btest_exit('minimal_hello.c', cflags=['-sSINGLE_FILE', '-sENVIRONMENT=web', '-O2', '--closure=1'])
 
   # Tests that SINGLE_FILE works as intended with locateFile
-  @also_with_wasm2js
   def test_single_file_locate_file(self):
     self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-sSINGLE_FILE'])
 
@@ -4899,16 +4854,6 @@ Module["preRun"] = () => {
   def test_closure_in_web_only_target_environment_webgl(self):
     self.btest_exit('webgl_draw_triangle.c', cflags=['-lGL', '-sENVIRONMENT=web', '-O3', '--closure=1'])
 
-  @requires_wasm2js
-  @parameterized({
-    '': ([],),
-    'minimal': (['-sMINIMAL_RUNTIME'],),
-  })
-  def test_no_declare_asm_module_exports_wasm2js(self, args):
-    # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
-    self.ldflags.append('-Wno-error=closure')
-    self.btest_exit('declare_asm_module_exports.c', cflags=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1', '-sWASM=0'] + args)
-
   @parameterized({
     '': ([],),
     'strict_js': (['-sSTRICT_JS'],),
@@ -4923,7 +4868,6 @@ Module["preRun"] = () => {
     '': ([],),
     'modularize': (['-sMODULARIZE'],),
   })
-  @also_with_wasm2js
   def test_minimal_runtime_loader_shell(self, args):
     args = ['-sMINIMAL_RUNTIME=2']
     self.btest_exit('minimal_hello.c', cflags=args)
@@ -4941,46 +4885,6 @@ Module["preRun"] = () => {
   def test_emscripten_unwind_to_js_event_loop(self):
     self.btest_exit('test_emscripten_unwind_to_js_event_loop.c')
 
-  @requires_wasm2js
-  @parameterized({
-    '': ([],),
-    'minimal': (['-sMINIMAL_RUNTIME'],),
-  })
-  def test_wasm2js_fallback(self, args):
-    self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('hello_world_small.c', ['-sWASM=2', '-o', 'test.html'] + args)
-
-    # First run with WebAssembly support enabled
-    # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
-    os.rename('test.wasm.js', 'test.wasm.js.unused')
-    self.run_browser('test.html', '/report_result?exit:0')
-    os.rename('test.wasm.js.unused', 'test.wasm.js')
-
-    # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
-    html = read_file('test.html')
-    html = html.replace('<body>', '<body><script>delete WebAssembly;</script>')
-    create_file('test.html', html)
-    os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
-    self.run_browser('test.html', '/report_result?exit:0')
-
-  @requires_wasm2js
-  @parameterized({
-    '': ([],),
-    'minimal': (['-sMINIMAL_RUNTIME'],),
-  })
-  def test_wasm2js_fallback_on_wasm_compilation_failure(self, args):
-    self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('hello_world_small.c', ['-sWASM=2', '-o', 'test.html'] + args)
-
-    # Run without the .wasm.js file present: with Wasm support, the page should still run
-    os.rename('test.wasm.js', 'test.wasm.js.unused')
-    self.run_browser('test.html', '/report_result?exit:0')
-
-    # Restore the .wasm.js file, then corrupt the .wasm file, that should trigger the Wasm2js fallback to run
-    os.rename('test.wasm.js.unused', 'test.wasm.js')
-    shutil.copy('test.js', 'test.wasm')
-    self.run_browser('test.html', '/report_result?exit:0')
-
   def test_system(self):
     self.btest_exit('test_system.c')
 
@@ -4995,12 +4899,6 @@ Module["preRun"] = () => {
 
   def test_wasm_worker_hello_minimal_runtime_2(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
-
-  # Tests Wasm Workers build in Wasm2JS mode.
-  @requires_wasm2js
-  @also_with_minimal_runtime
-  def test_wasm_worker_hello_wasm2js(self):
-    self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sWASM=0'])
 
   # Tests the WASM_WORKERS=2 build mode, which embeds the Wasm Worker bootstrap JS script file to the main JS file.
   @also_with_minimal_runtime
@@ -5255,8 +5153,6 @@ Module["preRun"] = () => {
       self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.btest_exit('alloc_3gb.c', cflags=['-sMALLOC=dlmalloc', '-sALLOW_MEMORY_GROWTH=1'])
 
-  # under wasm2js we disable BigInt support which affects the ABI
-  @also_with_wasm2js
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait
@@ -5280,7 +5176,6 @@ Module["preRun"] = () => {
                             '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
-  @also_with_wasm2js
   @parameterized({
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'jspi': (['-sJSPI'],),
@@ -5544,7 +5439,6 @@ Module["preRun"] = () => {
     self.btest('hello_world.c', cflags=['--post-js=post.js'], expected='exception:foo')
 
   @also_with_pthreads
-  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'es6': (['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1'],),
@@ -5559,10 +5453,9 @@ Module["preRun"] = () => {
       outfile = 'src/hello.js'
     self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web', '-o', outfile] + args)
     self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
-    if not self.is_wasm2js():
-      # Webpack doesn't bundle the wasm file by default so we need to copy it
-      # TODO(sbc): Look into plugins that do bundling.
-      shutil.copy('src/hello.wasm', 'dist/')
+    # Webpack doesn't bundle the wasm file by default so we need to copy it
+    # TODO(sbc): Look into plugins that do bundling.
+    shutil.copy('src/hello.wasm', 'dist/')
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_pthreads
