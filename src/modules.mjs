@@ -43,7 +43,7 @@ const systemLibdir = path.join(srcDir, 'lib');
 
 // Return type and trailing parameters of each async variant by suffix (see
 // expandAsyncVariants).
-const ASYNC_VARIANTS = new Map([['promise', ['p', '']], ['callback', ['v', 'pp']]]);
+const ASYNC_VARIANTS = new Map([['promise', ['p', '']], ['callback', ['v', 'pp']], ['fd', ['i', '']]]);
 
 function isBeneath(childPath, parentPath) {
   const relativePath = path.relative(parentPath, childPath);
@@ -299,14 +299,15 @@ export const LibraryManager = {
   },
 
   /**
-   * `__async: ['auto', 'promise', 'callback', ...]` lists the forms in which a
-   * function waits. 'auto' is the function itself, as `__async: 'auto'`;
+   * `__async: ['auto', 'promise', 'callback', 'fd']` lists the forms in which
+   * a function waits. 'auto' is the function itself, as `__async: 'auto'`;
    * without it the function never suspends. The rest are variants, emitted
    * only where used: `foo_promise` runs the same body, returning an
    * em_promise_t of the result (NULL for a void function) on the calling
-   * thread, and `foo_callback` takes `callback(err, result, arg)` and `arg` to
-   * call on the calling thread with it (see $callbackFromPromise); both can
-   * always wait. Either way the body is an 'auto' body: it returns a
+   * thread, `foo_callback` takes `callback(err, result, arg)` and `arg` to call
+   * on the calling thread with it (see $callbackFromPromise), and `foo_fd`
+   * returns an fd readable once the result is available (see $fdFromPromise);
+   * all can always wait. Either way the body is an 'auto' body: it returns a
    * pointer-sized value or nothing, or a Promise of either, unless its
    * trailing `sync` argument forbids (see jsifier).
    */

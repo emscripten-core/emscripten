@@ -207,7 +207,7 @@ addToLibrary({
       self.require_jspi()
     if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
-    forms = "['auto', 'promise', 'callback']" if '-DAUTO' in args else "['promise', 'callback']"
+    forms = "['auto', 'promise', 'callback', 'fd']" if '-DAUTO' in args else "['promise', 'callback', 'fd']"
     return args + ['-sEXIT_RUNTIME', f'-jsDFORMS={forms}', '--js-library', test_file('jslib/test_jslib_async_auto_variants.js')]
 
   @also_with_wasm64
@@ -253,6 +253,30 @@ addToLibrary({{
     # result, arg) on the calling thread once the result is available, never
     # before the call returns; err if rejected.
     self.do_runf(test_file('jslib/test_jslib_async_auto_variants_callback.c'), 'done\n', cflags=self.async_auto_variants_cflags(args))
+
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY'],),
+    'jspi': (['-sJSPI'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_jslib_async_auto_variants_fd(self, args):
+    # The `answer_fd` and `wait_ms_fd` variants: an fd readable once settled,
+    # whose read() takes the value.
+    self.do_runf(test_file('jslib/test_jslib_async_auto_variants_fd.c'), 'done\n', cflags=self.async_auto_variants_cflags(args))
+
+  def test_jslib_async_auto_variants_fd_wasmfs(self):
+    create_file('lib.js', r'''
+addToLibrary({
+  answer__sig: 'pip',
+  answer__async: ['fd'],
+  answer: (ms, value) => value,
+});
+''')
+    create_file('src.c', 'int answer_fd(int ms, long value); int main() { return answer_fd(0, 1); }')
+    self.assert_fail([EMCC, 'src.c', '-sWASMFS', '--js-library', 'lib.js'],
+                     "'answer_fd' (an 'fd' async variant) is not supported with WASMFS")
 
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
