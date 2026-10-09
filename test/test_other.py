@@ -1630,7 +1630,6 @@ int f() {
     self.emcc('main.c', ['libA.so', 'libA.so', '-o', 'a.out.js'])
     self.assertContained('result: 1', self.run_js('a.out.js'))
 
-  @no_mac('https://github.com/emscripten-core/emscripten/issues/16649')
   @crossplatform
   def test_dot_a_all_contents_invalid(self):
     # check that we error if an object file in a .a is not valid bitcode.

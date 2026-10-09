@@ -710,7 +710,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       glCtx.webGlTracerAlreadyHooked = true;
 
       for (var f in glCtx) {
-        if (typeof glCtx[f] == 'function') {
+        if (typeof glCtx[f] === 'function') {
           this.hookWebGLFunction(f, glCtx);
         }
       }
@@ -1106,7 +1106,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       if (ctx.canvas) ctx.canvas.GLctxObject = context;
       GL.contexts[handle] = context;
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-      if (typeof webGLContextAttributes.enableExtensionsByDefault == 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
+      if (typeof webGLContextAttributes.enableExtensionsByDefault === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
         GL.initExtensions(context);
       }
 #endif
@@ -1170,7 +1170,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       if (GL.currentContext === GL.contexts[contextHandle]) {
         GL.currentContext = null;
       }
-      if (typeof JSEvents == 'object') {
+      if (typeof JSEvents === 'object') {
         // Release all JS event handlers on the DOM element that the GL context is
         // associated with since the context is now deleted.
         JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas);
@@ -2027,7 +2027,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     var query = GL.queries[id];
     var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
     var ret;
-    if (typeof param == 'boolean') {
+    if (typeof param === 'boolean') {
       ret = param ? 1 : 0;
     } else {
       ret = param;
@@ -2065,7 +2065,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
 #endif
     var ret;
-    if (typeof param == 'boolean') {
+    if (typeof param === 'boolean') {
       ret = param ? 1 : 0;
     } else {
       ret = param;
@@ -2147,7 +2147,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     program = GL.programs[program];
     webglPrepareUniformLocationsBeforeFirstUse(program);
     var data = GLctx.getUniform(program, webglGetProgramUniformLocation(program, location));
-    if (typeof data == 'number' || typeof data == 'boolean') {
+    if (typeof data === 'number' || typeof data === 'boolean') {
       switch (type) {
         case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
         case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
@@ -2204,7 +2204,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // WebGLUniformLocation.
       // If an integer, we have not yet bound the location, so do it now. The
       // integer value specifies the array index we should bind to.
-      if (typeof webglLoc == 'number') {
+      if (typeof webglLoc === 'number') {
         program.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(program, program.uniformArrayNamesById[location] + (webglLoc > 0 ? `[${webglLoc}]` : ''));
       }
       // Else an already cached WebGLUniformLocation, return it.
@@ -2368,7 +2368,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     var data = GLctx.getVertexAttrib(index, pname);
     if (pname == 0x889F/*VERTEX_ATTRIB_ARRAY_BUFFER_BINDING*/) {
       {{{ makeSetValue('params', '0', 'data && data["name"]', 'i32') }}};
-    } else if (typeof data == 'number' || typeof data == 'boolean') {
+    } else if (typeof data === 'number' || typeof data === 'boolean') {
       switch (type) {
         case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
         case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
@@ -4398,7 +4398,7 @@ function recordGLProcAddressGet(lib) {
   // versions. e.g. both the name of the symbol *and* it's target need updating
   // in cases such as `glMultiDrawElements: 'glMultiDrawElementsWEBGL'`
   for (const [sym, target] of Object.entries(lib)) {
-    if (sym.startsWith('emscripten_gl') && typeof target == 'string' && lib.hasOwnProperty('emscripten_' + target)) {
+    if (sym.startsWith('emscripten_gl') && typeof target === 'string' && lib.hasOwnProperty('emscripten_' + target)) {
       lib[sym] = 'emscripten_' + target;
     }
   }

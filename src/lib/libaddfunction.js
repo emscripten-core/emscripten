@@ -155,7 +155,7 @@ addToLibrary({
 
   $addFunction: (func, sig) => {
 #if ASSERTIONS
-    assert(typeof func != 'undefined');
+    assert(typeof func !== 'undefined');
 #endif // ASSERTIONS
     // Check if the function is already in the table, to ensure each function
     // gets a unique index.
@@ -189,7 +189,7 @@ addToLibrary({
         throw err;
       }
 #if ASSERTIONS
-      assert(typeof sig != 'undefined', 'Missing signature argument to addFunction: ' + func);
+      assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction: ' + func);
 #endif
       var wrapped = convertJsFunctionToWasm(func, sig);
       setWasmTableEntry(ret, wrapped);

@@ -16,7 +16,7 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-var Module = typeof Module != "undefined" ? Module : {};
+var Module = typeof Module !== "undefined" ? Module : {};
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
@@ -38,8 +38,8 @@ Module["expectedDataFileDownloads"]++;
 
 ((() => {
   // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
-  var isPthread = typeof ENVIRONMENT_IS_PTHREAD != "undefined" && ENVIRONMENT_IS_PTHREAD;
-  var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != "undefined" && ENVIRONMENT_IS_WASM_WORKER;
+  var isPthread = typeof ENVIRONMENT_IS_PTHREAD !== "undefined" && ENVIRONMENT_IS_PTHREAD;
+  var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER !== "undefined" && ENVIRONMENT_IS_WASM_WORKER;
   if (isPthread || isWasmWorker) return;
   var isNode = globalThis.process && globalThis.process.versions && globalThis.process.versions.node && globalThis.process.type != "renderer";
   async function loadPackage(metadata) {
@@ -166,7 +166,7 @@ var quit_ = (status, toThrow) => {
 // before the page load. In non-MODULARIZE modes generate it here.
 var _scriptName = globalThis.document?.currentScript?.src;
 
-if (typeof __filename != "undefined") {
+if (typeof __filename !== "undefined") {
   // Node
   _scriptName = __filename;
 } else if (ENVIRONMENT_IS_WORKER) {
@@ -207,7 +207,7 @@ if (ENVIRONMENT_IS_NODE) {
   }
   programArgs = process.argv.slice(2);
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
-  if (typeof module != "undefined") {
+  if (typeof module !== "undefined") {
     module["exports"] = Module;
   }
   quit_ = (status, toThrow) => {
@@ -327,7 +327,7 @@ function updateMemoryViews() {
 function preRun() {
   var preRun = Module["preRun"];
   if (preRun) {
-    if (typeof preRun == "function") preRun = [ preRun ];
+    if (typeof preRun === "function") preRun = [ preRun ];
     onPreRuns.push(...preRun);
   }
   // Begin ATPRERUNS hooks
@@ -591,7 +591,7 @@ var PATH_FS = {
     for (var i = args.length - 1; i >= -1 && !resolvedAbsolute; i--) {
       var path = (i >= 0) ? args[i] : FS.cwd();
       // Skip empty and invalid entries
-      if (typeof path != "string") {
+      if (typeof path !== "string") {
         throw new TypeError("Arguments to path.resolve must be strings");
       } else if (!path) {
         return "";
@@ -1245,7 +1245,7 @@ var MEMFS = {
 };
 
 var FS_modeStringToFlags = str => {
-  if (typeof str != "string") return str;
+  if (typeof str !== "string") return str;
   var flagModes = {
     "r": 0,
     "r+": 2,
@@ -1255,14 +1255,14 @@ var FS_modeStringToFlags = str => {
     "a+": 1024 | 64 | 2
   };
   var flags = flagModes[str];
-  if (typeof flags == "undefined") {
+  if (typeof flags === "undefined") {
     throw new Error(`Unknown file open mode: ${str}`);
   }
   return flags;
 };
 
 var FS_fileDataToTypedArray = data => {
-  if (typeof data == "string") {
+  if (typeof data === "string") {
     data = intArrayFromString(data, true);
   }
   if (!data.subarray) {
@@ -1313,7 +1313,7 @@ var preloadPlugins = [];
 
 var FS_handledByPreloadPlugin = async (byteArray, fullname) => {
   // Ensure plugins are ready.
-  if (typeof Browser != "undefined") Browser.init();
+  if (typeof Browser !== "undefined") Browser.init();
   for (var plugin of preloadPlugins) {
     if (plugin["canHandle"](fullname)) {
       return plugin["handle"](byteArray, fullname);
@@ -1333,7 +1333,7 @@ var FS_preloadFile = async (parent, name, url, canRead, canWrite, dontCreateFile
   addRunDependency(dep);
   try {
     var byteArray = url;
-    if (typeof url == "string") {
+    if (typeof url === "string") {
       byteArray = await asyncLoad(url);
     }
     byteArray = await FS_handledByPreloadPlugin(byteArray, fullname);
@@ -1819,7 +1819,7 @@ var FS = {
     return mounts;
   },
   syncfs(populate, callback) {
-    if (typeof populate == "function") {
+    if (typeof populate === "function") {
       callback = populate;
       populate = false;
     }
@@ -2003,7 +2003,7 @@ var FS = {
     }
   },
   mkdev(path, mode, dev) {
-    if (typeof dev == "undefined") {
+    if (typeof dev === "undefined") {
       dev = mode;
       mode = 438;
     }
@@ -2234,7 +2234,7 @@ var FS = {
   },
   chmod(path, mode, dontFollow = false) {
     var node;
-    if (typeof path == "string") {
+    if (typeof path === "string") {
       var lookup = FS.lookupPath(path, {
         follow: !dontFollow
       });
@@ -2259,7 +2259,7 @@ var FS = {
   },
   chown(path, uid, gid, dontFollow = false) {
     var node;
-    if (typeof path == "string") {
+    if (typeof path === "string") {
       var lookup = FS.lookupPath(path, {
         follow: !dontFollow
       });
@@ -2297,7 +2297,7 @@ var FS = {
       throw new FS.ErrnoError(28);
     }
     var node;
-    if (typeof path == "string") {
+    if (typeof path === "string") {
       var lookup = FS.lookupPath(path, {
         follow: true
       });
@@ -2336,7 +2336,7 @@ var FS = {
     }
     var node;
     var isDirPath;
-    if (typeof path == "object") {
+    if (typeof path === "object") {
       node = path;
     } else {
       isDirPath = path.endsWith("/");
@@ -2472,7 +2472,7 @@ var FS = {
     if (!stream.stream_ops.read) {
       throw new FS.ErrnoError(28);
     }
-    var seeking = typeof position != "undefined";
+    var seeking = typeof position !== "undefined";
     if (!seeking) {
       position = stream.position;
     } else if (!stream.seekable) {
@@ -2502,7 +2502,7 @@ var FS = {
       // seek to the end before writing in append mode
       FS.llseek(stream, 0, 2);
     }
-    var seeking = typeof position != "undefined";
+    var seeking = typeof position !== "undefined";
     if (!seeking) {
       position = stream.position;
     } else if (!stream.seekable) {
@@ -2714,7 +2714,7 @@ var FS = {
     }
   },
   createPath(parent, path, canRead, canWrite) {
-    parent = typeof parent == "string" ? parent : FS.getPath(parent);
+    parent = typeof parent === "string" ? parent : FS.getPath(parent);
     var parts = path.split("/").reverse();
     while (parts.length) {
       var part = parts.pop();
@@ -2730,14 +2730,14 @@ var FS = {
     return current;
   },
   createFile(parent, name, properties, canRead, canWrite) {
-    var path = PATH.join2(typeof parent == "string" ? parent : FS.getPath(parent), name);
+    var path = PATH.join2(typeof parent === "string" ? parent : FS.getPath(parent), name);
     var mode = FS_getMode(canRead, canWrite);
     return FS.create(path, mode);
   },
   createDataFile(parent, name, data, canRead, canWrite, canOwn) {
     var path = name;
     if (parent) {
-      parent = typeof parent == "string" ? parent : FS.getPath(parent);
+      parent = typeof parent === "string" ? parent : FS.getPath(parent);
       path = name ? PATH.join2(parent, name) : parent;
     }
     var mode = FS_getMode(canRead, canWrite);
@@ -2753,7 +2753,7 @@ var FS = {
     }
   },
   createDevice(parent, name, input, output) {
-    var path = PATH.join2(typeof parent == "string" ? parent : FS.getPath(parent), name);
+    var path = PATH.join2(typeof parent === "string" ? parent : FS.getPath(parent), name);
     var mode = FS_getMode(!!input, !!output);
     FS.createDevice.major ??= 64;
     var dev = FS.makedev(FS.createDevice.major++, 0);
@@ -2877,10 +2877,10 @@ var FS = {
           // including this byte
           end = Math.min(end, datalength - 1);
           // if datalength-1 is selected, this is the last block
-          if (typeof lazyArray.chunks[chunkNum] == "undefined") {
+          if (typeof lazyArray.chunks[chunkNum] === "undefined") {
             lazyArray.chunks[chunkNum] = doXHR(start, end);
           }
-          if (typeof lazyArray.chunks[chunkNum] == "undefined") abort("doXHR failed!");
+          if (typeof lazyArray.chunks[chunkNum] === "undefined") abort("doXHR failed!");
           return lazyArray.chunks[chunkNum];
         });
         if (usesGzip || !datalength) {
@@ -3094,7 +3094,7 @@ function _fd_write(fd, iov, iovcnt, pnum) {
     HEAPU32[((pnum) >> 2)] = num;
     return 0;
   } catch (e) {
-    if (typeof FS == "undefined" || !(e.name === "ErrnoError")) throw e;
+    if (typeof FS === "undefined" || !(e.name === "ErrnoError")) throw e;
     return e.errno;
   }
 }

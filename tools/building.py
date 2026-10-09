@@ -787,42 +787,48 @@ def run_closure_cmd(cmd, filename, env):
 # minify the final wasm+JS combination. this is done after all the JS
 # and wasm optimizations; here we do the very final optimizations on them
 def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
-  # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
-  # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
-  # whitespace if necessary too.
   passes = []
-  if not settings.LINKABLE:
-    passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
-  if not settings.USE_CLOSURE_COMPILER:
-    passes.append('stripDefaultUndefined')
-  # Don't minify if we are going to run closure compiler afterwards
-  minify = settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER
-  if minify:
-    passes.append('--minify-whitespace')
-  if passes:
-    logger.debug('running cleanup on shell code: ' + ' '.join(passes))
-    js_file = acorn_optimizer(js_file, passes)
+  extra_info = {}
+
   # if we can optimize this js+wasm combination under the assumption no one else
   # will see the internals, do so
   if not settings.LINKABLE:
-    # if we are optimizing for size, shrink the combined wasm+JS
-    # TODO: support this when a symbol map is used
     if expensive_optimizations:
-      js_file = metadce(js_file,
-                        wasm_file,
-                        debug_info=debug_info,
-                        last=not settings.MINIFY_WASM_IMPORTS_AND_EXPORTS)
-      # now that we removed unneeded communication between js and wasm, we can clean up
-      # the js some more.
-      passes = ['AJSDCE']
-      if minify:
-        passes.append('--minify-whitespace')
-      logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
-      js_file = acorn_optimizer(js_file, passes)
+      # start with AJSDCE (aggressive JS DCE, performs multiple iterations), to
+      # clean up obvious JS garbage before metadce.
+      logger.debug('running pre-meta-DCE cleanup on shell code: AJSDCE')
+      js_file = acorn_optimizer(js_file, ['AJSDCE'])
+      # if we are optimizing for size, shrink the combined wasm+JS
+      # TODO: support this when a symbol map is used
+      dce_info = metadce(js_file,
+                         wasm_file,
+                         debug_info=debug_info,
+                         last=not settings.MINIFY_WASM_IMPORTS_AND_EXPORTS)
+      if dce_info:
+        # now that we removed unneeded communication between js and wasm, we can
+        # clean up the js some more.
+        passes += ['applyDCEGraphRemovals', 'AJSDCE']
+        extra_info.update(dce_info)
       if settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
-        js_file = minify_wasm_imports_and_exports(js_file, wasm_file,
+        mapping = minify_wasm_imports_and_exports(wasm_file,
                                                   minify_exports=settings.MINIFY_WASM_EXPORT_NAMES,
                                                   debug_info=debug_info)
+        passes.append('applyImportAndExportNameChanges')
+        extra_info['mapping'] = mapping
+    else:
+      passes.append('JSDCE')
+
+  if not settings.USE_CLOSURE_COMPILER:
+    passes.append('stripDefaultUndefined')
+
+  # Don't minify if we are going to run closure compiler afterwards
+  if settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER:
+    passes.append('--minify-whitespace')
+
+  if passes:
+    logger.debug('running cleanup on shell code: ' + ' '.join(passes))
+    js_file = acorn_optimizer(js_file, passes, extra_info=extra_info or None)
+
   return js_file
 
 
@@ -843,7 +849,7 @@ def metadce(js_file, wasm_file, debug_info, last):
   txt = acorn_optimizer(js_file, ['emitDCEGraph', '--no-print'], return_output=True, extra_info=extra_info)
   if shared.SKIP_SUBPROCS:
     # The next steps depend on the output from this step, so we can't do them if we aren't actually running.
-    return js_file
+    return None
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
   required_symbols = user_requested_exports.union(extra_js_exports, settings.SIDE_MODULE_IMPORTS)
@@ -927,19 +933,14 @@ def metadce(js_file, wasm_file, debug_info, last):
           unused_exports.append(native_name)
   if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove
-    return js_file
-  # remove them
-  passes = ['applyDCEGraphRemovals']
-  if settings.MINIFY_WHITESPACE:
-    passes.append('--minify-whitespace')
+    return None
   if DEBUG:
     logger.debug(f'unused_imports: {unused_imports}')
     logger.debug(f'unused_exports: {unused_exports}')
-  extra_info = {'unusedImports': unused_imports, 'unusedExports': unused_exports}
-  return acorn_optimizer(js_file, passes, extra_info=extra_info)
+  return {'unusedImports': unused_imports, 'unusedExports': unused_exports}
 
 
-def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_info):
+def minify_wasm_imports_and_exports(wasm_file, minify_exports, debug_info):
   logger.debug('minifying wasm imports and exports')
   # run the pass
   args = []
@@ -996,15 +997,10 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
       assert old not in mapping, 'exports must be unique'
       mapping[old] = new
 
-  # apply them
-  passes = ['applyImportAndExportNameChanges']
-  if settings.MINIFY_WHITESPACE:
-    passes.append('--minify-whitespace')
-  extra_info = {'mapping': mapping}
   if settings.MINIFICATION_MAP:
     lines = [f'{new}:{old}' for old, new in mapping.items()]
     utils.write_file(settings.MINIFICATION_MAP, '\n'.join(lines) + '\n')
-  return acorn_optimizer(js_file, passes, extra_info=extra_info)
+  return mapping
 
 
 def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, symbols_file=None, symbols_file_js=None):

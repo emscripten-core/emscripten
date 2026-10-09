@@ -374,7 +374,7 @@ FS.staticInit();`;
     },
     createNode(parent, name, mode, rdev = undefined) {
 #if ASSERTIONS
-      assert(typeof parent == 'object')
+      assert(typeof parent === 'object')
 #endif
       var node = new FS.FSNode(parent, name, mode, rdev);
 
@@ -612,7 +612,7 @@ FS.staticInit();`;
       return mounts;
     },
     syncfs(populate, callback) {
-      if (typeof populate == 'function') {
+      if (typeof populate === 'function') {
         callback = populate;
         populate = false;
       }
@@ -658,7 +658,7 @@ FS.staticInit();`;
     },
     mount(type, opts, mountpoint) {
 #if ASSERTIONS
-      if (typeof type == 'string') {
+      if (typeof type === 'string') {
         // The filesystem was not included, and instead we have an error
         // message stored in the variable.
         throw type;
@@ -829,7 +829,7 @@ FS.staticInit();`;
       }
     },
     mkdev(path, mode, dev = undefined) {
-      if (typeof dev == 'undefined') {
+      if (typeof dev === 'undefined') {
         dev = mode;
         mode = 0o666;
       }
@@ -1071,7 +1071,7 @@ FS.staticInit();`;
     },
     chmod(path, mode, dontFollow = false) {
       var node;
-      if (typeof path == 'string') {
+      if (typeof path === 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
         node = lookup.node;
       } else {
@@ -1095,7 +1095,7 @@ FS.staticInit();`;
     },
     chown(path, uid, gid, dontFollow = false) {
       var node;
-      if (typeof path == 'string') {
+      if (typeof path === 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
         node = lookup.node;
       } else {
@@ -1131,7 +1131,7 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
       var node;
-      if (typeof path == 'string') {
+      if (typeof path === 'string') {
         var lookup = FS.lookupPath(path, { follow: true });
         node = lookup.node;
       } else {
@@ -1166,7 +1166,7 @@ FS.staticInit();`;
       }
       var node;
       var isDirPath;
-      if (typeof path == 'object') {
+      if (typeof path === 'object') {
         node = path;
       } else {
         isDirPath = path.endsWith('/');
@@ -1328,7 +1328,7 @@ FS.staticInit();`;
       if (!stream.stream_ops.read) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      var seeking = typeof position != 'undefined';
+      var seeking = typeof position !== 'undefined';
       if (!seeking) {
         position = stream.position;
       } else if (!stream.seekable) {
@@ -1370,7 +1370,7 @@ FS.staticInit();`;
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, {{{ cDefs.SEEK_END }}});
       }
-      var seeking = typeof position != 'undefined';
+      var seeking = typeof position !== 'undefined';
       if (!seeking) {
         position = stream.position;
       } else if (!stream.seekable) {
@@ -1657,7 +1657,7 @@ FS.staticInit();`;
     },
 #endif
     createPath(parent, path, canRead = undefined, canWrite = undefined) {
-      parent = typeof parent == 'string' ? parent : FS.getPath(parent);
+      parent = typeof parent === 'string' ? parent : FS.getPath(parent);
       var parts = path.split('/').reverse();
       while (parts.length) {
         var part = parts.pop();
@@ -1673,7 +1673,7 @@ FS.staticInit();`;
       return current;
     },
     createFile(parent, name, properties, canRead = undefined, canWrite = undefined) {
-      var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(canRead, canWrite);
       return FS.create(path, mode);
     },
@@ -1683,7 +1683,7 @@ FS.staticInit();`;
     createDataFile(parent, name, data = undefined, canRead = undefined, canWrite = undefined, canOwn = undefined) {
       var path = name;
       if (parent) {
-        parent = typeof parent == 'string' ? parent : FS.getPath(parent);
+        parent = typeof parent === 'string' ? parent : FS.getPath(parent);
         path = name ? PATH.join2(parent, name) : parent;
       }
       var mode = FS_getMode(canRead, canWrite);
@@ -1699,7 +1699,7 @@ FS.staticInit();`;
       }
     },
     createDevice(parent, name, input = undefined, output = undefined) {
-      var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
+      var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(!!input, !!output);
       FS.createDevice.major ??= 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
@@ -1845,10 +1845,10 @@ FS.staticInit();`;
             var start = chunkNum * chunkSize;
             var end = (chunkNum+1) * chunkSize - 1; // including this byte
             end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
-            if (typeof lazyArray.chunks[chunkNum] == 'undefined') {
+            if (typeof lazyArray.chunks[chunkNum] === 'undefined') {
               lazyArray.chunks[chunkNum] = doXHR(start, end);
             }
-            if (typeof lazyArray.chunks[chunkNum] == 'undefined') abort('doXHR failed!');
+            if (typeof lazyArray.chunks[chunkNum] === 'undefined') abort('doXHR failed!');
             return lazyArray.chunks[chunkNum];
           });
 

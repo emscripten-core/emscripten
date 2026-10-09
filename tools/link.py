@@ -2490,7 +2490,7 @@ def module_export_name_substitution():
     # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
-    replacement = f"typeof {settings.EXPORT_NAME} != 'undefined' ? {settings.EXPORT_NAME} : {{}}"
+    replacement = f"typeof {settings.EXPORT_NAME} !== 'undefined' ? {settings.EXPORT_NAME} : {{}}"
   new_src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
   assert new_src != src, 'Unable to find Closure syntax __EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__ in source!'
   write_file(final_js, new_src)

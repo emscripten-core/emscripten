@@ -435,8 +435,13 @@
         "SOCK_NONBLOCK": 2048,
         "SOCK_STREAM": 1,
         "SOL_SOCKET": 1,
+        "SO_ACCEPTCONN": 30,
+        "SO_DOMAIN": 39,
         "SO_ERROR": 4,
+        "SO_PROTOCOL": 38,
+        "SO_RCVTIMEO": 20,
         "SO_REUSEPORT": 15,
+        "SO_SNDTIMEO": 21,
         "SYMLOOP_MAX": 40,
         "S_IALLUGO": 4095,
         "S_IFBLK": 24576,
@@ -1169,6 +1174,11 @@
             "__size__": 16,
             "tv_nsec": 8,
             "tv_sec": 0
+        },
+        "timeval": {
+            "__size__": 16,
+            "tv_sec": 0,
+            "tv_usec": 8
         },
         "tm": {
             "__size__": 56,

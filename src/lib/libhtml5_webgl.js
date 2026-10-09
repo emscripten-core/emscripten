@@ -9,7 +9,7 @@ var LibraryHtml5WebGL = {
   $writeGLArray: (arr, dst, dstLength, heapType) => {
 #if ASSERTIONS
     assert(arr);
-    assert(typeof arr.length != 'undefined');
+    assert(typeof arr.length !== 'undefined');
 #endif
     var len = arr.length;
     var writeLength = dstLength < len ? dstLength : len;
@@ -153,7 +153,7 @@ var LibraryHtml5WebGL = {
 
 #if GL_DEBUG
     if (_emscripten_supports_offscreencanvas() && canvas instanceof OffscreenCanvas) dbg(`emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "${targetStr}"`);
-    else if (typeof HTMLCanvasElement != 'undefined' && canvas instanceof HTMLCanvasElement) dbg(`emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "${targetStr}"`);
+    else if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) dbg(`emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "${targetStr}"`);
 #endif
 
     if (contextAttributes.explicitSwapControl) {
@@ -270,7 +270,7 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_do_commit_frame: () => {
 #if TRACE_WEBGL_CALLS
-    var threadId = (typeof _pthread_self != 'undefined') ? _pthread_self : () => 1;
+    var threadId = (typeof _pthread_self !== 'undefined') ? _pthread_self : () => 1;
     err(`[Thread ${threadId()}, GL ctx: ${GL.currentContext.handle}]: emscripten_webgl_do_commit_frame()`);
 #endif
     if (!GL.currentContext || !GL.currentContext.GLctx) {
@@ -415,7 +415,7 @@ var LibraryHtml5WebGL = {
     // TODO: Add a new build mode, e.g. OFFSCREENCANVAS_SUPPORT=2, which
     // necessitates OffscreenCanvas support at build time, and "return 1;" here in that build mode.
 #if OFFSCREENCANVAS_SUPPORT
-    typeof OffscreenCanvas != 'undefined'
+    typeof OffscreenCanvas !== 'undefined'
 #else
     0
 #endif

@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.12 (in development)
+6.0.13 (in development)
 ----------------------
+
+6.0.12 - 10/08/26
+-----------------
 - The embind library functions `getInheritedInstanceCount` and
   `getLiveInheritedInstances` were marked as deprecated. (#27899)
 - `MAXIMUM_MEMORY` is now honored with `IMPORTED_MEMORY` even without

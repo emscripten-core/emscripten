@@ -1063,7 +1063,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
         # EMBIND_GEN_MODE is run before binaryen so the asyncify exports that
         # are created by binaryen will be missing.
         continue
-      receiving.append(f"  assert(typeof wasmExports['{sym}'] != 'undefined', 'missing Wasm export: {sym}');")
+      receiving.append(f"  assert(typeof wasmExports['{sym}'] !== 'undefined', 'missing Wasm export: {sym}');")
   for sym, info in exports.items():
     is_function = isinstance(info, webassembly.FuncType)
     mangled = asmjs_mangle(sym)
@@ -1091,7 +1091,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
       receiving.append(f"  {assignment} = createExportWrapper('{sym}', wasmExports['{sym}'], {nargs});")
     elif not is_function and info[0].kind == webassembly.ExternType.GLOBAL and not info[1].mutable:
       if settings.LEGACY_VM_SUPPORT:
-        value = f"typeof wasmExports['{sym}'] == 'object' ? wasmExports['{sym}'].value : wasmExports['{sym}']"
+        value = f"typeof wasmExports['{sym}'] === 'object' ? wasmExports['{sym}'].value : wasmExports['{sym}']"
       else:
         value = f"wasmExports['{sym}'].value"
       if settings.MEMORY64:

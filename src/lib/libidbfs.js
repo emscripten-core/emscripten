@@ -11,7 +11,7 @@ addToLibrary({
     dbs: {},
     indexedDB: () => {
 #if ASSERTIONS
-      assert(typeof indexedDB != 'undefined', 'IDBFS used, but indexedDB not supported');
+      assert(typeof indexedDB !== 'undefined', 'IDBFS used, but indexedDB not supported');
 #endif
       return indexedDB;
     },
