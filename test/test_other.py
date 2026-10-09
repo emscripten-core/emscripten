@@ -2018,8 +2018,6 @@ Module['postRun'] = () => {
     text = self.run_process([EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
     self.assertEqual(text.count('common.o'), 2)
 
-    # With fastcomp we don't support duplicate members so this should generate
-    # a warning.  With the wasm backend (lld) this is fully supported.
     self.do_runf('main.c', 'a\nb...\n', cflags=['-L.', '-ldup'])
 
   def test_export_from_archive(self):
@@ -5008,72 +5006,6 @@ int main() {
     self.assertLess(opt_min - opt_max, opt_max * 0.1)
     # unopt build is quite larger'
     self.assertGreater(sizes['0'], (1.20 * opt_max))
-
-  @disabled('relies on fastcomp EXIT_RUNTIME=0 optimization not implemented/disabled')
-  def test_global_inits(self):
-    create_file('inc.h', r'''
-#include <stdio.h>
-
-template<int x>
-struct Waste {
-  int state;
-  Waste() : state(10) {}
-  void test(int a) {
-    printf("%d\n", a + state);
-  }
-  ~Waste() {
-    printf("going away %d\n", x);
-  }
-};
-
-Waste<3> *getMore();
-''')
-
-    create_file('main.cpp', r'''
-#include "inc.h"
-
-Waste<1> mw1;
-Waste<2> mw2;
-
-int main(int argc, char **argv) {
-  printf("argc: %d\n", argc);
-  mw1.state += argc;
-  mw2.state += argc;
-  mw1.test(5);
-  mw2.test(6);
-  getMore()->test(0);
-  return 0;
-}
-''')
-
-    create_file('side.cpp', r'''
-#include "inc.h"
-
-Waste<3> sw3;
-
-Waste<3> *getMore() {
-  return &sw3;
-}
-''')
-
-    for opts, has_global in [
-      (['-O2', '-g', '-sEXIT_RUNTIME'], True),
-      # no-exit-runtime removes the atexits, and then globalgce can work
-      # it's magic to remove the global initializer entirely
-      (['-O2', '-g'], False),
-      (['-Os', '-g', '-sEXIT_RUNTIME'], True),
-      (['-Os', '-g'], False),
-      (['-O2', '-g', '-flto', '-sEXIT_RUNTIME'], True),
-      (['-O2', '-g', '-flto'], False),
-    ]:
-      print(opts, has_global)
-      self.run_process([EMXX, 'main.cpp', '-c'] + opts)
-      self.run_process([EMXX, 'side.cpp', '-c'] + opts)
-      self.run_process([EMCC, 'main.o', 'side.o'] + opts)
-      self.run_js('a.out.js')
-      src = read_file('a.out.js')
-      self.assertContained('argc: 1\n16\n17\n10\n', self.run_js('a.out.js'))
-      self.assertContainedIf('globalCtors', src, has_global)
 
   @requires_native_clang
   @crossplatform
@@ -11178,25 +11110,6 @@ int main () {
     check_size('a.out.js', 150000)
     check_size('a.out.wasm', 80000)
 
-  # Checks that C++ exceptions managing invoke_*() wrappers will not be generated if exceptions are disabled
-  def test_no_invoke_functions_are_generated_if_exception_catching_is_disabled(self):
-    self.skipTest('Skipping other.test_no_invoke_functions_are_generated_if_exception_catching_is_disabled: Enable after new version of fastcomp has been tagged')
-    for args in ([], ['-sWASM=0']):
-      self.run_process([EMXX, test_file('hello_world.cpp'), '-sDISABLE_EXCEPTION_CATCHING', '-o', 'a.html'] + args)
-      output = read_file('a.js')
-      self.assertContained('_main', output) # Smoke test that we actually compiled
-      self.assertNotContained('invoke_', output)
-
-  # Verifies that only the minimal needed set of invoke_*() functions will be generated when C++ exceptions are enabled
-  def test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled(self):
-    self.skipTest('Skipping other.test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled: Enable after new version of fastcomp has been tagged')
-    for args in ([], ['-sWASM=0']):
-      self.run_process([EMXX, test_file('invoke_i.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'a.html'] + args)
-      output = read_file('a.js')
-      self.assertContained('invoke_i', output)
-      self.assertNotContained('invoke_ii', output)
-      self.assertNotContained('invoke_v', output)
-
   @parameterized({
     'O0': (False, ['-O0']),
     'O0_emit': (True, ['-O0', '-sEMIT_EMSCRIPTEN_LICENSE']),
@@ -11208,7 +11121,6 @@ int main () {
     'O2_closure_js_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE', '--closure=1', '-sWASM=0']),
   })
   def test_emscripten_license(self, expect_license, args):
-    # fastcomp does not support the new license flag
     self.run_process([EMCC, test_file('hello_world.c')] + args)
     js = read_file('a.out.js')
     licenses_found = len(re.findall(r'Copyright [0-9]* The Emscripten Authors', js))
