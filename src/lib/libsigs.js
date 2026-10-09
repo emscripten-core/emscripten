@@ -452,6 +452,7 @@ sigs = {
   _wasmfs_opfs_move_file__sig: 'vpiipp',
   _wasmfs_opfs_open_access__sig: 'vpip',
   _wasmfs_opfs_open_blob__sig: 'vpip',
+  _wasmfs_opfs_open_shared_access__sig: 'vpip',
   _wasmfs_opfs_read_access__sig: 'iipij',
   _wasmfs_opfs_read_blob__sig: 'ipipijp',
   _wasmfs_opfs_remove_child__sig: 'vpipp',
