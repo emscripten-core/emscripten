@@ -1360,7 +1360,6 @@ var FS = {
   currentPath: "/",
   initialized: false,
   ignorePermissions: true,
-  filesystems: null,
   syncFSRequests: 0,
   ErrnoError: class {
     name="ErrnoError";
@@ -2698,9 +2697,6 @@ var FS = {
     FS.createDefaultDirectories();
     FS.createDefaultDevices();
     FS.createSpecialDirectories();
-    FS.filesystems = {
-      "MEMFS": MEMFS
-    };
   },
   init(input, output, error) {
     FS.initialized = true;
