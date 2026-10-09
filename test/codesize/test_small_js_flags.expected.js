@@ -18,9 +18,9 @@ var Module = typeof Module !== "undefined" ? Module : {};
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
-var ENVIRONMENT_IS_WEB = true;
+const ENVIRONMENT_IS_WEB = true;
 
-var ENVIRONMENT_IS_WORKER = false;
+const ENVIRONMENT_IS_WORKER = false;
 
 var quit_ = (status, toThrow) => {
   throw toThrow;
@@ -405,8 +405,8 @@ var wasmImports = {
 // === Auto-generated postamble setup entry stuff ===
 function callMain() {
   var entryFunction = _main;
-  var argc = 0;
-  var argv = 0;
+  const argc = 0;
+  const argv = 0;
   try {
     var ret = entryFunction(argc, argv);
     // if we're not running an evented main loop, it's time to exit
@@ -422,7 +422,7 @@ function run() {
   if (ABORT) return;
   initRuntime();
   // No ATMAINS hooks
-  var noInitialRun = false;
+  const noInitialRun = false;
   if (!noInitialRun) callMain();
   postRun();
 }

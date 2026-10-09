@@ -133,7 +133,7 @@ addToLibrary({
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE) {
         // we will read data by chunks of BUFSIZE
-        var BUFSIZE = 256;
+        const BUFSIZE = 256;
         var buf = Buffer.alloc(BUFSIZE);
         var bytesRead = 0;
 

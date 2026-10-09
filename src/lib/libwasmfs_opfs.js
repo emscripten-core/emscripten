@@ -182,7 +182,7 @@ addToLibrary({
         stackRestore(sp);
       }
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      const err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
@@ -217,7 +217,7 @@ addToLibrary({
     try {
       await fileHandle.move(newDirHandle, name);
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      const err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
@@ -231,7 +231,7 @@ addToLibrary({
     try {
       await dirHandle.removeEntry(name);
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      const err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
@@ -321,7 +321,7 @@ addToLibrary({
     try {
       await accessHandle.close();
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      const err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSAccessHandles.free(accessID);
@@ -445,7 +445,7 @@ addToLibrary({
     try {
       await accessHandle.truncate(size);
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      const err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
@@ -461,7 +461,7 @@ addToLibrary({
       await writable.truncate(size);
       await writable.close();
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      const err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
@@ -474,7 +474,7 @@ addToLibrary({
     try {
       await accessHandle.flush();
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      const err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);

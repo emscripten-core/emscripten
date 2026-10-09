@@ -289,7 +289,7 @@ var LibraryEmVal = {
     '$Emval', '$getStringOrSymbol',
   ],
   _emval_create_invoker: (argCount, argTypesPtr, kind) => {
-    var GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
+    const GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
 
     var [retType, ...argTypes] = emval_lookupTypes(argCount, argTypesPtr);
     var toReturnWire = retType.toWireType.bind(retType);

@@ -782,7 +782,7 @@ var FS_stdin_getChar = () => {
     var result = null;
     if (ENVIRONMENT_IS_NODE) {
       // we will read data by chunks of BUFSIZE
-      var BUFSIZE = 256;
+      const BUFSIZE = 256;
       var buf = Buffer.alloc(BUFSIZE);
       var bytesRead = 0;
       try {
@@ -1041,7 +1041,7 @@ var MEMFS = {
     // For small filesizes (<1MB), perform size*2 geometric increase, but for
     // large sizes, do a much more conservative size*1.125 increase to avoid
     // overshooting the allocation cap by a very large margin.
-    var CAPACITY_DOUBLING_MAX = 1024 * 1024;
+    const CAPACITY_DOUBLING_MAX = 1024 * 1024;
     newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2 : 1.125)) >>> 0);
     if (prevCapacity) newCapacity = Math.max(newCapacity, 256);
     // At minimum allocate 256b for each file when expanding.
@@ -3188,8 +3188,8 @@ var wasmImports = {
 // === Auto-generated postamble setup entry stuff ===
 function callMain() {
   var entryFunction = _main;
-  var argc = 0;
-  var argv = 0;
+  const argc = 0;
+  const argv = 0;
   try {
     var ret = entryFunction(argc, argv);
     // if we're not running an evented main loop, it's time to exit
@@ -3208,7 +3208,7 @@ async function run() {
   if (ABORT) return;
   initRuntime();
   // No ATMAINS hooks
-  var noInitialRun = false;
+  const noInitialRun = false;
   if (!noInitialRun) callMain();
   postRun();
 }

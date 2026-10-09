@@ -203,7 +203,7 @@ var SyscallsLibrary = {
     if (fdPtr == 0) {
       throw new FS.ErrnoError({{{ cDefs.EFAULT }}});
     }
-    var validFlags = {{{ cDefs.O_CLOEXEC }}} | {{{ cDefs.O_NONBLOCK }}};
+    const validFlags = {{{ cDefs.O_CLOEXEC }}} | {{{ cDefs.O_NONBLOCK }}};
     if (flags & ~validFlags) {
       throw new FS.ErrnoError({{{ cDefs.ENOTSUP }}});
     }
@@ -368,9 +368,9 @@ var SyscallsLibrary = {
 #if NODERAWSOCKETS
     // An unbound AF_UNIX socket is unnamed (family-only address), not a
     // wildcard IP.
-    var defaultAddr = sock.family == {{{ cDefs.AF_UNIX }}} ? '' : '0.0.0.0';
+    const defaultAddr = sock.family == {{{ cDefs.AF_UNIX }}} ? '' : '0.0.0.0';
 #else
-    var defaultAddr = '0.0.0.0';
+    const defaultAddr = '0.0.0.0';
 #endif
     // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
     var errno = writeSockaddr(addr, sock.family, sock.saddr || defaultAddr, sock.sport, len);
@@ -804,7 +804,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd)
     stream.getdents ||= FS.readdir(stream.path);
 
-    var struct_size = {{{ C_STRUCTS.dirent.__size__ }}};
+    const struct_size = {{{ C_STRUCTS.dirent.__size__ }}};
     var pos = 0;
     var off = FS.llseek(stream, 0, {{{ cDefs.SEEK_CUR }}});
 
@@ -885,13 +885,13 @@ var SyscallsLibrary = {
         return stream.flags;
       case {{{ cDefs.F_SETFL }}}: {
         var arg = syscallGetVarargI();
-        var mask = {{{ cDefs.O_APPEND | cDefs.O_ASYNC | cDefs.O_DIRECT | cDefs.O_NOATIME | cDefs.O_NONBLOCK }}};
+        const mask = {{{ cDefs.O_APPEND | cDefs.O_ASYNC | cDefs.O_DIRECT | cDefs.O_NOATIME | cDefs.O_NONBLOCK }}};
         stream.flags = (stream.flags & ~mask) | (arg & mask);
         return 0;
       }
       case {{{ cDefs.F_GETLK }}}: {
         var arg = syscallGetVarargP();
-        var offset = {{{ C_STRUCTS.flock.l_type }}};
+        const offset = {{{ C_STRUCTS.flock.l_type }}};
         // We're always unlocked.
         {{{ makeSetValue('arg', 'offset', cDefs.F_UNLCK, 'i16') }}};
         return 0;
