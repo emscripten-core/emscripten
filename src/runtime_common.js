@@ -19,7 +19,7 @@
 #include "runtime_asan.js"
 #endif
 
-#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
 #include "binaryDecode.js"
 #endif
 

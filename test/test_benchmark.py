@@ -305,16 +305,7 @@ class EmscriptenBenchmarker(Benchmarker):
     return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=subprocess.STDOUT)
 
   def get_output_files(self):
-    ret = [self.filename]
-    if 'WASM=0' in self.cmd:
-      if 'MINIMAL_RUNTIME=0' not in self.cmd:
-        ret.append(utils.replace_suffix(self.filename, '.asm.js'))
-        ret.append(utils.replace_suffix(self.filename, '.mem'))
-      else:
-        ret.append(self.filename + '.mem')
-    else:
-      ret.append(utils.replace_suffix(self.filename, '.wasm'))
-    return ret
+    return [self.filename, utils.replace_suffix(self.filename, '.wasm')]
 
 
 # This benchmarker will make a test benchmark build with Emscripten and record

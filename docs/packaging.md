@@ -73,7 +73,6 @@ When packaging build results, you need the following executables:
     * wasm-opt
     * wasm-dis
     * wasm-as
-    * wasm2js
     * wasm-metadce
 
 Node modules

@@ -21,7 +21,6 @@ from . import (
   config,
   diagnostics,
   feature_matrix,
-  js_optimizer,
   ports,
   response_file,
   shared,
@@ -408,14 +407,7 @@ def opt_level_to_str(opt_level, shrink_level=0):
     return f'-O{min(opt_level, 3)}'
 
 
-def run_js_optimizer(filename, passes):
-  try:
-    return js_optimizer.run_on_file(filename, passes)
-  except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
-
-
-# run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
+# run JS optimizer on some JS
 def acorn_optimizer(filename, passes, extra_info=None, return_output=False, worker_js=False):
   optimizer = path_from_root('tools/acorn-optimizer.mjs')
   original_filename = filename
@@ -462,8 +454,6 @@ acorn_optimizer.counter = 0  # type: ignore
 WASM_CALL_CTORS = '__wasm_call_ctors'
 
 
-# evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
-# for this, and we are in wasm mode
 def eval_ctors(js_file, wasm_file, debug_info):
   CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();"
 
@@ -706,22 +696,6 @@ def run_closure_cmd(cmd, filename, env):
   cmd += ['--js_output_file', os.path.relpath(outfile, tempfiles.tmpdir)]
   if not settings.MINIFY_WHITESPACE:
     cmd += ['--formatting', 'PRETTY_PRINT']
-
-  if settings.WASM2JS:
-    # In WASM2JS mode, the WebAssembly object is polyfilled, which triggers
-    # Closure's built-in type check:
-    # externs.zip//webassembly.js:29:18: WARNING - [JSC_TYPE_MISMATCH] initializing variable
-    # We cannot fix this warning externally, since adding /** @suppress{checkTypes} */
-    # to the polyfill is "in the wrong end". So mute this warning globally to
-    # allow clean Closure output. https://github.com/google/closure-compiler/issues/4108
-    cmd += ['--jscomp_off=checkTypes']
-
-    # WASM2JS codegen routinely generates expressions that are unused, e.g.
-    # WARNING - [JSC_USELESS_CODE] Suspicious code. The result of the 'bitor' operator is not being used.
-    #        s(0) | 0;
-    #        ^^^^^^^^
-    # Turn off this check in Closure to allow clean Closure output.
-    cmd += ['--jscomp_off=uselessCode']
 
   shared.print_compiler_stage(cmd)
 
@@ -1001,68 +975,6 @@ def minify_wasm_imports_and_exports(wasm_file, minify_exports, debug_info):
     lines = [f'{new}:{old}' for old, new in mapping.items()]
     utils.write_file(settings.MINIFICATION_MAP, '\n'.join(lines) + '\n')
   return mapping
-
-
-def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, symbols_file=None, symbols_file_js=None):
-  logger.debug('wasm2js')
-  args = ['--emscripten']
-  if opt_level > 0:
-    args += ['-O']
-  if symbols_file:
-    args += [f'--symbols-file={symbols_file}']
-  wasm2js_js = run_binaryen_command('wasm2js', wasm_file,
-                                    args=args,
-                                    debug=debug_info,
-                                    stdout=PIPE)
-  if DEBUG:
-    utils.write_file(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), wasm2js_js)
-  # JS optimizations
-  if opt_level >= 2:
-    passes = []
-    if not debug_info and not settings.PTHREADS:
-      passes += ['minifyNames']
-      if symbols_file_js:
-        passes += [f'symbolMap={symbols_file_js}']
-    if settings.MINIFY_WHITESPACE:
-      passes += ['--minify-whitespace']
-    if passes:
-      # hackish fixups to work around wasm2js style and the js optimizer FIXME
-      wasm2js_js = f'// EMSCRIPTEN_START_ASM\n{wasm2js_js}// EMSCRIPTEN_END_ASM\n'
-      wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
-      wasm2js_js = wasm2js_js.replace('\n }', '\n}')
-      temp = shared.get_temp_files().get('.js').name
-      utils.write_file(temp, wasm2js_js)
-      temp = run_js_optimizer(temp, passes)
-      wasm2js_js = utils.read_file(temp)
-  # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
-  # minify the wasm2js output as well, which is ok since it isn't
-  # validating asm.js.
-  # TODO: in the non-closure case, we could run a lightweight general-
-  #       purpose JS minifier here.
-  if use_closure_compiler == 2:
-    temp = shared.get_temp_files().get('.js').name
-    with open(temp, 'a', encoding='utf-8') as f:
-      f.write(wasm2js_js)
-    temp = closure_compiler(temp, advanced=False)
-    wasm2js_js = utils.read_file(temp)
-    # closure may leave a trailing `;`, which would be invalid given where we place
-    # this code (inside parens)
-    wasm2js_js = wasm2js_js.strip()
-    if wasm2js_js[-1] == ';':
-      wasm2js_js = wasm2js_js[:-1]
-  all_js = utils.read_file(js_file)
-  # quoted notation, something like Module['__wasm2jsInstantiate__']
-  finds = re.findall(r'''[\w\d_$]+\[['"]__wasm2jsInstantiate__['"]\]''', all_js)
-  if not finds:
-    # post-closure notation, something like a.__wasm2jsInstantiate__
-    finds = re.findall(r'''[\w\d_$]+\.__wasm2jsInstantiate__''', all_js)
-  assert len(finds) == 1
-  marker = finds[0]
-  all_js = all_js.replace(marker, f'(\n{wasm2js_js}\n)')
-  # replace the placeholder with the actual code
-  js_file += '.wasm2js.js'
-  utils.write_file(js_file, all_js)
-  return js_file
 
 
 @ToolchainProfiler.profile()

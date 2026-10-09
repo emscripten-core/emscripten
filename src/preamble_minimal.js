@@ -29,12 +29,4 @@ var tempDouble;
 var tempI64;
 #endif
 
-#if WASM2JS && WASM != 2
-// WASM == 2 includes wasm2js.js separately.
-#include "wasm2js.js"
-#if !WASM2JS
-}
-#endif
-#endif
-
 #include "runtime_common.js"

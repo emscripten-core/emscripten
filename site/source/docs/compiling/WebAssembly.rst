@@ -4,22 +4,18 @@
 Building to WebAssembly
 =======================
 
-WebAssembly is a binary format for executing code on the web, allowing fast start times (smaller download and much faster parsing in browsers when compared to JS or asm.js). Emscripten compiles to WebAssembly by default, but you can also compile to JS for older browsers.
+WebAssembly is a binary format for executing code on the web, allowing fast
+start times (smaller downloads and faster parsing in browsers when compared
+to JavaScript).
 
 For some historical background, see `these slides <https://kripken.github.io/talks/wasm.html>`_ and `this blogpost <https://hacks.mozilla.org/2015/12/compiling-to-webassembly-its-happening/>`_.
 
 Setup
 =====
 
-WebAssembly is emitted by default, without the need for any special flags.
-
-.. note:: If you **don't** want WebAssembly, you can disable it with something like
-
-    ::
-
-      emcc [..args..] -sWASM=0
-
-.. note:: Deciding to compile to Wasm or JS can be done at the linking stage: it doesn't affect the object files.
+In the past, Emscripten supported other output formats such as asm.js, and
+later JavaScript via Binaryen's wasm2js tool, but the current version of
+Emscripten only supports WebAssembly output.
 
 Backends
 --------
@@ -35,13 +31,6 @@ upgrade from fastcomp to upstream:
   for example, if one file was built with atomics but another was not, it will
   error at link time. This prevents possible bugs, but may mean you need to make
   some build system fixes.
-
-* ``WASM=0`` behaves differently in the two backends. In fastcomp we emit
-  asm.js, while in upstream we emit JS (since not all Wasm constructs can be
-  expressed in asm.js). Also, the JS support implements the same external
-  ``WebAssembly.*`` API, so in particular startup will be async just like Wasm
-  by default, and you can control that with ``WASM_ASYNC_COMPILATION`` (even
-  though ``WASM=0``).
 
 * The Wasm backend uses Wasm object files by default. That means that it does
   codegen at the compile step, which makes the link step much faster - like a

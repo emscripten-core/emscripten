@@ -153,9 +153,9 @@ function initRuntime(wasmExports) {
 var instantiatePromise;
 #endif
 
-#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
 Module['wasm'] = binaryDecode("<<< WASM_BINARY_DATA >>>");
-#elif SINGLE_FILE && WASM == 1 && !WASM2JS
+#elif SINGLE_FILE
 Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
 
@@ -197,7 +197,7 @@ const moduleUrl = `ENVIRONMENT_IS_AUDIO_WORKLET ? '${TARGET_BASENAME}.wasm' : ne
 }}}
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
 #if ENVIRONMENT_MAY_BE_NODE
-#if ASSERTIONS && !WASM2JS
+#if ASSERTIONS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
@@ -222,7 +222,7 @@ WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports).then((output
 #endif
 
 #else // Non-streaming instantiation
-#if ASSERTIONS && !WASM2JS
+#if ASSERTIONS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
 assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
@@ -311,28 +311,7 @@ null;
 
   return {{{ waitOnStartupPromisesAndEmitReady(); }}}
 
-}
-
-#if WASM == 2
-, (error) => {
-#if ASSERTIONS
-  console.error(error);
-#endif
-
-#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-  if (globalThis.location) {
-#endif
-    // WebAssembly compilation failed, try running the JS fallback instead.
-    var search = location.search;
-    if (search.indexOf('_rwasm=0') < 0) {
-      location.href += (search ? search + '&' : '?') + '_rwasm=0';
-    }
-#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-  }
-#endif
-}
-#endif // WASM == 2
-);
+});
 
 #if PTHREADS || WASM_WORKERS
 }

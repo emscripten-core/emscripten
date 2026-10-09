@@ -462,12 +462,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   library_cache: dict[str, tuple[str, object]] = {}
 
-  def is_wasm(self):
-    return self.get_setting('WASM') != 0
-
-  def is_wasm2js(self):
-    return not self.is_wasm()
-
   def is_browser_test(self):
     return False
 
@@ -485,8 +479,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.skipTest('dynamic linking not supported with WASM_ESM_INTEGRATION')
     if '-lllvmlibc' in self.cflags:
       self.skipTest('dynamic linking not supported with llvm-libc')
-    if self.is_wasm2js():
-      self.skipTest('dynamic linking not supported with wasm2js')
     # MEMORY64=2 mode doesn't currently support dynamic linking because
     # The side modules are lowered to wasm32 when they are built, making
     # them unlinkable with wasm64 binaries.
@@ -651,8 +643,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if 'EMTEST_SKIP_JSPI' in os.environ:
       self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
     self.set_setting('JSPI')
-    if self.is_wasm2js():
-      self.skipTest('JSPI is not currently supported for WASM2JS')
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with JSPI')
 
@@ -680,16 +670,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       return
 
     self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
-
-  def require_wasm2js(self):
-    if self.is_wasm64():
-      self.skipTest('wasm2js is not compatible with wasm64')
-    if self.is_2gb() or self.is_4gb():
-      self.skipTest('wasm2js does not support over 2gb of memory')
-    if self.get_setting('WASM_ESM_INTEGRATION'):
-      self.skipTest('wasm2js is not compatible with WASM_ESM_INTEGRATION')
-    if '-Wno-deprecated' not in self.cflags:
-      self.cflags.append('-Wno-deprecated')
 
   def setup_nodefs_test(self):
     self.require_node()

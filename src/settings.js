@@ -339,11 +339,10 @@ var SUPPORT_BIG_ENDIAN = false;
 // Check each write to the heap, for example, this will give a clear
 // error on what would be segfaults in a native build (like dereferencing
 // 0). See runtime_safe_heap.js for the actual checks performed.
-// Set to value 1 to test for safe behavior for both Wasm+Wasm2JS builds.
-// Set to value 2 to test for safe behavior for only Wasm builds. (notably,
-// Wasm-only builds allow unaligned memory accesses. Note, however, that
-// on some architectures unaligned accesses can be very slow, so it is still
-// a good idea to verify your code with the more strict mode 1)
+// Set to value 1 to abort on alignment faults, or value 2 to only warn on
+// alignment faults (unaligned memory accesses are allowed in Wasm, though on
+// some architectures they can be very slow, so it is still a good idea to
+// verify your code with the more strict mode 1)
 // [link]
 var SAFE_HEAP = 0;
 
@@ -643,7 +642,6 @@ var JS_MATH = false;
 // the highest possible probability of the code working everywhere, even in rare old
 // browsers and shell environments. Specifically:
 //
-// - Disable WebAssembly. (Must be paired with -sWASM=0)
 // - Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 // - Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
 //
@@ -1395,19 +1393,6 @@ var EMSCRIPTEN_TRACING = false;
 // [link]
 var USE_GLFW = 0;
 
-// Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
-// instead of wasm (deprecated).
-//
-// Specify -sWASM=2 to target both WebAssembly and JavaScript at the same time
-// (deprecated). In that build mode, two files a.wasm and a.wasm.js are produced,
-// and at runtime the WebAssembly file is loaded if browser/shell supports it.
-// Otherwise the .wasm.js fallback will be used.
-//
-// If WASM=2 is enabled and the browser fails to compile the WebAssembly module,
-// the page will be reloaded in Wasm2JS mode.
-// [link]
-var WASM = 1;
-
 // Indicates that we want to emit a wasm file that can run without JavaScript.
 // The file will use standard APIs such as wasi as much as possible to achieve
 // that.
@@ -1866,15 +1851,14 @@ var FETCH_STREAMING = 0;
 var WASMFS = false;
 
 // If set to 1, embeds all subresources in the emitted file as base64 string
-// literals. Embedded subresources may include (but aren't limited to) wasm,
-// asm.js, and static memory initialization code.
+// literals. Embedded subresources may include (but aren't limited to) wasm
+// and worker scripts.
 //
 // When using code that depends on this option, your Content Security Policy may
-// need to be updated. Specifically, embedding asm.js requires the script-src
-// directive to allow 'unsafe-inline', and using a Worker requires the
-// child-src directive to allow blob:. If you aren't using Content Security
-// Policy, or your CSP header doesn't include either script-src or child-src,
-// then you can safely ignore this warning.
+// need to be updated. Specifically, using a Worker requires the child-src
+// directive to allow blob:. If you aren't using Content Security Policy, or
+// your CSP header doesn't include child-src, then you can safely ignore this
+// warning.
 //
 // Note that SINGLE_FILE with binary encoding requires the HTML/JS files to be
 // served with UTF-8 encoding. See the details on SINGLE_FILE_BINARY_ENCODE.
@@ -2137,7 +2121,6 @@ var PURE_WASI = false;
 // - -pthread
 // - RELOCATABLE
 // - ASYNCIFY_LAZY_LOAD_CODE
-// - WASM2JS (WASM=0)
 //
 // [link]
 var IMPORTED_MEMORY = false;

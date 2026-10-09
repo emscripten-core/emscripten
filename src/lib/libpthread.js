@@ -427,14 +427,7 @@ var LibraryPThread = {
       worker.postMessage({
         cmd: {{{ CMD_LOAD }}},
         handlers: handlers,
-#if WASM2JS
-        // the polyfill WebAssembly.Memory instance has function properties,
-        // which will fail in postMessage, so just send a custom object with the
-        // property we need, the buffer
-        wasmMemory: { 'buffer': wasmMemory.buffer },
-#else // WASM2JS
         wasmMemory,
-#endif // WASM2JS
 #if !WASM_ESM_INTEGRATION
         wasmModule,
 #endif

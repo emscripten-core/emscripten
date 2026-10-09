@@ -93,14 +93,6 @@ behavior.
   The commandline arguments. The value of ``arguments`` contains the values
   returned if compiled code checks ``argc`` and ``argv``.
 
-.. js:attribute:: Module.buffer
-
-  Allows you to provide your own ``ArrayBuffer`` or ``SharedArrayBuffer`` to use
-  as the memory.
-
-  .. note:: This is only supported if ``-sWASM=0``. See ``Module.wasmMemory``
-     for WebAssembly support.
-
 .. js:attribute:: Module.wasmMemory
 
   Allows you to provide your own ``WebAssembly.Memory`` to use as the memory.

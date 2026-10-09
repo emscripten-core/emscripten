@@ -197,17 +197,6 @@ def requires_v8(func):
   return decorated
 
 
-def requires_wasm2js(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.require_wasm2js()
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
 def requires_jspi(func):
   assert callable(func)
 
@@ -447,25 +436,6 @@ def also_with_fetch_streaming(f):
   return metafunc
 
 
-def also_with_wasm2js(func):
-  assert callable(func)
-
-  @wraps(func)
-  def metafunc(self, with_wasm2js, *args, **kwargs):
-    assert self.get_setting('WASM') is None
-    if common.EMTEST_VERBOSE:
-      print(f'parameterize:wasm2js={with_wasm2js}')
-    if with_wasm2js:
-      self.require_wasm2js()
-      self.set_setting('WASM', 0)
-      self.cflags.append('-Wno-deprecated')
-    return func(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (False,),
-                          'wasm2js': (True,)})
-  return metafunc
-
-
 def can_do_standalone(self, impure=False):
   # Pure standalone engines don't support wasm64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
@@ -475,8 +445,7 @@ def can_do_standalone(self, impure=False):
     # This is way to detect the core_2gb test mode in test_core.py
     if self.get_setting('INITIAL_MEMORY') == '2200mb':
       return False
-  return self.is_wasm() and \
-      self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
+  return self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
       not self.get_setting('WASM_ESM_INTEGRATION') and \
       not self.get_setting('SAFE_HEAP') and \
@@ -561,8 +530,6 @@ def with_all_eh_sjlj(func):
     if common.EMTEST_VERBOSE:
       print(f'parameterize:eh_mode={mode}')
     if mode in {'wasm', 'wasm_legacy'}:
-      if self.is_wasm2js():
-        self.skipTest('wasm2js does not support wasm EH/SjLj')
       self.cflags.append('-fwasm-exceptions')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
@@ -593,8 +560,6 @@ def with_all_sjlj(func):
   @wraps(func)
   def metafunc(self, mode, *args, **kwargs):
     if mode in {'wasm', 'wasm_legacy'}:
-      if self.is_wasm2js():
-        self.skipTest('wasm2js does not support wasm SjLj')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
         self.require_wasm_eh()

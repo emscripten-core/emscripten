@@ -175,32 +175,16 @@ if (ENVIRONMENT_IS_WORKER) {
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && !WASM2JS) || WASM == 2)
-// Wasm or Wasm2JS loading:
-
+#if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('node:fs');
-#if WASM == 2
-  if (globalThis.WebAssembly) Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
-  else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');
-#else
-#if !WASM2JS
   Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
-#endif
-#endif
 }
 #endif
 
-#if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && !WASM2JS) || WASM == 2)
+#if ENVIRONMENT_MAY_BE_SHELL
 if (ENVIRONMENT_IS_SHELL) {
-#if WASM == 2
-  if (globalThis.WebAssembly) Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
-  else eval(read('{{{ TARGET_BASENAME }}}.wasm.js')+'');
-#else
-#if !WASM2JS
   Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
-#endif
-#endif
 }
 #endif
 

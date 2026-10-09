@@ -90,12 +90,6 @@ passing_core_test_modes = [
   'core_2gb',
   'strict',
   'strict_js',
-  'wasm2js0',
-  'wasm2js1',
-  'wasm2js2',
-  'wasm2js3',
-  'wasm2jss',
-  'wasm2jsz',
   'asan',
   'lsan',
   'ubsan',
@@ -296,7 +290,7 @@ def print_random_test_statistics(num_tests):
 
 def error_on_legacy_suite_names(args):
   for a in args:
-    if a.startswith('wasm') and not a.startswith(('wasm2js', 'wasmfs', 'wasm64')):
+    if a.startswith('wasm') and not a.startswith(('wasmfs', 'wasm64')):
       new = a.replace('wasm', 'core', 1)
       utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 

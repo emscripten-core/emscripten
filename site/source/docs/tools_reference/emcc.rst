@@ -253,8 +253,6 @@ Options that are modified or new in *emcc* are listed below:
   to the names. This is a simpler format than source maps, but less detailed
   because it only describes function names and not source locations.
 
-  .. note:: When used with ``-sWASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
-
 .. _emcc-emit-minification-map:
 
 ``--emit-minification-map <file>``
@@ -272,13 +270,12 @@ Options that are modified or new in *emcc* are listed below:
 
 .. _emcc-closure:
 
-``--closure 0|1|2``
+``--closure 0|1``
   [link]
   Runs the :term:`Closure Compiler`. Possible values are:
 
     - ``0``: No closure compiler (default).
-    - ``1``: Run closure compiler. This greatly reduces the size of the support JavaScript code (everything but the WebAssembly or asm.js). Note that this increases compile time significantly.
-    - ``2``: Run closure compiler on *all* the emitted code, even on **asm.js** output in **asm.js** mode. This can further reduce code size, but does prevent a significant amount of **asm.js** optimizations, so it is not recommended unless you want to reduce code size at all costs.
+    - ``1``: Run closure compiler. This greatly reduces the size of the support JavaScript code (everything but the WebAssembly). Note that this increases compile time significantly.
 
   .. note::
 

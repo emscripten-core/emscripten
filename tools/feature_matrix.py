@@ -195,12 +195,6 @@ def caniuse(feature):
   if feature in enable_override_features:
     return True
 
-  # Certain features are incompatible with certain settings.
-  # TODO(sbc): Make this more generate, perhaps based on INCOMPATIBLE_SETTINGS
-  if feature == Feature.GROWABLE_ARRAYBUFFERS and settings.WASM2JS:
-    logger.debug(f'cannot use {feature.name} because WASM2JS is enabled')
-    return False
-
   min_versions = min_browser_versions[feature]
 
   def report_missing(setting_name):

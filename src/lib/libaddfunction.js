@@ -44,7 +44,6 @@ addToLibrary({
     return code;
   })),
 
-#if !WASM2JS || WASM == 2
   // Wraps a JS function as a wasm function with a given signature.
   $convertJsFunctionToWasm__deps: [
     '$uleb128EncodeWithLen',
@@ -86,7 +85,6 @@ addToLibrary({
     var wrappedFunc = instance.exports['f'];
     return wrappedFunc;
   },
-#endif // !WASM2JS && WASM != 2
 
   $freeTableIndexes: [],
 
@@ -145,9 +143,7 @@ addToLibrary({
   $addFunction__deps: ['$getFunctionAddress',
                        '$functionsInTableMap', '$getEmptyTableSlot',
                        '$setWasmTableEntry',
-#if !WASM2JS || WASM == 2
                        '$convertJsFunctionToWasm',
-#endif
 #if ASSERTIONS >= 2
                        '$getWasmTableEntry', '$wasmTable',
 #endif
@@ -177,9 +173,6 @@ addToLibrary({
 
     var ret = getEmptyTableSlot();
 
-#if WASM2JS && WASM != 2
-    setWasmTableEntry(ret, func);
-#else
     // Set the new value.
     try {
       // Attempting to call this with JS function will cause table.set() to fail
@@ -194,7 +187,6 @@ addToLibrary({
       var wrapped = convertJsFunctionToWasm(func, sig);
       setWasmTableEntry(ret, wrapped);
     }
-#endif
 
     functionsInTableMap.set(func, ret);
 
