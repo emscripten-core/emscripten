@@ -41,7 +41,7 @@ const systemLibdir = path.join(srcDir, 'lib');
 
 // Suffix and return type of each async variant of an `__async: 'auto'`
 // function (see expandAsyncVariants).
-const ASYNC_VARIANTS = [['promise', 'p']];
+const ASYNC_VARIANTS = [['promise', 'p'], ['fd', 'i']];
 
 function isBeneath(childPath, parentPath) {
   const relativePath = path.relative(parentPath, childPath);
@@ -300,8 +300,10 @@ export const LibraryManager = {
    * pointer-sized value or a Promise of one, unless its trailing `sync`
    * argument forbids (see jsifier). Each also has a `foo_promise` variant, the
    * same body returning an em_promise_t of the result on the calling
-   * thread, which can always wait. Variants are emitted only where used; an
-   * explicit library entry of the same name takes precedence.
+   * thread, and a `foo_fd` variant, returning an fd readable once the result
+   * is available (see $fdFromPromise); both can always wait. Variants are
+   * emitted only where used; an explicit library entry of the same name
+   * takes precedence.
    */
   expandAsyncVariants() {
     const bases = [];
@@ -324,8 +326,9 @@ export const LibraryManager = {
             this.library[name + decorator] = this.library[base + decorator];
           }
         }
-        if (PTHREADS && variant == 'promise' && this.library[base + '__proxy'] == 'sync') {
-          this.library[name + '__deps'] = [...(this.library[name + '__deps'] ?? []), '$proxyToMainThreadPromise'];
+        if (PTHREADS && this.library[base + '__proxy'] == 'sync') {
+          const proxyFunc = variant == 'promise' ? '$proxyToMainThreadPromise' : '$proxyToMainThreadFd';
+          this.library[name + '__deps'] = [...(this.library[name + '__deps'] ?? []), proxyFunc];
         }
       }
     }

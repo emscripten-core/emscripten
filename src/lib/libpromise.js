@@ -247,6 +247,109 @@ addToLibrary({
     return id;
   },
 
+  // The fd of emscripten_proxy_fd_with_ctx and of the `_fd` variant of an
+  // __async: 'auto' function (see jsifier): readable (POLLIN) once settled,
+  // with POLLERR too if rejected. read() yields the settled value as one
+  // pointer-sized integer, or fails with EIO if rejected. The read takes
+  // ownership: later reads see EOF (POLLHUP). The result lives on the open
+  // file description, so dup'd fds share it; nothing is held after the last
+  // close. A pending fd holds the runtime alive like a timer. Descriptors
+  // live on the main thread, where these run.
+  //
+  // The description is settled by a handle rather than the fd, which the
+  // user may have closed (and the number reused) meanwhile. Handles are
+  // never reused either: the proxied task's own completion may arrive late.
+#if !WASMFS
+  $proxyFds: 'new Map()',
+  $proxyFdNextHandle: 1,
+  $proxyFdCreate__deps: ['$FS', '$proxyFds', '$proxyFdNextHandle', '$proxyFdRelease'],
+  $proxyFdCreate: () => {
+    var stream = FS.createStream({
+      node: new FS.FSNode(0, '', 0, 0),
+      flags: {{{ cDefs.O_RDONLY }}},
+      stream_ops: {
+        poll: (stream) => {
+          var r = stream.shared.result;
+          if (!r) return 0;
+          if (r.consumed) return {{{ cDefs.POLLHUP }}};
+          return {{{ cDefs.POLLIN | cDefs.POLLRDNORM }}} | (r.rejected ? {{{ cDefs.POLLERR }}} : 0);
+        },
+        read: (stream, buffer, offset, length) => {
+          var r = stream.shared.result;
+          if (!r) throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+          if (r.consumed) return 0;
+          if (r.rejected) throw new FS.ErrnoError({{{ cDefs.EIO }}});
+          if (length < {{{ POINTER_SIZE }}}) throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+#if ASSERTIONS
+          assert(buffer.buffer === HEAP8.buffer, 'result fds are read into wasm memory');
+#endif
+          {{{ makeSetValue('offset', 0, 'r.value', '*') }}};
+          r.consumed = true;
+          return {{{ POINTER_SIZE }}};
+        },
+        dup: (stream) => stream.shared.refcount++,
+        close: (stream) => {
+          var shared = stream.shared;
+          if (--shared.refcount) return;
+          if (!shared.result) proxyFdRelease(shared.handle);
+        },
+      },
+    });
+    var shared = stream.shared;
+    shared.refcount = 1;
+    shared.stream = stream;
+    shared.handle = proxyFdNextHandle++;
+    proxyFds.set(shared.handle, shared);
+    {{{ runtimeKeepalivePush() }}}
+    return shared.handle;
+  },
+  $proxyFdRelease__internal: true,
+  $proxyFdRelease__deps: ['$proxyFds'],
+  $proxyFdRelease: (handle) => {
+    proxyFds.delete(handle);
+    {{{ runtimeKeepalivePop() }}}
+  },
+  // Settles the description of `handle` with `value`, or as failed. A second
+  // settlement (the proxied task's own completion, after its result), or one
+  // after the last close, is ignored.
+  $proxyFdSettle__deps: ['$proxyFds', '$proxyFdRelease'],
+  $proxyFdSettle: (handle, value, success) => {
+    var shared = proxyFds.get(handle);
+    if (!shared) return;
+    proxyFdRelease(handle);
+    shared.result = {value, rejected: !success};
+    shared.stream.node.notifyListeners({{{ cDefs.POLLIN | cDefs.POLLRDNORM }}} | (success ? 0 : {{{ cDefs.POLLERR }}}));
+  },
+
+#if PTHREADS
+  // Creates a pending fd, written to `fd`, and returns its settle handle.
+  _emscripten_proxy_fd_create__deps: ['$proxyFdCreate', '$proxyFds'],
+  _emscripten_proxy_fd_create__proxy: 'sync',
+  _emscripten_proxy_fd_create: (fd) => {
+    var handle = proxyFdCreate();
+    {{{ makeSetValue('fd', 0, 'proxyFds.get(handle).stream.fd', 'i32') }}};
+    return handle;
+  },
+  _emscripten_proxy_fd_settle__deps: ['$proxyFdSettle'],
+  _emscripten_proxy_fd_settle__proxy: 'sync',
+  _emscripten_proxy_fd_settle: (handle, value, success) => proxyFdSettle(handle, value, success),
+#endif
+
+  // The `_fd` variant on the main thread: an fd for the body's value or Promise.
+  $fdFromPromise__deps: ['$proxyFdCreate', '$proxyFdSettle', '$proxyFds'],
+  $fdFromPromise: (result) => {
+    var handle = proxyFdCreate();
+    var fd = proxyFds.get(handle).stream.fd;
+    if (result instanceof Promise) {
+      result.then((value) => proxyFdSettle(handle, value, true),
+                  () => proxyFdSettle(handle, 0, false));
+    } else {
+      proxyFdSettle(handle, result, true);
+    }
+    return fd;
+  },
+#endif
+
 #if ASYNCIFY
   emscripten_promise_await__async: 'auto',
   emscripten_promise_await__deps: ['$getPromise', '$setPromiseResult'],
