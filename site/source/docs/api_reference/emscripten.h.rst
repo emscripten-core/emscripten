@@ -1605,6 +1605,27 @@ Functions
                                       arbitrary ``userData`` passed to this function.
 
 
+.. c:function:: intptr_t emscripten_dns_lookup(const char *name, const char *service, const struct addrinfo *hints)
+                int emscripten_dns_lookup_fd(const char *name, const char *service, const struct addrinfo *hints)
+                em_promise_t emscripten_dns_lookup_promise(const char *name, const char *service, const struct addrinfo *hints)
+
+  ``getaddrinfo()`` as one asynchronous lookup in three variants. Each
+  resolves to the head of a newly allocated ``addrinfo`` list (free it with
+  ``freeaddrinfo()``), or a negative ``EAI_*`` code.
+
+  ``emscripten_dns_lookup()`` is synchronous and is what ``getaddrinfo()``
+  calls: where the stack cannot wait for a real lookup (the main thread of a
+  build without ``ASYNCIFY``/JSPI under ``-sNODERAWSOCKETS``) it returns
+  ``EAI_AGAIN``. ``emscripten_dns_lookup_fd()`` returns a file descriptor that
+  becomes readable (``poll()``, ``select()``, ``epoll``) once the lookup
+  completes, possibly already on return; ``read()`` of an ``intptr_t`` from it
+  takes the result (the fd is then at EOF), and it must be ``close()``\d.
+  ``emscripten_dns_lookup_promise()`` returns an ``em_promise_t`` (see
+  ``<emscripten/promise.h>``) fulfilled with the result.
+
+  Without ``-sNODERAWSOCKETS`` every lookup completes synchronously.
+
+
 Unaligned types
 ===============
 
