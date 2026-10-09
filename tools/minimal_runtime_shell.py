@@ -93,10 +93,9 @@ def generate_minimal_runtime_load_statement(target_basename):
 #if MODULARIZE
 #if WASM == 2
         // In MODULARIZEd WASM==2 builds, we use this same function to download
-        // both .js and .asm.js that are structured with {{{ EXPORT_NAME }}}
-        // at the top level, but also use this function to download the Wasm2JS
-        // file that does not have an {{{ EXPORT_NAME }}} function, hence the
-        // variable typeof check:
+        // both the main .js file (structured with {{{ EXPORT_NAME }}} at the
+        // top level) and the Wasm2JS file (which does not have an
+        // {{{ EXPORT_NAME }}} function), hence the variable typeof check:
         if (typeof {{{ EXPORT_NAME }}} !== 'undefined') {
           var c = {{{ EXPORT_NAME }}};
           delete {{{ EXPORT_NAME }}};
@@ -126,7 +125,7 @@ def generate_minimal_runtime_load_statement(target_basename):
       return script_xhr + files_to_load[0] + ";"
 
   if not settings.MODULARIZE or settings.WASM_WORKERS:
-    # If downloading multiple files like .wasm or .mem, those need to be loaded in
+    # If downloading multiple files like .wasm, those need to be loaded in
     # before we can add the main runtime script to the DOM, so convert the main .js
     # script load from direct script() load to a binary() load so we can still
     # immediately start the download, but can control when we add the script to the

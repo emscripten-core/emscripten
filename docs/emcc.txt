@@ -252,7 +252,7 @@ Options that are modified or new in *emcc* are listed below:
 
      When used with "-sWASM=2", two symbol files are created.
      "[name].js.symbols" (with WASM symbols) and
-     "[name].wasm.js.symbols" (with ASM.js symbols)
+     "[name].wasm.js.symbols" (with wasm2js symbols)
 
 "--emit-minification-map <file>"
    [link] In cases where emscripten performs import/export
@@ -270,14 +270,12 @@ Options that are modified or new in *emcc* are listed below:
       * "0": No closure compiler (default).
 
       * "1": Run closure compiler. This greatly reduces the size of
-        the support JavaScript code (everything but the WebAssembly or
-        asm.js). Note that this increases compile time significantly.
+        the generated JavaScript support code. Note that this
+        increases compile time significantly.
 
-      * "2": Run closure compiler on *all* the emitted code, even on
-        **asm.js** output in **asm.js** mode. This can further reduce
-        code size, but does prevent a significant amount of **asm.js**
-        optimizations, so it is not recommended unless you want to
-        reduce code size at all costs.
+      * "2": Run closure compiler on *all* the emitted JavaScript
+        code, even on **wasm2js** output in **wasm2js** mode. This can
+        further reduce code size.
 
    Note:
 

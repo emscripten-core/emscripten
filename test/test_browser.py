@@ -4369,14 +4369,6 @@ Module["preRun"] = () => {
     self.set_setting('DEFAULT_TO_CXX')  # emdawnwebgpu uses C++ internally
     self.btest_exit('webgpu_required_limits.c', cflags=['--use-port=emdawnwebgpu'])
 
-  # Tests the feature that shell html page can preallocate the typed array and place it
-  # to Module.buffer before loading the script page.
-  # In this build mode, the -sINITIAL_MEMORY=xxx option will be ignored.
-  # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
-  @requires_wasm2js
-  def test_preallocated_heap(self):
-    self.btest_exit('test_preallocated_heap.c', cflags=['-sWASM=0', '-sIMPORTED_MEMORY', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('browser/test_preallocated_heap_shell.html')])
-
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   @also_with_wasm2js
   @also_with_fetch_streaming
@@ -4706,8 +4698,6 @@ Module["preRun"] = () => {
     self.assertExists('test.html')
     self.assertNotExists('test.js')
     self.assertNotExists('test.wasm')
-    self.assertNotExists('test.asm.js')
-    self.assertNotExists('test.js')
     self.assertNotExists('test.worker.js')
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)

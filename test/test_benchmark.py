@@ -306,13 +306,7 @@ class EmscriptenBenchmarker(Benchmarker):
 
   def get_output_files(self):
     ret = [self.filename]
-    if 'WASM=0' in self.cmd:
-      if 'MINIMAL_RUNTIME=0' not in self.cmd:
-        ret.append(utils.replace_suffix(self.filename, '.asm.js'))
-        ret.append(utils.replace_suffix(self.filename, '.mem'))
-      else:
-        ret.append(self.filename + '.mem')
-    else:
+    if not any('WASM=0' in a for a in self.cmd):
       ret.append(utils.replace_suffix(self.filename, '.wasm'))
     return ret
 
