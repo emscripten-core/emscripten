@@ -1197,6 +1197,9 @@ f.close()
     '': (None,),
     'wasm64': ('-m64',),
     'pthreads': ('-pthread',),
+    'wasm_workers': ('-sWASM_WORKERS',),
+    'exit_runtime': ('-sEXIT_RUNTIME',),
+    'lto': ('-flto',),
   })
   def test_cmake_check_type_size(self, cflag):
     if cflag == '-m64':

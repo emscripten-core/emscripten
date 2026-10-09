@@ -111,9 +111,10 @@ function(__check_type_size_impl type var map builtin language)
   endif()
   set(bin ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CheckTypeSize/${var}.bin)
   configure_file(${__check_type_size_dir}/CheckTypeSize.c.in ${src} @ONLY)
+  set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
   try_compile(HAVE_${var} ${CMAKE_BINARY_DIR} ${src}
-    COMPILE_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS}
-    LINK_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} "--oformat=bare" "-sWASM=1"
+    COMPILE_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS} "-fno-lto"
+    LINK_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES}
     CMAKE_FLAGS
       "-DCOMPILE_DEFINITIONS:STRING=${CMAKE_REQUIRED_FLAGS}"
       "-DINCLUDE_DIRECTORIES:STRING=${CMAKE_REQUIRED_INCLUDES}"
