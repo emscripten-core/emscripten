@@ -325,8 +325,12 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
                               ['--symbols-only', settings_json],
                               stdout=subprocess.PIPE)
 
-  symbols = json.loads(output)['deps'].keys()
-  symbols = [s for s in symbols if not ignore_symbol(s, cxx)]
+  sym_info = json.loads(output)
+  # Async variants (`foo_promise` of an `__async: 'auto'` `foo`) derive their
+  # signature from their base function.
+  async_variants = set(sym_info['asyncVariants'])
+  symbols = sym_info['deps'].keys()
+  symbols = [s for s in symbols if not ignore_symbol(s, cxx) and s not in async_variants]
   if cxx:
     ext = '.cpp'
     compiler = shared.EMXX

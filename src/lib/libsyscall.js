@@ -628,18 +628,13 @@ var SyscallsLibrary = {
     '$doPollAsync',
 #endif
   ],
-  __syscall_poll: (fds, nfds, timeout) => {
+  __syscall_poll: (fds, nfds, timeout, sync) => {
 #if PTHREADS || ASYNCIFY
-#if PTHREADS
-    const isAsyncContext = PThread.currentProxiedOperationCallerThread;
-#else
-    const isAsyncContext = true;
-#endif
     // When proxied from a worker (PTHREADS) or able to suspend (ASYNCIFY/JSPI),
     // block on the wait-queue. This must run for every timeout (including zero):
     // a proxied syscall's return is awaited by the caller thread, so it has to
     // be a Promise even for a probe.
-    if (isAsyncContext) {
+    if (!sync) {
 #if RUNTIME_DEBUG
       dbg('async poll start');
 #endif
@@ -743,11 +738,11 @@ var SyscallsLibrary = {
   __syscall_epoll_pwait__proxy: 'sync',
   __syscall_epoll_pwait__async: 'auto',
   __syscall_epoll_pwait__deps: ['$FS', '$epollPwait'],
-  __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => {
+  __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize, sync) => {
     var ep = FS.getStream(epfd);
     if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
     if (maxevents <= 0) return -{{{ cDefs.EINVAL }}};
-    return epollPwait(ep.shared, ev, maxevents, timeout);
+    return epollPwait(ep.shared, ev, maxevents, timeout, sync);
   },
   // libc routes zero-timeout epoll_wait()/epoll_pwait() calls here: a plain
   // import that never suspends, so probes stay callable from any context (under

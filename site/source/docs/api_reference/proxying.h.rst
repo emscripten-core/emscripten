@@ -72,6 +72,18 @@ Functions
 
   Signal the end of a task proxied with ``emscripten_proxy_sync_with_ctx``.
 
+.. c:function:: void emscripten_proxy_finish_result(em_proxying_ctx* ctx, void* result)
+
+  As ``emscripten_proxy_finish``, with a result: the promise returned by
+  ``emscripten_proxy_promise_with_ctx`` is fulfilled with it.
+
+.. c:function:: void emscripten_proxy_fail(em_proxying_ctx* ctx)
+
+  Signal that a task proxied with a context has failed: the promise returned
+  by ``emscripten_proxy_promise_with_ctx`` is rejected, or the ``cancel``
+  callback of ``emscripten_proxy_callback_with_ctx`` is called, as if the
+  target thread had exited.
+
 .. c:function:: bool emscripten_proxy_async(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void* arg)
 
   Enqueue ``func`` to be called with argument ``arg`` on the given queue and

@@ -285,6 +285,12 @@ function sigToArgs(sig) {
   return args.join(',');
 }
 
+// The async variant of an 'auto' function's body, where it hands the result
+// over rather than returning it (see expandAsyncVariants in modules.mjs).
+function asyncVariantOf(symbol) {
+  return LibraryManager.library[symbol + '__async_variant'];
+}
+
 function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
   // Handle i64 parameters and return values.
   //
@@ -345,6 +351,13 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       const await_ = isAsyncFunction ? 'await ' : '';
       const orig_async_ = async_;
       async_ = isAsyncFunction ? 'async ' : async_;
+      // An 'auto' body may return a Promise even without ASYNCIFY (on a
+      // pthread's behalf, which awaits it), which must not be cast but
+      // resolve to the cast value.
+      const maybePromise = !isAsyncFunction && LibraryManager.library[symbol + '__async'] == 'auto';
+      const convert = (v) => maybePromise ?
+        `(${v} instanceof Promise ? ${v}.then((v) => ${makeReturn64('v')}) : ${makeReturn64(v)})` :
+        makeReturn64(await_ + v);
       if (oneliner) {
         // Special case for abort(), this a noreturn function and but closure
         // compiler doesn't have a way to express that, so it complains if we
@@ -352,10 +365,11 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
         if (body.startsWith('abort(')) {
           return snippet;
         }
-        if (argConversions) {
+        if (argConversions || maybePromise) {
           return `${async_}(${args}) => {
 ${argConversions}
-return ${makeReturn64(await_ + body)};
+var ret = ${body};
+return ${convert('ret')};
 }`;
         }
         return `${async_}(${args}) => ${makeReturn64(await_ + body)};`;
@@ -364,7 +378,7 @@ return ${makeReturn64(await_ + body)};
 ${async_}function(${args}) {
 ${argConversions}
 var ret = (${orig_async_}() => { ${body} })();
-return ${makeReturn64(await_ + 'ret')};
+return ${convert('ret')};
 }`;
     }
 
@@ -452,7 +466,8 @@ export async function runJSify(outputFile, symbolsOnly) {
   }
 
   for (const key of Object.keys(LibraryManager.library)) {
-    if (!isDecorator(key)) {
+    // Async variants are included only where used (see expandAsyncVariants).
+    if (!isDecorator(key) && !(INCLUDE_FULL_LIBRARY && !symbolsOnly && asyncVariantOf(key))) {
       if (INCLUDE_FULL_LIBRARY || EXPORTED_FUNCTIONS.has(mangleCSymbolName(key))) {
         symbolsNeeded.push(key);
       }
@@ -497,9 +512,13 @@ function(${args}) {
     }
 
     const sig = LibraryManager.library[symbol + '__sig'];
-    const isAsyncFunction = ASYNCIFY && LibraryManager.library[symbol + '__async'];
+    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+    const asyncVariant = asyncVariantOf(symbol);
+    const isAsyncFunction = ASYNCIFY && !asyncVariant && LibraryManager.library[symbol + '__async'];
 
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
+    const needsI64Handling = sig &&
+      ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')));
     if (i53abi) {
       if (!sig) {
         error(`JS library error: '__i53abi' decorator requires '__sig' decorator: '${symbol}'`);
@@ -508,17 +527,35 @@ function(${args}) {
         error(`JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`);
       }
     }
-    if (
-      sig &&
-      ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))
-    ) {
+    // A async variant's conversions wrap its final wrapper, below.
+    if (needsI64Handling && !asyncVariant) {
       snippet = handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction);
       compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
     }
 
-    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+    if (LibraryManager.library[symbol + '__async'] == 'auto' && sig) {
+      // An 'auto' body returns a value or a Promise, as it can. A body that
+      // names one parameter more than __sig receives there `sync`: whether
+      // it must complete synchronously on this call, as a returned Promise
+      // could not be waited for. That is never the case under ASYNCIFY/JSPI
+      // or when the caller receives a promise of the result, nor on behalf of
+      // a sync-proxied pthread caller, which awaits it; otherwise it is.
+      const sync = ASYNCIFY || asyncVariant ? 'false' :
+        PTHREADS && proxyingMode == 'sync' ? '!PThread.currentProxiedOperationCallerThread' : 'true';
+      snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+        const params = args.split(',').map((a) => a.trim()).filter((a) => a);
+        if (params.length != sig.length) return snippet;
+        if (!oneliner) body = `{\n${body}\n}`;
+        const outer = params.slice(0, -1).join(', ');
+        return `\
+function(${outer}) {
+  return (${async_}(${args}) => ${body})(${outer}${outer ? ', ' : ''}${sync});
+}\n`;
+      });
+    }
 
-    if (ASYNCIFY && isAsyncFunction == 'auto') {
+    // A async variant hands its Promise over rather than suspending on it.
+    if (!asyncVariant && isAsyncFunction == 'auto') {
       snippet = handleAsyncFunction(snippet, sig, proxyingMode == 'sync');
     }
 
@@ -542,13 +579,19 @@ function(${args}) {
               }
             }
             const rtnType = sig?.[0];
-            const proxyFunc =
-              MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
+            let proxyFunc = MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
+            let modeArg = `, ${proxyMode}`;
+            if (asyncVariant == 'promise') {
+              // The body returns a value or a Promise; a pthread caller gets an
+              // em_promise_t of the main-thread result.
+              proxyFunc = 'proxyToMainThreadPromise';
+              modeArg = '';
+            }
             deps.push('$' + proxyFunc);
             return `
 ${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${proxyMode}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0${modeArg}${args ? ', ' : ''}${args});
 ${body}
 }\n`;
           });
@@ -566,6 +609,27 @@ function(${args}) {
         }
         proxiedFunctionTable.push(mangled);
       }
+    }
+
+    if (asyncVariant == 'promise') {
+      // The result of the 'auto' body as an em_promise_t (addPromise of its
+      // value-or-Promise) on the calling thread; a rejection becomes NULL, as
+      // the body's own reason cannot reach C. This wraps outside the proxying:
+      // a pthread caller's em_promise_t comes from C as-is, and on the main
+      // thread running the body on a pthread's behalf
+      // (PThread.currentProxiedOperationCallerThread set) the bare result is
+      // what crosses back.
+      snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+        if (!oneliner) body = `(${async_}() => {\n${body}\n})()`;
+        const bare = PTHREADS && proxyingMode == 'sync' ?
+          'if (ENVIRONMENT_IS_PTHREAD || PThread.currentProxiedOperationCallerThread) return r;\n  ' : '';
+        return `function(${args}) {\n  var r = ${body};\n  ${bare}return addPromise(Promise.resolve(r).catch(() => { throw 0; }));\n}\n`;
+      });
+      deps.push('$addPromise');
+    }
+    if (needsI64Handling && asyncVariant) {
+      snippet = handleI64Signatures(symbol, snippet, sig, i53abi, false);
+      compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
     }
 
     return snippet;
@@ -618,7 +682,7 @@ function(${args}) {
         deps.push('setTempRet0');
       }
 
-      const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+      const isAsyncFunction = LibraryManager.library[symbol + '__async'] && !asyncVariantOf(symbol);
       if (ASYNCIFY && isAsyncFunction) {
         asyncFuncs.push(symbol);
       }
@@ -998,6 +1062,7 @@ var proxiedFunctionTable = [
         deps: symbolDeps,
         asyncFuncs,
         extraLibraryFuncs,
+        asyncVariants: Object.keys(symbolDeps).filter(asyncVariantOf),
       }),
     );
   } else {
