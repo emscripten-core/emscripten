@@ -98,7 +98,9 @@ backend_t wasmfs_create_node_backend(const char* _Nonnull root);
 // Note: OPFS does not allow removing or moving a file while an access handle
 // is open on it. With pthreads, unlink() and rename() therefore fail with EIO
 // while the file is open, including when it is only open for reading (in
-// browsers that support the `mode` option of createSyncAccessHandle).
+// browsers that support the `mode` option of createSyncAccessHandle). An open
+// file also blocks other contexts that use exclusive access handles or
+// createWritable on it, such as builds without pthreads.
 backend_t wasmfs_create_opfs_backend(void);
 
 // Creates a generic JSIMPL backend
