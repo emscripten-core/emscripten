@@ -14050,6 +14050,11 @@ Module.postRun = () => {{
     self.set_setting('FORCE_FILESYSTEM')
     self.do_runf_out_file('wasmfs/wasmfs_getdents.c')
 
+  @wasmfs_all_backends
+  def test_wasmfs_rename(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf('wasmfs/wasmfs_rename.c', 'done\n')
+
   def test_wasmfs_jsfile(self):
     self.set_setting('WASMFS')
     self.do_runf_out_file('wasmfs/wasmfs_jsfile.c')
