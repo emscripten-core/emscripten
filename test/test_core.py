@@ -8684,17 +8684,13 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('FORCE_FILESYSTEM')
     create_file('pre.js', '''
       Module.preRun = () => {
-        out(typeof FS.filesystems['MEMFS']);
-        out(typeof FS.filesystems['IDBFS']);
-        out(typeof FS.filesystems['NODEFS']);
-        // Globals
         out(typeof MEMFS);
         out(typeof IDBFS);
         out(typeof NODEFS);
       };
     ''')
     self.cflags += ['-lidbfs.js', '-lnodefs.js', '--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
-    self.do_run('int main() { return 0; }', 'object\nobject\nobject\nobject\nobject\nobject')
+    self.do_run('int main() { return 0; }', 'object\nobject\nobject')
 
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict_none(self):
@@ -8703,10 +8699,6 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('ASSERTIONS')
     create_file('pre.js', '''
       Module.preRun = () => {
-        out(typeof FS.filesystems['MEMFS']);
-        out(typeof FS.filesystems['IDBFS']);
-        out(typeof FS.filesystems['NODEFS']);
-        // Globals
         out(typeof MEMFS);
         out(IDBFS);
         out(NODEFS);
@@ -8720,9 +8712,6 @@ Module.onRuntimeInitialized = () => {
     ''')
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     expected = '''\
-object
-undefined
-undefined
 object
 IDBFS is no longer included by default; build with -lidbfs.js
 NODEFS is no longer included by default; build with -lnodefs.js
