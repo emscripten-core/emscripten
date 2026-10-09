@@ -410,25 +410,6 @@ function AJSDCE(ast) {
   JSDCE(ast, /* aggressive= */ true);
 }
 
-// Strip `= undefined` default values from function parameters and destructuring
-// patterns. These default values have no runtime semantic effect (since
-// `undefined` is already the default), and are only needed by Closure Compiler
-// for arity/type checking.
-function stripDefaultUndefined(ast) {
-  fullWalk(ast, (node) => {
-    if (
-      node.type === 'AssignmentPattern' &&
-      node.right.type === 'Identifier' &&
-      node.right.name === 'undefined'
-    ) {
-      const left = node.left;
-      delete node.left;
-      delete node.right;
-      Object.assign(node, left);
-    }
-  });
-}
-
 function isWasmImportsAssign(node) {
   // var wasmImports = ..
   //   or
@@ -1822,6 +1803,7 @@ const {
     verbose,
     'no-print': noPrint,
     'minify-whitespace': minifyWhitespace,
+    compress,
     outfile,
   },
   positionals: [infile, ...passes],
@@ -1832,6 +1814,7 @@ const {
     verbose: {type: 'boolean'},
     'no-print': {type: 'boolean'},
     'minify-whitespace': {type: 'boolean'},
+    compress: {type: 'boolean'},
     outfile: {type: 'string', short: 'o'},
   },
   allowPositionals: true,
@@ -1877,7 +1860,6 @@ if (closureFriendly) {
 const registry = {
   JSDCE,
   AJSDCE,
-  stripDefaultUndefined,
   applyImportAndExportNameChanges,
   emitDCEGraph,
   applyDCEGraphRemovals,
@@ -1951,7 +1933,13 @@ if (!noPrint) {
   } else {
     output = minify_sync(ast, {
       parse: {spidermonkey: true},
-      compress: false,
+      compress: compress
+        ? {
+            defaults: false,
+            evaluate: true,
+            keep_fargs: false,
+          }
+        : false,
       mangle: false,
       format,
     }).code;
