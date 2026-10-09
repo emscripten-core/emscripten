@@ -140,9 +140,6 @@ addToLibrary({
         atime: stat.atime,
         mtime: stat.mtime,
         ctime: stat.ctime,
-        atimeMs: stat.atimeMs,
-        mtimeMs: stat.mtimeMs,
-        ctimeMs: stat.ctimeMs,
         blksize: stat.blksize,
         blocks: stat.blocks
       };

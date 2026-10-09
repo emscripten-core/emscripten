@@ -7,7 +7,6 @@
 
 #define _LARGEFILE64_SOURCE // For F_GETLK64 etc
 
-#include <cmath>
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
@@ -1139,10 +1138,7 @@ static double timespec_to_ms(timespec ts) {
   if (ts.tv_nsec == UTIME_NOW) {
     return emscripten_date_now();
   }
-  // Round down tv_nsec to the nearest 10 microseconds (10,000 ns) to prevent
-  // floating-point rounding into the next whole second when converting to host/Windows timestamps.
-  long tv_nsec_10us = (ts.tv_nsec / 10000) * 10000;
-  return (double(ts.tv_sec) + double(tv_nsec_10us) / 1e9) * 1000;
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
 }
 
 // TODO: Test this with non-AT_FDCWD values.

@@ -5877,6 +5877,13 @@ int main()
   def test_strptime_symmetry(self):
     self.do_other_test('test_strptime_symmetry.c')
 
+  def test_utime_now(self):
+    self.do_runf('utime/test_utime_now.c', 'done\n')
+
+  @also_with_nodefs_both
+  def test_utime_roundtrip(self):
+    self.do_runf('utime/test_utime_roundtrip.c', 'done\n')
+
   @also_with_wasmfs
   def test_truncate_from_0(self):
     self.do_other_test('test_truncate_from_0.cpp')
