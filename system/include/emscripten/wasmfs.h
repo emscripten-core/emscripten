@@ -88,6 +88,17 @@ backend_t wasmfs_create_node_backend(const char* _Nonnull root);
 //
 // TODO: Add an async version of this function that will work on the main
 // thread.
+//
+// Note: With pthreads, files are opened with OPFS sync access handles. In
+// browsers that support the `mode` option of createSyncAccessHandle, these use
+// 'readwrite-unsafe', so several tabs and workers can open the same file at
+// the same time. Otherwise files opened for writing are locked against other
+// tabs and workers until they are closed.
+//
+// Note: OPFS does not allow removing or moving a file while an access handle
+// is open on it. With pthreads, unlink() and rename() therefore fail with EIO
+// while the file is open, including when it is only open for reading (in
+// browsers that support the `mode` option of createSyncAccessHandle).
 backend_t wasmfs_create_opfs_backend(void);
 
 // Creates a generic JSIMPL backend
