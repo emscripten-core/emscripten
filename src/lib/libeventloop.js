@@ -79,7 +79,7 @@ LibraryJSEventLoop = {
     } else if (globalThis.addEventListener) {
       var __setImmediate_id_counter = 0;
       var __setImmediate_queue = [];
-      var __setImmediate_message_id = '_si';
+      const __setImmediate_message_id = '_si';
       /** @param {Event} e */
       var __setImmediate_cb = (e) => {
         if (e.data === __setImmediate_message_id) {
@@ -384,7 +384,7 @@ LibraryJSEventLoop = {
 #endif
           // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
           var setImmediates = [];
-          var emscriptenMainLoopMessageId = 'setimmediate';
+          const emscriptenMainLoopMessageId = 'setimmediate';
           /** @param {Event} event */
           var MainLoop_setImmediate_messageHandler = (event) => {
             if (event.data === emscriptenMainLoopMessageId) {

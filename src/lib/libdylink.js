@@ -494,15 +494,15 @@ var LibraryDylink = {
     }
 
     var customSection = { neededDynlibs: [], tlsExports: new Set(), weakImports: new Set(), runtimePaths: [] };
-    var WASM_DYLINK_MEM_INFO = 0x1;
-    var WASM_DYLINK_NEEDED = 0x2;
-    var WASM_DYLINK_EXPORT_INFO = 0x3;
-    var WASM_DYLINK_IMPORT_INFO = 0x4;
-    var WASM_DYLINK_RUNTIME_PATH = 0x5;
-    var WASM_DYLINK_TARGET_ARCH = 0x6;
-    var WASM_SYMBOL_TLS = 0x100;
-    var WASM_SYMBOL_BINDING_MASK = 0x3;
-    var WASM_SYMBOL_BINDING_WEAK = 0x1;
+    const WASM_DYLINK_MEM_INFO = 0x1;
+    const WASM_DYLINK_NEEDED = 0x2;
+    const WASM_DYLINK_EXPORT_INFO = 0x3;
+    const WASM_DYLINK_IMPORT_INFO = 0x4;
+    const WASM_DYLINK_RUNTIME_PATH = 0x5;
+    const WASM_DYLINK_TARGET_ARCH = 0x6;
+    const WASM_SYMBOL_TLS = 0x100;
+    const WASM_SYMBOL_BINDING_MASK = 0x3;
+    const WASM_SYMBOL_BINDING_WEAK = 0x1;
     while (offset < end) {
       var subsectionType = getU8();
       var subsectionSize = getLEB();

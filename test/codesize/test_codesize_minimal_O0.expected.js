@@ -444,6 +444,7 @@ function unexportedRuntimeSymbol(sym) {
 // include: runtime_stack_check.js
 const stackCookie1 = 0x02135467;
 const stackCookie2 = 0x89BACDFE;
+const nullCookie = 0x63736d65; // 'emsc'
 
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
@@ -461,7 +462,7 @@ function writeStackCookie() {
   HEAPU32[((max)>>2)] = stackCookie1;
   HEAPU32[(((max)+(4))>>2)] = stackCookie2;
   // Also test the global address 0 for integrity.
-  HEAPU32[((0)>>2)] = 1668509029;
+  HEAPU32[((0)>>2)] = nullCookie;
 }
 
 function u32ToHexString(num) {
@@ -481,7 +482,7 @@ function checkStackCookie() {
     abort(`Stack overflow! Stack cookie has been overwritten at ${ptrToString(max)}, expected hex dwords ${u32ToHexString(stackCookie2)} and ${u32ToHexString(stackCookie1)}, but received ${u32ToHexString(val2)} ${u32ToHexString(val1)}`);
   }
   // Also test the global address 0 for integrity.
-  if (HEAPU32[((0)>>2)] != 0x63736d65 /* 'emsc' */) {
+  if (HEAPU32[((0)>>2)] != nullCookie) {
     abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
   }
 }

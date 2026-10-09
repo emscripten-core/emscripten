@@ -59,8 +59,8 @@ var mainArgs = undefined;
   }
   {{{ makeSetValue('argv_ptr', 0, 0, '*') }}};
 #else
-  var argc = 0;
-  var argv = 0;
+  const argc = 0;
+  const argv = 0;
 #endif // MAIN_READS_PARAMS
 
   try {
@@ -169,7 +169,7 @@ function stackCheckInit() {
 #endif
 
 #if HAS_MAIN
-  var noInitialRun = {{{ makeModuleReceiveExpr('noInitialRun', !INVOKE_RUN) }}};
+  const noInitialRun = {{{ makeModuleReceiveExpr('noInitialRun', !INVOKE_RUN) }}};
 #if MAIN_READS_PARAMS
   if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain(args);
 #else

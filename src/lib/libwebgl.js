@@ -3884,13 +3884,14 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   glDrawElements__deps: ['$webglBufferSubData'],
   glDrawElements: (mode, count, type, indices) => {
 #if FULL_ES2
+    const GL_ELEMENT_ARRAY_BUFFER = 0x8893;
     var buf;
     var vertexes = 0;
     if (!GLctx.currentElementArrayBufferBinding) {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
-      GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, buf);
-      webglBufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, 0, size, indices);
+      GLctx.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf);
+      webglBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size, indices);
 
       // Calculating vertex count if shader's attribute data is on client side
       if (count > 0) {
@@ -3898,14 +3899,18 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           var cb = GL.currentContext.clientBuffers[i];
           if (cb.clientside && cb.enabled) {
             let arrayClass;
+            const GL_UNSIGNED_BYTE = 0x1401;
+            const GL_UNSIGNED_SHORT = 0x1403;
+            const GL_UNSIGNED_INT = 0x1405;
+            const GL_INVALID_OPERATION = 0x502;
             switch(type) {
-              case 0x1401 /* GL_UNSIGNED_BYTE */: arrayClass = Uint8Array; break;
-              case 0x1403 /* GL_UNSIGNED_SHORT */: arrayClass = Uint16Array; break;
+              case GL_UNSIGNED_BYTE: arrayClass = Uint8Array; break;
+              case GL_UNSIGNED_SHORT: arrayClass = Uint16Array; break;
 #if FULL_ES3
-              case 0x1405 /* GL_UNSIGNED_INT */: arrayClass = Uint32Array; break;
+              case GL_UNSIGNED_INT: arrayClass = Uint32Array; break;
 #endif
               default:
-                GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+                GL.recordError(GL_INVALID_OPERATION);
 #if GL_ASSERTIONS
                 err('type is not supported in glDrawElements');
 #endif
@@ -3932,7 +3937,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GL.postDrawHandleClientVertexAttribBindings();
 
     if (!GLctx.currentElementArrayBufferBinding) {
-      GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, null);
+      GLctx.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, null);
     }
 #endif
   },
@@ -4169,23 +4174,29 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
   glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'malloc'],
   glMapBufferRange: (target, offset, length, access) => {
-    if ((access & (0x1/*GL_MAP_READ_BIT*/ | 0x20/*GL_MAP_UNSYNCHRONIZED_BIT*/)) != 0) {
+    const GL_MAP_READ_BIT = 0x1;
+    const GL_MAP_WRITE_BIT = 0x2;
+    const GL_MAP_INVALIDATE_BUFFER_BIT = 0x4;
+    const GL_MAP_INVALIDATE_RANGE_BIT = 0x8;
+    const GL_MAP_UNSYNCHRONIZED_BIT = 0x20;
+    const GL_INVALID_ENUM = 0x500;
+    if ((access & (GL_MAP_READ_BIT | GL_MAP_UNSYNCHRONIZED_BIT)) != 0) {
       err('glMapBufferRange access does not support MAP_READ or MAP_UNSYNCHRONIZED');
       return 0;
     }
 
-    if ((access & 0x2/*GL_MAP_WRITE_BIT*/) == 0) {
+    if ((access & GL_MAP_WRITE_BIT) == 0) {
       err('glMapBufferRange access must include MAP_WRITE');
       return 0;
     }
 
-    if ((access & (0x4/*GL_MAP_INVALIDATE_BUFFER_BIT*/ | 0x8/*GL_MAP_INVALIDATE_RANGE_BIT*/)) == 0) {
+    if ((access & (GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT)) == 0) {
       err('glMapBufferRange access must include INVALIDATE_BUFFER or INVALIDATE_RANGE');
       return 0;
     }
 
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
-      GL.recordError(0x500/*GL_INVALID_ENUM*/);
+      GL.recordError(GL_INVALID_ENUM);
       err('GL_INVALID_ENUM in glMapBufferRange');
       return 0;
     }

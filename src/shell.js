@@ -56,15 +56,17 @@ if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
 #if ENVIRONMENT.length == 1 && !ASSERTIONS
-var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
+const ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE
 // node+pthreads always supports workers; detect which we are at runtime
 var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
-#else
+#elif PTHREADS || WASM_WORKERS
 var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT[0] === 'worker' }}};
+#else
+const ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT[0] === 'worker' }}};
 #endif
-var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT[0] === 'node' }}};
-var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT[0] === 'shell' }}};
+const ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT[0] === 'node' }}};
+const ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT[0] === 'shell' }}};
 #else // ENVIRONMENT.length == 1
 // Attempt to auto-detect the environment
 var ENVIRONMENT_IS_WEB = !!globalThis.window;

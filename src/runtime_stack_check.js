@@ -10,6 +10,9 @@
 
 const stackCookie1 = 0x02135467;
 const stackCookie2 = 0x89BACDFE;
+#if CHECK_NULL_WRITES
+const nullCookie = 0x63736d65; // 'emsc'
+#endif
 
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
@@ -33,7 +36,7 @@ function writeStackCookie() {
   {{{ makeSetValue('max', 4, 'stackCookie2', 'u32') }}};
 #if CHECK_NULL_WRITES
   // Also test the global address 0 for integrity.
-  {{{ makeSetValue(0, 0, 0x63736d65 /* 'emsc' */, 'u32') }}};
+  {{{ makeSetValue(0, 0, 'nullCookie', 'u32') }}};
 #endif
 }
 
@@ -60,7 +63,7 @@ function checkStackCookie() {
   }
 #if CHECK_NULL_WRITES
   // Also test the global address 0 for integrity.
-  if ({{{ makeGetValue(0, 0, 'u32') }}} != 0x63736d65 /* 'emsc' */) {
+  if ({{{ makeGetValue(0, 0, 'u32') }}} != nullCookie) {
     abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
   }
 #endif

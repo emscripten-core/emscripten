@@ -28,7 +28,7 @@ function initMemory() {
   } else
 #endif
   {
-    var INITIAL_MEMORY = {{{ makeModuleReceiveExpr('INITIAL_MEMORY', INITIAL_MEMORY) }}};
+    const INITIAL_MEMORY = {{{ makeModuleReceiveExpr('INITIAL_MEMORY', INITIAL_MEMORY) }}};
 
 #if ASSERTIONS
     assert(INITIAL_MEMORY >= {{{ STACK_SIZE }}}, `INITIAL_MEMORY should be larger than STACK_SIZE, was ${INITIAL_MEMORY}! (STACK_SIZE={{{ STACK_SIZE }}})`);

@@ -1,12 +1,12 @@
 {
   "a.out.mjs": 671,
   "a.out.mjs.gz": 401,
-  "a.out.support.mjs": 6068,
-  "a.out.support.mjs.gz": 2379,
+  "a.out.support.mjs": 6031,
+  "a.out.support.mjs.gz": 2359,
   "a.out.nodebug.wasm": 1220,
   "a.out.nodebug.wasm.gz": 757,
-  "total": 7959,
-  "total_gz": 3537,
+  "total": 7922,
+  "total_gz": 3517,
   "sent": [
     "a (fd_write)"
   ],
