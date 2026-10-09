@@ -5293,6 +5293,10 @@ Module["preRun"] = () => {
       self.require_jspi()
     test = test_file('wasmfs/wasmfs_opfs.c')
     args = ['-sWASMFS', '-O3'] + args
+    # Chrome 121+ supports the `mode` option of createSyncAccessHandle, so
+    # read-only opens in pthreads builds use shared access handles instead of blobs.
+    if '-pthread' in args and is_chrome() and get_chrome_version() >= 121:
+      args.append('-DWASMFS_OPFS_SHARED_ACCESS')
     self.btest_exit(test, cflags=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, cflags=args + ['-DWASMFS_RESUME'])
 
@@ -5301,6 +5305,14 @@ Module["preRun"] = () => {
   def test_wasmfs_opfs_errors(self):
     test = test_file('wasmfs/wasmfs_opfs_errors.c')
     postjs = test_file('wasmfs/wasmfs_opfs_errors_post.js')
+    args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '--post-js', postjs]
+    self.btest(test, cflags=args, expected='0')
+
+  @no_firefox('no OPFS support yet')
+  @no_safari('no support for the mode option of createSyncAccessHandle')
+  def test_wasmfs_opfs_shared(self):
+    test = test_file('wasmfs/wasmfs_opfs_errors.c')
+    postjs = test_file('wasmfs/wasmfs_opfs_shared_post.js')
     args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '--post-js', postjs]
     self.btest(test, cflags=args, expected='0')
 

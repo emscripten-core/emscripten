@@ -180,8 +180,13 @@ int main(int argc, char* argv[]) {
 
   err = stat("/opfs/working/foo.txt", &stat_buf);
   assert(err == 0);
+#ifdef WASMFS_OPFS_SHARED_ACCESS
+  assert(stat_buf.st_size == 0);
+  emscripten_console_log("statted after successful truncation");
+#else
   assert(stat_buf.st_size == 42);
   emscripten_console_log("statted after failed truncation");
+#endif
 
   fd = open("/opfs/working/foo.txt", O_WRONLY | O_TRUNC);
   assert(fd > 0);
