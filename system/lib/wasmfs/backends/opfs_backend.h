@@ -53,6 +53,10 @@ void _wasmfs_opfs_open_access(em_proxying_ctx* ctx,
                               int file_id,
                               int* access_id);
 
+void _wasmfs_opfs_open_shared_access(em_proxying_ctx* ctx,
+                                     int file_id,
+                                     int* access_id);
+
 void _wasmfs_opfs_open_blob(em_proxying_ctx* ctx, int file_id, int* blob_id);
 
 void _wasmfs_opfs_close_access(em_proxying_ctx* ctx, int access_id, int* err);

@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 6.0.13 (in development)
 ----------------------
+- The WasmFS OPFS backend now uses `readwrite-unsafe` sync access handles in
+  pthreads builds when the browser supports them. Files can then be opened by
+  several tabs and workers at the same time, and files opened read-only are
+  read much faster from multiple threads. As a consequence, `unlink` and
+  `rename` now fail with `EIO` while a file is open read-only (similar to
+  files open for writing).
 
 6.0.12 - 10/08/26
 -----------------
