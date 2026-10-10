@@ -1162,7 +1162,8 @@ int __syscall_utimensat(int dirfd,
   // https://man7.org/linux/man-pages/man2/utimensat.2.html
   //
   // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::getFileAt(dirfd, path, flags | AT_EMPTY_PATH);
+  // futimens() passes a null path.
+  auto parsed = path::getFileAt(dirfd, path ? path : "", flags | AT_EMPTY_PATH);
   if (auto err = parsed.getError()) {
     return err;
   }
