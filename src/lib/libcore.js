@@ -116,15 +116,9 @@ addToLibrary({
 #if PTHREADS_DEBUG || ASSERTIONS
     '$runtimeKeepaliveCounter',
 #endif
-#if checkKeepaliveDrain()
-    '$exitRequested',
-#endif
   ],
   $exitJS: (status, implicit) => {
     EXITSTATUS = status;
-#if checkKeepaliveDrain()
-    if (!implicit) exitRequested = true;
-#endif
 
 #if ASSERTIONS && !EXIT_RUNTIME
     checkUnflushedContent();
@@ -1984,16 +1978,8 @@ addToLibrary({
 #endif // SHRINK_LEVEL == 0
 
   // Callable in pthread without __proxy needed.
-  emscripten_exit_with_live_runtime__deps: [
-#if checkKeepaliveDrain()
-    '$runtimeKeepaliveStatic',
-#endif
-  ],
   emscripten_exit_with_live_runtime: () => {
     {{{ runtimeKeepalivePush() }}}
-#if checkKeepaliveDrain()
-    runtimeKeepaliveStatic++;
-#endif
     throw 'unwind';
   },
 
@@ -2006,9 +1992,6 @@ addToLibrary({
 #endif
 #if !MINIMAL_RUNTIME
     runtimeKeepaliveCounter = 0;
-#if checkKeepaliveDrain()
-    runtimeKeepaliveStatic = 0;
-#endif
 #endif
   },
 
@@ -2093,35 +2076,6 @@ addToLibrary({
 
   $runtimeKeepaliveCounter__internal: true,
   $runtimeKeepaliveCounter: 0,
-#if checkKeepaliveDrain()
-  // Holds on the counter that await no completion
-  // (emscripten_exit_with_live_runtime), as distinct from pending operations.
-  $runtimeKeepaliveStatic__internal: true,
-  $runtimeKeepaliveStatic: 0,
-
-  // Set by an explicit exit(), which in Node also ends by draining the loop
-  // (quit_ only sets process.exitCode), as distinct from the implicit exit of
-  // main returning or unwinding.
-  $exitRequested__internal: true,
-  $exitRequested: false,
-
-  // A drained Node event loop with pending operations outstanding means they
-  // have lost their producer and wasm can never resume: a hang that would
-  // otherwise exit 0. Node reports an unsettled top-level await at drain with
-  // code 13; mirror it. An explicit exit or abort is the program's own verdict.
-  $runtimeKeepaliveCounter__deps: ['$runtimeKeepaliveStatic', '$exitRequested'],
-  $runtimeKeepaliveCounter__postset: `
-if (ENVIRONMENT_IS_NODE{{{ PTHREADS || WASM_WORKERS ? ' && ' + ENVIRONMENT_IS_MAIN_THREAD() : '' }}}) {
-  process.on('beforeExit', () => {
-    if (runtimeKeepaliveCounter > runtimeKeepaliveStatic && !exitRequested && !ABORT) {
-#if ASSERTIONS
-      err(\`program exited with the event loop drained but keepRuntimeAlive() is set (counter=\${runtimeKeepaliveCounter}) due to an async operation that can no longer complete\`);
-#endif
-      process.exitCode = 13;
-    }
-  });
-}`,
-#endif
 
 #if isSymbolNeeded('$noExitRuntime')
   // If the `noExitRuntime` symbol is included in the build then

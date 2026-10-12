@@ -1067,13 +1067,6 @@ function useRuntimeKeepaliveStack() {
   return !(MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0));
 }
 
-// Whether a Node event loop draining with keepalive holds outstanding is
-// reported as a hang; needs the keepalive counter, and a runtime that can
-// hold it (nothing in a standalone shim does).
-function checkKeepaliveDrain() {
-  return ENVIRONMENT_MAY_BE_NODE && !STANDALONE_WASM && useRuntimeKeepaliveStack();
-}
-
 // Adds a call to runtimeKeepalivePush, if needed by the current build
 // configuration.
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
@@ -1309,5 +1302,4 @@ addToCompileTimeContext({
   wasmWorkerDetection,
   pthreadDetection,
   useRuntimeKeepaliveStack,
-  checkKeepaliveDrain,
 });

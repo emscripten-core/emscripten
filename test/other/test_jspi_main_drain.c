@@ -16,8 +16,15 @@ void force_exit_cb(void* arg) {
   emscripten_force_exit(0);
 }
 
+void loop_cb(void) {
+  printf("done\n");
+  emscripten_cancel_main_loop();
+}
+
 int main() {
-#if defined(LIVE_RUNTIME)
+#if defined(MAIN_LOOP)
+  emscripten_set_main_loop(loop_cb, 0, 1);
+#elif defined(LIVE_RUNTIME)
   printf("done\n");
   emscripten_exit_with_live_runtime();
 #elif defined(EXIT_FROM_CALLBACK)

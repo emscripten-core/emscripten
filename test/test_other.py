@@ -13173,25 +13173,33 @@ exec "$@"
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
 
+  @requires_jspi
   @parameterized({
-    'jspi': (['-sJSPI'],),
-    'asyncify': (['-sASYNCIFY'],),
+    '': ([],),
+    'exit_runtime': (['-sEXIT_RUNTIME'],),
   })
-  def test_keepalive_drain(self, args):
-    # A Node event loop that drains while a suspended import can never resume
-    # is a hang, and must not exit 0.
-    if '-sJSPI' in args:
-      if not self.try_require_node_version(24):
-        self.skipTest('JSPI requires node >= 24')
-      if not self.try_require_node_version(26):
-        self.node_args += ['--experimental-wasm-stack-switching']
-    self.cflags += ['-Wno-experimental', '-sEXIT_RUNTIME'] + args
-    msg = 'program exited with the event loop drained but keepRuntimeAlive() is set (counter=1) due to an async operation that can no longer complete'
-    src = test_file('other/test_keepalive_drain.c')
+  def test_jspi_main_drain(self, args):
+    # A Node event loop that drains while main is suspended is a hang, and
+    # must not exit 0.
+    if self.get_setting('ENVIRONMENT') == 'shell':
+      self.skipTest('requires node')
+    self.cflags += ['-Wno-experimental'] + args
+    msg = 'main() is suspended but the event loop has drained'
+    src = test_file('other/test_jspi_main_drain.c')
     out = self.do_runf(src, 'suspending\n', cflags=['-DHANG'], assert_returncode=13)
     self.assertContained(msg, out)
-    # Explicit exit() from within an outstanding operation is not a drain.
+    # Explicit exit() from within the outstanding operation is honoured.
     out = self.do_runf(src, 'done\n', cflags=['-DEXIT_FROM_CALLBACK'])
+    self.assertNotContained(msg, out)
+    out = self.do_runf(src, 'done\n', cflags=['-DFORCE_EXIT'])
+    self.assertNotContained(msg, out)
+    # Unwinding main (emscripten_exit_with_live_runtime, main loops) is not a
+    # suspension.
+    out = self.do_runf(src, 'done\n', cflags=['-DLIVE_RUNTIME'])
+    self.assertNotContained(msg, out)
+    out = self.do_runf(src, 'done\n', cflags=['-DMAIN_LOOP'])
+    self.assertNotContained(msg, out)
+    out = self.do_runf(src, 'done\n')
     self.assertNotContained(msg, out)
     # emscripten_force_exit() opts out.
     out = self.do_runf(src, 'done\n', cflags=['-DFORCE_EXIT'])

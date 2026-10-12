@@ -63,6 +63,22 @@ var mainArgs = undefined;
   var argv = 0;
 #endif // MAIN_READS_PARAMS
 
+#if ASYNCIFY == 2 && !PROXY_TO_PTHREAD && ENVIRONMENT_MAY_BE_NODE
+  // While main is suspended a drained Node event loop means the import it
+  // awaits has no remaining producer: a hang that would otherwise exit 0.
+  // Node reports an unsettled top-level await at drain with code 13; mirror
+  // it, unless the program exited or aborted in the meantime.
+  var onDrain = () => {
+    if (EXITSTATUS === undefined && !ABORT) {
+#if ASSERTIONS
+      err('main() is suspended but the event loop has drained: the awaited async operation can no longer complete');
+#endif
+      process.exitCode = 13;
+    }
+  };
+  if (ENVIRONMENT_IS_NODE) process.on('beforeExit', onDrain);
+#endif
+
   try {
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
@@ -90,10 +106,15 @@ var mainArgs = undefined;
   } catch (e) {
     return handleException(e);
   }
-#if ABORT_ON_WASM_EXCEPTIONS
+#if ABORT_ON_WASM_EXCEPTIONS || (ASYNCIFY == 2 && !PROXY_TO_PTHREAD && ENVIRONMENT_MAY_BE_NODE)
   finally {
+#if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
     abortWrapperDepth--;
+#endif
+#if ASYNCIFY == 2 && !PROXY_TO_PTHREAD && ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) process.off('beforeExit', onDrain);
+#endif
   }
 #endif
 }
