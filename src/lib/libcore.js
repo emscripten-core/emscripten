@@ -2075,6 +2075,19 @@ addToLibrary({
     }
   },
 
+  // The `_callback` variant of an __async: 'auto' function on the main thread
+  // (see jsifier): once the body's value or Promise settles, callback(err,
+  // value, arg), err set if it rejected, never before the call returns. A
+  // pending callback holds the runtime alive like a timer.
+  $callbackFromPromise: (result, callback, arg) => {
+    {{{ runtimeKeepalivePush() }}}
+    var settle = (err, value) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {{{ makeDynCall('vipp', 'callback') }}}(err, value, arg));
+    };
+    Promise.resolve(result).then((value) => settle(0, value), () => settle(1, 0));
+  },
+
   $maybeExit__deps: [
 #if PTHREADS
     '_emscripten_thread_exit',
