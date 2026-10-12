@@ -10061,7 +10061,7 @@ wasm64_4gb = make_run('wasm64_4gb', cflags=['-m64', '--profiling-funcs'],
                       settings={'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', cflags=['-m64', '-O1', '--profiling-funcs'],
+wasm64l = make_run('wasm64l', cflags=['-m64', '-O1', '--profiling-funcs', '-Wno-deprecated'],
                    settings={'MEMORY64': 2})
 
 lto0 = make_run('lto0', cflags=['-flto', '-O0'])
