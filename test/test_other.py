@@ -13173,6 +13173,37 @@ exec "$@"
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
 
+  @parameterized({
+    'jspi': (['-sJSPI'],),
+    'asyncify': (['-sASYNCIFY'],),
+  })
+  def test_keepalive_drain(self, args):
+    # A Node event loop that drains while a suspended import can never resume
+    # is a hang, and must not exit 0.
+    if '-sJSPI' in args:
+      if not self.try_require_node_version(24):
+        self.skipTest('JSPI requires node >= 24')
+      if not self.try_require_node_version(26):
+        self.node_args += ['--experimental-wasm-stack-switching']
+    self.cflags += ['-Wno-experimental', '-sEXIT_RUNTIME'] + args
+    msg = 'program exited with the event loop drained but keepRuntimeAlive() is set (counter=1) due to an async operation that can no longer complete'
+    src = test_file('other/test_keepalive_drain.c')
+    out = self.do_runf(src, 'suspending\n', cflags=['-DHANG'], assert_returncode=13)
+    self.assertContained(msg, out)
+    # Explicit exit() from within an outstanding operation is not a drain.
+    out = self.do_runf(src, 'done\n', cflags=['-DEXIT_FROM_CALLBACK'])
+    self.assertNotContained(msg, out)
+    # emscripten_force_exit() opts out.
+    out = self.do_runf(src, 'done\n', cflags=['-DFORCE_EXIT'])
+    self.assertNotContained(msg, out)
+    # emscripten_exit_with_live_runtime() holds the runtime for the embedder,
+    # it awaits nothing.
+    out = self.do_runf(src, 'done\n', cflags=['-DLIVE_RUNTIME'])
+    self.assertNotContained(msg, out)
+    # A returning main under EXIT_RUNTIME=0 drains normally.
+    out = self.do_runf(src, 'done\n', cflags=['-sEXIT_RUNTIME=0'])
+    self.assertNotContained(msg, out)
+
   @crossplatform
   def test_em_js_invalid(self):
     # Test that invalid EM_JS in side modules since is detected at build time.
