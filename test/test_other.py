@@ -13201,6 +13201,10 @@ exec "$@"
     self.assertNotContained(msg, out)
     out = self.do_runf(src, 'done\n')
     self.assertNotContained(msg, out)
+    # An embedder running main itself owns the process exit.
+    create_file('pre.js', 'Module.noInitialRun = true; Module.onRuntimeInitialized = () => Module.callMain();')
+    out = self.do_runf(src, 'suspending\n', cflags=['-DHANG', '--pre-js=pre.js', '-sEXPORTED_RUNTIME_METHODS=callMain'])
+    self.assertNotContained(msg, out)
     # emscripten_force_exit() opts out.
     out = self.do_runf(src, 'done\n', cflags=['-DFORCE_EXIT'])
     self.assertNotContained(msg, out)
