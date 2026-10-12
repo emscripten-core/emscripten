@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 6.0.13 (in development)
 ----------------------
+- The undocumented `FS.filesystems` object was removed. Replace things like
+  `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
 
 6.0.12 - 10/08/26
 -----------------
