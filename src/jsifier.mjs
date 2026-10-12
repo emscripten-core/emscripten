@@ -534,7 +534,7 @@ ${body};
 // That is never the case for a function suspending under ASYNCIFY/JSPI or
 // whose caller receives a promise of the result, nor on behalf of a
 // sync-proxied pthread caller, which awaits it; otherwise it is.
-function handleSyncArg(sym, snippet) {
+function handleSyncArg(sym, snippet, sig) {
   const sync =
     sym.isAsync() || sym.asyncVariantOf
       ? 'false'
@@ -547,9 +547,9 @@ function handleSyncArg(sym, snippet) {
       .map((a) => a.trim())
       .filter((a) => a);
     if (params.at(-1) != 'sync') return snippet;
-    if (sym.sig && params.length != sym.sig.length) {
+    if (sig && params.length != sig.length) {
       error(
-        `JS library error: '${sym.name}' must take 'sync' as parameter ${sym.sig.length}, after the ${sym.sig.length - 1} of its '__sig'`,
+        `JS library error: '${sym.name}' must take 'sync' as parameter ${sig.length}, after the ${sig.length - 1} of its '__sig'`,
       );
       return snippet;
     }
@@ -758,11 +758,27 @@ function(${args}) {
     }
 
     if (sym.isAutoBody()) {
-      snippet = handleSyncArg(sym, snippet);
+      snippet = handleSyncArg(sym, snippet, (sym.asyncVariantOf ?? sym).sig);
     }
 
     // An async variant hands its Promise over rather than suspending on it.
-    if (sym.isAsync() && sym.async == 'auto') {
+    if (sym.asyncVariantKind == 'callback') {
+      // The result of the 'auto' body to callback(err, result, arg) on the
+      // calling thread (see $callbackFromPromise). The two trailing parameters
+      // are the variant's own. This wraps inside the proxying, which carries
+      // them along from a pthread; on the main thread running the body on a
+      // pthread's behalf (PThread.currentProxiedOperationCallerThread set) the
+      // bare result is what crosses back. A void body's undefined result is
+      // NULL.
+      snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+        if (!oneliner) body = `(${async_}() => {\n${body}\n})()`;
+        const bare =
+          PTHREADS && sym.proxy == 'sync'
+            ? 'if (PThread.currentProxiedOperationCallerThread) return r;\n  '
+            : '';
+        return `function(${args}${args ? ', ' : ''}callback_, arg_) {\n  var r = Promise.resolve(${body}).then((v) => v ?? 0);\n  ${bare}callbackFromPromise(r, callback_, arg_);\n}\n`;
+      });
+    } else if (sym.isAsync() && sym.async == 'auto') {
       snippet = handleAsyncFunction(sym, snippet);
     }
 
@@ -792,10 +808,14 @@ function(${args}) {
             let proxyFunc =
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             let modeArg = `, ${proxyMode}`;
-            if (sym.asyncVariantKind == 'promise') {
+            if (sym.asyncVariantKind) {
               // The body returns a value or a Promise; a pthread caller gets an
-              // em_promise_t of the main-thread result.
-              proxyFunc = 'proxyToMainThreadPromise';
+              // em_promise_t of the main-thread result, or its callback called
+              // with it.
+              proxyFunc =
+                sym.asyncVariantKind == 'promise'
+                  ? 'proxyToMainThreadPromise'
+                  : 'proxyToMainThreadCallback';
               modeArg = '';
             }
             return `
