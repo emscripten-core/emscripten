@@ -179,7 +179,7 @@ function stackCheckInit() {
     var onDrain = () => {
       if (EXITSTATUS === undefined && !ABORT) {
 #if ASSERTIONS
-        err('main() is suspended but the event loop has drained: the awaited async operation can no longer complete');
+        err('Emscripten: process exited while main() is still suspended with pending work remaining.');
 #endif
         process.exitCode = 13;
       }
