@@ -163,3 +163,9 @@ worker_threads.parentPort;
  * @type {number}
  */
 process.stdin.fd;
+
+/**
+ * @param {string} event
+ * @param {Function} listener
+ */
+process.off = function(event, listener) {};
