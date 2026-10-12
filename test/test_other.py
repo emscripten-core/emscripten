@@ -13184,7 +13184,7 @@ exec "$@"
     if self.get_setting('ENVIRONMENT') == 'shell':
       self.skipTest('requires node')
     self.cflags += ['-Wno-experimental'] + args
-    msg = 'process exited while main() is still suspended'
+    msg = 'process exited while Emscripten main() is still suspended'
     src = test_file('other/test_jspi_main_drain.c')
     out = self.do_runf(src, 'suspending\n', cflags=['-DHANG'], assert_returncode=13)
     self.assertContained(msg, out)
