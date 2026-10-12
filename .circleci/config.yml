@@ -1030,7 +1030,7 @@ jobs:
             core0.test_promise_await*
             "
       - upload-test-results
-  test-other:
+  test-misc:
     executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NODE_25: "1"
@@ -1042,7 +1042,7 @@ jobs:
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
-          test_targets: "other jslib skip:other.test_native_link_error_message"
+          test_targets: "misc skip:other.test_native_link_error_message"
       - run-tests-linux:
           # Include a single test from test_benchmark.py to ensure it's always
           # kept functional. Must be run separately from above because we cannot
@@ -1350,7 +1350,7 @@ workflows:
       - test-wasm2js1:
           requires:
             - build-linux
-      - test-other:
+      - test-misc:
           requires:
             - build-linux
       - test-modularize-instance:
