@@ -915,7 +915,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if options.output_file:
     target = options.output_file
     # check for the existence of the output directory now, to avoid having
-    # to do so repeatedly when each of the various output files (.mem, .wasm,
+    # to do so repeatedly when each of the various output files (.js, .wasm,
     # etc) are written. This gives a more useful error message than the
     # IOError and python backtrace that users would otherwise see.
     dirname = os.path.dirname(target)
@@ -1060,7 +1060,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # as there is no JS. an exception are side modules, as we can't tell at
     # compile time whether JS will be involved or not - the main module may
     # have JS, and the side module is expected to link against that.
-    # we also do not support standalone mode in fastcomp.
     settings.STANDALONE_WASM = 1
 
   if settings.LZ4:
@@ -1626,7 +1625,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.GENERATE_SOURCE_MAP = 0
 
   if options.use_closure_compiler == 2 and not settings.WASM2JS:
-    exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
+    exit_with_error('closure compiler mode 2 is only meaningful in wasm2js mode')
 
   if settings.AUTODEBUG:
     settings.REQUIRED_EXPORTS += ['_emscripten_tempret_set']
@@ -2487,7 +2486,7 @@ def module_export_name_substitution():
   final_js += '.module_export_name_substitution.js'
   if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL and not settings.ENVIRONMENT_MAY_BE_AUDIO_WORKLET:
     # On the web, with MINIMAL_RUNTIME, the Module object is always provided
-    # via the shell html in order to provide the .asm.js/.wasm content.
+    # via the shell html in order to provide the .wasm content.
     replacement = settings.EXPORT_NAME
   else:
     replacement = f"typeof {settings.EXPORT_NAME} !== 'undefined' ? {settings.EXPORT_NAME} : {{}}"

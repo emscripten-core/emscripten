@@ -8621,7 +8621,7 @@ Module.onRuntimeInitialized = () => {
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
     self.do_core_test('test_hello_world.c')
-    self.assertNotExists('test_hello_world.js.mem')
+    self.assertNotExists('test_hello_world.wasm')
 
   @no_asan('no wasm2js support yet in asan')
   @requires_wasm2js

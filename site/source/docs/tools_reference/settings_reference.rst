@@ -2825,16 +2825,14 @@ Default value: false
 SINGLE_FILE
 ===========
 
-If set to 1, embeds all subresources in the emitted file as base64 string
-literals. Embedded subresources may include (but aren't limited to) wasm,
-asm.js, and static memory initialization code.
+If set to 1, embeds all subresources (for example, the Wasm file) as strings
+in the generated JavaScript or HTML file.
 
 When using code that depends on this option, your Content Security Policy may
-need to be updated. Specifically, embedding asm.js requires the script-src
-directive to allow 'unsafe-inline', and using a Worker requires the
-child-src directive to allow blob:. If you aren't using Content Security
-Policy, or your CSP header doesn't include either script-src or child-src,
-then you can safely ignore this warning.
+need to be updated. Specifically, using a Worker requires the child-src
+directive to allow blob:. If you aren't using Content Security Policy, or
+your CSP header doesn't include child-src, then you can safely ignore this
+warning.
 
 Note that SINGLE_FILE with binary encoding requires the HTML/JS files to be
 served with UTF-8 encoding. See the details on SINGLE_FILE_BINARY_ENCODE.
