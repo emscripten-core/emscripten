@@ -179,7 +179,7 @@ function stackCheckInit() {
     var onDrain = () => {
       if (EXITSTATUS === undefined && !ABORT) {
 #if ASSERTIONS
-        err('process exited while Emscripten main() is still suspended with pending work remaining');
+        err('process exited while Emscripten main() still has a pending suspension');
 #endif
         process.exitCode = 13;
       }
