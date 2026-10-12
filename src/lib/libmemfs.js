@@ -115,7 +115,7 @@ addToLibrary({
       // For small filesizes (<1MB), perform size*2 geometric increase, but for
       // large sizes, do a much more conservative size*1.125 increase to avoid
       // overshooting the allocation cap by a very large margin.
-      var CAPACITY_DOUBLING_MAX = 1024 * 1024;
+      const CAPACITY_DOUBLING_MAX = 1024 * 1024;
       newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) >>> 0);
       if (prevCapacity) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
       var oldContents = MEMFS.getFileDataAsTypedArray(node);
