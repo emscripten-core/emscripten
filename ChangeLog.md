@@ -22,7 +22,7 @@ See docs/process.md for more on how version tagging works.
 ----------------------
 - The undocumented `FS.filesystems` object was removed. Replace things like
   `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
-- libpng port updated from 1.6.58 to 1.6.59.
+- libpng port updated from 1.6.58 to 1.6.59. (#27956)
 
 6.0.12 - 10/08/26
 -----------------
