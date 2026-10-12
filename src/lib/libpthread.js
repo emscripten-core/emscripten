@@ -1054,6 +1054,20 @@ var LibraryPThread = {
     return rtn;
   },
 
+  // As proxyToMainThread for the _callback variant, whose trailing callback
+  // and arg are called on this thread with the main-thread result once it next
+  // runs its proxying queue. (They are serialized along too, unused, so the
+  // main-thread call has the function's full arity.)
+  $proxyToMainThreadCallback__deps: ['$stackSave', '$stackRestore', '$serializeProxiedArgs', '_emscripten_run_js_on_main_thread_callback'],
+  $proxyToMainThreadCallback__docs: '/** @type{function(number, (number|boolean), ...number)} */',
+  $proxyToMainThreadCallback: (funcIndex, emAsmAddr, ...callArgs) => {
+    var [callback, arg] = callArgs.slice(-2);
+    var bufSize = 8 * callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
+    var sp = stackSave();
+    __emscripten_run_js_on_main_thread_callback(funcIndex, emAsmAddr, bufSize, serializeProxiedArgs(callArgs, bufSize), callback, arg);
+    stackRestore(sp);
+  },
+
   // Reuse global JS array to avoid creating JS garbage for each proxied call
   $proxiedJSCallArgs: [],
 
