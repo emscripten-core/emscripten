@@ -19,8 +19,10 @@ to browse the changes between the tags.
 See docs/process.md for more on how version tagging works.
 
 6.0.13 (in development)
-----------------------
-- `MEMORY64=2` was marked as deprecated. (See #27952)
+-----------------------
+- Support for windows .bat/.ps1 launcher files was completely removed.  These
+  days we use a native windows launcher program. (#27359)
+- `MEMORY64=2` was marked as deprecated. (#27952)
 - The undocumented `FS.filesystems` object was removed. Replace things like
   `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
 

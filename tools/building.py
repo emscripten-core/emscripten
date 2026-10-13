@@ -381,7 +381,7 @@ def get_command_with_possible_response_file(cmd):
 
   # Different OS have different limits. The most limiting usually is Windows one
   # which is set at 8191 characters. We could just use that, but it leads to
-  # problems when invoking shell wrappers (e.g. emcc.bat), which, in turn,
+  # problems when invoking wrappers (e.g. pylauncher.exe), which, in turn,
   # pass arguments to some longer command like `(full path to Clang) ...args`.
   # In that scenario, even if the initial command line is short enough, the
   # subprocess can still run into the Command Line Too Long error.
