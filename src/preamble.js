@@ -272,11 +272,6 @@ function abort(what) {
   // a trap or not based on a hidden field within the object. So at the moment
   // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
   // allows this in the wasm spec.
-
-  // Suppress closure compiler warning here. Closure compiler's builtin extern
-  // definition for WebAssembly.RuntimeError claims it takes no arguments even
-  // though it can.
-  // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
 #if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
   //
@@ -292,13 +287,7 @@ function abort(what) {
     ___trap();
   }
 #endif
-  /** @suppress {checkTypes} */
-  var e = new WebAssembly.RuntimeError(what);
-
-  // Throw the error whether or not MODULARIZE is set because abort is used
-  // in code paths apart from instantiation where an exception is expected
-  // to be thrown when abort is called.
-  throw e;
+  throw new WebAssembly.RuntimeError(what);
 }
 
 #if ASSERTIONS && !('$FS' in addedLibraryItems)
