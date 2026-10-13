@@ -209,39 +209,39 @@ var LibraryGLEmulation = {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
         GLImmediate.lastRenderer?.cleanup();
-        if (cap == 0xB60 /* GL_FOG */) {
+        if (cap == {{{ cDefs.GL_FOG }}}) {
           if (GLEmulation.fogEnabled != true) {
             GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.fogEnabled = true;
           }
           return;
-        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
-          var clipPlaneId = cap - 0x3000;
+        } else if ((cap >= {{{ cDefs.GL_CLIP_PLANE0 }}}) && (cap < {{{ cDefs.GL_CLIP_PLANE0 + 6 }}})) {
+          var clipPlaneId = cap - {{{ cDefs.GL_CLIP_PLANE0 }}};
           if (GLEmulation.clipPlaneEnabled[clipPlaneId] != true) {
             GLImmediate.currentRenderer = null; // clip plane parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.clipPlaneEnabled[clipPlaneId] = true;
           }
           return;
-        } else if ((cap >= 0x4000) && (cap < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
-          var lightId = cap - 0x4000;
+        } else if ((cap >= {{{ cDefs.GL_LIGHT0 }}}) && (cap < {{{ cDefs.GL_LIGHT0 + 8 }}})) {
+          var lightId = cap - {{{ cDefs.GL_LIGHT0 }}};
           if (GLEmulation.lightEnabled[lightId] != true) {
             GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.lightEnabled[lightId] = true;
           }
           return;
-        } else if (cap == 0xB50 /* GL_LIGHTING */) {
+        } else if (cap == {{{ cDefs.GL_LIGHTING }}}) {
           if (GLEmulation.lightingEnabled != true) {
             GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.lightingEnabled = true;
           }
           return;
-        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+        } else if (cap == {{{ cDefs.GL_ALPHA_TEST }}}) {
           if (GLEmulation.alphaTestEnabled != true) {
             GLImmediate.currentRenderer = null; // alpha testing is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.alphaTestEnabled = true;
           }
           return;
-        } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
+        } else if (cap == {{{ cDefs.GL_TEXTURE_2D }}}) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glEnableClientState
           /* Actually, let's not, for now. (This sounds exceedingly broken)
@@ -259,39 +259,39 @@ var LibraryGLEmulation = {
       var orig_glDisable = _glDisable;
       _glDisable = _emscripten_glDisable = (cap) => {
         GLImmediate.lastRenderer?.cleanup();
-        if (cap == 0xB60 /* GL_FOG */) {
+        if (cap == {{{ cDefs.GL_FOG }}}) {
           if (GLEmulation.fogEnabled != false) {
             GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.fogEnabled = false;
           }
           return;
-        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
-          var clipPlaneId = cap - 0x3000;
+        } else if ((cap >= {{{ cDefs.GL_CLIP_PLANE0 }}}) && (cap < {{{ cDefs.GL_CLIP_PLANE0 + 6 }}})) {
+          var clipPlaneId = cap - {{{ cDefs.GL_CLIP_PLANE0 }}};
           if (GLEmulation.clipPlaneEnabled[clipPlaneId] != false) {
             GLImmediate.currentRenderer = null; // clip plane parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.clipPlaneEnabled[clipPlaneId] = false;
           }
           return;
-        } else if ((cap >= 0x4000) && (cap < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
-          var lightId = cap - 0x4000;
+        } else if ((cap >= {{{ cDefs.GL_LIGHT0 }}}) && (cap < {{{ cDefs.GL_LIGHT0 + 8 }}})) {
+          var lightId = cap - {{{ cDefs.GL_LIGHT0 }}};
           if (GLEmulation.lightEnabled[lightId] != false) {
             GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.lightEnabled[lightId] = false;
           }
           return;
-        } else if (cap == 0xB50 /* GL_LIGHTING */) {
+        } else if (cap == {{{ cDefs.GL_LIGHTING }}}) {
           if (GLEmulation.lightingEnabled != false) {
             GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.lightingEnabled = false;
           }
           return;
-        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+        } else if (cap == {{{ cDefs.GL_ALPHA_TEST }}}) {
           if (GLEmulation.alphaTestEnabled != false) {
             GLImmediate.currentRenderer = null; // alpha testing is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.alphaTestEnabled = false;
           }
           return;
-        } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
+        } else if (cap == {{{ cDefs.GL_TEXTURE_2D }}}) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glDisableClientState
           /* Actually, let's not, for now. (This sounds exceedingly broken)
@@ -308,17 +308,17 @@ var LibraryGLEmulation = {
 
       var orig_glIsEnabled = _glIsEnabled;
       _glIsEnabled = _emscripten_glIsEnabled = (cap) => {
-        if (cap == 0xB60 /* GL_FOG */) {
+        if (cap == {{{ cDefs.GL_FOG }}}) {
           return GLEmulation.fogEnabled ? 1 : 0;
-        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
-          var clipPlaneId = cap - 0x3000;
+        } else if ((cap >= {{{ cDefs.GL_CLIP_PLANE0 }}}) && (cap < {{{ cDefs.GL_CLIP_PLANE0 + 6 }}})) {
+          var clipPlaneId = cap - {{{ cDefs.GL_CLIP_PLANE0 }}};
           return GLEmulation.clipPlaneEnabled[clipPlaneId] ? 1 : 0;
-        } else if ((cap >= 0x4000) && (cap < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
-          var lightId = cap - 0x4000;
+        } else if ((cap >= {{{ cDefs.GL_LIGHT0 }}}) && (cap < {{{ cDefs.GL_LIGHT0 + 8 }}})) {
+          var lightId = cap - {{{ cDefs.GL_LIGHT0 }}};
           return GLEmulation.lightEnabled[lightId] ? 1 : 0;
-        } else if (cap == 0xB50 /* GL_LIGHTING */) {
+        } else if (cap == {{{ cDefs.GL_LIGHTING }}}) {
           return GLEmulation.lightingEnabled ? 1 : 0;
-        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+        } else if (cap == {{{ cDefs.GL_ALPHA_TEST }}}) {
           return GLEmulation.alphaTestEnabled ? 1 : 0;
         } else if (!(cap in validCapabilities)) {
           return 0;
@@ -3296,25 +3296,25 @@ var LibraryGLEmulation = {
 
   glFogf: (pname, param) => { // partial support, TODO
     switch (pname) {
-      case 0xB63: // GL_FOG_START
+      case {{{ cDefs.GL_FOG_START }}}:
         GLEmulation.fogStart = param; break;
-      case 0xB64: // GL_FOG_END
+      case {{{ cDefs.GL_FOG_END }}}:
         GLEmulation.fogEnd = param; break;
-      case 0xB62: // GL_FOG_DENSITY
+      case {{{ cDefs.GL_FOG_DENSITY }}}:
         GLEmulation.fogDensity = param; break;
-      case 0xB65: // GL_FOG_MODE
+      case {{{ cDefs.GL_FOG_MODE }}}:
         switch (param) {
-          case 0x801: // GL_EXP2
-          case 0x2601: // GL_LINEAR
+          case {{{ cDefs.GL_EXP2 }}}:
+          case {{{ cDefs.GL_LINEAR }}}:
             if (GLEmulation.fogMode != param) {
               GLImmediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
               GLEmulation.fogMode = param;
             }
             break;
           default: // default to GL_EXP
-            if (GLEmulation.fogMode != 0x800 /* GL_EXP */) {
+            if (GLEmulation.fogMode != {{{ cDefs.GL_EXP }}}) {
               GLImmediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
-              GLEmulation.fogMode = 0x800 /* GL_EXP */;
+              GLEmulation.fogMode = {{{ cDefs.GL_EXP }}};
             }
             break;
         }
@@ -3328,21 +3328,21 @@ var LibraryGLEmulation = {
   glFogfv__deps: ['glFogf'],
   glFogfv: (pname, param) => { // partial support, TODO
     switch (pname) {
-      case 0xB66: // GL_FOG_COLOR
+      case {{{ cDefs.GL_FOG_COLOR }}}:
         GLEmulation.fogColor[0] = {{{ makeGetValue('param', '0', 'float') }}};
         GLEmulation.fogColor[1] = {{{ makeGetValue('param', '4', 'float') }}};
         GLEmulation.fogColor[2] = {{{ makeGetValue('param', '8', 'float') }}};
         GLEmulation.fogColor[3] = {{{ makeGetValue('param', '12', 'float') }}};
         break;
-      case 0xB63: // GL_FOG_START
-      case 0xB64: // GL_FOG_END
+      case {{{ cDefs.GL_FOG_START }}}:
+      case {{{ cDefs.GL_FOG_END }}}:
         _glFogf(pname, {{{ makeGetValue('param', '0', 'float') }}}); break;
     }
   },
   glFogiv__deps: ['glFogf'],
   glFogiv: (pname, param) => {
     switch (pname) {
-      case 0xB66: // GL_FOG_COLOR
+      case {{{ cDefs.GL_FOG_COLOR }}}:
         GLEmulation.fogColor[0] = ({{{ makeGetValue('param', '0', 'i32') }}}/2147483647)/2.0+0.5;
         GLEmulation.fogColor[1] = ({{{ makeGetValue('param', '4', 'i32') }}}/2147483647)/2.0+0.5;
         GLEmulation.fogColor[2] = ({{{ makeGetValue('param', '8', 'i32') }}}/2147483647)/2.0+0.5;
@@ -3607,11 +3607,11 @@ var LibraryGLEmulation = {
   // Note that in the future we might make these available only in certain modes.
   glMatrixMode__deps: ['$GL', '$GLImmediateSetup'],
   glMatrixMode: (mode) => {
-    if (mode == 0x1700 /* GL_MODELVIEW */) {
+    if (mode == {{{ cDefs.GL_MODELVIEW }}}) {
       GLImmediate.currentMatrix = 0/*m*/;
-    } else if (mode == 0x1701 /* GL_PROJECTION */) {
+    } else if (mode == {{{ cDefs.GL_PROJECTION }}}) {
       GLImmediate.currentMatrix = 1/*p*/;
-    } else if (mode == 0x1702) { // GL_TEXTURE
+    } else if (mode == {{{ cDefs.GL_TEXTURE }}}) {
       GLImmediate.useTextureMatrix = true;
       GLImmediate.currentMatrix = 2/*t*/ + GLImmediate.TexEnvJIT.getActiveTexture();
     } else {
@@ -3628,7 +3628,7 @@ var LibraryGLEmulation = {
 
   glPopMatrix: () => {
     if (GLImmediate.matrixStack[GLImmediate.currentMatrix].length == 0) {
-      GL.recordError(0x504/*GL_STACK_UNDERFLOW*/);
+      GL.recordError({{{ cDefs.GL_STACK_UNDERFLOW }}});
       return;
     }
     GLImmediate.matricesModified = true;
