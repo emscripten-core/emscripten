@@ -588,7 +588,7 @@ var WasiLibrary = {
       var nodeCrypto = require('node:crypto');
       return (view) => (nodeCrypto.randomFillSync(view), 0);
     }
-#endif // ENVIRONMENT_MAY_BE_NODE
+#endif // ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
 
 #if ENVIRONMENT_MAY_BE_SHELL
     if (ENVIRONMENT_IS_SHELL) {

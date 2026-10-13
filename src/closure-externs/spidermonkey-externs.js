@@ -37,11 +37,3 @@ var quit = function(status) {};
  * This is to prevent Closure Compiler to use `gc` as variable name anywhere, otherwise it might collide with SpiderMonkey's shell `gc()` function
  */
 var gc = function () {};
-/**
- * @suppress {duplicate}
- */
-var print;
-/**
- * @suppress {duplicate}
- */
-var printErr;

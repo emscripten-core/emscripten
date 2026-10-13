@@ -116,6 +116,7 @@ function optPassMergeEmptyVarDeclarators(ast) {
         if (p.type == 'VariableDeclaration') {
           for (let k = 0; k < n.declarations.length; ++k) {
             if (!n.declarations[k].init) {
+              if (p.kind == 'const') p.kind = n.kind;
               p.declarations.push(n.declarations[k]);
               n.declarations.splice(k--, 1);
               progress = true;
@@ -145,6 +146,7 @@ function optPassMergeVarDeclarations(ast) {
       for (let j = i - 1; j >= 0; --j) {
         const p = nodeArray[j];
         if (p.type == 'VariableDeclaration') {
+          if (p.kind == 'const') p.kind = n.kind;
           p.declarations = p.declarations.concat(n.declarations);
           nodeArray.splice(i--, 1);
           progress = true;
@@ -195,6 +197,7 @@ function optPassMergeVarInitializationAssignments(ast) {
       if (nodeArray[i - 1].type != 'VariableDeclaration') continue;
       const [declaration, declarationIndex] = isUndefinedBeforeThisAssignment(nodeArray, i);
       if (!declaration) continue;
+      if (nodeArray[i - 1].kind == 'const') nodeArray[i - 1].kind = declaration.kind;
       const declarator = declaration.declarations[declarationIndex];
       declarator.init = n.expression.right;
       declaration.declarations.splice(declarationIndex, 1);
@@ -276,10 +279,13 @@ function runTests() {
   test('var a; var b;', 'var a,b;');
   test('var a=1; var b=2;', 'var a=1,b=2;');
   test('var a=1; function foo(){} var b=2;', 'var a=1,b=2;function foo(){}');
+  test('const a=1; var b=2;', 'var a=1,b=2;');
+  test('const a=1; const b=2;', 'const a=1,b=2;');
 
   // optPassMergeEmptyVarDeclarators:
   test('var a;a=1;', 'var a=1;');
   test('var a = 1, b; ++a; var c;', 'var a=1,b,c;++a;');
+  test('const a = 1, b = 2; ++b; var c;', 'var a=1,b=2,c;++b;');
 
   // Interaction between multiple passes:
   test(

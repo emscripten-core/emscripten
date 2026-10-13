@@ -588,7 +588,7 @@ var SyscallsLibrary = {
 
     return bytesRead;
   },
-#endif // ~PROXY_POSIX_SOCKETS==0
+#endif // PROXY_POSIX_SOCKETS == 0 && WASMFS == 0
   __syscall_fchdir: (fd) => {
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.chdir(stream.path);

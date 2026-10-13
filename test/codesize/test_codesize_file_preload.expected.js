@@ -364,15 +364,7 @@ function postRun() {}
   // a trap or not based on a hidden field within the object. So at the moment
   // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
   // allows this in the wasm spec.
-  // Suppress closure compiler warning here. Closure compiler's builtin extern
-  // definition for WebAssembly.RuntimeError claims it takes no arguments even
-  // though it can.
-  // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-  /** @suppress {checkTypes} */ var e = new WebAssembly.RuntimeError(what);
-  // Throw the error whether or not MODULARIZE is set because abort is used
-  // in code paths apart from instantiation where an exception is expected
-  // to be thrown when abort is called.
-  throw e;
+  throw new WebAssembly.RuntimeError(what);
 }
 
 var wasmBinaryFile;
@@ -947,7 +939,7 @@ var MEMFS = {
   mount(mount) {
     return MEMFS.createNode(null, "/", 16895, 0);
   },
-  createNode(parent, name, mode, dev) {
+  createNode(parent, name, mode, dev = undefined) {
     if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
       // not supported
       throw new FS.ErrnoError(63);
@@ -1082,6 +1074,11 @@ var MEMFS = {
       attr.atime = new Date(node.atime);
       attr.mtime = new Date(node.mtime);
       attr.ctime = new Date(node.ctime);
+      // A Date only holds whole milliseconds: also return the exact times
+      // (e.g. as set by utimensat), which SYSCALLS.writeStat prefers.
+      attr.atimeMs = node.atime;
+      attr.mtimeMs = node.mtime;
+      attr.ctimeMs = node.ctime;
       // NOTE: In our implementation, st_blocks = Math.ceil(st_size/st_blksize),
       //       but this is not required by the standard.
       attr.blksize = 4096;
@@ -1107,7 +1104,7 @@ var MEMFS = {
       }
       throw MEMFS.doesNotExistError;
     },
-    mknod(parent, name, mode, dev) {
+    mknod(parent, name, mode, dev = undefined) {
       return MEMFS.createNode(parent, name, mode, dev);
     },
     rename(old_node, new_dir, new_name) {
@@ -1355,7 +1352,6 @@ var FS = {
   currentPath: "/",
   initialized: false,
   ignorePermissions: true,
-  filesystems: null,
   syncFSRequests: 0,
   ErrnoError: class {
     name="ErrnoError";
@@ -1613,7 +1609,7 @@ var FS = {
     // if we failed to find it in the cache, call into the VFS
     return FS.lookup(parent, name);
   },
-  createNode(parent, name, mode, rdev) {
+  createNode(parent, name, mode, rdev = undefined) {
     var node = new FS.FSNode(parent, name, mode, rdev);
     FS.hashAddNode(node);
     return node;
@@ -1998,7 +1994,7 @@ var FS = {
       }
     }
   },
-  mkdev(path, mode, dev) {
+  mkdev(path, mode, dev = undefined) {
     if (typeof dev === "undefined") {
       dev = mode;
       mode = 438;
@@ -2452,7 +2448,7 @@ var FS = {
     stream.ungotten = [];
     return stream.position;
   },
-  read(stream, buffer, offset, length, position) {
+  read(stream, buffer, offset, length, position = undefined) {
     if (length < 0 || position < 0) {
       throw new FS.ErrnoError(28);
     }
@@ -2478,7 +2474,7 @@ var FS = {
     if (!seeking) stream.position += bytesRead;
     return bytesRead;
   },
-  write(stream, buffer, offset, length, position, canOwn) {
+  write(stream, buffer, offset, length, position = undefined, canOwn = undefined) {
     if (length < 0 || position < 0) {
       throw new FS.ErrnoError(28);
     }
@@ -2693,11 +2689,8 @@ var FS = {
     FS.createDefaultDirectories();
     FS.createDefaultDevices();
     FS.createSpecialDirectories();
-    FS.filesystems = {
-      "MEMFS": MEMFS
-    };
   },
-  init(input, output, error) {
+  init(input = undefined, output = undefined, error = undefined) {
     FS.initialized = true;
     // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
     FS.createStandardStreams(input, output, error);
@@ -2712,7 +2705,7 @@ var FS = {
       }
     }
   },
-  createPath(parent, path, canRead, canWrite) {
+  createPath(parent, path, canRead = undefined, canWrite = undefined) {
     parent = typeof parent === "string" ? parent : FS.getPath(parent);
     var parts = path.split("/").reverse();
     while (parts.length) {
@@ -2728,12 +2721,12 @@ var FS = {
     }
     return current;
   },
-  createFile(parent, name, properties, canRead, canWrite) {
+  createFile(parent, name, properties, canRead = undefined, canWrite = undefined) {
     var path = PATH.join2(typeof parent === "string" ? parent : FS.getPath(parent), name);
     var mode = FS_getMode(canRead, canWrite);
     return FS.create(path, mode);
   },
-  createDataFile(parent, name, data, canRead, canWrite, canOwn) {
+  createDataFile(parent, name, data = undefined, canRead = undefined, canWrite = undefined, canOwn = undefined) {
     var path = name;
     if (parent) {
       parent = typeof parent === "string" ? parent : FS.getPath(parent);
@@ -2751,7 +2744,7 @@ var FS = {
       FS.chmod(node, mode);
     }
   },
-  createDevice(parent, name, input, output) {
+  createDevice(parent, name, input = undefined, output = undefined) {
     var path = PATH.join2(typeof parent === "string" ? parent : FS.getPath(parent), name);
     var mode = FS_getMode(!!input, !!output);
     FS.createDevice.major ??= 64;
@@ -2818,7 +2811,7 @@ var FS = {
       }
     }
   },
-  createLazyFile(parent, name, url, canRead, canWrite) {
+  createLazyFile(parent, name, url, canRead = undefined, canWrite = undefined) {
     // Lazy chunked Uint8Array (implements get and length from Uint8Array).
     // Actual getting is abstracted away for eventual reuse.
     class LazyUint8Array {
@@ -3036,15 +3029,18 @@ var SYSCALLS = {
     HEAP64[(((buf) + (24)) >> 3)] = BigInt(stat.size);
     HEAP32[(((buf) + (32)) >> 2)] = 4096;
     HEAP32[(((buf) + (36)) >> 2)] = stat.blocks;
-    var atime = stat.atime.getTime();
-    var mtime = stat.mtime.getTime();
-    var ctime = stat.ctime.getTime();
+    // Prefer `*Ms` properties if available (e.g. from MEMFS, or NODEFS / host
+    // `fs.Stats`) for sub-millisecond precision; fall back to Date#getTime for
+    // other filesystems.
+    var atime = stat.atimeMs ?? stat.atime.getTime();
+    var mtime = stat.mtimeMs ?? stat.mtime.getTime();
+    var ctime = stat.ctimeMs ?? stat.ctime.getTime();
     HEAP64[(((buf) + (40)) >> 3)] = BigInt(Math.floor(atime / 1e3));
-    HEAPU32[(((buf) + (48)) >> 2)] = (atime % 1e3) * 1e3 * 1e3;
+    HEAPU32[(((buf) + (48)) >> 2)] = Math.floor((atime % 1e3) * 1e6);
     HEAP64[(((buf) + (56)) >> 3)] = BigInt(Math.floor(mtime / 1e3));
-    HEAPU32[(((buf) + (64)) >> 2)] = (mtime % 1e3) * 1e3 * 1e3;
+    HEAPU32[(((buf) + (64)) >> 2)] = Math.floor((mtime % 1e3) * 1e6);
     HEAP64[(((buf) + (72)) >> 3)] = BigInt(Math.floor(ctime / 1e3));
-    HEAPU32[(((buf) + (80)) >> 2)] = (ctime % 1e3) * 1e3 * 1e3;
+    HEAPU32[(((buf) + (80)) >> 2)] = Math.floor((ctime % 1e3) * 1e6);
     HEAP64[(((buf) + (88)) >> 3)] = BigInt(stat.ino);
     return 0;
   },

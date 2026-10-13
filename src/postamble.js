@@ -83,7 +83,7 @@ var mainArgs = undefined;
     // and a plain value otherwise. This will likely change:
     // https://github.com/WebAssembly/js-promise-integration/issues/11
     ret = await ret;
-#endif // ASYNCIFY == 2
+#endif // ASYNCIFY == 2 && !PROXY_TO_PTHREAD
     // if we're not running an evented main loop, it's time to exit
     exitJS(ret, /* implicit = */ true);
     return ret;

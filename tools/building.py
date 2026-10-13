@@ -415,7 +415,6 @@ def run_js_optimizer(filename, passes):
     exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
 
 
-# run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
 def acorn_optimizer(filename, passes, extra_info=None, return_output=False, worker_js=False):
   optimizer = path_from_root('tools/acorn-optimizer.mjs')
   original_filename = filename
@@ -462,8 +461,6 @@ acorn_optimizer.counter = 0  # type: ignore
 WASM_CALL_CTORS = '__wasm_call_ctors'
 
 
-# evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
-# for this, and we are in wasm mode
 def eval_ctors(js_file, wasm_file, debug_info):
   CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();"
 
@@ -623,14 +620,6 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     V8_EXTERNS = [path_from_root('src/closure-externs/v8-externs.js')]
     SPIDERMONKEY_EXTERNS = [path_from_root('src/closure-externs/spidermonkey-externs.js')]
     CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
-
-  # Web environment specific externs
-  if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-    browser_externs_dir = path_from_root('src/closure-externs/browser-externs')
-    if os.path.isdir(browser_externs_dir):
-      browser_externs = os.listdir(browser_externs_dir)
-      browser_externs = [os.path.join(browser_externs_dir, name) for name in browser_externs if name.endswith('.js')]
-      CLOSURE_EXTERNS += browser_externs
 
   if settings.DYNCALLS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
@@ -818,12 +807,10 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
     else:
       passes.append('JSDCE')
 
-  if not settings.USE_CLOSURE_COMPILER:
-    passes.append('stripDefaultUndefined')
-
   # Don't minify if we are going to run closure compiler afterwards
   if settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER:
     passes.append('--minify-whitespace')
+    passes.append('--compress')
 
   if passes:
     logger.debug('running cleanup on shell code: ' + ' '.join(passes))
@@ -1035,8 +1022,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
       temp = run_js_optimizer(temp, passes)
       wasm2js_js = utils.read_file(temp)
   # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
-  # minify the wasm2js output as well, which is ok since it isn't
-  # validating asm.js.
+  # minify the wasm2js output as well.
   # TODO: in the non-closure case, we could run a lightweight general-
   #       purpose JS minifier here.
   if use_closure_compiler == 2:

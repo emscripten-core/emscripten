@@ -194,7 +194,7 @@ function updateMemoryViews() {
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
-#endif // !IMPORTED_MEMORY && ASSERTIONS
+#endif
 
 #include "memoryprofiler.js"
 
