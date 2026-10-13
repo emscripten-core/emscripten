@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static int cmp_timespec(const struct timespec* a, const struct timespec* b) {
+int cmp_timespec(const struct timespec* a, const struct timespec* b) {
   if (a->tv_sec != b->tv_sec) {
     return a->tv_sec < b->tv_sec ? -1 : 1;
   }
