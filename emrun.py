@@ -430,6 +430,17 @@ def detect_browser_processes():
 
   current_browser_processes = [p for p in running_browser_processes if not pid_existed(p['pid'])]
 
+  # If a browser process already existed before emrun started up, the process we
+  # launched (browser_process) is typically a short-lived stub that hands off
+  # the URL to the existing browser instance and then exits. (An exception is
+  # --safe-firefox-profile, which passes -no-remote and a fresh --profile so
+  # Firefox runs as a separate instance.) Exclude browser_process.pid here so
+  # the stub's exit is not mistaken for the user closing the browser; if
+  # browser_process does stay running, is_browser_process_alive() still tracks
+  # it directly via browser_process.poll().
+  if previous_browser_processes and browser_process and not emrun_options.safe_firefox_profile:
+    current_browser_processes = [p for p in current_browser_processes if p['pid'] != browser_process.pid]
+
   if len(current_browser_processes) == 0:
     logv('Was unable to detect the browser process that was spawned by emrun. This may occur if the target page was opened in a tab on a browser process that already existed before emrun started up.')
 
