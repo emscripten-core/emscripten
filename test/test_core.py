@@ -8891,6 +8891,25 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.maybe_closure()
     self.do_runf('hello_world_small.c', 'hello')
 
+  # Verify that the itimer machinery is not being brought in to the build
+  # output when not used (issue #26038)
+  def test_itimer_is_stripped_when_unused(self):
+    self.build('hello_world.c')
+
+    if self.is_wasm2js():
+      code = read_file('hello_world.js')
+    else:
+      wasm = 'hello_world.wasm'
+      code = self.get_wasm_text(wasm)
+
+      # The C-side timer/signal machinery should not be present in code.
+      self.assertFalse(self.is_exported_in_wasm('_emscripten_timeout', wasm))
+      self.assertFalse(self.is_exported_in_wasm('raise', wasm))
+      self.assertFalse(self.is_exported_in_wasm('proc_exit', wasm))
+
+    # The JS timer-callback import must not be pulled in.
+    self.assertNotIn('_setitimer_js', code)
+
   # Tests global initializer with -sMINIMAL_RUNTIME
   @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   def test_minimal_runtime_global_initializer(self):
