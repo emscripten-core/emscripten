@@ -1082,11 +1082,6 @@ var MEMFS = {
       attr.atime = new Date(node.atime);
       attr.mtime = new Date(node.mtime);
       attr.ctime = new Date(node.ctime);
-      // A Date only holds whole milliseconds: also return the exact times
-      // (e.g. as set by utimensat), which SYSCALLS.writeStat prefers.
-      attr.atimeMs = node.atime;
-      attr.mtimeMs = node.mtime;
-      attr.ctimeMs = node.ctime;
       // NOTE: In our implementation, st_blocks = Math.ceil(st_size/st_blksize),
       //       but this is not required by the standard.
       attr.blksize = 4096;
@@ -3041,18 +3036,15 @@ var SYSCALLS = {
     HEAP64[(((buf) + (24)) >> 3)] = BigInt(stat.size);
     HEAP32[(((buf) + (32)) >> 2)] = 4096;
     HEAP32[(((buf) + (36)) >> 2)] = stat.blocks;
-    // Prefer `*Ms` properties if available (e.g. from MEMFS, or NODEFS / host
-    // `fs.Stats`) for sub-millisecond precision; fall back to Date#getTime for
-    // other filesystems.
-    var atime = stat.atimeMs ?? stat.atime.getTime();
-    var mtime = stat.mtimeMs ?? stat.mtime.getTime();
-    var ctime = stat.ctimeMs ?? stat.ctime.getTime();
+    var atime = stat.atime.getTime();
+    var mtime = stat.mtime.getTime();
+    var ctime = stat.ctime.getTime();
     HEAP64[(((buf) + (40)) >> 3)] = BigInt(Math.floor(atime / 1e3));
-    HEAPU32[(((buf) + (48)) >> 2)] = Math.floor((atime % 1e3) * 1e6);
+    HEAPU32[(((buf) + (48)) >> 2)] = (atime % 1e3) * 1e3 * 1e3;
     HEAP64[(((buf) + (56)) >> 3)] = BigInt(Math.floor(mtime / 1e3));
-    HEAPU32[(((buf) + (64)) >> 2)] = Math.floor((mtime % 1e3) * 1e6);
+    HEAPU32[(((buf) + (64)) >> 2)] = (mtime % 1e3) * 1e3 * 1e3;
     HEAP64[(((buf) + (72)) >> 3)] = BigInt(Math.floor(ctime / 1e3));
-    HEAPU32[(((buf) + (80)) >> 2)] = Math.floor((ctime % 1e3) * 1e6);
+    HEAPU32[(((buf) + (80)) >> 2)] = (ctime % 1e3) * 1e3 * 1e3;
     HEAP64[(((buf) + (88)) >> 3)] = BigInt(stat.ino);
     return 0;
   },
