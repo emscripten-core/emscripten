@@ -1975,7 +1975,7 @@ addToLibrary({
     // code size, but directly access wasmTable, which is a bit slower as uncached.
     return wasmTable.get({{{ toIndexType('funcPtr') }}});
   },
-#endif // SHRINK_LEVEL == 0
+#endif // SHRINK_LEVEL == 0 || ASYNCIFY == 2
 
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime: () => {

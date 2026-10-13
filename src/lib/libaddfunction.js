@@ -86,7 +86,7 @@ addToLibrary({
     var wrappedFunc = instance.exports['f'];
     return wrappedFunc;
   },
-#endif // !WASM2JS && WASM != 2
+#endif // !WASM2JS || WASM == 2
 
   $freeTableIndexes: [],
 

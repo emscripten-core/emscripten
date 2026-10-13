@@ -691,7 +691,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
   return instantiateArrayBuffer(binaryFile, imports);
 }
 #endif // WASM_ASYNC_COMPILATION
-#endif // SOURCE_PHASE_IMPORTS
+#endif // !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 
 #if !WASM_ESM_INTEGRATION
 function getWasmImports() {
