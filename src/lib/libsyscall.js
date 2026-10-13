@@ -1089,7 +1089,7 @@ var SyscallsLibrary = {
           return null;
         }
         var tv_sec = {{{ makeGetValue('ptr', C_STRUCTS.timespec.tv_sec, 'i53') }}};
-        return (tv_sec*1000) + (tv_nsec/(1000*1000));
+        return (tv_sec*1000) + Math.floor(tv_nsec/(1000*1000));
       }
       atime = readTimespec(times);
       mtime = readTimespec(times + {{{ C_STRUCTS.timespec.__size__ }}});
