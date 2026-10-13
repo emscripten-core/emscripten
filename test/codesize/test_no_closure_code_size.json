@@ -11,10 +11,10 @@
   "strict.js.gz": 2341,
   "strict.wasm": 1188,
   "strict.wasm.gz": 733,
-  "files.js": 54672,
-  "files.js.gz": 15388,
+  "files.js": 53807,
+  "files.js.gz": 15143,
   "files.wasm": 371,
   "files.wasm.gz": 264,
-  "total": 78999,
-  "total_gz": 25401
+  "total": 77711,
+  "total_gz": 25039
 }
