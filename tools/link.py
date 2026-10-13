@@ -608,8 +608,8 @@ def add_system_js_lib(lib):
 def check_settings():
   for s, reason in DEPRECATED_SETTINGS.items():
     if s in user_settings:
-      if s == 'MEMORY64' and user_settings[s] == '2':
-        # Don't warn about -sMEMORY64=2 (since its the only way to enable the lowering pass)
+      if f'{s}={user_settings[s]}' in DEPRECATED_SETTINGS:
+        # Specific setting value has its own deprecation entry
         continue
       diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
     elif '=' in s:

@@ -16192,6 +16192,9 @@ console.log('OK');'''
     err = self.run_process([EMCC, '-sMEMORY64', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: MEMORY64 is deprecated (prefer the standard -m64 or --target=wasm64 flags). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
 
+    err = self.run_process([EMCC, '-sMEMORY64=2', test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: MEMORY64=2 is deprecated (under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27952)). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
+
     err = self.run_process([EMCC, '-sUSE_PTHREADS', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
 
