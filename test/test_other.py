@@ -5880,6 +5880,7 @@ int main()
   def test_utime_now(self):
     self.do_runf('utime/test_utime_now.c', 'done\n')
 
+  @crossplatform
   @also_with_nodefs_both
   def test_utime_roundtrip(self):
     self.do_runf('utime/test_utime_roundtrip.c', 'done\n')
