@@ -65,7 +65,7 @@ var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT[0] === 'worker' }}};
 #endif
 var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT[0] === 'node' }}};
 var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT[0] === 'shell' }}};
-#else // ENVIRONMENT.length == 1
+#else // ENVIRONMENT.length == 1 && !ASSERTIONS
 // Attempt to auto-detect the environment
 var ENVIRONMENT_IS_WEB = !!globalThis.window;
 var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
@@ -77,7 +77,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 #else
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 #endif
-#endif // ENVIRONMENT
+#endif // ENVIRONMENT.length == 1 && !ASSERTIONS
 
 #if PTHREADS
 // Three configurations we can be running in:

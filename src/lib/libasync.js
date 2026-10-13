@@ -98,7 +98,7 @@ addToLibrary({
           // them to the table.
           imports[x].sig = original.sig;
 #endif // MAIN_MODULE
-#endif // ASSERTIONS
+#endif // ASSERTIONS && ASYNCIFY != 2
         }
       }
     },

@@ -785,7 +785,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         ? canvas.getContext('webgl2', webGLContextAttributes) :
 #endif
         canvas.getContext('webgl', webGLContextAttributes);
-#endif // MAX_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2
 
 #if expectToReceiveOnModule('preinitializedWebGLContext')
       }

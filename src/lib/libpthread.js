@@ -584,7 +584,7 @@ var LibraryPThread = {
 #if ENVIRONMENT_MAY_BE_NODE
         }
 #endif
-#endif // PTHREAD_POOL_SIZE_STRICT
+#endif // (PTHREAD_POOL_SIZE_STRICT && ASSERTIONS) || PTHREAD_POOL_SIZE_STRICT == 2
 #if PTHREAD_POOL_SIZE_STRICT < 2 || ENVIRONMENT_MAY_BE_NODE
         var newWorker = PThread.allocateUnusedWorker();
         PThread.loadWasmModuleToWorker(newWorker);
