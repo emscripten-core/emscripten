@@ -14,18 +14,18 @@
 // Note: this functions does nothing by default but gets redefined below
 // in `emrun_register_handlers` when emrun is active, along with `out` and
 // `err`.
-var emrun_file_dump = (filename, data) => {};
+let emrun_file_dump = (filename, data) => {};
 
 if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
-  var emrun_register_handlers = () => {
+  const emrun_register_handlers = () => {
     // When C code exit()s, we may still have remaining stdout and stderr
     // messages in flight. In that case, we can't close the browser until all
     // those XHRs have finished, so the following state variables track that all
     // communication is done, after which we can close.
-    var emrun_num_post_messages_in_flight = 0;
-    var emrun_should_close_itself = false;
-    var postExit = (msg) => {
-      var http = new XMLHttpRequest();
+    let emrun_num_post_messages_in_flight = 0;
+    let emrun_should_close_itself = false;
+    const postExit = (msg) => {
+      const http = new XMLHttpRequest();
       // Don't do this immediately, this may race with the notification about
       // the return code reaching the server. Send a *sync* xhr so that we know
       // for sure that the server has gotten the return code before we continue.
@@ -38,8 +38,8 @@ if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD =
         window.close();
       } catch(e) {}
     };
-    var post = (url, msg) => {
-      var http = new XMLHttpRequest();
+    const post = (url, msg) => {
+      const http = new XMLHttpRequest();
       ++emrun_num_post_messages_in_flight;
       http.onreadystatechange = () => {
         if (http.readyState == 4 /*DONE*/) {
@@ -55,9 +55,9 @@ if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD =
     // 6931, we can assume we're running the test runner and should post stdout
     // logs.
     if (document.URL.search("localhost") != -1 || document.URL.search(":6931/") != -1) {
-      var emrun_http_sequence_number = 1;
-      var prevPrint = out;
-      var prevErr = err;
+      let emrun_http_sequence_number = 1;
+      const prevPrint = out;
+      const prevErr = err;
       addOnExit(() => {
         if (emrun_num_post_messages_in_flight == 0) {
           postExit('^exit^'+EXITSTATUS);
@@ -83,7 +83,7 @@ if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD =
 
       // Notify emrun web server that this browser has successfully launched the
       // page. Note that we may need to wait for the server to be ready.
-      var tryToSendPageload = () => {
+      const tryToSendPageload = () => {
         try {
           post('stdio.html', '^pageload^');
         } catch (e) {
