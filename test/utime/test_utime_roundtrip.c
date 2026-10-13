@@ -17,11 +17,11 @@
 
 #define ITERATIONS 2000
 
-static int same_timespec(const struct timespec* a, const struct timespec* b) {
+int same_timespec(const struct timespec* a, const struct timespec* b) {
   return a->tv_sec == b->tv_sec && a->tv_nsec == b->tv_nsec;
 }
 
-static void print_timespec(const char* label, const struct timespec* ts) {
+void print_timespec(const char* label, const struct timespec* ts) {
   printf("%s=%lld.%09ld", label, (long long)ts->tv_sec, ts->tv_nsec);
 }
 
