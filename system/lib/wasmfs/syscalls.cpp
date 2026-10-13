@@ -1138,7 +1138,7 @@ static double timespec_to_ms(timespec ts) {
   if (ts.tv_nsec == UTIME_NOW) {
     return emscripten_date_now();
   }
-  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec / (1000 * 1000));
 }
 
 // TODO: Test this with non-AT_FDCWD values.
