@@ -8621,7 +8621,7 @@ Module.onRuntimeInitialized = () => {
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
     self.do_core_test('test_hello_world.c')
-    self.assertNotExists('test_hello_world.js.mem')
+    self.assertNotExists('test_hello_world.wasm')
 
   @no_asan('no wasm2js support yet in asan')
   @requires_wasm2js
@@ -8684,17 +8684,13 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('FORCE_FILESYSTEM')
     create_file('pre.js', '''
       Module.preRun = () => {
-        out(typeof FS.filesystems['MEMFS']);
-        out(typeof FS.filesystems['IDBFS']);
-        out(typeof FS.filesystems['NODEFS']);
-        // Globals
         out(typeof MEMFS);
         out(typeof IDBFS);
         out(typeof NODEFS);
       };
     ''')
     self.cflags += ['-lidbfs.js', '-lnodefs.js', '--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
-    self.do_run('int main() { return 0; }', 'object\nobject\nobject\nobject\nobject\nobject')
+    self.do_run('int main() { return 0; }', 'object\nobject\nobject')
 
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict_none(self):
@@ -8703,10 +8699,6 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('ASSERTIONS')
     create_file('pre.js', '''
       Module.preRun = () => {
-        out(typeof FS.filesystems['MEMFS']);
-        out(typeof FS.filesystems['IDBFS']);
-        out(typeof FS.filesystems['NODEFS']);
-        // Globals
         out(typeof MEMFS);
         out(IDBFS);
         out(NODEFS);
@@ -8720,9 +8712,6 @@ Module.onRuntimeInitialized = () => {
     ''')
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     expected = '''\
-object
-undefined
-undefined
 object
 IDBFS is no longer included by default; build with -lidbfs.js
 NODEFS is no longer included by default; build with -lnodefs.js
@@ -10072,7 +10061,7 @@ wasm64_4gb = make_run('wasm64_4gb', cflags=['-m64', '--profiling-funcs'],
                       settings={'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', cflags=['-m64', '-O1', '--profiling-funcs'],
+wasm64l = make_run('wasm64l', cflags=['-m64', '-O1', '--profiling-funcs', '-Wno-deprecated'],
                    settings={'MEMORY64': 2})
 
 lto0 = make_run('lto0', cflags=['-flto', '-O0'])

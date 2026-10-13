@@ -1938,6 +1938,8 @@ if (!noPrint) {
             defaults: false,
             evaluate: true,
             keep_fargs: false,
+            reduce_vars: true,
+            unused: true,
           }
         : false,
       mangle: false,
