@@ -1779,7 +1779,7 @@ var LibraryOpenAL = {
       // Have to pick a size from 256, 512, 1024, 2048, 4096, 8192, 16384.
       // One can also set it to zero, which leaves the decision up to the impl.
       // An extension could allow specifying this value.
-      var processorFrameCount = 512;
+      const processorFrameCount = 512;
 
       newCapture.scriptProcessorNode = newCapture.audioCtx.createScriptProcessor(
         processorFrameCount, inputChannelCount, outputChannelCount

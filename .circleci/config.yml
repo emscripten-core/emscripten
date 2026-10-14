@@ -1158,8 +1158,7 @@ jobs:
             "
   test-windows-browser-firefox:
     # Use spaces and other special chars in the path to emsdk to flush out
-    # issues with windows.  In particular, the .bat file launchers can have
-    # trouble with these.
+    # path-escaping issues on windows.
     working_directory: "~/path with spaces ()/"
     executor:
       name: win/server-2019
@@ -1213,8 +1212,7 @@ jobs:
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
     # Use spaces and other special chars in the path to emsdk to flush out
-    # issues with windows.  In particular, the .bat file launchers can have
-    # trouble with these.
+    # path-escaping issues on windows.
     working_directory: "~/path with spaces ()/"
     executor:
       name: win/server-2019

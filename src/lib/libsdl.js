@@ -2717,7 +2717,7 @@ var LibrarySDL = {
     // In particular, see https://bugzil.la/654787 and https://bugzil.la/1012801 for tradeoffs.
     var canPlayWithWebAudio = !Module['SDL_canPlayWithWebAudio'] || Module['SDL_canPlayWithWebAudio'](filename, arrayBuffer);
 #else
-    var canPlayWithWebAudio = true;
+    const canPlayWithWebAudio = true;
 #endif
 
     if (bytes !== undefined && SDL.webAudioAvailable() && canPlayWithWebAudio) {

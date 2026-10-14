@@ -13821,12 +13821,11 @@ void foo() {}
                  'poll probe ok from main\npoll probe ok from callback\n',
                  cflags=args)
 
-  # Verify that we are able to successfully compile a script when the Windows 7
-  # and Python workaround env. vars are enabled.
+  # Verify that we are able to successfully compile a script when the Windows
+  # Python workaround env. var is enabled.
   # See https://bugs.python.org/issue34780
-  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1',
-                    'EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG': '1'})
-  def test_windows_batch_script_workaround(self):
+  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1'})
+  def test_windows_python_bug_workaround(self):
     self.run_process([EMCC, test_file('hello_world.c')])
     self.assertExists('a.out.js')
 
@@ -14806,12 +14805,6 @@ throw_tag:
     create_file('post.js', 'err(1, 2, "hello"); out("foo", 42);')
     self.do_runf('hello_world.c', '1 2 hello\nfoo 42\n', cflags=['--post-js=post.js'])
 
-  @only_windows('This test verifies Windows batch script behavior against bug https://github.com/microsoft/terminal/issues/15212')
-  @with_env_modify({'PATH': path_from_root() + os.pathsep + os.getenv('PATH')})
-  def test_windows_batch_file_dp0_expansion_bug(self):
-    create_file('build_with_quotes.bat', f'@"emcc" "{test_file("hello_world.c")}"')
-    self.run_process(['build_with_quotes.bat'])
-
   @only_windows('Check that directory permissions are properly retrieved on Windows')
   @requires_node
   def test_windows_nodefs_execution_permission(self):
@@ -15316,11 +15309,7 @@ addToLibrary({
     print('running cmd:', cmd)
     with env_modify({'PATH': new_path}):
       proc = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
-      # There is currently a bug in the windows .bat files that leads to stdout
-      # not being empty in this case.
-      # See https://github.com/emscripten-core/emscripten/pull/25416
-      if not WINDOWS:
-        self.assertEqual(proc.stdout, '')
+      self.assertEqual(proc.stdout, '')
       self.assertEqual(proc.stderr, '')
 
   def test_browser_too_old(self):

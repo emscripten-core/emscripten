@@ -9,7 +9,7 @@
 #endif
 
 #if SAFE_HEAP_LOG
-var SAFE_HEAP_COUNTER = 0;
+let SAFE_HEAP_COUNTER = 0;
 #endif
 
 function SAFE_HEAP_INDEX(arr, idx, action) {
@@ -27,7 +27,7 @@ function SAFE_HEAP_INDEX(arr, idx, action) {
 #else
   if (runtimeInitialized) {
 #endif
-    var brk = _sbrk(0);
+    const brk = _sbrk(0);
     if (dest + bytes > brk) abort(`segmentation fault, exceeded the top of the available dynamic heap when ${action} ${bytes} bytes at address ${dest}. DYNAMICTOP=${brk}`);
     if (brk < _emscripten_stack_get_base()) abort(`brk >= _emscripten_stack_get_base() (brk=${brk}, _emscripten_stack_get_base()=${_emscripten_stack_get_base()})`); // sbrk-managed memory must be above the stack
     if (brk > wasmMemory.buffer.byteLength) abort(`brk <= wasmMemory.buffer.byteLength (brk=${brk}, wasmMemory.buffer.byteLength=${wasmMemory.buffer.byteLength})`);
