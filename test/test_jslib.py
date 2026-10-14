@@ -134,7 +134,7 @@ addToLibrary({
     'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_jslib_async_auto_variants(self, args):
-    # An `__async: 'auto'` function `answer(ms, value)` resolving to `value`
+    # An `__async: ['promise']` function `answer(ms, value)` resolving to `value`
     # after `ms` milliseconds (synchronously if `ms` is 0, rejecting if `value`
     # is 0), and its `answer_promise` variant. Where the caller cannot wait,
     # `answer()` is -1.
@@ -145,7 +145,7 @@ addToLibrary({
     create_file('lib.js', r'''
 addToLibrary({
   answer__sig: 'pip',
-  answer__async: 'auto',
+  answer__async: ['promise'],
   answer__proxy: 'sync',
   answer: (ms, value, sync) => {
     if (!ms) return value;
@@ -221,6 +221,24 @@ int main() {
 }
 ''')
     self.do_runf('src.c', 'done\n', cflags=args + ['-sEXIT_RUNTIME', '--js-library', 'lib.js'])
+
+  @parameterized({
+    'empty': ("'pi'", '[]', '', "'jslibfunc__async' must be 'auto', or a non-empty array of variants"),
+    'unknown': ("'pi'", "['foo']", '', "unknown async variant 'foo' in 'jslibfunc__async'"),
+    'sig': ("'vi'", "['promise']", '', "async variants of 'jslibfunc' require a native function with a '__sig' returning 'p' or 'i'"),
+    'defined': ("'pi'", "['promise']", 'jslibfunc_promise: () => 0,', "'jslibfunc_promise' is defined explicitly, conflicting with the 'promise' variant of 'jslibfunc'"),
+  })
+  def test_jslib_async_variants_errors(self, sig, variants, extra, expected):
+    create_file('lib.js', f'''
+addToLibrary({{
+  jslibfunc__sig: {sig},
+  jslibfunc__async: {variants},
+  jslibfunc: (x) => x,
+  {extra}
+}});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
+                     'error: JS library error: ' + expected)
 
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''

@@ -1062,7 +1062,6 @@ var proxiedFunctionTable = [
         deps: symbolDeps,
         asyncFuncs,
         extraLibraryFuncs,
-        asyncVariants: Object.keys(symbolDeps).filter(asyncVariantOf),
       }),
     );
   } else {

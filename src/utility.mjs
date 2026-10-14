@@ -182,7 +182,7 @@ export function mergeInto(obj, other, options = null) {
           __noleakcheck: 'boolean',
           __internal: 'boolean',
           __user: 'boolean',
-          __async: ['string', 'boolean'],
+          __async: ['string', 'boolean', 'object'],
           __i53abi: 'boolean',
           __export: 'boolean',
           __force: 'boolean',

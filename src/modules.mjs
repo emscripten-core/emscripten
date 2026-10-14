@@ -39,9 +39,8 @@ export const nativeAliases = {};
 const srcDir = fileURLToPath(new URL('.', import.meta.url));
 const systemLibdir = path.join(srcDir, 'lib');
 
-// Suffix and return type of each async variant of an `__async: 'auto'`
-// function (see expandAsyncVariants).
-const ASYNC_VARIANTS = [['promise', 'p']];
+// Return type of each async variant by suffix (see expandAsyncVariants).
+const ASYNC_VARIANTS = new Map([['promise', 'p']]);
 
 function isBeneath(childPath, parentPath) {
   const relativePath = path.relative(parentPath, childPath);
@@ -296,27 +295,39 @@ export const LibraryManager = {
   },
 
   /**
-   * Async variants of `__async: 'auto'` functions. Such a function returns a
-   * pointer-sized value or a Promise of one, unless its trailing `sync`
-   * argument forbids (see jsifier). Each also has a `foo_promise` variant, the
-   * same body returning an em_promise_t of the result on the calling
-   * thread, which can always wait. Variants are emitted only where used; an
-   * explicit library entry of the same name takes precedence.
+   * `__async: ['promise', ...]` is `__async: 'auto'` along with the listed
+   * variants. An 'auto' function returns a pointer-sized value or a Promise of
+   * one, unless its trailing `sync` argument forbids (see jsifier). Its
+   * `foo_promise` variant runs the same body, returning an em_promise_t of the
+   * result on the calling thread, which can always wait. Variants are emitted
+   * only where used.
    */
   expandAsyncVariants() {
-    const bases = [];
-    for (const [base, impl] of Object.entries(this.library)) {
-      if (base[0] == '$' || isDecorator(base) || typeof impl !== 'function') continue;
-      if (this.library[base + '__async'] != 'auto') continue;
+    for (const [key, variants] of Object.entries(this.library)) {
+      if (!key.endsWith('__async') || typeof variants != 'object') continue;
+      const base = key.slice(0, -'__async'.length);
+      this.library[key] = 'auto';
       const sig = this.library[base + '__sig'];
-      if (!sig || !'pi'.includes(sig[0])) continue;
-      bases.push([base, impl, sig]);
-    }
-    for (const [base, impl, sig] of bases) {
-      for (const [variant, rtn] of ASYNC_VARIANTS) {
+      if (!Array.isArray(variants) || !variants.length) {
+        error(`JS library error: '${key}' must be 'auto', or a non-empty array of variants`);
+        continue;
+      }
+      if (base[0] == '$' || typeof this.library[base] !== 'function' || !sig || !'pi'.includes(sig[0])) {
+        error(`JS library error: async variants of '${base}' require a native function with a '__sig' returning 'p' or 'i'`);
+        continue;
+      }
+      for (const variant of variants) {
+        const rtn = ASYNC_VARIANTS.get(variant);
         const name = `${base}_${variant}`;
-        if (this.library.hasOwnProperty(name)) continue;
-        this.library[name] = impl;
+        if (!rtn) {
+          error(`JS library error: unknown async variant '${variant}' in '${key}'`);
+          continue;
+        }
+        if (this.library.hasOwnProperty(name)) {
+          error(`JS library error: '${name}' is defined explicitly, conflicting with the '${variant}' variant of '${base}'`);
+          continue;
+        }
+        this.library[name] = this.library[base];
         this.library[name + '__async_variant'] = variant;
         this.library[name + '__sig'] = rtn + sig.slice(1);
         for (const decorator of ['__async', '__proxy', '__deps', '__i53abi', '__user']) {

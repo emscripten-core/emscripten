@@ -228,12 +228,14 @@ called synchronously.
 Async auto call variants
 ########################
 
-All ``__async: 'auto'`` defined library functions support a calling convention
-for being called with a ``_promise`` suffix to obtain the promise value directly
-without suspending, so it can be called from any stack.
+Instead of ``'auto'``, ``__async`` can be given a list of call variants to
+generate alongside the function, which otherwise behaves as ``__async:
+'auto'``.  The ``'promise'`` variant is the function called with a ``_promise``
+suffix, obtaining the promise value directly without suspending, so it can be
+called from any stack.
 
-The same ``lookup`` definition from the example in the previous section above
-defines both C variants:
+Changing the ``lookup`` definition from the example in the previous section
+above to ``lookup__async: ['promise']`` defines both C variants:
 
 .. code-block:: c
 
