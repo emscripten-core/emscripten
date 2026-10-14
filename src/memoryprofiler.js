@@ -518,7 +518,7 @@ const emscriptenMemoryProfiler = {
     html += "<br />Free memory: " + colorBar("#70FF70") + "DYNAMIC: " + self.formatBytes(heap_end - heap_base - self.totalMemoryAllocated) + ", " + colorBar('#FFFFFF') + 'Unallocated HEAP: ' + self.formatBytes(HEAP8.length - heap_end) + " (" + ((HEAP8.length - heap_base - self.totalMemoryAllocated) * 100 / (HEAP8.length - heap_base)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
 
     let preloadedMemoryUsed = 0;
-    for (const i in self.sizeOfPreRunAllocatedPtr) preloadedMemoryUsed += self.sizeOfPreRunAllocatedPtr[i]|0;
+    for (const sz of Object.values(self.sizeOfPreRunAllocatedPtr)) preloadedMemoryUsed += sz|0;
     html += '<br />' + colorBar('#FF9900') + colorBar('#FFDD33') + 'Preloaded memory used, most likely memory reserved by files in the virtual filesystem : ' + self.formatBytes(preloadedMemoryUsed);
 
     html += '<br />OpenAL audio data: ' + self.formatBytes(self.countOpenALAudioDataSize()) + ' (outside HEAP)';
@@ -606,9 +606,9 @@ const emscriptenMemoryProfiler = {
       // Print out statistics of individual allocations if they were tracked.
       if (Object.keys(self.allocationsAtLoc).length > 0) {
         const calls = [];
-        for (const i in self.allocationsAtLoc) {
-          if (self.allocationsAtLoc[i][0] >= self.trackedCallstackMinAllocCount || self.allocationsAtLoc[i][1] >= self.trackedCallstackMinSizeBytes) {
-            calls.push(self.allocationsAtLoc[i]);
+        for (const alloc of Object.values(self.allocationsAtLoc)) {
+          if (alloc[0] >= self.trackedCallstackMinAllocCount || alloc[1] >= self.trackedCallstackMinSizeBytes) {
+            calls.push(alloc);
           }
         }
         if (calls.length > 0) {
