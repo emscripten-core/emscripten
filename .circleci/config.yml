@@ -697,6 +697,7 @@ jobs:
             wasmfs.test_fs_errorstack
             wasmfs.test_fs_errorstack_rawfs
             wasmfs.test_fs_emptyPath
+            wasmfs.test_fs_fadvise_fallocate*
             wasmfs.test_webidl
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
