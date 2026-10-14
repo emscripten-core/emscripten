@@ -17,6 +17,59 @@ export function safeQuote(x) {
   return x.replace(/"/g, '\\"').replace(/'/g, "\\'");
 }
 
+// JS reserved words that are otherwise valid identifiers but cannot be used as
+// binding names (e.g. `var default = ...` is a syntax error).
+const JS_RESERVED_WORDS = new Set([
+  'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger',
+  'default', 'delete', 'do', 'else', 'enum', 'export', 'extends', 'false',
+  'finally', 'for', 'function', 'if', 'import', 'in', 'instanceof', 'new',
+  'null', 'return', 'super', 'switch', 'this', 'throw', 'true', 'try',
+  'typeof', 'var', 'void', 'while', 'with', 'yield', 'let', 'static',
+  'implements', 'interface', 'package', 'private', 'protected', 'public',
+  'await',
+]);
+
+// Whether `name` can be used verbatim as a JS binding identifier (e.g. after
+// `var` or in an `export { x }` clause).
+export function isValidIdentifier(name) {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) && !JS_RESERVED_WORDS.has(name);
+}
+
+// Format `name` for the exported-name position of an ESM export/import clause
+// (the part after `as`).  Reserved words are legal there verbatim, but names
+// with illegal characters must use the string-literal form.
+export function quoteExportName(name) {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name);
+}
+
+// Maps a desired name to the JS identifier we use as its internal binding.
+// Names that are already valid identifiers map to themselves.  Others (reserved
+// words, or names with illegal characters) are rewritten to a legal identifier,
+// with a numeric suffix appended to disambiguate any collisions.  The mapping is
+// memoized so that a given name always resolves to the same binding.
+const legalizedIdentifiers = new Map();
+const usedIdentifiers = new Set();
+
+export function toValidIdentifier(name) {
+  let ident = legalizedIdentifiers.get(name);
+  if (ident !== undefined) return ident;
+  if (isValidIdentifier(name)) {
+    ident = name;
+  } else {
+    let base = name.replace(/[^A-Za-z0-9_$]/g, '_');
+    if (!/^[A-Za-z_$]/.test(base) || JS_RESERVED_WORDS.has(base)) {
+      base = '$' + base;
+    }
+    ident = base;
+    for (let i = 0; usedIdentifiers.has(ident); i++) {
+      ident = base + '_' + i;
+    }
+  }
+  legalizedIdentifiers.set(name, ident);
+  usedIdentifiers.add(ident);
+  return ident;
+}
+
 export function dump(item) {
   let funcData;
   try {
