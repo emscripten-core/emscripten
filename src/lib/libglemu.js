@@ -990,72 +990,72 @@ var LibraryGLEmulation = {
     TexEnvJIT: null,
     spawnTexEnvJIT: () => {
       // GL defs:
-      var GL_TEXTURE0 = 0x84C0;
-      var GL_TEXTURE_1D = 0xDE0;
-      var GL_TEXTURE_2D = 0xDE1;
-      var GL_TEXTURE_3D = 0x806f;
-      var GL_TEXTURE_CUBE_MAP = 0x8513;
-      var GL_TEXTURE_ENV = 0x2300;
-      var GL_TEXTURE_ENV_MODE = 0x2200;
-      var GL_TEXTURE_ENV_COLOR = 0x2201;
-      var GL_TEXTURE_CUBE_MAP_POSITIVE_X = 0x8515;
-      var GL_TEXTURE_CUBE_MAP_NEGATIVE_X = 0x8516;
-      var GL_TEXTURE_CUBE_MAP_POSITIVE_Y = 0x8517;
-      var GL_TEXTURE_CUBE_MAP_NEGATIVE_Y = 0x8518;
-      var GL_TEXTURE_CUBE_MAP_POSITIVE_Z = 0x8519;
-      var GL_TEXTURE_CUBE_MAP_NEGATIVE_Z = 0x851A;
+      const GL_TEXTURE0 = 0x84C0;
+      const GL_TEXTURE_1D = 0xDE0;
+      const GL_TEXTURE_2D = 0xDE1;
+      const GL_TEXTURE_3D = 0x806f;
+      const GL_TEXTURE_CUBE_MAP = 0x8513;
+      const GL_TEXTURE_ENV = 0x2300;
+      const GL_TEXTURE_ENV_MODE = 0x2200;
+      const GL_TEXTURE_ENV_COLOR = 0x2201;
+      const GL_TEXTURE_CUBE_MAP_POSITIVE_X = 0x8515;
+      const GL_TEXTURE_CUBE_MAP_NEGATIVE_X = 0x8516;
+      const GL_TEXTURE_CUBE_MAP_POSITIVE_Y = 0x8517;
+      const GL_TEXTURE_CUBE_MAP_NEGATIVE_Y = 0x8518;
+      const GL_TEXTURE_CUBE_MAP_POSITIVE_Z = 0x8519;
+      const GL_TEXTURE_CUBE_MAP_NEGATIVE_Z = 0x851A;
 
-      var GL_SRC0_RGB = 0x8580;
-      var GL_SRC1_RGB = 0x8581;
-      var GL_SRC2_RGB = 0x8582;
+      const GL_SRC0_RGB = 0x8580;
+      const GL_SRC1_RGB = 0x8581;
+      const GL_SRC2_RGB = 0x8582;
 
-      var GL_SRC0_ALPHA = 0x8588;
-      var GL_SRC1_ALPHA = 0x8589;
-      var GL_SRC2_ALPHA = 0x858A;
+      const GL_SRC0_ALPHA = 0x8588;
+      const GL_SRC1_ALPHA = 0x8589;
+      const GL_SRC2_ALPHA = 0x858A;
 
-      var GL_OPERAND0_RGB = 0x8590;
-      var GL_OPERAND1_RGB = 0x8591;
-      var GL_OPERAND2_RGB = 0x8592;
+      const GL_OPERAND0_RGB = 0x8590;
+      const GL_OPERAND1_RGB = 0x8591;
+      const GL_OPERAND2_RGB = 0x8592;
 
-      var GL_OPERAND0_ALPHA = 0x8598;
-      var GL_OPERAND1_ALPHA = 0x8599;
-      var GL_OPERAND2_ALPHA = 0x859A;
+      const GL_OPERAND0_ALPHA = 0x8598;
+      const GL_OPERAND1_ALPHA = 0x8599;
+      const GL_OPERAND2_ALPHA = 0x859A;
 
-      var GL_COMBINE_RGB = 0x8571;
-      var GL_COMBINE_ALPHA = 0x8572;
+      const GL_COMBINE_RGB = 0x8571;
+      const GL_COMBINE_ALPHA = 0x8572;
 
-      var GL_RGB_SCALE = 0x8573;
-      var GL_ALPHA_SCALE = 0xD1C;
+      const GL_RGB_SCALE = 0x8573;
+      const GL_ALPHA_SCALE = 0xD1C;
 
       // env.mode
-      var GL_ADD      = 0x104;
-      var GL_BLEND    = 0xBE2;
-      var GL_REPLACE  = 0x1E01;
-      var GL_MODULATE = 0x2100;
-      var GL_DECAL    = 0x2101;
-      var GL_COMBINE  = 0x8570;
+      const GL_ADD      = 0x104;
+      const GL_BLEND    = 0xBE2;
+      const GL_REPLACE  = 0x1E01;
+      const GL_MODULATE = 0x2100;
+      const GL_DECAL    = 0x2101;
+      const GL_COMBINE  = 0x8570;
 
       // env.color/alphaCombiner
-      //var GL_ADD         = 0x104;
-      //var GL_REPLACE     = 0x1E01;
-      //var GL_MODULATE    = 0x2100;
-      var GL_SUBTRACT    = 0x84E7;
-      var GL_INTERPOLATE = 0x8575;
+      //const GL_ADD         = 0x104;
+      //const GL_REPLACE     = 0x1E01;
+      //const GL_MODULATE    = 0x2100;
+      const GL_SUBTRACT    = 0x84E7;
+      const GL_INTERPOLATE = 0x8575;
 
       // env.color/alphaSrc
-      var GL_TEXTURE       = 0x1702;
-      var GL_CONSTANT      = 0x8576;
-      var GL_PRIMARY_COLOR = 0x8577;
-      var GL_PREVIOUS      = 0x8578;
+      const GL_TEXTURE       = 0x1702;
+      const GL_CONSTANT      = 0x8576;
+      const GL_PRIMARY_COLOR = 0x8577;
+      const GL_PREVIOUS      = 0x8578;
 
       // env.color/alphaOp
-      var GL_SRC_COLOR           = 0x300;
-      var GL_ONE_MINUS_SRC_COLOR = 0x301;
-      var GL_SRC_ALPHA           = 0x302;
-      var GL_ONE_MINUS_SRC_ALPHA = 0x303;
+      const GL_SRC_COLOR           = 0x300;
+      const GL_ONE_MINUS_SRC_COLOR = 0x301;
+      const GL_SRC_ALPHA           = 0x302;
+      const GL_ONE_MINUS_SRC_ALPHA = 0x303;
 
-      var GL_RGB  = 0x1907;
-      var GL_RGBA = 0x1908;
+      const GL_RGB  = 0x1907;
+      const GL_RGBA = 0x1908;
 
       // Our defs:
       var TEXENVJIT_NAMESPACE_PREFIX = 'tej_';
@@ -2174,7 +2174,7 @@ var LibraryGLEmulation = {
           var uTexUnitPrefix = 'u_texUnit';
           var aTexCoordPrefix = 'a_texCoord';
           var vTexCoordPrefix = 'v_texCoord';
-          var vPrimColor = 'v_color';
+          const vPrimColor = 'v_color';
           var uTexMatrixPrefix = GLImmediate.useTextureMatrix ? 'u_textureMatrix' : null;
 
           if (useCurrProgram) {

@@ -3,8 +3,8 @@
   "hello_world.js.gz": 2896,
   "hello_world.wasm": 1188,
   "hello_world.wasm.gz": 733,
-  "web.js": 6028,
-  "web.js.gz": 2241,
+  "web.js": 5995,
+  "web.js.gz": 2240,
   "web.wasm": 1188,
   "web.wasm.gz": 733,
   "strict.js": 6020,
@@ -15,6 +15,6 @@
   "files.js.gz": 15176,
   "files.wasm": 371,
   "files.wasm.gz": 264,
-  "total": 77849,
-  "total_gz": 25072
+  "total": 77816,
+  "total_gz": 25071
 }

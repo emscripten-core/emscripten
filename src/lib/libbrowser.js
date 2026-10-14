@@ -101,7 +101,7 @@ var LibraryBrowser = {
             err(`warning: browser could not fully decode audio ${name}, trying slower base64 approach`);
             function encode64(data) {
               var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-              var PAD = '=';
+              const PAD = '=';
               var ret = '';
               var leftchar = 0;
               var leftbits = 0;
@@ -629,7 +629,7 @@ var LibraryBrowser = {
 
   emscripten_get_window_title__proxy: 'sync',
   emscripten_get_window_title: () => {
-    var buflen = 256;
+    const buflen = 256;
 
     if (!_emscripten_get_window_title.buffer) {
       _emscripten_get_window_title.buffer = _malloc(buflen);

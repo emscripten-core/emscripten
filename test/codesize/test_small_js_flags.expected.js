@@ -18,9 +18,9 @@ var Module = typeof Module !== "undefined" ? Module : {};
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
-var ENVIRONMENT_IS_WEB = true;
+const ENVIRONMENT_IS_WEB = true;
 
-var ENVIRONMENT_IS_WORKER = false;
+const ENVIRONMENT_IS_WORKER = false;
 
 var quit_ = (status, toThrow) => {
   throw toThrow;
