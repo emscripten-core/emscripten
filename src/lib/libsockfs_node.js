@@ -389,8 +389,8 @@ var NodeSockFSLibrary = {
     setMembership(sock, add, group, iface) {
       var m = sock.memberships ??= new Map();
       var key = group + '%' + (iface ?? '');
-      if (add && m.has(key)) return {{{ cDefs.EADDRINUSE }}};
-      if (!add && !m.has(key)) return {{{ cDefs.EADDRNOTAVAIL }}};
+      if (add && m.has(key)) return EADDRINUSE;
+      if (!add && !m.has(key)) return EADDRNOTAVAIL;
       if (sock.udpBound) {
         var err = nodeSockHelpers.udpMembership(sock, group, iface, add);
         if (err) return err;
@@ -947,12 +947,12 @@ var NodeSockFSLibrary = {
             return -nodeSockHelpers.applyUdpOptions(sock);
           case 35: // IP_ADD_MEMBERSHIP (struct ip_mreq, or ip_mreqn)
           case 36: { // IP_DROP_MEMBERSHIP
-            if (sock.type !== {{{ cDefs.SOCK_DGRAM }}}) return -{{{ cDefs.EPROTO }}};
-            if (optlen < 8) return -{{{ cDefs.EINVAL }}};
+            if (sock.type !== SOCK_DGRAM) return -EPROTO;
+            if (optlen < 8) return -EINVAL;
             var iface = {{{ makeGetValue('optval', 4, 'i32') }}};
             // node selects the interface by address only, so an ip_mreqn that
             // names it by index alone cannot be honored.
-            if (!iface && optlen >= 12 && {{{ makeGetValue('optval', 8, 'i32') }}}) return -{{{ cDefs.ENODEV }}};
+            if (!iface && optlen >= 12 && {{{ makeGetValue('optval', 8, 'i32') }}}) return -ENODEV;
             return -nodeSockHelpers.setMembership(sock, optname === 35, inetNtop4(val), iface ? inetNtop4(iface) : undefined);
           }
         }
@@ -973,11 +973,11 @@ var NodeSockFSLibrary = {
             return -nodeSockHelpers.applyUdpOptions(sock);
           case 20: // IPV6_JOIN_GROUP (struct ipv6_mreq)
           case 21: { // IPV6_LEAVE_GROUP
-            if (sock.type !== {{{ cDefs.SOCK_DGRAM }}}) return -{{{ cDefs.EPROTO }}};
-            if (optlen < 20) return -{{{ cDefs.EINVAL }}};
+            if (sock.type !== SOCK_DGRAM) return -EPROTO;
+            if (optlen < 20) return -EINVAL;
             // node selects the interface by name and has no index-to-name
             // lookup, so only the default interface (index 0) is supported.
-            if ({{{ makeGetValue('optval', 16, 'i32') }}}) return -{{{ cDefs.ENODEV }}};
+            if ({{{ makeGetValue('optval', 16, 'i32') }}}) return -ENODEV;
             var src32 = {{{ getHeapOffset('optval', 'i32') }}};
             var group = inetNtop6(HEAP32.subarray(src32, src32 + 4));
             return -nodeSockHelpers.setMembership(sock, optname === 20, group, undefined);
