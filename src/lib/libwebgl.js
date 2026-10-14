@@ -1258,9 +1258,9 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
   },
 
   glPixelStorei: (pname, param) => {
-    if (pname == {{{ cDefs.GL_UNPACK_ALIGNMENT }}}) {
+    if (pname == GL_UNPACK_ALIGNMENT) {
       GL.unpackAlignment = param;
-    } else if (pname == {{{ cDefs.GL_UNPACK_ROW_LENGTH }}}) {
+    } else if (pname == GL_UNPACK_ROW_LENGTH) {
       GL.unpackRowLength = param;
     }
     GLctx.pixelStorei(pname, param);
@@ -1352,7 +1352,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
         break;
       case 0x8DF8: // GL_SHADER_BINARY_FORMATS
 #if GL_TRACK_ERRORS
-        if (type != {{{ cDefs.EM_FUNC_SIG_PARAM_I }}} && type != {{{ cDefs.EM_FUNC_SIG_PARAM_J }}}) {
+        if (type != EM_FUNC_SIG_PARAM_I && type != EM_FUNC_SIG_PARAM_J) {
           GL.recordError(0x500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
           err(`GL_INVALID_ENUM in glGet${type}v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!`);
@@ -1468,9 +1468,9 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
                      result instanceof Array) {
             for (var i = 0; i < result.length; ++i) {
               switch (type) {
-                case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}}; break;
-                case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
-                case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}}; break;
+                case EM_FUNC_SIG_PARAM_I: {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}}; break;
+                case EM_FUNC_SIG_PARAM_F: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
+                case EM_FUNC_SIG_PARAM_B: {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}}; break;
 #if GL_ASSERTIONS
                 default: abort(`internal glGet error, bad type: ${type}`);
 #endif
@@ -1501,21 +1501,21 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     }
 
     switch (type) {
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_J }}}: writeI53ToI64(p, ret); break;
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('p', '0', 'ret', 'i32') }}}; break;
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}}; break;
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      case EM_FUNC_SIG_PARAM_J: writeI53ToI64(p, ret); break;
+      case EM_FUNC_SIG_PARAM_I: {{{ makeSetValue('p', '0', 'ret', 'i32') }}}; break;
+      case EM_FUNC_SIG_PARAM_F:   {{{ makeSetValue('p', '0', 'ret', 'float') }}}; break;
+      case EM_FUNC_SIG_PARAM_B: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
 #if GL_ASSERTIONS
       default: abort(`internal glGet error, bad type: ${type}`);
 #endif
     }
   },
 
-  glGetIntegerv: (name_, p) => emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}),
+  glGetIntegerv: (name_, p) => emscriptenWebGLGet(name_, p, EM_FUNC_SIG_PARAM_I),
 
-  glGetFloatv: (name_, p) => emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}),
+  glGetFloatv: (name_, p) => emscriptenWebGLGet(name_, p, EM_FUNC_SIG_PARAM_F),
 
-  glGetBooleanv: (name_, p) => emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}),
+  glGetBooleanv: (name_, p) => emscriptenWebGLGet(name_, p, EM_FUNC_SIG_PARAM_B),
 
   glDeleteTextures: (n, textures) => {
     for (var i = 0; i < n; i++) {
@@ -2093,8 +2093,8 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     var data = GLctx.getUniform(program, webglGetProgramUniformLocation(program, location));
     if (typeof data === 'number' || typeof data === 'boolean') {
       switch (type) {
-        case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
-        case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+        case EM_FUNC_SIG_PARAM_I: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+        case EM_FUNC_SIG_PARAM_F: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
 #if GL_ASSERTIONS
         default: abort('internal emscriptenWebGLGetUniform() error, bad type: ' + type);
 #endif
@@ -2102,8 +2102,8 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     } else {
       for (var i = 0; i < data.length; i++) {
         switch (type) {
-          case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
-          case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
+          case EM_FUNC_SIG_PARAM_I: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
+          case EM_FUNC_SIG_PARAM_F: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
 #if GL_ASSERTIONS
           default: abort('internal emscriptenWebGLGetUniform() error, bad type: ' + type);
 #endif
@@ -2113,11 +2113,11 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
   },
 
   glGetUniformfv: (program, location, params) => {
-    emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_F }}});
+    emscriptenWebGLGetUniform(program, location, params, EM_FUNC_SIG_PARAM_F);
   },
 
   glGetUniformiv: (program, location, params) => {
-    emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
+    emscriptenWebGLGetUniform(program, location, params, EM_FUNC_SIG_PARAM_I);
   },
 
   // Returns the WebGLUniformLocation object corresponding to the location index
@@ -2308,9 +2308,9 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       {{{ makeSetValue('params', '0', 'data && data["name"]', 'i32') }}};
     } else if (typeof data === 'number' || typeof data === 'boolean') {
       switch (type) {
-        case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
-        case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
-        case {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}}: {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
+        case EM_FUNC_SIG_PARAM_I: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+        case EM_FUNC_SIG_PARAM_F: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+        case EM_FUNC_SIG_PARAM_F2I: {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
 #if GL_ASSERTIONS
         default: abort('internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type);
 #endif
@@ -2318,9 +2318,9 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     } else {
       for (var i = 0; i < data.length; i++) {
         switch (type) {
-          case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
-          case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
-          case {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}}: {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
+          case EM_FUNC_SIG_PARAM_I: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
+          case EM_FUNC_SIG_PARAM_F: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
+          case EM_FUNC_SIG_PARAM_F2I: {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
 #if GL_ASSERTIONS
           default: abort('internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type);
 #endif
@@ -2333,14 +2333,14 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     // N.B. This function may only be called if the vertex attribute was
     // specified using the function glVertexAttrib*f(), otherwise the results
     // are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefs.EM_FUNC_SIG_PARAM_F }}});
+    emscriptenWebGLGetVertexAttrib(index, pname, params, EM_FUNC_SIG_PARAM_F);
   },
 
   glGetVertexAttribiv: (index, pname, params) => {
     // N.B. This function may only be called if the vertex attribute was
     // specified using the function glVertexAttrib*f(), otherwise the results
     // are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefs.EM_FUNC_SIG_PARAM_F2I }}});
+    emscriptenWebGLGetVertexAttrib(index, pname, params, EM_FUNC_SIG_PARAM_F2I);
   },
 
   glGetVertexAttribPointerv: (index, pname, pointer) => {

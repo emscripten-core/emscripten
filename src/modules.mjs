@@ -380,8 +380,8 @@ function addToLibrary(obj, options = null) {
   mergeInto(LibraryManager.library, obj, options);
 }
 
-let structs = {};
-let defines = {};
+const structs = {};
+const defines = {};
 
 /**
  * Read JSON file containing struct and macro/define information
@@ -391,6 +391,16 @@ function loadStructInfo(filename) {
   const temp = JSON.parse(readFile(filename));
   Object.assign(structs, temp.structs);
   Object.assign(defines, temp.defines);
+  // Also expose all C defines (except C++ scoped enum values containing '::')
+  // as internal JS library constants so they can be referenced directly in JS
+  // library functions without `{{{ cDefs.FOO }}}`.
+  for (const [key, value] of Object.entries(temp.defines)) {
+    if (!key.includes(':')) {
+      LibraryManager.library['$' + key] = value;
+      LibraryManager.library['$' + key + '__const'] = true;
+      LibraryManager.library['$' + key + '__internal'] = true;
+    }
+  }
 }
 
 onSettingsLoaded(() => {

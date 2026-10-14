@@ -103,19 +103,19 @@ addToLibrary({
         }
       },
       lookup(parent, name) {
-        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+        throw new FS.ErrnoError(ENOENT);
       },
       mknod(parent, name, mode, dev) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+        throw new FS.ErrnoError(EPERM);
       },
       rename(oldNode, newDir, newName) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+        throw new FS.ErrnoError(EPERM);
       },
       unlink(parent, name) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+        throw new FS.ErrnoError(EPERM);
       },
       rmdir(parent, name) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+        throw new FS.ErrnoError(EPERM);
       },
       readdir(node) {
         var entries = ['.', '..'];
@@ -125,7 +125,7 @@ addToLibrary({
         return entries;
       },
       symlink(parent, newName, oldPath) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+        throw new FS.ErrnoError(EPERM);
       },
     },
     stream_ops: {
@@ -137,19 +137,19 @@ addToLibrary({
         return chunk.size;
       },
       write(stream, buffer, offset, length, position) {
-        throw new FS.ErrnoError({{{ cDefs.EIO }}});
+        throw new FS.ErrnoError(EIO);
       },
       llseek(stream, offset, whence) {
         var position = offset;
-        if (whence === {{{ cDefs.SEEK_CUR }}}) {
+        if (whence === SEEK_CUR) {
           position += stream.position;
-        } else if (whence === {{{ cDefs.SEEK_END }}}) {
+        } else if (whence === SEEK_END) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.size;
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+          throw new FS.ErrnoError(EINVAL);
         }
         return position;
       },

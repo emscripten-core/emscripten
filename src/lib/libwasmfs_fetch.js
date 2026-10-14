@@ -129,7 +129,7 @@ addToLibrary({
         try {
           await getFileRange(file, offset || 0, length);
         } catch (failedResponse) {
-          return failedResponse.status === 404 ? -{{{ cDefs.ENOENT }}} : -{{{ cDefs.EBADF }}};
+          return failedResponse.status === 404 ? -ENOENT : -EBADF;
         }
         var fileInfo = wasmFS$JSMemoryRanges[file];
         length = Math.min(length, fileInfo.size-offset);

@@ -23,7 +23,7 @@ addToLibrary({
 #endif
   __syscall_uname: (buf) => {
     if (!buf) {
-      return -{{{ cDefs.EFAULT }}};
+      return -EFAULT;
     }
     var copyString = (offset, value) => stringToUTF8(value, buf + offset, {{{ C_STRUCTS.utsname.nodename }}});
 #if NODERAWFS

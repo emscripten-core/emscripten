@@ -705,7 +705,7 @@ var LibraryPThread = {
     var worker = PThread.getNewWorker();
     if (!worker) {
       // No available workers in the PThread pool.
-      return {{{ cDefs.EAGAIN }}};
+      return EAGAIN;
     }
 #if ASSERTIONS
     assert(!worker.pthread_ptr);
@@ -783,7 +783,7 @@ var LibraryPThread = {
 #if ASSERTIONS
       dbg('pthread_create: environment does not support SharedArrayBuffer, pthreads are not available');
 #endif
-      return {{{ cDefs.EAGAIN }}};
+      return EAGAIN;
     }
 #if PTHREADS_DEBUG
     dbg('createThread: ' + ptrToString(pthread_ptr));
@@ -824,7 +824,7 @@ var LibraryPThread = {
         if (name == '#canvas') {
           if (!Module['canvas']) {
             err(`pthread_create: could not find canvas with ID "${name}" to transfer to thread!`);
-            error = {{{ cDefs.EINVAL }}};
+            error = EINVAL;
             break;
           }
           name = Module['canvas'].id;
@@ -840,12 +840,12 @@ var LibraryPThread = {
           var canvas = (Module['canvas'] && Module['canvas'].id === name) ? Module['canvas'] : document.querySelector(name);
           if (!canvas) {
             err(`pthread_create: could not find canvas with ID "${name}" to transfer to thread!`);
-            error = {{{ cDefs.EINVAL }}};
+            error = EINVAL;
             break;
           }
           if (canvas.controlTransferredOffscreen) {
             err(`pthread_create: cannot transfer canvas with ID "${name}" to thread, since the current thread does not have control over it!`);
-            error = {{{ cDefs.EPERM }}}; // Operation not permitted, some other thread is accessing the canvas.
+            error = EPERM; // Operation not permitted, some other thread is accessing the canvas.
             break;
           }
           if (canvas.transferControlToOffscreen) {
@@ -879,7 +879,7 @@ var LibraryPThread = {
             // proxied from worker to main thread.
 #if !OFFSCREEN_FRAMEBUFFER
             err('pthread_create: Build with -sOFFSCREEN_FRAMEBUFFER to enable fallback proxying of GL commands from pthread to main thread.');
-            return {{{ cDefs.ENOSYS }}}; // Function not implemented, browser doesn't have support for this.
+            return ENOSYS; // Function not implemented, browser doesn't have support for this.
 #endif
           }
         }
@@ -889,7 +889,7 @@ var LibraryPThread = {
         }
       } catch(e) {
         err(`pthread_create: failed to transfer control of canvas "${name}" to OffscreenCanvas! Error: ${e}`);
-        return {{{ cDefs.EINVAL }}}; // Hitting this might indicate an implementation bug or some other internal error
+        return EINVAL; // Hitting this might indicate an implementation bug or some other internal error
       }
     }
 #endif // OFFSCREENCANVAS_SUPPORT

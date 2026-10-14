@@ -87,7 +87,7 @@ addToLibrary({
           try {
             FS.mkdir(current);
           } catch (e) {
-            if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
+            if (e.errno != EEXIST) throw e;
           }
         }
         parent = current;
@@ -365,10 +365,10 @@ addToLibrary({
             try {
               result = input();
             } catch (e) {
-              throw new FS.ErrnoError({{{ cDefs.EIO }}});
+              throw new FS.ErrnoError(EIO);
             }
             if (result === undefined && !bytesRead) {
-              throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+              throw new FS.ErrnoError(EAGAIN);
             }
             if (result === null || result === undefined) break;
             bytesRead++;
@@ -381,7 +381,7 @@ addToLibrary({
             try {
               output(buffer[offset+i]);
             } catch (e) {
-              throw new FS.ErrnoError({{{ cDefs.EIO }}});
+              throw new FS.ErrnoError(EIO);
             }
           }
           return i;
@@ -457,8 +457,8 @@ addToLibrary({
 
   // Default settings copied from the legacy JS FS API.
   $FS_create: (path, mode = 0o666) => {
-    mode &= {{{ cDefs.S_IALLUGO }}};
-    mode |= {{{ cDefs.S_IFREG }}};
+    mode &= S_IALLUGO;
+    mode |= S_IFREG;
     return FS_mknod(path, mode, 0);
   },
 
@@ -500,7 +500,7 @@ addToLibrary({
       try {
         FS_mkdir(d, mode);
       } catch(e) {
-        if (e.errno != {{{ cDefs.EEXIST }}}) throw e;
+        if (e.errno != EEXIST) throw e;
       }
     }
   },
