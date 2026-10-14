@@ -1912,6 +1912,10 @@ window.close = () => {
     self.reftest('gl_stride.c', cflags=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  def test_gl_client_arrays_refill(self):
+    self.btest_exit('test_gl_client_arrays_refill.c', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+
+  @requires_graphics_hardware
   def test_gl_vertex_buffer_pre(self):
     self.reftest('gl_vertex_buffer_pre.c', cflags=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
