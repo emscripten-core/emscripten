@@ -1475,7 +1475,12 @@ int __syscall_fallocate(int fd, int mode, off_t offset, off_t len) {
     return -EBADF;
   }
 
-  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  auto file = openFile->locked().getFile();
+  if (!file->isSeekable()) {
+    return -ESPIPE;
+  }
+
+  auto dataFile = file->dynCast<DataFile>();
   // TODO: support for symlinks.
   if (!dataFile) {
     return -ENODEV;
@@ -1863,6 +1868,13 @@ int __syscall_recvmsg(int sockfd,
 }
 
 int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  if (!openFile->locked().getFile()->isSeekable()) {
+    return -ESPIPE;
+  }
   // Advice is currently ignored. TODO some backends might use it
   return 0;
 }
