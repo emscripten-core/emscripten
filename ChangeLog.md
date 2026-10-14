@@ -28,7 +28,7 @@ See docs/process.md for more on how version tagging works.
   several tabs and workers at the same time, and files opened read-only are
   read much faster from multiple threads. As a consequence, `unlink` and
   `rename` now fail with `EIO` while a file is open read-only (similar to
-  files open for writing).
+  files open for writing). (#27937)
 
 6.0.12 - 10/08/26
 -----------------
