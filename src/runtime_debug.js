@@ -15,8 +15,8 @@ function dbg(...args) {
   // See https://github.com/emscripten-core/emscripten/issues/14804
   if (ENVIRONMENT_IS_NODE) {
     // TODO(sbc): Unify with err/out implementation in shell.sh.
-    var fs = require('node:fs');
-    var utils = require('node:util');
+    const fs = require('node:fs');
+    const utils = require('node:util');
     function stringify(a) {
       switch (typeof a) {
         case 'object': return utils.inspect(a);
@@ -42,16 +42,16 @@ err('warning: running JS from STANDALONE_WASM without WASM_BIGINT will fail if a
 // Endianness check
 #if !SUPPORT_BIG_ENDIAN
 (() => {
-  var h16 = new Int16Array(1);
-  var h8 = new Int8Array(h16.buffer);
+  const h16 = new Int16Array(1);
+  const h8 = new Int8Array(h16.buffer);
   h16[0] = 0x6373;
   if (h8[0] !== 0x73 || h8[1] !== 0x63) abort('Runtime error: expected the system to be little-endian! (Run with -sSUPPORT_BIG_ENDIAN to bypass)');
 })();
 #endif
 
 function consumedModuleProp(prop) {
-  var value = Module[prop];
-  var msg = `Attempt to modify \`Module.${prop}\` after it has already been processed.  This can happen, for example, when code is injected via '--post-js' rather than '--pre-js'`;
+  let value = Module[prop];
+  const msg = `Attempt to modify \`Module.${prop}\` after it has already been processed.  This can happen, for example, when code is injected via '--post-js' rather than '--pre-js'`;
   if (Array.isArray(value)) {
     value = new Proxy(value, {
       set(target, key, val) {
@@ -140,11 +140,11 @@ function missingLibrarySymbol(sym) {
   hookGlobalSymbolAccess(sym, () => {
     // Can't `abort()` here because it would break code that does runtime
     // checks.  e.g. `if (typeof SDL === 'undefined')`.
-    var msg = `\`${sym}\` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line`;
+    let msg = `\`${sym}\` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line`;
     // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE requires the name as it appears in
     // library.js, which means $name for a JS name with no prefix, or name
     // for a JS name like _name.
-    var librarySymbol = sym;
+    let librarySymbol = sym;
     if (!librarySymbol.startsWith('_')) {
       librarySymbol = '$' + sym;
     }
@@ -171,7 +171,7 @@ function unexportedRuntimeSymbol(sym) {
     Object.defineProperty(Module, sym, {
       configurable: true,
       get() {
-        var msg = `'${sym}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)`;
+        let msg = `'${sym}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)`;
         if (isExportedByForceFilesystem(sym)) {
           msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
         }
@@ -199,7 +199,7 @@ function initWorkerLogging() {
     }
 #endif
 #if PTHREADS
-    var t = 0;
+    let t = 0;
     if (runtimeInitialized && typeof _pthread_self !== 'undefined'
 #if EXIT_RUNTIME
     && !runtimeExited
@@ -214,11 +214,11 @@ function initWorkerLogging() {
   }
 
   // Prefix all dbg() messages with the calling thread info.
-  var origDbg = dbg;
+  const origDbg = dbg;
   dbg = (...args) => origDbg(getLogPrefix(), ...args);
 #if RUNTIME_DEBUG
   // With RUNTIME_DEBUG also prefix all err() messages.
-  var origErr = err;
+  const origErr = err;
   err = (...args) => origErr(getLogPrefix(), ...args);
 #endif
 }
@@ -246,25 +246,25 @@ function checkInt(value, bits, min, max) {
   assert(value >= min, `value (${value}) too small to write as ${bits}-bit value`);
 }
 
-var checkInt1 = (value) => checkInt(value, 1, 1);
-var checkInt8 = (value) => checkInt(value, 8, MIN_INT8, MAX_UINT8);
-var checkInt16 = (value) => checkInt(value, 16, MIN_INT16, MAX_UINT16);
-var checkInt32 = (value) => checkInt(value, 32, MIN_INT32, MAX_UINT32);
-var checkInt53 = (value) => checkInt(value, 53, MIN_INT53, MAX_UINT53);
-var checkInt64 = (value) => checkInt(value, 64, MIN_INT64, MAX_UINT64);
+const checkInt1 = (value) => checkInt(value, 1, 1);
+const checkInt8 = (value) => checkInt(value, 8, MIN_INT8, MAX_UINT8);
+const checkInt16 = (value) => checkInt(value, 16, MIN_INT16, MAX_UINT16);
+const checkInt32 = (value) => checkInt(value, 32, MIN_INT32, MAX_UINT32);
+const checkInt53 = (value) => checkInt(value, 53, MIN_INT53, MAX_UINT53);
+const checkInt64 = (value) => checkInt(value, 64, MIN_INT64, MAX_UINT64);
 
 #endif // ASSERTIONS == 2
 
 #endif // ASSERTIONS
 
 #if RUNTIME_DEBUG
-var printObjectList = [];
+const printObjectList = [];
 
 function prettyPrint(arg) {
   if (typeof arg === 'undefined') return 'undefined';
   if (typeof arg === 'boolean') arg = arg + 0;
   if (!arg) return arg;
-  var index = printObjectList.indexOf(arg);
+  const index = printObjectList.indexOf(arg);
   if (index >= 0) return `<${arg}|${index}>`;
   if (arg.toString() == '[object HTMLImageElement]') {
     return arg + '\n\n';
