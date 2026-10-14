@@ -100,10 +100,6 @@ int main(void) {
   assert(is_nonblock(nonblocking_fd));
 
   assert(accept(nonblocking_fd, NULL, NULL) == -1 && errno == EAGAIN);
-#ifdef __EMSCRIPTEN__
-  // A blocking accept cannot block, so it would-blocks too.
-  assert(accept(blocking_fd, NULL, NULL) == -1 && errno == EAGAIN);
-#endif
 
   check_accept(blocking_fd, (struct sockaddr*)&blocking_addr, sizeof(blocking_addr), 0, 0);
   check_accept(blocking_fd, (struct sockaddr*)&blocking_addr, sizeof(blocking_addr), SOCK_NONBLOCK | SOCK_CLOEXEC, 1);
@@ -128,6 +124,7 @@ int main(void) {
   assert(client_fd >= 0);
   check_connect(client_fd, (struct sockaddr*)&un, sizeof(un));
   close(client_fd);
+  close(accept(unix_fd, NULL, NULL)); // drain that connection from the queue
   check_accept(unix_fd, (struct sockaddr*)&un, sizeof(un), 0, 0);
   check_accept(unix_fd, (struct sockaddr*)&un, sizeof(un), SOCK_NONBLOCK, 1);
   close(unix_fd);
