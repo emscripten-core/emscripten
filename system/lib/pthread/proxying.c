@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "em_task_queue.h"
+#include "emscripten_internal.h"
 #include "thread_mailbox.h"
 #include "threading_internal.h"
 
@@ -189,7 +190,7 @@ bool emscripten_proxy_async(em_proxying_queue* q,
   return do_proxy(q, target_thread, (task){func, NULL, arg});
 }
 
-enum ctx_kind { SYNC, CALLBACK };
+enum ctx_kind { SYNC, CALLBACK, FD };
 
 enum ctx_state { PENDING, DONE, CANCELED };
 
@@ -215,7 +216,19 @@ struct em_proxying_ctx {
       pthread_t caller_thread;
       void (*callback)(void*);
       void (*cancel)(void*);
+      // Of emscripten_proxy_finish_result.
+      void* result;
     } cb;
+
+    // Context for proxying with a pollable fd: `settle(handle, result,
+    // success)` once done. (A function pointer so that the fd machinery is
+    // only linked when emscripten_proxy_fd_with_ctx is.)
+    struct {
+      int handle;
+      void (*settle)(int handle, intptr_t result, bool success);
+      // Of emscripten_proxy_finish_result.
+      intptr_t result;
+    } fd;
   };
 
   // A doubly linked list of contexts associated with active work on a single
@@ -328,6 +341,20 @@ static void em_proxying_ctx_init_callback(em_proxying_ctx* ctx,
   };
 }
 
+static void em_proxying_ctx_init_fd(em_proxying_ctx* ctx,
+                                    void (*func)(em_proxying_ctx*, void*),
+                                    void* arg,
+                                    int handle,
+                                    void (*settle)(int, intptr_t, bool)) {
+  pthread_once(&active_ctxs_once, init_active_ctxs);
+  *ctx = (em_proxying_ctx){
+    .func = func,
+    .arg = arg,
+    .kind = FD,
+    .fd = {.handle = handle, .settle = settle},
+  };
+}
+
 static void em_proxying_ctx_deinit(em_proxying_ctx* ctx) {
   if (ctx->kind == SYNC) {
     pthread_mutex_destroy(&ctx->sync.mutex);
@@ -351,26 +378,48 @@ static void call_callback_then_free_ctx(void* arg) {
   free_ctx(ctx);
 }
 
+void emscripten_proxy_finish_result(em_proxying_ctx* ctx, void* result) {
+  switch (ctx->kind) {
+    case SYNC:
+      break;
+    case CALLBACK:
+      ctx->cb.result = result;
+      break;
+    case FD:
+      ctx->fd.result = (intptr_t)result;
+      break;
+  }
+  emscripten_proxy_finish(ctx);
+}
+
 void emscripten_proxy_finish(em_proxying_ctx* ctx) {
-  if (ctx->kind == SYNC) {
-    pthread_mutex_lock(&ctx->sync.mutex);
-    ctx->sync.state = DONE;
-    remove_active_ctx(ctx);
-    // Signal must come before unlock to avoid emscripten_proxy_sync_with ctx
-    // seeing the state as DONE and freeing the ctx before we call unlock.
-    // See https://github.com/emscripten-core/emscripten/pull/26582
-    pthread_cond_signal(&ctx->sync.cond);
-    pthread_mutex_unlock(&ctx->sync.mutex);
-  } else {
-    // Schedule the callback on the caller thread. If the caller thread has
-    // already died or dies before the callback is executed, then at least make
-    // sure the context is freed.
-    remove_active_ctx(ctx);
-    if (!do_proxy(ctx->cb.queue,
-                  ctx->cb.caller_thread,
-                  (task){call_callback_then_free_ctx, free_ctx, ctx})) {
+  switch (ctx->kind) {
+    case SYNC:
+      pthread_mutex_lock(&ctx->sync.mutex);
+      ctx->sync.state = DONE;
+      remove_active_ctx(ctx);
+      // Signal must come before unlock to avoid emscripten_proxy_sync_with ctx
+      // seeing the state as DONE and freeing the ctx before we call unlock.
+      // See https://github.com/emscripten-core/emscripten/pull/26582
+      pthread_cond_signal(&ctx->sync.cond);
+      pthread_mutex_unlock(&ctx->sync.mutex);
+      break;
+    case CALLBACK:
+      // Schedule the callback on the caller thread. If the caller thread has
+      // already died or dies before the callback is executed, then at least
+      // make sure the context is freed.
+      remove_active_ctx(ctx);
+      if (!do_proxy(ctx->cb.queue,
+                    ctx->cb.caller_thread,
+                    (task){call_callback_then_free_ctx, free_ctx, ctx})) {
+        free_ctx(ctx);
+      }
+      break;
+    case FD:
+      remove_active_ctx(ctx);
+      ctx->fd.settle(ctx->fd.handle, ctx->fd.result, true);
       free_ctx(ctx);
-    }
+      break;
   }
 }
 
@@ -380,21 +429,33 @@ static void call_cancel_then_free_ctx(void* arg) {
   free_ctx(ctx);
 }
 
+void emscripten_proxy_fail(em_proxying_ctx* ctx) {
+  remove_active_ctx(ctx);
+  cancel_ctx(ctx);
+}
+
 static void cancel_ctx(void* arg) {
   em_proxying_ctx* ctx = arg;
-  if (ctx->kind == SYNC) {
-    pthread_mutex_lock(&ctx->sync.mutex);
-    ctx->sync.state = CANCELED;
-    // Signal must be first, see comment in emscripten_proxy_finish.
-    pthread_cond_signal(&ctx->sync.cond);
-    pthread_mutex_unlock(&ctx->sync.mutex);
-  } else {
-    if (ctx->cb.cancel == NULL ||
-        !do_proxy(ctx->cb.queue,
-                  ctx->cb.caller_thread,
-                  (task){call_cancel_then_free_ctx, free_ctx, ctx})) {
+  switch (ctx->kind) {
+    case SYNC:
+      pthread_mutex_lock(&ctx->sync.mutex);
+      ctx->sync.state = CANCELED;
+      // Signal must be first, see comment in emscripten_proxy_finish.
+      pthread_cond_signal(&ctx->sync.cond);
+      pthread_mutex_unlock(&ctx->sync.mutex);
+      break;
+    case CALLBACK:
+      if (ctx->cb.cancel == NULL ||
+          !do_proxy(ctx->cb.queue,
+                    ctx->cb.caller_thread,
+                    (task){call_cancel_then_free_ctx, free_ctx, ctx})) {
+        free_ctx(ctx);
+      }
+      break;
+    case FD:
+      ctx->fd.settle(ctx->fd.handle, 0, false);
       free_ctx(ctx);
-    }
+      break;
   }
 }
 
@@ -524,20 +585,51 @@ bool emscripten_proxy_callback(em_proxying_queue* q,
                            &block->ctx);
 }
 
+static void fd_settle(int handle, intptr_t result, bool success) {
+  _emscripten_proxy_fd_settle(handle, result, success);
+}
+
+int emscripten_proxy_fd_with_ctx(em_proxying_queue* q,
+                                 pthread_t target_thread,
+                                 void (*func)(em_proxying_ctx*, void*),
+                                 void* arg) {
+  // The fd lives on the main thread, so only that is supported as the target:
+  // the settling then runs where the fd is, and the calling thread need not
+  // run its queue (it may be blocked polling the fd).
+  assert(pthread_equal(target_thread, emscripten_main_runtime_thread_id()) &&
+         "emscripten_proxy_fd_with_ctx only supports the main thread");
+  int fd;
+  int handle = _emscripten_proxy_fd_create(&fd);
+  em_proxying_ctx* ctx = malloc(sizeof(*ctx));
+  if (ctx == NULL) {
+    _emscripten_proxy_fd_settle(handle, 0, false);
+    return fd;
+  }
+  em_proxying_ctx_init_fd(ctx, func, arg, handle, fd_settle);
+  if (!do_proxy(q, target_thread, (task){call_with_ctx, cancel_ctx, ctx})) {
+    _emscripten_proxy_fd_settle(handle, 0, false);
+    free_ctx(ctx);
+  }
+  return fd;
+}
+
 typedef struct promise_ctx {
   void (*func)(em_proxying_ctx*, void*);
   void* arg;
   em_promise_t promise;
+  em_proxying_ctx* ctx;
 } promise_ctx;
 
 static void promise_call(em_proxying_ctx* ctx, void* arg) {
   promise_ctx* promise_ctx = arg;
+  promise_ctx->ctx = ctx;
   promise_ctx->func(ctx, promise_ctx->arg);
 }
 
 static void promise_fulfill(void* arg) {
   promise_ctx* promise_ctx = arg;
-  emscripten_promise_resolve(promise_ctx->promise, EM_PROMISE_FULFILL, NULL);
+  emscripten_promise_resolve(
+    promise_ctx->promise, EM_PROMISE_FULFILL, promise_ctx->ctx->cb.result);
   emscripten_promise_destroy(promise_ctx->promise);
 }
 
@@ -647,17 +739,27 @@ static void run_js_func_with_ctx(em_proxying_ctx* ctx, void* arg) {
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
   _emscripten_receive_on_main_thread_js(
     f->funcIndex, f->emAsmAddr, f->callingThread, f->bufSize, f->argBuffer, ctx, arg);
-
-  // The arg of a function run with a context is never freed on the main
-  // thread: it is the calling thread's, which reads the result from it.
-  assert(!f->owned);
 }
 
+// Completion of a function run with a context, once its result (a value or a
+// settled Promise) is known. A calling-thread consumer (sync, promise,
+// callback) reads it from `arg`; an fd (`owned` arg, nothing on the calling
+// thread) is settled with it directly, so a rejection fails the task.
 void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result, bool fulfilled) {
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
   f->result = result;
   f->fulfilled = fulfilled;
-  emscripten_proxy_finish(ctx);
+  if (!f->owned) {
+    emscripten_proxy_finish(ctx);
+    return;
+  }
+  free(f->argBuffer);
+  free(f);
+  if (fulfilled) {
+    emscripten_proxy_finish_result(ctx, (void*)(intptr_t)result);
+  } else {
+    emscripten_proxy_fail(ctx);
+  }
 }
 
 /*
@@ -821,4 +923,20 @@ void _emscripten_run_js_on_main_thread_callback(int func_index,
                                           c)) {
     js_callback_cancel(c);
   }
+}
+
+// Returns an fd readable once the main thread has the function's result
+// (emscripten_proxy_fd_with_ctx); read() of it is the result, EIO if the
+// function's Promise rejected.
+int _emscripten_run_js_on_main_thread_fd(int func_index,
+                                         void* em_asm_addr,
+                                         int buf_size,
+                                         double* buffer) {
+  proxied_js_func_t* arg = malloc(sizeof(proxied_js_func_t));
+  *arg = js_func_copy(func_index, em_asm_addr, buf_size, buffer);
+  arg->owned = true;
+  return emscripten_proxy_fd_with_ctx(emscripten_proxy_get_system_queue(),
+                                      emscripten_main_runtime_thread_id(),
+                                      run_js_func_with_ctx,
+                                      arg);
 }

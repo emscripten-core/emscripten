@@ -359,7 +359,8 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       // An 'auto' body may return a Promise even without ASYNCIFY (on a
       // pthread's behalf, which awaits it), which must not be cast but
       // resolve to the cast value.
-      const maybePromise = !isAsyncFunction && LibraryManager.library[symbol + '__async'] == 'auto';
+      const maybePromise = !isAsyncFunction && asyncVariantOf(symbol) != 'fd' &&
+        LibraryManager.library[symbol + '__async'] == 'auto';
       const convert = (v) => maybePromise ?
         `(${v} instanceof Promise ? ${v}.then((v) => ${makeReturn64('v')}) : ${makeReturn64(v)})` :
         makeReturn64(await_ + v);
@@ -543,8 +544,9 @@ function(${args}) {
       // names one parameter more than __sig receives there `sync`: whether
       // it must complete synchronously on this call, as a returned Promise
       // could not be waited for. That is never the case under ASYNCIFY/JSPI
-      // or when the caller receives a promise of the result, nor on behalf of
-      // a sync-proxied pthread caller, which awaits it; otherwise it is.
+      // or when the caller receives a promise or fd of the result, nor on
+      // behalf of a sync-proxied pthread caller, which awaits it; otherwise
+      // it is.
       const sync = ASYNCIFY || asyncVariant ? 'false' :
         PTHREADS && proxyingMode == 'sync' ? '!PThread.currentProxiedOperationCallerThread' : 'true';
       const baseSig = asyncVariant ? asyncVariantBaseSig(symbol, asyncVariant) : sig;
@@ -576,6 +578,22 @@ function(${outer}) {
         return `function(${args}${args ? ', ' : ''}callback_, arg_) {\n  var r = Promise.resolve(${body}).then((v) => v ?? 0);\n  ${bare}callbackFromPromise(r, callback_, arg_);\n}\n`;
       });
       deps.push('$callbackFromPromise');
+    } else if (asyncVariant == 'fd') {
+      // The result of the 'auto' body as a pollable fd (see $fdFromPromise);
+      // from a pthread, emscripten_proxy_fd_with_ctx of the main-thread body,
+      // whose bare result is what settles the fd
+      // (PThread.currentProxiedOperationCallerThread set). A void body's
+      // undefined result is NULL; a synchronous result stays synchronous.
+      if (WASMFS) {
+        error(`JS library error: '${symbol}' (an 'fd' async variant) is not supported with WASMFS`);
+      }
+      snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+        if (!oneliner) body = `(${async_}() => {\n${body}\n})()`;
+        const bare = PTHREADS && proxyingMode == 'sync' ?
+          'if (PThread.currentProxiedOperationCallerThread) return r;\n  ' : '';
+        return `function(${args}) {\n  var r = ${body};\n  r = r instanceof Promise ? r.then((v) => v ?? 0) : r ?? 0;\n  ${bare}return fdFromPromise(r);\n}\n`;
+      });
+      deps.push('$fdFromPromise');
     } else if (!asyncVariant && isAsyncFunction == 'auto') {
       snippet = handleAsyncFunction(snippet, sig, proxyingMode == 'sync');
     }
@@ -604,9 +622,9 @@ function(${outer}) {
             let modeArg = `, ${proxyMode}`;
             if (asyncVariant) {
               // The body returns a value or a Promise; a pthread caller gets an
-              // em_promise_t of the main-thread result, or its callback called
-              // with it.
-              proxyFunc = asyncVariant == 'promise' ? 'proxyToMainThreadPromise' : 'proxyToMainThreadCallback';
+              // em_promise_t or fd of the main-thread result, or its callback
+              // called with it.
+              proxyFunc = {promise: 'proxyToMainThreadPromise', callback: 'proxyToMainThreadCallback', fd: 'proxyToMainThreadFd'}[asyncVariant];
               modeArg = '';
             }
             deps.push('$' + proxyFunc);
