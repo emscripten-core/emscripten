@@ -43,7 +43,7 @@ class WasmSourceMap {
     }
 
     let offset = 0, src = 0, line = 1, col = 1, name = 0;
-    for (const [index, segment] of sourceMap.mappings.split(',').entries()) {
+    for (const segment of sourceMap.mappings.split(',')) {
       if (!segment) continue;
       const data = decodeVLQ(segment);
       const info = {};
