@@ -618,12 +618,18 @@ function(${args}) {
       // a pthread caller's em_promise_t comes from C as-is, and on the main
       // thread running the body on a pthread's behalf
       // (PThread.currentProxiedOperationCallerThread set) the bare result is
-      // what crosses back.
+      // what crosses back. A void body's undefined result is NULL.
       snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
         if (!oneliner) body = `(${async_}() => {\n${body}\n})()`;
-        const bare = PTHREADS && proxyingMode == 'sync' ?
-          'if (ENVIRONMENT_IS_PTHREAD || PThread.currentProxiedOperationCallerThread) return r;\n  ' : '';
-        return `function(${args}) {\n  var r = ${body};\n  ${bare}return addPromise(Promise.resolve(r).catch(() => { throw 0; }));\n}\n`;
+        const proxied = PTHREADS && proxyingMode == 'sync';
+        return `\
+function(${args}) {
+  var r = ${body};
+  ${proxied ? 'if (ENVIRONMENT_IS_PTHREAD) return r;' : ''}
+  r = Promise.resolve(r).then((v) => v ?? 0);
+  ${proxied ? 'if (PThread.currentProxiedOperationCallerThread) return r;' : ''}
+  return addPromise(r.catch(() => { throw 0; }));
+}\n`;
       });
       deps.push('$addPromise');
     }

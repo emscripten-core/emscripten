@@ -245,8 +245,8 @@ above to ``lookup__async: ['promise']`` defines both C variants:
 Calling ``lookup_promise()`` runs the same body (with ``sync`` always
 ``false``) and returns a promise handle (``em_promise_t``, see
 ``<emscripten/promise.h>``) on the calling thread, fulfilled with the result or
-rejected with ``NULL``.  These
-variants are only generated when explicitly used.
+rejected with ``NULL``.  The function may also return ``void``, in which case
+the result is ``NULL``.  These variants are only generated when explicitly used.
 
 Ways to use Asyncify APIs in older engines
 ##########################################

@@ -296,11 +296,11 @@ export const LibraryManager = {
 
   /**
    * `__async: ['promise', ...]` is `__async: 'auto'` along with the listed
-   * variants. An 'auto' function returns a pointer-sized value or a Promise of
-   * one, unless its trailing `sync` argument forbids (see jsifier). Its
-   * `foo_promise` variant runs the same body, returning an em_promise_t of the
-   * result on the calling thread, which can always wait. Variants are emitted
-   * only where used.
+   * variants. An 'auto' function returns a pointer-sized value or nothing, or
+   * a Promise of either, unless its trailing `sync` argument forbids (see
+   * jsifier). Its `foo_promise` variant runs the same body, returning an
+   * em_promise_t of the result (NULL for a void function) on the calling
+   * thread, which can always wait. Variants are emitted only where used.
    */
   expandAsyncVariants() {
     for (const [key, variants] of Object.entries(this.library)) {
@@ -312,8 +312,8 @@ export const LibraryManager = {
         error(`JS library error: '${key}' must be 'auto', or a non-empty array of variants`);
         continue;
       }
-      if (base[0] == '$' || typeof this.library[base] !== 'function' || !sig || !'pi'.includes(sig[0])) {
-        error(`JS library error: async variants of '${base}' require a native function with a '__sig' returning 'p' or 'i'`);
+      if (base[0] == '$' || typeof this.library[base] !== 'function' || !sig || !'vpi'.includes(sig[0])) {
+        error(`JS library error: async variants of '${base}' require a native function with a '__sig' returning 'v', 'p' or 'i'`);
         continue;
       }
       for (const variant of variants) {

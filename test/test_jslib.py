@@ -137,7 +137,7 @@ addToLibrary({
     # An `__async: ['promise']` function `answer(ms, value)` resolving to `value`
     # after `ms` milliseconds (synchronously if `ms` is 0, rejecting if `value`
     # is 0), and its `answer_promise` variant. Where the caller cannot wait,
-    # `answer()` is -1.
+    # `answer()` is -1. `wait_ms(ms)` is the same without a result.
     if '-sJSPI' in args:
       self.require_jspi()
     if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
@@ -153,6 +153,12 @@ addToLibrary({
     return new Promise((resolve, reject) =>
       setTimeout(() => value ? resolve(value) : reject(new Error('zero')), ms));
   },
+  wait_ms__sig: 'vi',
+  wait_ms__async: ['promise'],
+  wait_ms__proxy: 'sync',
+  wait_ms: (ms, sync) => {
+    if (ms && !sync) return new Promise((resolve) => setTimeout(resolve, ms));
+  },
 });
 ''')
     create_file('src.c', r'''
@@ -165,6 +171,8 @@ addToLibrary({
 
 intptr_t answer(int ms, intptr_t value);
 em_promise_t answer_promise(int ms, intptr_t value);
+void wait_ms(int ms);
+em_promise_t wait_ms_promise(int ms);
 
 int stage;
 
@@ -172,13 +180,24 @@ em_promise_result_t fail(void** result, void* data, void* value) {
   assert(0 && "promise rejected");
 }
 
-em_promise_result_t on_rejected(void** result, void* data, void* value) {
-  assert(stage++ == 2);
+em_promise_result_t on_waited(void** result, void* data, void* value) {
+  assert(stage++ == 3);
+  // A void function's promise is fulfilled with NULL.
   assert(value == NULL);
   printf("done\n");
 #ifdef __EMSCRIPTEN_PTHREADS__
   exit(0);
 #endif
+  return EM_PROMISE_FULFILL;
+}
+
+em_promise_result_t on_rejected(void** result, void* data, void* value) {
+  assert(stage++ == 2);
+  assert(value == NULL);
+  em_promise_t p = wait_ms_promise(5);
+  em_promise_t next = emscripten_promise_then(p, on_waited, fail, NULL);
+  emscripten_promise_destroy(p);
+  emscripten_promise_destroy(next);
   return EM_PROMISE_FULFILL;
 }
 
@@ -211,6 +230,8 @@ int main() {
   // Where the stack cannot wait, the body is told so.
   assert(answer(5, 42) == -1);
 #endif
+  wait_ms(0);
+  wait_ms(5);
 
   // A synchronous completion is a fulfilled promise.
   em_promise_t p = answer_promise(0, 7);
@@ -225,7 +246,7 @@ int main() {
   @parameterized({
     'empty': ("'pi'", '[]', '', "'jslibfunc__async' must be 'auto', or a non-empty array of variants"),
     'unknown': ("'pi'", "['foo']", '', "unknown async variant 'foo' in 'jslibfunc__async'"),
-    'sig': ("'vi'", "['promise']", '', "async variants of 'jslibfunc' require a native function with a '__sig' returning 'p' or 'i'"),
+    'sig': ("'di'", "['promise']", '', "async variants of 'jslibfunc' require a native function with a '__sig' returning 'v', 'p' or 'i'"),
     'defined': ("'pi'", "['promise']", 'jslibfunc_promise: () => 0,', "'jslibfunc_promise' is defined explicitly, conflicting with the 'promise' variant of 'jslibfunc'"),
   })
   def test_jslib_async_variants_errors(self, sig, variants, extra, expected):
