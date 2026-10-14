@@ -2966,10 +2966,9 @@ var LibraryGLEmulation = {
               }
             }
           }
-          // Leave attr.pointer at the client's own array: client-side vertex
-          // arrays are read at draw time, so the next draw call must re-read
-          // (and re-restride) the array's contents from the application's
-          // memory, not from this staging copy of the previous draw's data.
+          // n.b. The above restrided data cannot be cached, since the user might change the
+          // vertex data between draws, and there is no way to detect that. So later draws must
+          // re-do the above work.
         }
         GLImmediate.stride = bytes;
         GLImmediate.vertexPointer = start;

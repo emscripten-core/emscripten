@@ -20,12 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.13 (in development)
 -----------------------
-- `LEGACY_GL_EMULATION` now re-reads client-side vertex arrays at every draw
-  call, as real GL does. Previously, planar (non-interleaved) client arrays
-  that an application refilled in place between draws kept being drawn with
-  the first draw's data. Planar client arrays are consequently re-copied on
-  every draw, which can be slower; they were already the documented slow path,
-  and interleaved arrays remain fast. (#27945)
+- Removed broken caching of client-side vertex arrays with `LEGACY_GL_EMULATION`,
+  since there is no sound way to detect if the cached data might have gotten
+  modified by the user between draws. (#27945)
 - Support for windows .bat/.ps1 launcher files was completely removed.  These
   days we use a native windows launcher program. (#27359)
 - `MEMORY64=2` was marked as deprecated. (#27952)
