@@ -12,6 +12,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from inspect import signature
 from pathlib import Path
 from urllib.request import urlopen
@@ -33,6 +34,8 @@ port_variants: dict[str, tuple] = {}
 ports_dir = os.path.dirname(os.path.abspath(__file__))
 
 logger = logging.getLogger('ports')
+
+DOWNLOAD_TIMEOUT = 30
 
 
 def get_port_by_name(name):
@@ -351,7 +354,7 @@ class Ports:
       # retrieve from remote server
       logger.info(f'retrieving port: {name} from {url}')
 
-      try:
+      def do_retrieve():
         if utils.MACOS or os.environ.get('EMCC_USE_CURL'):
           # Use `curl` over `urllib` on macOS to avoid issues with
           # certificate verification.
@@ -359,12 +362,22 @@ class Ports:
           # Unlike on Windows or Linux, curl is guaranteed to always be
           # available on macOS.
           # EMCC_USE_CURL here is purely for testing and undocumented.
-          data = utils.run_process(['curl', '-sSL', url], stdout=subprocess.PIPE, text=False).stdout
+          return utils.run_process(['curl', '-sSfL', '--connect-timeout', str(DOWNLOAD_TIMEOUT), url], stdout=subprocess.PIPE, text=False).stdout
         else:
-          with urlopen(url) as f:
-            data = f.read()
-      except (subprocess.CalledProcessError, OSError, http.client.HTTPException) as e:
-        utils.exit_with_error(f'failed to download port "{name}" from {url}: {e}')
+          with urlopen(url, timeout=DOWNLOAD_TIMEOUT) as f:
+            return f.read()
+
+      retries = 3
+      for i in range(retries + 1):
+        try:
+          data = do_retrieve()
+          break
+        except (subprocess.CalledProcessError, OSError, http.client.HTTPException) as e:
+          if i == retries:
+            utils.exit_with_error(f'failed to download port "{name}" from {url}: {e}')
+          delay = 2 ** i
+          logger.warning(f'failed to download port "{name}" from {url} (attempt {i + 1}/{retries + 1}): {e}; retrying in {delay}s...')
+          time.sleep(delay)
 
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
