@@ -174,7 +174,6 @@ bool _mi_thread_local_set( mi_thread_local_t key, void* val ) {
 
 // get a tls slot value
 static mi_decl_noinline void* mi_thread_local_get_regular( mi_thread_local_t key ) {
-  mi_assert_internal(key!=0);
   const mi_thread_locals_t* const tls = mi_thread_locals_peek();
   if mi_unlikely(tls==NULL) {
     // this can happen if a thread local is accessed after the thread local has been freed
@@ -193,12 +192,13 @@ static mi_decl_noinline void* mi_thread_local_get_regular( mi_thread_local_t key
 
 // get a thread local value
 void* _mi_thread_local_get( mi_thread_local_t key ) {
-  mi_assert_internal(key!=0);
   if mi_likely(key == mi_thread_local_key_fast) {
     return mi_slot_fast_get();
   }
   else {
-    return mi_thread_local_get_regular(key);
+    void* p = mi_thread_local_get_regular(key);
+    if (key==0) { mi_assert_internal(p==NULL); }
+    return p;
   }
 }
 

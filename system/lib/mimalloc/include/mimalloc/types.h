@@ -24,12 +24,13 @@ terms of the MIT license. A copy of the license can be found in the file
 
 
 #include <mimalloc-stats.h>
+#include <mimalloc-profile.h>
 #include <stddef.h>   // ptrdiff_t
 #include <stdint.h>   // uintptr_t, uint16_t, etc
 #include <stdbool.h>  // bool
 #include <limits.h>   // SIZE_MAX etc.
 #include <errno.h>    // error codes
-#include "bits.h"     // size defines (MI_INTPTR_SIZE etc), bit operations
+#include "bits.h"     // size defines (MI_SIZE_SIZE etc), bit operations
 #include "atomic.h"   // _Atomic primitives
 
 // Minimal alignment necessary. On most platforms 16 bytes are needed
@@ -38,6 +39,9 @@ terms of the MIT license. A copy of the license can be found in the file
 #define MI_MAX_ALIGN_SIZE  16   // sizeof(max_align_t)
 #endif
 
+#if MI_MAX_ALIGN_SIZE < MI_INTPTR_SIZE
+#error MI_MAX_ALIGN_SIZE must be at least MI_INTPTR_SIZE
+#endif
 
 // ------------------------------------------------------
 // Variants
@@ -51,8 +55,8 @@ terms of the MIT license. A copy of the license can be found in the file
 // #define MI_TRACK_ASAN     1
 // #define MI_TRACK_ETW      1
 
-// Define MI_STAT as 1 to maintain statistics; set it to 2 to have detailed statistics (but costs some performance).
-// #define MI_STAT 1
+// Define MI_STATS as 1 to maintain statistics; set it to 2 to have detailed statistics (but costs some performance).
+// #define MI_STATS 1
 
 // Define MI_SECURE to enable security mitigations
 // #define MI_SECURE 1  // check invalid pointer free, guard pages around meta data, randomize arena allocation addresses (like ASLR), abort on detected meta data corruption
@@ -64,8 +68,6 @@ terms of the MIT license. A copy of the license can be found in the file
 #if !defined(MI_SECURE)
 #define MI_SECURE 0
 #endif
-
-#define MI_PADDING 0
 
 // Define MI_DEBUG for assertion and invariant checking
 // #define MI_DEBUG 1  // basic assertion checks and statistics, check double free, corrupted free list, and invalid pointer free. (cmake -DMI_DEBUG=ON)
@@ -79,13 +81,18 @@ terms of the MIT license. A copy of the license can be found in the file
 #endif
 #endif
 
-// Statistics (0=only essential, 1=normal, 2=more fine-grained (expensive) tracking)
-#ifndef MI_STAT
+// Statistics (0=only essential, 1=detailed (fast, can be enabled always), 2=slightly more expensive tracking of precise requested bytes)
+#ifndef MI_STATS
 #if (MI_DEBUG>0)
-#define MI_STAT 2
+#define MI_STATS 2
 #else
-#define MI_STAT 0
+#define MI_STATS 1
 #endif
+#endif
+
+// Enable profiling support (0=off, 1=fast, can be enabled always, 2=allow fine-grained sample rates(<64 KiB), a tad more expensive)
+#ifndef MI_PROFILE
+#define MI_PROFILE  1
 #endif
 
 // Enable guard pages behind objects of a certain size (set by the MIMALLOC_GUARDED_MIN/MAX/SAMPLE_RATE options)
@@ -93,10 +100,25 @@ terms of the MIT license. A copy of the license can be found in the file
 #define MI_GUARDED  1
 #endif
 
+// For profiling or guarded pages we need to sample every once in a while. (0=no sampling, 1=fast, 2=allow fine grained sample rates(<64 KiB), a tad more expensive)
+#ifndef MI_SAMPLE
+#if MI_PROFILE>1 || MI_GUARDED>1
+  #define MI_SAMPLE 2
+#elif MI_PROFILE || MI_GUARDED
+  #define MI_SAMPLE 1
+#else
+  #define MI_SAMPLE 0
+#endif
+#endif
+
 // Reserve extra padding at the end of each block to be more resilient against theap block overflows.
 // The padding can detect heap-block overflow on free, and provides byte-precise `mi_usable_size`.
-#if !defined(MI_PADDING) && (MI_SECURE>=3 || MI_DEBUG>=1 || (MI_TRACK_VALGRIND || MI_TRACK_ASAN || MI_TRACK_ETW))
+#if !defined(MI_PADDING) 
+#if (MI_SECURE>=3 || MI_DEBUG>=1 || (MI_TRACK_VALGRIND || MI_TRACK_ASAN || MI_TRACK_ETW))
 #define MI_PADDING  1
+#else
+#define MI_PADDING  0
+#endif
 #endif
 
 // Check for byte-precise buffer overflow?
@@ -147,7 +169,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #if !MI_FREE_IS_CHECKED && !MI_FREE_USE_PAGEMAP
 #if MI_PAGE_META_IS_SEPARATED
 #define MI_PAGE_META_IS_ALIGNED         1        
-#define MI_PAGE_META_ALIGNED_CHUNKS     MI_INTPTR_SIZE
+#define MI_PAGE_META_ALIGNED_CHUNKS     MI_SIZE_SIZE
 #else
 #warning "cannot optimize free with alignment since the page meta data is not separated (due to MI_PAGE_MAP_FLAT?)"
 #endif
@@ -159,7 +181,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #if !defined(MI_PAGE_META_SMALL_IS_ALIGNED)
 #if defined(MI_OPT_FREE_SMALL) && MI_OPT_FREE_SMALL==0
 #define MI_PAGE_META_SMALL_IS_ALIGNED   0
-#elif (MI_OPT_FREE_SMALL || MI_PAGE_META_IS_ALIGNED) && !MI_SECURE && !MI_GUARDED  // cannot be guarded as that may allocate large blocks for small allocations
+#elif (MI_OPT_FREE_SMALL || MI_PAGE_META_IS_ALIGNED) && !MI_SECURE && !MI_GUARDED // guarded can put small allocations into big blocks in a medium page (which would make `mi_free_small` fail)
 #define MI_PAGE_META_SMALL_IS_ALIGNED   1
 #else
 #define MI_PAGE_META_SMALL_IS_ALIGNED   0
@@ -392,8 +414,28 @@ typedef size_t mi_page_flags_t;
 // This way we can push a block on the thread free list and try to claim ownership atomically in `free.c:mi_free_block_mt`.
 typedef uintptr_t mi_thread_free_t;
 
-// Convenience
-typedef size_t mi_used_t;
+// We store the currently used block count together with the total malloc call count as 16-bit numbers.
+// This is done for better codegen `mi_malloc/mi_free` (where we can increment both at once as `used_alloc += 0x10001` for example).
+// The `last_used` is the `used` count since the statistics are last updated; on 32-bit platforms this
+// is a separate field in `mi_page_t` but on 64-bit we use the upper 32-bits to store it.
+// We need the `alloc_count` and `last_used` to efficiently calculate allocation and free statistics even
+// in a release build; this way we can update the stats in the slow path (`_mi_page_update_stats`).
+typedef union mi_used_s { 
+  size_t      used_alloc;         // used + alloc_count
+  // the following struct is unused but nice for debugging
+  struct {
+    uint16_t used_count;
+    uint16_t alloc_count;
+    #if MI_SIZE_SIZE >= 8
+    uint16_t last_used;
+    uint16_t last_alloc;        
+    #endif
+  } debug_le;
+} mi_used_t;
+
+static inline size_t mi_xused_used_count(mi_used_t xused)    { return (xused.used_alloc & 0xFFFF); }
+static inline size_t mi_xused_alloc_count(mi_used_t xused)   { return ((xused.used_alloc>>16) & 0xFFFF); }
+static inline mi_used_t mi_xused_used_reset(mi_used_t xused) { xused.used_alloc =  xused.used_alloc & ~0xFFFF; return xused; }
 
 // A page contains blocks of one specific size (`block_size`).
 // Each page has three list of free blocks:
@@ -428,7 +470,11 @@ typedef struct mi_page_s {
   #endif
   _Atomic(mi_threadid_t)    xthread_id;        // thread this page belongs to. (= `theap->thread_id (or 0 or 4 if abandoned) | page_flags`)
   mi_block_t*               free;              // list of available free blocks (`malloc` allocates from this list)
-  mi_used_t                 used;              // number of blocks in use (including blocks in `thread_free`)
+  mi_used_t                 xused;             // number of blocks in use (including blocks in `thread_free`) (and the allocated count for statistics)
+  #if MI_SIZE_SIZE < 8
+  uint16_t                  xlast_used;        // for statistics; on 64-bit platforms it is in bits 32..47 of xused.
+  uint16_t                  xlast_alloc;       // for sampling; on 64-bit platforms it is in bits 48..63 of xused.
+  #endif
   mi_block_t*               local_free;        // list of deferred free blocks by this thread (migrates to `free`)
  
   size_t                    block_size;        // const: size available in each block (always `>0`)
@@ -450,11 +496,8 @@ typedef struct mi_page_s {
   
   #if (MI_ENCODE_FREELIST || MI_PADDING)
   uintptr_t                 keys[MI_PAGE_KEY_COUNT]; // const: one or two random keys to encode the free lists (see `_mi_block_next`) or padding canary
-  // #elif MI_PAGE_META_IS_ALIGNED && MI_INTPTR_SIZE==8 
-  // uintptr_t                 padding[1];        // make it 128 bytes for best codegen in mi_ptr_page_align
   #endif
 } mi_page_t;
-
 
 // ------------------------------------------------------
 // Object sizes
@@ -490,6 +533,13 @@ typedef struct mi_page_s {
 #define MI_MAX_SINGLETON_BIN   (60)
 #else
 #define MI_MAX_SINGLETON_BIN   MI_BIN_HUGE
+#endif
+
+// The small object max size must be larger than twice the small size max minus one,
+// such that any aligned allocation with `alignment <= size <= MI_SMALL_SIZE_MAX` will
+// be allocated in a small page (so `mi_free_csize` can delegate correctly to `mi_free_small`.
+#if MI_SMALL_MAX_OBJ_SIZE <= (2*(MI_SMALL_WSIZE_MAX * MI_SIZE_SIZE)-1)
+#error "mimalloc internal: the small object max size is too small"
 #endif
 
 // ------------------------------------------------------
@@ -548,7 +598,7 @@ typedef struct mi_padding_s {
   uint32_t delta;  // padding bytes before the block. (mi_full_usable_size(p) - delta == exact allocated bytes)
 } mi_padding_t;
 #define MI_PADDING_SIZE   (sizeof(mi_padding_t))
-#define MI_PADDING_WSIZE  ((MI_PADDING_SIZE + MI_INTPTR_SIZE - 1) / MI_INTPTR_SIZE)
+#define MI_PADDING_WSIZE  ((MI_PADDING_SIZE + MI_SIZE_SIZE - 1) / MI_SIZE_SIZE)
 #else
 #define MI_PADDING_SIZE   0
 #define MI_PADDING_WSIZE  0
@@ -562,11 +612,30 @@ struct mi_theap_s {
   // put in front for fast small allocations
   mi_page_t*            pages_free_direct[MI_PAGES_DIRECT];  // optimize: array where every entry points a page with possibly free blocks in the corresponding queue for that size.
 
+  // less frequently accessed fields
   mi_tld_t*             tld;                                 // thread-local data
   _Atomic(mi_heap_t*)   heap;                                // the heap this theap belongs to.
   _Atomic(mi_subproc_t*)subproc;                             // subproc this belongs too (always `subproc == heap->subproc` but needed for safe destruction)
-  _Atomic(size_t)       refcount;                            // reference count
+  _Atomic(size_t)       refcount;                            // reference count (needed for safe heap destroy)
   
+  // config
+  long                  page_full_retain;                    // how many full pages can be retained per queue (before abandoning them)
+  bool                  allow_page_reclaim;                  // `true` if this theap can reclaim abandoned pages
+  bool                  allow_page_abandon;                  // `true` if this theap can abandon pages to reduce memory footprint
+  bool                  is_detached;                         // `true` if `tld->thread_id == MI_THREADID_DETACHED`
+
+  // sampling
+  size_t                sample_countdown;                    // sample countdown in requested bytes (don't change the field order; see `internal.h:_mi_theap_get_free_small_page`)
+  size_t                sample_rate;                         // current sampling rate in requested bytes (or 0 to disable) (for profiling and guarded mode)
+  uint64_t              sample_requested;                    // total allocated/requested bytes since the last sample
+  size_t                profile_sample_rate;                 // sampling rate in requested bytes for profiling
+  size_t                profile_sample_countdown;            // countdown in requested bytes for profiling
+  size_t                guarded_sample_rate;                 // sampling rate in requested bytes for guarded objects
+  size_t                guarded_sample_countdown;            // countdown in requested bytes for guarded objects
+  size_t                guarded_size_min;                    // minimal size for guarded objects
+  size_t                guarded_size_max;                    // maximal size for guarded objects
+  
+  // stats
   unsigned long long    heartbeat;                           // monotonic heartbeat count
   mi_random_ctx_t       random;                              // random number context used for secure allocation
   size_t                page_count;                          // total number of pages in the `pages` queues.
@@ -576,21 +645,13 @@ struct mi_theap_s {
   long                  generic_count;                       // how often is `_mi_malloc_generic` called?
   long                  generic_collect_count;               // how often is `_mi_malloc_generic` called without collecting?
 
+  // theaps belong to heaps and threads
   mi_theap_t*           tnext;                               // list of theaps in this thread
   mi_theap_t*           tprev;
   mi_theap_t*           hnext;                               // list of theaps of the owning `heap`
   mi_theap_t*           hprev;
 
-  long                  page_full_retain;                    // how many full pages can be retained per queue (before abandoning them)
-  bool                  allow_page_reclaim;                  // `true` if this theap can reclaim abandoned pages
-  bool                  allow_page_abandon;                  // `true` if this theap can abandon pages to reduce memory footprint
-  bool                  is_detached;                         // `true` if `tld->thread_id == MI_THREADID_DETACHED`
-  #if MI_GUARDED
-  size_t                guarded_size_min;                    // minimal size for guarded objects
-  size_t                guarded_size_max;                    // maximal size for guarded objects
-  size_t                guarded_sample_rate;                 // sample rate (set to 0 to disable guarded pages)
-  size_t                guarded_sample_count;                // current sample count (counting down to 0)
-  #endif
+  // page queues
   mi_page_queue_t       pages[MI_BIN_COUNT];                 // queue of pages for each size class (or "bin")
   mi_memid_t            memid;                               // provenance of the theap struct itself (meta or os)
   mi_stats_t            stats;                               // thread-local statistics
@@ -627,6 +688,8 @@ typedef struct mi_heap_s {
   mi_theap_t*           theaps;                         // list of all thread-local theaps belonging to this heap (using the `hnext`/`hprev` fields)
   mi_lock_t             theaps_lock;                    // lock for the theaps list operations
 
+  _Atomic(mi_profiler_t*) profiler;
+
   _Atomic(size_t)       abandoned_count[MI_BIN_COUNT];  // total count of abandoned pages in this heap
   mi_page_t*            os_abandoned_pages;             // list of pages that are OS allocated and not in an arena
   mi_lock_t             os_abandoned_pages_lock;        // lock for the os abandoned pages list (this lock protects list operations)
@@ -659,7 +722,7 @@ struct mi_subproc_s {
   mi_decl_align(8)                                      // needed on some 32-bit platforms
   _Atomic(int64_t)      purge_expire;                   // expiration is set if any arenas can be purged
 
-  _Atomic(mi_heap_t*)   heap_main;                      // main heap for this sub process
+  _Atomic(mi_heap_t*)   heap_main;                      // main heap for this sub process  
   mi_heap_t*            heaps;                          // heaps belonging to this sub-process
   mi_lock_t             heaps_lock;
 
@@ -670,6 +733,8 @@ struct mi_subproc_s {
   _Atomic(size_t)       thread_total_count;             // total created threads associated with this sub-process
   _Atomic(size_t)       heap_count;                     // current heaps in this sub-process (== |heaps|)
   _Atomic(size_t)       heap_total_count;               // total created heaps in this sub-process
+
+  _Atomic(mi_profiler_t*) profiler;
 
   mi_memid_t            memid;                          // provenance of this memory block (meta or static)
   mi_subproc_t*         parent;                         // subproc in which this one was allocated

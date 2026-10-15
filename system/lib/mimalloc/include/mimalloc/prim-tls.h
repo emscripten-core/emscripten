@@ -35,7 +35,7 @@ static inline mi_theap_t*   _mi_theap_cached(void);                          // 
 static inline bool          _mi_thread_is_initialized(void);                 // a thread is initialized if it has a default theap
 static inline mi_theap_t*   _mi_heap_theap(mi_heap_t* heap);                 // get the thread local theap belonging to a heap
 static inline mi_theap_t*   _mi_heap_theap_peek(const mi_heap_t* heap);      // get the theap but don't update _mi_theap_cached
-static inline mi_theap_t*   _mi_page_associated_theap_peek(mi_page_t* page); // get the theap associated with a page (used in `mi_free_collect_mt`)
+static inline mi_theap_t*   _mi_page_associated_theap_peek(const mi_page_t* page); // get the theap associated with a page (used in `mi_free_collect_mt`)
 
 
 // Default TLS model
@@ -118,7 +118,7 @@ static inline void** mi_prim_thread_pointer(void) {
     void** tcb;
     #if defined(__APPLE__)
     __asm__ ("movq %%gs:0, %0" : "=r" (tcb) : : );  // x86_64 macOSX uses GS
-    #elif (MI_INTPTR_SIZE==4)
+    #elif (MI_SIZE_SIZE==4)
     __asm__ ("movl %%fs:0, %0" : "=r" (tcb) : : );  // x32 ABI
     #else
     __asm__ ("movq %%fs:0, %0" : "=r" (tcb) : : );  // x86_64 Linux, BSD uses FS
@@ -301,9 +301,9 @@ static inline mi_theap_t* _mi_theap_cached(void) {
 // We try to use direct slots (64 available), but can also use the expansion slots (upto 1024 extra available)
 // See <https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/teb/index.htm> for the offsets.
 #if MI_SIZE_SIZE==4
-#define MI_TLS_EXPANSION_SLOT    (0x0F94 / MI_INTPTR_SIZE)
+#define MI_TLS_EXPANSION_SLOT    (0x0F94 / MI_SIZE_SIZE)
 #else
-#define MI_TLS_EXPANSION_SLOT    (0x1780 / MI_INTPTR_SIZE)
+#define MI_TLS_EXPANSION_SLOT    (0x1780 / MI_SIZE_SIZE)
 #endif
 
 extern mi_decl_hidden _Atomic(size_t) _mi_theap_default_slot;
@@ -396,6 +396,16 @@ static inline mi_theap_t* _mi_heap_theap(mi_heap_t* heap) {
   return _mi_heap_theap_get_or_init(heap);
 }
 
+static inline mi_theap_t* _mi_heap_theap_cached(mi_heap_t* heap) {
+  mi_theap_t* theap = _mi_theap_cached();
+  #if MI_THEAP_INITASNULL
+  if mi_likely(theap!=NULL && _mi_theap_heap_peek(theap)==heap) return theap;
+  #else
+  if mi_likely(_mi_theap_heap_peek(theap)==heap) return theap;
+  #endif
+  return NULL;
+}
+
 // Get the theap belonging to a heap without creating it if it is not yet initialized.
 static inline mi_theap_t* _mi_heap_theap_peek(const mi_heap_t* heap) {
   mi_theap_t* theap = _mi_theap_cached();
@@ -411,10 +421,10 @@ static inline mi_theap_t* _mi_heap_theap_peek(const mi_heap_t* heap) {
 
 // Find the associated theap or NULL if it does not exist (during shutdown)
 // Should be fast as it is called in `free.c:mi_free_try_collect`.
-static inline mi_theap_t* _mi_page_associated_theap_peek(mi_page_t* page) {
+static inline mi_theap_t* _mi_page_associated_theap_peek(const mi_page_t* page) {
   mi_heap_t* const heap = mi_page_heap(page);
   mi_theap_t* const theap = (mi_theap_t*)_mi_thread_local_get(heap->theap);
-  if (theap==NULL) return NULL;
+  if (theap==NULL || theap->tld==NULL /* heap destroy */) return NULL;
   if (theap->heap != heap) return NULL; // should never happen, but can happen for a free across subprocesses, which can happen during pthread tls storage deallocation
   mi_assert_internal(!_mi_is_empty_theap(theap) && mi_theap_matches_thread(theap));
   // note: for pages allocated by a detached theap, the returned theap may not be detached

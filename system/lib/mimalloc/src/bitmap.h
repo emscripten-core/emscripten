@@ -71,7 +71,7 @@ typedef size_t mi_bfield_t;
 #define MI_BCHUNK_FIELDS             (MI_BCHUNK_BITS / MI_BFIELD_BITS)  // 8 on both 64- and 32-bit
 
 
-// some compiler (msvc in C mode) cannot have expressions in the alignment attribute
+// some compilers (msvc in C mode) cannot have expressions in the alignment attribute
 #if MI_BCHUNK_SIZE==64
 #define mi_decl_bchunk_align  mi_decl_align(64)
 #elif MI_BCHUNK_SIZE==32

@@ -278,7 +278,7 @@ int _mi_prim_free(void* addr, size_t size ) {
 //---------------------------------------------
 
 static void* win_virtual_alloc_prim_once(void* addr, size_t size, size_t try_alignment, DWORD flags) {
-  #if (MI_INTPTR_SIZE >= 8)
+  #if (MI_SIZE_SIZE >= 8)
   // on 64-bit systems, try to use the virtual address area after 2TiB for 4MiB aligned allocations
   if (addr == NULL) {
     void* hint = _mi_os_get_aligned_hint(try_alignment,size);

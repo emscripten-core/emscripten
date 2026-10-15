@@ -18,6 +18,14 @@ terms of the MIT license. A copy of the license can be found in the file
 #include <stdbool.h>  // bool
 #include <limits.h>   // LONG_MAX
 
+#if defined(__cplusplus)
+#define mi_decl_externc         extern "C"
+#define mi_init_struct_zero     { }
+#else
+#define mi_decl_externc
+#define mi_init_struct_zero     { 0 }
+#endif
+
 // ------------------------------------------------------
 // Size of a pointer.
 // We assume that `sizeof(void*)==sizeof(intptr_t)`
