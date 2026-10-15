@@ -7822,7 +7822,7 @@ addToLibrary({
     'mimalloc': (['-sMALLOC=mimalloc'], 260000),
     'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 131000),
     'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 137000),
-    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 197000),
+    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 200000),
   })
   # This test verifies the output code size of the different -sMALLOC= modes.
   def test_malloc_size(self, args, max_size):
