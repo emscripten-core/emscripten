@@ -1,7 +1,7 @@
 {
-  "a.out.js": 272506,
+  "a.out.js": 272555,
   "a.out.nodebug.wasm": 588097,
-  "total": 860603,
+  "total": 860652,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -958,6 +958,7 @@
     "emscripten_webgl_destroy_context",
     "emscripten_webgl_do_commit_frame",
     "emscripten_webgl_do_create_context",
+    "emscripten_webgl_do_destroy_context",
     "emscripten_webgl_do_get_current_context",
     "emscripten_webgl_enable_ANGLE_instanced_arrays",
     "emscripten_webgl_enable_EXT_clip_control",

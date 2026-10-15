@@ -874,6 +874,7 @@ sigs = {
   emscripten_webgl_destroy_context__sig: 'ip',
   emscripten_webgl_do_commit_frame__sig: 'i',
   emscripten_webgl_do_create_context__sig: 'ppp',
+  emscripten_webgl_do_destroy_context__sig: 'ip',
   emscripten_webgl_do_get_current_context__sig: 'p',
   emscripten_webgl_enable_ANGLE_instanced_arrays__sig: 'ip',
   emscripten_webgl_enable_EXT_clip_control__sig: 'ip',

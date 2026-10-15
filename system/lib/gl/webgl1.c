@@ -119,6 +119,13 @@ EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void) {
     return (EMSCRIPTEN_RESULT)emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_I, &emscripten_webgl_do_commit_frame);
 }
 
+EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context) {
+  GL_FUNCTION_TRACE();
+  if (emscripten_webgl_get_current_context() == context)
+    emscripten_webgl_make_context_current(0);
+  return emscripten_webgl_do_destroy_context(context);
+}
+
 static void *memdup(const void *ptr, size_t sz) {
   if (!ptr) return 0;
   void *dup = malloc(sz);
