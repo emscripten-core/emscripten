@@ -29,9 +29,9 @@ backend_t createIgnoreCaseBackend(std::function<backend_t()> createBackend);
 // system priority) since wasmFS is a system level component.
 // TODO: consider instead adding this in libc's startup code.
 // WARNING: Maintain # n + 1 "wasmfs.cpp" 3 where n = line number.
-# 29 "wasmfs.cpp" 3
+# 33 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 31 "wasmfs.cpp"
+# 35 "wasmfs.cpp"
 
 // If the user does not implement this hook, do nothing.
 __attribute__((weak)) extern "C" void wasmfs_before_preload(void) {}
