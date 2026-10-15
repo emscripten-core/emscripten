@@ -32,6 +32,7 @@ backend_t createIgnoreCaseBackend(std::function<backend_t()> createBackend);
 # 33 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
 # 35 "wasmfs.cpp"
+static_assert(__LINE__ == 35, "Incorrect line number mapping");
 
 // If the user does not implement this hook, do nothing.
 __attribute__((weak)) extern "C" void wasmfs_before_preload(void) {}
