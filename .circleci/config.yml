@@ -721,6 +721,7 @@ jobs:
             wasmfs.test_minimal_runtime_global_initializer
             wasmfs.test_minimal_runtime_hello_world*
             wasmfs.test_dlmalloc
+            wasmfs.test_wrap_malloc_mimalloc
             minimal0.test_utf
             minimal0.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_static_variable
