@@ -16,7 +16,6 @@
 #include <string.h>
 #include <emscripten/syscalls.h>
 #include <emscripten/console.h>
-#include <emscripten/version.h>
 #include <emscripten/stack.h>
 
 static pid_t g_pid = 42;
@@ -36,29 +35,6 @@ static pid_t g_sid = 42;
     REPORT(name); \
     return -ENOSYS; \
   }
-
-#define STRINGIFY(s) #s
-#define STR(s) STRINGIFY(s)
-
-weak int __syscall_uname(struct utsname *buf) {
-  if (!buf) {
-    return -EFAULT;
-  }
-  const char* full_version = STR(__EMSCRIPTEN_MAJOR__) "." \
-                             STR(__EMSCRIPTEN_MINOR__) "." \
-                             STR(__EMSCRIPTEN_TINY__);
-
-  strcpy(buf->sysname, "Emscripten");
-  strcpy(buf->nodename, "emscripten");
-  strcpy(buf->release, full_version);
-  strcpy(buf->version, "#1");
-#ifdef __wasm64__
-  strcpy(buf->machine, "wasm64");
-#else
-  strcpy(buf->machine, "wasm32");
-#endif
-  return 0;
-}
 
 weak int __syscall_setpgid(pid_t pid, pid_t pgid) {
   if (pid && pid != g_pid) {

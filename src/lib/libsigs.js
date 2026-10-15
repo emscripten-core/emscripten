@@ -288,6 +288,7 @@ sigs = {
   __syscall_symlinkat__sig: 'ipip',
   __syscall_truncate64__sig: 'ipj',
   __syscall_umask__sig: 'ii',
+  __syscall_uname__sig: 'ip',
   __syscall_unlinkat__sig: 'iipi',
   __syscall_utimensat__sig: 'iippi',
   _abort_js__sig: 'v',
