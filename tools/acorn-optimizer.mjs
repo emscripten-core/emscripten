@@ -1939,6 +1939,7 @@ if (!noPrint) {
             evaluate: true,
             keep_fargs: false,
             reduce_vars: true,
+            toplevel: true,
             unused: true,
           }
         : false,
