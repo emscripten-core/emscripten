@@ -1887,6 +1887,9 @@ class libmimalloc(MTLibrary):
     '-DMI_LIBC_MUSL',
     # enable use of `__builtin_thread_pointer()`
     '-DMI_USE_BUILTIN_THREAD_POINTER',
+    # always use the page map when free-ing a pointer, as we don't support
+    # large OS aligned allocations well
+    '-DMI_FREE_USE_PAGEMAP=1',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
