@@ -255,8 +255,7 @@ const emscriptenCpuProfiler = {
     if (this.insideMainLoopRecursionCounter != 0) return;
 
     // Aggregate total times spent in each section to memory store to wait until the next stats UI redraw period.
-    for (let i = 0; i < this.sections.length; ++i) {
-      const sect = this.sections[i];
+    for (const sect of this.sections) {
       if (!sect) continue;
       sect.frametimesInsideMainLoop[this.currentHistogramX] = sect.accumulatedTimeInsideMainLoop;
       sect.frametimesOutsideMainLoop[this.currentHistogramX] = sect.accumulatedTimeOutsideMainLoop;
@@ -475,8 +474,7 @@ const emscriptenCpuProfiler = {
 
   drawBar(x) {
     let timeSpentInSectionsInsideMainLoop = 0;
-    for (let i = 0; i < this.sections.length; ++i) {
-      const sect = this.sections[i];
+    for (const sect of this.sections) {
       if (!sect) continue;
       timeSpentInSectionsInsideMainLoop += sect.frametimesInsideMainLoop[x];
     }
@@ -486,8 +484,7 @@ const emscriptenCpuProfiler = {
     y -= h;
     this.drawContext.fillStyle = this.colorCpuTimeSpentInUserCode;
     this.drawContext.fillRect(x, y, 1, h);
-    for (let i = 0; i < this.sections.length; ++i) {
-      const sect = this.sections[i];
+    for (const sect of this.sections) {
       if (!sect) continue;
       h = (sect.frametimesInsideMainLoop[x] + sect.frametimesOutsideMainLoop[x]) * scale;
       y -= h;
@@ -515,8 +512,7 @@ const emscriptenCpuProfiler = {
       if (this.timeSpentOutsideMainloop.length > this.canvas.width) this.timeSpentOutsideMainloop.length = this.canvas.width;
       if (this.lastUiUpdateEndX >= this.canvas.width) this.lastUiUpdateEndX = 0;
       if (this.currentHistogramX >= this.canvas.width) this.currentHistogramX = 0;
-      for (const i in this.sections) {
-        const sect = this.sections[i];
+      for (const sect of this.sections) {
         if (!sect) continue;
         if (sect.frametimesInsideMainLoop.length > this.canvas.width) sect.frametimesInsideMainLoop.length = this.canvas.width;
         if (sect.frametimesOutsideMainLoop.length > this.canvas.width) sect.frametimesOutsideMainLoop.length = this.canvas.width;
@@ -709,21 +705,21 @@ const emscriptenCpuProfiler = {
       return ret;
     };
     const matrixFuncs = ['uniformMatrix2fv', 'uniformMatrix3fv', 'uniformMatrix4fv'];
-    matrixFuncs.forEach(f => {
+    for (const f of matrixFuncs) {
       glCtx[f] = (a1, a2, a3, a4, a5) => {
         // WebGL2 version has 2 extra optional parameters, ensure we forward them
         const ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4, a5) : glCtx['real_' + f](a1, a2, a3);
         return ret;
       }
-    });
+    }
     const ndvFuncs = ['uniform1fv', 'uniform1iv', 'uniform2fv', 'uniform2iv', 'uniform3fv', 'uniform3iv', 'uniform4fv', 'uniform4iv'];
-    ndvFuncs.forEach(f => {
+    for (const f of ndvFuncs) {
       glCtx[f] = (a1, a2, a3, a4) => {
         // WebGL2 version has 1 extra parameter, ensure we forward them
         const ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4) : glCtx['real_' + f](a1, a2, a3);
         return ret;
       }
-    });
+    }
   }
 };
 

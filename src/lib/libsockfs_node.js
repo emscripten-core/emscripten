@@ -104,6 +104,15 @@ var NodeSockFSLibrary = {
         });
       });
     },
+    // Reverse-resolve a numeric address via node:dns. Resolves to the host
+    // name, or null when there is none.
+    lookupService(addr, port) {
+      return new Promise((resolve) => {
+        nodeSockHelpers.getDns().lookupService(addr, port, (err, hostname) => {
+          resolve(err ? null : hostname);
+        });
+      });
+    },
     // True when node:dgram exposes both synchronous bindSync and connectSync
     // (a recent addition), letting UDP run entirely on the public API. A runtime
     // missing either falls back to the private udp_wrap handle, which provides

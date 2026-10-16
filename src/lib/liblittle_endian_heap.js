@@ -47,6 +47,7 @@ var LibraryLittleEndianHeap = {
   $LE_HEAP_LOAD_F64: (byteOffset) =>
     HEAP_DATA_VIEW.getFloat64(byteOffset, true),
 
+  $LE_ATOMICS_NATIVE_BYTE_ORDER__deps: ['$HEAPU16', '$HEAPU32'],
   $LE_ATOMICS_NATIVE_BYTE_ORDER__postset: `
 LE_ATOMICS_NATIVE_BYTE_ORDER = (new Int8Array(new Int16Array([1]).buffer)[0] === 1)
   ? [ /* little endian */

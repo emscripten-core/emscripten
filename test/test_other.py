@@ -244,8 +244,10 @@ def requires_tool(tool, env_name=None):
       else:
         env_var = f'EMTEST_SKIP_{tool.upper()}'
       if not shutil.which(tool):
-        if env_var in os.environ:
+        if utils.get_env_bool(env_var):
           self.skipTest(f'test requires {tool} and {env_var} is set')
+        elif utils.get_env_bool('EMTEST_AUTOSKIP'):
+          self.skipTest(f'test requires {tool} (missing in PATH) and EMTEST_AUTOSKIP is set')
         else:
           self.fail(f'{tool} required to run this test.  Use {env_var} to skip')
       return func(self, *args, **kwargs)
@@ -5810,6 +5812,14 @@ int main()
 
   def test_strptime_symmetry(self):
     self.do_other_test('test_strptime_symmetry.c')
+
+  def test_utime_now(self):
+    self.do_runf('utime/test_utime_now.c', 'done\n')
+
+  @crossplatform
+  @also_with_nodefs_both
+  def test_utime_roundtrip(self):
+    self.do_runf('utime/test_utime_roundtrip.c', 'done\n')
 
   @also_with_wasmfs
   def test_truncate_from_0(self):
@@ -16330,4 +16340,5 @@ SHA512 = 'dummy'
 PORT_FILE = 'port.py'
 EXTERNAL_PORT = URL
 ''')
-    self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
+    err = self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
+    self.assertContained('retrying in 1s', err)
