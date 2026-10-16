@@ -9,7 +9,9 @@ var LibraryHTML5 = {
 #if PTHREADS
     '_emscripten_run_callback_on_thread',
 #endif
+#if EXIT_RUNTIME
     '$addOnExit',
+#endif
   ],
   $JSEvents: {
 
@@ -1418,7 +1420,11 @@ var LibraryHTML5 = {
     return doRequestFullscreen(target, strategy);
   },
 
-  emscripten_enter_soft_fullscreen__deps: ['$JSEvents', '$hideEverythingExceptGivenElement', '$restoreOldWindowedStyle', '$restoreHiddenElements', '$currentFullscreenStrategy', '$softFullscreenResizeWebGLRenderTarget', '$JSEvents_resizeCanvasForFullscreen', '$findEventTarget', '$callCanvasResizedCallback'],
+  emscripten_enter_soft_fullscreen__deps: [
+#if PTHREADS
+    '$JSEvents',
+#endif
+    '$hideEverythingExceptGivenElement', '$restoreOldWindowedStyle', '$restoreHiddenElements', '$currentFullscreenStrategy', '$softFullscreenResizeWebGLRenderTarget', '$JSEvents_resizeCanvasForFullscreen', '$findEventTarget', '$callCanvasResizedCallback'],
   emscripten_enter_soft_fullscreen__proxy: 'sync',
   emscripten_enter_soft_fullscreen: (target, fullscreenStrategy) => {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR

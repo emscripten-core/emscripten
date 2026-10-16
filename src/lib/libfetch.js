@@ -18,7 +18,7 @@ var LibraryFetch = {
   $Fetch: Fetch,
   _emscripten_fetch_get_response_headers_length__deps: ['$lengthBytesUTF8'],
   _emscripten_fetch_get_response_headers_length: fetchGetResponseHeadersLength,
-  _emscripten_fetch_get_response_headers__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
+  _emscripten_fetch_get_response_headers__deps: ['$stringToUTF8'],
   _emscripten_fetch_get_response_headers: fetchGetResponseHeaders,
   emscripten_fetch_free: fetchFree,
 
