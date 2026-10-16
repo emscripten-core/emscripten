@@ -6,7 +6,6 @@
               "exceptionDestructor",
               "exceptionType",
               "caught",
-              "rethrown",
               "adjustedPtr"
             ]
         }

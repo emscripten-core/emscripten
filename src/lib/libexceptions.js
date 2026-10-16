@@ -54,15 +54,6 @@ var LibraryExceptions = {
       return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.caught, 'i8') }}} != 0;
     }
 
-    set_rethrown(rethrown) {
-      rethrown = rethrown ? 1 : 0;
-      {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.rethrown, 'rethrown', 'i8') }}};
-    }
-
-    get_rethrown() {
-      return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.rethrown, 'i8') }}} != 0;
-    }
-
     // Initialize native structure fields. Should be called once after allocated.
     init(type, destructor) {
 #if EXCEPTION_DEBUG
@@ -116,9 +107,6 @@ var LibraryExceptions = {
     __Unwind_RaiseException(ptr);
   },
 
-  // This exception will be caught twice, but while begin_catch runs twice,
-  // we early-exit from end_catch when the exception has been rethrown, so
-  // pop that here from the caught exceptions.
   __cxa_rethrow__deps: ['$exceptionCaught', '$uncaughtExceptionCount',
 #if !DISABLE_EXCEPTION_CATCHING
     '$exceptionLast',
@@ -132,7 +120,6 @@ var LibraryExceptions = {
     }
     var info = exceptionCaught.at(-1);
     var ptr = info.excPtr;
-    info.set_rethrown(true);
     info.set_caught(false);
     uncaughtExceptionCount++;
 #if !DISABLE_EXCEPTION_CATCHING
@@ -156,7 +143,6 @@ var LibraryExceptions = {
       info.set_caught(true);
       uncaughtExceptionCount--;
     }
-    info.set_rethrown(false);
     exceptionCaught.push(info);
 #if EXCEPTION_DEBUG
     dbg('__cxa_begin_catch ' + [ptrToString(ptr), 'stack', exceptionCaught]);
@@ -227,7 +213,6 @@ var LibraryExceptions = {
     dbg('__cxa_rethrow_primary_exception: ' + ptrToString(ptr));
 #endif
     var info = new ExceptionInfo(ptr);
-    info.set_rethrown(true);
     info.set_caught(false);
     uncaughtExceptionCount++;
 #if !DISABLE_EXCEPTION_CATCHING

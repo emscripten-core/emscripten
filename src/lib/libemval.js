@@ -452,7 +452,6 @@ ${functionBody}
 #if !DISABLE_EXCEPTION_CATCHING
       var info = new ExceptionInfo(object.excPtr);
       info.set_caught(false);
-      info.set_rethrown(false);
       exceptionLast = object;
 #endif
       incrementUncaughtExceptionCount();

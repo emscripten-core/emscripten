@@ -927,8 +927,7 @@
             "adjustedPtr": 16,
             "caught": 12,
             "exceptionDestructor": 8,
-            "exceptionType": 4,
-            "rethrown": 13
+            "exceptionType": 4
         },
         "__wasi_fdstat_t": {
             "__size__": 24,

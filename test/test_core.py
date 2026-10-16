@@ -1479,6 +1479,11 @@ int main(int argc, char **argv) {
     self.do_core_test('test_exceptions_refcount.cpp')
 
   @with_all_eh_sjlj
+  def test_exceptions_refcount_2(self):
+    self.set_setting('ASSERTIONS')
+    self.do_core_test('test_exceptions_refcount_2.cpp')
+
+  @with_all_eh_sjlj
   def test_exceptions_primary(self):
     self.do_core_test('test_exceptions_primary.cpp')
 
