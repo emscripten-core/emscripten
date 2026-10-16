@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- In `MAIN_MODULE` builds the GOT entries (and table slots) for the main
+  module's exports are now created on demand, when first needed by a side
+  module, rather than all at startup.  This can significantly reduce startup
+  time for programs with a large number of exports. (#27993)
 - When compiling and linking in a single command, auxiliary compiler output
   files (such as `.dwo` files from `-gsplit-dwarf` or `.json` files from
   `-ftime-trace`) are now named `<output>-<input>.<ext>`, matching the behavior
