@@ -135,7 +135,7 @@ addToLibrary({
               if (Object.hasOwn(defs, symbol)) {
 #endif
                 var pp = defs[symbol], expanded;
-                if (typeof pp == 'function') { // definition is a function?
+                if (typeof pp === 'function') { // definition is a function?
                   if (pp.length) { // Expanding a macro? (#define FOO(X) ...)
                     while (str[j] && isWhitespace(str, j)) ++j;
                     if (str[j] == '(') {
@@ -177,7 +177,7 @@ addToLibrary({
     function buildExprTree(tokens) {
       // Consume tokens array into a function tree until the tokens array is exhausted
       // to a single root node that evaluates it.
-      while (tokens.length > 1 || typeof tokens[0] != 'function') {
+      while (tokens.length > 1 || typeof tokens[0] !== 'function') {
         tokens = ((tokens) => {
           // Find the index 'i' of the operator we should evaluate next:
           var i, j, p, operatorAndPriority = -2;

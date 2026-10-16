@@ -381,7 +381,7 @@ def get_command_with_possible_response_file(cmd):
 
   # Different OS have different limits. The most limiting usually is Windows one
   # which is set at 8191 characters. We could just use that, but it leads to
-  # problems when invoking shell wrappers (e.g. emcc.bat), which, in turn,
+  # problems when invoking wrappers (e.g. pylauncher.exe), which, in turn,
   # pass arguments to some longer command like `(full path to Clang) ...args`.
   # In that scenario, even if the initial command line is short enough, the
   # subprocess can still run into the Command Line Too Long error.
@@ -415,7 +415,6 @@ def run_js_optimizer(filename, passes):
     exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
 
 
-# run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
 def acorn_optimizer(filename, passes, extra_info=None, return_output=False, worker_js=False):
   optimizer = path_from_root('tools/acorn-optimizer.mjs')
   original_filename = filename
@@ -462,8 +461,6 @@ acorn_optimizer.counter = 0  # type: ignore
 WASM_CALL_CTORS = '__wasm_call_ctors'
 
 
-# evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool
-# for this, and we are in wasm mode
 def eval_ctors(js_file, wasm_file, debug_info):
   CTOR_ADD_PATTERN = f"wasmExports['{WASM_CALL_CTORS}']();"
 
@@ -624,14 +621,6 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     SPIDERMONKEY_EXTERNS = [path_from_root('src/closure-externs/spidermonkey-externs.js')]
     CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
-  # Web environment specific externs
-  if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-    browser_externs_dir = path_from_root('src/closure-externs/browser-externs')
-    if os.path.isdir(browser_externs_dir):
-      browser_externs = os.listdir(browser_externs_dir)
-      browser_externs = [os.path.join(browser_externs_dir, name) for name in browser_externs if name.endswith('.js')]
-      CLOSURE_EXTERNS += browser_externs
-
   if settings.DYNCALLS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
@@ -787,42 +776,46 @@ def run_closure_cmd(cmd, filename, env):
 # minify the final wasm+JS combination. this is done after all the JS
 # and wasm optimizations; here we do the very final optimizations on them
 def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
-  # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
-  # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
-  # whitespace if necessary too.
   passes = []
-  if not settings.LINKABLE:
-    passes.append('JSDCE' if not expensive_optimizations else 'AJSDCE')
-  if not settings.USE_CLOSURE_COMPILER:
-    passes.append('stripDefaultUndefined')
-  # Don't minify if we are going to run closure compiler afterwards
-  minify = settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER
-  if minify:
-    passes.append('--minify-whitespace')
-  if passes:
-    logger.debug('running cleanup on shell code: ' + ' '.join(passes))
-    js_file = acorn_optimizer(js_file, passes)
+  extra_info = {}
+
   # if we can optimize this js+wasm combination under the assumption no one else
   # will see the internals, do so
   if not settings.LINKABLE:
-    # if we are optimizing for size, shrink the combined wasm+JS
-    # TODO: support this when a symbol map is used
     if expensive_optimizations:
-      js_file = metadce(js_file,
-                        wasm_file,
-                        debug_info=debug_info,
-                        last=not settings.MINIFY_WASM_IMPORTS_AND_EXPORTS)
-      # now that we removed unneeded communication between js and wasm, we can clean up
-      # the js some more.
-      passes = ['AJSDCE']
-      if minify:
-        passes.append('--minify-whitespace')
-      logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
-      js_file = acorn_optimizer(js_file, passes)
+      # start with AJSDCE (aggressive JS DCE, performs multiple iterations), to
+      # clean up obvious JS garbage before metadce.
+      logger.debug('running pre-meta-DCE cleanup on shell code: AJSDCE')
+      js_file = acorn_optimizer(js_file, ['AJSDCE'])
+      # if we are optimizing for size, shrink the combined wasm+JS
+      # TODO: support this when a symbol map is used
+      dce_info = metadce(js_file,
+                         wasm_file,
+                         debug_info=debug_info,
+                         last=not settings.MINIFY_WASM_IMPORTS_AND_EXPORTS)
+      if dce_info:
+        # now that we removed unneeded communication between js and wasm, we can
+        # clean up the js some more.
+        passes += ['applyDCEGraphRemovals', 'AJSDCE']
+        extra_info.update(dce_info)
       if settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
-        js_file = minify_wasm_imports_and_exports(js_file, wasm_file,
+        mapping = minify_wasm_imports_and_exports(wasm_file,
                                                   minify_exports=settings.MINIFY_WASM_EXPORT_NAMES,
                                                   debug_info=debug_info)
+        passes.append('applyImportAndExportNameChanges')
+        extra_info['mapping'] = mapping
+    else:
+      passes.append('JSDCE')
+
+  # Don't minify if we are going to run closure compiler afterwards
+  if settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER:
+    passes.append('--minify-whitespace')
+    passes.append('--compress')
+
+  if passes:
+    logger.debug('running cleanup on shell code: ' + ' '.join(passes))
+    js_file = acorn_optimizer(js_file, passes, extra_info=extra_info or None)
+
   return js_file
 
 
@@ -843,7 +836,7 @@ def metadce(js_file, wasm_file, debug_info, last):
   txt = acorn_optimizer(js_file, ['emitDCEGraph', '--no-print'], return_output=True, extra_info=extra_info)
   if shared.SKIP_SUBPROCS:
     # The next steps depend on the output from this step, so we can't do them if we aren't actually running.
-    return js_file
+    return None
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
   required_symbols = user_requested_exports.union(extra_js_exports, settings.SIDE_MODULE_IMPORTS)
@@ -927,19 +920,14 @@ def metadce(js_file, wasm_file, debug_info, last):
           unused_exports.append(native_name)
   if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove
-    return js_file
-  # remove them
-  passes = ['applyDCEGraphRemovals']
-  if settings.MINIFY_WHITESPACE:
-    passes.append('--minify-whitespace')
+    return None
   if DEBUG:
     logger.debug(f'unused_imports: {unused_imports}')
     logger.debug(f'unused_exports: {unused_exports}')
-  extra_info = {'unusedImports': unused_imports, 'unusedExports': unused_exports}
-  return acorn_optimizer(js_file, passes, extra_info=extra_info)
+  return {'unusedImports': unused_imports, 'unusedExports': unused_exports}
 
 
-def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_info):
+def minify_wasm_imports_and_exports(wasm_file, minify_exports, debug_info):
   logger.debug('minifying wasm imports and exports')
   # run the pass
   args = []
@@ -996,15 +984,10 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
       assert old not in mapping, 'exports must be unique'
       mapping[old] = new
 
-  # apply them
-  passes = ['applyImportAndExportNameChanges']
-  if settings.MINIFY_WHITESPACE:
-    passes.append('--minify-whitespace')
-  extra_info = {'mapping': mapping}
   if settings.MINIFICATION_MAP:
     lines = [f'{new}:{old}' for old, new in mapping.items()]
     utils.write_file(settings.MINIFICATION_MAP, '\n'.join(lines) + '\n')
-  return acorn_optimizer(js_file, passes, extra_info=extra_info)
+  return mapping
 
 
 def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, symbols_file=None, symbols_file_js=None):
@@ -1039,8 +1022,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
       temp = run_js_optimizer(temp, passes)
       wasm2js_js = utils.read_file(temp)
   # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
-  # minify the wasm2js output as well, which is ok since it isn't
-  # validating asm.js.
+  # minify the wasm2js output as well.
   # TODO: in the non-closure case, we could run a lightweight general-
   #       purpose JS minifier here.
   if use_closure_compiler == 2:

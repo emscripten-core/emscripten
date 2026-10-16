@@ -204,7 +204,7 @@ int test_unmap_zero_len() {
   TEST_PASS();
 }
 
-static int get_heap_usage() {
+int get_heap_usage() {
   struct mallinfo info = mallinfo();
   return info.uordblks;
 }

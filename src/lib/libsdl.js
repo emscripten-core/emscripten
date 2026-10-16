@@ -19,6 +19,7 @@ var LibrarySDL = {
   $SDL__deps: [
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
     '$MainLoop',
+    '$warnOnce',
     // For makeCEvent().
     '$stringToUTF8',
     // Many SDL functions depend on malloc/free
@@ -62,9 +63,7 @@ var LibrarySDL = {
       volume: 1.0
     },
     mixerFrequency: 22050,
-    mixerFormat: {{{ cDefs.AUDIO_S16LSB }}},
     mixerNumChannels: 2,
-    mixerChunkSize: 1024,
     channelMinimumNumber: 0,
 
     // Set to true if we call SDL_SetVideoMode with SDL_OPENGL, and if so, we do
@@ -336,18 +335,12 @@ var LibrarySDL = {
       var rgba = {{{ makeGetValue('color', 0, 'i32') }}};
       return 'rgb(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ')';
     },
-    loadColorToCSSRGBA(color) {
-      var rgba = {{{ makeGetValue('color', 0, 'i32') }}};
-      return 'rgba(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ',' + (((rgba >> 24)&255)/255) + ')';
-    },
 
     translateColorToCSSRGBA: (rgba) =>
       'rgba(' + (rgba&0xff) + ',' + (rgba>>8 & 0xff) + ',' + (rgba>>16 & 0xff) + ',' + (rgba>>>24)/0xff + ')',
 
     translateRGBAToCSSRGBA: (r, g, b, a) =>
       'rgba(' + (r&0xff) + ',' + (g&0xff) + ',' + (b&0xff) + ',' + (a&0xff)/255 + ')',
-
-    translateRGBAToColor: (r, g, b, a) => r | g << 8 | b << 16 | a << 24,
 
     makeSurface(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       var is_SDL_HWSURFACE = flags & {{{ cDefs.SDL_HWSURFACE }}};
@@ -909,7 +902,7 @@ var LibrarySDL = {
 
     // returns false if the event was determined to be irrelevant
     makeCEvent(event, ptr) {
-      if (typeof event == 'number') {
+      if (typeof event === 'number') {
         // This is a pointer to a copy of a native C event that was SDL_PushEvent'ed
         _memcpy(ptr, event, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
         _free(event); // the copy is no longer needed
@@ -1225,20 +1218,6 @@ var LibrarySDL = {
       }
     },
 
-    // Debugging
-
-#if ASSERTIONS
-    debugSurface(surfData) {
-      dbg('dumping surface ' + [surfData.surf, surfData.source, surfData.width, surfData.height]);
-      var image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
-      var data = image.data;
-      var num = Math.min(surfData.width, surfData.height);
-      for (var i = 0; i < num; i++) {
-        dbg('   diagonal ' + i + ':' + [data[i*surfData.width*4 + i*4 + 0], data[i*surfData.width*4 + i*4 + 1], data[i*surfData.width*4 + i*4 + 2], data[i*surfData.width*4 + i*4 + 3]]);
-      }
-    },
-#endif
-
     // Joystick helper methods and state
 
     joystickEventState: 1, // SDL_ENABLE
@@ -1267,13 +1246,13 @@ var LibrarySDL = {
         var state = SDL.getGamepad(joystick - 1);
         var prevState = SDL.lastJoystickState[joystick];
         // If joystick was removed, state returns null.
-        if (typeof state == 'undefined') return;
+        if (typeof state === 'undefined') return;
         if (state === null) return;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
         // NOTE: Timestamp is currently not properly set for the GearVR controller
         //       on Samsung Internet: it is always zero.
-        if (typeof state.timestamp != 'number' || state.timestamp != prevState.timestamp || !state.timestamp) {
+        if (typeof state.timestamp !== 'number' || state.timestamp != prevState.timestamp || !state.timestamp) {
           var i;
           for (i = 0; i < state.buttons.length; i++) {
             var buttonState = state.buttons[i].pressed;
@@ -1558,23 +1537,6 @@ var LibrarySDL = {
     if (SDL.defaults.copyOnLock && !SDL.defaults.discardOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
       if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
-        // If this is needed then
-        // we should compact the data from 32bpp to 8bpp index.
-        // I think the best way to implement this is to use
-        // an additional colorMap hash (color->index).
-        // Something like this:
-        //
-        // var size = surfData.width * surfData.height;
-        // var data = '';
-        // for (var i = 0; i<size; i++) {
-        //   var color = SDL.translateRGBAToColor(
-        //     surfData.image.data[i*4   ],
-        //     surfData.image.data[i*4 +1],
-        //     surfData.image.data[i*4 +2],
-        //     255);
-        //   var index = surfData.colorMap[color];
-        //   {{{ makeSetValue('surfData.buffer', 'i', 'index', 'i8') }}};
-        // }
         abort('CopyOnLock is not supported for SDL_LockSurface with SDL_HWPALETTE flag set');
       } else {
         HEAPU8.set(surfData.image.data, surfData.buffer);
@@ -1610,7 +1572,7 @@ var LibrarySDL = {
       var dst = 0;
       var isScreen = surf == SDL.screen;
       var num;
-      if (typeof CanvasPixelArray != 'undefined' && data instanceof CanvasPixelArray) {
+      if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) {
         // IE10/IE11: ImageData objects are backed by the deprecated CanvasPixelArray,
         // not UInt8ClampedArray. These don't have buffers, so we need to revert
         // to copying a byte at a time. We do the undefined check because modern
@@ -2509,9 +2471,9 @@ var LibrarySDL = {
           // Don't ever start buffer playbacks earlier from current time than a given constant 'SDL.audio.bufferingDelay', since a browser
           // may not be able to mix that audio clip in immediately, and there may be subsequent jitter that might cause the stream to starve.
           var playtime = Math.max(curtime + SDL.audio.bufferingDelay, SDL.audio.nextPlayTime);
-          if (typeof source['start'] != 'undefined') {
+          if (typeof source['start'] !== 'undefined') {
             source['start'](playtime); // New Web Audio API: sound sources are started with a .start() call.
-          } else if (typeof source['noteOn'] != 'undefined') {
+          } else if (typeof source['noteOn'] !== 'undefined') {
             source['noteOn'](playtime); // Support old Web Audio API specification which had the .noteOn() API.
           }
           /*
@@ -2634,9 +2596,7 @@ var LibrarySDL = {
     SDL.allocateChannels(32);
     // Just record the values for a later call to Mix_QuickLoad_RAW
     SDL.mixerFrequency = frequency;
-    SDL.mixerFormat = format;
     SDL.mixerNumChannels = channels;
-    SDL.mixerChunkSize = chunksize;
     return 0;
   },
 
@@ -2757,7 +2717,7 @@ var LibrarySDL = {
     // In particular, see https://bugzil.la/654787 and https://bugzil.la/1012801 for tradeoffs.
     var canPlayWithWebAudio = !Module['SDL_canPlayWithWebAudio'] || Module['SDL_canPlayWithWebAudio'](filename, arrayBuffer);
 #else
-    var canPlayWithWebAudio = true;
+    const canPlayWithWebAudio = true;
 #endif
 
     if (bytes !== undefined && SDL.webAudioAvailable() && canPlayWithWebAudio) {
@@ -3114,7 +3074,7 @@ var LibrarySDL = {
 #if ASSERTIONS
     // Check the final context looks valid. See
     // https://github.com/emscripten-core/emscripten/issues/16242
-    assert(typeof SDL.ttfContext.measureText == 'function', `context ${SDL.ttfContext} must provide valid methods`);
+    assert(typeof SDL.ttfContext.measureText === 'function', `context ${SDL.ttfContext} must provide valid methods`);
 #endif
     return 0;
   },

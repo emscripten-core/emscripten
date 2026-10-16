@@ -11,16 +11,16 @@
 #include <assert.h>
 #include <emscripten.h>
 
-static Mix_Chunk *sound = NULL;
-static Mix_Chunk *noiseLoop = NULL;
-static Mix_Music *music = NULL;
+Mix_Chunk *sound = NULL;
+Mix_Chunk *noiseLoop = NULL;
+Mix_Music *music = NULL;
 
-static int soundChannel = 0;
-static int noiseLoopChannel = 0;
+int soundChannel = 0;
+int noiseLoopChannel = 0;
 
-static const int kNumChannels = 40;
+const int kNumChannels = 40;
 
-static int loadAndPlay() {
+int loadAndPlay() {
   return Mix_PlayChannel(-1, sound, -1);
 }
 

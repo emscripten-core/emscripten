@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-var emscriptenThreadProfiler = {
+const emscriptenThreadProfiler = {
   // UI update interval in milliseconds.
   uiUpdateIntervalMsecs: 1000,
 
@@ -15,36 +15,36 @@ var emscriptenThreadProfiler = {
 
   // Installs startup hook and periodic UI update timer.
   initialize() {
-    var self = emscriptenThreadProfiler;
+    const self = emscriptenThreadProfiler;
     self.threadProfilerDiv = document.getElementById('threadprofiler');
     if (!self.threadProfilerDiv) {
-      var div = document.createElement("div");
+      const div = document.createElement("div");
       div.innerHTML = "<div id='threadprofiler' style='margin: 20px; border: solid 1px black;'></div>";
       document.body.appendChild(div);
       self.threadProfilerDiv = document.getElementById('threadprofiler');
     }
-    var i = setInterval(() => self.updateUi(), self.uiUpdateIntervalMsecs);
+    const i = setInterval(() => self.updateUi(), self.uiUpdateIntervalMsecs);
     addOnExit(() => clearInterval(i));
   },
 
   initializeNode() {
     addOnInit(() => {
-      var self = emscriptenThreadProfiler;
+      const self = emscriptenThreadProfiler;
       self.dumpState();
-      var i = setInterval(() => self.dumpState(), self.uiUpdateIntervalMsecs);
+      const i = setInterval(() => self.dumpState(), self.uiUpdateIntervalMsecs);
       addOnExit(() => clearInterval(i));
     });
   },
 
   dumpState() {
-    var mainThread = _emscripten_main_runtime_thread_id();
+    const mainThread = _emscripten_main_runtime_thread_id();
 
-    var threads = [mainThread];
-    for (var thread of Object.values(PThread.pthreads)) {
+    const threads = [mainThread];
+    for (const thread of Object.values(PThread.pthreads)) {
       threads.push(thread.pthread_ptr);
     }
-    for (var threadPtr of threads) {
-      var threadName = PThread.getThreadName(threadPtr);
+    for (const threadPtr of threads) {
+      let threadName = PThread.getThreadName(threadPtr);
       if (threadName) {
         threadName = `"${threadName}" (${ptrToString(threadPtr)})`;
       } else {
@@ -56,7 +56,7 @@ var emscriptenThreadProfiler = {
   },
 
   updateUi() {
-    if (typeof PThread == 'undefined') {
+    if (typeof PThread === 'undefined') {
       // Likely running threadprofiler on a singlethreaded build, or not
       // initialized yet, ignore updating.
       return;
@@ -64,20 +64,20 @@ var emscriptenThreadProfiler = {
     if (!runtimeInitialized) {
       return;
     }
-    var str = '';
-    var mainThread = _emscripten_main_runtime_thread_id();
+    let str = '';
+    const mainThread = _emscripten_main_runtime_thread_id();
 
-    var threads = [mainThread];
-    for (var thread of Object.values(PThread.pthreads)) {
+    const threads = [mainThread];
+    for (const thread of Object.values(PThread.pthreads)) {
       threads.push(thread.pthread_ptr);
     }
 
-    for (var threadPtr of threads) {
-      var profilerBlock = Atomics.load({{{ getHeapForType('*') }}}, {{{ getHeapOffset('threadPtr + ' + C_STRUCTS.pthread.profilerBlock, '*') }}});
+    for (const threadPtr of threads) {
+      let profilerBlock = Atomics.load({{{ getHeapForType('*') }}}, {{{ getHeapOffset('threadPtr + ' + C_STRUCTS.pthread.profilerBlock, '*') }}});
 #if MEMORY64
       profilerBlock = Number(profilerBlock);
 #endif
-      var threadName = PThread.getThreadName(threadPtr);
+      let threadName = PThread.getThreadName(threadPtr);
       if (threadName) {
         threadName = `"${threadName}" (${ptrToString(threadPtr)})`;
       } else {
@@ -86,15 +86,15 @@ var emscriptenThreadProfiler = {
 
       str += `Thread ${threadName} now: ${PThread.threadStatusAsString(threadPtr)}. `;
 
-      var threadTimesInStatus = [];
-      var totalTime = 0;
-      var offset = profilerBlock + {{{ C_STRUCTS.thread_profiler_block.timeSpentInStatus }}};
-      for (var j = 0; j < {{{ cDefs.EM_THREAD_STATUS_NUMFIELDS }}}; ++j, offset += 8) {
+      const threadTimesInStatus = [];
+      let totalTime = 0;
+      let offset = profilerBlock + {{{ C_STRUCTS.thread_profiler_block.timeSpentInStatus }}};
+      for (let j = 0; j < {{{ cDefs.EM_THREAD_STATUS_NUMFIELDS }}}; ++j, offset += 8) {
         threadTimesInStatus.push({{{ makeGetValue('offset', 0, 'double') }}});
         totalTime += threadTimesInStatus[j];
         {{{ makeSetValue('offset', 0, 0, 'double') }}};
       }
-      var recent = '';
+      let recent = '';
       if (threadTimesInStatus[1] > 0) recent += (threadTimesInStatus[1] / totalTime * 100.0).toFixed(1) + '% running. ';
       if (threadTimesInStatus[2] > 0) recent += (threadTimesInStatus[2] / totalTime * 100.0).toFixed(1) + '% sleeping. ';
       if (threadTimesInStatus[3] > 0) recent += (threadTimesInStatus[3] / totalTime * 100.0).toFixed(1) + '% waiting for futex. ';

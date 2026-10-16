@@ -177,7 +177,7 @@ addToLibrary({
     unlink: (path) => FS_unlink(path),
     chdir: (path) => withStackSave(() => __wasmfs_chdir(stringToUTF8OnStack(path))),
     read(stream, buffer, offset, length, position) {
-      var seeking = typeof position != 'undefined';
+      var seeking = typeof position !== 'undefined';
 
       var dataBuffer = _malloc(length);
 
@@ -196,7 +196,7 @@ addToLibrary({
     },
     // Note that canOwn is an optimization that we ignore for now in WasmFS.
     write(stream, buffer, offset, length, position, canOwn) {
-      var seeking = typeof position != 'undefined';
+      var seeking = typeof position !== 'undefined';
 
       var dataBuffer = _malloc(length);
       for (var i = 0; i < length; i++) {
@@ -314,7 +314,7 @@ addToLibrary({
     }),
     mount: (type, opts, mountpoint) => {
 #if ASSERTIONS
-      if (typeof type == 'string') {
+      if (typeof type === 'string') {
         // The filesystem was not included, and instead we have an error
         // message stored in the variable.
         throw type;
@@ -370,7 +370,7 @@ addToLibrary({
       wasmFSDevices[dev] = backendPointer;
     },
     createDevice(parent, name, input, output) {
-      if (typeof parent != 'string') {
+      if (typeof parent !== 'string') {
         // The old API allowed parents to be objects, which do not exist in WasmFS.
         throw new Error('Only string paths are accepted');
       }

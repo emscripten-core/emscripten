@@ -92,10 +92,9 @@ def find_exe(*pathelems):
 
   if WINDOWS:
     # Should we use PATHEXT environment variable here?
-    # For now, specify only enough extensions to find llvm / binaryen / emscripten executables.
-    for ext in ['.exe', '.bat']:
-      if os.path.isfile(path + ext):
-        return path + ext
+    # For now, specify only .exe since that is what is used by llvm, binaryen
+    # and emscripten executables.
+    return path + '.exe'
 
   return path
 

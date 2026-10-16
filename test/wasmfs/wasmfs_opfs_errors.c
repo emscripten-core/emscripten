@@ -22,7 +22,7 @@ const char* file = "/opfs/data";
 //   1: success
 //   2: other error
 
-static int try_open(int flags) {
+int try_open(int flags) {
   int fd = open(file, flags);
   if (fd >= 0) {
     int err = close(fd);

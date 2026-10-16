@@ -697,6 +697,7 @@ jobs:
             wasmfs.test_fs_errorstack
             wasmfs.test_fs_errorstack_rawfs
             wasmfs.test_fs_emptyPath
+            wasmfs.test_fs_fadvise_fallocate*
             wasmfs.test_webidl
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
@@ -1030,7 +1031,7 @@ jobs:
             core0.test_promise_await*
             "
       - upload-test-results
-  test-other:
+  test-misc:
     executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NODE_25: "1"
@@ -1042,7 +1043,7 @@ jobs:
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
-          test_targets: "other jslib skip:other.test_native_link_error_message"
+          test_targets: "misc skip:other.test_native_link_error_message"
       - run-tests-linux:
           # Include a single test from test_benchmark.py to ensure it's always
           # kept functional. Must be run separately from above because we cannot
@@ -1158,8 +1159,7 @@ jobs:
             "
   test-windows-browser-firefox:
     # Use spaces and other special chars in the path to emsdk to flush out
-    # issues with windows.  In particular, the .bat file launchers can have
-    # trouble with these.
+    # path-escaping issues on windows.
     working_directory: "~/path with spaces ()/"
     executor:
       name: win/server-2019
@@ -1213,8 +1213,7 @@ jobs:
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
     # Use spaces and other special chars in the path to emsdk to flush out
-    # issues with windows.  In particular, the .bat file launchers can have
-    # trouble with these.
+    # path-escaping issues on windows.
     working_directory: "~/path with spaces ()/"
     executor:
       name: win/server-2019
@@ -1350,7 +1349,7 @@ workflows:
       - test-wasm2js1:
           requires:
             - build-linux
-      - test-other:
+      - test-misc:
           requires:
             - build-linux
       - test-modularize-instance:

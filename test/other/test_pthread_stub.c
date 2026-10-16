@@ -7,7 +7,7 @@
 #include <threads.h>
 #include <pthread.h>
 
-static void cleanup (void* arg) {
+void cleanup (void* arg) {
   printf("cleanup: %ld\n", (intptr_t)arg);
 }
 

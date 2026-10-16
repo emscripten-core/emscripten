@@ -175,20 +175,6 @@ var LibraryEmbind = {
     return registeredInstances[ptr];
   },
 
-  $getInheritedInstanceCount__deps: ['$registeredInstances'],
-  $getInheritedInstanceCount: () => Object.keys(registeredInstances).length,
-
-  $getLiveInheritedInstances__deps: ['$registeredInstances'],
-  $getLiveInheritedInstances: () => {
-    var rv = [];
-    for (var k in registeredInstances) {
-      if (registeredInstances.hasOwnProperty(k)) {
-        rv.push(registeredInstances[k]);
-      }
-    }
-    return rv;
-  },
-
   // class typeID -> {pointerType: ..., constPointerType: ...}
   $registeredPointers: {},
 
@@ -321,7 +307,7 @@ var LibraryEmbind = {
       fromWireType: fromWireType,
       toWireType: (destructors, value) => {
 #if ASSERTIONS
-        if (typeof value != 'number' && typeof value != 'boolean') {
+        if (typeof value !== 'number' && typeof value !== 'boolean') {
           throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${name}`);
         }
         assertIntegerRange(name, value, minRange, maxRange);
@@ -357,7 +343,7 @@ var LibraryEmbind = {
 #if MEMORY64
         // FIXME(https://github.com/emscripten-core/emscripten/issues/16975)
         // `size_t` ends up here, but it's transferred in the ABI as a plain number instead of a bigint.
-        if (typeof value == 'number') {
+        if (typeof value === 'number') {
           return value >>> 0;
         }
 #endif
@@ -370,11 +356,11 @@ var LibraryEmbind = {
       name,
       fromWireType: fromWireType,
       toWireType: (destructors, value) => {
-        if (typeof value == 'number') {
+        if (typeof value === 'number') {
           value = BigInt(value);
         }
 #if ASSERTIONS
-        else if (typeof value != 'bigint') {
+        else if (typeof value !== 'bigint') {
           throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${name}`);
         }
         assertIntegerRange(name, value, minRange, maxRange);
@@ -403,7 +389,7 @@ var LibraryEmbind = {
       fromWireType: (value) => value,
       toWireType: (destructors, value) => {
 #if ASSERTIONS
-        if (typeof value != 'number' && typeof value != 'boolean') {
+        if (typeof value !== 'number' && typeof value !== 'boolean') {
           throw new TypeError(`Cannot convert ${embindRepr(value)} to ${name}`);
         }
 #endif
@@ -465,7 +451,7 @@ var LibraryEmbind = {
     '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
   _embind_register_std_string: (rawType, name) => {
     name = AsciiToString(name);
-    var stdStringIsUTF8 = {{{ EMBIND_STD_STRING_IS_UTF8 }}};
+    const stdStringIsUTF8 = {{{ EMBIND_STD_STRING_IS_UTF8 }}};
 
     registerType(rawType, {
       name,
@@ -495,7 +481,7 @@ var LibraryEmbind = {
         }
 
         var length;
-        var valueIsOfTypeString = (typeof value == 'string');
+        var valueIsOfTypeString = (typeof value === 'string');
 
         // We accept `string` or array views with single byte elements
         if (!(valueIsOfTypeString || (ArrayBuffer.isView(value) && value.BYTES_PER_ELEMENT == 1))) {
@@ -572,7 +558,7 @@ var LibraryEmbind = {
         return str;
       },
       toWireType: (destructors, value) => {
-        if (!(typeof value == 'string')) {
+        if (!(typeof value === 'string')) {
           throwBindingError(`Cannot pass non-string to C++ string type ${name}`);
         }
 
@@ -885,7 +871,7 @@ var LibraryEmbind = {
     }
 
     var fp = makeDynCaller();
-    if (typeof fp != 'function') {
+    if (typeof fp !== 'function') {
         throwBindingError(`unknown function pointer with signature ${signature}: ${rawFunction}`);
     }
     return fp;
@@ -1488,7 +1474,7 @@ var LibraryEmbind = {
 
   $finalizationRegistry: false,
 
-  $detachFinalizer_deps: ['$finalizationRegistry'],
+  $detachFinalizer__deps: ['$finalizationRegistry'],
   $detachFinalizer: (handle) => {},
 
   $attachFinalizer__deps: [

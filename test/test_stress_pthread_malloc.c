@@ -6,7 +6,7 @@
 
 _Atomic int running_threads = 0;
 
-static void malloc_loop() {
+void malloc_loop() {
   // Busy loop here until both threads are up running
   running_threads += 1;
   while (running_threads != 2) {}
@@ -16,12 +16,12 @@ static void malloc_loop() {
   }
 }
 
-static void worker_callback(void) {
+void worker_callback(void) {
   emscripten_outf("worker_callback");
   malloc_loop();
 }
 
-static void main_callback(void* arg) {
+void main_callback(void* arg) {
   emscripten_outf("main_callback");
   malloc_loop();
   emscripten_outf("done");

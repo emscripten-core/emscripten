@@ -62,7 +62,7 @@ addToLibrary({
   // functions to continue to work in `__deps` entries.
   stackAlloc: '$stackAlloc',
   stackSave: '$stackSave',
-  stackRestore: '$stackSave',
+  stackRestore: '$stackRestore',
   setTempRet0: '$setTempRet0',
   getTempRet0: '$getTempRet0',
 
@@ -221,7 +221,7 @@ addToLibrary({
       updateMemoryViews();
 #endif
 #if MEMORYPROFILER
-      if (typeof emscriptenMemoryProfiler != 'undefined') {
+      if (typeof emscriptenMemoryProfiler !== 'undefined') {
         emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, wasmMemory.buffer.byteLength);
       }
 #endif
@@ -701,7 +701,7 @@ addToLibrary({
 
     offset = 0; z = 0;
     for (w=0; w < words.length; w++) {
-      if (typeof words[w] == 'string') {
+      if (typeof words[w] === 'string') {
         if (words[w] === 'Z') {
           // compressed zeros - write appropriate number of zero words
           for (z = 0; z < (8 - words.length+1); z++) {
@@ -883,9 +883,11 @@ addToLibrary({
     return { family: family, addr: addr, port: port };
   },
   $writeSockaddr__docs: '/** @param {number=} addrlen */',
-  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', '$DNS', 'htons'
+  $writeSockaddr__deps: ['$inetPton4', '$inetPton6', '$zeroMemory', 'htons',
 #if NODERAWSOCKETS
-    , '$lengthBytesUTF8', '$stringToUTF8'
+    '$lengthBytesUTF8', '$stringToUTF8',
+#else
+    '$DNS',
 #endif
   ],
   $writeSockaddr: (sa, family, addr, port, addrlen) => {
@@ -918,9 +920,9 @@ addToLibrary({
 #endif
       case {{{ cDefs.AF_INET }}}:
         // The address may still be an unresolved hostname (e.g. a peer name
-        // recorded at connect time); map it to its (possibly fake) IP here so
-        // callers can pass names and IPs alike.
-        addr = inetPton4(DNS.lookup_name(addr));
+        // recorded at connect time); map it to its fake IP here so callers can
+        // pass names and IPs alike. Real sockets only ever see numeric addresses.
+        addr = inetPton4({{{ NODERAWSOCKETS ? 'addr' : 'DNS.lookup_name(addr)' }}});
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
@@ -930,7 +932,7 @@ addToLibrary({
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
         break;
       case {{{ cDefs.AF_INET6 }}}:
-        addr = inetPton6(DNS.lookup_name(addr));
+        addr = inetPton6({{{ NODERAWSOCKETS ? 'addr' : 'DNS.lookup_name(addr)' }}});
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
         if (addrlen) {
           {{{ makeSetValue('addrlen', 0, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
@@ -1000,16 +1002,11 @@ addToLibrary({
     }
   },
 
-  _emscripten_lookup_name__deps: ['$UTF8ToString', '$DNS', '$inetPton4'],
-  _emscripten_lookup_name: (name) => {
-    // uint32_t _emscripten_lookup_name(const char *name);
-    var nameString = UTF8ToString(name);
-    return inetPton4(DNS.lookup_name(nameString));
-  },
-
-  getaddrinfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl',
+  getaddrinfo__deps: ['$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl',
 #if NODERAWSOCKETS
     '$nodeSockHelpers',
+#else
+    '$DNS',
 #endif
 #if NODERAWSOCKETS && ASYNCIFY
     '$Asyncify',
@@ -1073,7 +1070,7 @@ addToLibrary({
     // addrinfo per {family, addr} result into *out.
     async function lookupHostname() {
       var entries = await nodeSockHelpers.lookupHost(node, family);
-      if (typeof entries == 'number') return entries;
+      if (typeof entries === 'number') return entries;
       var head = 0, prev = 0;
       for (var entry of entries) {
         var ai = allocaddrinfo(entry.family, type, proto, null, entry.addr, port);
@@ -1234,7 +1231,22 @@ addToLibrary({
 #endif
   },
 
-  getnameinfo__deps: ['$DNS', '$readSockaddr', '$stringToUTF8'],
+  getnameinfo__deps: ['$readSockaddr', '$stringToUTF8',
+#if NODERAWSOCKETS
+    '$nodeSockHelpers',
+#else
+    '$DNS',
+#endif
+#if NODERAWSOCKETS && ASYNCIFY
+    '$Asyncify',
+#endif
+  ],
+  getnameinfo__proxy: 'sync',
+#if NODERAWSOCKETS && (PTHREADS || ASYNCIFY)
+  // As getaddrinfo: a reverse lookup node:dns has to answer is a Promise,
+  // awaited by a sync-proxied pthread or suspended on by ASYNCIFY/JSPI.
+  getnameinfo__async: true,
+#endif
   getnameinfo: (sa, salen, node, nodelen, serv, servlen, flags) => {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
@@ -1243,39 +1255,65 @@ addToLibrary({
     var port = info.port;
     var addr = info.addr;
 
-    var overflowed = false;
+    // Write the result, with `lookup` the host name for addr if one is wanted
+    // and known.
+    function write(lookup) {
+      var overflowed = false;
 
-    if (node && nodelen) {
-      var lookup;
-      if ((flags & {{{ cDefs.NI_NUMERICHOST }}}) || !(lookup = DNS.lookup_addr(addr))) {
-        if (flags & {{{ cDefs.NI_NAMEREQD }}}) {
-          return {{{ cDefs.EAI_NONAME }}};
+      if (node && nodelen) {
+        if (!lookup) {
+          if (flags & {{{ cDefs.NI_NAMEREQD }}}) {
+            return {{{ cDefs.EAI_NONAME }}};
+          }
+        } else {
+          addr = lookup;
         }
-      } else {
-        addr = lookup;
-      }
-      var numBytesWrittenExclNull = stringToUTF8(addr, node, nodelen);
+        var numBytesWrittenExclNull = stringToUTF8(addr, node, nodelen);
 
-      if (numBytesWrittenExclNull+1 >= nodelen) {
-        overflowed = true;
+        if (numBytesWrittenExclNull+1 >= nodelen) {
+          overflowed = true;
+        }
       }
+
+      if (serv && servlen) {
+        port = '' + port;
+        var numBytesWrittenExclNull = stringToUTF8(port, serv, servlen);
+
+        if (numBytesWrittenExclNull+1 >= servlen) {
+          overflowed = true;
+        }
+      }
+
+      if (overflowed) {
+        // Note: even when we overflow, getnameinfo() is specced to write out the truncated results.
+        return {{{ cDefs.EAI_OVERFLOW }}};
+      }
+
+      return 0;
     }
 
-    if (serv && servlen) {
-      port = '' + port;
-      var numBytesWrittenExclNull = stringToUTF8(port, serv, servlen);
-
-      if (numBytesWrittenExclNull+1 >= servlen) {
-        overflowed = true;
+    if (node && nodelen && !(flags & {{{ cDefs.NI_NUMERICHOST }}})) {
+#if NODERAWSOCKETS
+      // A node:dns reverse lookup, where the calling stack can wait on it (see
+      // getaddrinfo). Where it cannot, the numeric form is the answer unless a
+      // name is required.
+      var lookupService = async () => write(await nodeSockHelpers.lookupService(addr, port));
+#if PTHREADS
+      if (PThread.currentProxiedOperationCallerThread) return lookupService();
+#endif
+#if ASYNCIFY
+      return Asyncify.handleAsync(lookupService);
+#else
+      if (flags & {{{ cDefs.NI_NAMEREQD }}}) {
+        return {{{ cDefs.EAI_AGAIN }}};
       }
+      return write(null);
+#endif
+#else
+      return write(DNS.lookup_addr(addr));
+#endif
     }
-
-    if (overflowed) {
-      // Note: even when we overflow, getnameinfo() is specced to write out the truncated results.
-      return {{{ cDefs.EAI_OVERFLOW }}};
-    }
-
-    return 0;
+    return write(null);
   },
 
   // Implement netdb.h protocol entry (getprotoent, getprotobyname, getprotobynumber, setprotoent, endprotoent)
@@ -1363,27 +1401,6 @@ addToLibrary({
     _setprotoent(true);
     var result = Protocols.map[number];
     return result;
-  },
-
-  // ==========================================================================
-  // sockets. Note that the implementation assumes all sockets are always
-  // nonblocking
-  // ==========================================================================
-  $Sockets: {
-    BUFFER_SIZE: 10*1024, // initial size
-    MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
-
-    nextFd: 1,
-    fds: {},
-    nextport: 1,
-    maxport: 65535,
-    peer: null,
-    connections: {},
-    portmap: {},
-    localAddr: 0xfe00000a, // Local address is always 10.0.0.254
-    addrPool: [            0x0200000a, 0x0300000a, 0x0400000a, 0x0500000a,
-               0x0600000a, 0x0700000a, 0x0800000a, 0x0900000a, 0x0a00000a,
-               0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a] /* 0x0100000a is reserved */
   },
 
 #endif // PROXY_POSIX_SOCKETS == 0
@@ -1580,7 +1597,7 @@ addToLibrary({
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
-    if (typeof ret == 'number' || typeof ret == 'boolean') return ret;
+    if (typeof ret === 'number' || typeof ret === 'boolean') return ret;
 
     var cache = _emscripten_get_compiler_setting.cache ??= {};
     var fullret = cache[name];
@@ -1757,7 +1774,7 @@ addToLibrary({
 #endif
       // Special handling for Wasm globals.  See `create_receiving` for the
       // static version of this code.
-      if (typeof exportedSymbol.value != 'undefined') {
+      if (typeof exportedSymbol.value !== 'undefined') {
 #if MEMORY64
         exportedSymbol = Number(exportedSymbol.value);
 #else
@@ -1992,7 +2009,7 @@ addToLibrary({
     // code size, but directly access wasmTable, which is a bit slower as uncached.
     return wasmTable.get({{{ toIndexType('funcPtr') }}});
   },
-#endif // SHRINK_LEVEL == 0
+#endif // SHRINK_LEVEL == 0 || ASYNCIFY == 2
 
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime: () => {
@@ -2579,7 +2596,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
 
   var t = library[x];
-  if (typeof t == 'string') return;
+  if (typeof t === 'string') return;
   t = t.toString();
 
   // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
@@ -2643,7 +2660,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     pre += 'try {\n';
     handler +=
     '} catch (e) {\n' +
-    "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
+    "  if (typeof FS === 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
     '  dbg(`error: syscall failed with ${e.errno} (${strError(e.errno)})`);\n' +

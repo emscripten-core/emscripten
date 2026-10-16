@@ -123,13 +123,15 @@ function createWasmAudioWorkletProcessor() {
         outputViewsNeeded += entry.length;
       }
       stackMemoryData += outputViewsNeeded * this.bytesPerChannel;
-      var numParams = 0;
 #if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
+      var numParams = 0;
       for (entry in parameters) {
         ++numParams;
         stackMemoryStruct += {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
         stackMemoryData += parameters[entry].byteLength;
       }
+#else
+      const numParams = 0;
 #endif
       var oldStackPtr = stackSave();
 #if ASSERTIONS
@@ -185,7 +187,7 @@ function createWasmAudioWorkletProcessor() {
         dataPtr += subentry.length * {{{ getNativeTypeSize('float') }}};
       }
 #else
-      var paramsPtr = 0;
+      const paramsPtr = 0;
 #endif
 
       // Copy output audio descriptor structs to Wasm. 'outputsPtr' is the start

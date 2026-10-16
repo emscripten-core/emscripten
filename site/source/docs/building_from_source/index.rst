@@ -11,7 +11,7 @@ Emscripten itself is written in Python and JavaScript so it does not need to be
 compiled.  However, after checkout you will need to run the top level
 ``bootstrap.py`` script before the toolchain is usable.  This performs
 various steps including ``npm install`` and the creation of compiler entry
-points (e.g. `.bat` files on windows).
+points (e.g. ``.exe`` files on windows).
 
 Emscripten comes with its own versions of some C/C++ system libraries which
 ``emcc`` builds automatically as and when needed (in the emsdk builds, these are

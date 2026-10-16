@@ -1214,8 +1214,8 @@ var LibraryGLFW = {
     requestFullscreen(lockPointer, resizeCanvas) {
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
-      if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
-      if (typeof Browser.resizeCanvas == 'undefined') Browser.resizeCanvas = false;
+      if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
+      if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
 
       var canvas = Browser.getCanvas();
       function fullscreenChange() {
@@ -1294,7 +1294,7 @@ var LibraryGLFW = {
         }
       }
 #endif
-      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen != 'undefined')) {
+      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen !== 'undefined')) {
         var factor = Math.min(screen.width / w, screen.height / h);
         w = Math.round(w * factor);
         h = Math.round(h * factor);
@@ -1307,7 +1307,7 @@ var LibraryGLFW = {
       const hNativeScaled = Math.floor(hNative * scale);
       if (canvas.width  != wNativeScaled) canvas.width  = wNativeScaled;
       if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
-      if (typeof canvas.style != 'undefined') {
+      if (typeof canvas.style !== 'undefined') {
         if (!GLFW.isCSSScalingEnabled()) {
           canvas.style.setProperty( 'width', wNative + 'px', 'important');
           canvas.style.setProperty('height', hNative + 'px', 'important');
@@ -1349,7 +1349,7 @@ var LibraryGLFW = {
     },
 
     getDevicePixelRatio() {
-      return (typeof devicePixelRatio == 'number' && devicePixelRatio) || 1.0;
+      return (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1.0;
     },
 
     isHiDPIAware() {

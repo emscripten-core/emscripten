@@ -235,9 +235,9 @@ var LibraryDylink = {
         dbg(`updateGOT: before: ${symName} : ${GOT[symName]?.value}`);
 #endif
         var newValue;
-        if (typeof value == 'function') {
+        if (typeof value === 'function') {
           newValue = {{{ to64('addFunction(value)') }}};
-        } else if (typeof value.value == {{{ POINTER_JS_TYPE }}}) {
+        } else if (typeof value.value === {{{ POINTER_JS_TYPE }}}) {
           newValue = value;
         } else {
           // The GOT can only contain addresses (i.e data addresses or function
@@ -334,15 +334,15 @@ var LibraryDylink = {
 #if DYLINK_DEBUG == 2
         dbg(`assigning dynamic symbol from main module: ${symName} -> ${prettyPrint(value)}`);
 #endif
-        if (typeof value == 'function') {
+        if (typeof value === 'function') {
           /** @suppress {checkTypes} */
           entry.value = {{{ to64('addFunction(value, value.sig)') }}};
 #if DYLINK_DEBUG == 2
           dbg(`assigning table entry for : ${symName} -> ${entry.value}`);
 #endif
-        } else if (typeof value == 'number') {
+        } else if (typeof value === 'number') {
           entry.value = {{{ to64('value') }}};
-        } else if (typeof value.value == {{{ POINTER_JS_TYPE }}}) {
+        } else if (typeof value.value === {{{ POINTER_JS_TYPE }}}) {
           entry.value = value;
         } else {
           throw new Error(`bad export type for '${symName}': ${typeof value} (${value})`);
@@ -494,15 +494,15 @@ var LibraryDylink = {
     }
 
     var customSection = { neededDynlibs: [], tlsExports: new Set(), weakImports: new Set(), runtimePaths: [] };
-    var WASM_DYLINK_MEM_INFO = 0x1;
-    var WASM_DYLINK_NEEDED = 0x2;
-    var WASM_DYLINK_EXPORT_INFO = 0x3;
-    var WASM_DYLINK_IMPORT_INFO = 0x4;
-    var WASM_DYLINK_RUNTIME_PATH = 0x5;
-    var WASM_DYLINK_TARGET_ARCH = 0x6;
-    var WASM_SYMBOL_TLS = 0x100;
-    var WASM_SYMBOL_BINDING_MASK = 0x3;
-    var WASM_SYMBOL_BINDING_WEAK = 0x1;
+    const WASM_DYLINK_MEM_INFO = 0x1;
+    const WASM_DYLINK_NEEDED = 0x2;
+    const WASM_DYLINK_EXPORT_INFO = 0x3;
+    const WASM_DYLINK_IMPORT_INFO = 0x4;
+    const WASM_DYLINK_RUNTIME_PATH = 0x5;
+    const WASM_DYLINK_TARGET_ARCH = 0x6;
+    const WASM_SYMBOL_TLS = 0x100;
+    const WASM_SYMBOL_BINDING_MASK = 0x3;
+    const WASM_SYMBOL_BINDING_WEAK = 0x1;
     while (offset < end) {
       var subsectionType = getU8();
       var subsectionSize = getLEB();
@@ -585,7 +585,7 @@ var LibraryDylink = {
       if (isSymbolDefined(sym)) {
         var curr = wasmImports[sym], next = exp;
         // don't warn on functions - might be odr, linkonce_odr, etc.
-        if (!(typeof curr == 'function' && typeof next == 'function')) {
+        if (!(typeof curr === 'function' && typeof next === 'function')) {
           err(`warning: symbol '${sym}' from '${libName}' already exists (duplicate symbol? or weak linking, which isn't supported yet?)`); // + [curr, ' vs ', next]);
         }
       }
@@ -1052,7 +1052,7 @@ var LibraryDylink = {
     return withStackSave(() => {
       // In dylink.c we use: `char buf[2*NAME_MAX+2];` and NAME_MAX is 255.
       // So we use the same size here.
-      var bufSize = 2*255 + 2;
+      const bufSize = 2*255 + 2;
       var buf = stackAlloc(bufSize);
       var rpathC = stringToUTF8OnStack(rpathResolved.join(':'));
       var libNameC = stringToUTF8OnStack(libName);
@@ -1378,7 +1378,7 @@ var LibraryDylink = {
 #endif
     result = lib.exports[symbol];
 
-    if (typeof result == 'function') {
+    if (typeof result === 'function') {
 #if DYLINK_DEBUG
       dbg(`dlsym_js: ${symbol} getting table slot for: ${result}`);
 #endif

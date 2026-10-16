@@ -6,9 +6,8 @@
 import os
 import shutil
 
-TAG = '1.6.58'
-# Emscripten maintainers, could you please upload this to your cache? Thanks.
-HASH = '177d81fd1ba1a46ff64da7f24260814876bd0a27ee5bed6dc9dbdd1fe28f3a67cb6f11c74a68f8380a9a7ab0d95c0022b847b1a3e4d939f2a562274627205789'
+TAG = '1.6.59'
+HASH = 'e14302d87864432d747896e3944a6416d4b5f3059f538cfe615ddbe1d0084d4a02d4df3ef2761b02c839858625bed57d873198792c3583029c619e1cf8c4561b'
 
 deps = ['zlib']
 variants = {

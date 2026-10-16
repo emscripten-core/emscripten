@@ -124,7 +124,7 @@ function preRun() {
 #if expectToReceiveOnModule('preRun')
   var preRun = Module['preRun'];
   if (preRun) {
-    if (typeof preRun == 'function') preRun = [preRun];
+    if (typeof preRun === 'function') preRun = [preRun];
     onPreRuns.push(...preRun);
   }
 #if ASSERTIONS
@@ -230,7 +230,7 @@ function postRun() {
 #if expectToReceiveOnModule('postRun')
   var postRun = Module['postRun'];
   if (postRun) {
-    if (typeof postRun == 'function') postRun = [postRun];
+    if (typeof postRun === 'function') postRun = [postRun];
     onPostRuns.push(...postRun);
   }
 #if ASSERTIONS
@@ -272,11 +272,6 @@ function abort(what) {
   // a trap or not based on a hidden field within the object. So at the moment
   // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
   // allows this in the wasm spec.
-
-  // Suppress closure compiler warning here. Closure compiler's builtin extern
-  // definition for WebAssembly.RuntimeError claims it takes no arguments even
-  // though it can.
-  // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
 #if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
   //
@@ -292,13 +287,7 @@ function abort(what) {
     ___trap();
   }
 #endif
-  /** @suppress {checkTypes} */
-  var e = new WebAssembly.RuntimeError(what);
-
-  // Throw the error whether or not MODULARIZE is set because abort is used
-  // in code paths apart from instantiation where an exception is expected
-  // to be thrown when abort is called.
-  throw e;
+  throw new WebAssembly.RuntimeError(what);
 }
 
 #if ASSERTIONS && !('$FS' in addedLibraryItems)
@@ -387,7 +376,7 @@ function instrumentWasmExportsWithAbort(exports) {
   var instExports = {};
   for (var name in exports) {
     var original = exports[name];
-    if (typeof original == 'function') {
+    if (typeof original === 'function') {
       instExports[name] = makeAbortWrapper(original);
     } else {
       instExports[name] = original;
@@ -608,10 +597,10 @@ async function instantiateAsync(binary, binaryFile, imports) {
   // https://github.com/WICG/cross-origin-storage
   // Any error (not found, not allowed, network failure, …) falls through
   // to the standard Emscripten streaming path so the page always loads.
-  if (globalThis.navigator?.crossOriginStorage) {
+  if (globalThis.navigator?.crossOriginStorage?.getFileHandle) {
     var cosHash = Module['wasmHash'];
     try {
-      var cosHandle = await navigator.crossOriginStorage.requestFileHandle(cosHash);
+      var cosHandle = await navigator.crossOriginStorage.getFileHandle(cosHash);
       // Cache hit. getFile() resolves to a lazy File reference; no bytes are
       // read until the stream is consumed by the compiler below.
       var cosFile = await cosHandle.getFile();
@@ -639,7 +628,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
         // pipeTo() closes the writable, and COS verifies the hash on close.
         (async () => {
           try {
-            var writeHandle = await navigator.crossOriginStorage.requestFileHandle(
+            var writeHandle = await navigator.crossOriginStorage.getFileHandle(
               cosHash,
 #if CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*'
               { create: true, origins: '*' },
@@ -702,7 +691,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
   return instantiateArrayBuffer(binaryFile, imports);
 }
 #endif // WASM_ASYNC_COMPILATION
-#endif // SOURCE_PHASE_IMPORTS
+#endif // !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 
 #if !WASM_ESM_INTEGRATION
 function getWasmImports() {

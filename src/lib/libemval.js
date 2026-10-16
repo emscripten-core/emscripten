@@ -289,7 +289,7 @@ var LibraryEmVal = {
     '$Emval', '$getStringOrSymbol',
   ],
   _emval_create_invoker: (argCount, argTypesPtr, kind) => {
-    var GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
+    const GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
 
     var [retType, ...argTypes] = emval_lookupTypes(argCount, argTypesPtr);
     var toReturnWire = retType.toWireType.bind(retType);
@@ -386,13 +386,13 @@ ${functionBody}
   _emval_is_number__deps: ['$Emval'],
   _emval_is_number: (handle) => {
     handle = Emval.toValue(handle);
-    return typeof handle == 'number';
+    return typeof handle === 'number';
   },
 
   _emval_is_string__deps: ['$Emval'],
   _emval_is_string: (handle) => {
     handle = Emval.toValue(handle);
-    return typeof handle == 'string';
+    return typeof handle === 'string';
   },
 
   _emval_in__deps: ['$Emval'],

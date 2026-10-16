@@ -18,9 +18,22 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.12 (in development)
-----------------------
+6.0.13 (in development)
+-----------------------
+- Support for windows .bat/.ps1 launcher files was completely removed.  These
+  days we use a native windows launcher program. (#27359)
+- `MEMORY64=2` was marked as deprecated. (#27952)
+- The undocumented `FS.filesystems` object was removed. Replace things like
+  `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
+- libpng port updated from 1.6.58 to 1.6.59. (#27956)
+- compiler-rt was updated to LLVM 23.1.3. This restores `-fcoverage-mapping`
+  compatibility with the LLVM toolchain, so coverage-enabled programs no
+  longer trap while writing profile data. (#27223)
 
+6.0.12 - 10/08/26
+-----------------
+- The embind library functions `getInheritedInstanceCount` and
+  `getLiveInheritedInstances` were marked as deprecated. (#27899)
 - `MAXIMUM_MEMORY` is now honored with `IMPORTED_MEMORY` even without
   `ALLOW_MEMORY_GROWTH`: the module accepts an imported memory of any size up to
   the maximum, but never grows it. Previously the maximum was ignored, with a
@@ -32,9 +45,6 @@ See docs/process.md for more on how version tagging works.
   main thread only. The callback itself is then able to collect the events via
   a zero-timeout `epoll_wait`, without an `ASYNCIFY`/`JSPI` requirement.
   (#27547)
-- compiler-rt was updated to LLVM 23.1.2. This restores `-fcoverage-mapping`
-  compatibility with the LLVM toolchain, so coverage-enabled programs no
-  longer trap while writing profile data. (#27223)
 
 6.0.11 - 10/02/26
 -----------------

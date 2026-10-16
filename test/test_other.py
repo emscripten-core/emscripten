@@ -244,8 +244,10 @@ def requires_tool(tool, env_name=None):
       else:
         env_var = f'EMTEST_SKIP_{tool.upper()}'
       if not shutil.which(tool):
-        if env_var in os.environ:
+        if utils.get_env_bool(env_var):
           self.skipTest(f'test requires {tool} and {env_var} is set')
+        elif utils.get_env_bool('EMTEST_AUTOSKIP'):
+          self.skipTest(f'test requires {tool} (missing in PATH) and EMTEST_AUTOSKIP is set')
         else:
           self.fail(f'{tool} required to run this test.  Use {env_var} to skip')
       return func(self, *args, **kwargs)
@@ -1197,6 +1199,9 @@ f.close()
     '': (None,),
     'wasm64': ('-m64',),
     'pthreads': ('-pthread',),
+    'wasm_workers': ('-sWASM_WORKERS',),
+    'exit_runtime': ('-sEXIT_RUNTIME',),
+    'lto': ('-flto',),
   })
   def test_cmake_check_type_size(self, cflag):
     if cflag == '-m64':
@@ -1630,7 +1635,6 @@ int f() {
     self.emcc('main.c', ['libA.so', 'libA.so', '-o', 'a.out.js'])
     self.assertContained('result: 1', self.run_js('a.out.js'))
 
-  @no_mac('https://github.com/emscripten-core/emscripten/issues/16649')
   @crossplatform
   def test_dot_a_all_contents_invalid(self):
     # check that we error if an object file in a .a is not valid bitcode.
@@ -2019,8 +2023,6 @@ Module['postRun'] = () => {
     text = self.run_process([EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
     self.assertEqual(text.count('common.o'), 2)
 
-    # With fastcomp we don't support duplicate members so this should generate
-    # a warning.  With the wasm backend (lld) this is fully supported.
     self.do_runf('main.c', 'a\nb...\n', cflags=['-L.', '-ldup'])
 
   def test_export_from_archive(self):
@@ -3128,7 +3130,6 @@ More info: https://emscripten.org
     'JSDCE-fors': (['JSDCE'],),
     'JSDCE-objectPattern': (['JSDCE'],),
     'AJSDCE': (['AJSDCE'],),
-    'stripDefaultUndefined': (['stripDefaultUndefined'],),
     'emitDCEGraph': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-closure': (['emitDCEGraph', '--no-print', '--closure-friendly'], 'emitDCEGraph.js'),
     'emitDCEGraph-dynCall': (['emitDCEGraph', '--no-print'],),
@@ -5011,72 +5012,6 @@ int main() {
     # unopt build is quite larger'
     self.assertGreater(sizes['0'], (1.20 * opt_max))
 
-  @disabled('relies on fastcomp EXIT_RUNTIME=0 optimization not implemented/disabled')
-  def test_global_inits(self):
-    create_file('inc.h', r'''
-#include <stdio.h>
-
-template<int x>
-struct Waste {
-  int state;
-  Waste() : state(10) {}
-  void test(int a) {
-    printf("%d\n", a + state);
-  }
-  ~Waste() {
-    printf("going away %d\n", x);
-  }
-};
-
-Waste<3> *getMore();
-''')
-
-    create_file('main.cpp', r'''
-#include "inc.h"
-
-Waste<1> mw1;
-Waste<2> mw2;
-
-int main(int argc, char **argv) {
-  printf("argc: %d\n", argc);
-  mw1.state += argc;
-  mw2.state += argc;
-  mw1.test(5);
-  mw2.test(6);
-  getMore()->test(0);
-  return 0;
-}
-''')
-
-    create_file('side.cpp', r'''
-#include "inc.h"
-
-Waste<3> sw3;
-
-Waste<3> *getMore() {
-  return &sw3;
-}
-''')
-
-    for opts, has_global in [
-      (['-O2', '-g', '-sEXIT_RUNTIME'], True),
-      # no-exit-runtime removes the atexits, and then globalgce can work
-      # it's magic to remove the global initializer entirely
-      (['-O2', '-g'], False),
-      (['-Os', '-g', '-sEXIT_RUNTIME'], True),
-      (['-Os', '-g'], False),
-      (['-O2', '-g', '-flto', '-sEXIT_RUNTIME'], True),
-      (['-O2', '-g', '-flto'], False),
-    ]:
-      print(opts, has_global)
-      self.run_process([EMXX, 'main.cpp', '-c'] + opts)
-      self.run_process([EMXX, 'side.cpp', '-c'] + opts)
-      self.run_process([EMCC, 'main.o', 'side.o'] + opts)
-      self.run_js('a.out.js')
-      src = read_file('a.out.js')
-      self.assertContained('argc: 1\n16\n17\n10\n', self.run_js('a.out.js'))
-      self.assertContainedIf('globalCtors', src, has_global)
-
   @requires_native_clang
   @crossplatform
   def test_bad_triple(self):
@@ -5877,6 +5812,14 @@ int main()
 
   def test_strptime_symmetry(self):
     self.do_other_test('test_strptime_symmetry.c')
+
+  def test_utime_now(self):
+    self.do_runf('utime/test_utime_now.c', 'done\n')
+
+  @crossplatform
+  @also_with_nodefs_both
+  def test_utime_roundtrip(self):
+    self.do_runf('utime/test_utime_roundtrip.c', 'done\n')
 
   @also_with_wasmfs
   def test_truncate_from_0(self):
@@ -11093,6 +11036,15 @@ ok.
   def test_gethostbyname(self):
     self.do_runf_out_file('sockets/test_gethostbyname.c')
 
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_dns_table(self, args):
+    # gethostbyname, getaddrinfo and getnameinfo share one DNS table, also
+    # when called from a pthread.
+    self.do_runf('sockets/test_dns_table.c', 'done\n', cflags=args)
+
   def test_getprotobyname(self):
     self.do_runf('sockets/test_getprotobyname.c', 'done\n')
 
@@ -11171,25 +11123,6 @@ int main () {
     check_size('a.out.js', 150000)
     check_size('a.out.wasm', 80000)
 
-  # Checks that C++ exceptions managing invoke_*() wrappers will not be generated if exceptions are disabled
-  def test_no_invoke_functions_are_generated_if_exception_catching_is_disabled(self):
-    self.skipTest('Skipping other.test_no_invoke_functions_are_generated_if_exception_catching_is_disabled: Enable after new version of fastcomp has been tagged')
-    for args in ([], ['-sWASM=0']):
-      self.run_process([EMXX, test_file('hello_world.cpp'), '-sDISABLE_EXCEPTION_CATCHING', '-o', 'a.html'] + args)
-      output = read_file('a.js')
-      self.assertContained('_main', output) # Smoke test that we actually compiled
-      self.assertNotContained('invoke_', output)
-
-  # Verifies that only the minimal needed set of invoke_*() functions will be generated when C++ exceptions are enabled
-  def test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled(self):
-    self.skipTest('Skipping other.test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled: Enable after new version of fastcomp has been tagged')
-    for args in ([], ['-sWASM=0']):
-      self.run_process([EMXX, test_file('invoke_i.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'a.html'] + args)
-      output = read_file('a.js')
-      self.assertContained('invoke_i', output)
-      self.assertNotContained('invoke_ii', output)
-      self.assertNotContained('invoke_v', output)
-
   @parameterized({
     'O0': (False, ['-O0']),
     'O0_emit': (True, ['-O0', '-sEMIT_EMSCRIPTEN_LICENSE']),
@@ -11201,7 +11134,6 @@ int main () {
     'O2_closure_js_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE', '--closure=1', '-sWASM=0']),
   })
   def test_emscripten_license(self, expect_license, args):
-    # fastcomp does not support the new license flag
     self.run_process([EMCC, test_file('hello_world.c')] + args)
     js = read_file('a.out.js')
     licenses_found = len(re.findall(r'Copyright [0-9]* The Emscripten Authors', js))
@@ -11371,6 +11303,13 @@ int main () {
     self.assert_fail(cmd + ['-sSTRICT'], 'ReferenceError: SPLIT_MEMORY is not defined')
     with env_modify({'EMCC_STRICT': '1'}):
       self.assert_fail(cmd, 'ReferenceError: SPLIT_MEMORY is not defined')
+
+    # Also test a renamed legacy setting (TOTAL_MEMORY -> INITIAL_MEMORY), where
+    # the new setting name is modified after STRICT is enabled.
+    create_file('lib_renamed.js', 'var foo = {{{TOTAL_MEMORY}}};')
+    cmd = [EMCC, test_file('hello_world.c'), '-o', 'out.js', '--js-library', 'lib_renamed.js']
+    self.run_process(cmd)
+    self.assert_fail(cmd + ['-sSTRICT'], 'ReferenceError: TOTAL_MEMORY is not defined')
 
   def test_strict_mode_link_cxx(self):
     # In strict mode C++ programs fail to link unless run with `em++`.
@@ -13099,7 +13038,6 @@ exec "$@"
                   result)
 
   @crossplatform
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25206')
   def test_gen_struct_info(self):
     # This test will start failing whenever the struct info changes (e.g. offset or defines
     # change).  However it's easy to rebaseline with --rebaseline.
@@ -13885,12 +13823,11 @@ void foo() {}
                  'poll probe ok from main\npoll probe ok from callback\n',
                  cflags=args)
 
-  # Verify that we are able to successfully compile a script when the Windows 7
-  # and Python workaround env. vars are enabled.
+  # Verify that we are able to successfully compile a script when the Windows
+  # Python workaround env. var is enabled.
   # See https://bugs.python.org/issue34780
-  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1',
-                    'EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG': '1'})
-  def test_windows_batch_script_workaround(self):
+  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1'})
+  def test_windows_python_bug_workaround(self):
     self.run_process([EMCC, test_file('hello_world.c')])
     self.assertExists('a.out.js')
 
@@ -14870,12 +14807,6 @@ throw_tag:
     create_file('post.js', 'err(1, 2, "hello"); out("foo", 42);')
     self.do_runf('hello_world.c', '1 2 hello\nfoo 42\n', cflags=['--post-js=post.js'])
 
-  @only_windows('This test verifies Windows batch script behavior against bug https://github.com/microsoft/terminal/issues/15212')
-  @with_env_modify({'PATH': path_from_root() + os.pathsep + os.getenv('PATH')})
-  def test_windows_batch_file_dp0_expansion_bug(self):
-    create_file('build_with_quotes.bat', f'@"emcc" "{test_file("hello_world.c")}"')
-    self.run_process(['build_with_quotes.bat'])
-
   @only_windows('Check that directory permissions are properly retrieved on Windows')
   @requires_node
   def test_windows_nodefs_execution_permission(self):
@@ -15380,11 +15311,7 @@ addToLibrary({
     print('running cmd:', cmd)
     with env_modify({'PATH': new_path}):
       proc = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
-      # There is currently a bug in the windows .bat files that leads to stdout
-      # not being empty in this case.
-      # See https://github.com/emscripten-core/emscripten/pull/25416
-      if not WINDOWS:
-        self.assertEqual(proc.stdout, '')
+      self.assertEqual(proc.stdout, '')
       self.assertEqual(proc.stderr, '')
 
   def test_browser_too_old(self):
@@ -16264,6 +16191,9 @@ console.log('OK');'''
     err = self.run_process([EMCC, '-sMEMORY64', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: MEMORY64 is deprecated (prefer the standard -m64 or --target=wasm64 flags). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
 
+    err = self.run_process([EMCC, '-sMEMORY64=2', test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: MEMORY64=2 is deprecated (under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27952)). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
+
     err = self.run_process([EMCC, '-sUSE_PTHREADS', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
 
@@ -16410,4 +16340,5 @@ SHA512 = 'dummy'
 PORT_FILE = 'port.py'
 EXTERNAL_PORT = URL
 ''')
-    self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
+    err = self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
+    self.assertContained('retrying in 1s', err)

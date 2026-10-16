@@ -7,9 +7,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-static _Atomic int* word;
-static _Atomic bool woken = false;
-static pthread_barrier_t started;
+_Atomic int* word;
+_Atomic bool woken = false;
+pthread_barrier_t started;
 
 void* dummy_thread(void* arg) {
   return NULL;

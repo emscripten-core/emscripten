@@ -12,7 +12,7 @@
 
 typedef unsigned int uint;
 const char* chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static char decode_table[256];
+char decode_table[256];
 
 int encode_size(int size) {
   return (int)(size * 4 / 3.0) + 6;

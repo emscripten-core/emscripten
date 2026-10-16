@@ -119,6 +119,7 @@ DEPRECATED_SETTINGS = {
   'SOCKET_WEBRTC': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27366)',
   'WASM=0': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27608)',
   'WASM=2': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27608)',
+  'MEMORY64=2': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27952)',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
@@ -405,7 +406,7 @@ class SettingsManager:
         exit_with_error(f'invalid command line setting `-s{name}={value}`: {error_message}')
       diagnostics.warning('legacy-settings', 'use of legacy setting: %s (%s)', name, error_message)
 
-    if name in self.alt_names:
+    if name in self.alt_names and not self.attrs['STRICT']:
       alt_name = self.alt_names[name]
       self.attrs[alt_name] = value
 

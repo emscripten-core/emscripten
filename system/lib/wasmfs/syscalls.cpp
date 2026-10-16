@@ -7,7 +7,6 @@
 
 #define _LARGEFILE64_SOURCE // For F_GETLK64 etc
 
-#include <cmath>
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
@@ -1139,10 +1138,7 @@ static double timespec_to_ms(timespec ts) {
   if (ts.tv_nsec == UTIME_NOW) {
     return emscripten_date_now();
   }
-  // Round down tv_nsec to the nearest 10 microseconds (10,000 ns) to prevent
-  // floating-point rounding into the next whole second when converting to host/Windows timestamps.
-  long tv_nsec_10us = (ts.tv_nsec / 10000) * 10000;
-  return (double(ts.tv_sec) + double(tv_nsec_10us) / 1e9) * 1000;
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec / (1000 * 1000));
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -1479,7 +1475,12 @@ int __syscall_fallocate(int fd, int mode, off_t offset, off_t len) {
     return -EBADF;
   }
 
-  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  auto file = openFile->locked().getFile();
+  if (!file->isSeekable()) {
+    return -ESPIPE;
+  }
+
+  auto dataFile = file->dynCast<DataFile>();
   // TODO: support for symlinks.
   if (!dataFile) {
     return -ENODEV;
@@ -1597,17 +1598,16 @@ doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   }
 
   // NOTE: None of the constants here are true. We're just returning safe and
-  //       sane values, that match the long-existing JS FS behavior (except for
-  //       the inode number, where we can do better).
+  //       sane values, that match the long-existing JS FS behavior.
   buf->f_type = 0;
   buf->f_bsize = 4096;
   buf->f_frsize = 4096;
   buf->f_blocks = 1000000;
   buf->f_bfree = 500000;
   buf->f_bavail = 500000;
-  buf->f_files = file->getIno();
-  buf->f_ffree = 1000000;
-  buf->f_fsid = {0, 0};
+  buf->f_files = 1000000;
+  buf->f_ffree = 500000;
+  buf->f_fsid = {42, 0};
   buf->f_flags = ST_NOSUID;
   buf->f_namelen = 255;
   return 0;
@@ -1868,6 +1868,13 @@ int __syscall_recvmsg(int sockfd,
 }
 
 int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  if (!openFile->locked().getFile()->isSeekable()) {
+    return -ESPIPE;
+  }
   // Advice is currently ignored. TODO some backends might use it
   return 0;
 }

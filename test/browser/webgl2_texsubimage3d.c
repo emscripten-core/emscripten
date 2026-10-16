@@ -11,7 +11,7 @@
 #define DEPTH    4
 #define CHANNELS 4
 
-static void check_pixel(const GLubyte *buf, int x, int y,
+void check_pixel(const GLubyte *buf, int x, int y,
                         GLubyte r, GLubyte g, GLubyte b, GLubyte a,
                         const char *label) {
   int i = (y * WIDTH + x) * CHANNELS;
@@ -24,7 +24,7 @@ static void check_pixel(const GLubyte *buf, int x, int y,
   }
 }
 
-static void read_slice(GLuint fb, GLuint tex, int z, GLubyte *out) {
+void read_slice(GLuint fb, GLuint tex, int z, GLubyte *out) {
   glBindFramebuffer(GL_FRAMEBUFFER, fb);
   glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tex, 0, z);
   assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);

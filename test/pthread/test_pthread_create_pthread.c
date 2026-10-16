@@ -13,13 +13,13 @@
 
 volatile int result = 0;
 
-static void *thread2_start(void *arg) {
+void *thread2_start(void *arg) {
   emscripten_out("thread2_start!");
   ++result;
   return NULL;
 }
 
-static void *thread1_start(void *arg) {
+void *thread1_start(void *arg) {
   emscripten_out("thread1_start!");
   pthread_t thr;
   int rtn = pthread_create(&thr, NULL, thread2_start, NULL);

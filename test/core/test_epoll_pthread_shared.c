@@ -21,10 +21,10 @@
 #include <assert.h>
 #include <stdio.h>
 
-static int ep;
-static atomic_int woken;
+int ep;
+atomic_int woken;
 
-static void* waiter(void* arg) {
+void* waiter(void* arg) {
   struct epoll_event out;
   int n = epoll_wait(ep, &out, 1, -1);
   assert(n == 1);
@@ -35,7 +35,7 @@ static void* waiter(void* arg) {
 }
 
 // Wait for `expect` wakeups, then verify no spurious extra one follows.
-static void settle(int expect) {
+void settle(int expect) {
   while (atomic_load(&woken) < expect) usleep(1000);
   usleep(10000);
   assert(atomic_load(&woken) == expect);
@@ -43,10 +43,10 @@ static void settle(int expect) {
 
 #define NPIPES 4
 #define QUIT 0xffff
-static atomic_int counts[NPIPES];
-static atomic_int total;
+atomic_int counts[NPIPES];
+atomic_int total;
 
-static void* harvester(void* arg) {
+void* harvester(void* arg) {
   for (;;) {
     struct epoll_event out;
     int n = epoll_wait(ep, &out, 1, -1);
@@ -58,7 +58,7 @@ static void* harvester(void* arg) {
   }
 }
 
-static void drain(int fd, int count) {
+void drain(int fd, int count) {
   char buf[8];
   assert(read(fd, buf, count) == count);
 }

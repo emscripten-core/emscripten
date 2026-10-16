@@ -121,7 +121,7 @@ addToLibrary({
 #endif
   $UTF8ToString: (ptr, maxBytesToRead, ignoreNul) => {
 #if ASSERTIONS
-    assert(typeof ptr == 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
+    assert(typeof ptr === 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
 #endif
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
@@ -222,7 +222,7 @@ addToLibrary({
   $stringToUTF8__deps: ['$stringToUTF8Array'],
   $stringToUTF8: (str, outPtr, maxBytesToWrite) => {
 #if ASSERTIONS
-    assert(typeof maxBytesToWrite == 'number', 'stringToUTF8 requires a third parameter that specifies the length of the output buffer');
+    assert(typeof maxBytesToWrite === 'number', 'stringToUTF8 requires a third parameter that specifies the length of the output buffer');
 #endif
     return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
   },
@@ -372,7 +372,7 @@ addToLibrary({
     assert(outPtr % 2 == 0, 'pointer passed to stringToUTF16 must be 2-byte aligned');
 #endif
 #if ASSERTIONS
-    assert(typeof maxBytesToWrite == 'number', 'stringToUTF16 requires a third parameter that specifies the length of the output buffer');
+    assert(typeof maxBytesToWrite === 'number', 'stringToUTF16 requires a third parameter that specifies the length of the output buffer');
 #endif
     if (maxBytesToWrite < 2) return 0;
     maxBytesToWrite -= 2; // Null terminator.
@@ -434,7 +434,7 @@ addToLibrary({
     assert(outPtr % 4 == 0, 'pointer passed to stringToUTF32 must be 4-byte aligned');
 #endif
 #if ASSERTIONS
-    assert(typeof maxBytesToWrite == 'number', 'stringToUTF32 requires a third parameter that specifies the length of the output buffer');
+    assert(typeof maxBytesToWrite === 'number', 'stringToUTF32 requires a third parameter that specifies the length of the output buffer');
 #endif
     if (maxBytesToWrite < 4) return 0;
     var startPtr = outPtr;

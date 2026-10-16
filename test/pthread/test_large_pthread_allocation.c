@@ -14,7 +14,7 @@
 
 pthread_t threads[50];
 
-static void *thread_start(void *arg) {
+void *thread_start(void *arg) {
   // This thread quits immediately...
   pthread_exit((void*)0);
 }

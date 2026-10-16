@@ -57,7 +57,7 @@ var LibraryWebAudio = {
 #endif
   },
 
-  $emAudioExpectNodeOrContext_internal: true,
+  $emAudioExpectNodeOrContext__internal: true,
   $emAudioExpectNodeOrContext: (handle, methodName) => {
     var obj = _emAudioExpectHandle(handle, methodName);
 #if ASSERTIONS

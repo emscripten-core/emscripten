@@ -212,7 +212,7 @@ addToLibrary({
       createPeer(sock, addr, port = undefined) {
         var ws;
 
-        if (typeof addr == 'object') {
+        if (typeof addr === 'object') {
           ws = addr;
           addr = null;
           port = null;
@@ -312,7 +312,7 @@ addToLibrary({
         // if this is a bound dgram socket, send the port number first to allow
         // us to override the ephemeral port reported to us by remotePort on the
         // remote end.
-        if (sock.type === {{{ cDefs.SOCK_DGRAM }}} && typeof sock.sport != 'undefined') {
+        if (sock.type === {{{ cDefs.SOCK_DGRAM }}} && typeof sock.sport !== 'undefined') {
 #if SOCKET_DEBUG
           dbg(`websocket: queuing port message (port ${sock.sport})`);
 #endif
@@ -362,7 +362,7 @@ addToLibrary({
         }
 
         function handleMessage(data) {
-          if (typeof data == 'string') {
+          if (typeof data === 'string') {
             var encoder = new TextEncoder(); // should be utf-8
             data = encoder.encode(data); // make a typed array from the string
           } else {
@@ -528,7 +528,7 @@ addToLibrary({
         return 0;
       },
       bind(sock, addr, port) {
-        if (typeof sock.saddr != 'undefined' || typeof sock.sport != 'undefined') {
+        if (typeof sock.saddr !== 'undefined' || typeof sock.sport !== 'undefined') {
           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already bound
         }
         sock.saddr = addr;
@@ -562,7 +562,7 @@ addToLibrary({
         // }
 
         // early out if we're already connected / in the middle of connecting
-        if (typeof sock.daddr != 'undefined' && typeof sock.dport != 'undefined') {
+        if (typeof sock.daddr !== 'undefined' && typeof sock.dport !== 'undefined') {
           var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
           if (dest) {
             if (dest.socket.readyState === dest.socket.CONNECTING) {

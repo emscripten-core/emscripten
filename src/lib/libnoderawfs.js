@@ -247,7 +247,7 @@ addToLibrary({
       return position;
     },
     read(stream, buffer, offset, length, position) {
-      var seeking = typeof position != 'undefined';
+      var seeking = typeof position !== 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
       var bytesRead = fs.readSync(stream.nfd, buffer, offset, length, position);
       // update position marker when non-seeking
@@ -259,7 +259,7 @@ addToLibrary({
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, {{{ cDefs.SEEK_END }}});
       }
-      var seeking = typeof position != 'undefined';
+      var seeking = typeof position !== 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
       var bytesWritten = fs.writeSync(stream.nfd, buffer, offset, length, position);
       // update position marker when non-seeking

@@ -68,6 +68,7 @@ jobs:
             echo "Full diff from the current expectations to the rebaselined expectations:"
             echo ""
             git --no-pager diff
+            echo ""
             exit 1
           fi
 

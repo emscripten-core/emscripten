@@ -9,7 +9,7 @@
 #include <math.h>
 #include <assert.h>
 
-static const double tol = 1e-16;
+const double tol = 1e-16;
 
 void test_value(double value) {
   int exponent;

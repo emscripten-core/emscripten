@@ -67,11 +67,10 @@ def normalize_relative_python_path():
   #  EMSDK_PYTHON=../../path/to/python emcc test/hello_world.c
   #
   # As part of its operation, emcc may spawn sub-emcc tasks when building
-  # libraries to cache. These sub-emcc tasks will run in a different CWD, so
-  # reinitialize EMSDK_PYTHON here so that sub-tool spawns will use the same
-  # Python interpreter as the parent.
-  if os.environ.get('EMSDK_PYTHON'):
-    os.environ['EMSDK_PYTHON'] = sys.executable
+  # libraries to cache. These sub-emcc tasks may have a different CWD, so
+  # ensure that EMSDK_PYTHON is an absolute path here.
+  if 'EMSDK_PYTHON' in os.environ:
+    os.environ['EMSDK_PYTHON'] = os.path.abspath(os.environ['EMSDK_PYTHON'])
 
 
 def set_config_from_tool_location(config_key, tool_binary, f):

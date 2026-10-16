@@ -12,8 +12,8 @@
 
 #define COLOR_COUNT 32
 
-static SDL_Surface *screen;
-static SDL_Color   pal[COLOR_COUNT +1];
+SDL_Surface *screen;
+SDL_Color   pal[COLOR_COUNT +1];
 
 void palette(int red, int green, int blue) {
   // initialize sdl palette

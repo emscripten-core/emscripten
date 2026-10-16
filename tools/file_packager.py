@@ -445,11 +445,11 @@ def main():  # ruff: ignore[complex-structure, too-many-branches, too-many-state
         data_files.append(DataFile(srcpath=srcpath, dstpath=dstpath, mode=mode,
                                    explicit_dst_path=uses_at_notation))
       else:
-        diagnostics.error(f'${arg} does not exist')
+        diagnostics.error(f'{arg} does not exist')
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
-      diagnostics.error('Unknown parameter:', arg)
+      diagnostics.error(f'unknown argument: {arg}')
 
   options.has_preloaded = any(f.mode == 'preload' for f in data_files)
   options.has_embedded = any(f.mode == 'embed' for f in data_files)
@@ -623,7 +623,7 @@ def generate_preload_js(data_target, data_files, metadata, js_file):
     ret = 'export default async function loadDataFile(Module) {\n'
   else:
     ret = f'''
-  var Module = typeof {options.export_name} != 'undefined' ? {options.export_name} : {{}};\n'''
+  var Module = typeof {options.export_name} !== 'undefined' ? {options.export_name} : {{}};\n'''
 
   ret += '''
   if (!Module['expectedDataFileDownloads']) Module['expectedDataFileDownloads'] = 0;
@@ -635,8 +635,8 @@ def generate_preload_js(data_target, data_files, metadata, js_file):
 
   ret += '''
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
-    var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
-    var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
+    var isPthread = typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD;
+    var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER !== 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
     if (isPthread || isWasmWorker) return;\n'''
 
   if options.support_node:
@@ -778,7 +778,7 @@ def generate_preload_js(data_target, data_files, metadata, js_file):
         var PACKAGE_STORE_NAME = 'PACKAGES';
 
         async function openDatabase() {
-          if (typeof indexedDB == 'undefined') {
+          if (typeof indexedDB === 'undefined') {
             throw new Error('using IndexedDB to cache data can only be done on a web page or in a web worker');
           }
           return new Promise((resolve, reject) => {

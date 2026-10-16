@@ -21,13 +21,13 @@
 #include <emscripten.h>
 #endif
 
-static int server_fd;
-static int client_fd;
-static struct sockaddr_in destination;
-static bool sent;
-static unsigned int received;
+int server_fd;
+int client_fd;
+struct sockaddr_in destination;
+bool sent;
+unsigned int received;
 
-static void succeed(void) {
+void succeed(void) {
   close(server_fd);
   close(client_fd);
   puts("done");
@@ -38,7 +38,7 @@ static void succeed(void) {
 #endif
 }
 
-static void main_loop(void) {
+void main_loop(void) {
   if (!sent) {
     struct iovec siov[2] = {
         {.iov_base = "one", .iov_len = 3},

@@ -279,7 +279,7 @@ var LibraryTracing = {
 
   emscripten_trace_report_off_heap_data: () => {
     function openal_audiodata_size() {
-      if (typeof AL == 'undefined' || !AL.currentContext) {
+      if (typeof AL === 'undefined' || !AL.currentContext) {
         return 0;
       }
       var totalMemory = 0;

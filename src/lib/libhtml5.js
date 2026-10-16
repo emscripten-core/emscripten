@@ -276,7 +276,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}};
     JSEvents.keyEvent ||= _malloc(eventSize);
 
     var keyEventHandlerFunc = (e) => {
@@ -402,12 +402,12 @@ var LibraryHTML5 = {
     // since DOM events mostly can default to that. Specific callback registrations
     // override their own defaults.
     if (!target) return window;
-    if (typeof target == 'number') target = specialHTMLTargets[target] || UTF8ToString(target);
+    if (typeof target === 'number') target = specialHTMLTargets[target] || UTF8ToString(target);
     if (target === '#window') return window;
     else if (target === '#document') return document;
     else if (target === '#screen') return screen;
     else if (target === '#canvas') return Module['canvas'];
-    else if (typeof target == 'string')
+    else if (typeof target === 'string')
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
       return globalThis.document?.getElementById(target);
 #else
@@ -419,12 +419,12 @@ var LibraryHTML5 = {
   // Like findEventTarget, but looks for OffscreenCanvas elements first
   $findCanvasEventTarget__deps: ['$findEventTarget'],
   $findCanvasEventTarget: (target) => {
-    if (typeof target == 'number') target = UTF8ToString(target);
+    if (typeof target === 'number') target = UTF8ToString(target);
     if (!target || target === '#canvas') {
-      if (typeof GL != 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
+      if (typeof GL !== 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
       return Module['canvas'];
     }
-    if (typeof GL != 'undefined' && GL.offscreenCanvases[target]) return GL.offscreenCanvases[target];
+    if (typeof GL !== 'undefined' && GL.offscreenCanvases[target]) return GL.offscreenCanvases[target];
     return findEventTarget(target);
   },
 #endif
@@ -507,7 +507,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}};
     JSEvents.mouseEvent ||= _malloc(eventSize);
     target = findEventTarget(target);
 
@@ -603,7 +603,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}};
     JSEvents.wheelEvent ||= _malloc(eventSize)
 
     // The DOM Level 3 events spec event 'wheel'
@@ -641,7 +641,7 @@ var LibraryHTML5 = {
   emscripten_set_wheel_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
     target = findEventTarget(target);
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
-    if (typeof target.onwheel != 'undefined') {
+    if (typeof target.onwheel !== 'undefined') {
       return registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_WHEEL }}}, 'wheel', targetThread);
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
@@ -654,7 +654,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}};
     JSEvents.uiEvent ||= _malloc(eventSize);
 
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -726,7 +726,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}};
     JSEvents.focusEvent ||= _malloc(eventSize);
 
     var focusEventHandlerFunc = (e) => {
@@ -789,7 +789,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}};
     JSEvents.deviceOrientationEvent ||= _malloc(eventSize);
 
     var deviceOrientationEventHandlerFunc = (e) => {
@@ -856,7 +856,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}};
     JSEvents.deviceMotionEvent ||= _malloc(eventSize);
 
     var deviceMotionEventHandlerFunc = (e) => {
@@ -935,7 +935,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}};
     JSEvents.orientationChangeEvent ||= _malloc(eventSize);
 
     var orientationChangeEventHandlerFunc = (e) => {
@@ -1037,7 +1037,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}};
     JSEvents.fullscreenChangeEvent ||= _malloc(eventSize);
 
     var fullscreenChangeEventHandlerFunc = (e) => {
@@ -1521,7 +1521,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}};
     JSEvents.pointerlockChangeEvent ||= _malloc(eventSize);
 
     var pointerlockChangeEventHandlerFunc = (e) => {
@@ -1719,7 +1719,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}};
     JSEvents.visibilityChangeEvent ||= _malloc(eventSize);
 
     var visibilityChangeEventHandlerFunc = (e) => {
@@ -1759,7 +1759,7 @@ var LibraryHTML5 = {
   emscripten_get_visibility_status__proxy: 'sync',
   emscripten_get_visibility_status__deps: ['$fillVisibilityChangeEventData'],
   emscripten_get_visibility_status: (visibilityStatus) => {
-    if (typeof document.visibilityState == 'undefined' && typeof document.hidden == 'undefined') {
+    if (typeof document.visibilityState === 'undefined' && typeof document.hidden === 'undefined') {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
     fillVisibilityChangeEventData(visibilityStatus);
@@ -1772,7 +1772,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}};
     JSEvents.touchEvent ||= _malloc(eventSize);
 
     target = findEventTarget(target);
@@ -1906,7 +1906,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}};
     JSEvents.gamepadEvent ||= _malloc(eventSize);
 
     var gamepadEventHandlerFunc = (e) => {
@@ -2026,7 +2026,7 @@ var LibraryHTML5 = {
   emscripten_set_beforeunload_callback_on_thread__proxy: 'sync',
   emscripten_set_beforeunload_callback_on_thread__deps: ['$registerBeforeUnloadEventCallback'],
   emscripten_set_beforeunload_callback_on_thread: (userData, callbackfunc, targetThread) => {
-    if (typeof onbeforeunload == 'undefined') return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (typeof onbeforeunload === 'undefined') return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     // beforeunload callback can only be registered on the main browser thread, because the page will go away immediately after returning from the handler,
     // and there is no time to start proxying it anywhere.
     if (targetThread !== {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD }}}) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
@@ -2049,7 +2049,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}};
     JSEvents.batteryEvent ||= _malloc(eventSize)
 
     var batteryEventHandlerFunc = (e) => {

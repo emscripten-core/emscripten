@@ -258,7 +258,7 @@ var LibraryWebGL2 = {
     var query = GL.queries[id];
     var param = GLctx.getQueryParameter(query, pname);
     var ret;
-    if (typeof param == 'boolean') {
+    if (typeof param === 'boolean') {
       ret = param ? 1 : 0;
     } else {
       ret = param;
@@ -1047,7 +1047,7 @@ var webgl2PassthroughFuncs = [
 
 // If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in
 // WebGL 1), then WebGL2 library should not be linked in as well.
-if (typeof createGLPassthroughFunctions == 'undefined') {
+if (typeof createGLPassthroughFunctions === 'undefined') {
   error('In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL');
 }
 

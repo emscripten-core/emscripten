@@ -5808,7 +5808,6 @@ got: 10
     # layer must not dereference a missing poll handler (poll/epoll on a file).
     self.do_runf('core/test_epoll_noderawfs.c', 'done\n', cflags=['-sNODERAWFS'])
 
-  @no_wasmfs('st.f_ffree > st.f_files, same issue than in wasmfs.test_fs_nodefs_statvfs. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_statvfs(self):
     self.do_core_test('test_statvfs.c')
 
@@ -5937,7 +5936,6 @@ got: 10
 
   @requires_node
   @crossplatform
-  @no_wasmfs('Assertion failed: st.f_ffree <= st.f_files && "Free inodes should not exceed total inodes". https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_nodefs_statvfs(self):
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
@@ -6122,6 +6120,7 @@ Module.onRuntimeInitialized = () => {
       self.skipTest('No symlinks on Windows')
     self.do_runf('fs/test_fs_symlink_resolution.c', 'done\n')
 
+  @crossplatform
   @with_all_fs
   def test_fs_rename_on_existing(self):
     if self.get_setting('WASMFS'):
@@ -8616,7 +8615,7 @@ Module.onRuntimeInitialized = () => {
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
     self.do_core_test('test_hello_world.c')
-    self.assertNotExists('test_hello_world.js.mem')
+    self.assertNotExists('test_hello_world.wasm')
 
   @no_asan('no wasm2js support yet in asan')
   @requires_wasm2js
@@ -8679,17 +8678,13 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('FORCE_FILESYSTEM')
     create_file('pre.js', '''
       Module.preRun = () => {
-        out(typeof FS.filesystems['MEMFS']);
-        out(typeof FS.filesystems['IDBFS']);
-        out(typeof FS.filesystems['NODEFS']);
-        // Globals
         out(typeof MEMFS);
         out(typeof IDBFS);
         out(typeof NODEFS);
       };
     ''')
     self.cflags += ['-lidbfs.js', '-lnodefs.js', '--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
-    self.do_run('int main() { return 0; }', 'object\nobject\nobject\nobject\nobject\nobject')
+    self.do_run('int main() { return 0; }', 'object\nobject\nobject')
 
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict_none(self):
@@ -8698,10 +8693,6 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('ASSERTIONS')
     create_file('pre.js', '''
       Module.preRun = () => {
-        out(typeof FS.filesystems['MEMFS']);
-        out(typeof FS.filesystems['IDBFS']);
-        out(typeof FS.filesystems['NODEFS']);
-        // Globals
         out(typeof MEMFS);
         out(IDBFS);
         out(NODEFS);
@@ -8715,9 +8706,6 @@ Module.onRuntimeInitialized = () => {
     ''')
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
     expected = '''\
-object
-undefined
-undefined
 object
 IDBFS is no longer included by default; build with -lidbfs.js
 NODEFS is no longer included by default; build with -lnodefs.js
@@ -10066,7 +10054,7 @@ wasm64_4gb = make_run('wasm64_4gb', cflags=['-m64', '--profiling-funcs'],
                       settings={'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', cflags=['-m64', '-O1', '--profiling-funcs'],
+wasm64l = make_run('wasm64l', cflags=['-m64', '-O1', '--profiling-funcs', '-Wno-deprecated'],
                    settings={'MEMORY64': 2})
 
 lto0 = make_run('lto0', cflags=['-flto', '-O0'])
