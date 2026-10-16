@@ -2949,7 +2949,7 @@ var LibraryGLEmulation = {
           attr.offset = bytes;
           bytes += size;
         }
-        // copy out the data (we need to know the stride for that, and define attr.pointer)
+        // copy out the data (we need to know the stride for that)
         for (var attr of attributes) {
           var srcStride = Math.max(attr.sizeBytes, attr.stride);
           if ((srcStride & 3) == 0 && (attr.sizeBytes & 3) == 0) {

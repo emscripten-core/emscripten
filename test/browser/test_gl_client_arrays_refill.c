@@ -13,7 +13,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-static void read_pixel(int x, int y, GLubyte rgba[4]) {
+void read_pixel(int x, int y, GLubyte rgba[4]) {
   glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
 }
 
