@@ -689,6 +689,15 @@ __cxa_increment_exception_refcount(void *thrown_object) throw() {
     if (thrown_object != NULL )
     {
         __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
+#ifdef __WASM_EXCEPTIONS__
+        if (isDependentException(&exception_header->unwindHeader))
+        {
+            __cxa_dependent_exception* dep_exception_header =
+                reinterpret_cast<__cxa_dependent_exception*>(exception_header);
+            thrown_object = dep_exception_header->primaryException;
+            exception_header = cxa_exception_from_thrown_object(thrown_object);
+        }
+#endif
         std::__libcpp_atomic_add(&exception_header->referenceCount, size_t(1));
     }
 }
@@ -706,11 +715,25 @@ void __cxa_decrement_exception_refcount(void *thrown_object) throw() {
     if (thrown_object != NULL )
     {
         __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
+#ifdef __WASM_EXCEPTIONS__
+        __cxa_dependent_exception* dep_exception_header = NULL;
+        if (isDependentException(&exception_header->unwindHeader))
+        {
+            dep_exception_header =
+                reinterpret_cast<__cxa_dependent_exception*>(exception_header);
+            thrown_object = dep_exception_header->primaryException;
+            exception_header = cxa_exception_from_thrown_object(thrown_object);
+        }
+#endif
         if (std::__libcpp_atomic_add(&exception_header->referenceCount, size_t(-1)) == 0)
         {
             if (NULL != exception_header->exceptionDestructor)
                 exception_header->exceptionDestructor(thrown_object);
             __cxa_free_exception(thrown_object);
+#ifdef __WASM_EXCEPTIONS__
+            if (NULL != dep_exception_header)
+                __cxa_free_dependent_exception(dep_exception_header);
+#endif
         }
     }
 }
