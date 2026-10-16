@@ -438,12 +438,16 @@ export async function runJSify(outputFile, symbolsOnly) {
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
   symbolsNeeded.push(...extraLibraryFuncs);
 
-  for (const fileName of [...PRE_JS_FILES, ...POST_JS_FILES]) {
-    const content = readFile(fileName);
-    addImplicitDeps(content, symbolsNeeded);
-  }
-  for (const snippet of EM_JS_SNIPPETS) {
-    addImplicitDeps(snippet, symbolsNeeded);
+  if (!symbolsOnly) {
+    for (const fileName of [...PRE_JS_FILES, ...POST_JS_FILES]) {
+      const content = getIncludeFile(fileName);
+      if (!errorOccured()) {
+        addImplicitDeps(content, symbolsNeeded);
+      }
+    }
+    for (const snippet of EM_JS_SNIPPETS) {
+      addImplicitDeps(snippet, symbolsNeeded);
+    }
   }
   for (const sym of EXPORTED_RUNTIME_METHODS) {
     if ('$' + sym in LibraryManager.library) {
@@ -640,6 +644,7 @@ function(${args}) {
       let isStub = false;
 
       const mangled = mangleCSymbolName(symbol);
+      let snippet = LibraryManager.library[symbol];
 
       if (!LibraryManager.library.hasOwnProperty(symbol)) {
         const isWeakImport = WEAK_IMPORTS.has(symbol);
@@ -692,7 +697,7 @@ function(${args}) {
           stubFunctionBody = assertion + `return ${target}(...args);`;
         }
         isStub = true;
-        LibraryManager.library[symbol] = new Function('...args', stubFunctionBody);
+        snippet = new Function('...args', stubFunctionBody);
       }
 
       librarySymbols.push(mangled);
@@ -700,9 +705,6 @@ function(${args}) {
       if (!isStub && LibraryManager.library[symbol + '__export']) {
         extraExports.add(mangled);
       }
-
-      const original = LibraryManager.library[symbol];
-      let snippet = original;
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
       // Check for dependencies on `__internal` symbols from user libraries.
       for (const dep of deps) {
@@ -988,9 +990,11 @@ var proxiedFunctionTable = [
     );
   }
 
+  timer.start('symbolHandler');
   for (const sym of symbolsNeeded) {
     symbolHandler(sym);
   }
+  timer.stop('symbolHandler');
 
   if (symbolsOnly) {
     writeOutput(

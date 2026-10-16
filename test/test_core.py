@@ -6309,9 +6309,11 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_posixtime.c')
 
   def test_uname(self):
-    if self.get_setting('STRICT'):
-      self.cflags += ['-lstubs']
     self.do_core_test('test_uname.c', regex=True)
+
+  def test_uname_noderawfs(self):
+    self.setup_noderawfs_test()
+    self.do_runf('core/test_uname_noderawfs.c', 'done\n')
 
   def test_unary_literal(self):
     self.do_core_test('test_unary_literal.cpp')

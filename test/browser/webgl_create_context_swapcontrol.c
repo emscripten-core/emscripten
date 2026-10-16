@@ -24,6 +24,7 @@ int main() {
   assert(res == EMSCRIPTEN_RESULT_SUCCESS);
   assert(emscripten_webgl_get_current_context() == context);
   emscripten_webgl_destroy_context(context);
+  assert(emscripten_webgl_get_current_context() == 0);
   // Test that creating a context for a canvas that's already been used once succeeds
   context = emscripten_webgl_create_context("#canvas", &attrs);
   assert(context > 0); // Must have received a valid context.
@@ -31,5 +32,6 @@ int main() {
   assert(res == EMSCRIPTEN_RESULT_SUCCESS);
   assert(emscripten_webgl_get_current_context() == context);
   emscripten_webgl_destroy_context(context);
+  assert(emscripten_webgl_get_current_context() == 0);
   return 0;
 }
