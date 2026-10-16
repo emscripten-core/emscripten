@@ -61,6 +61,7 @@ function calculateLibraries() {
     'libwasi.js',
     'libeventloop.js',
     'libpromise.js',
+    'libsyscall_shared.js',
   ];
 
   if (LINK_AS_CXX) {

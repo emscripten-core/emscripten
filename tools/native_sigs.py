@@ -471,7 +471,6 @@ native_sigs = {
   '__syscall_statfs64': '_ppp',
   '__syscall_symlinkat': '_p_p',
   '__syscall_truncate64': '_p_',
-  '__syscall_uname': '_p',
   '__syscall_unlinkat': '__p_',
   '__syscall_utimensat': '__pp_',
   '__syscall_wait4': '__p_p',
