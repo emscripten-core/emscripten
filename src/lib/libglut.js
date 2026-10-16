@@ -582,7 +582,6 @@ var LibraryGLUT = {
   },
 
   glutDestroyWindow__proxy: 'sync',
-  glutDestroyWindow__deps: ['$Browser'],
   glutDestroyWindow: (name) => {
     delete Module['ctx'];
     return 1;
@@ -601,7 +600,7 @@ var LibraryGLUT = {
   },
 
   glutPositionWindow__proxy: 'sync',
-  glutPositionWindow__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutPositionWindow__deps: ['glutPostRedisplay'],
   glutPositionWindow: (x, y) => {
     Browser.exitFullscreen();
     /* TODO */

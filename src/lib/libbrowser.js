@@ -577,7 +577,14 @@ var LibraryBrowser = {
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
-  emscripten_async_load_script__deps: ['$UTF8ToString', '$runDependencies', '$resolveRunDependencies', '$callUserCallback'],
+  emscripten_async_load_script__deps: [
+    '$UTF8ToString',
+#if ASSERTIONS
+    '$runDependencies',
+#endif
+    '$resolveRunDependencies',
+    '$callUserCallback',
+  ],
   emscripten_async_load_script: async (url, onload, onerror) => {
     url = UTF8ToString(url);
 #if PTHREADS
