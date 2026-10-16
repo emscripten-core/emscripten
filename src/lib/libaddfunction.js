@@ -35,7 +35,6 @@ addToLibrary({
   }`,
 
   $generateTypePack__internal: true,
-  $generateTypePack__deps: ['$uleb128EncodeWithLen', '$wasmTypeCodes'],
   $generateTypePack: (types) => uleb128EncodeWithLen(Array.from(types, (type) => {
     var code = wasmTypeCodes[type];
 #if ASSERTIONS
@@ -46,10 +45,6 @@ addToLibrary({
 
 #if !WASM2JS || WASM == 2
   // Wraps a JS function as a wasm function with a given signature.
-  $convertJsFunctionToWasm__deps: [
-    '$uleb128EncodeWithLen',
-    '$generateTypePack'
-  ],
   $convertJsFunctionToWasm: (func, sig) => {
 #if ASSERTIONS && !WASM_BIGINT
     assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
@@ -93,7 +88,6 @@ addToLibrary({
   // Weak map of functions in the table to their indexes, created on first use.
   $functionsInTableMap: undefined,
 
-  $getEmptyTableSlot__deps: ['$freeTableIndexes', '$wasmTable'],
   $getEmptyTableSlot: () => {
     // Reuse a free index if there is one, otherwise grow.
     if (freeTableIndexes.length) {
@@ -114,7 +108,6 @@ addToLibrary({
 #endif
   },
 
-  $updateTableMap__deps: ['$getWasmTableEntry'],
   $updateTableMap: (offset, count) => {
     if (functionsInTableMap) {
       for (var i = offset; i < offset + count; i++) {
@@ -127,7 +120,6 @@ addToLibrary({
     }
   },
 
-  $getFunctionAddress__deps: ['$updateTableMap', '$functionsInTableMap', '$wasmTable'],
   $getFunctionAddress: (func) => {
     // First, create the map if this is the first use.
     if (!functionsInTableMap) {
@@ -142,16 +134,6 @@ addToLibrary({
    * 'sig' parameter is required if the function being added is a JS function.
    */
   $addFunction__docs: '/** @param {string=} sig */',
-  $addFunction__deps: ['$getFunctionAddress',
-                       '$functionsInTableMap', '$getEmptyTableSlot',
-                       '$setWasmTableEntry',
-#if !WASM2JS || WASM == 2
-                       '$convertJsFunctionToWasm',
-#endif
-#if ASSERTIONS >= 2
-                       '$getWasmTableEntry', '$wasmTable',
-#endif
-  ],
 
   $addFunction: (func, sig) => {
 #if ASSERTIONS
@@ -201,8 +183,6 @@ addToLibrary({
     return ret;
   },
 
-  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes',
-                          '$getWasmTableEntry', '$setWasmTableEntry'],
   $removeFunction: (index) => {
     functionsInTableMap.delete(getWasmTableEntry(index));
     setWasmTableEntry(index, null);

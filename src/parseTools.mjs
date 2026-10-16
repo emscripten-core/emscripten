@@ -926,7 +926,7 @@ function expectToReceiveOnModule(name) {
 
 // Return true if the user requested that a library symbol be included
 // either via DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS.
-export function isSymbolNeeded(symName) {
+function isSymbolNeeded(symName) {
   if (DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.includes(symName)) {
     return true;
   }

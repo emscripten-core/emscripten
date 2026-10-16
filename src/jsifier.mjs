@@ -20,7 +20,6 @@ import {
   ATPOSTRUNS,
   defineI64Param,
   indentify,
-  isSymbolNeeded,
   makeReturn64,
   modifyJSFunction,
   preprocess,
@@ -47,6 +46,8 @@ import {
 import {extraExports, LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
 
 const addedLibraryItems = {};
+const emittedLibraryItems = new Set();
+const deferredAliases = {};
 
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
@@ -301,7 +302,9 @@ function calculateDeps(snippet, deps, symbol, symbolsOnly = false) {
       dep = name.slice(1);
     }
 
-    if (dep && dep !== symbol) {
+    // $noExitRuntime cannot be referenced via __deps (it must be included via
+    // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS).
+    if (dep && dep !== symbol && dep !== '$noExitRuntime') {
       found.add(dep);
     }
   }
@@ -309,7 +312,7 @@ function calculateDeps(snippet, deps, symbol, symbolsOnly = false) {
   const isUserSymbol = symbol && LibraryManager.library[symbol + '__user'];
   for (const dep of found) {
     if (deps.includes(dep)) {
-      if (!symbolsOnly && symbol && isUserSymbol && STRICT && LibraryManager.library[symbol] !== dep) {
+      if (!symbolsOnly && symbol && (STRICT || !isUserSymbol) && LibraryManager.library[symbol] !== dep) {
         warn(`${symbol}: redundant __deps entry: ${dep}`);
       }
     } else {
@@ -771,11 +774,12 @@ function(${args}) {
         }
       }
 
+      let aliasTarget;
       if (LibraryManager.isAlias(snippet)) {
         // Redirection for aliases. We include the parent, and at runtime
         // make ourselves equal to it.  This avoid having duplicate
         // functions with identical content.
-        const aliasTarget = snippet;
+        aliasTarget = snippet;
         if (WASM_EXPORTS.has(aliasTarget)) {
           debugLog(`native alias: ${mangled} -> ${aliasTarget}`);
           nativeAliases[mangled] = aliasTarget;
@@ -818,8 +822,10 @@ function(${args}) {
 
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
       // Check for dependencies on `__internal` symbols from user libraries.
+      // Exclude `implicitSnippetDeps` (such as `$getWasmTableEntry`, which is
+      // injected by the `{{{ makeDynCall }}}` macro).
       for (const dep of deps) {
-        if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
+        if (isUserSymbol && LibraryManager.library[dep + '__internal'] && !implicitSnippetDeps.has(dep.slice(1))) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
       }
@@ -833,7 +839,7 @@ function(${args}) {
         // $noExitRuntime is special since there are conditional usages of it
         // in libcore.js and libpthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
-        if (dep === '$noExitRuntime' && !isSymbolNeeded('$noExitRuntime')) {
+        if (dep === '$noExitRuntime') {
           error('noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS');
         }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`);
@@ -938,7 +944,23 @@ function(${args}) {
             .filter((x) => x != '')
             .join('\n') + '\n'
         : '';
-      return depsText + commentText + contentText;
+      if (aliasTarget && !isNativeAlias && !isFunction && !emittedLibraryItems.has(aliasTarget)) {
+        // If `aliasTarget` is not yet emitted, we are in a dependency cycle
+        // where `aliasTarget` is an ancestor on the recursion stack. Defer
+        // emitting `var _alias = _target;` until immediately after `_target`
+        // is defined so `_target` is not referenced before its initialization.
+        (deferredAliases[aliasTarget] ??= []).push({symbol, text: commentText + contentText});
+        return depsText.trim();
+      }
+      function flushDeferred(sym) {
+        emittedLibraryItems.add(sym);
+        let res = '';
+        for (const item of deferredAliases[sym] ?? []) {
+          res += '\n' + item.text + flushDeferred(item.symbol);
+        }
+        return res;
+      }
+      return depsText + commentText + contentText + flushDeferred(symbol);
     }
 
     const JS = addFromLibrary(symbol, 'root reference (e.g. compiled C/C++ code)');

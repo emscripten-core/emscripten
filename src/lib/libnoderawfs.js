@@ -5,7 +5,7 @@
  */
 
 addToLibrary({
-  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$TTY', '$FS_modeStringToFlags', '$NODERAWFS_stream_funcs'],
+  $NODERAWFS__deps: ['$NODERAWFS_stream_funcs'],
   $NODERAWFS__postset: `
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error('NODERAWFS is currently only supported on Node.js environment.')

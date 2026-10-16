@@ -5,13 +5,10 @@
  */
 
 addToLibrary({
-  $promiseMap__deps: ['$HandleAllocator'],
   $promiseMap: 'new HandleAllocator();',
 
-  $getPromise__deps: ['$promiseMap'],
   $getPromise: (id) => promiseMap.get(id).promise,
 
-  $makePromise__deps: ['$promiseMap'],
   $makePromise: () => {
     var promiseInfo = {};
     promiseInfo.promise = new Promise((resolve, reject) => {
@@ -25,10 +22,8 @@ addToLibrary({
     return promiseInfo;
   },
 
-  $addPromise__deps: ['$promiseMap'],
   $addPromise: (promise) => promiseMap.allocate({promise}),
 
-  $idsToPromises__deps: ['$getPromise'],
   $idsToPromises: (idBuf, size) => {
     var promises = [];
     for (var i = 0; i < size; i++) {
@@ -38,10 +33,8 @@ addToLibrary({
     return promises;
   },
 
-  emscripten_promise_create__deps: ['$makePromise'],
   emscripten_promise_create: () => makePromise().id,
 
-  emscripten_promise_destroy__deps: ['$promiseMap'],
   emscripten_promise_destroy: (id) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_destroy: ${id}`);
@@ -49,9 +42,6 @@ addToLibrary({
     promiseMap.free(id);
   },
 
-  emscripten_promise_resolve__deps: ['$promiseMap',
-                                     '$getPromise',
-                                     'emscripten_promise_destroy'],
   emscripten_promise_resolve: (id, result, value) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_resolve: ${id}`);
@@ -77,12 +67,6 @@ addToLibrary({
 #endif
   },
 
-  $makePromiseCallback__deps: ['$getPromise',
-                               '$POINTER_SIZE',
-                               'emscripten_promise_destroy',
-                               '$stackAlloc',
-                               '$stackRestore',
-                               '$stackSave'],
   $makePromiseCallback: (callback, userData) => {
     if (!callback) return;
     return (value) => {
@@ -137,9 +121,6 @@ addToLibrary({
     };
   },
 
-  emscripten_promise_then__deps: ['$addPromise',
-                                  '$getPromise',
-                                  '$makePromiseCallback'],
   emscripten_promise_then: (id, onFulfilled, onRejected, userData) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_then: ${id}`);
@@ -155,7 +136,6 @@ addToLibrary({
     return newId;
   },
 
-  emscripten_promise_all__deps: ['$addPromise', '$idsToPromises'],
   emscripten_promise_all: (idBuf, resultBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
@@ -186,7 +166,6 @@ addToLibrary({
     {{{ makeSetValue('ptr', C_STRUCTS.em_settled_result_t.value, 'value', '*') }}};
   },
 
-  emscripten_promise_all_settled__deps: ['$addPromise', '$idsToPromises', '$setPromiseResult'],
   emscripten_promise_all_settled: (idBuf, resultBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
@@ -211,7 +190,6 @@ addToLibrary({
     return id;
   },
 
-  emscripten_promise_any__deps: ['$addPromise', '$idsToPromises'],
   emscripten_promise_any: (idBuf, errorBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
@@ -234,7 +212,6 @@ addToLibrary({
     return id;
   },
 
-  emscripten_promise_race__deps: ['$addPromise', '$idsToPromises'],
   emscripten_promise_race: (idBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
@@ -249,7 +226,6 @@ addToLibrary({
 
 #if ASYNCIFY
   emscripten_promise_await__async: 'auto',
-  emscripten_promise_await__deps: ['$getPromise', '$setPromiseResult'],
   emscripten_promise_await: (returnValuePtr, id) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_await: ${id}`);
@@ -261,7 +237,6 @@ addToLibrary({
   },
 
   emscripten_promise_await_unchecked__async: 'auto',
-  emscripten_promise_await_unchecked__deps: ['$getPromise'],
   emscripten_promise_await_unchecked: (id) => {
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_await_unchecked: ${id}`);

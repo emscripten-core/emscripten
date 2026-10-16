@@ -79,7 +79,6 @@ addToLibrary({
   },
 
   // Executes a wasm function call received via a postMessage.
-  $_wasmWorkerRunPostMessage__deps: ['$callUserCallback'],
   $_wasmWorkerRunPostMessage: (e) => {
     // '_wsc' is short for 'wasm call', trying to use an identifier name that
     // will never conflict with user code
@@ -91,9 +90,6 @@ addToLibrary({
   // src/postamble_minimal.js brings this symbol in to the build, and calls this
   // function synchronously from main JS file at the startup of each Worker.
   $_wasmWorkerInitializeRuntime__deps: [
-    '$_wasmWorkerDelayedMessageQueue',
-    '$_wasmWorkerRunPostMessage',
-    '$_wasmWorkerAppendToQueue',
     '_emscripten_wasm_worker_initialize',
 #if PTHREADS
     '__set_thread_state',
@@ -170,16 +166,7 @@ addToLibrary({
 #endif
   },
 
-  _emscripten_create_wasm_worker__deps: [
-    '$_wasmWorkers',
-    '$_wasmWorkerAppendToQueue', '$_wasmWorkerRunPostMessage',
-#if TRUSTED_TYPES
-    '$_emscriptenWasmWorkerPolicy',
-#endif
-#if ASSERTIONS
-    'emscripten_has_threading_support',
-#endif
-  ],
+  _emscripten_create_wasm_worker__deps: ['$_wasmWorkerAppendToQueue'],
   _emscripten_create_wasm_worker__postset: `
 if (ENVIRONMENT_IS_WASM_WORKER
 // AudioWorkletGlobalScope does not contain addEventListener
@@ -286,7 +273,6 @@ if (ENVIRONMENT_IS_WASM_WORKER
   emscripten_wasm_worker_post_function_viii: '$_wasmWorkerPostFunction3',
   emscripten_wasm_worker_post_function_vddd: '$_wasmWorkerPostFunction3',
 
-  emscripten_wasm_worker_post_function_sig__deps: ['$readEmAsmArgs'],
   emscripten_wasm_worker_post_function_sig: (id, funcPtr, sigPtr, varargs) => {
 #if ASSERTIONS
     assert(id >= 0);
@@ -305,7 +291,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     return navigator['hardwareConcurrency'];
   },
 
-  emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync', '$callUserCallback'],
+  emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let tryAcquireLock = () => {
       do {
@@ -324,7 +310,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     setTimeout(tryAcquireLock);
   },
 
-  emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync', '$callUserCallback'],
+  emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_semaphore_async_acquire: (sem, num, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let tryAcquireSemaphore = () => {
       let val = num;

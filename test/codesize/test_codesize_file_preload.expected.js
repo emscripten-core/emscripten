@@ -478,17 +478,6 @@ var callRuntimeCallbacks = callbacks => {
 
 var onPreRuns = [];
 
-var initRandomFill = () => {
-  // This block is not needed on v19+ since crypto.getRandomValues is builtin
-  if (ENVIRONMENT_IS_NODE) {
-    var nodeCrypto = require("node:crypto");
-    return view => (nodeCrypto.randomFillSync(view), 0);
-  }
-  return view => (crypto.getRandomValues(view), 0);
-};
-
-var randomFill = view => (randomFill = initRandomFill())(view);
-
 var PATH = {
   isAbs: path => path.charAt(0) === "/",
   splitPath: filename => {
@@ -600,7 +589,94 @@ var PATH_FS = {
   }
 };
 
-var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
+var getUniqueRunDependency = id => id;
+
+var dependenciesPromise = null;
+
+var resolveRunDependencies = async () => dependenciesPromise;
+
+var runDependencies = 0;
+
+var dependenciesPromiseResolve = null;
+
+var removeRunDependency = id => {
+  runDependencies--;
+  if (!runDependencies) {
+    dependenciesPromiseResolve();
+  }
+};
+
+var addRunDependency = id => {
+  if (!runDependencies) {
+    dependenciesPromise = new Promise(resolve => dependenciesPromiseResolve = resolve);
+  }
+  runDependencies++;
+};
+
+var asyncLoad = async url => {
+  var arrayBuffer = await readAsync(url);
+  return new Uint8Array(arrayBuffer);
+};
+
+var preloadPlugins = [];
+
+var FS_handledByPreloadPlugin = async (byteArray, fullname) => {
+  // Ensure plugins are ready.
+  if (typeof Browser !== "undefined") Browser.init();
+  for (var plugin of preloadPlugins) {
+    if (plugin["canHandle"](fullname)) {
+      return plugin["handle"](byteArray, fullname);
+    }
+  }
+  // If no plugin handled this file then return the original/unmodified
+  // byteArray.
+  return byteArray;
+};
+
+var FS_createDataFile = (...args) => FS.createDataFile(...args);
+
+var FS_preloadFile = async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
+  // TODO we should allow people to just pass in a complete filename instead
+  // of parent and name being that we just join them anyways
+  var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
+  var dep = getUniqueRunDependency(`cp ${fullname}`);
+  // might have several active requests for the same fullname
+  addRunDependency(dep);
+  try {
+    var byteArray = url;
+    if (typeof url === "string") {
+      byteArray = await asyncLoad(url);
+    }
+    byteArray = await FS_handledByPreloadPlugin(byteArray, fullname);
+    preFinish?.();
+    if (!dontCreateFile) {
+      FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
+    }
+  } finally {
+    removeRunDependency(dep);
+  }
+};
+
+var FS_createPreloadedFile = (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+  FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish).then(onload).catch(onerror);
+};
+
+var FS_modeStringToFlags = str => {
+  if (typeof str !== "string") return str;
+  var flagModes = {
+    "r": 0,
+    "r+": 2,
+    "w": 512 | 64 | 1,
+    "w+": 512 | 64 | 2,
+    "a": 1024 | 64 | 1,
+    "a+": 1024 | 64 | 2
+  };
+  var flags = flagModes[str];
+  if (typeof flags === "undefined") {
+    throw new Error(`Unknown file open mode: ${str}`);
+  }
+  return flags;
+};
 
 /**
    * heapOrArray is either a regular array, or a JavaScript typed array view.
@@ -618,6 +694,8 @@ var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
   while (heapOrArray[idx] && !(idx >= maxIdx)) ++idx;
   return idx;
 };
+
+var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
 /**
    * Given a pointer 'idx' to a null-terminated UTF8-encoded string in the given
@@ -665,8 +743,6 @@ var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
   }
   return str;
 };
-
-var FS_stdin_getChar_buffer = [];
 
 var lengthBytesUTF8 = str => {
   var len = 0;
@@ -738,6 +814,18 @@ var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
   if (dontAddNull) u8array.length = numBytesWritten;
   return u8array;
 };
+
+var FS_fileDataToTypedArray = data => {
+  if (typeof data === "string") {
+    data = intArrayFromString(data, true);
+  }
+  if (!data.subarray) {
+    data = new Uint8Array(data);
+  }
+  return data;
+};
+
+var FS_stdin_getChar_buffer = [];
 
 var FS_stdin_getChar = () => {
   if (!FS_stdin_getChar_buffer.length) {
@@ -900,11 +988,22 @@ var TTY = {
   }
 };
 
+var initRandomFill = () => {
+  // This block is not needed on v19+ since crypto.getRandomValues is builtin
+  if (ENVIRONMENT_IS_NODE) {
+    var nodeCrypto = require("node:crypto");
+    return view => (nodeCrypto.randomFillSync(view), 0);
+  }
+  return view => (crypto.getRandomValues(view), 0);
+};
+
+var randomFill = view => (randomFill = initRandomFill())(view);
+
+/** @type {!Int8Array} */ var HEAP8;
+
 var mmapAlloc = size => {
   abort();
 };
-
-/** @type {!Int8Array} */ var HEAP8;
 
 var MEMFS = {
   ops_table: null,
@@ -1203,110 +1302,11 @@ var MEMFS = {
   }
 };
 
-var FS_modeStringToFlags = str => {
-  if (typeof str !== "string") return str;
-  var flagModes = {
-    "r": 0,
-    "r+": 2,
-    "w": 512 | 64 | 1,
-    "w+": 512 | 64 | 2,
-    "a": 1024 | 64 | 1,
-    "a+": 1024 | 64 | 2
-  };
-  var flags = flagModes[str];
-  if (typeof flags === "undefined") {
-    throw new Error(`Unknown file open mode: ${str}`);
-  }
-  return flags;
-};
-
-var FS_fileDataToTypedArray = data => {
-  if (typeof data === "string") {
-    data = intArrayFromString(data, true);
-  }
-  if (!data.subarray) {
-    data = new Uint8Array(data);
-  }
-  return data;
-};
-
 var FS_getMode = (canRead, canWrite) => {
   var mode = 0;
   if (canRead) mode |= 292 | 73;
   if (canWrite) mode |= 146;
   return mode;
-};
-
-var asyncLoad = async url => {
-  var arrayBuffer = await readAsync(url);
-  return new Uint8Array(arrayBuffer);
-};
-
-var FS_createDataFile = (...args) => FS.createDataFile(...args);
-
-var getUniqueRunDependency = id => id;
-
-var dependenciesPromise = null;
-
-var resolveRunDependencies = async () => dependenciesPromise;
-
-var runDependencies = 0;
-
-var dependenciesPromiseResolve = null;
-
-var removeRunDependency = id => {
-  runDependencies--;
-  if (!runDependencies) {
-    dependenciesPromiseResolve();
-  }
-};
-
-var addRunDependency = id => {
-  if (!runDependencies) {
-    dependenciesPromise = new Promise(resolve => dependenciesPromiseResolve = resolve);
-  }
-  runDependencies++;
-};
-
-var preloadPlugins = [];
-
-var FS_handledByPreloadPlugin = async (byteArray, fullname) => {
-  // Ensure plugins are ready.
-  if (typeof Browser !== "undefined") Browser.init();
-  for (var plugin of preloadPlugins) {
-    if (plugin["canHandle"](fullname)) {
-      return plugin["handle"](byteArray, fullname);
-    }
-  }
-  // If no plugin handled this file then return the original/unmodified
-  // byteArray.
-  return byteArray;
-};
-
-var FS_preloadFile = async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
-  // TODO we should allow people to just pass in a complete filename instead
-  // of parent and name being that we just join them anyways
-  var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
-  var dep = getUniqueRunDependency(`cp ${fullname}`);
-  // might have several active requests for the same fullname
-  addRunDependency(dep);
-  try {
-    var byteArray = url;
-    if (typeof url === "string") {
-      byteArray = await asyncLoad(url);
-    }
-    byteArray = await FS_handledByPreloadPlugin(byteArray, fullname);
-    preFinish?.();
-    if (!dontCreateFile) {
-      FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
-    }
-  } finally {
-    removeRunDependency(dep);
-  }
-};
-
-var FS_createPreloadedFile = (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
-  FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish).then(onload).catch(onerror);
 };
 
 var FS = {
@@ -2948,35 +2948,11 @@ var FS = {
 
 /** @type {!Uint32Array} */ var HEAPU32;
 
-/** @type {!Uint8Array} */ var HEAPU8;
-
-/** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
-  // Gather all iovecs into one contiguous buffer and issue a single
-  // FS.write, matching POSIX writev's single gather-write semantics (as
-  // __syscall_sendmsg already does). Per-iovec writes fragment a stream
-  // socket send into multiple segments, breaking stream byte semantics.
-  if (iovcnt == 1) {
-    // Single iovec: write directly from HEAP8, no gather buffer needed.
-    return FS.write(stream, HEAP8, HEAPU32[((iov) >> 2)], HEAPU32[(((iov) + (4)) >> 2)], offset);
-  }
-  var total = 0;
-  for (var i = 0, p = iov; i < iovcnt; i++, p += 8) {
-    total += HEAPU32[(((p) + (4)) >> 2)];
-  }
-  var view = new Uint8Array(total);
-  var voff = 0;
-  for (var i = 0; i < iovcnt; i++, iov += 8) {
-    var ptr = HEAPU32[((iov) >> 2)];
-    var len = HEAPU32[(((iov) + (4)) >> 2)];
-    view.set(HEAPU8.subarray(ptr, ptr + len), voff);
-    voff += len;
-  }
-  return FS.write(stream, view, 0, total, offset);
-};
-
 /** not-@type {!BigInt64Array} */ var HEAP64;
 
 /** @type {!Int32Array} */ var HEAP32;
+
+/** @type {!Uint8Array} */ var HEAPU8;
 
 /**
    * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
@@ -3069,6 +3045,30 @@ var SYSCALLS = {
     var ret = UTF8ToString(ptr);
     return ret;
   }
+};
+
+/** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
+  // Gather all iovecs into one contiguous buffer and issue a single
+  // FS.write, matching POSIX writev's single gather-write semantics (as
+  // __syscall_sendmsg already does). Per-iovec writes fragment a stream
+  // socket send into multiple segments, breaking stream byte semantics.
+  if (iovcnt == 1) {
+    // Single iovec: write directly from HEAP8, no gather buffer needed.
+    return FS.write(stream, HEAP8, HEAPU32[((iov) >> 2)], HEAPU32[(((iov) + (4)) >> 2)], offset);
+  }
+  var total = 0;
+  for (var i = 0, p = iov; i < iovcnt; i++, p += 8) {
+    total += HEAPU32[(((p) + (4)) >> 2)];
+  }
+  var view = new Uint8Array(total);
+  var voff = 0;
+  for (var i = 0; i < iovcnt; i++, iov += 8) {
+    var ptr = HEAPU32[((iov) >> 2)];
+    var len = HEAPU32[(((iov) + (4)) >> 2)];
+    view.set(HEAPU8.subarray(ptr, ptr + len), voff);
+    voff += len;
+  }
+  return FS.write(stream, view, 0, total, offset);
 };
 
 function _fd_write(fd, iov, iovcnt, pnum) {

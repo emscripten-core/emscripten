@@ -49,12 +49,6 @@ addToLibrary({
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */`,
-  $UTF8ArrayToString__deps: [
-    '$UTF8Decoder', '$findStringEnd',
-#if ASSERTIONS
-    '$warnOnce',
-#endif
-  ],
   $UTF8ArrayToString: (heapOrArray, idx = 0, maxBytesToRead, ignoreNul) => {
 #if CAN_ADDRESS_2GB
     idx >>>= 0;
@@ -114,11 +108,6 @@ addToLibrary({
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */`,
-#if TEXTDECODER == 2
-  $UTF8ToString__deps: ['$UTF8Decoder', '$findStringEnd'],
-#else
-  $UTF8ToString__deps: ['$UTF8ArrayToString'],
-#endif
   $UTF8ToString: (ptr, maxBytesToRead, ignoreNul) => {
 #if ASSERTIONS
     assert(typeof ptr === 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
@@ -157,9 +146,6 @@ addToLibrary({
    *                                   terminator.
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
-#if ASSERTIONS
-  $stringToUTF8Array__deps: ['$warnOnce'],
-#endif
   $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
 #if CAN_ADDRESS_2GB
     outIdx >>>= 0;
@@ -219,7 +205,6 @@ addToLibrary({
    *
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
-  $stringToUTF8__deps: ['$stringToUTF8Array'],
   $stringToUTF8: (str, outPtr, maxBytesToWrite) => {
 #if ASSERTIONS
     assert(typeof maxBytesToWrite === 'number', 'stringToUTF8 requires a third parameter that specifies the length of the output buffer');
@@ -256,7 +241,6 @@ addToLibrary({
   },
 
   $intArrayFromString__docs: '/** @type {function(string, boolean=, number=)} */',
-  $intArrayFromString__deps: ['$lengthBytesUTF8', '$stringToUTF8Array'],
   $intArrayFromString: (stringy, dontAddNull, length) => {
     var len = length > 0 ? length : lengthBytesUTF8(stringy)+1;
     var u8array = new Array(len);
@@ -318,7 +302,6 @@ addToLibrary({
   // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the
   // emscripten HEAP, returns a copy of that string as a Javascript String
   // object.
-  $UTF16ToString__deps: ['$UTF16Decoder', '$findStringEnd'],
   $UTF16ToString: (ptr, maxBytesToRead, ignoreNul) => {
 #if ASSERTIONS
     assert(ptr % 2 == 0, 'pointer passed to UTF16ToString must be 2-byte aligned');
@@ -474,7 +457,7 @@ addToLibrary({
 
   // Allocate heap space for a JS string, and write it there.
   // It is the responsibility of the caller to free() that memory.
-  $stringToNewUTF8__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'malloc'],
+  $stringToNewUTF8__deps: ['malloc'],
   $stringToNewUTF8: (str) => {
     var size = lengthBytesUTF8(str) + 1;
     var ret = _malloc(size);
@@ -483,7 +466,6 @@ addToLibrary({
   },
 
   // Allocate stack space for a JS string, and write it there.
-  $stringToUTF8OnStack__deps: ['$lengthBytesUTF8', '$stringToUTF8', '$stackAlloc'],
   $stringToUTF8OnStack: (str) => {
     var size = lengthBytesUTF8(str) + 1;
     var ret = stackAlloc(size);

@@ -246,8 +246,6 @@ class ExitStatus {
 
 var printCharBuffers = [ null, [], [] ];
 
-var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
-
 /**
    * heapOrArray is either a regular array, or a JavaScript typed array view.
    * @param {number} idx
@@ -264,6 +262,8 @@ var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
   while (heapOrArray[idx] && !(idx >= maxIdx)) ++idx;
   return idx;
 };
+
+var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
 /**
    * Given a pointer 'idx' to a null-terminated UTF8-encoded string in the given
@@ -322,9 +322,9 @@ var printChar = (stream, curr) => {
   }
 };
 
-/** @type {!Uint8Array} */ var HEAPU8;
-
 /** @type {!Uint32Array} */ var HEAPU32;
+
+/** @type {!Uint8Array} */ var HEAPU8;
 
 var _fd_write = (fd, iov, iovcnt, pnum) => {
   // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0

@@ -19,7 +19,6 @@ addToLibrary({
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack', '$stackSave', '$stackRestore', '$stackAlloc'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
@@ -136,11 +135,6 @@ addToLibrary({
    * @param {Array=} argTypes
    * @param {Object=} opts
    */`,
-  $cwrap__deps: [ '$ccall',
-#if !ASSERTIONS
-    '$getCFunc',
-#endif
-  ],
   $cwrap: (ident, returnType, argTypes, opts) => {
 #if !ASSERTIONS
     // When the function takes numbers and returns a number, we can just return

@@ -28,17 +28,14 @@ var LibraryEmVal = {
 #endif
   $emval_symbols: {}, // address -> string
 
-  $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
   $count_emval_handles: () => {
     return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}} - emval_freelist.length;
   },
 
-  _emval_register_symbol__deps: ['$emval_symbols', '$AsciiToString'],
   _emval_register_symbol: (address) => {
     emval_symbols[address] = AsciiToString(address);
   },
 
-  $getStringOrSymbol__deps: ['$emval_symbols', '$AsciiToString'],
   $getStringOrSymbol: (address) => {
     var symbol = emval_symbols[address];
     if (symbol === undefined) {
@@ -47,7 +44,6 @@ var LibraryEmVal = {
     return symbol;
   },
 
-  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError'],
   $Emval: {
     toValue: (handle) => {
       if (!handle) {
@@ -76,18 +72,12 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_incref__deps: ['$emval_handles'],
   _emval_incref: (handle) => {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}}) {
       emval_handles[handle + 1] += 1;
     }
   },
 
-  _emval_decref__deps: ['$emval_freelist', '$emval_handles',
-#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
-    '$emval_exception_decrefs',
-#endif
-  ],
   _emval_decref: (handle) => {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
   #if ASSERTIONS
@@ -108,18 +98,15 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_run_destructors__deps: ['_emval_decref', '$Emval', '$runDestructors'],
   _emval_run_destructors: (handle) => {
     var destructors = Emval.toValue(handle);
     runDestructors(destructors);
     __emval_decref(handle);
   },
 
-  _emval_new_array__deps: ['$Emval'],
   _emval_new_array: () => Emval.toHandle([]),
 
 #if !SUPPORT_BIG_ENDIAN
-  _emval_new_array_from_memory_view__deps: ['$Emval'],
   _emval_new_array_from_memory_view: (view) => {
     view = Emval.toValue(view);
     // using for..loop is faster than Array.from
@@ -127,14 +114,12 @@ var LibraryEmVal = {
     for (var i = 0; i < view.length; i++) a[i] = view[i];
     return Emval.toHandle(a);
   },
-  _emval_array_to_memory_view__deps: ['$Emval'],
   _emval_array_to_memory_view: (dst, src) => {
     dst = Emval.toValue(dst);
     src = Emval.toValue(src);
     dst.set(src);
   },
 #else
-  _emval_new_array_from_memory_view__deps: ['$Emval'],
   _emval_new_array_from_memory_view: (view) => {
     view = Emval.toValue(view);
     const dv = new DataView(view.buffer, view.byteOffset);
@@ -154,7 +139,6 @@ var LibraryEmVal = {
     for (var i = 0; i < view.length; i++) a[i] = reader.call(dv, i * view.BYTES_PER_ELEMENT, true);
     return Emval.toHandle(a);
   },
-  _emval_array_to_memory_view__deps: ['$Emval'],
   _emval_array_to_memory_view: (dst, src) => {
     dst = Emval.toValue(dst);
     src = Emval.toValue(src);
@@ -175,19 +159,14 @@ var LibraryEmVal = {
   },
 #endif
 
-  _emval_new_object__deps: ['$Emval'],
   _emval_new_object: () => Emval.toHandle({}),
 
-  _emval_new_cstring__deps: ['$getStringOrSymbol', '$Emval'],
   _emval_new_cstring: (v) => Emval.toHandle(getStringOrSymbol(v)),
 
-  _emval_new_u8string__deps: ['$Emval'],
   _emval_new_u8string: (v) => Emval.toHandle(UTF8ToString(v)),
 
-  _emval_new_u16string__deps: ['$Emval'],
   _emval_new_u16string: (v) => Emval.toHandle(UTF16ToString(v)),
 
-  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol'],
   _emval_get_global: (name) => {
     if (!name) {
       return Emval.toHandle(globalThis);
@@ -196,20 +175,17 @@ var LibraryEmVal = {
     return Emval.toHandle(globalThis[name]);
   },
 
-  _emval_get_module_property__deps: ['$getStringOrSymbol', '$Emval'],
   _emval_get_module_property: (name) => {
     name = getStringOrSymbol(name);
     return Emval.toHandle(Module[name]);
   },
 
-  _emval_get_property__deps: ['$Emval'],
   _emval_get_property: (handle, key) => {
     handle = Emval.toValue(handle);
     key = Emval.toValue(key);
     return Emval.toHandle(handle[key]);
   },
 
-  _emval_set_property__deps: ['$Emval'],
   _emval_set_property: (handle, key, value) => {
     handle = Emval.toValue(handle);
     key = Emval.toValue(key);
@@ -217,7 +193,6 @@ var LibraryEmVal = {
     handle[key] = value;
   },
 
-  $emval_returnValue__deps: ['$Emval'],
   $emval_returnValue: (toReturnWire, destructorsRef, handle) => {
     var destructors = [];
     var result = toReturnWire(destructors, handle);
@@ -228,41 +203,35 @@ var LibraryEmVal = {
     return result;
   },
 
-  _emval_equals__deps: ['$Emval'],
   _emval_equals: (first, second) => {
     first = Emval.toValue(first);
     second = Emval.toValue(second);
     return first == second;
   },
 
-  _emval_strictly_equals__deps: ['$Emval'],
   _emval_strictly_equals: (first, second) => {
     first = Emval.toValue(first);
     second = Emval.toValue(second);
     return first === second;
   },
 
-  _emval_greater_than__deps: ['$Emval'],
   _emval_greater_than: (first, second) => {
     first = Emval.toValue(first);
     second = Emval.toValue(second);
     return first > second;
   },
 
-  _emval_less_than__deps: ['$Emval'],
   _emval_less_than: (first, second) => {
     first = Emval.toValue(first);
     second = Emval.toValue(second);
     return first < second;
   },
 
-  _emval_not__deps: ['$Emval'],
   _emval_not: (object) => {
     object = Emval.toValue(object);
     return !object;
   },
 
-  $emval_lookupTypes__deps: ['$requireRegisteredType'],
   $emval_lookupTypes: (argCount, argTypes) => {
     var a = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
@@ -276,18 +245,12 @@ var LibraryEmVal = {
   // to have null be a valid method caller.
   $emval_methodCallers: [undefined],
 
-  $emval_addMethodCaller__deps: ['$emval_methodCallers'],
   $emval_addMethodCaller: (caller) => {
     var id = emval_methodCallers.length;
     emval_methodCallers.push(caller);
     return id;
   },
 
-  _emval_create_invoker__deps: [
-    '$emval_addMethodCaller', '$emval_lookupTypes',
-    '$createNamedFunction', '$emval_returnValue',
-    '$Emval', '$getStringOrSymbol',
-  ],
   _emval_create_invoker: (argCount, argTypesPtr, kind) => {
     const GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
 
@@ -361,7 +324,7 @@ ${functionBody}
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
   },
 
-  _emval_invoke__deps: ['$emval_methodCallers'],
+  _emval_invoke__deps: ['$getStringOrSymbol', '$Emval'],
   _emval_invoke: (caller, handle, methodName, destructorsRef, args) => {
     return emval_methodCallers[caller](handle, methodName, destructorsRef, args);
   },
@@ -370,39 +333,33 @@ ${functionBody}
   // TODO: remove this if/when https://github.com/emscripten-core/emscripten/issues/20478 is fixed.
   _emval_invoke_i64: '_emval_invoke',
 
-  _emval_typeof__deps: ['$Emval'],
   _emval_typeof: (handle) => {
     handle = Emval.toValue(handle);
     return Emval.toHandle(typeof handle);
   },
 
-  _emval_instanceof__deps: ['$Emval'],
   _emval_instanceof: (object, constructor) => {
     object = Emval.toValue(object);
     constructor = Emval.toValue(constructor);
     return object instanceof constructor;
   },
 
-  _emval_is_number__deps: ['$Emval'],
   _emval_is_number: (handle) => {
     handle = Emval.toValue(handle);
     return typeof handle === 'number';
   },
 
-  _emval_is_string__deps: ['$Emval'],
   _emval_is_string: (handle) => {
     handle = Emval.toValue(handle);
     return typeof handle === 'string';
   },
 
-  _emval_in__deps: ['$Emval'],
   _emval_in: (item, object) => {
     item = Emval.toValue(item);
     object = Emval.toValue(object);
     return item in object;
   },
 
-  _emval_delete__deps: ['$Emval'],
   _emval_delete: (object, property) => {
     object = Emval.toValue(object);
     property = Emval.toValue(property);
@@ -419,12 +376,6 @@ ${functionBody}
   },
 #endif
 
-#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
-  _emval_is_catchable_cpp_exception_object__deps: [
-    '$Emval',
-    '$isCppExceptionObject',
-  ],
-#endif
   _emval_is_catchable_cpp_exception_object: (object) => {
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
     return isCppExceptionObject(Emval.toValue(object));
@@ -433,17 +384,6 @@ ${functionBody}
 #endif
   },
 
-  _emval_throw__deps: ['$Emval',
-#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
-#if !DISABLE_EXCEPTION_CATCHING
-    '$exceptionLast',
-    '$ExceptionInfo',
-#endif
-    '$incrementExceptionRefcount',
-    '$incrementUncaughtExceptionCount',
-    '$isCppExceptionObject',
-#endif
-  ],
   _emval_throw: (object) => {
     object = Emval.toValue(object);
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
@@ -462,7 +402,6 @@ ${functionBody}
   },
 
 #if ASYNCIFY
-  _emval_await__deps: ['$Emval', '$Asyncify'],
   _emval_await__async: 'auto',
   _emval_await: async (promise) => {
     var value = await Emval.toValue(promise);
@@ -470,27 +409,24 @@ ${functionBody}
   },
 #endif
 
-  _emval_iter_begin__deps: ['$Emval'],
   _emval_iter_begin: (iterable) => {
     iterable = Emval.toValue(iterable);
     return Emval.toHandle(iterable[Symbol.iterator]());
   },
 
-  _emval_iter_next__deps: ['$Emval'],
   _emval_iter_next: (iterator) => {
     iterator = Emval.toValue(iterator);
     var result = iterator.next();
     return result.done ? 0 : Emval.toHandle(result.value);
   },
 
-  _emval_coro_suspend__deps: ['$Emval', '_emval_coro_resume',  '_emval_coro_reject'],
+  _emval_coro_suspend__deps: ['_emval_coro_resume', '_emval_coro_reject'],
   _emval_coro_suspend: (promiseHandle, awaiterPtr) => {
     Emval.toValue(promiseHandle)
       .then((result) => __emval_coro_resume(awaiterPtr, Emval.toHandle(result)),
             (error) => __emval_coro_reject(awaiterPtr, Emval.toHandle(error)));
   },
 
-  _emval_coro_make_promise__deps: ['$Emval'],
   _emval_coro_make_promise: (resolveHandlePtr, rejectHandlePtr) => {
     return Emval.toHandle(new Promise((resolve, reject) => {
       {{{ makeSetValue('resolveHandlePtr', '0', 'Emval.toHandle(resolve)', '*') }}};
@@ -498,15 +434,9 @@ ${functionBody}
     }));
   },
 
-  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow',
-#if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
-    '$decrementUncaughtExceptionCount',
+#if WASM_EXCEPTIONS
+  _emval_from_current_cxa_exception__deps: ['__cxa_rethrow'],
 #endif
-#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
-    '$decrementExceptionRefcount',
-    '$emval_exception_decrefs',
-#endif
-  ],
   _emval_from_current_cxa_exception: () => {
     try {
       // Use __cxa_rethrow which already has mechanism for generating

@@ -103,18 +103,18 @@ u || (x = new WebAssembly.Memory({
 }), y());
 
 var L = [], M = a => {
+    L.push(a);
+}, N = a => {
     a = a.data;
     var b = a._wsc;
     b && A.get(b)(...a.x);
-}, N = a => {
-    L.push(a);
 }, aa = () => {
     P(0, !r && !t, !u, r && !t);
-}, ba = a => {
+}, Q = {}, ba = a => {
     a = a.data;
     var b = a._wsc;
     b && A.get(b)(...a.D);
-}, Q = {}, ca = (a, b, c, k, d, g, f) => {
+}, ca = (a, b, c, k, d, g, f) => {
     var l = Q[b], n = l.audioWorklet;
     d = () => {
         A.get(g)(b, 0, f);
@@ -144,9 +144,9 @@ var L = [], M = a => {
 }, da = (a, b, c, k) => {
     b = Q[b];
     Q[a].connect(b.destination || b, c, k);
-}, R = 0, S = globalThis.TextDecoder && new TextDecoder, T = (a = 0) => {
+}, R = globalThis.TextDecoder && new TextDecoder, S = (a = 0) => {
     for (var b = J, c = a, k = c + NaN; b[c] && !(c >= k); ) ++c;
-    if (c - a > 16 && b.buffer && S) return S.decode(b.slice(a, c));
+    if (c - a > 16 && b.buffer && R) return R.decode(b.slice(a, c));
     for (k = ""; a < c; ) {
         var d = b[a++];
         if (d & 128) {
@@ -159,10 +159,10 @@ var L = [], M = a => {
         } else k += String.fromCharCode(d);
     }
     return k;
-}, ea = a => {
+}, T = 0, ea = a => {
     if (a) {
         var b = G[a >> 2];
-        b = (b ? T(b) : "") || void 0;
+        b = (b ? S(b) : "") || void 0;
         var c = K[a + 8 >> 2];
         a = {
             latencyHint: b,
@@ -171,8 +171,8 @@ var L = [], M = a => {
         };
     } else a = void 0;
     a = new AudioContext(a);
-    Q[++R] = a;
-    return R;
+    Q[++T] = a;
+    return T;
 }, fa = (a, b, c, k, d) => {
     var g = c ? K[c + 4 >> 2] : 0;
     if (c) {
@@ -196,11 +196,11 @@ var L = [], M = a => {
             }
         };
     } else c = void 0;
-    a = new AudioWorkletNode(Q[a], b ? T(b) : "", c);
-    Q[++R] = a;
-    return R;
+    a = new AudioWorkletNode(Q[a], b ? S(b) : "", c);
+    Q[++T] = a;
+    return T;
 }, ha = (a, b, c, k) => {
-    var d = (d = G[b >> 2]) ? T(d) : "", g = K[b + 4 >> 2];
+    var d = (d = G[b >> 2]) ? S(d) : "", g = K[b + 4 >> 2];
     b = G[b + 8 >> 2];
     for (var f = [], l = 0; g--; ) f.push({
         name: l++,
@@ -217,7 +217,7 @@ var L = [], M = a => {
         B: k
     });
 }, U = globalThis.performance?.now ? () => performance.now() : Date.now, ia = a => {
-    a = [ a ? T(a) : "" ];
+    a = [ a ? S(a) : "" ];
     return console.log(...a);
 }, ja = () => !1, ka = () => t ? () => 138 : a => (a.set(crypto.getRandomValues(new Uint8Array(a.byteLength))), 
 0), V = a => (V = ka())(a), la = (a, b) => V(J.subarray(a, a + b));
@@ -258,8 +258,8 @@ function z() {
         C = a.s;
         X = a.t;
         A = a.o;
-        u ? (X(v.N, v.M, v.G), t || (removeEventListener("message", N), L = L.forEach(M), 
-        addEventListener("message", M))) : a.m();
+        u ? (X(v.N, v.M, v.G), t || (removeEventListener("message", M), L = L.forEach(N), 
+        addEventListener("message", N))) : a.m();
         u || W();
     });
 }

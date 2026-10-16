@@ -14,7 +14,6 @@ var LibraryEmbind = {
   // If register_type is used, emval will be registered multiple times for
   // different type ids, but only a single type object is needed on the JS side
   // for all of them. Store the type for reuse.
-  $EmValType__deps: ['_emval_decref', '$Emval', '$readPointer'],
   $EmValType: `{
     name: 'emscripten::val',
     fromWireType: (handle) => {
@@ -29,10 +28,8 @@ var LibraryEmbind = {
     // TODO: do we need a deleteObject here?  write a test where
     // emval is passed into JS via an interface
   }`,
-  $EmValOptionalType__deps: ['$EmValType'],
   $EmValOptionalType: '=Object.assign({optional: true}, EmValType);',
 
-  $throwUnboundTypeError__deps: ['$registeredTypes', '$typeDependencies', '$UnboundTypeError', '$getTypeName'],
   $throwUnboundTypeError: (message, types) => {
     var unboundTypes = [];
     var seen = {};
@@ -57,7 +54,6 @@ var LibraryEmbind = {
 
   // Creates a function overload resolution table to the given method 'methodName' in the given prototype,
   // if the overload table doesn't yet exist.
-  $ensureOverloadTable__deps: ['$throwBindingError'],
   $ensureOverloadTable: (proto, methodName, humanName) => {
     if (undefined === proto[methodName].overloadTable) {
       var prevFunc = proto[methodName];
@@ -85,7 +81,6 @@ var LibraryEmbind = {
    To implement support for multiple overloads of a function, an 'overload selector' function is used. That selector function chooses
    the appropriate overload to call from an function overload table. This selector function is only used if multiple overloads are
    actually registered, since it carries a slight performance penalty. */
-  $exposePublicSymbol__deps: ['$ensureOverloadTable', '$throwBindingError'],
   $exposePublicSymbol__docs: '/** @param {number=} numArguments */',
   $exposePublicSymbol: (name, value, numArguments) => {
     if (Module.hasOwnProperty(name)) {
@@ -107,7 +102,6 @@ var LibraryEmbind = {
     }
   },
 
-  $replacePublicSymbol__deps: ['$throwInternalError'],
   $replacePublicSymbol__docs: '/** @param {number=} numArguments */',
   $replacePublicSymbol: (name, value, numArguments) => {
     if (!Module.hasOwnProperty(name)) {
@@ -137,7 +131,6 @@ var LibraryEmbind = {
   // raw pointer -> instance
   $registeredInstances: {},
 
-  $getBasestPointer__deps: ['$throwBindingError'],
   $getBasestPointer: (class_, ptr) => {
     if (ptr === undefined) {
         throwBindingError('ptr should not be undefined');
@@ -149,7 +142,6 @@ var LibraryEmbind = {
     return ptr;
   },
 
-  $registerInheritedInstance__deps: ['$registeredInstances', '$getBasestPointer', '$throwBindingError'],
   $registerInheritedInstance: (class_, ptr, instance) => {
     ptr = getBasestPointer(class_, ptr);
     if (registeredInstances.hasOwnProperty(ptr)) {
@@ -159,7 +151,6 @@ var LibraryEmbind = {
     }
   },
 
-  $unregisterInheritedInstance__deps: ['$registeredInstances', '$getBasestPointer', '$throwBindingError'],
   $unregisterInheritedInstance: (class_, ptr) => {
     ptr = getBasestPointer(class_, ptr);
     if (registeredInstances.hasOwnProperty(ptr)) {
@@ -169,7 +160,6 @@ var LibraryEmbind = {
     }
   },
 
-  $getInheritedInstance__deps: ['$registeredInstances', '$getBasestPointer'],
   $getInheritedInstance: (class_, ptr) => {
     ptr = getBasestPointer(class_, ptr);
     return registeredInstances[ptr];
@@ -178,13 +168,11 @@ var LibraryEmbind = {
   // class typeID -> {pointerType: ..., constPointerType: ...}
   $registeredPointers: {},
 
-  $registerType__deps: ['$sharedRegisterType'],
   $registerType__docs: '/** @param {Object=} options */',
   $registerType: function(rawType, registeredInstance, options = {}) {
     return sharedRegisterType(rawType, registeredInstance, options);
   },
 
-  _embind_register_void__deps: ['$AsciiToString', '$registerType'],
   _embind_register_void: (rawType, name) => {
     name = AsciiToString(name);
     registerType(rawType, {
@@ -197,7 +185,6 @@ var LibraryEmbind = {
   },
 
   _embind_register_bool__docs: '/** @suppress {globalThis} */',
-  _embind_register_bool__deps: ['$AsciiToString', '$registerType'],
   _embind_register_bool: (rawType, name, trueValue, falseValue) => {
     name = AsciiToString(name);
     registerType(rawType, {
@@ -272,7 +259,6 @@ var LibraryEmbind = {
   },
 
 #if ASSERTIONS
-  $assertIntegerRange__deps: ['$embindRepr'],
   $assertIntegerRange: (typeName, value, minRange, maxRange) => {
     if (value < minRange || value > maxRange) {
       throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${typeName}", which is outside the valid range [${minRange}, ${maxRange}]!`);
@@ -283,13 +269,6 @@ var LibraryEmbind = {
   _embind_register_integer__docs: '/** @suppress {globalThis} */',
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
-  _embind_register_integer__deps: [
-    '$integerReadValueFromPointer', '$AsciiToString', '$registerType',
-#if ASSERTIONS
-    '$embindRepr',
-    '$assertIntegerRange',
-#endif
-  ],
   _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
     name = AsciiToString(name);
 
@@ -323,13 +302,6 @@ var LibraryEmbind = {
 
 #if WASM_BIGINT
   _embind_register_bigint__docs: '/** @suppress {globalThis} */',
-  _embind_register_bigint__deps: [
-    '$AsciiToString', '$registerType', '$integerReadValueFromPointer',
-#if ASSERTIONS
-    '$embindRepr',
-    '$assertIntegerRange',
-#endif
-  ],
   _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
     name = AsciiToString(name);
 
@@ -376,12 +348,6 @@ var LibraryEmbind = {
   _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {},
 #endif
 
-  _embind_register_float__deps: [
-    '$floatReadValueFromPointer', '$AsciiToString', '$registerType',
-#if ASSERTIONS
-    '$embindRepr',
-#endif
-  ],
   _embind_register_float: (rawType, name, size) => {
     name = AsciiToString(name);
     registerType(rawType, {
@@ -446,9 +412,8 @@ var LibraryEmbind = {
   },
 
   _embind_register_std_string__deps: [
-    '$AsciiToString', '$registerType',
-    '$readPointer', '$throwBindingError',
-    '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
+    'malloc', 'free'
+  ],
   _embind_register_std_string: (rawType, name) => {
     name = AsciiToString(name);
     const stdStringIsUTF8 = {{{ EMBIND_STD_STRING_IS_UTF8 }}};
@@ -526,11 +491,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_std_wstring__deps: [
-    '$AsciiToString', '$registerType', '$readPointer',
-    '$UTF16ToString', '$stringToUTF16', '$lengthBytesUTF16',
-    '$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32',
-    ],
   _embind_register_std_wstring: (rawType, charSize, name) => {
     name = AsciiToString(name);
     var decodeString, encodeString, lengthBytesUTF;
@@ -581,26 +541,20 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_emval__deps: [
-    '$registerType',  '$EmValType'],
   _embind_register_emval: (rawType) => registerType(rawType, EmValType),
 
-  _embind_register_user_type__deps: ['_embind_register_emval'],
   _embind_register_user_type: (rawType, name) => {
     __embind_register_emval(rawType);
   },
 
-  _embind_register_user_type_definition__deps: ['_embind_register_emval'],
   _embind_register_user_type_definition: (rawType, name, definition) => {
     __embind_register_emval(rawType);
   },
 
-  _embind_register_optional__deps: ['$registerType', '$EmValOptionalType'],
   _embind_register_optional: (rawOptionalType, rawType) => {
     registerType(rawOptionalType, EmValOptionalType);
   },
 
-  _embind_register_memory_view__deps: ['$AsciiToString', '$registerType'],
   _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
     var typeMapping = [
       Int8Array,
@@ -646,24 +600,6 @@ var LibraryEmbind = {
   // The path to interop from JS code to C++ code:
   // (hand-written JS code) -> (autogenerated JS invoker) -> (template-generated C++ invoker) -> (target C++ function)
   // craftInvokerFunction generates the JS invoker function for each function exposed to JS through embind.
-  $craftInvokerFunction__deps: [
-    '$createNamedFunction', '$runDestructors', '$throwBindingError', '$usesDestructorStack',
-    '$argsUseStackAlloc', '$stackSave', '$stackRestore',
-#if DYNAMIC_EXECUTION && !EMBIND_AOT
-    '$createJsInvoker',
-#endif
-#if EMBIND_AOT
-    '$InvokerFunctions',
-    '$createJsInvokerSignature',
-#endif
-#if ASYNCIFY == 1
-    '$Asyncify',
-#endif
-#if ASSERTIONS
-    '$getRequiredArgCount',
-    '$checkArgCount',
-#endif
-  ],
   $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc, /** boolean= */ isAsync) {
     // humanName: a human-readable string name for the function to be generated.
     // argTypes: An array that contains the embind type objects for all types in the function signature.
@@ -834,11 +770,6 @@ var LibraryEmbind = {
     return createNamedFunction(humanName, invokerFn);
   },
 
-  $embind__requireFunction__deps: ['$AsciiToString', '$throwBindingError'
-#if DYNCALLS || !WASM_BIGINT || MEMORY64 || CAN_ADDRESS_2GB
-    , '$getDynCaller'
-#endif
-  ],
   $embind__requireFunction: (signature, rawFunction, isAsync = false) => {
 #if ASSERTIONS && ASYNCIFY != 2
     assert(!isAsync, 'async bindings are only supported with JSPI');
@@ -877,10 +808,6 @@ var LibraryEmbind = {
     return fp;
   },
 
-  _embind_register_function__deps: [
-    '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
-    '$AsciiToString', '$replacePublicSymbol', '$embind__requireFunction',
-    '$throwUnboundTypeError', '$whenDependentTypesAreResolved', '$getFunctionName'],
   _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync, isNonnullReturn) => {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = AsciiToString(name);
@@ -899,8 +826,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_value_array__deps: [
-    '$tupleRegistrations', '$AsciiToString', '$embind__requireFunction'],
   _embind_register_value_array: (
     rawType,
     name,
@@ -921,8 +846,6 @@ var LibraryEmbind = {
     };
   },
 
-  _embind_register_value_array_element__deps: [
-    '$tupleRegistrations', '$embind__requireFunction'],
   _embind_register_value_array_element: (
     rawTupleType,
     getterReturnType,
@@ -944,9 +867,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_finalize_value_array__deps: [
-    '$tupleRegistrations', '$runDestructors',
-    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc', '$zeroMemory'],
   _embind_finalize_value_array: (rawTupleType) => {
     var reg = tupleRegistrations[rawTupleType];
     delete tupleRegistrations[rawTupleType];
@@ -1029,8 +949,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_value_object__deps: [
-    '$structRegistrations', '$AsciiToString', '$embind__requireFunction'],
   _embind_register_value_object: (
     rawType,
     name,
@@ -1051,8 +969,6 @@ var LibraryEmbind = {
     };
   },
 
-  _embind_register_value_object_field__deps: [
-    '$structRegistrations', '$AsciiToString', '$embind__requireFunction'],
   _embind_register_value_object_field: (
     structType,
     fieldName,
@@ -1076,9 +992,6 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_finalize_value_object__deps: [
-    '$structRegistrations', '$runDestructors',
-    '$readPointer', '$whenDependentTypesAreResolved', '$stackAlloc', '$zeroMemory'],
   _embind_finalize_value_object: (structType) => {
     var reg = structRegistrations[structType];
     delete structRegistrations[structType];
@@ -1162,7 +1075,6 @@ var LibraryEmbind = {
   },
 
   $genericPointerToWireType__docs: '/** @suppress {globalThis} */',
-  $genericPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
   $genericPointerToWireType: function(destructors, handle) {
     var ptr;
     if (handle === null) {
@@ -1240,7 +1152,6 @@ var LibraryEmbind = {
   $constNoSmartPtrRawPointerToWireType__docs: '/** @suppress {globalThis} */',
   // If we know a pointer type is not going to have SmartPtr logic in it, we can
   // special-case optimize it a bit (compare to genericPointerToWireType)
-  $constNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer', '$embindRepr'],
   $constNoSmartPtrRawPointerToWireType: function(destructors, handle) {
     if (handle === null) {
       if (this.isReference) {
@@ -1263,7 +1174,6 @@ var LibraryEmbind = {
   $nonConstNoSmartPtrRawPointerToWireType__docs: '/** @suppress {globalThis} */',
   // An optimized version for non-const method accesses - there we must additionally restrict that
   // the pointer is not a const-pointer.
-  $nonConstNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer', '$embindRepr'],
   $nonConstNoSmartPtrRawPointerToWireType: function(destructors, handle) {
     if (handle === null) {
       if (this.isReference) {
@@ -1286,11 +1196,6 @@ var LibraryEmbind = {
     return ptr;
   },
 
-  $init_RegisteredPointer__deps: [
-    '$RegisteredPointer',
-    '$readPointer',
-    '$RegisteredPointer_fromWireType',
-  ],
   $init_RegisteredPointer: () => {
     Object.assign(RegisteredPointer.prototype, {
       getPointee(ptr) {
@@ -1316,8 +1221,8 @@ var LibraryEmbind = {
     @param {*=} rawDestructor,
      */`,
   $RegisteredPointer__deps: [
-    '$constNoSmartPtrRawPointerToWireType', '$genericPointerToWireType',
-    '$nonConstNoSmartPtrRawPointerToWireType', '$init_RegisteredPointer'],
+    '$init_RegisteredPointer'
+  ],
   $RegisteredPointer__postset: 'init_RegisteredPointer()',
   $RegisteredPointer: function(
     name,
@@ -1366,13 +1271,6 @@ var LibraryEmbind = {
   },
 
   $RegisteredPointer_fromWireType__docs: '/** @suppress {globalThis} */',
-  $RegisteredPointer_fromWireType__deps: [
-    '$downcastPointer', '$registeredPointers',
-    '$getInheritedInstance', '$makeClassHandle',
-#if MEMORY64
-    '$bigintToI53Checked'
-#endif
-  ],
   $RegisteredPointer_fromWireType: function(ptr) {
     // ptr is a raw pointer (or a raw smartpointer)
 #if MEMORY64
@@ -1463,7 +1361,6 @@ var LibraryEmbind = {
     }
   },
 
-  $releaseClassHandle__deps: ['$runDestructor'],
   $releaseClassHandle: ($$) => {
     $$.count.value -= 1;
     var toDelete = 0 === $$.count.value;
@@ -1477,12 +1374,6 @@ var LibraryEmbind = {
   $detachFinalizer__deps: ['$finalizationRegistry'],
   $detachFinalizer: (handle) => {},
 
-  $attachFinalizer__deps: [
-    '$finalizationRegistry', '$detachFinalizer', '$releaseClassHandle',
-#if ASSERTIONS
-    '$RegisteredPointer_fromWireType'
-#endif
-  ],
   $attachFinalizer: (handle) => {
     if (!globalThis.FinalizationRegistry) {
       attachFinalizer = (handle) => handle;
@@ -1527,7 +1418,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     return attachFinalizer(handle);
   },
 
-  $makeClassHandle__deps: ['$throwInternalError', '$attachFinalizer'],
   $makeClassHandle: (prototype, record) => {
     if (!record.ptrType || !record.ptr) {
       throwInternalError('makeClassHandle requires ptr and ptrType');
@@ -1546,17 +1436,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     }));
   },
 
-  $init_ClassHandle__deps: [
-    '$ClassHandle',
-    '$shallowCopyInternalPointer',
-    '$throwInstanceAlreadyDeleted',
-    '$attachFinalizer',
-    '$releaseClassHandle',
-    '$throwBindingError',
-    '$detachFinalizer',
-    '$flushPendingDeletes',
-    '$delayFunction',
-  ],
   $init_ClassHandle: () => {
     let proto = ClassHandle.prototype;
 
@@ -1661,7 +1540,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
   $ClassHandle: function() {
   },
 
-  $throwInstanceAlreadyDeleted__deps: ['$throwBindingError'],
   $throwInstanceAlreadyDeleted: (obj) => {
     function getInstanceTypeName(handle) {
       return handle.$$.ptrType.registeredClass.name;
@@ -1671,7 +1549,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
 
   $deletionQueue: [],
 
-  $flushPendingDeletes__deps: ['$deletionQueue'],
   $flushPendingDeletes: () => {
     while (deletionQueue.length) {
       var obj = deletionQueue.pop();
@@ -1682,7 +1559,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
 
   $delayFunction: undefined,
 
-  $setDelayFunction__deps: ['$delayFunction', '$deletionQueue', '$flushPendingDeletes'],
   $setDelayFunction: (fn) => {
     delayFunction = fn;
     if (deletionQueue.length && delayFunction) {
@@ -1722,13 +1598,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     };
   },
 
-  _embind_register_class__deps: [
-    '$BindingError', '$ClassHandle', '$createNamedFunction',
-    '$registeredPointers', '$exposePublicSymbol',
-    '$makeLegalFunctionName', '$AsciiToString',
-    '$RegisteredClass', '$RegisteredPointer', '$replacePublicSymbol',
-    '$embind__requireFunction', '$throwUnboundTypeError',
-    '$whenDependentTypesAreResolved'],
   _embind_register_class: (rawType,
                            rawPointerType,
                            rawConstPointerType,
@@ -1835,9 +1704,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     );
   },
 
-  _embind_register_iterable__deps: [
-    '$whenDependentTypesAreResolved', '$installIndexedIterator', '$AsciiToString',
-  ],
   _embind_register_iterable: (rawClassType, rawElementType, sizeMethodName, getMethodName) => {
     sizeMethodName = AsciiToString(sizeMethodName);
     getMethodName = AsciiToString(getMethodName);
@@ -1848,10 +1714,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     });
   },
 
-  _embind_register_class_constructor__deps: [
-    '$heap32VectorToArray', '$embind__requireFunction',
-    '$whenDependentTypesAreResolved',
-    '$craftInvokerFunction'],
   _embind_register_class_constructor: (
     rawClassType,
     argCount,
@@ -1907,7 +1769,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     return desiredClass.downcast(rv);
   },
 
-  $upcastPointer__deps: ['$throwBindingError'],
   $upcastPointer: (ptr, ptrClass, desiredClass) => {
     while (ptrClass !== desiredClass) {
       if (!ptrClass.upcast) {
@@ -1919,7 +1780,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     return ptr;
   },
 
-  $validateThis__deps: ['$throwBindingError', '$upcastPointer'],
   $validateThis: (this_, classType, humanName) => {
     if (!(this_ instanceof Object)) {
       throwBindingError(`${humanName} with invalid "this": ${this_}`);
@@ -1937,10 +1797,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
                          classType.registeredClass);
   },
 
-  _embind_register_class_function__deps: [
-    '$craftInvokerFunction', '$heap32VectorToArray', '$AsciiToString',
-    '$embind__requireFunction', '$throwUnboundTypeError',
-    '$whenDependentTypesAreResolved', '$getFunctionName'],
   _embind_register_class_function: (rawClassType,
                                     methodName,
                                     argCount,
@@ -2008,10 +1864,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     });
   },
 
-  _embind_register_class_property__deps: [
-    '$AsciiToString', '$embind__requireFunction', '$runDestructors',
-    '$throwBindingError', '$throwUnboundTypeError',
-    '$whenDependentTypesAreResolved', '$validateThis'],
   _embind_register_class_property: (classType,
                                     fieldName,
                                     getterReturnType,
@@ -2075,10 +1927,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     });
   },
 
-  _embind_register_class_class_function__deps: [
-    '$craftInvokerFunction', '$ensureOverloadTable', '$heap32VectorToArray',
-    '$AsciiToString', '$embind__requireFunction', '$throwUnboundTypeError',
-    '$whenDependentTypesAreResolved', '$getFunctionName'],
   _embind_register_class_class_function: (rawClassType,
                                           methodName,
                                           argCount,
@@ -2144,10 +1992,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     });
   },
 
-  _embind_register_class_class_property__deps: [
-    '$AsciiToString', '$embind__requireFunction', '$runDestructors',
-    '$throwBindingError', '$throwUnboundTypeError',
-    '$whenDependentTypesAreResolved'],
   _embind_register_class_class_property: (rawClassType,
                                           fieldName,
                                           rawFieldType,
@@ -2207,12 +2051,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     });
   },
 
-  _embind_create_inheriting_constructor__deps: [
-    '$createNamedFunction', '$Emval',
-    '$PureVirtualError', '$AsciiToString',
-    '$registerInheritedInstance',
-    '$requireRegisteredType', '$throwBindingError',
-    '$unregisterInheritedInstance', '$detachFinalizer', '$attachFinalizer'],
   _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {
     constructorName = AsciiToString(constructorName);
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
@@ -2271,7 +2109,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
 
   $char_0: '0'.charCodeAt(0),
   $char_9: '9'.charCodeAt(0),
-  $makeLegalFunctionName__deps: ['$char_0', '$char_9'],
   $makeLegalFunctionName: (name) => {
 #if ASSERTIONS
     assert(typeof name === 'string');
@@ -2284,7 +2121,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     return name;
   },
 
-  _embind_register_smart_ptr__deps: ['$RegisteredPointer', '$embind__requireFunction', '$whenDependentTypesAreResolved'],
   _embind_register_smart_ptr: (rawType,
                                rawPointeeType,
                                name,
@@ -2323,8 +2159,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
   },
 
   _embind_register_enum__docs: '/** @suppress {globalThis} */',
-  _embind_register_enum__deps: ['$exposePublicSymbol', '$enumReadValueFromPointer',
-    '$AsciiToString', '$registerType', '$getEnumValueType'],
   _embind_register_enum: (rawType, name, size, isSigned, rawValueType) => {
     name = AsciiToString(name);
     const valueType = getEnumValueType(rawValueType);
@@ -2396,7 +2230,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     }
   },
 
-  _embind_register_enum_value__deps: ['$createNamedFunction', '$AsciiToString', '$requireRegisteredType'],
   _embind_register_enum_value: (rawEnumType, name, enumValue) => {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
     name = AsciiToString(name);
@@ -2425,7 +2258,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     }
   },
 
-  _embind_register_constant__deps: ['$AsciiToString', '$whenDependentTypesAreResolved'],
   _embind_register_constant: (name, type, value) => {
     name = AsciiToString(name);
     whenDependentTypesAreResolved([], [type], (type) => {
