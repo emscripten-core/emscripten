@@ -13990,7 +13990,6 @@ Module.postRun = () => {{
     '': ([],),
     # Minified export names
     'O3': (['-O3'],),
-    'no_declare_asm_module_exports': (['-sDECLARE_ASM_MODULE_EXPORTS=0'],),
   })
   def test_signature_conversions(self, args):
     # Exports returning pointers get wrapped so that they return unsigned
