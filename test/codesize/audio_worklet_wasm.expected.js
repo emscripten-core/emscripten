@@ -114,7 +114,7 @@ var L = [], M = a => {
     a = a.data;
     var b = a._wsc;
     b && A.get(b)(...a.D);
-}, ca = (a, b, c, k, d, g, f) => {
+}, Q = {}, ca = (a, b, c, k, d, g, f) => {
     var l = Q[b], n = l.audioWorklet;
     d = () => {
         A.get(g)(b, 0, f);
@@ -144,7 +144,7 @@ var L = [], M = a => {
 }, da = (a, b, c, k) => {
     b = Q[b];
     Q[a].connect(b.destination || b, c, k);
-}, Q = {}, R = 0, S = globalThis.TextDecoder && new TextDecoder, T = (a = 0) => {
+}, R = 0, S = globalThis.TextDecoder && new TextDecoder, T = (a = 0) => {
     for (var b = J, c = a, k = c + NaN; b[c] && !(c >= k); ) ++c;
     if (c - a > 16 && b.buffer && S) return S.decode(b.slice(a, c));
     for (k = ""; a < c; ) {

@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 6.0.13 (in development)
 -----------------------
+- JavaScript library dependencies on other JavaScript library symbols are now
+  detected automatically by the compiler, so `__deps` is no longer required for
+  direct JS-to-JS references (`__deps` is still supported for dependencies on
+  compiled C/C++ symbols or indirect dependencies). (#27995)
 - Support for windows .bat/.ps1 launcher files was completely removed.  These
   days we use a native windows launcher program. (#27359)
 - `MEMORY64=2` was marked as deprecated. (#27952)

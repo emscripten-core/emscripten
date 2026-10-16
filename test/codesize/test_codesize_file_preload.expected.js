@@ -478,35 +478,16 @@ var callRuntimeCallbacks = callbacks => {
 
 var onPreRuns = [];
 
-/** @type {!Int8Array} */ var HEAP8;
-
-/** @type {!Uint8Array} */ var HEAPU8;
-
-/** @type {!Uint32Array} */ var HEAPU32;
-
-/** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
-  // Gather all iovecs into one contiguous buffer and issue a single
-  // FS.write, matching POSIX writev's single gather-write semantics (as
-  // __syscall_sendmsg already does). Per-iovec writes fragment a stream
-  // socket send into multiple segments, breaking stream byte semantics.
-  if (iovcnt == 1) {
-    // Single iovec: write directly from HEAP8, no gather buffer needed.
-    return FS.write(stream, HEAP8, HEAPU32[((iov) >> 2)], HEAPU32[(((iov) + (4)) >> 2)], offset);
+var initRandomFill = () => {
+  // This block is not needed on v19+ since crypto.getRandomValues is builtin
+  if (ENVIRONMENT_IS_NODE) {
+    var nodeCrypto = require("node:crypto");
+    return view => (nodeCrypto.randomFillSync(view), 0);
   }
-  var total = 0;
-  for (var i = 0, p = iov; i < iovcnt; i++, p += 8) {
-    total += HEAPU32[(((p) + (4)) >> 2)];
-  }
-  var view = new Uint8Array(total);
-  var voff = 0;
-  for (var i = 0; i < iovcnt; i++, iov += 8) {
-    var ptr = HEAPU32[((iov) >> 2)];
-    var len = HEAPU32[(((iov) + (4)) >> 2)];
-    view.set(HEAPU8.subarray(ptr, ptr + len), voff);
-    voff += len;
-  }
-  return FS.write(stream, view, 0, total, offset);
+  return view => (crypto.getRandomValues(view), 0);
 };
+
+var randomFill = view => (randomFill = initRandomFill())(view);
 
 var PATH = {
   isAbs: path => path.charAt(0) === "/",
@@ -565,17 +546,6 @@ var PATH = {
   join: (...paths) => PATH.normalize(paths.join("/")),
   join2: (l, r) => PATH.normalize(l + "/" + r)
 };
-
-var initRandomFill = () => {
-  // This block is not needed on v19+ since crypto.getRandomValues is builtin
-  if (ENVIRONMENT_IS_NODE) {
-    var nodeCrypto = require("node:crypto");
-    return view => (nodeCrypto.randomFillSync(view), 0);
-  }
-  return view => (crypto.getRandomValues(view), 0);
-};
-
-var randomFill = view => (randomFill = initRandomFill())(view);
 
 var PATH_FS = {
   resolve: (...args) => {
@@ -933,6 +903,8 @@ var TTY = {
 var mmapAlloc = size => {
   abort();
 };
+
+/** @type {!Int8Array} */ var HEAP8;
 
 var MEMFS = {
   ops_table: null,
@@ -2974,6 +2946,38 @@ var FS = {
   }
 };
 
+/** @type {!Uint32Array} */ var HEAPU32;
+
+/** @type {!Uint8Array} */ var HEAPU8;
+
+/** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
+  // Gather all iovecs into one contiguous buffer and issue a single
+  // FS.write, matching POSIX writev's single gather-write semantics (as
+  // __syscall_sendmsg already does). Per-iovec writes fragment a stream
+  // socket send into multiple segments, breaking stream byte semantics.
+  if (iovcnt == 1) {
+    // Single iovec: write directly from HEAP8, no gather buffer needed.
+    return FS.write(stream, HEAP8, HEAPU32[((iov) >> 2)], HEAPU32[(((iov) + (4)) >> 2)], offset);
+  }
+  var total = 0;
+  for (var i = 0, p = iov; i < iovcnt; i++, p += 8) {
+    total += HEAPU32[(((p) + (4)) >> 2)];
+  }
+  var view = new Uint8Array(total);
+  var voff = 0;
+  for (var i = 0; i < iovcnt; i++, iov += 8) {
+    var ptr = HEAPU32[((iov) >> 2)];
+    var len = HEAPU32[(((iov) + (4)) >> 2)];
+    view.set(HEAPU8.subarray(ptr, ptr + len), voff);
+    voff += len;
+  }
+  return FS.write(stream, view, 0, total, offset);
+};
+
+/** not-@type {!BigInt64Array} */ var HEAP64;
+
+/** @type {!Int32Array} */ var HEAP32;
+
 /**
    * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
    * emscripten HEAP, returns a copy of that string as a Javascript String object.
@@ -2987,10 +2991,6 @@ var FS = {
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */ var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : "";
-
-/** @type {!Int32Array} */ var HEAP32;
-
-/** not-@type {!BigInt64Array} */ var HEAP64;
 
 var SYSCALLS = {
   currentUmask: 18,

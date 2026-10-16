@@ -393,7 +393,7 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['emscripten_get_sbrk_ptr', '__heap_base', '$alignMemory', 'calloc'],
+  $getMemory__deps: ['emscripten_get_sbrk_ptr', '$alignMemory', 'calloc'],
   $getMemory: (size) => {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG

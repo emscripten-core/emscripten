@@ -9,6 +9,7 @@
 
 import assert from 'node:assert';
 import * as fs from 'node:fs/promises';
+import * as acorn from 'acorn';
 import {
   ATMODULES,
   ATEXITS,
@@ -19,6 +20,7 @@ import {
   ATPOSTRUNS,
   defineI64Param,
   indentify,
+  isSymbolNeeded,
   makeReturn64,
   modifyJSFunction,
   preprocess,
@@ -45,10 +47,6 @@ import {
 import {extraExports, LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
 
 const addedLibraryItems = {};
-
-// Experimental feature to check for invalid __deps entries.
-// See `EMCC_CHECK_DEPS` in in the environment to try it out.
-const CHECK_DEPS = process.env.EMCC_CHECK_DEPS;
 
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
@@ -180,99 +178,145 @@ function preJS() {
   return result;
 }
 
-// Certain library functions have specific indirect dependencies.  See the
-// comments alongside eaach of these.
-const checkDependenciesSkip = new Set([
-  '_mmap_js',
-  '_emscripten_throw_longjmp',
-  '_emscripten_receive_on_main_thread_js',
-  'emscripten_start_fetch',
-  'emscripten_start_wasm_audio_worklet_thread_async',
-]);
-
-const checkDependenciesIgnore = new Set([
-  // These are added in bulk to whole library files are so are not precise
-  '$PThread',
-  '$SDL',
-  '$GLUT',
-  '$GLEW',
-  '$Browser',
-  '$AL',
-  '$GL',
-  '$IDBStore',
-  // These are added purely for their side effects
-  '$polyfillWaitAsync',
-  '$GLImmediateSetup',
-  '$emscriptenGetAudioObject',
-  // These get conservatively injected via i53ConversionDeps
-  '$bigintToI53Checked',
-  '$convertI32PairToI53Checked',
-  'setTempRet0',
-]);
-
-/**
- * Hacky attempt to find unused `__deps` entries.  This is not enabled by default
- * but can be enabled by setting CHECK_DEPS above.
- * TODO: Use a more precise method such as tokenising using acorn.
- */
-function checkDependencies(symbol, snippet, deps, postset) {
-  if (checkDependenciesSkip.has(symbol)) {
-    return;
+// Check if tokens[i] is the name of an object/class method definition `foo(...) {`
+function isMethodDef(tokens, i) {
+  if (tokens[i + 1]?.type.label !== '(') {
+    return false;
   }
-  for (const dep of deps) {
-    if (typeof dep === 'function') {
-      continue;
-    }
-    if (checkDependenciesIgnore.has(dep)) {
-      continue;
-    }
-    const mangled = mangleCSymbolName(dep);
-    if (!snippet.includes(mangled) && !postset?.includes(mangled)) {
-      error(`${symbol}: unused dependency: ${dep}`);
+  let depth = 1;
+  for (let j = i + 2; j < tokens.length; j++) {
+    const label = tokens[j].type.label;
+    if (label === '(') {
+      depth++;
+    } else if (label === ')') {
+      depth--;
+      if (depth === 0) {
+        return tokens[j + 1]?.type.label === '{';
+      }
     }
   }
+  return false;
 }
 
-function addImplicitDeps(snippet, deps) {
-  // There are some common dependencies that we inject automatically by
-  // conservatively scanning the input functions for their usage.
-  // Specifically, these are dependencies that are very common and would be
-  // burdensome to add manually to all functions.
-  // The first four are deps that are automatically/conditionally added
-  // by the {{{ makeDynCall }}}, and {{{ runtimeKeepalivePush/Pop }}} macros.
-  const autoDeps = [
-    'getDynCaller',
-    'getWasmTableEntry',
-    'runtimeKeepalivePush',
-    'runtimeKeepalivePop',
-    'UTF8ToString',
-    // TODO: Consider removing getValue and setValue if they are rarely used implicitly.
-    'getValue',
-    'setValue',
-  ];
-  for (const dep of autoDeps) {
-    if (snippet.includes(dep + '(')) {
-      deps.push('$' + dep);
+// Unlike JS library symbols, user code in `--pre-js`, `--post-js`, and
+// `EM_JS`/`EM_ASM` snippets does not automatically pull in arbitrary JS
+// library symbols (users must pass `-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or
+// `-sEXPORTED_RUNTIME_METHODS`). Only these common runtime helpers and heap
+// views are implicitly included when referenced in those snippets.
+const implicitSnippetDeps = new Set([
+  'getDynCaller',
+  'getWasmTableEntry',
+  'makeBigInt',
+  'runtimeKeepalivePush',
+  'runtimeKeepalivePop',
+  'UTF8ToString',
+  // TODO: Consider removing getValue and setValue if they are rarely used implicitly.
+  'getValue',
+  'setValue',
+  'HEAP8',
+  'HEAP16',
+  'HEAPU8',
+  'HEAPU16',
+  'HEAP32',
+  'HEAPU32',
+  'HEAPF32',
+  'HEAPF64',
+  'HEAP64',
+  'HEAPU64',
+]);
+
+function calculateDeps(snippet, deps, symbol, symbolsOnly = false) {
+  const found = new Set();
+  const typeofSyms = new Set();
+  const tokens = Array.from(acorn.tokenizer(snippet, {ecmaVersion: 2022}));
+
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+    if (tok.type.label !== 'name') {
+      continue;
+    }
+    const name = tok.value;
+    const prevToken = tokens[i - 1];
+    const nextToken = tokens[i + 1];
+
+    // Ignore property accesses (e.g. `obj.foo` or `obj?.foo`)
+    if (prevToken?.type.label === '.' || prevToken?.type.label === '?.') {
+      continue;
+    }
+    // Ignore function or class declarations' own name (e.g. `function foo()` or `class Foo`)
+    if (prevToken?.type.keyword === 'function' || prevToken?.type.keyword === 'class') {
+      continue;
+    }
+    // Ignore object literal property keys (e.g. `{ foo: 123 }`)
+    if (nextToken?.type.label === ':' && (prevToken?.type.label === '{' || prevToken?.type.label === ',')) {
+      continue;
+    }
+    // Ignore object/class shorthand method definitions (e.g. `foo() { ... }`)
+    if (isMethodDef(tokens, i)) {
+      continue;
+    }
+    // Ignore `typeof foo` existence checks (e.g. `if (typeof SDL !== 'undefined') SDL.foo()`).
+    // Note: wrapSyscallFunction injects `typeof FS === 'undefined'` into all syscalls,
+    // including ones that unconditionally use `FS`, so do not add `FS` to `typeofSyms`.
+    if (prevToken?.type.keyword === 'typeof') {
+      if (nextToken?.type.label !== '.' && name !== 'FS') {
+        typeofSyms.add(name);
+      }
+      continue;
+    }
+    if (typeofSyms.has(name)) {
+      continue;
+    }
+
+    // If the snippet contains eval(), it may dynamically evaluate code loaded from memory at runtime
+    // (for example, in emscripten_run_script where the snippet is eval(UTF8ToString(ptr))).
+    // Because static analysis cannot inspect what strings are stored in memory or evaluated
+    // at runtime, we must conservatively include all heap views whenever a snippet uses eval().
+    if (name === 'eval' && nextToken?.type.label === '(') {
+      found.add('$HEAP8');
+      found.add('$HEAPU8');
+      found.add('$HEAP16');
+      found.add('$HEAPU16');
+      found.add('$HEAP32');
+      found.add('$HEAPU32');
+      found.add('$HEAPF32');
+      found.add('$HEAPF64');
+      if (WASM_BIGINT || MEMORY64) {
+        found.add('$HEAP64');
+        found.add('$HEAPU64');
+      }
+      continue;
+    }
+
+    // When scanning `--pre-js`, `--post-js`, or `EM_JS`/`EM_ASM` (`!symbol`),
+    // only auto-include symbols from `implicitSnippetDeps`.
+    if (!symbol && !implicitSnippetDeps.has(name)) {
+      continue;
+    }
+
+    let dep;
+    if ('$' + name in LibraryManager.library) {
+      dep = '$' + name;
+    } else if (symbol && name.startsWith('_') && name.slice(1) in LibraryManager.library) {
+      dep = name.slice(1);
+    }
+
+    if (dep && dep !== symbol) {
+      found.add(dep);
     }
   }
-  // If the snippet contains eval(), it may dynamically evaluate code loaded from memory at runtime
-  // (for example, in emscripten_run_script where the snippet is eval(UTF8ToString(ptr))).
-  // Because static string matching cannot inspect what strings are stored in memory or evaluated
-  // at runtime, we must conservatively include all heap views whenever a snippet uses eval().
-  if (snippet.includes('eval(')) {
-    deps.push('$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16', '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64');
-    if (WASM_BIGINT || MEMORY64) {
-      deps.push('$HEAP64', '$HEAPU64');
-    }
-  }
-  const heapDeps = [
-    'HEAP8', 'HEAP16', 'HEAPU8', 'HEAPU16',
-    'HEAP32', 'HEAPU32', 'HEAPF32', 'HEAPF64',
-    'HEAP64', 'HEAPU64',
-  ];
-  for (const heap of heapDeps) {
-    if (snippet.includes(heap)) {
-      deps.push('$' + heap);
+
+  const isUserSymbol = symbol && LibraryManager.library[symbol + '__user'];
+  for (const dep of found) {
+    if (deps.includes(dep)) {
+      if (!symbolsOnly && symbol && isUserSymbol && STRICT && LibraryManager.library[symbol] !== dep) {
+        warn(`${symbol}: redundant __deps entry: ${dep}`);
+      }
+    } else {
+      if (!symbolsOnly && symbol) {
+        debugLog(`auto-detected dependency: ${symbol} -> ${dep}`);
+      }
+      deps.push(dep);
     }
   }
 }
@@ -442,11 +486,11 @@ export async function runJSify(outputFile, symbolsOnly) {
     for (const fileName of [...PRE_JS_FILES, ...POST_JS_FILES]) {
       const content = getIncludeFile(fileName);
       if (!errorOccured()) {
-        addImplicitDeps(content, symbolsNeeded);
+        calculateDeps(content, symbolsNeeded);
       }
     }
     for (const snippet of EM_JS_SNIPPETS) {
-      addImplicitDeps(snippet, symbolsNeeded);
+      calculateDeps(snippet, symbolsNeeded);
     }
   }
   for (const sym of EXPORTED_RUNTIME_METHODS) {
@@ -517,7 +561,6 @@ function(${args}) {
       ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))
     ) {
       snippet = handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction);
-      compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
     }
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
@@ -548,7 +591,6 @@ function(${args}) {
             const rtnType = sig?.[0];
             const proxyFunc =
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
-            deps.push('$' + proxyFunc);
             return `
 ${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
@@ -629,11 +671,19 @@ function(${args}) {
 
       if (symbolsOnly) {
         if (LibraryManager.library.hasOwnProperty(symbol)) {
-          // Resolve aliases before looking up deps
-          var transitiveDeps = getTransitiveDeps(symbol);
-          symbolDeps[symbol] = transitiveDeps.filter(
-            (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),
-          );
+          let snippet = LibraryManager.library[symbol];
+          if (!LibraryManager.isAlias(snippet)) {
+            if (typeof snippet === 'object') {
+              snippet = stringifyWithFunctions(snippet);
+            } else if (typeof snippet === 'function') {
+              snippet = snippet.toString();
+            } else if (typeof snippet === 'string') {
+              snippet = snippet.replace(/^[=;]/, '');
+            }
+            if (typeof snippet === 'string') {
+              calculateDeps(snippet, deps, symbol, /*symbolsOnly=*/ true);
+            }
+          }
         }
         return;
       }
@@ -705,13 +755,6 @@ function(${args}) {
       if (!isStub && LibraryManager.library[symbol + '__export']) {
         extraExports.add(mangled);
       }
-      const isUserSymbol = LibraryManager.library[symbol + '__user'];
-      // Check for dependencies on `__internal` symbols from user libraries.
-      for (const dep of deps) {
-        if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
-          warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
-        }
-      }
 
       let isFunction = typeof snippet === 'function';
       let isNativeAlias = false;
@@ -756,17 +799,28 @@ function(${args}) {
         }
       } else if (typeof snippet === 'object') {
         snippet = stringifyWithFunctions(snippet);
-        addImplicitDeps(snippet, deps);
-      } else if (typeof snippet === 'string' && (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/))) {
-        // Support functions that are already "stringified"
-        isFunction = true;
+        calculateDeps(snippet, deps, symbol);
+      } else if (typeof snippet === 'string') {
+        if (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/)) {
+          // Support functions that are already "stringified"
+          isFunction = true;
+        } else {
+          calculateDeps(snippet.replace(/^[=;]/, ''), deps, symbol);
+        }
       }
 
       if (isFunction) {
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
-        addImplicitDeps(snippet, deps);
-        if (CHECK_DEPS && !isUserSymbol) {
-          checkDependencies(symbol, snippet, deps, postset?.toString());
+        if (!isStub) {
+          calculateDeps(snippet, deps, symbol);
+        }
+      }
+
+      const isUserSymbol = LibraryManager.library[symbol + '__user'];
+      // Check for dependencies on `__internal` symbols from user libraries.
+      for (const dep of deps) {
+        if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
+          warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
       }
 
@@ -779,7 +833,7 @@ function(${args}) {
         // $noExitRuntime is special since there are conditional usages of it
         // in libcore.js and libpthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
-        if (dep === '$noExitRuntime') {
+        if (dep === '$noExitRuntime' && !isSymbolNeeded('$noExitRuntime')) {
           error('noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS');
         }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`);
@@ -997,6 +1051,14 @@ var proxiedFunctionTable = [
   timer.stop('symbolHandler');
 
   if (symbolsOnly) {
+    for (const sym of Object.keys(LibraryManager.library)) {
+      if (!isDecorator(sym)) {
+        const transitiveDeps = getTransitiveDeps(sym);
+        symbolDeps[sym] = transitiveDeps.filter(
+          (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),
+        );
+      }
+    }
     writeOutput(
       JSON.stringify({
         deps: symbolDeps,
