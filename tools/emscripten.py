@@ -1165,8 +1165,6 @@ def create_pointer_conversion_wrappers(metadata):
 // that it is recognised by metadce and minify-import-export-names
 // passes.
 function applySignatureConversions(wasmExports) {
-  // First, make a copy of the incoming exports object
-  wasmExports = Object.assign({}, wasmExports);
 '''
 
   sigs_seen = set()
@@ -1195,9 +1193,18 @@ function applySignatureConversions(wasmExports) {
           sigs_seen.add(sig)
         wrap_functions.append(symbol)
 
-  for f in wrap_functions:
-    sig = native_sigs[f]
-    wrappers += f"\n  wasmExports['{f}'] = makeWrapper_{sig}(wasmExports['{f}']);"
-  wrappers += '\n  return wasmExports;\n}'
+  if wrap_functions:
+    # Rather than copying the entire exports object (which is slow when there
+    # are many exports) we put just the wrapped exports on a new object, which
+    # then inherits all the others from the original.  The wrappers can't be
+    # assigned to an object that already inherits from the original exports
+    # object, since that is frozen, so we set the prototype afterwards.
+    wrappers += '\n  var origExports = wasmExports;\n  wasmExports = {};'
+    for f in wrap_functions:
+      sig = native_sigs[f]
+      wrappers += f"\n  wasmExports['{f}'] = makeWrapper_{sig}(origExports['{f}']);"
+    wrappers += '\n  return Object.setPrototypeOf(wasmExports, origExports);\n}'
+  else:
+    wrappers += '\n  return wasmExports;\n}'
 
   return wrappers

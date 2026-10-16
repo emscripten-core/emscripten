@@ -461,14 +461,14 @@ function isExportSpecifierList(node) {
   );
 }
 
-function isExportUse(node) {
+function isExportUse(node, objectName = 'wasmExports') {
   // Match usages of symbols on the `wasmExports` object. e.g:
   //   wasmExports['X']
   return (
     node.type === 'MemberExpression' &&
     node.object.type === 'Identifier' &&
     isLiteralString(node.property) &&
-    node.object.name === 'wasmExports'
+    node.object.name === objectName
   );
 }
 
@@ -511,7 +511,8 @@ function applyImportAndExportNameChanges(ast) {
       if (mapping[name]) {
         setLiteralValue(callee.property, mapping[name]);
       }
-    } else if (isExportUse(node)) {
+    } else if (isExportUse(node) || isExportUse(node, 'origExports')) {
+      // `origExports` holds the unwrapped exports in applySignatureConversions.
       const prop = node.property;
       const name = prop.value;
       if (mapping[name]) {
