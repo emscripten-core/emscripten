@@ -60,7 +60,10 @@ class emrun(RunnerCore):
     self.assertContained('remember to add `--` between arguments', err)
 
   @also_with_pthreads
-  @parameterized({'': (False,), 'wasm_workers': (True,)})
+  @parameterized({
+    '': (False,),
+    'wasm_workers': (True,)
+  })
   def test_emrun(self, wasm_workers):
     if wasm_workers:
       self.cflags += ['-sWASM_WORKERS']
