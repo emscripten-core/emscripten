@@ -1299,6 +1299,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       '$reportUndefinedSymbols',
       '$relocateExports',
       '$GOTHandler',
+      '$initMainModuleGOT',
     ]
     # shared modules need memory utilities to allocate their memory
     settings.ALLOW_TABLE_GROWTH = 1
