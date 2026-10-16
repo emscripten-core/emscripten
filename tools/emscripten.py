@@ -1203,8 +1203,7 @@ function applySignatureConversions(wasmExports) {
     for f in wrap_functions:
       sig = native_sigs[f]
       wrappers += f"\n  wasmExports['{f}'] = makeWrapper_{sig}(origExports['{f}']);"
-    wrappers += '\n  return Object.setPrototypeOf(wasmExports, origExports);\n}'
-  else:
-    wrappers += '\n  return wasmExports;\n}'
+    wrappers += '\n  Object.setPrototypeOf(wasmExports, origExports);'
+  wrappers += '\n  return wasmExports;\n}'
 
   return wrappers
