@@ -1105,7 +1105,7 @@ var LibraryGLEmulation = {
         if (TEX_MATRIX_UNIFORM_PREFIX != null) {
           texCoordExpr = `(${TEX_MATRIX_UNIFORM_PREFIX}${texUnitID} * ${texCoordExpr})`;
         }
-        return `${func}(${TEX_UNIT_UNIFORM_PREFIX}${texUnitID}, ${texCoordExpr}.xy)`;
+        return `${func}(${TEX_UNIT_UNIFORM_PREFIX}${texUnitID}, ${texCoordExpr}.xy)/*endload*/`;
       }
 
       function getTypeFromCombineOp(op) {
@@ -1314,7 +1314,7 @@ var LibraryGLEmulation = {
         var lines = this.env.genPassLines(passOutputVar, passInputVar, texUnitID).join('\n');
 
         var texLoadLines = '';
-        var texLoadRegex = /(texture.*?\(.*?\))/g;
+        var texLoadRegex = /(texture.*?\(.*?\))\/\*endload\*\//g;
         var loadCounter = 0;
         var load;
 
@@ -1330,7 +1330,7 @@ var LibraryGLEmulation = {
             texLoadLines += texLoadLine + '\n'; // Store the generated texture load statements in a temp string to not confuse regex search in progress.
             lines = lines.split(texLoadExpr).join(texLoadVar);
             // Reset regex search, since we modified the string.
-            texLoadRegex = /(texture.*\(.*\))/g;
+            texLoadRegex = /(texture.*?\(.*?\))\/\*endload\*\//g;
           }
         }
         return [texLoadLines + lines];
