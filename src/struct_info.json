@@ -94,6 +94,19 @@
         }
     },
     {
+        "file": "sys/utsname.h",
+        "structs": {
+            "utsname": [
+                "sysname",
+                "nodename",
+                "release",
+                "version",
+                "machine",
+                "domainname"
+            ]
+        }
+    },
+    {
         "file": "fcntl.h",
         "defines": [
             "F_UNLCK",

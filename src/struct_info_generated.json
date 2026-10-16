@@ -1192,6 +1192,15 @@
             "tm_wday": 24,
             "tm_yday": 28,
             "tm_year": 20
+        },
+        "utsname": {
+            "__size__": 390,
+            "domainname": 325,
+            "machine": 260,
+            "nodename": 65,
+            "release": 130,
+            "sysname": 0,
+            "version": 195
         }
     }
 }
