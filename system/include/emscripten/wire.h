@@ -42,6 +42,12 @@ namespace internal {
 
 typedef const void* TYPEID;
 
+template<typename T, typename Policy>
+struct ArgWithPolicy {
+    const T& value;
+    ArgWithPolicy(const T& v) : value(v) {}
+};
+
 // We don't need the full std::type_info implementation.  We
 // just need a unique identifier per type and polymorphic type
 // identification.
@@ -153,6 +159,34 @@ struct TypeID<T&> : TypeID<T> {
 
 template<typename T>
 struct TypeID<T&&> : TypeID<T> {
+};
+
+template<typename T, typename Policy>
+struct TypeID<ArgWithPolicy<T, Policy>> {
+    static constexpr TYPEID get() {
+        return TypeID<T>::get();
+    }
+};
+
+template<typename T, typename Policy>
+struct TypeID<ArgWithPolicy<T&, Policy>> {
+    static constexpr TYPEID get() {
+        return TypeID<ArgWithPolicy<T, Policy>>::get();
+    }
+};
+
+template<typename T, typename Policy>
+struct TypeID<ArgWithPolicy<T&&, Policy>> {
+    static constexpr TYPEID get() {
+        return TypeID<ArgWithPolicy<T, Policy>>::get();
+    }
+};
+
+template<typename T, typename Policy>
+struct TypeID<ArgWithPolicy<T*, Policy>> {
+    static constexpr TYPEID get() {
+        return LightTypeID<T*>::get();
+    }
 };
 
 // ExecutePolicies<>
@@ -381,6 +415,14 @@ struct BindingType<T*> {
     }
 };
 
+template<typename T, typename Policy>
+struct BindingType<ArgWithPolicy<T, Policy>> {
+    using WireType = typename BindingType<T>::WireType;
+    static WireType toWireType(const ArgWithPolicy<T, Policy>& v, rvp::default_tag) {
+        return BindingType<T>::toWireType(v.value, Policy{});
+    }
+};
+
 template<typename T>
 struct GenericBindingType {
     typedef typename std::remove_reference<T>::type ActualT;
@@ -580,6 +622,34 @@ enum class enum_value_type {
     string = 2
 };
 
+namespace policy {
+
+template<typename Slot = arg<0>>
+struct take_ownership {
+    template<typename InputType, int Index>
+    struct Transform {
+        using type = typename std::conditional<
+            Index == Slot::index,
+            internal::ArgWithPolicy<InputType, internal::rvp::take_ownership>,
+            InputType
+        >::type;
+    };
+};
+
+template<typename Slot = arg<0>>
+struct reference {
+    template<typename InputType, int Index>
+    struct Transform {
+        using type = typename std::conditional<
+            Index == Slot::index,
+            internal::ArgWithPolicy<InputType, internal::rvp::reference>,
+            InputType
+        >::type;
+    };
+};
+
+} // end namespace policy
+
 namespace internal {
 
 template<typename... Policies>
@@ -648,6 +718,16 @@ struct GetReturnValuePolicy<ReturnType, return_value_policy::take_ownership, Res
 template<typename ReturnType, typename... Rest>
 struct GetReturnValuePolicy<ReturnType, return_value_policy::reference, Rest...> {
     using tag = rvp::reference;
+};
+
+template<typename Slot, typename... Rest>
+struct isPolicy<policy::take_ownership<Slot>, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename Slot, typename... Rest>
+struct isPolicy<policy::reference<Slot>, Rest...> {
+    static constexpr bool value = true;
 };
 
 template<typename ReturnType, typename T, typename... Rest>
