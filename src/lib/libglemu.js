@@ -2006,7 +2006,6 @@ var LibraryGLEmulation = {
     clientAttributes: [], // raw data, including possible unneeded ones
     liveClientAttributes: [], // the ones actually alive in the current computation, sorted
     currentRenderer: null, // Caches the currently active FFP emulation renderer, so that it does not have to be re-looked up unless relevant state changes.
-    modifiedClientAttributes: false,
     clientActiveTexture: 0,
     clientColor: null,
     usedTexUnitList: [],
@@ -2033,7 +2032,6 @@ var LibraryGLEmulation = {
         attrib.pointer = pointer;
         attrib.offset = 0;
       }
-      GLImmediate.modifiedClientAttributes = true;
     },
 
     // Renderers
@@ -2888,21 +2886,6 @@ var LibraryGLEmulation = {
     //   count: number of elements we will draw
     //   beginEnd: whether we are drawing the results of a begin/end block
     prepareClientAttributes(count, beginEnd) {
-      // If no client attributes were modified since we were last called, do
-      // nothing. Note that this does not work for glBegin/End, where we
-      // generate renderer components dynamically and then disable them
-      // ourselves, but it does help with glDrawElements/Arrays.
-      if (!GLImmediate.modifiedClientAttributes) {
-#if GL_ASSERTIONS
-        if ((GLImmediate.stride & 3) != 0) {
-          warnOnce(`Warning: Rendering from client side vertex arrays where stride (${GLImmediate.stride}) is not a multiple of four! This is not currently supported!`);
-        }
-#endif
-        GLImmediate.vertexCounter = (GLImmediate.stride * count) / 4; // XXX assuming float
-        return;
-      }
-      GLImmediate.modifiedClientAttributes = false;
-
       // The role of prepareClientAttributes is to examine the set of
       // client-side vertex attribute buffers that user code has submitted, and
       // to prepare them to be uploaded to a VBO in GPU memory (since WebGL does
@@ -2983,7 +2966,9 @@ var LibraryGLEmulation = {
               }
             }
           }
-          attr.pointer = start + attr.offset;
+          // n.b. The above restrided data cannot be cached, since the user might change the
+          // vertex data between draws, and there is no way to detect that. So later draws must
+          // re-do the above work.
         }
         GLImmediate.stride = bytes;
         GLImmediate.vertexPointer = start;
@@ -3129,7 +3114,6 @@ var LibraryGLEmulation = {
     GLImmediate.enabledClientAttributes = GLImmediate.enabledClientAttributes_preBegin;
     GLImmediate.clientAttributes = GLImmediate.clientAttributes_preBegin;
     GLImmediate.currentRenderer = null; // The set of active client attributes changed, we must re-lookup the renderer to use.
-    GLImmediate.modifiedClientAttributes = true;
   },
 
   glVertex2f: (x, y) => {
@@ -3430,7 +3414,6 @@ var LibraryGLEmulation = {
       GL.enableVertexAttribArray(attrib);
 #endif
       if (GLEmulation.currentVao) GLEmulation.currentVao.enabledClientStates[cap] = 1;
-      GLImmediate.modifiedClientAttributes = true;
     }
   },
   glDisableClientState: (cap) => {
@@ -3450,7 +3433,6 @@ var LibraryGLEmulation = {
       GL.disableVertexAttribArray(attrib);
 #endif
       if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledClientStates[cap];
-      GLImmediate.modifiedClientAttributes = true;
     }
   },
 
@@ -3584,7 +3566,6 @@ var LibraryGLEmulation = {
     GLEmulation.enabledVertexAttribArrays = {};
     GLImmediate.enabledClientAttributes = [0, 0];
     GLImmediate.totalEnabledClientAttributes = 0;
-    GLImmediate.modifiedClientAttributes = true;
     if (vao) {
       // replay vao
       var info = GLEmulation.vaos[vao];
