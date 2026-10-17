@@ -53,7 +53,7 @@ processing graph as AudioWorkletNodes.
 
 Once a class type is instantiated on the Web Audio graph and the graph is
 running, a C/C++ function pointer callback will be invoked for each N samples
-of the processed audio stream that flows through the node (where N is is the
+of the processed audio stream that flows through the node (where N is the
 number of samples per channel, exposed as ``AudioSampleFrame``'s
 ``samplesPerChannel``, always 128 in the 1.0 Web Audio API, though with the 1.1
 API ``emscripten_create_audio_context()`` accepts a ``renderSizeHint`` option).
