@@ -104,6 +104,11 @@ int _emscripten_thread_is_valid(pthread_t thread) {
   return thread->self == thread;
 }
 
+int _emscripten_thread_has_exited(pthread_t thread) {
+  int state = thread->detach_state;
+  return state == DT_EXITING || state == DT_EXITED;
+}
+
 static void *dummy_tsd[1] = { 0 };
 weak_alias(dummy_tsd, __pthread_tsd_main);
 

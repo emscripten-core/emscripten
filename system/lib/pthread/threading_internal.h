@@ -79,6 +79,9 @@ void _emscripten_thread_set_strongref(pthread_t thread);
 // we can pass more of the posixtest suite than vanilla musl.
 int _emscripten_thread_is_valid(pthread_t thread);
 
+// Whether a thread that hasn't been cleaned up yet has run to its end.
+int _emscripten_thread_has_exited(pthread_t thread);
+
 void _emscripten_thread_exit_joinable(pthread_t thread);
 void _emscripten_thread_exit(void* result);
 void _emscripten_process_dlopen_queue(void);
