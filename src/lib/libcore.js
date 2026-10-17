@@ -2186,6 +2186,9 @@ addToLibrary({
 #if PTHREADS
     '_emscripten_thread_exit',
 #endif
+#if PROXY_TO_PTHREAD
+    '$isProxiedMainThread',
+#endif
 #if RUNTIME_DEBUG >= 2
     '$runtimeKeepaliveCounter',
 #endif
@@ -2205,7 +2208,11 @@ addToLibrary({
 #endif
       try {
 #if PTHREADS
-        if (ENVIRONMENT_IS_PTHREAD) {
+        if (ENVIRONMENT_IS_PTHREAD
+#if PROXY_TO_PTHREAD
+            && !isProxiedMainThread
+#endif
+        ) {
           // exit the current thread, but only if there is one active.
           // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
           // Unify this check with the runtimeExited check above
