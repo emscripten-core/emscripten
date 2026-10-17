@@ -279,7 +279,8 @@ var LibraryDylink = {
   // Applies relocations to exported things.
   $relocateExports__internal: true,
   $relocateExports__deps: ['$isImmutableGlobal'],
-  $relocateExports: (exports, memoryBase = 0) => {
+  $relocateExports__docs: '/** @param {Set<string>=} mutableGlobals */',
+  $relocateExports: (exports, memoryBase = 0, mutableGlobals) => {
 #if DYLINK_DEBUG
     dbg(`relocateExports memoryBase=${memoryBase} count=${Object.keys(exports).length}`);
 #endif
@@ -292,8 +293,12 @@ var LibraryDylink = {
       }
 #endif
       // Detect immutable wasm global exports. These represent data addresses
-      // which are relative to `memoryBase`
-      if (isImmutableGlobal(value)) {
+      // which are relative to `memoryBase`.  `mutableGlobals`, when known,
+      // saves probing each global.
+      var immutable = mutableGlobals
+        ? value instanceof WebAssembly.Global && !mutableGlobals.has(name)
+        : isImmutableGlobal(value);
+      if (immutable) {
         return new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}'}, value.value + {{{ to64('memoryBase') }}});
       }
 
@@ -471,7 +476,89 @@ var LibraryDylink = {
       if (condition) throw new Error(message);
     }
 
-    if (binary instanceof WebAssembly.Module) {
+    // Returns the names of the exported globals that are mutable, read from
+    // the import, global and export sections that follow the dylink section.
+    // This saves relocateExports from probing each exported global with
+    // isImmutableGlobal, which throws for every immutable one.  Returns
+    // undefined if it finds something it doesn't handle.
+    function getMutableGlobals() {
+      // The mutability of each global, imported globals first.
+      var mutable = [];
+      var result = new Set();
+
+      function skipString() {
+        var len = getLEB();
+        offset += len;
+      }
+
+      function skipValType() {
+        // (ref null? heaptype) has a heap type immediate.
+        var type = getU8();
+        if (type === 0x63 || type === 0x64) getLEB();
+      }
+
+      function skipLimits() {
+        var flags = getU8();
+        getLEB(); // min
+        if (flags & 1) getLEB(); // max
+        if (flags & 8) getLEB(); // page size (custom-page-sizes)
+      }
+
+      while (offset < binary.length) {
+        var id = getU8();
+        var size = getLEB();
+        var sectionEnd = offset + size;
+        if (id === 2) { // import
+          for (var count = getLEB(); count--;) {
+            skipString();
+            skipString();
+            var kind = getU8();
+            if (kind === 0) getLEB(); // function
+            else if (kind === 1) { skipValType(); skipLimits(); } // table
+            else if (kind === 2) skipLimits(); // memory
+            else if (kind === 3) { skipValType(); mutable.push(getU8() & 1); } // global
+            else if (kind === 4) { getU8(); getLEB(); } // tag
+            else return;
+          }
+        } else if (id === 6) { // global
+          for (var count = getLEB(); count--;) {
+            skipValType();
+            mutable.push(getU8() & 1);
+            // Skip the constant init expression.
+            for (var op; (op = getU8()) !== 0x0b;) {
+              if (op === 0x43) offset += 4; // f32.const
+              else if (op === 0x44) offset += 8; // f64.const
+              // i32.const, i64.const, global.get, ref.null, ref.func
+              else if (op === 0x41 || op === 0x42 || op === 0x23 || op === 0xd0 || op === 0xd2) getLEB();
+              // Anything but the extended-const add, sub and mul instructions
+              else if (!(op >= 0x6a && op <= 0x6c || op >= 0x7c && op <= 0x7e)) return;
+            }
+          }
+        } else if (id === 7) { // export
+          for (var count = getLEB(); count--;) {
+            var nameStart = offset;
+            skipString();
+            var kind = getU8();
+            var index = getLEB();
+            if (kind === 3 && mutable[index]) {
+              var saved = offset;
+              offset = nameStart;
+              result.add(getString());
+              offset = saved;
+            }
+          }
+          // The export section is the last one we need.
+          return offset === sectionEnd ? result : undefined;
+        } else {
+          offset = sectionEnd;
+        }
+        if (offset !== sectionEnd) return;
+      }
+      return result;
+    }
+
+    var isModule = binary instanceof WebAssembly.Module;
+    if (isModule) {
       var dylinkSection = WebAssembly.Module.customSections(binary, 'dylink.0');
       failIf(!dylinkSection.length, 'need dylink section');
       binary = new Uint8Array(dylinkSection[0]);
@@ -557,6 +644,9 @@ var LibraryDylink = {
     dbg('dylink needed:', customSection.neededDynlibs);
 #endif
 
+    if (!isModule) {
+      customSection.mutableGlobals = getMutableGlobals();
+    }
     return customSection;
   },
 
@@ -809,7 +899,7 @@ var LibraryDylink = {
 #endif
         // add new entries to functionsInTableMap
         updateTableMap(tableBase, metadata.tableSize);
-        moduleExports = relocateExports(instance.exports, memoryBase);
+        moduleExports = relocateExports(instance.exports, memoryBase, metadata.mutableGlobals);
         updateGOT(moduleExports);
 #if ASYNCIFY
         moduleExports = Asyncify.instrumentWasmExports(moduleExports);
