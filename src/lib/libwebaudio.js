@@ -73,7 +73,12 @@ var LibraryWebAudio = {
 
   // Call this function from JavaScript to get the Web Audio object corresponding to the given
   // Wasm handle ID.
-  $emscriptenGetAudioObject: (objectHandle) => emAudio[objectHandle],
+  $emscriptenGetAudioObject: (objectHandle) => {
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectNodeOrContext(objectHandle, 'emscriptenGetAudioObject');
+#endif
+    return emAudio[objectHandle];
+  },
 
   // Performs the work of getting the AudioContext's render quantum size.
   $emscriptenGetContextQuantumSize: (contextHandle) => {
