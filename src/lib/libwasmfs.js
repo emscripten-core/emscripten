@@ -33,18 +33,21 @@ addToLibrary({
     '$PATH',
     '$stringToUTF8OnStack',
     '$withStackSave',
-    '$readI53FromI64',
-    '$readI53FromU64',
     '$FS_createDataFile',
     '$FS_createPreloadedFile',
     '$FS_preloadFile',
     '$FS_getMode',
-    // For FS.readFile
-    '$UTF8ArrayToString',
+#if hasExportedSymbol('_wasmfs_read_file') || FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY
+    '$readI53FromI64',
+#endif
+#if hasExportedSymbol('_wasmfs_read_file') || hasExportedSymbol('_wasmfs_get_cwd') || FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY
+    '$UTF8ToString',
+#endif
 #if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // FULL_LIBRARY will include JS
                                              // code in other places that ends
                                              // up requiring all of our code
                                              // here.
+    '$readI53FromU64',
     '$FS_modeStringToFlags',
     '$FS_create',
     '$FS_mknod',

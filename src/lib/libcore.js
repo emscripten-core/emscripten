@@ -2683,7 +2683,7 @@ function wrapSyscallFunction(x, library, isWasi) {
 
   library[x] = t;
   // Automatically add dependency on `$SYSCALLS`
-  if (!WASMFS && t.includes('SYSCALLS')) {
+  if (!WASMFS && t.includes('SYSCALLS.')) {
     library[x + '__deps'].push('$SYSCALLS');
   }
 #if PTHREADS

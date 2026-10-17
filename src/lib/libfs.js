@@ -30,7 +30,10 @@ var LibraryFS = {
     '$PROXYFS',
 #endif
 #if ASSERTIONS
-    '$strError', '$ERRNO_CODES', '$warnOnce',
+    '$strError', '$ERRNO_CODES',
+#if !STRICT
+    '$warnOnce',
+#endif
 #endif
 #if !MINIMAL_RUNTIME
     '$FS_createPreloadedFile',

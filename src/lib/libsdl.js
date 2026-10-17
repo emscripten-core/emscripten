@@ -17,7 +17,7 @@
 
 var LibrarySDL = {
   $SDL__deps: [
-    '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
+    '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
     '$MainLoop',
     '$warnOnce',
     // For makeCEvent().
@@ -3079,6 +3079,7 @@ var LibrarySDL = {
     return 0;
   },
 
+  TTF_OpenFont__deps: ['$PATH'],
   TTF_OpenFont__proxy: 'sync',
   TTF_OpenFont: (name, size) => {
     name = PATH.normalize(UTF8ToString(name));

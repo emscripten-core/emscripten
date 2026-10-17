@@ -108,8 +108,9 @@ var LibraryDylink = {
   // the canonical name of the symbol (in some cases modifying the symbol as
   // part of the loop process, so that actual symbol looked up has a different
   // name).
-  $resolveGlobalSymbol__deps: ['$isSymbolDefined', '$createNamedFunction',
+  $resolveGlobalSymbol__deps: ['$isSymbolDefined',
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
+    '$createNamedFunction',
     '$createInvokeFunction',
 #endif
   ],
@@ -392,7 +393,7 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['$GOT', 'emscripten_get_sbrk_ptr', '__heap_base', '$alignMemory', 'calloc'],
+  $getMemory__deps: ['emscripten_get_sbrk_ptr', '__heap_base', '$alignMemory', 'calloc'],
   $getMemory: (size) => {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -1015,9 +1016,7 @@ var LibraryDylink = {
     '_emscripten_find_dylib',
     '$withStackSave',
     '$stackAlloc',
-    '$lengthBytesUTF8',
     '$stringToUTF8OnStack',
-    '$stringToUTF8',
     '$FS',
     '$PATH',
 #if WASMFS
