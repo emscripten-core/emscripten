@@ -1,0 +1,71 @@
+name: test-windows
+
+on:
+  create:
+    tags:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-windows:
+    runs-on: windows-2022
+    defaults:
+      run:
+        working-directory: 'path with spaces ()'
+    env:
+      PYTHONUNBUFFERED: "1"
+      EMSDK_NOTTY: "1"
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_WASM_LEGACY_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_NODE_25: "1"
+      EMTEST_BROWSER: "0"
+      EMSDK_PYTHON: python
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+        with:
+          path: 'path with spaces ()'
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build launcher
+        run: |
+          cd tools\pylauncher
+          cl pylauncher.c /Fe:pylauncher.exe /O1 /GS- /link /NODEFAULTLIB /ENTRY:main /MACHINE:X64 /Brepro ucrt.lib kernel32.lib
+        shell: cmd
+
+      - name: Install pkgconfiglite
+        run: choco install -y pkgconfiglite
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$env:EMSDK\.emscripten" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Bootstrap
+        run: python bootstrap.py
+
+      - name: Crossplatform tests
+        run: test/runner.bat --crossplatform-only
+
+      - name: Sockets tests
+        run: test/runner.bat sockets.test_nodejs_sockets_echo*
