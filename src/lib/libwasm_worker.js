@@ -84,6 +84,14 @@ addToLibrary({
     // '_wsc' is short for 'wasm call', trying to use an identifier name that
     // will never conflict with user code
     let data = e.data;
+#if EMRUN
+    // Relay worker output through the parent's emrun transport. Nested workers
+    // forward through their parents until the output reaches the main thread.
+    if (data['_emrun']) {
+      (data['_emrun'] == 'out' ? out : err)(data['text']);
+      return;
+    }
+#endif
     let wasmCall = data['_wsc'];
     wasmCall && callUserCallback(() => getWasmTableEntry(wasmCall)(...data['x']));
   },
@@ -101,6 +109,14 @@ addToLibrary({
 #endif
   ],
   $_wasmWorkerInitializeRuntime: () => {
+#if EMRUN
+    // The browser's emrun transport lives on the main thread. Node already
+    // forwards worker stdout/stderr, and AudioWorklets cannot post messages.
+    if (globalThis.WorkerGlobalScope) {
+      out = (text) => postMessage({'_emrun': 'out', 'text': text});
+      err = (text) => postMessage({'_emrun': 'err', 'text': text});
+    }
+#endif
 #if ASSERTIONS
     assert(wwParams);
     assert(wwParams.wwID);
