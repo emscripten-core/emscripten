@@ -56,11 +56,6 @@ null;
 
 var NodeSockFSLibrary = {
   // Node plumbing shared by the interface methods below.
-  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES', '$inetPton4', '$inetPton6',
-#if ASSERTIONS
-    '$warnOnce',
-#endif
-  ],
   $nodeSockHelpers: {
     // node builtins, resolved once each. getBuiltinModule works in both
     // CommonJS and ESM output, with require as the fallback.
@@ -455,7 +450,6 @@ var NodeSockFSLibrary = {
       });
     },
   },
-  $nodeSockOps__deps: ['$nodeSockHelpers', '$SOCKFS', '$ERRNO_CODES', '$readI53FromI64', '$writeI53ToI64'],
   $nodeSockOps__postset: `
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error('NODERAWSOCKETS is currently only supported on Node.js environment.')

@@ -28,30 +28,10 @@ addToLibrary({
   $FS__deps: [
     '$MEMFS',
     '$wasmFSPreloadedFiles',
-    '$wasmFSPreloadedDirs',
-    '$wasmFSPreloadingFlushed',
-    '$PATH',
-    '$stringToUTF8OnStack',
-    '$withStackSave',
-    '$readI53FromI64',
-    '$readI53FromU64',
-    '$FS_createDataFile',
-    '$FS_createPreloadedFile',
-    '$FS_preloadFile',
-    '$FS_getMode',
-    // For FS.readFile
-    '$UTF8ArrayToString',
 #if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // FULL_LIBRARY will include JS
                                              // code in other places that ends
                                              // up requiring all of our code
                                              // here.
-    '$FS_modeStringToFlags',
-    '$FS_create',
-    '$FS_mknod',
-    '$FS_mkdir',
-    '$FS_mkdirTree',
-    '$FS_writeFile',
-    '$FS_unlink',
 #if LibraryManager.has('libicasefs.js')
     '$ICASEFS',
 #endif
@@ -70,9 +50,6 @@ addToLibrary({
     'malloc',
     'free',
     'wasmfs_create_jsimpl_backend',
-    '$wasmFS$backends',
-    '$wasmFSDevices',
-    '$wasmFSDeviceStreams'
 #endif
   ],
   $FS : {
@@ -456,10 +433,6 @@ addToLibrary({
   // makes sense there (as almost all that FS object ends up needed anyhow all
   // the time).
 
-  $FS_createDataFile__deps: [
-    '$wasmFSPreloadingFlushed', '$wasmFSPreloadedFiles',
-    '$FS_create', '$FS_writeFile',
-  ],
   $FS_createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
     var pathName = name ? parent + '/' + name : parent;
     var mode = FS_getMode(canRead, canWrite);
@@ -482,7 +455,6 @@ addToLibrary({
     return __wasmfs_mknod(pathBuffer, mode, dev);
   })),
 
-  $FS_create__deps: ['$FS_mknod'],
   // Default settings copied from the legacy JS FS API.
   $FS_create: (path, mode = 0o666) => {
     mode &= {{{ cDefs.S_IALLUGO }}};
@@ -490,7 +462,7 @@ addToLibrary({
     return FS_mknod(path, mode, 0);
   },
 
-  $FS_writeFile__deps: ['$FS_fileDataToTypedArray', '_wasmfs_write_file', '$stackSave', '$stackRestore', 'malloc', 'free'],
+  $FS_writeFile__deps: ['_wasmfs_write_file', 'malloc', 'free'],
   $FS_writeFile: (path, data) => {
     var sp = stackSave();
     var pathBuffer = stringToUTF8OnStack(path);
@@ -518,7 +490,6 @@ addToLibrary({
    * @param {number=} mode Optionally, the mode to create in. Uses mkdir's
    *                       default if not set.
    */`,
-  $FS_mkdirTree__deps: ['$FS_mkdir'],
   $FS_mkdirTree: (path, mode) => {
     var dirs = path.split('/');
     var d = '';
@@ -542,9 +513,6 @@ addToLibrary({
 
   // Wasm access calls.
 
-  _wasmfs_get_num_preloaded_files__deps: [
-    '$wasmFSPreloadedFiles',
-    '$wasmFSPreloadingFlushed'],
   _wasmfs_get_num_preloaded_files: () => {
     // When this method is called from WasmFS it means that we are about to
     // flush all the preloaded data, so mark that. (There is no call that
@@ -554,7 +522,6 @@ addToLibrary({
     wasmFSPreloadingFlushed = true;
     return wasmFSPreloadedFiles.length;
   },
-  _wasmfs_get_num_preloaded_dirs__deps: ['$wasmFSPreloadedDirs'],
   _wasmfs_get_num_preloaded_dirs: () => wasmFSPreloadedDirs.length,
   _wasmfs_get_preloaded_file_mode: (index) => wasmFSPreloadedFiles[index].mode,
   _wasmfs_get_preloaded_parent_path: (index, parentPathBuffer) => {
@@ -567,7 +534,6 @@ addToLibrary({
     var len = lengthBytesUTF8(s) + 1;
     stringToUTF8(s, childNameBuffer, len);
   },
-  _wasmfs_get_preloaded_path_name__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   _wasmfs_get_preloaded_path_name: (index, fileNameBuffer) => {
     var s = wasmFSPreloadedFiles[index].pathName;
     var len = lengthBytesUTF8(s) + 1;
@@ -590,7 +556,6 @@ addToLibrary({
       }, 50);
   },
 
-  _wasmfs_stdin_get_char__deps: ['$FS_stdin_getChar'],
   _wasmfs_stdin_get_char: () => {
     // Return the read character, or -1 to indicate EOF.
     var c = FS_stdin_getChar();

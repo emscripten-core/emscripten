@@ -29,7 +29,6 @@ var EpollLibrary = {
   // one left after its fd was drained then closed) is not a ready event, so it
   // never reports one.
   $epollWouldBlock__internal: true,
-  $epollWouldBlock__deps: ['$FS', '$pollOne', '$epollEvict'],
   $epollWouldBlock: (ep) => {
     for (var reg = ep.rdlHead, next; reg; reg = next) {
       next = reg.rdlNext;
@@ -45,7 +44,6 @@ var EpollLibrary = {
   },
 
   $epollNewInstance__internal: true,
-  $epollNewInstance__deps: ['$FS', '$epollWouldBlock', '$epollClearListener'],
   $epollNewInstance: () => {
     // Its own (detached) node, so the epoll fd can be watched by a parent epoll
     // (nesting) and carry the readiness wait-queue methods. Shared across dups.
@@ -127,7 +125,6 @@ var EpollLibrary = {
   // entry at ctl time, and a closed/reused fd seen at derive time (doEpollWait
   // or the nesting poll).
   $epollEvict__internal: true,
-  $epollEvict__deps: ['$readyListRemove'],
   $epollEvict: (ep, reg) => {
     readyListRemove(ep, reg);
     reg.listener?.listeners.delete(reg.listener.entry);
@@ -139,7 +136,6 @@ var EpollLibrary = {
   // points stay in libsyscall.js (like every other syscall) and resolve the
   // epoll stream before calling in here, so `ep` is a known-valid epoll stream.
   $epollCtl__internal: true,
-  $epollCtl__deps: ['$FS', '$pollOne', '$readyListAdd', '$epollEvict'],
   $epollCtl: (ep, op, fd, ev) => {
     var target = FS.getStream(fd);
     if (!target) return -{{{ cDefs.EBADF }}};
@@ -249,7 +245,6 @@ var EpollLibrary = {
   // EPOLL_CTL_MOD; a no-longer-ready (spurious) edge is dropped; a closed/reused
   // fd is evicted.
   $doEpollWait__internal: true,
-  $doEpollWait__deps: ['$FS', '$pollOne', '$readyListAdd', '$epollEvict'],
   $doEpollWait: (ep, ev, maxevents) => {
     // Detach the list and drain from the head: re-armed level triggers and the
     // unprocessed remainder go back onto ep's now-empty list, so a single pass
@@ -305,7 +300,6 @@ var EpollLibrary = {
   // The blocking wait behind __syscall_epoll_pwait; `ep` is a known-valid epoll
   // stream and `maxevents` already validated by the entry point.
   $epollPwait__internal: true,
-  $epollPwait__deps: ['$doEpollWait'],
   $epollPwait: (ep, ev, maxevents, timeout) => {
 #if PTHREADS || ASYNCIFY
 #if PTHREADS
@@ -358,7 +352,7 @@ var EpollLibrary = {
 
   // See <emscripten/epoll.h>. A listener is keyed by (callback, userdata) and
   // signals the callback while the set has uncollected ready events.
-  emscripten_epoll_listener_add__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$callUserCallback', '$emSetImmediate'],
+  emscripten_epoll_listener_add__deps: ['$epollClearListener'],
   emscripten_epoll_listener_add: (epfd, callback, userdata) => {
 #if PTHREADS
     // Readiness is tracked on the main thread and the callback runs there.
@@ -389,7 +383,6 @@ var EpollLibrary = {
     return 0;
   },
 
-  emscripten_epoll_listener_remove__deps: ['$FS', '$epollClearListener'],
   emscripten_epoll_listener_remove: (epfd, callback, userdata) => {
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};

@@ -16,10 +16,8 @@ var LibraryEmbindShared = {
     }
   },
 
-  $throwInternalError__deps: ['$InternalError'],
   $throwInternalError: (message) => { throw new InternalError(message); },
 
-  $throwBindingError__deps: ['$BindingError'],
   $throwBindingError: (message) => { throw new BindingError(message); },
 
   // typeID -> { toWireType: ..., fromWireType: ... }
@@ -35,9 +33,6 @@ var LibraryEmbindShared = {
 
   $structRegistrations: {},
 
-  $sharedRegisterType__deps: [
-    '$awaitingDependencies', '$registeredTypes',
-    '$typeDependencies', '$throwBindingError' ],
   $sharedRegisterType__docs: '/** @param {Object=} options */',
   $sharedRegisterType: function(rawType, registeredInstance, options = {}) {
     var name = registeredInstance.name;
@@ -62,9 +57,6 @@ var LibraryEmbindShared = {
     }
   },
 
-  $whenDependentTypesAreResolved__deps: [
-    '$awaitingDependencies', '$registeredTypes',
-    '$typeDependencies', '$throwInternalError'],
   $whenDependentTypesAreResolved: (myTypes, dependentTypes, getTypeConverters) => {
     myTypes.forEach((type) => typeDependencies[type] = dependentTypes);
 
@@ -103,7 +95,7 @@ var LibraryEmbindShared = {
     }
   },
 
-  $getTypeName__deps: ['$AsciiToString', '__getTypeName', 'free'],
+  $getTypeName__deps: ['__getTypeName', 'free'],
   $getTypeName: (type) => {
     var ptr = ___getTypeName(type);
     var rv = AsciiToString(ptr);
@@ -140,8 +132,6 @@ var LibraryEmbindShared = {
     return array;
   },
 
-  $requireRegisteredType__deps: [
-    '$registeredTypes', '$getTypeName', '$throwBindingError'],
   $requireRegisteredType: (rawType, humanName) => {
     var impl = registeredTypes[rawType];
     if (undefined === impl) {
@@ -227,7 +217,7 @@ var LibraryEmbindShared = {
     return requiredArgCount;
   },
 
-  $createJsInvoker__deps: ['$usesDestructorStack', '$argsUseStackAlloc',
+  $createJsInvoker__deps: [
 #if ASSERTIONS
     '$checkArgCount',
 #endif

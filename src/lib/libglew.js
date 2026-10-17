@@ -20,7 +20,7 @@
  */
 
 var LibraryGLEW = {
-  $GLEW__deps: ['glGetString', '$stringToNewUTF8', '$UTF8ToString', '$webglGetExtensions'],
+  $GLEW__deps: ['glGetString'],
   $GLEW: {
     isLinaroFork: 1,
     extensions: null,
@@ -128,5 +128,4 @@ var LibraryGLEW = {
 
 };
 
-autoAddDeps(LibraryGLEW, '$GLEW');
 addToLibrary(LibraryGLEW);

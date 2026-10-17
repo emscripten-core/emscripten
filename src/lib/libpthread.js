@@ -80,27 +80,13 @@ const pthreadWorkerOptions = `{
 
 var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
-  $PThread__deps: ['_emscripten_thread_init',
-                   '$terminateWorker',
-                   '$cleanupThread',
-                   '$addOnPreRun',
-#if MAIN_MODULE
-                   '$markAsFinished',
-#endif
-#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE && !PTHREAD_POOL_DELAY_LOAD
-                   '$addRunDependency',
-                   '$removeRunDependency',
-#endif
-                   '$spawnThread',
-                   '_emscripten_thread_free_data',
-                   'exit',
-                   'pthread_self',
-                   '__set_thread_state',
-                   '$waitAsyncPolyfilled',
-#if PTHREADS_DEBUG || ASSERTIONS
-                   '$ptrToString',
-#endif
-                   ],
+  $PThread__deps: [
+    '_emscripten_thread_init',
+    '_emscripten_thread_free_data',
+    'exit',
+    'pthread_self',
+    '__set_thread_state',
+  ],
   $PThread: {
     // Contains all Workers that are idle/unused and not currently hosting an
     // executing pthread.  Unused Workers can either be pooled up before page
@@ -769,7 +755,6 @@ var LibraryPThread = {
 
   $pthreadCreateProxied__internal: true,
   $pthreadCreateProxied__proxy: 'sync',
-  $pthreadCreateProxied__deps: ['__pthread_create_js'],
   $pthreadCreateProxied: (pthread_ptr, attr, startRoutine, arg) => ___pthread_create_js(pthread_ptr, attr, startRoutine, arg),
 
 #if OFFSCREENCANVAS_SUPPORT
@@ -782,8 +767,7 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
 #endif
-  __pthread_create_js__deps: ['$spawnThread', '$pthreadCreateProxied',
-    'emscripten_has_threading_support',
+  __pthread_create_js__deps: [
 #if OFFSCREENCANVAS_SUPPORT
     'malloc',
 #endif
@@ -951,9 +935,6 @@ var LibraryPThread = {
     return spawnThread(threadParams);
   },
 
-#if (ASSERTIONS || !ALLOW_BLOCKING_ON_MAIN_THREAD) && !MINIMAL_RUNTIME
-  emscripten_check_blocking_allowed__deps: ['$warnOnce'],
-#endif
   emscripten_check_blocking_allowed: () => {
 #if (ASSERTIONS || !ALLOW_BLOCKING_ON_MAIN_THREAD) && !MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
@@ -974,7 +955,6 @@ var LibraryPThread = {
   // that the entire process should exit.
   // This function is always called from a pthread, but is executed on the
   // main thread due to the __proxy attribute.
-  $exitOnMainThread__deps: ['exit'],
   $exitOnMainThread__proxy: 'async',
   $exitOnMainThread: (returnCode) => {
 #if PTHREADS_DEBUG
@@ -988,11 +968,10 @@ var LibraryPThread = {
 
 #if MEMORY64
   // Calls proxyToMainThread but returns a bigint rather than a number
-  $proxyToMainThreadPtr__deps: ['$proxyToMainThread'],
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_js_on_main_thread'],
+  $proxyToMainThread__deps: ['_emscripten_run_js_on_main_thread'],
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
   $proxyToMainThread: (funcIndex, emAsmAddr, proxyMode, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
@@ -1045,7 +1024,7 @@ var LibraryPThread = {
   _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
     '_emscripten_run_js_on_main_thread_done',
-    '$proxiedJSCallArgs'],
+  ],
   _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, bufSize, args, ctx, ctxArgs) => {
     // Sometimes we need to backproxy events to the calling thread (e.g.
     // HTML5 DOM events handlers such as
@@ -1108,7 +1087,7 @@ var LibraryPThread = {
   },
 
   $establishStackSpace__internal: true,
-  $establishStackSpace__deps: ['$stackRestore', 'emscripten_stack_set_limits'],
+  $establishStackSpace__deps: ['emscripten_stack_set_limits'],
   $establishStackSpace: function (pthread_ptr) {
     var stackHigh = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack, '*') }}};
     var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, '*') }}};
@@ -1141,10 +1120,6 @@ var LibraryPThread = {
 
   $invokeEntryPoint__deps: [
     '_emscripten_thread_exit',
-#if !MINIMAL_RUNTIME
-    '$keepRuntimeAlive',
-    '$runtimeKeepaliveCounter',
-#endif
   ],
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
 #if PTHREADS_DEBUG
@@ -1228,7 +1203,7 @@ var LibraryPThread = {
 
   // Asynchronous version _emscripten_dlsync_threads.
   // This is always called on the main thread. This work happens asynchronously.
-  $dlsyncThreadsAsync__deps: ['_emscripten_proxy_dlsync_async', '$makePromise'],
+  $dlsyncThreadsAsync__deps: ['_emscripten_proxy_dlsync_async'],
   $dlsyncThreadsAsync: async () => {
     const caller = PThread.currentProxiedOperationCallerThread;
 #if PTHREADS_DEBUG
@@ -1278,7 +1253,7 @@ var LibraryPThread = {
   // synchronously block the main thread until all other threads are in sync.
   // When `dlopen` is called from a worker, the worker itself is blocked but
   // the operation its waiting on (on the main thread) can be async.
-  _emscripten_dlsync_threads__deps: ['_emscripten_proxy_dlsync', '$dlsyncThreadsAsync'],
+  _emscripten_dlsync_threads__deps: ['_emscripten_proxy_dlsync'],
   _emscripten_dlsync_threads__async: 'auto',
   _emscripten_dlsync_threads__proxy: 'sync',
   _emscripten_dlsync_threads: () => {
@@ -1295,10 +1270,10 @@ var LibraryPThread = {
   },
 #endif // MAIN_MODULE
 
-  $checkMailbox__deps: ['$callUserCallback',
+  $checkMailbox__deps: [
                         'pthread_self',
                         '_emscripten_check_mailbox',
-                        '_emscripten_thread_mailbox_await'],
+  ],
   $checkMailbox: () => {
     // checkMailbox can be called after the pthread has shut down. See
     // Pthread.terminateRuntime().
@@ -1320,7 +1295,6 @@ var LibraryPThread = {
     });
   },
 
-  _emscripten_thread_mailbox_await__deps: ['$checkMailbox', '$waitAsyncPolyfilled'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
     if (!waitAsyncPolyfilled) {
       // Wait on the pthread's initial self-pointer field because it is easy and
@@ -1345,7 +1319,6 @@ var LibraryPThread = {
   // the environment does not implement Atomics.waitAsync or when messaging a
   // new thread that has not had a chance to initialize itself and execute
   // Atomics.waitAsync to prepare for the notification.
-  _emscripten_notify_mailbox_postmessage__deps: ['$checkMailbox'],
   _emscripten_notify_mailbox_postmessage: (targetThread, currThreadId) => {
     if (targetThread == currThreadId) {
       setTimeout(checkMailbox);
@@ -1364,5 +1337,4 @@ var LibraryPThread = {
   }
 };
 
-autoAddDeps(LibraryPThread, '$PThread');
 addToLibrary(LibraryPThread);

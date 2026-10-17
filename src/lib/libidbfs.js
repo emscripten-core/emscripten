@@ -5,7 +5,6 @@
  */
 
 addToLibrary({
-  $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
   $IDBFS__postset: () => addAtExit('IDBFS.quit();'),
   $IDBFS: {
     dbs: {},

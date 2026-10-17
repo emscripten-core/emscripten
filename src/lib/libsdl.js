@@ -17,11 +17,7 @@
 
 var LibrarySDL = {
   $SDL__deps: [
-    '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
-    '$MainLoop',
-    '$warnOnce',
     // For makeCEvent().
-    '$stringToUTF8',
     // Many SDL functions depend on malloc/free
     'malloc', 'free',
     'memcpy',
@@ -1365,7 +1361,6 @@ var LibrarySDL = {
     return 0; // success
   },
 
-  SDL_WasInit__deps: ['SDL_Init'],
   SDL_WasInit__proxy: 'sync',
   SDL_WasInit: (flags) => {
     if (SDL.startTime === null) {
@@ -1488,7 +1483,6 @@ var LibrarySDL = {
 
   SDL_QuitSubSystem: (flags) => out('SDL_QuitSubSystem called (and ignored)'),
 
-  SDL_Quit__deps: ['SDL_AudioQuit'],
   SDL_Quit: () => {
     _SDL_AudioQuit();
     out('SDL_Quit called (and ignored)');
@@ -1674,9 +1668,6 @@ var LibrarySDL = {
 #if ASYNCIFY
   SDL_Delay: 'emscripten_sleep',
 #else
-#if ASSERTIONS
-  SDL_Delay__deps: ['$warnOnce'],
-#endif
   SDL_Delay: (delay) => {
 #if ASSERTIONS
     if (!ENVIRONMENT_IS_WORKER) warnOnce('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
@@ -1688,7 +1679,6 @@ var LibrarySDL = {
 #endif
 
   SDL_WM_SetCaption__proxy: 'sync',
-  SDL_WM_SetCaption__deps: ['emscripten_set_window_title'],
   SDL_WM_SetCaption: (title, icon) => {
     if (title) {
       _emscripten_set_window_title(title);
@@ -1708,11 +1698,10 @@ var LibrarySDL = {
     return SDL.keyboardState;
   },
 
-  SDL_GetKeyState__deps: ['SDL_GetKeyboardState'],
   SDL_GetKeyState: () => _SDL_GetKeyboardState(0),
 
   SDL_GetKeyName__proxy: 'sync',
-  SDL_GetKeyName__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'realloc'],
+  SDL_GetKeyName__deps: ['realloc'],
   SDL_GetKeyName: (key) => {
     var name = '';
     /* ASCII A-Z or 0-9 */
@@ -1770,7 +1759,6 @@ var LibrarySDL = {
   },
 
   SDL_GetError__proxy: 'sync',
-  SDL_GetError__deps: ['$stringToNewUTF8'],
   SDL_GetError: () => {
     SDL.errorMessage ||= stringToNewUTF8('unknown SDL-emscripten error');
     return SDL.errorMessage;
@@ -1827,10 +1815,8 @@ var LibrarySDL = {
     return ret;
   },
 
-  SDL_DisplayFormat__deps: ['SDL_ConvertSurface'],
   SDL_DisplayFormat: (surf) => _SDL_ConvertSurface(surf, 0, 0),
 
-  SDL_DisplayFormatAlpha__deps: ['SDL_ConvertSurface'],
   SDL_DisplayFormatAlpha: (surf) => _SDL_ConvertSurface(surf, 0, 0),
 
   SDL_FreeSurface__proxy: 'sync',
@@ -1921,7 +1907,6 @@ var LibrarySDL = {
     return ret;
   },
 
-  rotozoomSurface__deps: ['zoomSurface'],
   rotozoomSurface: (src, angle, zoom, smooth) => {
     if (!(angle % 360)) {
       return _zoomSurface(src, zoom, zoom, smooth);
@@ -2042,7 +2027,6 @@ var LibrarySDL = {
     return 1;
   },
 
-  SDL_SetPalette__deps: ['SDL_SetColors'],
   SDL_SetPalette: (surf, flags, colors, firstColor, nColors) =>
     _SDL_SetColors(surf, colors, firstColor, nColors),
 
@@ -2127,11 +2111,6 @@ var LibrarySDL = {
   // We support JPG, PNG, TIF because browsers do
   IMG_Init: (flags) => flags,
 
-  IMG_Load_RW__deps: ['$Browser', 'SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$stackSave', '$stackRestore', '$stackAlloc',
-#if STB_IMAGE
-    '$stringToUTF8OnStack',
-#endif
-  ],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW: (rwopsID, freeSrc) => {
     var sp = stackSave();
@@ -2279,7 +2258,6 @@ var LibrarySDL = {
   },
   SDL_LoadBMP_RW: 'IMG_Load_RW',
 
-  IMG_Load__deps: ['IMG_Load_RW', 'SDL_RWFromFile'],
   IMG_Load__proxy: 'sync',
   IMG_Load: (filename) => {
     var rwops = _SDL_RWFromFile(filename, 0);
@@ -2291,7 +2269,7 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout', '$registerPostMainLoop'],
+  SDL_OpenAudio__deps: ['$registerPostMainLoop'],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio__postset: `
     // Queue new audio data. This is important to be right after the main loop
@@ -2524,7 +2502,6 @@ var LibrarySDL = {
   },
 
   SDL_PauseAudio__proxy: 'sync',
-  SDL_PauseAudio__deps: ['$safeSetTimeout', '$safeClearTimeout'],
   SDL_PauseAudio: (pauseOn) => {
     if (!SDL.audio) {
       return;
@@ -2543,7 +2520,6 @@ var LibrarySDL = {
     SDL.audio.paused = pauseOn;
   },
 
-  SDL_CloseAudio__deps: ['SDL_PauseAudio'],
   SDL_CloseAudio__proxy: 'sync',
   SDL_CloseAudio: () => {
     if (SDL.audio) {
@@ -2588,7 +2564,6 @@ var LibrarySDL = {
   },
   Mix_Quit: () => {},
 
-  Mix_OpenAudio__deps: ['$autoResumeAudioContext'],
   Mix_OpenAudio__proxy: 'sync',
   Mix_OpenAudio: (frequency, format, channels, chunksize) => {
     SDL.openAudioContext();
@@ -2639,7 +2614,6 @@ var LibrarySDL = {
     return 1;
   },
 
-  Mix_LoadWAV_RW__deps: ['$FS', '$PATH_FS'],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__docs: '/** @param {number} freesrc */',
   Mix_LoadWAV_RW: (rwopsID, freesrc) => {
@@ -2756,7 +2730,6 @@ var LibrarySDL = {
     return id;
   },
 
-  Mix_LoadWAV__deps: ['Mix_LoadWAV_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
   Mix_LoadWAV__proxy: 'sync',
   Mix_LoadWAV: (filename) => {
     var rwops = _SDL_RWFromFile(filename, 0);
@@ -2804,7 +2777,6 @@ var LibrarySDL = {
   Mix_ReserveChannels: (num) => {
     SDL.channelMinimumNumber = num;
   },
-  Mix_PlayChannelTimed__deps: ['Mix_HaltChannel'],
   Mix_PlayChannelTimed__proxy: 'sync',
   Mix_PlayChannelTimed: (channel, id, loops, ticks) => {
     // TODO: handle fixed amount of N loops. Currently loops either 0 or infinite times.
@@ -2889,7 +2861,6 @@ var LibrarySDL = {
     return 0;
   },
 
-  Mix_HookMusicFinished__deps: ['Mix_HaltMusic'],
   Mix_HookMusicFinished__proxy: 'sync',
   Mix_HookMusicFinished: (func) => {
     SDL.hookMusicFinished = func;
@@ -2901,10 +2872,8 @@ var LibrarySDL = {
   Mix_VolumeMusic__proxy: 'sync',
   Mix_VolumeMusic: (volume) => SDL.setGetVolume(SDL.music, volume),
 
-  Mix_LoadMUS_RW__deps: ['Mix_LoadWAV_RW'],
   Mix_LoadMUS_RW: (filename) => _Mix_LoadWAV_RW(filename, 0),
 
-  Mix_LoadMUS__deps: ['Mix_LoadMUS_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
   Mix_LoadMUS__proxy: 'sync',
   Mix_LoadMUS: (filename) => {
     var rwops = _SDL_RWFromFile(filename, 0);
@@ -2915,7 +2884,6 @@ var LibrarySDL = {
 
   Mix_FreeMusic: 'Mix_FreeChunk',
 
-  Mix_PlayMusic__deps: ['Mix_HaltMusic'],
   Mix_PlayMusic__proxy: 'sync',
   Mix_PlayMusic: (id, loops) => {
     // Pause old music if it exists.
@@ -3244,47 +3212,36 @@ var LibrarySDL = {
     translateColorToCSSRGBA: (rgba) => `rgba(${rgba>>>24},${rgba>>16 & 0xff},${rgba>>8 & 0xff},${rgba&0xff})`,
   },
 
-  boxColor__deps: ['$SDL_gfx'],
   boxColor: (surf, x1, y1, x2, y2, color) =>
     SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'fill', SDL_gfx.translateColorToCSSRGBA(color)),
 
-  boxRGBA__deps: ['$SDL_gfx'],
   boxRGBA: (surf, x1, y1, x2, y2, r, g, b, a) =>
     SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a)),
 
-  rectangleColor__deps: ['$SDL_gfx'],
   rectangleColor: (surf, x1, y1, x2, y2, color) =>
     SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'stroke', SDL_gfx.translateColorToCSSRGBA(color)),
 
-  rectangleRGBA__deps: ['$SDL_gfx'],
   rectangleRGBA: (surf, x1, y1, x2, y2, r, g, b, a) =>
     SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a)),
 
-  ellipseColor__deps: ['$SDL_gfx'],
   ellipseColor: (surf, x, y, rx, ry, color) =>
     SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'stroke', SDL_gfx.translateColorToCSSRGBA(color)),
 
-  ellipseRGBA__deps: ['$SDL_gfx'],
   ellipseRGBA: (surf, x, y, rx, ry, r, g, b, a) =>
     SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a)),
 
-  filledEllipseColor__deps: ['$SDL_gfx'],
   filledEllipseColor: (surf, x, y, rx, ry, color) =>
     SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'fill', SDL_gfx.translateColorToCSSRGBA(color)),
 
-  filledEllipseRGBA__deps: ['$SDL_gfx'],
   filledEllipseRGBA: (surf, x, y, rx, ry, r, g, b, a) =>
     SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a)),
 
-  lineColor__deps: ['$SDL_gfx'],
   lineColor: (surf, x1, y1, x2, y2, color) =>
     SDL_gfx.drawLine(surf, x1, y1, x2, y2, SDL_gfx.translateColorToCSSRGBA(color)),
 
-  lineRGBA__deps: ['$SDL_gfx'],
   lineRGBA: (surf, x1, y1, x2, y2, r, g, b, a) =>
     SDL_gfx.drawLine(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(r, g, b, a)),
 
-  pixelRGBA__deps: ['boxRGBA'],
   // This cannot be fast, to render many pixels this way!
   pixelRGBA: (surf, x1, y1, r, g, b, a) => _boxRGBA(surf, x1, y1, x1, y1, r, g, b, a),
 
@@ -3317,7 +3274,6 @@ var LibrarySDL = {
   // SDL 2
 
   SDL_GL_ExtensionSupported__proxy: 'sync',
-  SDL_GL_ExtensionSupported__deps: ['$GLctx', '$UTF8ToString'],
   SDL_GL_ExtensionSupported: (extension) => GLctx?.getExtension(UTF8ToString(extension)) ? 1 : 0,
 
   SDL_DestroyWindow: (window) => {},
@@ -3348,7 +3304,6 @@ var LibrarySDL = {
     }
   },
 
-  SDL_GL_SetSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   SDL_GL_SetSwapInterval: (state) => _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, state),
 
   SDL_SetWindowTitle__proxy: 'sync',
@@ -3396,7 +3351,6 @@ var LibrarySDL = {
   },
 
   SDL_JoystickName__proxy: 'sync',
-  SDL_JoystickName__deps: ['$stringToNewUTF8'],
   SDL_JoystickName: (deviceIndex) => {
     var gamepad = SDL.getGamepad(deviceIndex);
     if (gamepad) {
@@ -3518,10 +3472,8 @@ var LibrarySDL = {
   },
 
   SDL_GetNumAudioDrivers: () => 1,
-  SDL_GetCurrentAudioDriver__deps: ['$stringToNewUTF8'],
   SDL_GetCurrentAudioDriver: () => stringToNewUTF8('Emscripten Audio'),
   SDL_GetScancodeFromKey: (key) => SDL.scanCodes[key],
-  SDL_GetAudioDriver__deps: ['SDL_GetCurrentAudioDriver'],
   SDL_GetAudioDriver: (index) => _SDL_GetCurrentAudioDriver(),
 
   SDL_EnableUNICODE__proxy: 'sync',
@@ -3532,14 +3484,12 @@ var LibrarySDL = {
   },
 
   SDL_AddTimer__proxy: 'sync',
-  SDL_AddTimer__deps: ['$safeSetTimeout'],
   SDL_AddTimer: (interval, callback, param) =>
     safeSetTimeout(
       () => {{{ makeDynCall('iip', 'callback') }}}(interval, param),
       interval),
 
   SDL_RemoveTimer__proxy: 'sync',
-  SDL_RemoveTimer__deps: ['$safeClearTimeout'],
   SDL_RemoveTimer: (id) => {
     safeClearTimeout(id);
     return true;
@@ -3580,5 +3530,4 @@ var LibrarySDL = {
   SDL_HasAltiVec: () => 0
 };
 
-autoAddDeps(LibrarySDL, '$SDL');
 addToLibrary(LibrarySDL);

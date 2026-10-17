@@ -5,7 +5,6 @@
  */
 
 var LibraryGLUT = {
-  $GLUT__deps: ['$Browser', '$getFullscreenElement', 'glutPostRedisplay'],
   $GLUT: {
     initTime: null,
     idleFunc: null,
@@ -309,7 +308,6 @@ var LibraryGLUT = {
   glutGetModifiers__proxy: 'sync',
   glutGetModifiers: () => GLUT.modifiers,
 
-  glutInit__deps: ['$Browser', '$addOnExit'],
   glutInit__proxy: 'sync',
   glutInit: (argcp, argv) => {
     // Ignore arguments
@@ -422,7 +420,6 @@ var LibraryGLUT = {
   },
 
   glutIdleFunc__proxy: 'sync',
-  glutIdleFunc__deps: ['$safeSetTimeout'],
   glutIdleFunc: (func) => {
     function callback() {
       if (GLUT.idleFunc) {
@@ -437,7 +434,6 @@ var LibraryGLUT = {
   },
 
   glutTimerFunc__proxy: 'sync',
-  glutTimerFunc__deps: ['$safeSetTimeout'],
   glutTimerFunc: (msec, func, value) =>
     safeSetTimeout(() => {{{ makeDynCall('vi', 'func') }}}(value), msec),
 
@@ -563,7 +559,6 @@ var LibraryGLUT = {
   },
 
   glutCreateWindow__proxy: 'sync',
-  glutCreateWindow__deps: ['$Browser'],
   glutCreateWindow: (name) => {
     var contextAttributes = {
       antialias: ((GLUT.initDisplayMode & 0x0080 /*GLUT_MULTISAMPLE*/) != 0),
@@ -582,14 +577,12 @@ var LibraryGLUT = {
   },
 
   glutDestroyWindow__proxy: 'sync',
-  glutDestroyWindow__deps: ['$Browser'],
   glutDestroyWindow: (name) => {
     delete Module['ctx'];
     return 1;
   },
 
   glutReshapeWindow__proxy: 'sync',
-  glutReshapeWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutReshapeWindow: (width, height) => {
     Browser.exitFullscreen();
     Browser.setCanvasSize(width, height, true); // N.B. GLUT.reshapeFunc is also registered as a canvas resize callback.
@@ -601,7 +594,6 @@ var LibraryGLUT = {
   },
 
   glutPositionWindow__proxy: 'sync',
-  glutPositionWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutPositionWindow: (x, y) => {
     Browser.exitFullscreen();
     /* TODO */
@@ -609,7 +601,6 @@ var LibraryGLUT = {
   },
 
   glutFullScreen__proxy: 'sync',
-  glutFullScreen__deps: ['$GLUT'],
   glutFullScreen: () => {
     var canvas = Browser.getCanvas();
     GLUT.windowWidth = canvas.width;
@@ -628,7 +619,6 @@ var LibraryGLUT = {
   glutSwapBuffers: () => {},
 
   glutPostRedisplay__proxy: 'sync',
-  glutPostRedisplay__deps: ['$MainLoop'],
   glutPostRedisplay: () => {
     if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
       GLUT.requestedAnimationFrame = true;
@@ -640,7 +630,6 @@ var LibraryGLUT = {
   },
 
   glutMainLoop__proxy: 'sync',
-  glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
   glutMainLoop: () => {
     // Do an initial resize, since there's no window resize event on startup
     GLUT.onResize();
@@ -650,5 +639,4 @@ var LibraryGLUT = {
 
 };
 
-autoAddDeps(LibraryGLUT, '$GLUT');
 addToLibrary(LibraryGLUT);
