@@ -79,6 +79,30 @@ int main() {
 
   closedir(d);
 
+#ifndef NODERAWFS // TODO: Fix NODERAWFS unlinkat() too.
+  // Relative operations must continue to use an open directory after it has
+  // been renamed, rather than resolving its old path again.
+  assert(mkdir("unlinkat-dir", 0700) == 0);
+  int dir = open("unlinkat-dir", O_RDONLY | O_DIRECTORY);
+  assert(dir != -1);
+  int file = open("unlinkat-dir/file", O_CREAT | O_WRONLY, 0600);
+  assert(file != -1);
+  assert(close(file) == 0);
+  assert(rename("unlinkat-dir", "unlinkat-dir-new") == 0);
+  assert(mkdir("unlinkat-dir", 0700) == 0);
+  file = open("unlinkat-dir/file", O_CREAT | O_WRONLY, 0600);
+  assert(file != -1);
+  assert(close(file) == 0);
+
+  assert(unlinkat(dir, "file", 0) == 0);
+  assert(access("unlinkat-dir-new/file", F_OK) == -1 && errno == ENOENT);
+  assert(access("unlinkat-dir/file", F_OK) == 0);
+  assert(close(dir) == 0);
+  unlink("unlinkat-dir/file");
+  rmdir("unlinkat-dir");
+  rmdir("unlinkat-dir-new");
+#endif
+
   printf("ok\n");
 
   return 0;
