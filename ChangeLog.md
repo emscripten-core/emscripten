@@ -36,6 +36,10 @@ See docs/process.md for more on how version tagging works.
   in `MAIN_MODULE=1` builds. (#28123)
 - Pipes now have a 64 KiB capacity: non-blocking writes to a full pipe fail
   with `EAGAIN`. For now, blocking writes remain unbounded. (#27831)
+- In threaded builds, `dlopen` on the main thread no longer keeps a copy of the
+  side module's file in the heap after every thread has loaded it.  Threads
+  started later on existing workers now instantiate the already compiled
+  module instead of compiling it again.
 - When compiling and linking in a single command, auxiliary compiler output
   files (such as `.dwo` files from `-gsplit-dwarf` or `.json` files from
   `-ftime-trace`) are now named `<output>-<input>.<ext>`, matching the behavior
