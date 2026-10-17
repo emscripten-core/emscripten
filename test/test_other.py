@@ -7309,6 +7309,11 @@ int main() {
     # loaded.  The side module imports a symbol that is not yet defined, which
     # creates a lazy JS import stub that lives as long as the module does.
     create_file('side.c', r'''
+      #include <emscripten.h>
+
+      // Make retention of the module's bytes easy to measure.
+      EMSCRIPTEN_KEEPALIVE char padding[32 * 1024 * 1024] = {0xfe};
+
       int not_yet_defined(int);
       int side_fn(int x) { return x == 1234 ? not_yet_defined(x) : x + 1; }
       ''')
@@ -7337,14 +7342,9 @@ int main() {
         return 0;
       }''')
     self.run_process([EMCC, 'side.c', '-sSIDE_MODULE', '-o', 'libside.wasm'])
-    # Pad the side module with a 32MB custom section so that any retention of
-    # its bytes is easy to measure.
-    name = b'padding'
-    payload = webassembly.to_leb(len(name)) + name + b'\0' * (32 * 1024 * 1024)
-    with open('libside.wasm', 'ab') as f:
-      f.write(b'\0' + webassembly.to_leb(len(payload)) + payload)
+    self.assertGreater(os.path.getsize('libside.wasm'), 32 * 1024 * 1024)
     self.node_args += ['--expose-gc']
-    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2'])
+    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2', '-sINITIAL_MEMORY=64MB'])
 
   def test_dlopen_rtld_global(self):
     # This test checks RTLD_GLOBAL where a module is loaded
