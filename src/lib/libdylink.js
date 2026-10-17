@@ -158,9 +158,12 @@ var LibraryDylink = {
   // handler.  We abuse the `target` of the Proxy in order to pass the set of
   // weak imports to the handler.
   $GOTHandler__internal: true,
-  $GOTHandler__deps: ['$GOT'],
+  $GOTHandler__deps: ['$GOT', '$addMainModuleGOTEntry'],
   $GOTHandler: {
     get(weakImports, symName) {
+      if (!GOT[symName]) {
+        addMainModuleGOTEntry(symName);
+      }
       var rtn = GOT[symName];
       if (!rtn) {
 #if DYLINK_DEBUG == 2
@@ -209,8 +212,49 @@ var LibraryDylink = {
     ;
   },
 
+  // The main module's (unrelocated) exports.  Rather than creating GOT entries
+  // for all of these on startup, which is slow for programs with many exports
+  // since each exported function needs its own table slot, we create them on
+  // demand using `addMainModuleGOTEntry`.
+  $mainModuleExports: null,
+
+  // Called once the main module has been instantiated.  Only the GOT entries
+  // that the main module itself imports exist at this point, so these are the
+  // only ones we need to fill in.
+  $initMainModuleGOT__internal: true,
+  $initMainModuleGOT__deps: ['$GOT', '$mainModuleExports', '$addMainModuleGOTEntry'],
+  $initMainModuleGOT: (exports) => {
+    mainModuleExports = exports;
+    for (var [symName, entry] of Object.entries(GOT)) {
+      if (entry.value == {{{ UNDEFINED_ADDR }}}) {
+        addMainModuleGOTEntry(symName);
+      }
+    }
+  },
+
+  // Create (or fill in) the GOT entry for `symName` using the main module's
+  // definition, if it has one.  This is called before any other definition of
+  // a symbol is added to the GOT, which gives the entry exactly the value it
+  // would have had if we had created GOT entries for all of the main module's
+  // exports on startup.  In particular this means that the main module's
+  // definition of a symbol takes precedence over any side module definition.
+  $addMainModuleGOTEntry__internal: true,
+  $addMainModuleGOTEntry__deps: ['$mainModuleExports', '$updateGOT'],
+  $addMainModuleGOTEntry: (symName) => {
+#if !WASM_BIGINT
+    // Prefer the version of the symbol without i64 legalization (see updateGOT).
+    if (mainModuleExports?.['orig$' + symName]) {
+      symName = 'orig$' + symName;
+    }
+#endif
+    var value = mainModuleExports?.[symName];
+    if (value) {
+      updateGOT({[symName]: value}, /*replace=*/true);
+    }
+  },
+
   $updateGOT__internal: true,
-  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction'],
+  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction', '$addMainModuleGOTEntry'],
   $updateGOT__docs: '/** @param {boolean=} replace */',
   $updateGOT: (exports, replace) => {
 #if DYLINK_DEBUG
@@ -228,6 +272,11 @@ var LibraryDylink = {
         replace = true;
       }
 #endif
+
+      if (!replace && !GOT[symName]) {
+        // The main module's definition, if any, takes precedence.
+        addMainModuleGOTEntry(symName);
+      }
 
       var existingEntry = GOT[symName] && GOT[symName].value != {{{ UNDEFINED_ADDR }}};
       if (replace || !existingEntry) {
