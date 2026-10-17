@@ -58,7 +58,7 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config) {
   config->has_virtual_reserve = false;
 }
 
-extern void emmalloc_free(void*);
+mi_decl_externc void emmalloc_free(void*);
 
 int _mi_prim_free(void* addr, size_t size) {
   emmalloc_free(addr);
@@ -70,7 +70,7 @@ int _mi_prim_free(void* addr, size_t size) {
 // Allocation
 //---------------------------------------------
 
-extern void* emmalloc_memalign(size_t alignment, size_t size);
+mi_decl_externc void* emmalloc_memalign(size_t alignment, size_t size);
 
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
 int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {

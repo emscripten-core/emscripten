@@ -1853,7 +1853,7 @@ class libmalloc(MTLibrary):
             [dict(malloc='emmalloc-verbose', **combo) for combo in combos if combo['verbose'] and not combo['memvalidate']])
 
 
-class libmimalloc(MTLibrary):
+class libmimalloc(ExceptionLibrary, MTLibrary):
   name = 'libmimalloc'
 
   cflags = [
@@ -1913,8 +1913,23 @@ class libmimalloc(MTLibrary):
   # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
   src_files += [utils.path_from_root('system/lib/libc/sbrk.c')]
 
+  def customize_build_cmd(self, cmd, filename):
+    # Build mimalloc as C++ for its exception-aware new/delete implementation.
+    # Its internal functions need consistent linkage; emmalloc and sbrk stay C.
+    if self.eh_mode != Exceptions.NONE and filename.startswith(utils.path_from_root('system/lib/mimalloc/')):
+      return cmd + ['-x', 'c++', '-std=c++17']
+    return cmd
+
   def can_use(self):
     return super().can_use() and settings.MALLOC == 'mimalloc'
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    variation = super().get_default_variation(**kwargs)
+    # C-only programs must not acquire a dependency on the C++ runtime.
+    if not settings.LINK_AS_CXX:
+      variation.eh_mode = Exceptions.NONE
+    return variation
 
 
 class libal(Library):
