@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 
+__attribute__((weak))
 size_t confstr(int name, char *buf, size_t len)
 {
 	const char *s = "";
