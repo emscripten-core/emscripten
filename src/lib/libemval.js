@@ -3,12 +3,13 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-// Number of handles reserved for non-use (0) or common values w/o refcount.
-{{{
-  const EMVAL_RESERVED_HANDLES = 5;
-  const EMVAL_LAST_RESERVED_HANDLE = EMVAL_RESERVED_HANDLES * 2 - 1;
-}}}
 var LibraryEmVal = {
+  // Number of handles reserved for non-use (0) or common values w/o refcount.
+  ...defineInternalConsts({
+    $EMVAL_RESERVED_HANDLES: 5,
+    $EMVAL_LAST_RESERVED_HANDLE: 9, // EMVAL_RESERVED_HANDLES * 2 - 1
+  }),
+
   // Stack of handles available for reuse.
   $emval_freelist: [],
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
@@ -24,13 +25,14 @@ var LibraryEmVal = {
     false, 1,
   ],
 #if ASSERTIONS
-  $emval_handles__postset: 'assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2)',
+  $emval_handles__deps: ['$EMVAL_RESERVED_HANDLES'],
+  $emval_handles__postset: 'assert(emval_handles.length === EMVAL_RESERVED_HANDLES * 2)',
 #endif
   $emval_symbols: {}, // address -> string
 
-  $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
+  $count_emval_handles__deps: ['$emval_freelist', '$emval_handles', '$EMVAL_RESERVED_HANDLES'],
   $count_emval_handles: () => {
-    return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}} - emval_freelist.length;
+    return emval_handles.length / 2 - EMVAL_RESERVED_HANDLES - emval_freelist.length;
   },
 
   _emval_register_symbol__deps: ['$emval_symbols', '$AsciiToString'],
@@ -76,20 +78,20 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_incref__deps: ['$emval_handles'],
+  _emval_incref__deps: ['$emval_handles', '$EMVAL_LAST_RESERVED_HANDLE'],
   _emval_incref: (handle) => {
-    if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}}) {
+    if (handle > EMVAL_LAST_RESERVED_HANDLE) {
       emval_handles[handle + 1] += 1;
     }
   },
 
-  _emval_decref__deps: ['$emval_freelist', '$emval_handles',
+  _emval_decref__deps: ['$emval_freelist', '$emval_handles', '$EMVAL_LAST_RESERVED_HANDLE',
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
     '$emval_exception_decrefs',
 #endif
   ],
   _emval_decref: (handle) => {
-    if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
+    if (handle > EMVAL_LAST_RESERVED_HANDLE && 0 === --emval_handles[handle + 1]) {
   #if ASSERTIONS
       assert(emval_handles[handle] !== undefined, `decref for unallocated handle`);
   #endif

@@ -42,9 +42,13 @@ import {
   localFile,
   timer,
 } from './utility.mjs';
-import {extraExports, LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
-
-const addedLibraryItems = {};
+import {
+  addedLibraryItems,
+  extraExports,
+  LibraryManager,
+  librarySymbols,
+  nativeAliases,
+} from './modules.mjs';
 
 // Experimental feature to check for invalid __deps entries.
 // See `EMCC_CHECK_DEPS` in in the environment to try it out.
@@ -456,7 +460,7 @@ export async function runJSify(outputFile, symbolsOnly) {
   }
 
   for (const key of Object.keys(LibraryManager.library)) {
-    if (!isDecorator(key)) {
+    if (!isDecorator(key) && !LibraryManager.library[key + '__const']) {
       if (INCLUDE_FULL_LIBRARY || EXPORTED_FUNCTIONS.has(mangleCSymbolName(key))) {
         symbolsNeeded.push(key);
       }
@@ -700,7 +704,10 @@ function(${args}) {
         snippet = new Function('...args', stubFunctionBody);
       }
 
-      librarySymbols.push(mangled);
+      const isConst = LibraryManager.library[symbol + '__const'];
+      if (!isConst) {
+        librarySymbols.push(mangled);
+      }
 
       if (!isStub && LibraryManager.library[symbol + '__export']) {
         extraExports.add(mangled);
@@ -708,7 +715,7 @@ function(${args}) {
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
       // Check for dependencies on `__internal` symbols from user libraries.
       for (const dep of deps) {
-        if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
+        if (isUserSymbol && LibraryManager.library[dep + '__internal'] && !LibraryManager.library[dep + '__user']) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
       }
@@ -836,10 +843,11 @@ function(${args}) {
         if (typeof snippet === 'string' && snippet[0] == '=') {
           snippet = snippet.slice(1);
         }
-        contentText = `var ${mangled} = ${snippet};`;
+        const declType = isConst ? 'const' : 'var';
+        contentText = `${declType} ${mangled} = ${snippet};`;
       }
 
-      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled) || extraExports.has(mangled)) && !isStub) {
+      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled) || extraExports.has(mangled)) && !isStub && !isConst) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;
