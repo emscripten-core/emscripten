@@ -41,8 +41,8 @@ int main() {
   printf("  EM_ASM_DOUBLE returned: %f\n", EM_ASM_DOUBLE({ out("no args returning double"); return 12.25; }));
 
 #define TEST() \
-  FUNC({ out("  takes ints: " + $0);}, 5); \
-  FUNC({ out("  takes doubles: " + $0);}, 5.0675); \
+  FUNC({ out("  takes ints: " + $0); return 0; }, 5); \
+  FUNC({ out("  takes doubles: " + $0); return 0; }, 5.0675); \
   FUNC({ out("  takes strings: " + UTF8ToString($0)); return 7.75; }, "string arg"); \
   FUNC({ out("  takes multiple ints: " + $0 + ", " + $1); return 6; }, 5, 7); \
   FUNC({ out("  mixed arg types: " + $0 + ", " + UTF8ToString($1) + ", " + $2); return 8.125; }, 3, "hello", 4.75); \
