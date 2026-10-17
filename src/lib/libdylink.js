@@ -950,13 +950,11 @@ var LibraryDylink = {
         })();
       }
 
-      // Replace the bytes with the compiled module (as the async path above
-      // does).  The import stubs created by `proxyHandler` outlive this call
-      // and keep this scope alive, so holding on to the bytes here would keep
-      // them in memory for the lifetime of the program.
-      if (!(binary instanceof WebAssembly.Module)) {
-        binary = new WebAssembly.Module(binary);
-      }
+      // Replace the bytes with the compiled module, as in the async path above.
+      // `loadModule` captures `binary`. In V8, the long-lived import stubs from
+      // `proxyHandler` share its outer context, so they can retain `binary` even
+      // though they do not reference it directly.
+      binary = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
       var instance = new WebAssembly.Instance(binary, info);
       return postInstantiation(binary, instance);
     }
