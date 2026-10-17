@@ -150,9 +150,7 @@ private:
     return nwritten;
   }
 
-  int flush() override {
-    WASMFS_UNREACHABLE("TODO: implement NodeFile::flush");
-  }
+  int flush() override { return -_wasmfs_node_fsync(state.getFD()); }
 };
 
 class NodeSymlink : public Symlink {

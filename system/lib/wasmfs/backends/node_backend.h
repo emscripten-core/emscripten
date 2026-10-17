@@ -42,6 +42,9 @@ int _wasmfs_node_readlink(const char *path, const char *buf, int bufsize);
 // Close the underlying file descriptor.
 [[nodiscard]] int _wasmfs_node_close(int fd);
 
+// Flush the underlying file descriptor to disk.
+[[nodiscard]] int _wasmfs_node_fsync(int fd);
+
 // Read up to `size` bytes into `buf` from position `pos` in the file, writing
 // the number of bytes read to `nread`. Return 0 on success or an error code.
 int _wasmfs_node_read(
