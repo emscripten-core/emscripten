@@ -9396,6 +9396,29 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @requires_pthreads
+  def test_pthread_dlopen_file_data(self):
+    self.cflags += ['-Wno-experimental', '-pthread']
+    create_file('side.c', 'int side_fn(int x) { return x + 1; }')
+    self.build_dlfcn_lib('side.c')
+    # Pad the side module with an 8MB custom section so that the copy dlopen
+    # makes of it is easy to see in the heap.
+    name = b'padding'
+    payload = webassembly.to_leb(len(name)) + name + b'\0' * (8 * 1024 * 1024)
+    with open('libside.so', 'ab') as f:
+      f.write(b'\0' + webassembly.to_leb(len(payload)) + payload)
+    # Embed it under a path that doesn't exist on the host, so that threads
+    # can't read it from there either under node.
+    self.cflags += ['--embed-file', 'libside.so@/lib/libside.so']
+    self.prep_dlfcn_main()
+    self.set_setting('EXIT_RUNTIME')
+    # One worker each for the running, later and nested threads.
+    self.set_setting('PTHREAD_POOL_SIZE', 3)
+    if not self.get_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '64mb')
+    self.do_runf('core/pthread/test_pthread_dlopen_file_data.c', 'done\n')
+
+  @needs_dylink
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
     # In other suites, this test is flaky.. but in Wasm64 suite, it is failing

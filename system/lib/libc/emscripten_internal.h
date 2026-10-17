@@ -100,7 +100,10 @@ int _setitimer_js(int which, double timeout);
 // Synchronize loaded modules across threads.
 // Runs _emscripten_dlsync_self on each of the threads that are running at
 // the time of the call.
-void _emscripten_dlsync_threads();
+// Returns true only when called on the main runtime thread outside of a
+// proxied call, and every running thread loaded the modules: threads spawned
+// from then on get them from `sharedModules`.
+bool _emscripten_dlsync_threads();
 
 #ifdef _GNU_SOURCE
 void __call_sighandler(sighandler_t handler, int sig);

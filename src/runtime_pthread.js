@@ -16,7 +16,8 @@ var workerID = 0;
 
 #if MAIN_MODULE
 // Map of modules to be shared with new threads.  This gets populated by the
-// main thread and shared with all new workers via the initial `load` message.
+// main thread and sent to workers in the `load` message, and again in each
+// `run` message for modules loaded since.
 var sharedModules = {};
 #endif
 
@@ -134,6 +135,9 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if ASSERTIONS
         assert(msgData.pthread_ptr);
         assert(wasmMemory, "CMD_RUN received before CMD_LOAD");
+#endif
+#if MAIN_MODULE
+        sharedModules = msgData.sharedModules;
 #endif
         // Call inside JS module to set up the stack frame for this pthread in JS module scope.
         // This needs to be the first thing that we do, as we cannot call to any C/C++ functions

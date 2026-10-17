@@ -26,6 +26,10 @@ See docs/process.md for more on how version tagging works.
 - The undocumented `FS.filesystems` object was removed. Replace things like
   `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
 - libpng port updated from 1.6.58 to 1.6.59. (#27956)
+- In threaded builds, `dlopen` on the main thread no longer keeps a copy of the
+  side module's file in the heap after every thread has loaded it.  Threads
+  started later on existing workers now instantiate the already compiled
+  module instead of compiling it again.
 
 6.0.12 - 10/08/26
 -----------------

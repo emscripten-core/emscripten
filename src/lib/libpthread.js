@@ -728,6 +728,12 @@ var LibraryPThread = {
         start_routine: threadParams.startRoutine,
         arg: threadParams.arg,
         pthread_ptr: threadParams.pthread_ptr,
+#if MAIN_MODULE
+        // The worker may have been created before some of these modules were
+        // loaded.  The thread loads them from here rather than from the file
+        // data in the dso, which isn't kept.
+        sharedModules,
+#endif
     };
 #if OFFSCREENCANVAS_SUPPORT
     // Note that we do not need to quote these names because they are only used
@@ -1284,14 +1290,18 @@ var LibraryPThread = {
   _emscripten_dlsync_threads: () => {
     const callingThread = PThread.currentProxiedOperationCallerThread;
     if (callingThread) {
-      return dlsyncThreadsAsync();
+      // Threads spawned while this runs may not see the new modules in
+      // `sharedModules`, so don't report that every thread is in sync.
+      return dlsyncThreadsAsync().then(() => 0);
     }
+    var synced = 1;
     for (const ptr of Object.keys(PThread.pthreads)) {
       const pthread_ptr = Number(ptr);
-      if (!PThread.finishedThreads.has(pthread_ptr)) {
-        __emscripten_proxy_dlsync(pthread_ptr);
+      if (!PThread.finishedThreads.has(pthread_ptr) && !__emscripten_proxy_dlsync(pthread_ptr)) {
+        synced = 0;
       }
     }
+    return synced;
   },
 #endif // MAIN_MODULE
 
