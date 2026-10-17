@@ -204,6 +204,18 @@ private:
   std::map<std::string, DCacheEntry> dcache;
 
 protected:
+  // The children in the dcache, excluding mount points. The directory must be
+  // locked.
+  std::vector<std::shared_ptr<File>> getLoadedChildren() {
+    std::vector<std::shared_ptr<File>> children;
+    for (auto& [name, entry] : dcache) {
+      if (entry.kind == DCacheKind::Normal) {
+        children.push_back(entry.file);
+      }
+    }
+    return children;
+  }
+
   // Return the `File` object corresponding to the file with the given name or
   // null if there is none.
   virtual std::shared_ptr<File> getChild(const std::string& name) = 0;

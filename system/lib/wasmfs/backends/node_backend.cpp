@@ -183,6 +183,30 @@ private:
     return state.path + '/' + name;
   }
 
+  // The host path a file, directory or symlink of this backend refers to.
+  static std::string& getHostPath(const std::shared_ptr<File>& file) {
+    if (file->is<DataFile>()) {
+      return std::static_pointer_cast<NodeFile>(file)->state.path;
+    }
+    if (file->is<Directory>()) {
+      return std::static_pointer_cast<NodeDirectory>(file)->state.path;
+    }
+    return std::static_pointer_cast<NodeSymlink>(file)->path;
+  }
+
+  // Lock `file` and every loaded file below it, parents first as path lookups
+  // do. Each of them caches a host path under the one being renamed.
+  static void lockLoaded(const std::shared_ptr<File>& file,
+                         std::vector<File::Handle>& locked) {
+    locked.push_back(file->locked());
+    if (file->is<Directory>()) {
+      auto dir = std::static_pointer_cast<NodeDirectory>(file);
+      for (auto& child : dir->getLoadedChildren()) {
+        lockLoaded(child, locked);
+      }
+    }
+  }
+
   std::shared_ptr<File> getChild(const std::string& name) override {
     static_assert(std::is_same_v<mode_t, unsigned int>);
     // TODO: also retrieve and set ctime, atime, ino, etc.
@@ -245,18 +269,25 @@ private:
   }
 
   int insertMove(const std::string& name, std::shared_ptr<File> file) override {
-    std::string fromPath;
-
-    if (file->is<DataFile>()) {
-      auto nodeFile = std::static_pointer_cast<NodeFile>(file);
-      fromPath = nodeFile->state.path;
-    } else {
-      auto nodeDir = std::static_pointer_cast<NodeDirectory>(file);
-      fromPath = nodeDir->state.path;
+    // As on Linux, a mount point can't be renamed.
+    if (file->getBackend() != getBackend()) {
+      return -EBUSY;
     }
 
+    // Hold the locks across the rename so that no operation sees a moved
+    // file's host path change under it.
+    std::vector<File::Handle> locked;
+    lockLoaded(file, locked);
+
+    auto fromPath = getHostPath(file);
     auto childPath = getChildPath(name);
-    return -_wasmfs_node_rename(fromPath.c_str(), childPath.c_str());
+    if (auto err = _wasmfs_node_rename(fromPath.c_str(), childPath.c_str())) {
+      return -err;
+    }
+    for (auto& handle : locked) {
+      getHostPath(handle.unlocked()).replace(0, fromPath.size(), childPath);
+    }
+    return 0;
   }
 
   ssize_t getNumEntries() override {
