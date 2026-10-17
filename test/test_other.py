@@ -7303,6 +7303,49 @@ int main() {
     # Repeat the test without NO_AUTOLOAD_DYLIBS
     self.do_runf('main.c', 'done\n', cflags=['-g', '-sMAIN_MODULE=2', 'libside.wasm'])
 
+  @requires_node
+  def test_dlopen_binary_not_retained(self):
+    # The bytes of a side module should not be kept alive once it has been
+    # loaded.  The side module imports a symbol that is not yet defined, which
+    # creates a lazy JS import stub that lives as long as the module does.
+    create_file('side.c', r'''
+      int not_yet_defined(int);
+      int side_fn(int x) { return x == 1234 ? not_yet_defined(x) : x + 1; }
+      ''')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        EM_ASM({
+          gc();
+          globalThis.before = process.memoryUsage().arrayBuffers;
+        });
+        void* h = dlopen("libside.wasm", RTLD_NOW);
+        assert(h);
+        int (*side_fn)(int) = dlsym(h, "side_fn");
+        assert(side_fn && side_fn(1) == 2);
+        int retained_mb = EM_ASM_INT({
+          gc();
+          return (process.memoryUsage().arrayBuffers - globalThis.before) >> 20;
+        });
+        printf("retained: %dMB\n", retained_mb);
+        assert(retained_mb < 16);
+        printf("done\n");
+        return 0;
+      }''')
+    self.run_process([EMCC, 'side.c', '-sSIDE_MODULE', '-o', 'libside.wasm'])
+    # Pad the side module with a 32MB custom section so that any retention of
+    # its bytes is easy to measure.
+    name = b'padding'
+    payload = webassembly.to_leb(len(name)) + name + b'\0' * (32 * 1024 * 1024)
+    with open('libside.wasm', 'ab') as f:
+      f.write(b'\0' + webassembly.to_leb(len(payload)) + payload)
+    self.node_args += ['--expose-gc']
+    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2'])
+
   def test_dlopen_rtld_global(self):
     # This test checks RTLD_GLOBAL where a module is loaded
     # before the module providing a global it needs is. in asm.js we use JS

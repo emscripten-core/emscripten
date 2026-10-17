@@ -950,9 +950,15 @@ var LibraryDylink = {
         })();
       }
 
-      var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
-      var instance = new WebAssembly.Instance(module, info);
-      return postInstantiation(module, instance);
+      // Replace the bytes with the compiled module (as the async path above
+      // does).  The import stubs created by `proxyHandler` outlive this call
+      // and keep this scope alive, so holding on to the bytes here would keep
+      // them in memory for the lifetime of the program.
+      if (!(binary instanceof WebAssembly.Module)) {
+        binary = new WebAssembly.Module(binary);
+      }
+      var instance = new WebAssembly.Instance(binary, info);
+      return postInstantiation(binary, instance);
     }
 
     // We need to set rpath in flags based on the current library's rpath.
