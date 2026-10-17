@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- In threaded builds, `dlopen` on the main thread no longer keeps a copy of the
+  side module's file in the heap after every thread has loaded it.  Threads
+  started later on existing workers now instantiate the already compiled
+  module instead of compiling it again.
 - When compiling and linking in a single command, auxiliary compiler output
   files (such as `.dwo` files from `-gsplit-dwarf` or `.json` files from
   `-ftime-trace`) are now named `<output>-<input>.<ext>`, matching the behavior
