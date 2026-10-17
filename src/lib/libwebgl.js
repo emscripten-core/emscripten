@@ -471,11 +471,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       if (vbo) {
         return vbo;
       }
-      var prevVBO = GLctx.getParameter(0x8894 /*GL_ARRAY_BUFFER_BINDING*/);
+      var prevVBO = GLctx.getParameter({{{ cDefs.GL_ARRAY_BUFFER_BINDING }}});
       ringbuffer[nextFreeBufferIndex] = GLctx.createBuffer();
-      GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, ringbuffer[nextFreeBufferIndex]);
-      GLctx.bufferData(0x8892 /*GL_ARRAY_BUFFER*/, 1 << idx, 0x88E8 /*GL_DYNAMIC_DRAW*/);
-      GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, prevVBO);
+      GLctx.bindBuffer({{{ cDefs.GL_ARRAY_BUFFER }}}, ringbuffer[nextFreeBufferIndex]);
+      GLctx.bufferData({{{ cDefs.GL_ARRAY_BUFFER }}}, 1 << idx, {{{ cDefs.GL_DYNAMIC_DRAW }}});
+      GLctx.bindBuffer({{{ cDefs.GL_ARRAY_BUFFER }}}, prevVBO);
       return ringbuffer[nextFreeBufferIndex];
     },
 
@@ -485,11 +485,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       if (ibo) {
         return ibo;
       }
-      var prevIBO = GLctx.getParameter(0x8895 /*ELEMENT_ARRAY_BUFFER_BINDING*/);
+      var prevIBO = GLctx.getParameter({{{ cDefs.GL_ELEMENT_ARRAY_BUFFER_BINDING }}});
       GL.currentContext.tempIndexBuffers[idx] = GLctx.createBuffer();
-      GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, GL.currentContext.tempIndexBuffers[idx]);
-      GLctx.bufferData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, 1 << idx, 0x88E8 /*GL_DYNAMIC_DRAW*/);
-      GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, prevIBO);
+      GLctx.bindBuffer({{{ cDefs.GL_ELEMENT_ARRAY_BUFFER }}}, GL.currentContext.tempIndexBuffers[idx]);
+      GLctx.bufferData({{{ cDefs.GL_ELEMENT_ARRAY_BUFFER }}}, 1 << idx, {{{ cDefs.GL_DYNAMIC_DRAW }}});
+      GLctx.bindBuffer({{{ cDefs.GL_ELEMENT_ARRAY_BUFFER }}}, prevIBO);
       return GL.currentContext.tempIndexBuffers[idx];
     },
 
@@ -582,8 +582,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
         var size = GL.calcBufLength(cb.size, cb.type, cb.stride, count);
         var buf = GL.getTempVertexBuffer(size);
-        GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, buf);
-        webglBufferSubData(0x8892 /*GL_ARRAY_BUFFER*/, 0, size, cb.ptr);
+        GLctx.bindBuffer({{{ cDefs.GL_ARRAY_BUFFER }}}, buf);
+        webglBufferSubData({{{ cDefs.GL_ARRAY_BUFFER }}}, 0, size, cb.ptr);
 #if GL_ASSERTIONS
         GL.validateVertexAttribPointer(cb.size, cb.type, cb.stride, 0);
 #endif
@@ -593,7 +593,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
     postDrawHandleClientVertexAttribBindings: () => {
       if (GL.resetBufferBinding) {
-        GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, GL.buffers[GLctx.currentArrayBufferBinding]);
+        GLctx.bindBuffer({{{ cDefs.GL_ARRAY_BUFFER }}}, GL.buffers[GLctx.currentArrayBufferBinding]);
       }
     },
 #endif
@@ -3889,8 +3889,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     if (!GLctx.currentElementArrayBufferBinding) {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
-      GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, buf);
-      webglBufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, 0, size, indices);
+      GLctx.bindBuffer({{{ cDefs.GL_ELEMENT_ARRAY_BUFFER }}}, buf);
+      webglBufferSubData({{{ cDefs.GL_ELEMENT_ARRAY_BUFFER }}}, 0, size, indices);
 
       // Calculating vertex count if shader's attribute data is on client side
       if (count > 0) {
@@ -3899,13 +3899,13 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           if (cb.clientside && cb.enabled) {
             let arrayClass;
             switch(type) {
-              case 0x1401 /* GL_UNSIGNED_BYTE */: arrayClass = Uint8Array; break;
-              case 0x1403 /* GL_UNSIGNED_SHORT */: arrayClass = Uint16Array; break;
+              case {{{ cDefs.GL_UNSIGNED_BYTE }}}: arrayClass = Uint8Array; break;
+              case {{{ cDefs.GL_UNSIGNED_SHORT }}}: arrayClass = Uint16Array; break;
 #if FULL_ES3
-              case 0x1405 /* GL_UNSIGNED_INT */: arrayClass = Uint32Array; break;
+              case {{{ cDefs.GL_UNSIGNED_INT }}}: arrayClass = Uint32Array; break;
 #endif
               default:
-                GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+                GL.recordError({{{ cDefs.GL_INVALID_OPERATION }}});
 #if GL_ASSERTIONS
                 err('type is not supported in glDrawElements');
 #endif
@@ -3932,7 +3932,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GL.postDrawHandleClientVertexAttribBindings();
 
     if (!GLctx.currentElementArrayBufferBinding) {
-      GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, null);
+      GLctx.bindBuffer({{{ cDefs.GL_ELEMENT_ARRAY_BUFFER }}}, null);
     }
 #endif
   },
@@ -4169,23 +4169,23 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
   glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'malloc'],
   glMapBufferRange: (target, offset, length, access) => {
-    if ((access & (0x1/*GL_MAP_READ_BIT*/ | 0x20/*GL_MAP_UNSYNCHRONIZED_BIT*/)) != 0) {
+    if ((access & {{{ cDefs.GL_MAP_READ_BIT | cDefs.GL_MAP_UNSYNCHRONIZED_BIT }}}) != 0) {
       err('glMapBufferRange access does not support MAP_READ or MAP_UNSYNCHRONIZED');
       return 0;
     }
 
-    if ((access & 0x2/*GL_MAP_WRITE_BIT*/) == 0) {
+    if ((access & {{{ cDefs.GL_MAP_WRITE_BIT }}}) == 0) {
       err('glMapBufferRange access must include MAP_WRITE');
       return 0;
     }
 
-    if ((access & (0x4/*GL_MAP_INVALIDATE_BUFFER_BIT*/ | 0x8/*GL_MAP_INVALIDATE_RANGE_BIT*/)) == 0) {
+    if ((access & {{{ cDefs.GL_MAP_INVALIDATE_BUFFER_BIT | cDefs.GL_MAP_INVALIDATE_RANGE_BIT }}}) == 0) {
       err('glMapBufferRange access must include INVALIDATE_BUFFER or INVALIDATE_RANGE');
       return 0;
     }
 
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
-      GL.recordError(0x500/*GL_INVALID_ENUM*/);
+      GL.recordError({{{ cDefs.GL_INVALID_ENUM }}});
       err('GL_INVALID_ENUM in glMapBufferRange');
       return 0;
     }
@@ -4203,7 +4203,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
   glGetBufferPointerv__deps: ['$emscriptenWebGLGetBufferBinding'],
   glGetBufferPointerv: (target, pname, params) => {
-    if (pname == 0x88BD/*GL_BUFFER_MAP_POINTER*/) {
+    if (pname == {{{ cDefs.GL_BUFFER_MAP_POINTER }}}) {
       var ptr = 0;
       var mappedBuffer = GL.mappedBuffers[emscriptenWebGLGetBufferBinding(target)];
       if (mappedBuffer) {
@@ -4211,7 +4211,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       }
       {{{ makeSetValue('params', '0', 'ptr', 'i32') }}};
     } else {
-      GL.recordError(0x500/*GL_INVALID_ENUM*/);
+      GL.recordError({{{ cDefs.GL_INVALID_ENUM }}});
       err('GL_INVALID_ENUM in glGetBufferPointerv');
     }
   },
@@ -4219,25 +4219,25 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   glFlushMappedBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', '$webglBufferSubData'],
   glFlushMappedBufferRange: (target, offset, length) => {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
-      GL.recordError(0x500/*GL_INVALID_ENUM*/);
+      GL.recordError({{{ cDefs.GL_INVALID_ENUM }}});
       err('GL_INVALID_ENUM in glFlushMappedBufferRange');
       return;
     }
 
     var mapping = GL.mappedBuffers[emscriptenWebGLGetBufferBinding(target)];
     if (!mapping) {
-      GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+      GL.recordError({{{ cDefs.GL_INVALID_OPERATION }}});
       err('buffer was never mapped in glFlushMappedBufferRange');
       return;
     }
 
-    if (!(mapping.access & 0x10)) {
-      GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+    if (!(mapping.access & {{{ cDefs.GL_MAP_FLUSH_EXPLICIT_BIT }}})) {
+      GL.recordError({{{ cDefs.GL_INVALID_OPERATION }}});
       err('buffer was not mapped with GL_MAP_FLUSH_EXPLICIT_BIT in glFlushMappedBufferRange');
       return;
     }
     if (offset < 0 || length < 0 || offset + length > mapping.length) {
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError({{{ cDefs.GL_INVALID_VALUE }}});
       err('invalid range in glFlushMappedBufferRange');
       return;
     }
@@ -4248,7 +4248,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'free'],
   glUnmapBuffer: (target) => {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
-      GL.recordError(0x500/*GL_INVALID_ENUM*/);
+      GL.recordError({{{ cDefs.GL_INVALID_ENUM }}});
       err('GL_INVALID_ENUM in glUnmapBuffer');
       return 0;
     }
@@ -4256,12 +4256,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     var buffer = emscriptenWebGLGetBufferBinding(target);
     var mapping = GL.mappedBuffers[buffer];
     if (!mapping || !mapping.mem) {
-      GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+      GL.recordError({{{ cDefs.GL_INVALID_OPERATION }}});
       err('buffer was never mapped in glUnmapBuffer');
       return 0;
     }
 
-    if (!(mapping.access & 0x10)) { /* GL_MAP_FLUSH_EXPLICIT_BIT */
+    if (!(mapping.access & {{{ cDefs.GL_MAP_FLUSH_EXPLICIT_BIT }}})) {
       webglBufferSubData(target, mapping.offset, mapping.length, mapping.mem);
     }
 
