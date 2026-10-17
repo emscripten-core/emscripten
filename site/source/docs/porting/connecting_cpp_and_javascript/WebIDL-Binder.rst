@@ -131,6 +131,9 @@ You can use the `EXPORT_NAME` option to change `Module` to something else. This 
 good practice for libraries, as then they don't include unnecessary things in the
 global scope, and in some cases you want to create more than one.
 
+You can also consider using the ``--extern-post-js`` :ref:`compiler flag <emcc-extern-post-js>` to append your client code to the compiled file. 
+Doing so will ensure your callback is registered before the Module is loaded and the ``onRuntimeInitialized`` promised is resolved.
+
 
 Using C++ classes in JavaScript
 ================================
