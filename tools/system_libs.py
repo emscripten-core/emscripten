@@ -1001,7 +1001,15 @@ class libclang_rt_builtins(MTLibrary, SjLjLibrary):
   }
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += glob_in_path(profile_src_dir, '*.c')
-  src_files += glob_in_path(profile_src_dir, '*.cpp')
+  src_files += glob_in_path(
+      profile_src_dir,
+      '*.cpp',
+      excludes={
+        # These are only part of upstream's separate profile_rocm runtime.
+        'InstrProfilingPlatformROCm.cpp',
+        'InstrProfilingPlatformROCmHSA.cpp',
+      },
+  )
   src_files += files_in_path(
       path='system/lib/compiler-rt',
       filenames=[

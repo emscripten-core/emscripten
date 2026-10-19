@@ -238,7 +238,8 @@ int __atomic_compare_exchange_c(size_t size, void *ptr, void *expected,
 
 /// Performs an atomic exchange operation between two pointers.  This is atomic
 /// with respect to the target address.
-void __atomic_exchange_c(size_t size, void *ptr, void *val, void *old, int model) {
+void __atomic_exchange_c(size_t size, void *ptr, void *val, void *old,
+                         int model) {
 #define LOCK_FREE_ACTION(type)                                                 \
   *(type *)old =                                                               \
       __c11_atomic_exchange((_Atomic(type) *)ptr, *(type *)val, model);        \
