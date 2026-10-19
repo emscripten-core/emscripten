@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <emscripten.h>
 
-EM_JS_DEPS(deps, "$UTF8ToString,$stringToUTF8,$AsciiToString,$stringToAscii");
+EM_JS_DEPS(deps, "$UTF8ToString,$stringToUTF8,$lengthBytesUTF8,$AsciiToString,$stringToAscii");
 
 // This code tests that Unicode std::wstrings can be marshalled between C++ and JS.
 int main() {
@@ -80,6 +80,17 @@ int main() {
     if (numBytesWritten != 0) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 0);
   assert(utf8String2[0] == 'X');
+
+  // Lone surrogates (https://github.com/emscripten-core/emscripten/issues/28008)
+  EM_ASM({
+    for (var str of ["\\uD800", "ty\\uD800", "\\uD800\\u00E9", "\\uD800\\u20AC", "\\uDC00", "x\\uD800y", "\\uD83D\\uDE00"]) {
+      var expectedLen = lengthBytesUTF8(str);
+      var numBytesWritten = stringToUTF8(str, $0, $1);
+      if (numBytesWritten != expectedLen) {
+        throw 'lengthBytesUTF8 (' + expectedLen + ') != stringToUTF8 (' + numBytesWritten + ')';
+      }
+    }
+  }, utf8String2, 128);
 
   printf("done\n");
 }
