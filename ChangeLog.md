@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.13 (in development)
 -----------------------
+- Removed broken caching of client-side vertex arrays with `LEGACY_GL_EMULATION`,
+  since there is no sound way to detect if the cached data might have gotten
+  modified by the user between draws. (#27945)
 - Support for windows .bat/.ps1 launcher files was completely removed.  These
   days we use a native windows launcher program. (#27359)
 - `MEMORY64=2` was marked as deprecated. (#27952)
