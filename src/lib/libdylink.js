@@ -268,7 +268,7 @@ var LibraryDylink = {
   // Applies relocations to exported things.
   $relocateExports__internal: true,
   $relocateExports__docs: '/** @param {Set<string>=} mutableGlobals */',
-  $relocateExports: (exports, memoryBase = 0, mutableGlobals) => {
+  $relocateExports: (exports, memoryBase, mutableGlobals) => {
 #if DYLINK_DEBUG
     dbg(`relocateExports memoryBase=${memoryBase} count=${Object.keys(exports).length}`);
 #endif
