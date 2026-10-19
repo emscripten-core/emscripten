@@ -773,7 +773,7 @@ var LibrarySDL = {
           unpressAllPressedKeys();
           event.preventDefault();
           break;
-        case 'unload':
+        case 'pagehide':
           if (MainLoop.runner) {
             SDL.events.push(event);
             // Force-run a main event loop, since otherwise this event will never be caught!
@@ -1001,7 +1001,7 @@ var LibrarySDL = {
           }
           break;
         }
-        case 'unload': {
+        case 'pagehide': {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           break;
         }
@@ -1337,7 +1337,7 @@ var LibrarySDL = {
       document.addEventListener('visibilitychange', SDL.receiveEvent);
     }
 
-    window.addEventListener('unload', SDL.receiveEvent);
+    window.addEventListener('pagehide', SDL.receiveEvent);
     SDL.keyboardState = _calloc(0x10000, 1); // Our SDL needs 512, but 64K is safe for older SDLs
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown']    = {{{ cDefs.SDL_KEYDOWN }}};
@@ -1350,7 +1350,7 @@ var LibrarySDL = {
     SDL.DOMEventToSDLEvent['touchstart'] = {{{ cDefs.SDL_FINGERDOWN }}};
     SDL.DOMEventToSDLEvent['touchend']   = {{{ cDefs.SDL_FINGERUP }}};
     SDL.DOMEventToSDLEvent['touchmove']  = {{{ cDefs.SDL_FINGERMOTION }}};
-    SDL.DOMEventToSDLEvent['unload']     = {{{ cDefs.SDL_QUIT }}};
+    SDL.DOMEventToSDLEvent['pagehide']   = {{{ cDefs.SDL_QUIT }}};
     SDL.DOMEventToSDLEvent['resize']     = {{{ cDefs.SDL_VIDEORESIZE }}};
     SDL.DOMEventToSDLEvent['visibilitychange'] = {{{ cDefs.SDL_WINDOWEVENT }}};
     SDL.DOMEventToSDLEvent['focus']      = {{{ cDefs.SDL_WINDOWEVENT }}};
