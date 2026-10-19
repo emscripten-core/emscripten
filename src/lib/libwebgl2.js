@@ -8,13 +8,13 @@ var LibraryWebGL2 = {
   glGetStringi__deps: ['$webglGetExtensions', '$stringToNewUTF8'],
   glGetStringi: (name, index) => {
     if (GL.currentContext.version < 2) {
-      GL.recordError(0x502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
+      GL.recordError({{{ cDefs.GL_INVALID_OPERATION }}}); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
       return 0;
     }
     var stringiCache = GL.stringiCache[name];
     if (stringiCache) {
       if (index < 0 || index >= stringiCache.length) {
-        GL.recordError(0x501/*GL_INVALID_VALUE*/);
+        GL.recordError({{{ cDefs.GL_INVALID_VALUE }}});
 #if GL_ASSERTIONS
         err(`GL_INVALID_VALUE in glGetStringi: index out of range (${index})!`);
 #endif
@@ -23,11 +23,11 @@ var LibraryWebGL2 = {
       return stringiCache[index];
     }
     switch (name) {
-      case 0x1F03 /* GL_EXTENSIONS */:
+      case {{{ cDefs.GL_EXTENSIONS }}}:
         var exts = webglGetExtensions().map(stringToNewUTF8);
         stringiCache = GL.stringiCache[name] = exts;
         if (index < 0 || index >= stringiCache.length) {
-          GL.recordError(0x501/*GL_INVALID_VALUE*/);
+          GL.recordError({{{ cDefs.GL_INVALID_VALUE }}});
 #if GL_ASSERTIONS
           err(`GL_INVALID_VALUE in glGetStringi: index out of range (${index}) in a call to GL_EXTENSIONS!`);
 #endif
@@ -35,7 +35,7 @@ var LibraryWebGL2 = {
         }
         return stringiCache[index];
       default:
-        GL.recordError(0x500/*GL_INVALID_ENUM*/);
+        GL.recordError({{{ cDefs.GL_INVALID_ENUM }}});
 #if GL_ASSERTIONS
         err(`GL_INVALID_ENUM in glGetStringi: Unknown parameter ${name}!`);
 #endif
@@ -588,7 +588,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetActiveUniformBlockiv(program=${program}, uniformBlockIndex=${uniformBlockIndex}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError({{{ cDefs.GL_INVALID_VALUE }}});
       return;
     }
 #endif
@@ -597,7 +597,7 @@ var LibraryWebGL2 = {
 #endif
     program = GL.programs[program];
 
-    if (pname == 0x8A41 /* GL_UNIFORM_BLOCK_NAME_LENGTH */) {
+    if (pname == {{{ cDefs.GL_UNIFORM_BLOCK_NAME_LENGTH }}}) {
       var name = GLctx.getActiveUniformBlockName(program, uniformBlockIndex);
       {{{ makeSetValue('params', 0, 'name.length+1', 'i32') }}};
       return;
@@ -605,7 +605,7 @@ var LibraryWebGL2 = {
 
     var result = GLctx.getActiveUniformBlockParameter(program, uniformBlockIndex, pname);
     if (result === null) return; // If an error occurs, nothing should be written to params.
-    if (pname == 0x8A43 /*GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES*/) {
+    if (pname == {{{ cDefs.GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES }}}) {
       for (var i = 0; i < result.length; i++) {
         {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
       }
