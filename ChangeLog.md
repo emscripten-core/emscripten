@@ -28,7 +28,7 @@ See docs/process.md for more on how version tagging works.
 - libpng port updated from 1.6.58 to 1.6.59. (#27956)
 - compiler-rt was updated to LLVM 23.1.3. This restores `-fcoverage-mapping`
   compatibility with the LLVM toolchain, so coverage-enabled programs no
-  longer trap while writing profile data. (#27223)
+  longer trap while writing profile data. (#27808)
 
 6.0.12 - 10/08/26
 -----------------
