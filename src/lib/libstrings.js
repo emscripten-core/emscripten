@@ -160,11 +160,11 @@ addToLibrary({
 
     var startIdx = outIdx;
     var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
-    for (var i = 0; i < str.length; ++i) {
+    for (var ch of str) {
       // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description
       // and https://www.ietf.org/rfc/rfc2279.txt
       // and https://tools.ietf.org/html/rfc3629
-      var u = str.codePointAt(i);
+      var u = ch.codePointAt(0);
       if (u <= 0x7F) {
         if (outIdx >= endIdx) break;
         heap[outIdx++] = u;
@@ -186,9 +186,6 @@ addToLibrary({
         heap[outIdx++] = 0x80 | ((u >> 12) & 63);
         heap[outIdx++] = 0x80 | ((u >> 6) & 63);
         heap[outIdx++] = 0x80 | (u & 63);
-        // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
-        // We need to manually skip over the second code unit for correct iteration.
-        i++;
       }
     }
     // Null-terminate the pointer to the buffer.
@@ -221,20 +218,9 @@ addToLibrary({
    */
   $lengthBytesUTF8: (str) => {
     var len = 0;
-    for (var i = 0; i < str.length; ++i) {
-      var u = str.codePointAt(i);
-      if (u <= 0x7F) {
-        len++;
-      } else if (u <= 0x7FF) {
-        len += 2;
-      } else if (u <= 0xFFFF) {
-        len += 3;
-      } else {
-        len += 4;
-        // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
-        // We need to manually skip over the second code unit for correct iteration.
-        i++;
-      }
+    for (var ch of str) {
+      var u = ch.codePointAt(0);
+      len += u <= 0x7F ? 1 : u <= 0x7FF ? 2 : u <= 0xFFFF ? 3 : 4;
     }
     return len;
   },

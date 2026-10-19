@@ -713,20 +713,9 @@ var FS_createPreloadedFile = (parent, name, url, canRead = undefined, canWrite =
 
 var lengthBytesUTF8 = str => {
   var len = 0;
-  for (var i = 0; i < str.length; ++i) {
-    var u = str.codePointAt(i);
-    if (u <= 127) {
-      len++;
-    } else if (u <= 2047) {
-      len += 2;
-    } else if (u <= 65535) {
-      len += 3;
-    } else {
-      len += 4;
-      // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
-      // We need to manually skip over the second code unit for correct iteration.
-      i++;
-    }
+  for (var ch of str) {
+    var u = ch.codePointAt(0);
+    len += u <= 127 ? 1 : u <= 2047 ? 2 : u <= 65535 ? 3 : 4;
   }
   return len;
 };
@@ -738,11 +727,11 @@ var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
   var startIdx = outIdx;
   var endIdx = outIdx + maxBytesToWrite - 1;
   // -1 for string null terminator.
-  for (var i = 0; i < str.length; ++i) {
+  for (var ch of str) {
     // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description
     // and https://www.ietf.org/rfc/rfc2279.txt
     // and https://tools.ietf.org/html/rfc3629
-    var u = str.codePointAt(i);
+    var u = ch.codePointAt(0);
     if (u <= 127) {
       if (outIdx >= endIdx) break;
       heap[outIdx++] = u;
@@ -761,9 +750,6 @@ var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
       heap[outIdx++] = 128 | ((u >> 12) & 63);
       heap[outIdx++] = 128 | ((u >> 6) & 63);
       heap[outIdx++] = 128 | (u & 63);
-      // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
-      // We need to manually skip over the second code unit for correct iteration.
-      i++;
     }
   }
   // Null-terminate the pointer to the buffer.
