@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- mimalloc was updated to 3.5.3. (#28026)
 
 6.0.13 - 10/19/26
 -----------------
