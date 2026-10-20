@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- libunwind and compiler-rt were updated to LLVM 23.1.3. (#28011, #28014)
 - mimalloc was updated to 3.5.3. (#28026)
 
 6.0.13 - 10/19/26
@@ -30,7 +31,6 @@ See docs/process.md for more on how version tagging works.
 - The undocumented `FS.filesystems` object was removed. Replace things like
   `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
 - libpng port updated from 1.6.58 to 1.6.59. (#27956)
-- compiler-rt was updated to LLVM 23.1.3. (#28011)
 
 6.0.12 - 10/08/26
 -----------------
