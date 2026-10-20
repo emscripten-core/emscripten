@@ -31,6 +31,10 @@ See docs/process.md for more on how version tagging works.
   `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
 - libpng port updated from 1.6.58 to 1.6.59. (#27956)
 - compiler-rt was updated to LLVM 23.1.3. (#28011)
+- Added `emscripten_dns_lookup_promise` and `emscripten_dns_lookup_callback`,
+  asynchronous variants of `getaddrinfo` completing through an `em_promise_t`
+  or a callback, so a real DNS lookup under `-sNODERAWSOCKETS` can be awaited
+  without blocking from any stack.
 
 6.0.12 - 10/08/26
 -----------------
