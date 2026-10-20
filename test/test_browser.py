@@ -5301,10 +5301,9 @@ Module["preRun"] = () => {
   @no_firefox('no OPFS support yet')
   @no_safari('no support for the mode option of createSyncAccessHandle')
   def test_wasmfs_opfs_shared(self):
-    test = test_file('wasmfs/wasmfs_opfs_errors.c')
     postjs = test_file('wasmfs/wasmfs_opfs_shared_post.js')
     args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '--post-js', postjs]
-    self.btest(test, cflags=args, expected='0')
+    self.btest_exit('wasmfs/wasmfs_opfs_errors.c', cflags=args)
 
   def test_wasmfs_multi_environment(self):
     # Test that WasmFS's Node backend can be enabled conditionally, allowing
