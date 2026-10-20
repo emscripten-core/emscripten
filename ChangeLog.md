@@ -329,7 +329,7 @@ See docs/process.md for more on how version tagging works.
   ~500 bytes (in the same way that declaring ~500 bytes of TLS data would).
   (#26757)
 - The filesystem opteration that create new files now honor the global umask,
-  which defaults for 0o222 and can be updated by calling `umask()`. (#26763)
+  which defaults to 0o222 and can be updated by calling `umask()`. (#26763)
 
 5.0.6 - 04/14/26
 ----------------
