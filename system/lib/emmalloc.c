@@ -49,6 +49,7 @@
  */
 
 #include <errno.h>
+#include <limits.h>
 #include <stdalign.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -91,17 +92,23 @@ static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 
 // Dynamic memory is subdivided into regions, in the format
 
-// <size:uint32_t> ..... <size:uint32_t> | <size:uint32_t> ..... <size:uint32_t> | <size:uint32_t> ..... <size:uint32_t> | .....
+// <size:size_t> ..... <size:size_t> | <size:size_t> ..... <size:size_t> | <size:size_t> ..... <size:size_t> | .....
 
 // That is, at the bottom and top end of each memory region, the size of that region is stored. That allows traversing the
 // memory regions backwards and forwards. Because each allocation must be at least a multiple of 4 bytes, the lowest two bits of
 // each size field is unused. Free regions are distinguished from used regions by having the FREE_REGION_FLAG bit present
 // in the size field. I.e. for free regions, the size field is odd, and for used regions, the size field reads even.
-#define FREE_REGION_FLAG 0x1u
+#define FREE_REGION_FLAG ((size_t)1)
 
 // Attempts to malloc() more than this many bytes would cause an overflow when calculating the size of a region,
 // therefore allocations larger than this are short-circuited immediately on entry.
-#define MAX_ALLOC_SIZE 0xFFFFFFC7u
+#ifdef __wasm64__
+// On wasm64, cap at SSIZE_MAX so the size passed to _sbrk64(int64_t) never overflows to a negative value.
+#define MAX_ALLOC_SIZE ((size_t)SSIZE_MAX - sizeof(Region) * 3 - MALLOC_ALIGNMENT)
+#else
+// On wasm32, allocations > 2 GiB (up to 4 GiB) are supported because 32-bit size_t is still positive in int64_t.
+#define MAX_ALLOC_SIZE (SIZE_MAX - sizeof(Region) * 3 - MALLOC_ALIGNMENT)
+#endif
 
 // A free region has the following structure:
 // <size:size_t> <prevptr> <nextptr> ... <size:size_t>
@@ -119,7 +126,7 @@ typedef struct Region {
 // list of all RootRegions in the program, starting with `listOfAllRegions`
 // below.
 typedef struct RootRegion {
-  uint32_t size;
+  size_t size;
   struct RootRegion *next;
   uint8_t* endPtr;
 } RootRegion;
@@ -139,9 +146,9 @@ static volatile uint8_t multithreadingLock = 0;
 #endif
 
 #define IS_POWER_OF_2(val) (((val) & ((val)-1)) == 0)
-#define ALIGN_UP(ptr, alignment) ((uint8_t*)((((uintptr_t)(ptr)) + ((alignment)-1)) & ~((alignment)-1)))
-#define ALIGN_DOWN(ptr, alignment) ((uint8_t*)(((uintptr_t)(ptr)) & ~((alignment)-1)))
-#define HAS_ALIGNMENT(ptr, alignment) ((((uintptr_t)(ptr)) & ((alignment)-1)) == 0)
+#define ALIGN_UP(ptr, alignment) ((uint8_t*)((((uintptr_t)(ptr)) + ((alignment)-1)) & ~((uintptr_t)(alignment)-1)))
+#define ALIGN_DOWN(ptr, alignment) ((uint8_t*)(((uintptr_t)(ptr)) & ~((uintptr_t)(alignment)-1)))
+#define HAS_ALIGNMENT(ptr, alignment) ((((uintptr_t)(ptr)) & ((uintptr_t)(alignment)-1)) == 0)
 
 static_assert(IS_POWER_OF_2(MALLOC_ALIGNMENT), "MALLOC_ALIGNMENT must be a power of two value!");
 static_assert(MALLOC_ALIGNMENT >= 4, "Smallest possible MALLOC_ALIGNMENT if 4!");
@@ -244,11 +251,12 @@ an allocation size to the bucket index that should be looked at. The buckets are
 static_assert(NUM_FREE_BUCKETS == 64, "Following function is tailored specifically for NUM_FREE_BUCKETS == 64 case");
 static int compute_free_list_bucket(size_t allocSize) {
   if (allocSize < 128) return (allocSize >> 3) - 1;
+  if (allocSize >= (1 << 27)) return NUM_FREE_BUCKETS - 1;
   int clz = __builtin_clz(allocSize);
   int bucketIndex =
     (clz > 19)
-      ?     110 - (clz<<2) + ((allocSize >> (29-clz)) ^ 4)
-      : MIN( 71 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2), NUM_FREE_BUCKETS-1);
+      ? 110 - (clz<<2) + ((allocSize >> (29-clz)) ^ 4)
+      :  71 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2);
 
   assert(bucketIndex >= 0);
   assert(bucketIndex < NUM_FREE_BUCKETS);
@@ -588,7 +596,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   uint8_t *payloadEndPtr = region_payload_end_ptr(freeRegion);
 
   // Do we have enough free space, taking into account alignment?
-  if (payloadStartPtrAligned + size > payloadEndPtr) {
+  if (payloadStartPtrAligned > payloadEndPtr || (size_t)(payloadEndPtr - payloadStartPtrAligned) < size) {
     return NULL;
   }
 
@@ -1406,7 +1414,9 @@ size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemoryS
          freeRegion = freeRegion->next) {
       ++numFreeMemoryRegions;
       size_t freeDynamicMemory = freeRegion->size - REGION_HEADER_SIZE;
-      if (freeDynamicMemory > 0) {
+      if (freeDynamicMemory >= (1ull << 31)) {
+        ++freeMemorySizeMap[31];
+      } else if (freeDynamicMemory > 0) {
         ++freeMemorySizeMap[31-__builtin_clz(freeDynamicMemory)];
       } else {
         ++freeMemorySizeMap[0];
