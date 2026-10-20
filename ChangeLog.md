@@ -21,6 +21,7 @@ See docs/process.md for more on how version tagging works.
 6.0.14 (in development)
 -----------------------
 - libunwind and compiler-rt were updated to LLVM 23.1.3. (#28011, #28014)
+- mimalloc was updated to 3.5.3. (#28026)
 
 6.0.13 - 10/19/26
 -----------------
@@ -122,7 +123,7 @@ See docs/process.md for more on how version tagging works.
   `__cpp_exception` tag) independently of C++ linking, so Wasm EH objects from
   non-C++ frontends (e.g. rustc, which links via `emcc`) link without
   requiring `em++` or `-sDEFAULT_TO_CXX`. (#27496)
-- FreeType was updated to 2.14.3 (#27518)
+- FreeType was updated to 2.14.3 (#27526)
 - The oldest supported Safari version (`MIN_SAFARI_VERSION`) was raised from
   14.1 to 15.0, making 15.0 the minimum version that can be targeted. This
   allows assuming `bulk-memory`, `nontrapping-fptoint`, and `WASM_BIGINT`
@@ -329,7 +330,7 @@ See docs/process.md for more on how version tagging works.
   ~500 bytes (in the same way that declaring ~500 bytes of TLS data would).
   (#26757)
 - The filesystem opteration that create new files now honor the global umask,
-  which defaults for 0o222 and can be updated by calling `umask()`. (#50739)
+  which defaults to 0o222 and can be updated by calling `umask()`. (#26763)
 
 5.0.6 - 04/14/26
 ----------------
@@ -435,7 +436,8 @@ See docs/process.md for more on how version tagging works.
   rather then EAGAIN.  (#26105)
 - A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
   JavaScript and makes it executable.  This setting defaults to true when the
-  output filename has no extension, or ends in `.out` (e.g. `a.out`) (#26085)
+  output filename has no extension, or ends in `.out` (e.g. `a.out`) (#26085,
+  #26088)
 - Embind now supports the JS iterable protocol on bound classes via
   `class_<T>::iterable()`. `register_vector` uses this so bound `std::vector`
   works with `for...of`/`Array.from()`/spread. (#25993)
@@ -620,7 +622,7 @@ See docs/process.md for more on how version tagging works.
   ignored. (#24849)
 - emcc will now error if `MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION` or
   `MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION` are used with `SINGLE_FILE`.
-  These are fundamentally incompatible but were previously ignored. (#24849)
+  These are fundamentally incompatible but were previously ignored. (#24859)
 - `--export-es6` flag was added to `file_packager.py` available when run 
   standalone, to enable ES6 imports of generated JavaScript code (#24737)
 
@@ -721,7 +723,7 @@ See docs/process.md for more on how version tagging works.
   `count_emval_handles`) and from `libbrowser.py` (`requestFullscreen`,
   `requestFullScreen`, `createContext`, `getUserMedia`, `setCanvasSize`) are no
   longer exported by default. They can be exported using
-  `-sEXPORTED_RUNTIME_METHODS=requestFullscreen`, for example. (#24223, #24269)
+  `-sEXPORTED_RUNTIME_METHODS=requestFullscreen`, for example. (#24259, #24269)
 - Embind: fixed support for unsigned 64-bit integers, which were previously
   returned to JavaScript as their signed counterparts. (#24285)
 - Added handing for 64-bit integer access to AddressSanitizer, `-sSAFE_HEAP` and
@@ -1083,7 +1085,7 @@ See docs/process.md for more on how version tagging works.
 -----------------
 - Fix the location of the dummy `.worker.js` file that is now generated as part
   of pthread builds so that is generated alongside the main JavaScript file.
-  See #21701. ()
+  See #21701. (#21830)
 - `-sASYNCIFY=2` is setting now deprecated, use `-sJSPI` instead. (#21824)
 
 3.1.58 - 04/23/24
@@ -1179,7 +1181,7 @@ See docs/process.md for more on how version tagging works.
   now zero.  This allows `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` to hold a pointer
   to memory even in 2GB+ mode.  Since `emscripten_webgl_create_context` never
   returns anything except zero for its errors today this change should not
-  require any action. (#21268)
+  require any action. (#21281)
 - Added `--use-port` option to `emcc`.  This option allows ports to be enabled
   by name and is designed to replace all existing `-sUSE_XXX` settings for
   ports. You can use `--show-ports` to get the list of available ports that
@@ -1254,7 +1256,7 @@ See docs/process.md for more on how version tagging works.
 -----------------
 - Support for explicitly targeting the legacy Internet Explorer or EdgeHTML
   (edge version prior to the chromium-based edge) browsers via
-  `-sMIN_EDGE_VERSION/-sMIN_IE_VERSION` was removed. (#20881)
+  `-sMIN_EDGE_VERSION/-sMIN_IE_VERSION` was removed. (#20881, #20887)
 - Emscripten is now more strict about handling unsupported shared library
   inputs.  For example, under the old behaviour if a system shared library
   such as `/usr/lib/libz.so` was passed to emscripten it would silently re-write
@@ -1462,7 +1464,7 @@ See docs/process.md for more on how version tagging works.
   address zero that is normally done when `STACK_OVERFLOW_CHECK` is enabled.
   (#19487)
 - compiler-rt updated to LLVM 16. (#19506)
-- libcxx and libcxxabi updated to LLVM 16. (#)
+- libcxx and libcxxabi updated to LLVM 16. (#19515)
 
 3.1.40 - 05/30/23
 -----------------
@@ -1530,7 +1532,7 @@ See docs/process.md for more on how version tagging works.
   IDBFS filesystem for folks that want persistence. (#19049)
 - `allocateUTF8` and `allocateUTF8OnStack` library function moved to
   `library_legacy.js`.  Prefer the more accurately named `stringToNewUTF8` and
-  `stringToUTF8OnStack`. (#19089)
+  `stringToUTF8OnStack`. (#19089, #19092)
 - `SDL_image` port was updated to version 2.6.0.
 - `-z` arguments are now passed directly to wasm-ld without the need for the
   `-Wl,` prefix.  This matches the behaviour of both clang and gcc. (#18956)
@@ -1662,7 +1664,7 @@ See docs/process.md for more on how version tagging works.
 - Emscripten will now search your PATH for binaryen, llvm, and node if the
   corresponding config file settings (`BINARYEN_ROOT`, `LLVM_ROOT`, `NODE_JS`)
   are not set.  Allows emscripten to run with an empty config file given the
-  right tools in the PATH. (#18289)
+  right tools in the PATH. (#18289, #18344)
 
 3.1.27 - 11/29/22
 -----------------
@@ -1928,7 +1930,7 @@ See docs/process.md for more on how version tagging works.
 - Fix crash, introduced in 3.1.11, which occurred when using pointer types
   (types ending in `*`) with getValue/setValue library functions. (#17028)
 - Fix possible deadlock in multi-threaded builds that use EXIT_RUNTIME=0 with
-  ASSERTIONS enabled. This was introduced in 3.1.3 as part of #16130. (#17044)
+  ASSERTIONS enabled. This was introduced in 3.1.3 as part of #16130. (#17046)
 
 3.1.11 - 05/21/2022
 -------------------
@@ -3155,7 +3157,7 @@ v1.39.5: 12/20/2019
   Note that going forward, we will use these settings in more places, so if
   you do need very old legacy browser support, you may need to set either
   `LEGACY_VM_SUPPORT` or the fine-grained options. For more details see #9937
-- Default `DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR` to 1. See #9895.
+- Default `DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR` to 1. (#9946)
   With this change the old deprecated HTML5 API event target lookup behavior is
   disabled. There is no "Module.canvas" object, no magic "null" default handling,
   and DOM element 'target' parameters are taken to refer to CSS selectors, instead
@@ -3402,7 +3404,7 @@ v1.38.32: SKIPPED
 v1.38.31: 04/24/2019
 --------------------
  - Change `ino_t/off_t` to 64-bits. (#8467)
- - Add port for bzip2 library (`libbz2.a`). (#8349)
+ - Add port for bzip2 library (`libbz2.a`). (#8353)
  - Add port for libjpeg library. (#8361)
  - Enable `ERROR_ON_MISSING_LIBRARIES` by default (#8461)
 
@@ -3507,7 +3509,7 @@ v1.38.16: 11/02/2018
    you can manually enable EXPORT_ALL yourself (which returns to the exact
    same behavior as before). This change brings us in line with more standard
    dynamic linking, and will match what the LLVM wasm backend will have.
-   See #7312.
+   (#7371)
  - Invalid -s flags on the command line are now treated as errors.
  - Remove BUILD_AS_SHARED_LIBRARY setting.
 
@@ -3959,7 +3961,7 @@ v1.36.12: 10/20/2016
  - Improved WebGL support with closure compiler (#4619)
  - Improved Binaryen WebAssembly support
  - Added support for GL_disjoint_timer_query extension (#4575)
- - Improved Emscripten compiler detection with CMake (#4129, #4314, #4318)
+ - Improved Emscripten compiler detection with CMake (#4129, #4134, #4571)
  - Added support for int64 in wasm.
  - Optimize small constant length memcpys in wasm.
  - Full list of changes:
@@ -4126,7 +4128,7 @@ v1.36.2: 4/22/2016
  - Optimize Emscripten for large asm.js projects.
  - Added sdl2_net to Emscripten ports.
  - Updated to latest version of the SIMD polyfill (#4165)
- - Fixed an issue with missing texture formats support in GLES 3 (#4176)
+ - Fixed an issue with missing texture formats support in GLES 3 (#4169)
  - Added a new WebAssembly linker option -s BINARYEN_IMPRECISE=1 (default=0)
    which mutes potential traps from WebAssembly int div/rem by zero and
    float-to-int conversions.
@@ -4747,7 +4749,7 @@ v1.32.3: 5/15/2015
  - Improved dynamic linking support.
  - Added new option to file_packager.py to store metadata externally.
  - Improved CMake support with CMAKE_CROSSCOMPILING_EMULATOR (#3447).
- - Added support for `sysconf(_SC_PHYS_PAGES)` (#3405, 3442).
+ - Added support for `sysconf(_SC_PHYS_PAGES)` (#3405, #3442).
  - Full list of changes:
     - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.32.2...1.32.3
     - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.32.2...1.32.3
@@ -4840,7 +4842,7 @@ v1.30.6: 4/14/2015
 ------------------
  - Removed support for the deprecated jcache functionality (#3313).
  - Added support to emscripten_GetProcAddress() to fetch symbols with the ANGLE
-   suffix (#3304, #3315).
+   suffix (#3304, #3316).
  - Added immintrin.h header file to include all SSE support.
  - Added an async option to ccall (#3307).
  - Stopped from using 0 as a valid source ID for OpenAL (#3303).
@@ -5303,7 +5305,7 @@ v1.25.0: 9/30/2014
 
 v1.24.1: 9/27/2014
 ------------------
- - Fixed issues with the tmpnam and tmpfile functions (#2797, 2798)
+ - Fixed issues with the tmpnam and tmpfile functions (#2797, #2798)
  - Fixed CMake package find code to not search any system directories, because
    Emscripten is a cross-compiler.
  - Improved support for the proposed solution for heap resizing.
@@ -5480,7 +5482,7 @@ v1.22.2: 8/19/2014
  - Optimized the size of intermediate generated .o files by omitting LLVM debug
    info from them when not needed. (#2657)
  - Fixed WebSocket connection URLs to allow a port number in them, e.g.
-   "server:port/addr" (2610)
+   "server:port/addr" (#2610)
  - Added support for void* to the WebIDL binder, via the identifier VoidPtr.
  - Optimize emcc to not copy bitcode files around redundantly.
  - Fix stat() to correctly return ENOTDIR when expected (#2669).
@@ -6165,7 +6167,7 @@ v1.10.0: 1/29/2014
  - Improved OpenAL library support.
  - Fixed an issue where loading side modules could try to allocate from sealed
    heap (#2060).
- - Fixed safe heap issues (2068).
+ - Fixed safe heap issues (#2068).
  - Added new EM_ASM variants that return a value but do not receive any inputs
    (#2070).
  - Add support for simultaneously using setjmp and C++ exceptions in fastcomp.
@@ -6484,7 +6486,7 @@ v1.6.4: 9/30/2013
  - Improved compilation times at link stage.
  - Added support for new "NODEFS" filesystem that directly accesses files on the
    native filesystem. Only usable with node.js when compiling to JS.
- - Added support for new IDBFS filesystem for accessing files in IndexedDB storage (#1601.
+ - Added support for new IDBFS filesystem for accessing files in IndexedDB storage (#1601).
  - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.6.3...1.6.4
 
 v1.6.3: 9/26/2013

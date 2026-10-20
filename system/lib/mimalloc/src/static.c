@@ -30,15 +30,17 @@ terms of the MIT license. A copy of the license can be found in the file
 #include "libc.c"
 #include "options.c"
 #include "os.c"
-#include "page.c"           // includes page-queue.c
-#include "page-map.c"
-#include "random.c"
-#include "stats.c"
-#include "subproc.c"
-#include "theap.c"
-#include "threadlocal.c"
-#include "prim/prim.c"
+#include "prim/prim.c"      // includes platform specific prim/<platform>/prim.c
 #include "prim/prim-tls.c"
 #if MI_OSX_ZONE
 #include "prim/osx/alloc-override-zone.c"
 #endif
+#include "page.c"           // includes page-queue.c
+#include "page-map.c"
+#include "random.c"
+#include "sample-guarded.c"
+#include "sample-profile.c"
+#include "stats.c"
+#include "subproc.c"
+#include "theap.c"
+#include "threadlocal.c"

@@ -133,7 +133,7 @@ defined, undefined, or not accessible at all:
 #endif
 
 
-#if MI_PADDING
+#if MI_PADDING_CHECK_BYTES && !MI_GUARDED
 #define mi_track_malloc(p,reqsize,zero) \
   do { if ((p)!=NULL) { \
     mi_assert_internal(mi_usable_size(p)==(reqsize)); \
