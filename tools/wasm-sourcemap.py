@@ -554,8 +554,8 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
     # line 0 means no source location; end the previous mapping with a
     # segment that has no source so it does not extend over this code
     if line == 0:
-      address = entry['address'] + code_section_offset
       if mappings and not last_was_unmapped:
+        address = entry['address'] + code_section_offset
         mappings.append(encode_vlq(address - last_address))
         last_address = address
         last_was_unmapped = True
