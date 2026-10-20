@@ -180,6 +180,8 @@ int main(int argc, char* argv[]) {
 
   err = stat("/opfs/working/foo.txt", &stat_buf);
   assert(err == 0);
+  // Shared access handles truncate the file when O_RDONLY | O_TRUNC is used,
+  // as Linux does. Blobs cannot be truncated, so the truncation is skipped.
 #ifdef WASMFS_OPFS_SHARED_ACCESS
   assert(stat_buf.st_size == 0);
   emscripten_console_log("statted after successful truncation");
