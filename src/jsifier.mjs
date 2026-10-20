@@ -414,6 +414,7 @@ const PROXY_SYNC_ASYNC = 2;
 
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
+  const libraryAliases = [];
   const symbolDeps = {};
   const asyncFuncs = [];
   let postSets = [];
@@ -728,11 +729,12 @@ function(${args}) {
         }
       }
 
+      let aliasTarget;
       if (LibraryManager.isAlias(snippet)) {
         // Redirection for aliases. We include the parent, and at runtime
         // make ourselves equal to it.  This avoid having duplicate
         // functions with identical content.
-        const aliasTarget = snippet;
+        aliasTarget = snippet;
         if (WASM_EXPORTS.has(aliasTarget)) {
           debugLog(`native alias: ${mangled} -> ${aliasTarget}`);
           nativeAliases[mangled] = aliasTarget;
@@ -884,6 +886,15 @@ function(${args}) {
             .filter((x) => x != '')
             .join('\n') + '\n'
         : '';
+      // Defer direct JS value aliases (`var _alias = _target;`) to `libraryAliases`
+      // so the target symbol is guaranteed to be defined first. Skip native
+      // aliases (which emit no code here) and signature-mismatch aliases (where
+      // `isFunction` is set because they are emitted as forwarding wrapper
+      // functions rather than immediate value assignments).
+      if (aliasTarget && !isNativeAlias && !isFunction) {
+        libraryAliases.push(commentText + contentText);
+        return depsText.trim();
+      }
       return depsText + commentText + contentText;
     }
 
@@ -928,7 +939,7 @@ function(${args}) {
     includeSystemFile(preFile);
 
     writeOutput('// Begin JS library code\n');
-    for (const item of libraryItems.concat(postSets)) {
+    for (const item of [...libraryItems, ...libraryAliases, ...postSets]) {
       writeOutput(indentify(item ?? '', 2));
     }
     writeOutput('// End JS library code\n');
