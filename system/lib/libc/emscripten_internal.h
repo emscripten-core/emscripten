@@ -102,6 +102,14 @@ int _setitimer_js(int which, double timeout);
 // the time of the call.
 void _emscripten_dlsync_threads();
 
+// A pollable fd for a pending result, created and settled on the main thread
+// (see $proxyFdCreate / $proxyFdSettle): creation writes the fd and returns
+// the handle that settles it, which stays valid however the fd is closed or
+// its number reused meanwhile. Used by emscripten_proxy_fd_with_ctx.
+// TODO: these could serve any task, not only proxied ones, if made public.
+int _emscripten_proxy_fd_create(int* fd);
+void _emscripten_proxy_fd_settle(int handle, intptr_t value, bool success);
+
 #ifdef _GNU_SOURCE
 void __call_sighandler(sighandler_t handler, int sig);
 #endif
