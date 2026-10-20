@@ -5283,9 +5283,10 @@ Module["preRun"] = () => {
       self.require_jspi()
     test = test_file('wasmfs/wasmfs_opfs.c')
     args = ['-sWASMFS', '-O3'] + args
-    # Chrome 121+ supports the `mode` option of createSyncAccessHandle, so
-    # read-only opens in pthreads builds use shared access handles instead of blobs.
-    if '-pthread' in args and is_chrome() and get_chrome_version() >= 121:
+    # Read-only opens in pthreads builds use shared access handles, except on Chrome before 121,
+    # which lacks the `mode` option of createSyncAccessHandle and falls back to blobs.
+    is_old_chrome = is_chrome() and get_chrome_version() < 121
+    if '-pthread' in args and not is_old_chrome:
       args.append('-DWASMFS_OPFS_SHARED_ACCESS')
     self.btest_exit(test, cflags=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, cflags=args + ['-DWASMFS_RESUME'])
