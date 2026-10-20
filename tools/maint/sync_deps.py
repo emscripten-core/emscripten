@@ -15,6 +15,7 @@ want to keep them in sync with the versions implied by test/emsdk_version.txt.
 
 import argparse
 import base64
+import json
 import os
 import re
 import subprocess
@@ -42,13 +43,34 @@ def get_emsdk_version(emsdk_version_file=None):
   return utils.read_file(emsdk_version_file).strip()
 
 
-def fetch_deps(emsdk_hash):
+def is_tagged_release(emsdk_hash):
   url = (
       'https://chromium.googlesource.com/emscripten-releases/+/'
-      f'{emsdk_hash}/DEPS?format=TEXT'
+      f'{emsdk_hash}?format=JSON'
   )
   if VERBOSE:
-    print(f'Fetching DEPS file from {url}...')
+    print(f'Fetching commit info from {url}...')
+  with urllib.request.urlopen(url) as response:
+    data = response.read().decode('utf-8')
+  if data.startswith(")]}'"):
+    data = data[4:]
+  info = json.loads(data)
+  return any(
+      d.get('new_path') == 'DEPS.tagged-release'
+      for d in info.get('tree_diff', [])
+  )
+
+
+def fetch_deps(emsdk_hash):
+  deps_file = 'DEPS'
+  if is_tagged_release(emsdk_hash):
+    deps_file = 'DEPS.tagged-release'
+  url = (
+      'https://chromium.googlesource.com/emscripten-releases/+/'
+      f'{emsdk_hash}/{deps_file}?format=TEXT'
+  )
+  if VERBOSE:
+    print(f'Fetching {deps_file} file from {url}...')
   with urllib.request.urlopen(url) as response:
     return base64.b64decode(response.read()).decode('utf-8')
 
