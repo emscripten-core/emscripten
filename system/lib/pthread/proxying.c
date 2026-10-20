@@ -627,6 +627,9 @@ typedef struct proxied_js_func_t {
   double* argBuffer;
   double result;
   bool owned;
+  // Whether the result fulfilled (rather than rejected) the function's
+  // Promise, when run with a context.
+  bool fulfilled;
 } proxied_js_func_t;
 
 static void run_js_func(void* arg) {
@@ -644,15 +647,15 @@ static void run_js_func_with_ctx(em_proxying_ctx* ctx, void* arg) {
   _emscripten_receive_on_main_thread_js(
     f->funcIndex, f->emAsmAddr, f->callingThread, f->bufSize, f->argBuffer, ctx, arg);
 
-  // run_js_func_with_ctx is always synchronously proxied and therefore arg
-  // should never be owned on the main thread (i.e. the argument here always
-  // exists on the stack of the calling thread, it's never copied/malloced).
+  // The arg of a function run with a context is never freed on the main
+  // thread: it is the calling thread's, which reads the result from it.
   assert(!f->owned);
 }
 
-void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result) {
+void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result, bool fulfilled) {
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
   f->result = result;
+  f->fulfilled = fulfilled;
   emscripten_proxy_finish(ctx);
 }
 
@@ -716,4 +719,43 @@ double _emscripten_run_js_on_main_thread(int func_index,
     assert(false && "emscripten_proxy_async failed");
   }
   return 0;
+}
+
+// Settles the promise of _emscripten_run_js_on_main_thread_promise with the
+// result left in `arg`.
+static em_promise_result_t js_promise_settle(void** result, void* data, void* value) {
+  proxied_js_func_t* f = (proxied_js_func_t*)data;
+  em_promise_result_t rtn = f->fulfilled ? EM_PROMISE_FULFILL : EM_PROMISE_REJECT;
+  *result = (void*)(intptr_t)f->result;
+  free(f->argBuffer);
+  free(f);
+  return rtn;
+}
+
+// Returns immediately on the calling thread with an em_promise_t; async on the
+// main thread, whose result settles it once the calling thread runs its queue
+// (emscripten_proxy_promise_with_ctx). Rejected with NULL if the function's
+// Promise rejected.
+em_promise_t _emscripten_run_js_on_main_thread_promise(int func_index,
+                                                       void* em_asm_addr,
+                                                       int buf_size,
+                                                       double* buffer) {
+  proxied_js_func_t* arg = malloc(sizeof(proxied_js_func_t));
+  *arg = (proxied_js_func_t){
+    .funcIndex = func_index,
+    .emAsmAddr = em_asm_addr,
+    .callingThread = pthread_self(),
+    .bufSize = buf_size,
+    .argBuffer = malloc(buf_size),
+  };
+  memcpy(arg->argBuffer, buffer, buf_size);
+  em_promise_t done = emscripten_proxy_promise_with_ctx(
+    emscripten_proxy_get_system_queue(),
+    emscripten_main_runtime_thread_id(),
+    run_js_func_with_ctx,
+    arg);
+  em_promise_t promise =
+    emscripten_promise_then(done, js_promise_settle, js_promise_settle, arg);
+  emscripten_promise_destroy(done);
+  return promise;
 }
