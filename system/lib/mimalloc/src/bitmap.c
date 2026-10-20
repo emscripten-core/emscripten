@@ -1081,7 +1081,7 @@ static void mi_bchunks_unsafe_setN(mi_bchunk_t* chunks, mi_bchunkmap_t* cmap, si
   // start chunk and index
   size_t chunk_idx = idx / MI_BCHUNK_BITS;
   const size_t cidx = idx % MI_BCHUNK_BITS;
-  const size_t ccount = _mi_divide_up(n, MI_BCHUNK_BITS);
+  const size_t ccount = ((cidx + n - 1) / MI_BCHUNK_BITS) + 1; 
 
   // first update the chunkmap
   mi_bchunk_setN(cmap, chunk_idx, ccount, NULL);

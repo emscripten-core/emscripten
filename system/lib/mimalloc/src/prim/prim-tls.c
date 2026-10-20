@@ -46,9 +46,9 @@ mi_threadid_t _mi_thread_id(void) mi_attr_noexcept {
 // If we can, we use one of the 64 direct TLS slots (but fall back to expansion slots if needed)
 // See <https://en.wikipedia.org/wiki/Win32_Thread_Information_Block> for the offsets.
 #if MI_SIZE_SIZE==4
-#define MI_TLS_DIRECT_FIRST             (0x0E10 / MI_INTPTR_SIZE)
+#define MI_TLS_DIRECT_FIRST             (0x0E10 / MI_SIZE_SIZE)
 #else
-#define MI_TLS_DIRECT_FIRST             (0x1480 / MI_INTPTR_SIZE)
+#define MI_TLS_DIRECT_FIRST             (0x1480 / MI_SIZE_SIZE)
 #endif
 #define MI_TLS_DIRECT_SLOTS             (64)
 #define MI_TLS_EXPANSION_SLOTS          (1024)

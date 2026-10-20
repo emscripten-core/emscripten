@@ -49,7 +49,7 @@ int mi_version(void) {
 
 // in KiB
 #ifndef MI_DEFAULT_ARENA_RESERVE
- #if (MI_INTPTR_SIZE>4)
+ #if (MI_SIZE_SIZE>4)
   #define MI_DEFAULT_ARENA_RESERVE 1024L*1024L
  #else
   #define MI_DEFAULT_ARENA_RESERVE 128L*1024L
@@ -77,10 +77,10 @@ int mi_version(void) {
 #endif
 
 #ifndef MI_DEFAULT_GUARDED_SAMPLE_RATE
-#if MI_GUARDED && !MI_DEBUG
-#define MI_DEFAULT_GUARDED_SAMPLE_RATE 4000
+#if MI_GUARDED && MI_DEBUG
+#define MI_DEFAULT_GUARDED_SAMPLE_RATE  0  /* MI_MiB */
 #else
-#define MI_DEFAULT_GUARDED_SAMPLE_RATE 0
+#define MI_DEFAULT_GUARDED_SAMPLE_RATE  0
 #endif
 #endif
 
@@ -107,6 +107,10 @@ int mi_version(void) {
 // #define MI_DEFAULT_ALLOW_THP  1    // allow THP but purging may split up THP pages
 #define MI_DEFAULT_ALLOW_THP  2       // allow THP and set the minimal purge size to 2MiB to avoid breaking them up
 #endif
+#endif
+
+#ifndef MI_DEFAULT_COLLECT_MERGES_STATS
+#define MI_DEFAULT_COLLECT_MERGES_STATS  1
 #endif
 
 // Static options
@@ -176,6 +180,8 @@ static mi_option_desc_t mi_options[_mi_option_last] =
   { MI_DEFAULT_ARENA_MAX_OBJECT_SIZE,
          MI_OPTION_UNINIT, MI_OPTION(arena_max_object_size) },    // set maximal object size that can be allocated in an arena (in KiB) (=2GiB on 64-bit).
   { 0,   MI_OPTION_UNINIT, MI_OPTION(arena_is_numa_local) },      // associate local numa node with an initial arena allocation
+  { MI_DEFAULT_COLLECT_MERGES_STATS,
+         MI_OPTION_UNINIT, MI_OPTION(collect_merges_stats) },     // on each theap collect, stats are merged with the parent heap
 };
 
 static void mi_option_init(mi_option_desc_t* desc);
@@ -240,30 +246,34 @@ mi_decl_export void mi_options_print_out(mi_output_fun* out, void* arg) mi_attr_
     _mi_fprintf(out, arg, "option '%s': %ld %s\n", desc->name, desc->value, (mi_option_has_size_in_kib(option) ? "KiB" : ""));
   }
 
-  // show build configuration
-  _mi_fprintf(out, arg, "debug level : %d\n", MI_DEBUG );
-  _mi_fprintf(out, arg, "secure level: %d\n", MI_SECURE );
-  _mi_fprintf(out, arg, "mem tracking: %s\n", MI_TRACK_TOOL);
+  // show build configuration  
+  #if MI_PAGE_META_IS_ALIGNED && MI_PAGE_META_SMALL_IS_ALIGNED
+  _mi_fprintf(out, arg, "free mode   : (small) aligned, page size: %zu\n", sizeof(mi_page_t));
+  #elif MI_PAGE_META_IS_ALIGNED
+  _mi_fprintf(out, arg, "free mode   : aligned, page size: %zu\n", sizeof(mi_page_t));
+  #elif MI_PAGE_META_SMALL_IS_ALIGNED
+  _mi_fprintf(out, arg, "free mode   : small aligned + pagemap, page size: %zu\n", sizeof(mi_page_t));
+  #elif MI_FREE_IS_CHECKED
+  _mi_fprintf(out, arg, "free mode   : checked, page size: %zu\n", sizeof(mi_page_t));
+  #else 
+  _mi_fprintf(out, arg, "free mode   : pagemap, page size: %zu\n", sizeof(mi_page_t));
+  #endif
+  #if MI_ENCODE_FREELIST
+  _mi_fprintf(out, arg, "free lists  : encoded with %d key(s)\n", MI_PAGE_KEY_COUNT);
+  #endif
   #if MI_GUARDED
-  _mi_fprintf(out, arg, "guarded build: %s\n", mi_option_get(mi_option_guarded_sample_rate) != 0 ? "enabled" : "disabled");
+  _mi_fprintf(out, arg, "guarded mode: %s, rate=%ld\n",  MI_SAMPLE==2 ? "fine-grained" : "enabled", mi_option_get(mi_option_guarded_sample_rate));
+  #endif  
+  #if MI_PROFILE
+  _mi_fprintf(out, arg, "profiling   : %s\n", MI_SAMPLE==2 ? "fine-grained" : "enabled");
   #endif
   #if MI_TSAN
   _mi_fprintf(out, arg, "thread santizer enabled\n");
   #endif
-  #if MI_PAGE_META_IS_ALIGNED && MI_PAGE_META_SMALL_IS_ALIGNED
-  _mi_fprintf(out, arg, "free: (small) aligned, page size: %zu\n", sizeof(mi_page_t));
-  #elif MI_PAGE_META_IS_ALIGNED
-  _mi_fprintf(out, arg, "free: aligned, page size: %zu\n", sizeof(mi_page_t));
-  #elif MI_PAGE_META_SMALL_IS_ALIGNED
-  _mi_fprintf(out, arg, "free: small aligned + pagemap, page size: %zu\n", sizeof(mi_page_t));
-  #elif MI_FREE_IS_CHECKED
-  _mi_fprintf(out, arg, "free: checked, page size: %zu\n", sizeof(mi_page_t));
-  #else 
-  _mi_fprintf(out, arg, "free: pagemap, page size: %zu\n", sizeof(mi_page_t));
-  #endif
-  #if MI_ENCODE_FREELIST
-  _mi_fprintf(out, arg, "free lists: encoded with %d key(s)\n", MI_PAGE_KEY_COUNT);
-  #endif
+  _mi_fprintf(out, arg, "mem tracking: %s\n", MI_TRACK_TOOL);  
+  _mi_fprintf(out, arg, "debug level : %d\n", MI_DEBUG );
+  _mi_fprintf(out, arg, "secure level: %d\n", MI_SECURE );
+  _mi_fprintf(out, arg, "padding     : %s\n", (MI_PADDING==0 ? "none" : (MI_PADDING==1 ? "enabled" : "byte precise")));  
 }
 
 mi_decl_export void mi_options_print(void) mi_attr_noexcept {

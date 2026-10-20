@@ -87,7 +87,7 @@ static mi_decl_noinline mi_theap_t* mi_heap_init_theap(const mi_heap_t* const_he
 
 
 // get (and possibly create) the theap belonging to a heap
-mi_theap_t* _mi_heap_theap_get_or_init(const mi_heap_t* heap)
+mi_decl_cold mi_theap_t* _mi_heap_theap_get_or_init(const mi_heap_t* heap)
 {
   mi_assert_internal(heap->theap != 0);
   mi_theap_t* theap = (mi_theap_t*)_mi_thread_local_get(heap->theap);
@@ -107,6 +107,7 @@ void _mi_heap_init(mi_heap_t* heap, mi_thread_local_t theap_slot, mi_subproc_t* 
   heap->heap_seq = mi_atomic_increment_relaxed(&subproc->heap_total_count);
   heap->exclusive_arena = _mi_arena_from_id(exclusive_arena_id);
   heap->numa_node = -1; // no initial affinity
+  heap->profiler = mi_atomic_load_ptr_acquire(mi_profiler_t,&subproc->profiler);
   mi_stats_header_init(&heap->stats);
   mi_lock_init(&heap->theaps_lock);
   mi_lock_init(&heap->os_abandoned_pages_lock);
@@ -182,6 +183,12 @@ static void mi_heap_free_theaps(mi_heap_t* heap) {
       theap = next;
     }
   }  
+
+  // set the theap thread local to NULL (so _mi_page_associated_theap does not read from a freed theap (through delete pages -> page_update_stats))
+  if (!_mi_is_process_heap_main(heap)) { 
+    _mi_thread_local_free(heap->theap);
+    heap->theap = 0;
+  }
 }
 
 // free the heap resources (assuming the pages are already moved/destroyed, and all theaps have been freed)
@@ -221,7 +228,7 @@ static void mi_heap_free(mi_heap_t* heap, bool acquire_heaps_lock) {
   mi_lock_done(&heap->os_abandoned_pages_lock);
   mi_lock_done(&heap->arena_pages_lock);
   if (!_mi_is_process_heap_main(heap)) { 
-    _mi_thread_local_free(heap->theap);
+    // _mi_thread_local_free(heap->theap);
     _mi_free_subproc_safe(heap); 
   }
 }
@@ -287,7 +294,7 @@ bool mi_check_owned(const void* p) {
 bool mi_unsafe_heap_page_is_under_utilized(mi_heap_t* heap, void* p, size_t perc_threshold) mi_attr_noexcept {
   if (p==NULL) return false;
   const mi_page_t* const page = _mi_safe_ptr_page(p);   // Get the page containing this pointer
-  if (page==NULL || page->used==page->capacity || page->capacity < page->reserved) return false;
+  if (page==NULL || mi_page_used(page)==page->capacity || page->capacity < page->reserved) return false;
   // If the page is the head of the queue, it is currently being used for
   // allocations; we skip it to avoid immediate thrashing.
   if (page->prev == NULL)  return false;
@@ -300,5 +307,5 @@ bool mi_unsafe_heap_page_is_under_utilized(mi_heap_t* heap, void* p, size_t perc
   // check utilization
   if (page->capacity==0)   return false;
   if (perc_threshold>=100) return true;
-  return (perc_threshold >= ((100UL*page->used) / page->capacity));
+  return (perc_threshold >= ((100UL*mi_page_used(page)) / page->capacity));
 }
