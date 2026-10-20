@@ -1092,19 +1092,19 @@ var LibraryPThread = {
     PThread.currentProxiedOperationCallerThread = callingThread;
     var rtn = func(...proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
-    if (ctx) {
-      // A PROXY_SYNC_ASYNC function may complete synchronously with a plain value.
-      Promise.resolve(rtn).then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, rtn));
-      return;
-    }
-
 #if MEMORY64
     // In memory64 mode some proxied functions return bigint/pointer but
     // our return type is i53/double.
-    if (typeof rtn === 'bigint') {
-      rtn = bigintToI53Checked(rtn);
-    }
+    var toI53 = (rtn) => typeof rtn === 'bigint' ? bigintToI53Checked(rtn) : rtn;
+#else
+    var toI53 = (rtn) => rtn;
 #endif
+    if (ctx) {
+      // A PROXY_SYNC_ASYNC function may complete synchronously with a plain value.
+      Promise.resolve(rtn).then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, toI53(rtn)));
+      return;
+    }
+    rtn = toI53(rtn);
 #if ASSERTIONS
     // Proxied functions can return any type except bigint.  All other types
     // coerce to f64/double (the return type of this function in C) but not
