@@ -951,6 +951,10 @@ var LibraryDylink = {
       }
 
       var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
+      // Drop the bytes once compiled. The import stubs from `proxyHandler`
+      // outlive this call and share its scope, so they would keep `binary`
+      // alive.
+      binary = null;
       var instance = new WebAssembly.Instance(module, info);
       return postInstantiation(module, instance);
     }
