@@ -226,6 +226,30 @@ called synchronously.  As ``sync`` is always ``false`` under ``ASYNCIFY``/JSPI,
 the function must then be called from a stack that can suspend, as with any
 other async import (under JSPI, within one of the :ref:`JSPI_EXPORTS`).
 
+.. _async_auto_call_variants:
+
+Async auto call variants
+########################
+
+Instead of ``'auto'``, ``__async`` can be given a list of call variants to
+generate alongside the function, which otherwise behaves as ``__async:
+'auto'``.  The ``'promise'`` variant is the function called with a ``_promise``
+suffix, obtaining the promise value directly without suspending, so it can be
+called from any stack.
+
+Changing the ``lookup`` definition from the example in the previous section
+above to ``lookup__async: ['promise']`` defines both C variants:
+
+.. code-block:: c
+
+   intptr_t lookup(const char* name);
+   em_promise_t lookup_promise(const char* name);
+
+Calling ``lookup_promise()`` runs the same body (with ``sync`` always
+``false``) and returns a promise handle (``em_promise_t``, see
+``<emscripten/promise.h>``) on the calling thread, fulfilled with the result or
+rejected with ``NULL``.  The function may also return ``void``, in which case
+the result is ``NULL``.  These variants are only generated when explicitly used.
 
 Ways to use Asyncify APIs in older engines
 ##########################################

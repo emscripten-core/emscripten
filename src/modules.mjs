@@ -39,6 +39,9 @@ export const nativeAliases = {};
 const srcDir = fileURLToPath(new URL('.', import.meta.url));
 const systemLibdir = path.join(srcDir, 'lib');
 
+// Return type of each async variant by suffix (see expandAsyncVariants).
+const ASYNC_VARIANTS = new Map([['promise', 'p']]);
+
 function isBeneath(childPath, parentPath) {
   const relativePath = path.relative(parentPath, childPath);
   return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
@@ -286,9 +289,58 @@ export const LibraryManager = {
     }
     timer.stop('executeJS')
 
+    this.expandAsyncVariants();
     this.addAliasDependencies();
 
     timer.stop('load')
+  },
+
+  /**
+   * `__async: ['promise', ...]` is `__async: 'auto'` along with the listed
+   * variants. An 'auto' function returns a pointer-sized value or nothing, or
+   * a Promise of either, unless its trailing `sync` argument forbids (see
+   * jsifier). Its `foo_promise` variant runs the same body, returning an
+   * em_promise_t of the result (NULL for a void function) on the calling
+   * thread, which can always wait. Variants are emitted only where used.
+   */
+  expandAsyncVariants() {
+    for (const [key, variants] of Object.entries(this.library)) {
+      if (!key.endsWith('__async') || typeof variants != 'object') continue;
+      const base = key.slice(0, -'__async'.length);
+      this.library[key] = 'auto';
+      const sig = this.library[base + '__sig'];
+      if (!Array.isArray(variants) || !variants.length) {
+        error(`JS library error: '${key}' must be 'auto', or a non-empty array of variants`);
+        continue;
+      }
+      if (base[0] == '$' || typeof this.library[base] !== 'function' || !sig || !'vpi'.includes(sig[0])) {
+        error(`JS library error: async variants of '${base}' require a native function with a '__sig' returning 'v', 'p' or 'i'`);
+        continue;
+      }
+      for (const variant of variants) {
+        const rtn = ASYNC_VARIANTS.get(variant);
+        const name = `${base}_${variant}`;
+        if (!rtn) {
+          error(`JS library error: unknown async variant '${variant}' in '${key}'`);
+          continue;
+        }
+        if (this.library.hasOwnProperty(name)) {
+          error(`JS library error: '${name}' is defined explicitly, conflicting with the '${variant}' variant of '${base}'`);
+          continue;
+        }
+        this.library[name] = this.library[base];
+        this.library[name + '__async_variant'] = variant;
+        this.library[name + '__sig'] = rtn + sig.slice(1);
+        for (const decorator of ['__async', '__proxy', '__deps', '__i53abi', '__user']) {
+          if (this.library.hasOwnProperty(base + decorator)) {
+            this.library[name + decorator] = this.library[base + decorator];
+          }
+        }
+        if (PTHREADS && variant == 'promise' && this.library[base + '__proxy'] == 'sync') {
+          this.library[name + '__deps'] = [...(this.library[name + '__deps'] ?? []), '$proxyToMainThreadPromise'];
+        }
+      }
+    }
   },
 
   isAlias(entry) {
