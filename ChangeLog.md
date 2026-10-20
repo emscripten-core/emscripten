@@ -18,14 +18,18 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.13 (in development)
+6.0.14 (in development)
 -----------------------
+
+6.0.13 - 10/19/26
+-----------------
 - Support for windows .bat/.ps1 launcher files was completely removed.  These
   days we use a native windows launcher program. (#27359)
 - `MEMORY64=2` was marked as deprecated. (#27952)
 - The undocumented `FS.filesystems` object was removed. Replace things like
   `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
 - libpng port updated from 1.6.58 to 1.6.59. (#27956)
+- compiler-rt was updated to LLVM 23.1.3. (#28011)
 
 6.0.12 - 10/08/26
 -----------------
