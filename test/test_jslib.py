@@ -855,3 +855,43 @@ console.error('JSLIB: none of the above');
   def test_export(self):
     create_file('post.js', 'Module.myFunc();')
     self.do_runf('hello_world.c', 'myFunc included\nmyFunc called\n', cflags=['--js-library', test_file('jslib/test_export.js'), '--extern-post-js=post.js'])
+
+  @parameterized({
+    '': ([],),
+    'full_export_all': (['-sINCLUDE_FULL_LIBRARY', '-sEXPORT_ALL'],),
+  })
+  def test_jslib_const(self, args):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $CONST_A__const: true,
+        $CONST_A: 10,
+        ...defineConsts({
+          $CONST_B: 22,
+          $UNUSED_CONST: 99,
+        }),
+        ...defineInternalConsts({
+          $CONST_C: 10,
+          $UNUSED_INTERNAL_CONST: 99,
+        }),
+        get_const_sum__deps: ['$CONST_A', '$CONST_B', '$CONST_C'],
+        get_const_sum: () => CONST_A + CONST_B + CONST_C,
+      });
+    ''')
+    create_file('src.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      int get_const_sum(void);
+      int main() {
+        assert(get_const_sum() == 42);
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'done\n', cflags=['--js-library', 'lib.js'] + args)
+    js = read_file('src.js')
+    self.assertContained('const CONST_A = 10;', js)
+    self.assertContained('const CONST_B = 22;', js)
+    self.assertContained('const CONST_C = 10;', js)
+    self.assertNotContained('const UNUSED_CONST', js)
+    self.assertNotContained('UNUSED_INTERNAL_CONST', js)
+    self.assertNotContained("Module['CONST_A']", js)

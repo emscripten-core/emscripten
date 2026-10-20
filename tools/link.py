@@ -485,6 +485,7 @@ def setup_pthreads():
     '$PThread',
     '$establishStackSpace',
     '$invokeEntryPoint',
+    '$CMD_LOAD',
   ]
 
   if settings.MINIMAL_RUNTIME:

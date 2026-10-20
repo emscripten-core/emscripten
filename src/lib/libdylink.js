@@ -10,11 +10,10 @@
 #error "library_dylink.js requires MAIN_MODULE"
 #endif
 
-{{{
-const UNDEFINED_ADDR = to64(-1);
-}}}
-
 var LibraryDylink = {
+  ...defineInternalConsts({
+    $UNDEFINED_ADDR: to64(-1),
+  }),
 #if FILESYSTEM
   $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: () => {
@@ -158,7 +157,7 @@ var LibraryDylink = {
   // handler.  We abuse the `target` of the Proxy in order to pass the set of
   // weak imports to the handler.
   $GOTHandler__internal: true,
-  $GOTHandler__deps: ['$GOT'],
+  $GOTHandler__deps: ['$GOT', '$UNDEFINED_ADDR'],
   $GOTHandler: {
     get(weakImports, symName) {
       var rtn = GOT[symName];
@@ -166,7 +165,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG == 2
         dbg(`new GOT entry: ${symName}`);
 #endif
-        rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ UNDEFINED_ADDR }}});
+        rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, UNDEFINED_ADDR);
       }
       if (!weakImports.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
@@ -210,7 +209,7 @@ var LibraryDylink = {
   },
 
   $updateGOT__internal: true,
-  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction'],
+  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction', '$UNDEFINED_ADDR'],
   $updateGOT__docs: '/** @param {boolean=} replace */',
   $updateGOT: (exports, replace) => {
 #if DYLINK_DEBUG
@@ -229,7 +228,7 @@ var LibraryDylink = {
       }
 #endif
 
-      var existingEntry = GOT[symName] && GOT[symName].value != {{{ UNDEFINED_ADDR }}};
+      var existingEntry = GOT[symName] && GOT[symName].value != UNDEFINED_ADDR;
       if (replace || !existingEntry) {
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName]?.value}`);
@@ -309,13 +308,13 @@ var LibraryDylink = {
   },
 
   $reportUndefinedSymbols__internal: true,
-  $reportUndefinedSymbols__deps: ['$GOT', '$resolveGlobalSymbol'],
+  $reportUndefinedSymbols__deps: ['$GOT', '$resolveGlobalSymbol', '$UNDEFINED_ADDR'],
   $reportUndefinedSymbols: () => {
 #if DYLINK_DEBUG
     dbg('reportUndefinedSymbols');
 #endif
     for (var [symName, entry] of Object.entries(GOT)) {
-      if (entry.value == {{{ UNDEFINED_ADDR }}}) {
+      if (entry.value == UNDEFINED_ADDR) {
 #if DYLINK_DEBUG
         dbg(`undef GOT entry: ${symName}`);
 #endif

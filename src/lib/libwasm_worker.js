@@ -22,10 +22,6 @@
 #endif // ~WASM_WORKERS
 
 {{{
-#if !PTHREADS
-  // In pthread builds this gets defined in libpthread.js
-  const CMD_UNCAUGHT_EXN = 8;
-#endif
   const workerSupportsFutexWait = () => AUDIO_WORKLET ? '!ENVIRONMENT_IS_AUDIO_WORKLET' : '1';
   const wasmWorkerJs = `
 #if MINIMAL_RUNTIME
@@ -62,6 +58,10 @@
 
 
 addToLibrary({
+  ...defineInternalConsts({
+    $CMD_UNCAUGHT_EXN: 8,
+  }),
+
   $_wasmWorkers: {},
 #if TRUSTED_TYPES
   // Cached Trusted Types policy for Wasm Worker creation.
@@ -98,6 +98,9 @@ addToLibrary({
 #if PTHREADS
     '__set_thread_state',
     '$alignMemory',
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
+    '$CMD_UNCAUGHT_EXN',
 #endif
   ],
   $_wasmWorkerInitializeRuntime: () => {
@@ -173,6 +176,9 @@ addToLibrary({
   _emscripten_create_wasm_worker__deps: [
     '$_wasmWorkers',
     '$_wasmWorkerAppendToQueue', '$_wasmWorkerRunPostMessage',
+#if ENVIRONMENT_MAY_BE_NODE
+    '$CMD_UNCAUGHT_EXN',
+#endif
 #if TRUSTED_TYPES
     '$_emscriptenWasmWorkerPolicy',
 #endif
@@ -224,7 +230,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     if (ENVIRONMENT_IS_NODE) {
       /** @suppress {checkTypes} */
       worker.on('message', (msg) => {
-        if (msg.cmd == {{{ CMD_UNCAUGHT_EXN }}}) {
+        if (msg.cmd == CMD_UNCAUGHT_EXN) {
           // Message handler for Node.js specific out-of-order behavior:
           // https://github.com/nodejs/node/issues/59617
           // A worker sent an uncaught exception event. Re-raise it on the main thread.
