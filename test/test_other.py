@@ -413,6 +413,17 @@ class other(RunnerCore):
     self.assertContained(WASM_LD, proc.stderr)
     self.assertExists('a.out.js')
 
+  def test_clang_target_flags(self):
+    proc = self.run_process([EMCC, '-v', '-dumpmachine'], stdout=PIPE, stderr=PIPE)
+    self.assertTrue(proc.stderr.strip().endswith(' -target wasm32-unknown-emscripten -v -dumpmachine'))
+
+    # -print-search-dirs queries clang for `-print-resource-dir` via get_clang_resource_dir()
+    proc = self.run_process([EMCC, '-v', '-print-search-dirs'], stdout=PIPE, stderr=PIPE)
+    self.assertTrue(proc.stderr.strip().endswith(' -target wasm32-unknown-emscripten -print-resource-dir'))
+
+    proc = self.run_process([EMCC, '-v', '--check'], stdout=PIPE, stderr=PIPE)
+    self.assertContained(' --target=wasm32 --version\n', proc.stderr)
+
   def test_skip_subcommands(self):
     # The -### flag is like `-v` but it doesn't actually execute the sub-commands
     proc = self.run_process([EMCC, '-###', '-O3', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
