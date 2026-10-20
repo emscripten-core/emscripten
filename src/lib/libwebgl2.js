@@ -151,8 +151,10 @@ var LibraryWebGL2 = {
     GLctx.invalidateSubFramebuffer(target, list, x, y, width, height);
   },
 
-  glTexImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
-#if !WEBGL_USE_GARBAGE_FREE_APIS
+  glTexImage3D__deps: ['$heapObjectForWebGLType',
+#if WEBGL_USE_GARBAGE_FREE_APIS
+    '$toTypedArrayIndex',
+#else
     '$emscriptenWebGLGetTexPixelData',
 #endif
   ],
@@ -172,8 +174,10 @@ var LibraryWebGL2 = {
     }
   },
 
-  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
-#if !WEBGL_USE_GARBAGE_FREE_APIS
+  glTexSubImage3D__deps: ['$heapObjectForWebGLType',
+#if WEBGL_USE_GARBAGE_FREE_APIS
+    '$toTypedArrayIndex',
+#else
     '$emscriptenWebGLGetTexPixelData',
 #endif
   ],
@@ -757,7 +761,6 @@ var LibraryWebGL2 = {
 
   // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4uiv(),
   // otherwise the results are undefined. (GLES3 spec 6.1.12)
-  glGetVertexAttribIuiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribIuiv: 'glGetVertexAttribIiv',
 
   glUniform1ui__deps: ['$webglGetUniformLocation'],

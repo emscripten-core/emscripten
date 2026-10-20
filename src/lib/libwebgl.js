@@ -249,6 +249,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
 #if FULL_ES2 || LEGACY_GL_EMULATION
     '$registerPreMainLoop',
+#endif
+#if FULL_ES2
     '$webglBufferSubData',
 #endif
   ],
@@ -1666,7 +1668,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
-#if MAX_WEBGL_VERSION >= 2
+#if WEBGL_USE_GARBAGE_FREE_APIS
                        , '$heapObjectForWebGLType', '$toTypedArrayIndex'
 #endif
   ],
@@ -1713,9 +1715,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixelData);
   },
 
-  glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
-#if MAX_WEBGL_VERSION >= 2
-                          , '$heapObjectForWebGLType', '$toTypedArrayIndex'
+  glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData',
+#if WEBGL_USE_GARBAGE_FREE_APIS
+                          '$heapObjectForWebGLType', '$toTypedArrayIndex',
 #endif
   ],
   glTexSubImage2D: (target, level, xoffset, yoffset, width, height, format, type, pixels) => {
@@ -1751,7 +1753,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if INCLUDE_WEBGL1_FALLBACK
     '$emscriptenWebGLGetTexPixelData',
 #endif
-#if MAX_WEBGL_VERSION >= 2
+#if WEBGL_USE_GARBAGE_FREE_APIS
     '$heapObjectForWebGLType', '$toTypedArrayIndex',
 #endif
   ],
@@ -2180,7 +2182,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
   // Returns the WebGLUniformLocation object corresponding to the location index
   // integer on the currently active shader in this GL context.
+#if GL_EXPLICIT_UNIFORM_LOCATION
   $webglGetProgramUniformLocation__deps: ['$webglPrepareUniformLocationsBeforeFirstUse'],
+#endif
   $webglGetProgramUniformLocation: (program, location) => {
 #if !GL_TRACK_ERRORS && ASSERTIONS
     // In -sGL_TRACK_ERRORS=0 build mode do not allow calling glUniform*()
@@ -3881,7 +3885,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
   },
 
+#if FULL_ES2
   glDrawElements__deps: ['$webglBufferSubData'],
+#endif
   glDrawElements: (mode, count, type, indices) => {
 #if FULL_ES2
     var buf;
