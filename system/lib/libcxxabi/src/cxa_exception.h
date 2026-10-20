@@ -27,7 +27,6 @@ struct _LIBCXXABI_HIDDEN __cxa_exception {
   // In wasm, destructors return 'this' as in ARM
   void* (*exceptionDestructor)(void *);
   uint8_t caught;
-  uint8_t rethrown;
   void *adjustedPtr;
   // Add padding to ensure that the size of __cxa_exception is a multiple of
   // the maximum useful alignment for the target machine.  This ensures that

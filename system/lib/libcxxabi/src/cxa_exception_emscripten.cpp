@@ -4,10 +4,9 @@
 //  TODO(sbc): consider merging them
 //
 //  Notable changes:
- //   __cxa_allocate_exception doesn't add get_cxa_exception_offset
-//    __cxa_decrement_exception_refcount doesn't call the destructor if rethrown
-//  Both of these changes are mirrored from the historical JS implementation of
-//  these functions.
+//   __cxa_allocate_exception doesn't add get_cxa_exception_offset
+//  This change is mirrored from the historical JS implementation of
+//  this function.
 //
 //===----------------------------------------------------------------------===//
 
@@ -144,10 +143,9 @@ void __cxa_decrement_exception_refcount(void *thrown_object) throw() {
     if (thrown_object != NULL )
     {
         __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
-        DEBUG("DEC: %p refcnt=%zu rethrown=%d", thrown_object,
-              exception_header->referenceCount, exception_header->rethrown);
+        DEBUG("DEC: %p refcnt=%zu", thrown_object, exception_header->referenceCount);
         assert(exception_header->referenceCount > 0);
-        if (std::__libcpp_atomic_add(&exception_header->referenceCount, size_t(-1)) == 0 && !exception_header->rethrown)
+        if (std::__libcpp_atomic_add(&exception_header->referenceCount, size_t(-1)) == 0)
         {
             DEBUG("DEL: %p (dtor=%p)", thrown_object, exception_header->exceptionDestructor);
             if (NULL != exception_header->exceptionDestructor)
