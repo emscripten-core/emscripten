@@ -197,6 +197,145 @@ addToLibrary({
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
                      "error: JS library error: 'jslibfunc' must take 'sync' as parameter 3, after the 2 of its '__sig'")
 
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY'],),
+    'asyncify_auto': (['-sASYNCIFY', '-DAUTO'],),
+    'jspi': (['-sJSPI'],),
+    'jspi_auto': (['-sJSPI', '-DAUTO'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_jslib_async_auto_variants(self, args):
+    # `answer(ms, value)` resolves to `value` after `ms` milliseconds
+    # (synchronously if `ms` is 0, rejecting if `value` is 0), with an
+    # `answer_promise` variant. Where the caller cannot wait, `answer()` is -1:
+    # without 'auto' in the list it never suspends, even under ASYNCIFY/JSPI.
+    # `wait_ms(ms)` is the same without a result.
+    if '-sJSPI' in args:
+      self.require_jspi()
+    if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    forms = "['auto', 'promise']" if '-DAUTO' in args else "['promise']"
+    create_file('lib.js', r'''
+addToLibrary({
+  answer__sig: 'pip',
+  answer__async: FORMS,
+  answer__proxy: 'sync',
+  answer: (ms, value, sync) => {
+    if (!ms) return value;
+    if (sync) return -1;
+    return new Promise((resolve, reject) =>
+      setTimeout(() => value ? resolve(value) : reject(new Error('zero')), ms));
+  },
+  wait_ms__sig: 'vi',
+  wait_ms__async: FORMS,
+  wait_ms__proxy: 'sync',
+  wait_ms: (ms, sync) => {
+    if (ms && !sync) return new Promise((resolve) => setTimeout(resolve, ms));
+  },
+});
+'''.replace('FORMS', forms))
+    create_file('src.c', r'''
+#include <assert.h>
+#include <emscripten.h>
+#include <emscripten/promise.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+intptr_t answer(int ms, intptr_t value);
+em_promise_t answer_promise(int ms, intptr_t value);
+void wait_ms(int ms);
+em_promise_t wait_ms_promise(int ms);
+
+int stage;
+
+em_promise_result_t fail(void** result, void* data, void* value) {
+  assert(0 && "promise rejected");
+}
+
+em_promise_result_t on_waited(void** result, void* data, void* value) {
+  assert(stage++ == 3);
+  // A void function's promise is fulfilled with NULL.
+  assert(value == NULL);
+  printf("done\n");
+#ifdef __EMSCRIPTEN_PTHREADS__
+  exit(0);
+#endif
+  return EM_PROMISE_FULFILL;
+}
+
+em_promise_result_t on_rejected(void** result, void* data, void* value) {
+  assert(stage++ == 2);
+  assert(value == NULL);
+  em_promise_t p = wait_ms_promise(5);
+  em_promise_t next = emscripten_promise_then(p, on_waited, fail, NULL);
+  emscripten_promise_destroy(p);
+  emscripten_promise_destroy(next);
+  return EM_PROMISE_FULFILL;
+}
+
+em_promise_result_t on_fulfilled(void** result, void* data, void* value) {
+  assert(stage++ == 1);
+  assert((intptr_t)value == 42);
+  // A rejected promise.
+  em_promise_t p = answer_promise(5, 0);
+  em_promise_t next = emscripten_promise_then(p, fail, on_rejected, NULL);
+  emscripten_promise_destroy(p);
+  emscripten_promise_destroy(next);
+  return EM_PROMISE_FULFILL;
+}
+
+em_promise_result_t on_sync(void** result, void* data, void* value) {
+  assert(stage++ == 0);
+  assert((intptr_t)value == 7);
+  em_promise_t p = answer_promise(5, 42);
+  em_promise_t next = emscripten_promise_then(p, on_fulfilled, fail, NULL);
+  emscripten_promise_destroy(p);
+  emscripten_promise_destroy(next);
+  return EM_PROMISE_FULFILL;
+}
+
+int main() {
+  assert(answer(0, 7) == 7);
+#if defined(__EMSCRIPTEN_PTHREADS__) || defined(AUTO)
+  assert(answer(5, 42) == 42);
+#else
+  // Where the function cannot wait, the body is told so.
+  assert(answer(5, 42) == -1);
+#endif
+  wait_ms(0);
+  wait_ms(5);
+
+  // A synchronous completion is a fulfilled promise.
+  em_promise_t p = answer_promise(0, 7);
+  em_promise_t next = emscripten_promise_then(p, on_sync, fail, NULL);
+  emscripten_promise_destroy(p);
+  emscripten_promise_destroy(next);
+  return 0;
+}
+''')
+    self.do_runf('src.c', 'done\n', cflags=args + ['-sEXIT_RUNTIME', '--js-library', 'lib.js'])
+
+  @parameterized({
+    'empty': ("'pi'", '[]', '', "'jslibfunc__async' must be 'auto', or a non-empty array of variants"),
+    'unknown': ("'pi'", "['foo']", '', "unknown async variant 'foo' in 'jslibfunc__async'"),
+    'sig': ("'di'", "['promise']", '', "async variants of 'jslibfunc' require a native function with a '__sig' returning 'v', 'p' or 'i'"),
+    'defined': ("'pi'", "['promise']", 'jslibfunc_promise: () => 0,', "'jslibfunc_promise' is defined explicitly, conflicting with the 'promise' variant of 'jslibfunc'"),
+  })
+  def test_jslib_async_variants_errors(self, sig, variants, extra, expected):
+    create_file('lib.js', f'''
+addToLibrary({{
+  jslibfunc__sig: {sig},
+  jslibfunc__async: {variants},
+  jslibfunc: (x) => x,
+  {extra}
+}});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
+                     'error: JS library error: ' + expected)
+
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
 addToLibrary({
