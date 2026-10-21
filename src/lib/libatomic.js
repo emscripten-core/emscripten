@@ -69,7 +69,7 @@ addToLibrary({
   },
 
 #if ASYNCIFY
-  _emscripten_atomic_wait_promise__deps: ['$polyfillWaitAsync', '$atomicWaitStates', '$addPromise'],
+  _emscripten_atomic_wait_promise__deps: ['$polyfillWaitAsync'],
   _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
     var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (wait.async) {
@@ -94,7 +94,7 @@ addToLibrary({
   $liveAtomicWaitAsyncCounter: 0,
   $liveAtomicWaitAsyncCounter__internal: true,
 
-  emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$polyfillWaitAsync', '$callUserCallback'],
+  emscripten_atomic_wait_async__deps: ['$polyfillWaitAsync'],
   emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (!wait.async) return atomicWaitStates.indexOf(wait.value);
@@ -116,7 +116,6 @@ addToLibrary({
     return -counter;
   },
 
-  emscripten_atomic_cancel_wait_async__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_wait_async: (waitToken) => {
 #if ASSERTIONS
     if (waitToken == {{{ cDefs.ATOMICS_WAIT_NOT_EQUAL }}}) {
@@ -143,7 +142,6 @@ addToLibrary({
     return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
   },
 
-  emscripten_atomic_cancel_all_wait_asyncs__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs: () => {
     let waitAsyncs = Object.values(liveAtomicWaitAsyncs);
     for (var address of waitAsyncs) {
@@ -153,7 +151,6 @@ addToLibrary({
     return waitAsyncs.length;
   },
 
-  emscripten_atomic_cancel_all_wait_asyncs_at_address__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs_at_address: (address) => {
     let numCancelled = 0;
     for (var [waitToken, waitAddress] of Object.entries(liveAtomicWaitAsyncs)) {

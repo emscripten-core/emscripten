@@ -13,13 +13,9 @@
 }}}
 
 addToLibrary({
-  $wasmfsOPFSDirectoryHandles__deps: ['$HandleAllocator'],
   $wasmfsOPFSDirectoryHandles: 'new HandleAllocator()',
-  $wasmfsOPFSFileHandles__deps: ['$HandleAllocator'],
   $wasmfsOPFSFileHandles: 'new HandleAllocator()',
-  $wasmfsOPFSAccessHandles__deps: ['$HandleAllocator'],
   $wasmfsOPFSAccessHandles: 'new HandleAllocator()',
-  $wasmfsOPFSBlobs__deps: ['$HandleAllocator'],
   $wasmfsOPFSBlobs: 'new HandleAllocator()',
 
 #if !PTHREADS
@@ -60,7 +56,6 @@ addToLibrary({
     }
   },
 
-  $wasmfsOPFSCreateAsyncAccessHandle__deps: ['$FileSystemAsyncAccessHandle'],
   $wasmfsOPFSCreateAsyncAccessHandle: (fileHandle) => new FileSystemAsyncAccessHandle(fileHandle),
 #endif
 
@@ -76,7 +71,6 @@ addToLibrary({
 #endif
   },
 
-  _wasmfs_opfs_init_root_directory__deps: ['$wasmfsOPFSDirectoryHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_init_root_directory__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_init_root_directory: async (ctx) => {
     // allocated.length starts off as 1 since 0 is a reserved handle
@@ -95,8 +89,6 @@ addToLibrary({
   // Return the file ID for the file with `name` under `parent`, creating it if
   // it doesn't exist and `create` or otherwise return a negative error code
   // corresponding to the error.
-  $wasmfsOPFSGetOrCreateFile__deps: ['$wasmfsOPFSDirectoryHandles',
-                                     '$wasmfsOPFSFileHandles'],
   $wasmfsOPFSGetOrCreateFile: async (parent, name, create) => {
     let parentHandle = wasmfsOPFSDirectoryHandles.get(parent);
     let fileHandle;
@@ -120,7 +112,6 @@ addToLibrary({
   // Return the file ID for the directory with `name` under `parent`, creating
   // it if it doesn't exist and `create` or otherwise return a negative error
   // code corresponding to the error.
-  $wasmfsOPFSGetOrCreateDir__deps: ['$wasmfsOPFSDirectoryHandles'],
   $wasmfsOPFSGetOrCreateDir: async (parent, name, create) => {
     let parentHandle = wasmfsOPFSDirectoryHandles.get(parent);
     let childHandle;
@@ -142,8 +133,6 @@ addToLibrary({
     return wasmfsOPFSDirectoryHandles.allocate(childHandle);
   },
 
-  _wasmfs_opfs_get_child__deps: ['$wasmfsOPFSGetOrCreateFile',
-                                 '$wasmfsOPFSGetOrCreateDir', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_get_child__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_get_child: async (ctx, parent, namePtr, childTypePtr, childIDPtr) => {
     let name = UTF8ToString(namePtr);
@@ -159,9 +148,6 @@ addToLibrary({
   },
 
   _wasmfs_opfs_get_entries__deps: [
-    '$wasmfsOPFSProxyFinish',
-    '$stackSave',
-    '$stackRestore',
     '_wasmfs_opfs_record_entry',
   ],
   _wasmfs_opfs_get_entries__async: {{{ ASYNCIFY_NEEDED }}},
@@ -188,7 +174,6 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_insert_file__deps: ['$wasmfsOPFSGetOrCreateFile', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_insert_file__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_insert_file: async (ctx, parent, namePtr, childIDPtr) => {
     let name = UTF8ToString(namePtr);
@@ -197,7 +182,6 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_insert_directory__deps: ['$wasmfsOPFSGetOrCreateDir', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_insert_directory__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_insert_directory: async (ctx, parent, namePtr, childIDPtr) => {
     let name = UTF8ToString(namePtr);
@@ -206,9 +190,6 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_move_file__deps: ['$wasmfsOPFSFileHandles',
-                                 '$wasmfsOPFSDirectoryHandles',
-                                 '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_move_file__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_move_file: async (ctx, fileID, newParentID, namePtr, errPtr) => {
     let name = UTF8ToString(namePtr);
@@ -223,7 +204,6 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_remove_child__deps: ['$wasmfsOPFSDirectoryHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_remove_child__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_remove_child: async (ctx, dirID, namePtr, errPtr) => {
     let name = UTF8ToString(namePtr);
@@ -237,22 +217,14 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_free_file__deps: ['$wasmfsOPFSFileHandles'],
   _wasmfs_opfs_free_file: (fileID) => {
     wasmfsOPFSFileHandles.free(fileID);
   },
 
-  _wasmfs_opfs_free_directory__deps: ['$wasmfsOPFSDirectoryHandles'],
   _wasmfs_opfs_free_directory: (dirID) => {
     wasmfsOPFSDirectoryHandles.free(dirID);
   },
 
-  _wasmfs_opfs_open_access__deps: ['$wasmfsOPFSFileHandles',
-                                   '$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish',
-#if !PTHREADS
-                                   '$wasmfsOPFSCreateAsyncAccessHandle'
-#endif
-                                  ],
   _wasmfs_opfs_open_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_open_access: async (ctx, fileID, accessIDPtr) => {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
@@ -291,8 +263,6 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_open_blob__deps: ['$wasmfsOPFSFileHandles',
-                                 '$wasmfsOPFSBlobs', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_open_blob__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_open_blob: async (ctx, fileID, blobIDPtr) => {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
@@ -314,7 +284,6 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_close_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_close_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_close_access: async (ctx, accessID, errPtr) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -328,13 +297,11 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_close_blob__deps: ['$wasmfsOPFSBlobs'],
   _wasmfs_opfs_close_blob: (blobID) => {
     wasmfsOPFSBlobs.free(blobID);
   },
 
   _wasmfs_opfs_read_access__i53abi: true,
-  _wasmfs_opfs_read_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_read_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_read_access: {{{ asyncIf(!PTHREADS) }}}(accessID, bufPtr, len, pos) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -353,7 +320,6 @@ addToLibrary({
   },
 
   _wasmfs_opfs_read_blob__i53abi: true,
-  _wasmfs_opfs_read_blob__deps: ['$wasmfsOPFSBlobs', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_read_blob__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_read_blob: async (ctx, blobID, bufPtr, len, pos, nreadPtr) => {
     let blob = wasmfsOPFSBlobs.get(blobID);
@@ -384,7 +350,6 @@ addToLibrary({
   },
 
   _wasmfs_opfs_write_access__i53abi: true,
-  _wasmfs_opfs_write_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_write_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_write_access: {{{ asyncIf(!PTHREADS) }}}(accessID, bufPtr, len, pos) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -402,7 +367,6 @@ addToLibrary({
     }
   },
 
-  _wasmfs_opfs_get_size_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_get_size_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_get_size_access: async (ctx, accessID, sizePtr) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -417,13 +381,11 @@ addToLibrary({
   },
 
   _wasmfs_opfs_get_size_blob__i53abi: true,
-  _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSBlobs'],
   _wasmfs_opfs_get_size_blob: (blobID) => {
     // This cannot fail.
 	  return wasmfsOPFSBlobs.get(blobID).size;
   },
 
-  _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_get_size_file__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_get_size_file: async (ctx, fileID, sizePtr) => {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
@@ -438,7 +400,6 @@ addToLibrary({
   },
 
   _wasmfs_opfs_set_size_access__i53abi: true,
-  _wasmfs_opfs_set_size_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_set_size_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_set_size_access: async (ctx, accessID, size, errPtr) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -452,7 +413,6 @@ addToLibrary({
   },
 
   _wasmfs_opfs_set_size_file__i53abi: true,
-  _wasmfs_opfs_set_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_set_size_file__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_set_size_file: async (ctx, fileID, size, errPtr) => {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
@@ -467,7 +427,6 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_flush_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_flush_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_flush_access: async (ctx, accessID, errPtr) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);

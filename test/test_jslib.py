@@ -108,7 +108,6 @@ addToLibrary({
     create_file('lib.js', r'''
 addToLibrary({
   $doNotCall: (x) => {},
-  foo__deps: ['$doNotCall'],
   foo__proxy: 'sync',
   foo: () => doNotCall(() => {
     out('should never see this');
@@ -248,7 +247,6 @@ addToLibrary({
   def test_jslib_using_asm_lib(self):
     create_file('lib.js', r'''
 addToLibrary({
-  jslibfunc__deps: ['asmlibfunc'],
   jslibfunc: (x) => 2 * _asmlibfunc(x),
 
   asmlibfunc__asm: true,
@@ -605,9 +603,7 @@ extraLibraryFuncs.push('jsfunc');
       addToLibrary({
         // Create a dependency cycle (foo -> $call_alias -> foo_alias -> foo)
         // to test that `var _foo_alias = _foo;` is still emitted after `_foo`.
-        $call_alias__deps: ['foo_alias'],
         $call_alias: () => _foo_alias(),
-        foo__deps: ['$call_alias'],
         foo: () => {
           if (!call_alias) return 0;
           return 42;
@@ -628,7 +624,6 @@ extraLibraryFuncs.push('jsfunc');
         call_native: () => _native_func(),
 
         // JS function that calls nativeAlias
-        call_native_alias__deps: ['$nativeAlias'],
         call_native_alias: () => nativeAlias(),
 
         // This is a JS-only symbol (i.e. no leading underscore) that

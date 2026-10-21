@@ -22,7 +22,6 @@ legacyFuncs = {
   // in a maximum length that can be used to be secure from out of bounds
   // writes.
   $writeStringToMemory__docs: '/** @deprecated @param {boolean=} dontAddNull */',
-  $writeStringToMemory__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   $writeStringToMemory: (string, buffer, dontAddNull) => {
     warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
 
@@ -51,13 +50,11 @@ legacyFuncs = {
     if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
   },
 
-  $allocateUTF8__deps: ['$stringToNewUTF8'],
   $allocateUTF8: (...args) => stringToNewUTF8(...args),
-  $allocateUTF8OnStack__deps: ['$stringToUTF8OnStack'],
   $allocateUTF8OnStack: (...args) => stringToUTF8OnStack(...args),
 
 #if LINK_AS_CXX
-  $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free', '$stringToUTF8OnStack'],
+  $demangle__deps: ['__cxa_demangle', 'free'],
   $demangle: (func) => {
     // If demangle has failed before, stop demangling any further function names
     // This avoids an infinite recursion with malloc()->abort()->stackTrace()->demangle()->malloc()->...
@@ -86,7 +83,6 @@ legacyFuncs = {
   },
 #endif
 
-  $stackTrace__deps: ['$jsStackTrace'],
   $stackTrace: () => {
     var js = jsStackTrace();
 #if expectToReceiveOnModule('extraStackTrace')
@@ -105,14 +101,11 @@ legacyFuncs = {
   // to avoid breakage.)
   $jstoi_s: 'Number',
 
-  $getNativeTypeSize__deps: ['$POINTER_SIZE'],
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
 
 #if EMBIND
-  $getInheritedInstanceCount__deps: ['$registeredInstances'],
   $getInheritedInstanceCount: () => Object.keys(registeredInstances).length,
 
-  $getLiveInheritedInstances__deps: ['$registeredInstances'],
   $getLiveInheritedInstances: () => {
     var rv = [];
     for (var k in registeredInstances) {

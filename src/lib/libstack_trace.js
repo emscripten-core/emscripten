@@ -7,11 +7,6 @@
 var LibraryStackTrace = {
   $jsStackTrace: () => new Error().stack.toString(),
 
-  $getCallstack__deps: ['$jsStackTrace',
-#if ASSERTIONS
-    '$warnOnce'
-#endif
-  ],
   $getCallstack__docs: '/** @param {number=} flags */',
   $getCallstack: (flags) => {
     var callstack = jsStackTrace();
@@ -81,7 +76,6 @@ var LibraryStackTrace = {
     return callstack;
   },
 
-  emscripten_get_callstack__deps: ['$getCallstack', '$lengthBytesUTF8', '$stringToUTF8'],
   emscripten_get_callstack: (flags, str, maxbytes) => {
     var callstack = getCallstack(flags);
     // User can query the required amount of bytes to hold the callstack.
@@ -126,7 +120,6 @@ var LibraryStackTrace = {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['$convertFrameToPC', '$jsStackTrace'],
   emscripten_return_address: (level) => {
     var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
@@ -182,7 +175,6 @@ var LibraryStackTrace = {
   // least in JavaScript frames, so we have to rely on PC values. Therefore, we
   // must be able to unwind from a PC value that may no longer be on the
   // execution stack, and so we are forced to cache the entire call stack.
-  emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache', '$jsStackTrace'],
   emscripten_stack_snapshot: () => {
     var callstack = jsStackTrace().split('\n');
     if (callstack[0] == 'Error') {
@@ -197,7 +189,6 @@ var LibraryStackTrace = {
     return UNWIND_CACHE.last_addr;
   },
 
-  $saveInUnwindCache__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
   $saveInUnwindCache__internal: true,
   $saveInUnwindCache: (callstack) => {
     for (var line of callstack) {
@@ -212,7 +203,6 @@ var LibraryStackTrace = {
   // how this is used.  addr must be the return address of the last call to
   // emscripten_stack_snapshot, or this function will instead use the current
   // call stack.
-  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC', '$jsStackTrace'],
   emscripten_stack_unwind_buffer: (addr, buffer, count) => {
     var stack;
     if (UNWIND_CACHE.last_addr == addr) {
@@ -237,7 +227,7 @@ var LibraryStackTrace = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$stringToNewUTF8', 'emscripten_stack_snapshot'],
+  emscripten_pc_get_function__deps: ['free', 'emscripten_stack_snapshot'],
   // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
   emscripten_pc_get_function__noleakcheck: true,
   emscripten_pc_get_function: (pc) => {
@@ -272,7 +262,6 @@ var LibraryStackTrace = {
     return _emscripten_pc_get_function.ret;
   },
 
-  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE'],
   $convertPCtoSourceLocation: (pc) => {
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
@@ -301,7 +290,7 @@ var LibraryStackTrace = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free', '$stringToNewUTF8'],
+  emscripten_pc_get_file__deps: ['free'],
   // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
   emscripten_pc_get_file__noleakcheck: true,
   emscripten_pc_get_file: (pc) => {
@@ -314,14 +303,12 @@ var LibraryStackTrace = {
   },
 
   // Look up the line number from our stack frame cache with our PC representation.
-  emscripten_pc_get_line__deps: ['$convertPCtoSourceLocation'],
   emscripten_pc_get_line: (pc) => {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.line : 0;
   },
 
   // Look up the column number from our stack frame cache with our PC representation.
-  emscripten_pc_get_column__deps: ['$convertPCtoSourceLocation'],
   emscripten_pc_get_column: (pc) => {
     var result = convertPCtoSourceLocation(pc);
     return result ? result.column || 0 : 0;

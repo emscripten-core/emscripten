@@ -5,7 +5,7 @@
  */
 
 addToLibrary({
-  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$TTY', '$FS_modeStringToFlags', '$NODERAWFS_stream_funcs'],
+  $NODERAWFS__deps: ['$NODERAWFS_stream_funcs'],
   $NODERAWFS__postset: `
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error('NODERAWFS is currently only supported on Node.js environment.')
@@ -220,7 +220,6 @@ addToLibrary({
    * could either be a stream created by NODERAWFS itself, or, for example
    * one created by PIPEFS.  We wrap all these function in an extra check.
    */
-  $NODERAWFS_stream_funcs__deps: ['$mmapAlloc'],
   $NODERAWFS_stream_funcs: {
     close(stream) {
       VFS.closeStream(stream.fd);

@@ -7,7 +7,6 @@
 var wasmFSNodeLibrary = {
   $wasmfsNodeIsWindows: '!!globalThis.process?.platform.match(/^win/)',
 
-  $wasmfsNodeConvertNodeCode__deps: ['$ERRNO_CODES'],
   $wasmfsNodeConvertNodeCode: (e) => {
     var code = e.code;
 #if ASSERTIONS
@@ -16,7 +15,6 @@ var wasmFSNodeLibrary = {
     return ERRNO_CODES[code];
   },
 
-  $wasmfsTry__deps: ['$wasmfsNodeConvertNodeCode'],
   $wasmfsTry: (f) => {
     try {
       return f();
@@ -26,7 +24,6 @@ var wasmFSNodeLibrary = {
     }
   },
 
-  $wasmfsNodeFixStat__deps: ['$wasmfsNodeIsWindows'],
   $wasmfsNodeFixStat: (stat) => {
     if (wasmfsNodeIsWindows) {
       // Windows does not report the 'x' permission bit, so propagate read
@@ -36,7 +33,6 @@ var wasmFSNodeLibrary = {
     return stat;
   },
 
-  $wasmfsNodeLstat__deps: ['$wasmfsNodeFixStat'],
   $wasmfsNodeLstat: (path) => {
     let stat;
     try {
@@ -48,7 +44,6 @@ var wasmFSNodeLibrary = {
     return wasmfsNodeFixStat(stat);
   },
 
-  $wasmfsNodeFstat__deps: ['$wasmfsNodeFixStat'],
   $wasmfsNodeFstat: (fd) => {
     let stat;
     try {
@@ -61,10 +56,6 @@ var wasmFSNodeLibrary = {
   },
 
   _wasmfs_node_readdir__deps: [
-    '$wasmfsTry',
-    '$stackSave',
-    '$stackRestore',
-    '$stringToUTF8OnStack',
     '_wasmfs_node_record_dirent',
   ],
   _wasmfs_node_readdir: (path_p, vec) => {
@@ -91,7 +82,6 @@ var wasmFSNodeLibrary = {
     });
   },
 
-  _wasmfs_node_get_mode__deps: ['$wasmfsNodeLstat'],
   _wasmfs_node_get_mode: (path_p, mode_p) => {
     let stat = wasmfsNodeLstat(UTF8ToString(path_p));
     if (stat === undefined) {
@@ -101,7 +91,6 @@ var wasmFSNodeLibrary = {
     // implicitly return 0
   },
 
-  _wasmfs_node_stat_size__deps: ['$wasmfsNodeLstat'],
   _wasmfs_node_stat_size: (path_p, size_p) => {
     let stat = wasmfsNodeLstat(UTF8ToString(path_p));
     if (stat === undefined) {
@@ -111,7 +100,6 @@ var wasmFSNodeLibrary = {
     // implicitly return 0
   },
 
-  _wasmfs_node_fstat_size__deps: ['$wasmfsNodeFstat'],
   _wasmfs_node_fstat_size: (fd, size_p) => {
     let stat = wasmfsNodeFstat(fd);
     if (stat === undefined) {
@@ -121,7 +109,6 @@ var wasmFSNodeLibrary = {
     // implicitly return 0
   },
 
-  _wasmfs_node_insert_file__deps: ['$wasmfsTry'],
   _wasmfs_node_insert_file: (path_p, mode) => {
     return wasmfsTry(() => {
       fs.closeSync(fs.openSync(UTF8ToString(path_p), 'ax', mode));
@@ -129,7 +116,6 @@ var wasmFSNodeLibrary = {
     });
   },
 
-  _wasmfs_node_insert_directory__deps: ['$wasmfsTry'],
   _wasmfs_node_insert_directory: (path_p, mode) => {
     return wasmfsTry(() => {
       fs.mkdirSync(UTF8ToString(path_p), mode)
@@ -137,7 +123,6 @@ var wasmFSNodeLibrary = {
     });
   },
 
-  _wasmfs_node_unlink__deps: ['$wasmfsTry'],
   _wasmfs_node_unlink: (path_p) => {
     return wasmfsTry(() => {
       fs.unlinkSync(UTF8ToString(path_p))
@@ -145,7 +130,6 @@ var wasmFSNodeLibrary = {
     });
   },
 
-  _wasmfs_node_rmdir__deps: ['$wasmfsTry'],
   _wasmfs_node_rmdir: (path_p) => {
     return wasmfsTry(() => {
       fs.rmdirSync(UTF8ToString(path_p))
@@ -154,35 +138,29 @@ var wasmFSNodeLibrary = {
   },
 
   _wasmfs_node_truncate__i53abi: true,
-  _wasmfs_node_truncate__deps: ['$wasmfsTry'],
   _wasmfs_node_truncate: (path_p, len) => {
     if (isNaN(len)) return {{{ cDefs.EFBIG }}};
     return wasmfsTry(() => fs.truncateSync(UTF8ToString(path_p), len));
   },
 
   _wasmfs_node_ftruncate__i53abi: true,
-  _wasmfs_node_ftruncate__deps: ['$wasmfsTry'],
   _wasmfs_node_ftruncate: (fd, len) => {
     if (isNaN(len)) return {{{ cDefs.EFBIG }}};
     return wasmfsTry(() => fs.ftruncateSync(fd, len));
   },
 
-  _wasmfs_node_open__deps: ['$wasmfsTry'],
   _wasmfs_node_open: (path_p, mode_p) => {
     return wasmfsTry(() => fs.openSync(UTF8ToString(path_p), UTF8ToString(mode_p)));
   },
 
-  _wasmfs_node_rename__deps: ['$wasmfsTry'],
   _wasmfs_node_rename: (from_path_p, to_path_p) => {
     return wasmfsTry(() => fs.renameSync(UTF8ToString(from_path_p), UTF8ToString(to_path_p)));
   },
 
-  _wasmfs_node_symlink__deps: ['$wasmfsTry'],
   _wasmfs_node_symlink: (target_path_p, linkpath_path_p) => {
     return wasmfsTry(() => fs.symlinkSync(UTF8ToString(target_path_p), UTF8ToString(linkpath_path_p)));
   },
 
-  _wasmfs_node_readlink__deps: ['$wasmfsTry'],
   _wasmfs_node_readlink: (path_p, target_p, bufsize) => {
     return wasmfsTry(() => {
       var target = fs.readlinkSync(UTF8ToString(path_p));
@@ -190,7 +168,6 @@ var wasmFSNodeLibrary = {
     });
   },
 
-  _wasmfs_node_close__deps: ['$wasmfsTry'],
   _wasmfs_node_close: (fd) => {
     return wasmfsTry(() => {
       fs.closeSync(fd);
@@ -198,7 +175,6 @@ var wasmFSNodeLibrary = {
     });
   },
 
-  _wasmfs_node_read__deps: ['$wasmfsTry'],
   _wasmfs_node_read: (fd, buf_p, len, pos, nread_p) => {
     return wasmfsTry(() => {
       // TODO: Cache open file descriptors to guarantee that opened files will
@@ -209,7 +185,6 @@ var wasmFSNodeLibrary = {
     });
   },
 
-  _wasmfs_node_write__deps: ['$wasmfsTry'],
   _wasmfs_node_write: (fd, buf_p, len, pos, nwritten_p) => {
     return wasmfsTry(() => {
       // TODO: Cache open file descriptors to guarantee that opened files will

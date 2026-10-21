@@ -7,14 +7,10 @@
 // Utilities for browser environments
 var LibraryBrowser = {
   $workerHandles__internal: true,
-  $workerHandles__deps: ['$HandleAllocator'],
   $workerHandles: 'new HandleAllocator();',
 
   $Browser__deps: [
-    '$getFullscreenElement',
 #if FILESYSTEM
-    '$preloadPlugins',
-    '$safeSetTimeout',
 #if MAIN_MODULE
     '$preloadedWasm',
 #endif
@@ -510,7 +506,7 @@ var LibraryBrowser = {
   $setCanvasSize: 'Browser.setCanvasSize',
   $createContext: 'Browser.createContext',
 
-  emscripten_run_preload_plugins__deps: ['$PATH'],
+  emscripten_run_preload_plugins__deps: ['$Browser'],
   emscripten_run_preload_plugins__proxy: 'sync',
   emscripten_run_preload_plugins: (file, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
@@ -545,7 +541,6 @@ var LibraryBrowser = {
   $Browser_asyncPrepareDataCounter: 0,
 
   emscripten_run_preload_plugins_data__proxy: 'sync',
-  emscripten_run_preload_plugins_data__deps: ['$stringToNewUTF8', '$Browser_asyncPrepareDataCounter'],
   emscripten_run_preload_plugins_data: (data, size, suffix, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
@@ -570,21 +565,12 @@ var LibraryBrowser = {
   },
 
   // Callable from pthread, executes in pthread context.
-  emscripten_async_run_script__deps: ['emscripten_run_script', '$safeSetTimeout'],
   emscripten_async_run_script: (script, millis) => {
     // TODO: cache these to avoid generating garbage
     safeSetTimeout(() => _emscripten_run_script(script), millis);
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
-  emscripten_async_load_script__deps: [
-    '$UTF8ToString',
-#if ASSERTIONS
-    '$runDependencies',
-#endif
-    '$resolveRunDependencies',
-    '$callUserCallback',
-  ],
   emscripten_async_load_script: async (url, onload, onerror) => {
     url = UTF8ToString(url);
 #if PTHREADS
@@ -634,6 +620,7 @@ var LibraryBrowser = {
     document.body.appendChild(script);
   },
 
+  emscripten_get_window_title__deps: ['malloc'],
   emscripten_get_window_title__proxy: 'sync',
   emscripten_get_window_title: () => {
     const buflen = 256;
@@ -682,7 +669,7 @@ var LibraryBrowser = {
 
   // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
   emscripten_create_worker__proxy: 'sync',
-  emscripten_create_worker__deps: ['$UTF8ToString', 'realloc', '$workerHandles'],
+  emscripten_create_worker__deps: ['realloc'],
   emscripten_create_worker: (url) => {
     url = UTF8ToString(url);
     var worker = new Worker(url);
@@ -719,7 +706,7 @@ var LibraryBrowser = {
     return id;
   },
 
-  emscripten_destroy_worker__deps: ['free', '$workerHandles'],
+  emscripten_destroy_worker__deps: ['free'],
   emscripten_destroy_worker__proxy: 'sync',
   emscripten_destroy_worker: (id) => {
     var info = workerHandles.get(id);
@@ -728,7 +715,6 @@ var LibraryBrowser = {
     workerHandles.free(id);
   },
 
-  emscripten_call_worker__deps: ['$workerHandles'],
   emscripten_call_worker__proxy: 'sync',
   emscripten_call_worker: (id, funcName, data, size, callback, arg) => {
     funcName = UTF8ToString(funcName);
@@ -792,7 +778,6 @@ var LibraryBrowser = {
   },
 #endif
 
-  emscripten_get_worker_queue_size__deps: ['$workerHandles'],
   emscripten_get_worker_queue_size__proxy: 'sync',
   emscripten_get_worker_queue_size: (id) => {
     if (!workerHandles.has(id)) return -1;
@@ -800,12 +785,11 @@ var LibraryBrowser = {
     return info.awaited;
   },
 
-  emscripten_get_preloaded_image_data__deps: ['$getPreloadedImageData', '$UTF8ToString'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
   emscripten_get_preloaded_image_data: (path, w, h) => getPreloadedImageData(UTF8ToString(path), w, h),
 
   $getPreloadedImageData__internal: true,
-  $getPreloadedImageData__deps: ['$PATH_FS', 'malloc'],
+  $getPreloadedImageData__deps: ['malloc'],
   $getPreloadedImageData: (path, w, h) => {
     path = PATH_FS.resolve(path);
 
@@ -824,7 +808,7 @@ var LibraryBrowser = {
   },
 
 #if !WASMFS // WasmFS implements this in wasm
-  emscripten_get_preloaded_image_data_from_FILE__deps: ['$getPreloadedImageData', 'fileno'],
+  emscripten_get_preloaded_image_data_from_FILE__deps: ['fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
   emscripten_get_preloaded_image_data_from_FILE: (file, w, h) => {
     var fd = _fileno(file);
@@ -837,7 +821,5 @@ var LibraryBrowser = {
   }
 #endif
 };
-
-autoAddDeps(LibraryBrowser, '$Browser');
 
 addToLibrary(LibraryBrowser);

@@ -12411,9 +12411,9 @@ int main(void) {
   def test_drop_support_for_browser(self):
     # Test that -1 means "not supported"
     self.run_process([EMCC, test_file('browser/test_html5_core.c')])
-    self.assertContained('getContextSafariWebGL2Fixed', read_file('a.out.js'))
+    self.assertContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
     self.run_process([EMCC, test_file('browser/test_html5_core.c'), '-sMIN_SAFARI_VERSION=-1'])
-    self.assertNotContained('getContextSafariWebGL2Fixed', read_file('a.out.js'))
+    self.assertNotContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
 
   def test_errno_type(self):
     create_file('errno_type.c', '''
