@@ -174,7 +174,8 @@ int main(int argc, char* argv[]) {
   assert(err == 0);
 
   fd = open("/opfs/working/foo.txt", O_RDONLY | O_TRUNC);
-  // Blobs cannot be truncated and fail with EIO.
+  // Files opened read-only use a Blob, which can't be truncated, so open fails
+  // with EIO.
   assert(fd == -1 && errno == EIO);
   emscripten_console_log("failed to truncate while opening read-only");
 
