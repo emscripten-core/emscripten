@@ -414,6 +414,7 @@ const PROXY_SYNC_ASYNC = 2;
 
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
+  const libraryAliases = [];
   const symbolDeps = {};
   const asyncFuncs = [];
   let postSets = [];
@@ -438,12 +439,16 @@ export async function runJSify(outputFile, symbolsOnly) {
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
   symbolsNeeded.push(...extraLibraryFuncs);
 
-  for (const fileName of [...PRE_JS_FILES, ...POST_JS_FILES]) {
-    const content = readFile(fileName);
-    addImplicitDeps(content, symbolsNeeded);
-  }
-  for (const snippet of EM_JS_SNIPPETS) {
-    addImplicitDeps(snippet, symbolsNeeded);
+  if (!symbolsOnly) {
+    for (const fileName of [...PRE_JS_FILES, ...POST_JS_FILES]) {
+      const content = getIncludeFile(fileName);
+      if (!errorOccured()) {
+        addImplicitDeps(content, symbolsNeeded);
+      }
+    }
+    for (const snippet of EM_JS_SNIPPETS) {
+      addImplicitDeps(snippet, symbolsNeeded);
+    }
   }
   for (const sym of EXPORTED_RUNTIME_METHODS) {
     if ('$' + sym in LibraryManager.library) {
@@ -640,6 +645,7 @@ function(${args}) {
       let isStub = false;
 
       const mangled = mangleCSymbolName(symbol);
+      let snippet = LibraryManager.library[symbol];
 
       if (!LibraryManager.library.hasOwnProperty(symbol)) {
         const isWeakImport = WEAK_IMPORTS.has(symbol);
@@ -692,7 +698,7 @@ function(${args}) {
           stubFunctionBody = assertion + `return ${target}(...args);`;
         }
         isStub = true;
-        LibraryManager.library[symbol] = new Function('...args', stubFunctionBody);
+        snippet = new Function('...args', stubFunctionBody);
       }
 
       librarySymbols.push(mangled);
@@ -700,9 +706,6 @@ function(${args}) {
       if (!isStub && LibraryManager.library[symbol + '__export']) {
         extraExports.add(mangled);
       }
-
-      const original = LibraryManager.library[symbol];
-      let snippet = original;
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
       // Check for dependencies on `__internal` symbols from user libraries.
       for (const dep of deps) {
@@ -726,11 +729,12 @@ function(${args}) {
         }
       }
 
+      let aliasTarget;
       if (LibraryManager.isAlias(snippet)) {
         // Redirection for aliases. We include the parent, and at runtime
         // make ourselves equal to it.  This avoid having duplicate
         // functions with identical content.
-        const aliasTarget = snippet;
+        aliasTarget = snippet;
         if (WASM_EXPORTS.has(aliasTarget)) {
           debugLog(`native alias: ${mangled} -> ${aliasTarget}`);
           nativeAliases[mangled] = aliasTarget;
@@ -882,6 +886,15 @@ function(${args}) {
             .filter((x) => x != '')
             .join('\n') + '\n'
         : '';
+      // Defer direct JS value aliases (`var _alias = _target;`) to `libraryAliases`
+      // so the target symbol is guaranteed to be defined first. Skip native
+      // aliases (which emit no code here) and signature-mismatch aliases (where
+      // `isFunction` is set because they are emitted as forwarding wrapper
+      // functions rather than immediate value assignments).
+      if (aliasTarget && !isNativeAlias && !isFunction) {
+        libraryAliases.push(commentText + contentText);
+        return depsText.trim();
+      }
       return depsText + commentText + contentText;
     }
 
@@ -926,7 +939,7 @@ function(${args}) {
     includeSystemFile(preFile);
 
     writeOutput('// Begin JS library code\n');
-    for (const item of libraryItems.concat(postSets)) {
+    for (const item of [...libraryItems, ...libraryAliases, ...postSets]) {
       writeOutput(indentify(item ?? '', 2));
     }
     writeOutput('// End JS library code\n');
@@ -988,9 +1001,11 @@ var proxiedFunctionTable = [
     );
   }
 
+  timer.start('symbolHandler');
   for (const sym of symbolsNeeded) {
     symbolHandler(sym);
   }
+  timer.stop('symbolHandler');
 
   if (symbolsOnly) {
     writeOutput(

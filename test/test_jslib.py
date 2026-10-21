@@ -604,7 +604,15 @@ extraLibraryFuncs.push('jsfunc');
   def test_jslib_aliases(self, args):
     create_file('foo.js', '''
       addToLibrary({
-        foo: () => 42,
+        // Create a dependency cycle (foo -> $call_alias -> foo_alias -> foo)
+        // to test that `var _foo_alias = _foo;` is still emitted after `_foo`.
+        $call_alias__deps: ['foo_alias'],
+        $call_alias: () => _foo_alias(),
+        foo__deps: ['$call_alias'],
+        foo: () => {
+          if (!call_alias) return 0;
+          return 42;
+        },
         foo__sig: 'i',
 
         foo_alias: 'foo',

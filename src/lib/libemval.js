@@ -289,7 +289,7 @@ var LibraryEmVal = {
     '$Emval', '$getStringOrSymbol',
   ],
   _emval_create_invoker: (argCount, argTypesPtr, kind) => {
-    var GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
+    const GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
 
     var [retType, ...argTypes] = emval_lookupTypes(argCount, argTypesPtr);
     var toReturnWire = retType.toWireType.bind(retType);
@@ -361,7 +361,7 @@ ${functionBody}
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
   },
 
-  _emval_invoke__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
+  _emval_invoke__deps: ['$emval_methodCallers'],
   _emval_invoke: (caller, handle, methodName, destructorsRef, args) => {
     return emval_methodCallers[caller](handle, methodName, destructorsRef, args);
   },
@@ -410,7 +410,6 @@ ${functionBody}
   },
 
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
-  $isCppExceptionObject__deps: ['$Emval'],
   $isCppExceptionObject: (object) => {
 #if !DISABLE_EXCEPTION_CATCHING
     return object instanceof CppException;
@@ -420,12 +419,12 @@ ${functionBody}
   },
 #endif
 
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
   _emval_is_catchable_cpp_exception_object__deps: [
     '$Emval',
-#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
     '$isCppExceptionObject',
-#endif
   ],
+#endif
   _emval_is_catchable_cpp_exception_object: (object) => {
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
     return isCppExceptionObject(Emval.toValue(object));

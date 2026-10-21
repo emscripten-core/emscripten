@@ -133,7 +133,7 @@ void AsanThread::Destroy() {
     malloc_storage().CommitBack();
 #if !SANITIZER_EMSCRIPTEN
     if (common_flags()->use_sigaltstack)
-      UnsetAlternateSignalStack();
+      UnsetAlternateSignalStack(altstack_base_);
 #endif
     FlushToDeadThreadStats(&stats_);
     // We also clear the shadow on thread destruction because
@@ -291,7 +291,7 @@ void AsanThread::ThreadStart(ThreadID os_id) {
 
 #if !SANITIZER_EMSCRIPTEN
   if (common_flags()->use_sigaltstack)
-    SetAlternateSignalStack();
+    altstack_base_ = SetAlternateSignalStack();
 #endif
 }
 

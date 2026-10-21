@@ -115,7 +115,7 @@ addToLibrary({
       // For small filesizes (<1MB), perform size*2 geometric increase, but for
       // large sizes, do a much more conservative size*1.125 increase to avoid
       // overshooting the allocation cap by a very large margin.
-      var CAPACITY_DOUBLING_MAX = 1024 * 1024;
+      const CAPACITY_DOUBLING_MAX = 1024 * 1024;
       newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) >>> 0);
       if (prevCapacity) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
       var oldContents = MEMFS.getFileDataAsTypedArray(node);
@@ -156,11 +156,6 @@ addToLibrary({
         attr.atime = new Date(node.atime);
         attr.mtime = new Date(node.mtime);
         attr.ctime = new Date(node.ctime);
-        // A Date only holds whole milliseconds: also return the exact times
-        // (e.g. as set by utimensat), which SYSCALLS.writeStat prefers.
-        attr.atimeMs = node.atime;
-        attr.mtimeMs = node.mtime;
-        attr.ctimeMs = node.ctime;
         // NOTE: In our implementation, st_blocks = Math.ceil(st_size/st_blksize),
         //       but this is not required by the standard.
         attr.blksize = 4096;

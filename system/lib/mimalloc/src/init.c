@@ -19,7 +19,11 @@ static const mi_page_t mi_page_empty = {
   #endif
   MI_ATOMIC_VAR_INIT(0),  // xthread_id
   NULL,                   // free
-  0,                      // used
+  {0},                    // xused
+  #if MI_SIZE_SIZE < 8
+  0,                      // xlast_used
+  0,                      // xlast_alloc
+  #endif
   NULL,                   // local_free
   0,                      // block_size
   0,                      // page_offset
@@ -39,8 +43,6 @@ static const mi_page_t mi_page_empty = {
   #else
   { 0 },                  // key
   #endif
-  // #elif MI_PAGE_META_IS_ALIGNED && MI_INTPTR_SIZE==8
-  // { 0 },                  // padding 
   #endif
 };
 
@@ -54,7 +56,7 @@ static const mi_page_t mi_page_empty = {
 #error define initializer for direct pages
 #endif
 
-#if (MI_PADDING>0) && (MI_INTPTR_SIZE >= 8)
+#if (MI_PADDING>0) && (MI_SIZE_SIZE >= 8)
 #define MI_SMALL_PAGES_EMPTY  { MI_INIT_PAGES_DIRECT(MI_PAGE_EMPTY), MI_PAGE_EMPTY(), MI_PAGE_EMPTY() }
 #elif (MI_PADDING>0)
 #define MI_SMALL_PAGES_EMPTY  { MI_INIT_PAGES_DIRECT(MI_PAGE_EMPTY), MI_PAGE_EMPTY(), MI_PAGE_EMPTY(), MI_PAGE_EMPTY() }
@@ -123,6 +125,14 @@ mi_decl_hidden mi_decl_cache_align const mi_theap_t _mi_theap_empty = {
   MI_ATOMIC_VAR_INIT(NULL), // heap
   MI_ATOMIC_VAR_INIT(NULL), // subproc
   MI_ATOMIC_VAR_INIT(1),  // refcount
+  0,                      // full page retain
+  false,                  // allow reclaim
+  true,                   // allow abandon
+  true,                   // is_detached 
+  ~MI_ZU(0),              // sample countdown: "-1" (with a sample rate of 0, so we won't write to the empty theap with MI_SAMPLE==2)  
+  0, 0,                   // sample rate, requested
+  0, 0,                   // profile rate, countdown
+  0, 0, 0, 0,             // guarded rate, countdown, min, max
   0,                      // heartbeat
   { {0}, {0}, 0, true },  // random
   0,                      // page count
@@ -131,13 +141,6 @@ mi_decl_hidden mi_decl_cache_align const mi_theap_t _mi_theap_empty = {
   0, 0,                   // generic count
   NULL, NULL,             // tnext, tprev
   NULL, NULL,             // hnext, hprev
-  0,                      // full page retain
-  false,                  // allow reclaim
-  true,                   // allow abandon
-  true,                   // is_detached
-  #if MI_GUARDED
-  0, 0, 0, 1,             // rate is 0 and count is 1 so we never write to it (see `internal.h:mi_heap_malloc_use_guarded`)
-  #endif
   MI_PAGE_QUEUES_EMPTY,
   MI_MEMID_STATIC,
   MI_STATS_NULL,          // stats
@@ -201,6 +204,8 @@ static void mi_heap_main_init_once(void) {
   _mi_theap_init(&mi_process_theap_meta,&mi_process_heap_main,&mi_tld_detached);
   mi_process_theap_meta.allow_page_abandon = false;  // for security, don't share with other threads
   mi_process_theap_meta.page_full_retain = 2;
+  mi_process_theap_meta.sample_rate = 0; // no sampling for meta data
+  mi_process_theap_meta.sample_countdown = 0;
   subproc_main->theap_meta = &mi_process_theap_meta;
 
   // mi_heap_theap_set(&mi_process_heap_main,&mi_process_theap_main); // set in `mi_thread_init(_theap_default)`
@@ -441,6 +446,11 @@ static void mi_thread_theaps_done(mi_tld_t* tld)
 static void mi_process_setup_auto_thread_done(void) {
   mi_atomic_do_once {
     _mi_prim_thread_init_auto_done();
+    mi_theap_t* theap = _mi_theap_default();
+    mi_assert_internal(mi_theap_is_initialized(theap));
+    if (mi_theap_is_initialized(theap)) {
+      _mi_theap_default_set(theap);
+    }
   }
 }
 
@@ -449,7 +459,7 @@ void mi_thread_done(void) mi_attr_noexcept {
 }
 
 void _mi_thread_done(mi_theap_t* _theap_main)
-{
+{  
   // NULL can be passed on some platforms
   if (_theap_main==NULL) {
     _theap_main = _mi_theap_default();
@@ -506,7 +516,6 @@ void _mi_auto_process_init(void) {
   os_preloading = false;
 
   mi_process_init();
-  mi_process_setup_auto_thread_done();
 
   _mi_options_post_init();  // now we can print to stderr
   if (_mi_is_redirected()) _mi_verbose_message("malloc is redirected.\n");
@@ -551,7 +560,8 @@ static void mi_process_init_once(void) {
   // the following can potentially allocate (on freeBSD for pthread keys)
   _mi_tls_slots_init();      // pthread key create
   _mi_thread_locals_init();  // pthread key create
-  _mi_process_is_initialized = true;
+  _mi_process_is_initialized = true;    // before `mi_process_setup_auto_thread_done` so `_mi_theap_default` returns the current theap with `MI_TLS_RECURSE_GUARD`
+  mi_process_setup_auto_thread_done();  // after the above mi_thread_init so it can add the current theap
 
   #if defined(_WIN32) && defined(MI_WIN_INIT_USE_FLS)
   // On windows, when building as a static lib the FLS cleanup happens to early for the main thread.
@@ -627,6 +637,7 @@ static void mi_process_done_once(void) {
     _mi_thread_locals_done();
     if (subproc_main->heap_main != NULL) {
       if (mi_option_is_enabled(mi_option_show_stats) || mi_option_is_enabled(mi_option_verbose)) {
+        mi_theap_collect(subproc_main->theap_meta, false /* force */); // update stats of all pages in theap_meta
         _mi_theap_merge_stats(subproc_main->theap_meta);
         _mi_theap_merge_stats(_mi_theap_default());  // _mi_thread_locals_done can free
         mi_heap_stats_merge_to_subproc(subproc_main->heap_main);

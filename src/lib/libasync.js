@@ -21,14 +21,15 @@ addToLibrary({
 
 #if ASYNCIFY
   $Asyncify__force: true,
-  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
-#if ASSERTIONS
-    '$createNamedFunction',
-#endif
-#if !MINIMAL_RUNTIME
+  $Asyncify__deps: [
+#if useRuntimeKeepaliveStack()
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
 #if ASYNCIFY == 1
+    '$runAndAbortIfError', '$callUserCallback',
+#if ASSERTIONS
+    '$createNamedFunction',
+#endif
     // Needed by allocateData and handleSleep respectively
     'malloc', 'free',
 #endif
@@ -98,7 +99,7 @@ addToLibrary({
           // them to the table.
           imports[x].sig = original.sig;
 #endif // MAIN_MODULE
-#endif // ASSERTIONS
+#endif // ASSERTIONS && ASYNCIFY != 2
         }
       }
     },

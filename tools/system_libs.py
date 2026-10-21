@@ -1001,7 +1001,15 @@ class libclang_rt_builtins(MTLibrary, SjLjLibrary):
   }
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += glob_in_path(profile_src_dir, '*.c')
-  src_files += glob_in_path(profile_src_dir, '*.cpp')
+  src_files += glob_in_path(
+      profile_src_dir,
+      '*.cpp',
+      excludes={
+        # These are only part of upstream's separate profile_rocm runtime.
+        'InstrProfilingPlatformROCm.cpp',
+        'InstrProfilingPlatformROCmHSA.cpp',
+      },
+  )
   src_files += files_in_path(
       path='system/lib/compiler-rt',
       filenames=[
@@ -1887,6 +1895,9 @@ class libmimalloc(MTLibrary):
     '-DMI_LIBC_MUSL',
     # enable use of `__builtin_thread_pointer()`
     '-DMI_USE_BUILTIN_THREAD_POINTER',
+    # always use the page map when free-ing a pointer, as we don't support
+    # large OS aligned allocations well
+    '-DMI_FREE_USE_PAGEMAP=1',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO

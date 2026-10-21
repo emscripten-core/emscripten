@@ -28,25 +28,27 @@ var LibraryHtml5WebGL = {
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   // In offscreen framebuffer mode, we implement a proxied version of the
   // emscripten_webgl_create_context() function in JS.
-  emscripten_webgl_create_context_proxied__proxy: 'sync',
-  emscripten_webgl_create_context_proxied__deps: ['emscripten_webgl_do_create_context'],
-  emscripten_webgl_create_context_proxied: (target, attributes) =>
-    _emscripten_webgl_do_create_context(target, attributes),
+  _emscripten_webgl_create_context_proxied__proxy: 'sync',
+  _emscripten_webgl_create_context_proxied__deps: ['_emscripten_webgl_do_create_context'],
+  _emscripten_webgl_create_context_proxied: (target, attributes) =>
+    __emscripten_webgl_do_create_context(target, attributes),
 
   // The other proxied GL commands are defined in C (guarded by the
   // __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__ definition).
 #else
   // When not in offscreen framebuffer mode, these functions are implemented
   // in JS and forwarded without any proxying.
-  emscripten_webgl_create_context: 'emscripten_webgl_do_create_context',
+  emscripten_webgl_create_context: '_emscripten_webgl_do_create_context',
 
-  emscripten_webgl_get_current_context: 'emscripten_webgl_do_get_current_context',
+  emscripten_webgl_get_current_context: '_emscripten_webgl_do_get_current_context',
 
-  emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
+  emscripten_webgl_commit_frame: '_emscripten_webgl_do_commit_frame',
+
+  emscripten_webgl_destroy_context: '_emscripten_webgl_do_destroy_context',
 #endif
 
 #if OFFSCREENCANVAS_SUPPORT
-  emscripten_webgl_do_create_context__postset: `
+  _emscripten_webgl_do_create_context__postset: `
   registerPreMainLoop(() => {
     // If the current GL context is an OffscreenCanvas, but it was initialized
     // with implicit swap mode, perform the swap on behalf of the user.
@@ -56,18 +58,18 @@ var LibraryHtml5WebGL = {
   });`,
 #endif
 
-  emscripten_webgl_do_create_context__deps: [
+  _emscripten_webgl_do_create_context__deps: [
 #if OFFSCREENCANVAS_SUPPORT
   '$registerPreMainLoop',
   'malloc',
   'emscripten_supports_offscreencanvas',
 #endif
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
-  'emscripten_webgl_create_context_proxied',
+  '_emscripten_webgl_create_context_proxied',
 #endif
   '$webglPowerPreferences', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
-  emscripten_webgl_do_create_context: (target, attributes) => {
+  _emscripten_webgl_do_create_context: (target, attributes) => {
 #if ASSERTIONS
     assert(attributes);
 #endif
@@ -136,7 +138,7 @@ var LibraryHtml5WebGL = {
           {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i8') }}};
           {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i8') }}};
         }
-        return _emscripten_webgl_create_context_proxied(target, attributes);
+        return __emscripten_webgl_create_context_proxied(target, attributes);
       }
     }
 #endif
@@ -220,8 +222,8 @@ var LibraryHtml5WebGL = {
 
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   // Runs on the calling thread, proxies if needed.
-  emscripten_webgl_make_context_current_calling_thread__sig: 'ip',
-  emscripten_webgl_make_context_current_calling_thread: (contextHandle) => {
+  _emscripten_webgl_make_context_current_calling_thread__sig: 'ip',
+  _emscripten_webgl_make_context_current_calling_thread: (contextHandle) => {
     var success = GL.makeContextCurrent(contextHandle);
     if (success) GL.currentContextIsProxied = false; // If succeeded above, we will have a local GL context from this thread (worker or main).
     return success ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
@@ -254,7 +256,7 @@ var LibraryHtml5WebGL = {
   },
 #endif
 
-  emscripten_webgl_do_get_current_context: () => GL.currentContext ? GL.currentContext.handle : 0,
+  _emscripten_webgl_do_get_current_context: () => GL.currentContext ? GL.currentContext.handle : 0,
 
   emscripten_webgl_get_drawing_buffer_size__proxy: 'sync_on_webgl_context_handle_thread',
   emscripten_webgl_get_drawing_buffer_size: (contextHandle, width, height) => {
@@ -268,10 +270,10 @@ var LibraryHtml5WebGL = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_webgl_do_commit_frame: () => {
+  _emscripten_webgl_do_commit_frame: () => {
 #if TRACE_WEBGL_CALLS
     var threadId = (typeof _pthread_self !== 'undefined') ? _pthread_self : () => 1;
-    err(`[Thread ${threadId()}, GL ctx: ${GL.currentContext.handle}]: emscripten_webgl_do_commit_frame()`);
+    err(`[Thread ${threadId()}, GL ctx: ${GL.currentContext.handle}]: _emscripten_webgl_do_commit_frame()`);
 #endif
     if (!GL.currentContext || !GL.currentContext.GLctx) {
 #if GL_DEBUG
@@ -331,20 +333,11 @@ var LibraryHtml5WebGL = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_destroy_context: (contextHandle) => {
+  _emscripten_webgl_do_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
+  _emscripten_webgl_do_destroy_context: (contextHandle) => {
     if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);
   },
-
-#if PTHREADS
-  // Special function that will be invoked on the thread calling emscripten_webgl_destroy_context(), before routing
-  // the call over to the target thread.
-  $emscripten_webgl_destroy_context_before_on_calling_thread__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
-  $emscripten_webgl_destroy_context_before_on_calling_thread: (contextHandle) => {
-    if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
-  },
-#endif
 
   emscripten_webgl_enable_extension__deps: [
 #if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
@@ -601,11 +594,7 @@ function handleWebGLProxying(funcs) {
       const funcArgsString = funcArgs.join();
       const retStatement = sig[0] != 'v' ? 'return' : '';
       const contextCheck = proxyContextHandle ? 'GL.contexts[p0]' : 'GLctx';
-      var funcBody = `${retStatement} ${contextCheck} ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;
-      if (funcs[i + '_before_on_calling_thread']) {
-        funcs[i + '__deps'].push('$' + i + '_before_on_calling_thread');
-        funcBody = `${i}_before_on_calling_thread(${funcArgsString}); ` + funcBody;
-      }
+      const funcBody = `${retStatement} ${contextCheck} ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;
       funcs[i] = new Function(funcArgs, funcBody);
     } else if (targetingOffscreenFramebuffer) {
       // When targeting only OFFSCREEN_FRAMEBUFFER, unconditionally proxy all GL

@@ -5977,12 +5977,6 @@ got: 10
       self.set_setting("FORCE_FILESYSTEM")
     self.do_runf_out_file('fs/test_fs_write.c')
 
-  @crossplatform
-  @with_all_fs
-  @no_deno('https://github.com/emscripten-core/emscripten/pull/27890')
-  def test_fs_subms_times(self):
-    self.do_runf('fs/test_fs_subms_times.c', 'done\n')
-
   @with_all_fs
   def test_fs_access_mode(self):
     # Writing to an O_RDONLY fd and reading from an O_WRONLY fd must fail with
@@ -6315,9 +6309,11 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_posixtime.c')
 
   def test_uname(self):
-    if self.get_setting('STRICT'):
-      self.cflags += ['-lstubs']
     self.do_core_test('test_uname.c', regex=True)
+
+  def test_uname_noderawfs(self):
+    self.setup_noderawfs_test()
+    self.do_runf('core/test_uname_noderawfs.c', 'done\n')
 
   def test_unary_literal(self):
     self.do_core_test('test_unary_literal.cpp')
@@ -9853,6 +9849,7 @@ int main() {
 
   @requires_wasm_workers
   @also_with_pthreads
+  @flaky('https://github.com/emscripten-core/emscripten/issues/27551')
   def test_wasm_worker_futex_wait(self):
     self.do_runf('wasm_worker/wasm_worker_futex_wait.c', cflags=['-sWASM_WORKERS'])
 
@@ -9946,7 +9943,6 @@ int main() {
 
     self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
 
-  @disabled('https://github.com/emscripten-core/emscripten/issues/27223')
   @no_esm_integration('fcoverage is not compatible with WASM_ESM_INTEGRATION')
   @no_wasm2js('wasm binary required to produce code coverage results with llvm-cov')
   def test_fcoverage_mapping(self):

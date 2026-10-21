@@ -13,17 +13,17 @@ class WasmSourceMap {
     this.sources = sourceMap.sources;
     this.names = sourceMap.names;
 
-    var vlqMap = {};
+    const vlqMap = {};
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='.split('').forEach((c, i) => vlqMap[c] = i);
 
     // based on https://github.com/Rich-Harris/vlq/blob/master/src/vlq.ts
     function decodeVLQ(string) {
-      var result = [];
-      var shift = 0;
-      var value = 0;
+      const result = [];
+      let shift = 0;
+      let value = 0;
 
-      for (var ch of string) {
-        var integer = vlqMap[ch];
+      for (const ch of string) {
+        const integer = vlqMap[ch];
         if (integer === undefined) {
           throw new Error(`Invalid character (${ch})`);
         }
@@ -33,7 +33,7 @@ class WasmSourceMap {
         if (integer & 32) {
           shift += 5;
         } else {
-          var negate = value & 1;
+          const negate = value & 1;
           value >>= 1;
           result.push(negate ? -value : value);
           value = shift = 0;
@@ -42,11 +42,11 @@ class WasmSourceMap {
       return result;
     }
 
-    var offset = 0, src = 0, line = 1, col = 1, name = 0;
-    for (const [index, segment] of sourceMap.mappings.split(',').entries()) {
+    let offset = 0, src = 0, line = 1, col = 1, name = 0;
+    for (const segment of sourceMap.mappings.split(',')) {
       if (!segment) continue;
-      var data = decodeVLQ(segment);
-      var info = {};
+      const data = decodeVLQ(segment);
+      const info = {};
 
       offset += data[0];
       if (data.length >= 2) info.source = src += data[1];
@@ -60,8 +60,8 @@ class WasmSourceMap {
   }
 
   lookup(offset) {
-    var normalized = this.normalizeOffset(offset);
-    var info = this.mapping[normalized];
+    const normalized = this.normalizeOffset(offset);
+    const info = this.mapping[normalized];
     if (!info) {
       return null;
     }
@@ -74,9 +74,9 @@ class WasmSourceMap {
   }
 
   normalizeOffset(offset) {
-    var lo = 0;
-    var hi = this.offsets.length;
-    var mid;
+    let lo = 0;
+    let hi = this.offsets.length;
+    let mid;
 
     while (lo < hi) {
       mid = Math.floor((lo + hi) / 2);
@@ -90,11 +90,11 @@ class WasmSourceMap {
   }
 }
 
-var wasmSourceMap;
+let wasmSourceMap;
 #if MINIMAL_RUNTIME
-var wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
+const wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
 #else
-var wasmSourceMapFile = locateFile('{{{ WASM_BINARY_FILE }}}.map');
+const wasmSourceMapFile = locateFile('{{{ WASM_BINARY_FILE }}}.map');
 #endif
 
 function receiveSourceMapJSON(sourceMap) {
@@ -102,7 +102,7 @@ function receiveSourceMapJSON(sourceMap) {
 }
 
 function getSourceMap() {
-  var buf = readBinary(wasmSourceMapFile);
+  const buf = readBinary(wasmSourceMapFile);
   return JSON.parse(UTF8ArrayToString(buf));
 }
 
@@ -113,7 +113,7 @@ async function getSourceMapAsync() {
 #endif
    ) {
     try {
-      var response = await fetch(wasmSourceMapFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
+      const response = await fetch(wasmSourceMapFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
       return response.json();
     } catch {
       // Fall back to getSourceMap below

@@ -8,7 +8,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #ifndef MIMALLOC_H
 #define MIMALLOC_H
 
-#define MI_MALLOC_VERSION 30501   // major + 2 digits minor + 2 digits patch
+#define MI_MALLOC_VERSION 30503   // major + 2 digits minor + 2 digits patch
 
 // ------------------------------------------------------
 // Compiler specific attributes
@@ -97,6 +97,7 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include <stddef.h>     // size_t, wchar_t
 #include <stdbool.h>    // bool
+#include <assert.h>     // inline assertions
 
 #ifdef __cplusplus
 extern "C" {
@@ -120,7 +121,7 @@ mi_decl_nodiscard mi_decl_export mi_decl_restrict char* mi_realpath(const char* 
 // Extended allocation functions
 // ------------------------------------------------------
 #define MI_SMALL_WSIZE_MAX  128
-#define MI_SMALL_SIZE_MAX   (MI_SMALL_WSIZE_MAX*sizeof(void*))
+#define MI_SMALL_SIZE_MAX   (MI_SMALL_WSIZE_MAX*sizeof(size_t))  // mimalloc considers `sizeof(size_t)` as the machine word size
 
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_malloc_small(size_t size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_zalloc_small(size_t size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
@@ -396,30 +397,6 @@ mi_decl_nodiscard mi_decl_export                  void* mi_theap_realloc(mi_thea
 mi_decl_nodiscard mi_decl_export                  void* mi_theap_rezalloc(mi_theap_t* theap, void* p, size_t newsize)             mi_attr_noexcept mi_attr_alloc_size(3);
 
 // ------------------------------------------------------
-// Fast constant size allocations.
-// ------------------------------------------------------
-
-static inline mi_decl_restrict void* mi_malloc_csize(size_t size) mi_attr_noexcept {
-  if (size <= MI_SMALL_SIZE_MAX) { return mi_malloc_small(size); } else { return mi_malloc(size); }
-}
-static inline mi_decl_restrict void* mi_zalloc_csize(size_t size) mi_attr_noexcept {
-  if (size <= MI_SMALL_SIZE_MAX) { return mi_zalloc_small(size); } else { return mi_zalloc(size); }
-}
-static inline mi_decl_restrict void* mi_theap_malloc_csize(mi_theap_t* theap, size_t size) mi_attr_noexcept {
-  if (size <= MI_SMALL_SIZE_MAX) { return mi_theap_malloc_small(theap,size); } else { return mi_theap_malloc(theap,size); }
-}
-static inline mi_decl_restrict void* mi_theap_zalloc_csize(mi_theap_t* theap, size_t size) mi_attr_noexcept {
-  if (size <= MI_SMALL_SIZE_MAX) { return mi_theap_zalloc_small(theap,size); } else { return mi_theap_zalloc(theap,size); }
-}
-static inline void mi_free_csize(void* p, size_t size) mi_attr_noexcept {
-  if (size <= MI_SMALL_SIZE_MAX) { mi_free_small(p); } else { mi_free(p); }
-}
-static inline void mi_free_csize_nonnull(void* p, size_t size) mi_attr_noexcept {
-  // assert(p!=NULL);
-  if (size <= MI_SMALL_SIZE_MAX) { mi_free_small_nonnull(p); } else { mi_free(p); }
-}
-
-// ------------------------------------------------------
 // Experimental
 // ------------------------------------------------------
 
@@ -506,18 +483,19 @@ typedef enum mi_option_e {
   mi_option_guarded_sample_rate,        // 1 out of N allocations in the min/max range will be guarded (=1000)
   mi_option_guarded_sample_seed,        // can be set to allow for a (more) deterministic re-execution when a guard page is triggered (=0)
   mi_option_generic_collect,            // collect theaps every N (=10000) generic allocation calls
-  mi_option_page_reclaim_on_free,       // reclaim abandoned pages on a free (=0). -1 disallowr always, 0 allows if the page originated from the current theap, 1 allow always
+  mi_option_page_reclaim_on_free,       // reclaim abandoned pages on a free (=0). -1 disallow always, 0 allows if the page originated from the current theap, 1 allow always
   mi_option_page_full_retain,           // retain N full (small) pages per size class (=2)
   mi_option_page_max_candidates,        // max candidate pages to consider for allocation (=4)
   mi_option_max_vabits,                 // max user space virtual address bits to consider (=48)
   mi_option_pagemap_commit,             // commit the full pagemap (to always catch invalid pointer uses) (=0)
   mi_option_page_commit_on_demand,      // commit page memory on-demand
   mi_option_page_max_reclaim,           // don't reclaim pages of the same originating theap if we already own N pages (in that size class) (=-1 (unlimited))
-  mi_option_page_cross_thread_max_reclaim, // don't reclaim pages across threads if we already own N pages (in that size class) (=16)
+  mi_option_page_cross_thread_max_reclaim, // don't reclaim pages across threads if we already own N pages (in that size class) (=32)
   mi_option_allow_thp,                  // allow transparent huge pages? (=1) (on Android =0 by default). Set to 0 to disable THP for the process.
   mi_option_minimal_purge_size,         // set minimal purge size (in KiB) (=0). By default set to either 64 or 2048 if THP is enabled.
   mi_option_arena_max_object_size,      // set maximal object size that can be allocated in an arena (in KiB) (=2GiB on 64-bit). 
-  mi_option_arena_is_numa_local,        // experimental
+  mi_option_arena_is_numa_local,        // experimental: associate local numa node with an initial arena allocation
+  mi_option_collect_merges_stats,       // on each theap collection, the theap stats are merged automatically with the parent heap
   _mi_option_last,
   // legacy option names
   mi_option_large_os_pages = mi_option_allow_large_os_pages,
@@ -573,8 +551,13 @@ mi_decl_export int mi_wdupenv_s(wchar_t** buf, size_t* size, const wchar_t* name
 mi_decl_nodiscard mi_decl_export mi_decl_restrict wchar_t* mi_wcsdup(const wchar_t* s)  mi_attr_noexcept mi_attr_malloc;
 mi_decl_nodiscard mi_decl_export mi_decl_restrict unsigned char* mi_mbsdup(const unsigned char* s)  mi_attr_noexcept mi_attr_malloc;
 
-// The `mi_new` wrappers implement C++ semantics on out-of-memory instead of directly returning `NULL`.
-// (and call `std::get_new_handler` and potentially raise a `std::bad_alloc` exception).
+// --------------------------------------------------------
+// C++ wrappers
+// The `mi_new` wrappers implement C++ semantics on out-of-memory 
+// instead of directly returning `NULL`. (and call `std::get_new_handler` 
+// and potentially raise a `std::bad_alloc` exception).
+// --------------------------------------------------------
+
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_new(size_t size)                   mi_attr_malloc mi_attr_alloc_size(1);
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_new_aligned(size_t size, size_t alignment) mi_attr_malloc mi_attr_alloc_size(1) mi_attr_alloc_align(2);
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_new_nothrow(size_t size)           mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
@@ -585,6 +568,63 @@ mi_decl_nodiscard mi_decl_export void* mi_new_reallocn(void* p, size_t newcount,
 
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_heap_alloc_new(mi_heap_t* heap, size_t size)                 mi_attr_malloc mi_attr_alloc_size(2);
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_heap_alloc_new_n(mi_heap_t* heap, size_t count, size_t size) mi_attr_malloc mi_attr_alloc_size2(2, 3);
+
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_theap_alloc_new(mi_theap_t* theap, size_t size) mi_attr_malloc mi_attr_alloc_size(2);
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_theap_alloc_new_n(mi_theap_t* theap, size_t count, size_t size) mi_attr_malloc mi_attr_alloc_size2(2, 3);
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_theap_alloc_new_nothrow(mi_theap_t* theap, size_t size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(2);
+
+
+// --------------------------------------------------------------------------
+// Inlined constant size allocations.
+// These are meant for runtime systems, or overrides where we need the best 
+// performance for small, constant-size allocations.
+// These are only better than the regular functions if the size or alignment 
+// are indeed constant at the call site.
+// --------------------------------------------------------------------------
+
+// Internal machine word size allocation. `wsize` is the allocation size in machine words (`sizeof(size_t)`)
+mi_decl_nodiscard mi_decl_restrict void* mi_wzalloc_small(size_t wsize) mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_restrict void* mi_wmalloc_small(size_t wsize) mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_restrict void* mi_theap_wmalloc_small(mi_theap_t* theap, size_t wsize) mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_restrict void* mi_theap_wzalloc_small(mi_theap_t* theap, size_t wsize) mi_attr_noexcept mi_attr_malloc;
+
+static inline size_t mi_wsize_from_size(size_t size) mi_attr_noexcept {
+  return (size + sizeof(size_t) - 1) / sizeof(size_t);
+}
+
+static inline mi_decl_restrict void* mi_malloc_csize(size_t size) mi_attr_noexcept {
+  if (size <= MI_SMALL_SIZE_MAX) { return mi_wmalloc_small(mi_wsize_from_size(size)); } else { return mi_malloc(size); }
+}
+static inline mi_decl_restrict void* mi_zalloc_csize(size_t size) mi_attr_noexcept {
+  if (size <= MI_SMALL_SIZE_MAX) { return mi_wzalloc_small(mi_wsize_from_size(size)); } else { return mi_zalloc(size); }
+}
+static inline mi_decl_restrict void* mi_theap_malloc_csize(mi_theap_t* theap, size_t size) mi_attr_noexcept {  
+  assert(theap!=NULL);
+  if (size <= MI_SMALL_SIZE_MAX) { return mi_theap_wmalloc_small(theap,mi_wsize_from_size(size)); } else { return mi_theap_malloc(theap,size); }
+}
+static inline mi_decl_restrict void* mi_theap_zalloc_csize(mi_theap_t* theap, size_t size) mi_attr_noexcept {
+  assert(theap!=NULL);
+  if (size <= MI_SMALL_SIZE_MAX) { return mi_theap_wzalloc_small(theap,mi_wsize_from_size(size)); } else { return mi_theap_zalloc(theap,size); }
+}
+
+static inline void mi_free_csize(void* p, size_t size) mi_attr_noexcept {
+  if (size <= MI_SMALL_SIZE_MAX) { mi_free_small(p); } else { mi_free(p); }
+}
+static inline void mi_free_csize_nonnull(void* p, size_t size) mi_attr_noexcept {
+  assert(p!=NULL);
+  if (size <= MI_SMALL_SIZE_MAX) { mi_free_small_nonnull(p); } else { mi_free(p); }
+}
+static inline void mi_free_csize_aligned(void* p, size_t size, size_t aligned) mi_attr_noexcept {
+  if (aligned <= size && size <= MI_SMALL_SIZE_MAX) { mi_free_small(p); } else { mi_free(p); }
+}
+static inline void mi_free_csize_aligned_nonnull(void* p, size_t size, size_t aligned) mi_attr_noexcept {
+  assert(p!=NULL);
+  if (aligned <= size && size <= MI_SMALL_SIZE_MAX) { mi_free_small_nonnull(p); } else { mi_free(p); }
+}
+
+// ------------------------------------------------------
+// C++ standard library allocator interface.
+// ------------------------------------------------------
 
 #ifdef __cplusplus
 }

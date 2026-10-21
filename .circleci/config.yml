@@ -697,6 +697,7 @@ jobs:
             wasmfs.test_fs_errorstack
             wasmfs.test_fs_errorstack_rawfs
             wasmfs.test_fs_emptyPath
+            wasmfs.test_fs_fadvise_fallocate*
             wasmfs.test_webidl
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
@@ -720,6 +721,7 @@ jobs:
             wasmfs.test_minimal_runtime_global_initializer
             wasmfs.test_minimal_runtime_hello_world*
             wasmfs.test_dlmalloc
+            wasmfs.test_wrap_malloc_mimalloc
             minimal0.test_utf
             minimal0.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_static_variable
@@ -1158,8 +1160,7 @@ jobs:
             "
   test-windows-browser-firefox:
     # Use spaces and other special chars in the path to emsdk to flush out
-    # issues with windows.  In particular, the .bat file launchers can have
-    # trouble with these.
+    # path-escaping issues on windows.
     working_directory: "~/path with spaces ()/"
     executor:
       name: win/server-2019
@@ -1213,8 +1214,7 @@ jobs:
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
     # Use spaces and other special chars in the path to emsdk to flush out
-    # issues with windows.  In particular, the .bat file launchers can have
-    # trouble with these.
+    # path-escaping issues on windows.
     working_directory: "~/path with spaces ()/"
     executor:
       name: win/server-2019

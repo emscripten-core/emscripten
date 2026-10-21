@@ -9,7 +9,9 @@ var LibraryHTML5 = {
 #if PTHREADS
     '_emscripten_run_callback_on_thread',
 #endif
+#if EXIT_RUNTIME
     '$addOnExit',
+#endif
   ],
   $JSEvents: {
 
@@ -276,7 +278,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}};
     JSEvents.keyEvent ||= _malloc(eventSize);
 
     var keyEventHandlerFunc = (e) => {
@@ -507,7 +509,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}};
     JSEvents.mouseEvent ||= _malloc(eventSize);
     target = findEventTarget(target);
 
@@ -603,7 +605,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}};
     JSEvents.wheelEvent ||= _malloc(eventSize)
 
     // The DOM Level 3 events spec event 'wheel'
@@ -654,7 +656,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}};
     JSEvents.uiEvent ||= _malloc(eventSize);
 
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -726,7 +728,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}};
     JSEvents.focusEvent ||= _malloc(eventSize);
 
     var focusEventHandlerFunc = (e) => {
@@ -789,7 +791,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}};
     JSEvents.deviceOrientationEvent ||= _malloc(eventSize);
 
     var deviceOrientationEventHandlerFunc = (e) => {
@@ -856,7 +858,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}};
     JSEvents.deviceMotionEvent ||= _malloc(eventSize);
 
     var deviceMotionEventHandlerFunc = (e) => {
@@ -935,7 +937,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}};
     JSEvents.orientationChangeEvent ||= _malloc(eventSize);
 
     var orientationChangeEventHandlerFunc = (e) => {
@@ -1037,7 +1039,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}};
     JSEvents.fullscreenChangeEvent ||= _malloc(eventSize);
 
     var fullscreenChangeEventHandlerFunc = (e) => {
@@ -1418,7 +1420,11 @@ var LibraryHTML5 = {
     return doRequestFullscreen(target, strategy);
   },
 
-  emscripten_enter_soft_fullscreen__deps: ['$JSEvents', '$hideEverythingExceptGivenElement', '$restoreOldWindowedStyle', '$restoreHiddenElements', '$currentFullscreenStrategy', '$softFullscreenResizeWebGLRenderTarget', '$JSEvents_resizeCanvasForFullscreen', '$findEventTarget', '$callCanvasResizedCallback'],
+  emscripten_enter_soft_fullscreen__deps: [
+#if PTHREADS
+    '$JSEvents',
+#endif
+    '$hideEverythingExceptGivenElement', '$restoreOldWindowedStyle', '$restoreHiddenElements', '$currentFullscreenStrategy', '$softFullscreenResizeWebGLRenderTarget', '$JSEvents_resizeCanvasForFullscreen', '$findEventTarget', '$callCanvasResizedCallback'],
   emscripten_enter_soft_fullscreen__proxy: 'sync',
   emscripten_enter_soft_fullscreen: (target, fullscreenStrategy) => {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -1521,7 +1527,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}};
     JSEvents.pointerlockChangeEvent ||= _malloc(eventSize);
 
     var pointerlockChangeEventHandlerFunc = (e) => {
@@ -1719,7 +1725,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}};
     JSEvents.visibilityChangeEvent ||= _malloc(eventSize);
 
     var visibilityChangeEventHandlerFunc = (e) => {
@@ -1772,7 +1778,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}};
     JSEvents.touchEvent ||= _malloc(eventSize);
 
     target = findEventTarget(target);
@@ -1906,7 +1912,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}};
     JSEvents.gamepadEvent ||= _malloc(eventSize);
 
     var gamepadEventHandlerFunc = (e) => {
@@ -2049,7 +2055,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    var eventSize = {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}};
+    const eventSize = {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}};
     JSEvents.batteryEvent ||= _malloc(eventSize)
 
     var batteryEventHandlerFunc = (e) => {

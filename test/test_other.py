@@ -244,8 +244,10 @@ def requires_tool(tool, env_name=None):
       else:
         env_var = f'EMTEST_SKIP_{tool.upper()}'
       if not shutil.which(tool):
-        if env_var in os.environ:
+        if utils.get_env_bool(env_var):
           self.skipTest(f'test requires {tool} and {env_var} is set')
+        elif utils.get_env_bool('EMTEST_AUTOSKIP'):
+          self.skipTest(f'test requires {tool} (missing in PATH) and EMTEST_AUTOSKIP is set')
         else:
           self.fail(f'{tool} required to run this test.  Use {env_var} to skip')
       return func(self, *args, **kwargs)
@@ -410,6 +412,17 @@ class other(RunnerCore):
     self.assertContained(CLANG_CC, proc.stderr)
     self.assertContained(WASM_LD, proc.stderr)
     self.assertExists('a.out.js')
+
+  def test_clang_target_flags(self):
+    proc = self.run_process([EMCC, '-v', '-dumpmachine'], stdout=PIPE, stderr=PIPE)
+    self.assertTrue(proc.stderr.strip().endswith(' -target wasm32-unknown-emscripten -v -dumpmachine'))
+
+    # -print-search-dirs queries clang for `-print-resource-dir` via get_clang_resource_dir()
+    proc = self.run_process([EMCC, '-v', '-print-search-dirs'], stdout=PIPE, stderr=PIPE)
+    self.assertTrue(proc.stderr.strip().endswith(' -target wasm32-unknown-emscripten -print-resource-dir'))
+
+    proc = self.run_process([EMCC, '-v', '--check'], stdout=PIPE, stderr=PIPE)
+    self.assertContained(' --target=wasm32 --version\n', proc.stderr)
 
   def test_skip_subcommands(self):
     # The -### flag is like `-v` but it doesn't actually execute the sub-commands
@@ -5811,6 +5824,14 @@ int main()
   def test_strptime_symmetry(self):
     self.do_other_test('test_strptime_symmetry.c')
 
+  def test_utime_now(self):
+    self.do_runf('utime/test_utime_now.c', 'done\n')
+
+  @crossplatform
+  @also_with_nodefs_both
+  def test_utime_roundtrip(self):
+    self.do_runf('utime/test_utime_roundtrip.c', 'done\n')
+
   @also_with_wasmfs
   def test_truncate_from_0(self):
     self.do_other_test('test_truncate_from_0.cpp')
@@ -7293,6 +7314,54 @@ int main() {
     # Repeat the test without NO_AUTOLOAD_DYLIBS
     self.do_runf('main.c', 'done\n', cflags=['-g', '-sMAIN_MODULE=2', 'libside.wasm'])
 
+  @requires_node
+  def test_dlopen_binary_not_retained(self):
+    # The bytes of a side module should not be kept alive once it has been
+    # loaded.  The side module imports a symbol that is not yet defined, which
+    # creates a lazy JS import stub that lives as long as the module does.
+    create_file('side.c', r'''
+      #include <emscripten.h>
+
+      // Make retention of the module's bytes easy to measure.
+      EMSCRIPTEN_KEEPALIVE char padding[32 * 1024 * 1024] = {0xfe};
+
+      int not_yet_defined(int);
+      int side_fn(int x) { return x == 1234 ? not_yet_defined(x) : x + 1; }
+      ''')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        EM_ASM({
+          // Call gc() twice because V8 sweeps ArrayBuffer backing stores
+          // concurrently on a background thread; the start of the second gc()
+          // waits for the first gc()'s ArrayBufferSweeper job to finish.
+          gc();
+          gc();
+          globalThis.before = process.memoryUsage().arrayBuffers;
+        });
+        void* h = dlopen("libside.wasm", RTLD_NOW);
+        assert(h);
+        int (*side_fn)(int) = dlsym(h, "side_fn");
+        assert(side_fn && side_fn(1) == 2);
+        int retained_mb = EM_ASM_INT({
+          gc();
+          gc();
+          return (process.memoryUsage().arrayBuffers - globalThis.before) >> 20;
+        });
+        printf("retained: %dMB\n", retained_mb);
+        assert(retained_mb < 16);
+        printf("done\n");
+        return 0;
+      }''')
+    self.run_process([EMCC, 'side.c', '-sSIDE_MODULE', '-o', 'libside.wasm'])
+    self.assertGreater(os.path.getsize('libside.wasm'), 32 * 1024 * 1024)
+    self.node_args += ['--expose-gc']
+    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2', '-sINITIAL_MEMORY=64MB'])
+
   def test_dlopen_rtld_global(self):
     # This test checks RTLD_GLOBAL where a module is loaded
     # before the module providing a global it needs is. in asm.js we use JS
@@ -7769,7 +7838,7 @@ addToLibrary({
     'mimalloc': (['-sMALLOC=mimalloc'], 260000),
     'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 131000),
     'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 137000),
-    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 197000),
+    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 200000),
   })
   # This test verifies the output code size of the different -sMALLOC= modes.
   def test_malloc_size(self, args, max_size):
@@ -13813,12 +13882,11 @@ void foo() {}
                  'poll probe ok from main\npoll probe ok from callback\n',
                  cflags=args)
 
-  # Verify that we are able to successfully compile a script when the Windows 7
-  # and Python workaround env. vars are enabled.
+  # Verify that we are able to successfully compile a script when the Windows
+  # Python workaround env. var is enabled.
   # See https://bugs.python.org/issue34780
-  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1',
-                    'EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG': '1'})
-  def test_windows_batch_script_workaround(self):
+  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1'})
+  def test_windows_python_bug_workaround(self):
     self.run_process([EMCC, test_file('hello_world.c')])
     self.assertExists('a.out.js')
 
@@ -14798,12 +14866,6 @@ throw_tag:
     create_file('post.js', 'err(1, 2, "hello"); out("foo", 42);')
     self.do_runf('hello_world.c', '1 2 hello\nfoo 42\n', cflags=['--post-js=post.js'])
 
-  @only_windows('This test verifies Windows batch script behavior against bug https://github.com/microsoft/terminal/issues/15212')
-  @with_env_modify({'PATH': path_from_root() + os.pathsep + os.getenv('PATH')})
-  def test_windows_batch_file_dp0_expansion_bug(self):
-    create_file('build_with_quotes.bat', f'@"emcc" "{test_file("hello_world.c")}"')
-    self.run_process(['build_with_quotes.bat'])
-
   @only_windows('Check that directory permissions are properly retrieved on Windows')
   @requires_node
   def test_windows_nodefs_execution_permission(self):
@@ -15308,11 +15370,7 @@ addToLibrary({
     print('running cmd:', cmd)
     with env_modify({'PATH': new_path}):
       proc = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
-      # There is currently a bug in the windows .bat files that leads to stdout
-      # not being empty in this case.
-      # See https://github.com/emscripten-core/emscripten/pull/25416
-      if not WINDOWS:
-        self.assertEqual(proc.stdout, '')
+      self.assertEqual(proc.stdout, '')
       self.assertEqual(proc.stderr, '')
 
   def test_browser_too_old(self):
@@ -16341,4 +16399,5 @@ SHA512 = 'dummy'
 PORT_FILE = 'port.py'
 EXTERNAL_PORT = URL
 ''')
-    self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
+    err = self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
+    self.assertContained('retrying in 1s', err)

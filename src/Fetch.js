@@ -666,7 +666,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     // Specifies the maximum chunk size that a streaming fetch will transfer from
     // JS over to WebAssembly side. Used to cap a streaming fetch to avoid
     // overallocating WebAssembly memory needlessly.
-    var FETCH_STREAMING_MAX_CHUNK_SIZE = 8*1024*1024;
+    const FETCH_STREAMING_MAX_CHUNK_SIZE = 8*1024*1024;
 
     for (var bytePos = 0; bytePos < ptrLen || !ptrLen;) {
       var sz = Math.min(ptrLen - bytePos, FETCH_STREAMING_MAX_CHUNK_SIZE);

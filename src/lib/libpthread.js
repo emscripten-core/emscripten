@@ -83,13 +83,15 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    '$terminateWorker',
                    '$cleanupThread',
+#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
                    '$addOnPreRun',
-#if MAIN_MODULE
-                   '$markAsFinished',
-#endif
-#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE && !PTHREAD_POOL_DELAY_LOAD
+#if !PTHREAD_POOL_DELAY_LOAD
                    '$addRunDependency',
                    '$removeRunDependency',
+#endif
+#endif
+#if MAIN_MODULE
+                   '$markAsFinished',
 #endif
                    '$spawnThread',
                    '_emscripten_thread_free_data',
@@ -584,7 +586,7 @@ var LibraryPThread = {
 #if ENVIRONMENT_MAY_BE_NODE
         }
 #endif
-#endif // PTHREAD_POOL_SIZE_STRICT
+#endif // (PTHREAD_POOL_SIZE_STRICT && ASSERTIONS) || PTHREAD_POOL_SIZE_STRICT == 2
 #if PTHREAD_POOL_SIZE_STRICT < 2 || ENVIRONMENT_MAY_BE_NODE
         var newWorker = PThread.allocateUnusedWorker();
         PThread.loadWasmModuleToWorker(newWorker);

@@ -15,9 +15,9 @@ is a general purpose allocator with excellent [performance](#performance) charac
 Initially developed by Daan Leijen for the runtime systems of the
 [Koka](https://koka-lang.github.io) and [Lean](https://github.com/leanprover/lean) languages.
 
-Latest release   : `v3.5.1`  (2026-09-01) recommended.  
-Latest v2 release: `v2.5.1`  (2026-09-01) stable, legacy.  
-Latest v1 release: `v1.15.1` (2026-09-01) legacy.
+Latest release   : `v3.5.3`  (2026-09-16) recommended.  
+Latest v2 release: `v2.5.2`  (2026-09-12) stable, legacy.  
+Latest v1 release: `v1.15.2` (2026-09-12) legacy.
 
 mimalloc is a drop-in replacement for `malloc` and can be used in other programs
 without code changes, for example, on dynamically linked ELF-based systems (Linux, BSD, etc.) you can use it as:
@@ -86,17 +86,22 @@ New development is mostly on v3, while v1 and v2 are maintained with security an
         (release tags: `v3.x`, development branch `dev3`).
 - __v2__: stable legacy mimalloc version. Uses thread-local segments to reduce fragmentation. (release tags: `v2.x`, development branch `dev2` and `main`)
 - __v1__: legacy version: initial design of mimalloc (release tags: `v1.x`, development branch `dev`). 
-        __Send PR's against this version if possible.__
+        __Send PR's against this version if possible (and otherwise `dev3`).__
 
 ### Releases
 
+* 2026-09-16, `v3.5.3`: (v3) critical bug fix (where the first new on a thread could
+  fail on some platforms #1398). Fix bug with `mi_free_size` on overaligned small allocations (#1400).
+* 2026-09-12, `v3.5.2`, `v2.5.2`, `v1.15.2`: (v3) Reduced cache contention, improved `mi_malloc_csize`,
+  improved zero'ing of small blocks, `mi_wmalloc` variants for runtime systems, always enable detailed
+  statistics. Experimental support for profiling hooks (`mimalloc-profile.h`).
 * 2026-09-01: Added a readme section on [getting the best performance](#getting-the-best-performance).
 * 2026-09-01, `v3.5.1`, `v2.5.1`, `v1.15.1`: (v3) Yet better performance for `free` calls.
-  (v3) Added `mi_free_small(_nonnull)` for runtimes, and `mi_free_csize(_nonnull)` for inlined constant size free-ing.
+  (v3) Added `mi_free_small(_nonnull)` for fast small allocations, and `mi_free_csize(_nonnull)` for inlined constant size free-ing.
   (v3) Improved MI_OPT_ARCH options; on arm64, defaults to armv8.3 on Apple and armv8.1 otherwise. 
   (v3) Default to `-DMI_ALLOW_THP=FULL` on Linux, where we never split transparent huge pages (THP) during purging (#1282). This
   may increase rss but can also improve performance. Use `-DMI_ALLOW_THP=OFF` to disable the use of THP.
-  (v3) Improved cache behavior for small allocations. Improved riscV suppor, add riscV to CI. Various small build fixes.
+  (v3) Improved cache behavior for small allocations. Improved riscV support. Various small build fixes.
 * 2026-08-18, `v1.15.0`, `v2.5.0`, `v3.5.0`: (v3) slightly better performance for `free`
   using aligned chunks, cleanup cmake options, require armv8.3 (with MI_OPT_ARCH) for 
   faster load-acquire, increase retired page count from 1 to 3, faster double free 
@@ -125,27 +130,6 @@ New development is mostly on v3, while v1 and v2 are maintained with security an
 * 2026-04-20, `v1.9.9`, `v2.3.1`, `v3.3.1`: various bug and security fixes. Special thanks to 
   @jinpzhanAMD, @res2k, and @GoldJohnKing for their help in improving Windows finalization, and 
   @Zoxc for his help in finding various issues.
-* 2026-04-15, `v1.9.8`, `v2.3.0`, `v3.3.0`: initial support for github (binary) releases, 
-  fix visiting of full pages during collection (performance),
-  fix THP alignment (performance), fix arm64 cross-compilation on Windows, enable guard pages in debug mode,
-  always use uncommitted areas between arenas (security), enable static overloading of `malloc` etc. on Windows with the 
-  static CRT (by @Noxybot), fix TLS slot leak on Windows (v3), enable clean DLL load/unload with statically linked
-  mimalloc (v3), fix race in `mi_heap_destroy` (v3), by default put page meta info separate from allocated 
-  objects (v3,security), fix C++ overrides for emscripten. Various bugs found by DeepTest include: 
-  fix offset for `mi_heap_realloc_aligned`, fix `mi_(w)dupenv_s` buffer size, fix potential overflow in size options,
-  and error codes for `mi_reallocarr(ay)`. 
-* 2026-02-03, `v3.2.8` (rc3): Fix thread reinitialize issue on macOS. Fix SIMD codegen bug on older
-  GCC versions. Extend Windows TLS slot limit from 64 to 1088. Report commit statistics more precise.
-  Fixes issue in free-page search in arenas.
-* 2026-01-15, `v1.9.7`, `v2.2.7`, `v3.2.7` (rc2): Fix zero initializing blocks that were OS allocated.  
-  For v3 various bug and performance fixes. Fix Debian 32-bit compilation.
-* 2026-01-08, `v1.9.6`, `v2.2.6`, `v3.2.6` (rc1): Important bug fixes. Many improvements to v3 including 
-  true first-class heaps where one can allocate in heap from any thread, and track statistics per heap as well.
-  Added `MIMALLOC_ALLOW_THP` option. This is by default enabled except on Android. When THP is detected on v3,
-  mimalloc will set the `MIMALLOC_MINIMAL_PURGE_SIZE` to 2MiB to avoid breaking up potential THP huge pages.
-  v3 uses faster TLS access on Windows, and has improved performance for `mi_calloc` and aligned allocations.
-  Fixed rare race condition on older v3, fixed potential buffer overflow in debug statistics, add API for returning
-  allocated sizes on allocation and free.
 
 * [Older release notes](#older-release-notes)
 
@@ -618,14 +602,15 @@ In the source code:
 - Use `mi_free_small` when the pointer was returned from `mi_malloc_small` (and guaranteed to have a
   size of less than `MI_SMALL_SIZE_MAX`). Use `mi_free_small_nonnull` when the pointer is guaranteed to be not `NULL` as well.
 
-For run-time systems and compilers (like Koka, Lean, etc.), we can do slightly better still.
+For run-time systems and compilers (like Koka, Lean, Rust (?) etc.), we can do slightly better still.
 
 - If the allocation size is statically known, use `mi_malloc_csize` and `mi_free_csize` etc. when possible. 
   (or directly `mi_malloc_small`/`mi_free_small`).
 
 - If the runtime already carries thread local state, it may be faster to get the default `theap` for each thread
-  up-front (`mi_theap_get_default()`) and use the very fast `mi_theap_malloc(_small)` etc. passing the theap
-  pointer directly. This avoids having mimalloc look up the thread local pointer all the time. Whether this is 
+  up-front (`mi_theap_get_default()`) and use the bestest `mi_theap_malloc(_small)` etc. passing the theap pointer directly. 
+  This avoids having mimalloc look up the thread local pointer all the time and
+  skips a theap `NULL` check. Whether this is 
   faster depends a bit on the OS implementation of thread local variables. 
 
 
@@ -985,6 +970,27 @@ provided by the bot. You will only need to do this once across all repos using o
 
 # Older Release Notes
 
+* 2026-04-15, `v1.9.8`, `v2.3.0`, `v3.3.0`: initial support for github (binary) releases, 
+  fix visiting of full pages during collection (performance),
+  fix THP alignment (performance), fix arm64 cross-compilation on Windows, enable guard pages in debug mode,
+  always use uncommitted areas between arenas (security), enable static overloading of `malloc` etc. on Windows with the 
+  static CRT (by @Noxybot), fix TLS slot leak on Windows (v3), enable clean DLL load/unload with statically linked
+  mimalloc (v3), fix race in `mi_heap_destroy` (v3), by default put page meta info separate from allocated 
+  objects (v3,security), fix C++ overrides for emscripten. Various bugs found by DeepTest include: 
+  fix offset for `mi_heap_realloc_aligned`, fix `mi_(w)dupenv_s` buffer size, fix potential overflow in size options,
+  and error codes for `mi_reallocarr(ay)`. 
+* 2026-02-03, `v3.2.8` (rc3): Fix thread reinitialize issue on macOS. Fix SIMD codegen bug on older
+  GCC versions. Extend Windows TLS slot limit from 64 to 1088. Report commit statistics more precise.
+  Fixes issue in free-page search in arenas.
+* 2026-01-15, `v1.9.7`, `v2.2.7`, `v3.2.7` (rc2): Fix zero initializing blocks that were OS allocated.  
+  For v3 various bug and performance fixes. Fix Debian 32-bit compilation.
+* 2026-01-08, `v1.9.6`, `v2.2.6`, `v3.2.6` (rc1): Important bug fixes. Many improvements to v3 including 
+  true first-class heaps where one can allocate in heap from any thread, and track statistics per heap as well.
+  Added `MIMALLOC_ALLOW_THP` option. This is by default enabled except on Android. When THP is detected on v3,
+  mimalloc will set the `MIMALLOC_MINIMAL_PURGE_SIZE` to 2MiB to avoid breaking up potential THP huge pages.
+  v3 uses faster TLS access on Windows, and has improved performance for `mi_calloc` and aligned allocations.
+  Fixed rare race condition on older v3, fixed potential buffer overflow in debug statistics, add API for returning
+  allocated sizes on allocation and free.
 * 2025-06-09, `v1.9.4`, `v2.2.4`, `v3.1.4` (beta) : Some important bug fixes, including a case where OS memory
   was not always fully released. Improved v3 performance, build on XBox, fix build on Android, support interpose 
   for older macOS versions, use MADV_FREE_REUSABLE on macOS, always check commit success, better support for Windows 

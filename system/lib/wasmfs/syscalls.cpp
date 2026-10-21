@@ -7,7 +7,6 @@
 
 #define _LARGEFILE64_SOURCE // For F_GETLK64 etc
 
-#include <cmath>
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
@@ -551,6 +550,15 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -ENOTDIR;
   }
 
+  if (flags & O_TRUNC) {
+    if (!child->is<DataFile>()) {
+      return -EISDIR;
+    }
+    if ((fileMode & WASMFS_PERM_WRITE) == 0) {
+      return -EACCES;
+    }
+  }
+
   // Note that we open the file before truncating it because some backends may
   // truncate opened files more efficiently (e.g. OPFS).
   std::shared_ptr<OpenFileState> openFile;
@@ -559,16 +567,13 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return err;
   }
 
-  // If O_TRUNC, truncate the file if possible.
-  if (flags & O_TRUNC) {
-    if (!child->is<DataFile>()) {
-      return -EISDIR;
+  // Ignore truncation if it is a device or FIFO
+  if ((flags & O_TRUNC) && S_ISREG(fileMode)) {
+    auto lockedFile = child->cast<DataFile>()->locked();
+    if (auto err = lockedFile.setSize(0)) {
+      (void)lockedFile.close();
+      return err;
     }
-    if ((fileMode & WASMFS_PERM_WRITE) == 0) {
-      return -EACCES;
-    }
-    // Try to truncate the file, continuing silently if we cannot.
-    (void)child->cast<DataFile>()->locked().setSize(0);
   }
 
   return wasmFS.getFileTable().locked().addEntry(openFile);
@@ -1139,10 +1144,7 @@ static double timespec_to_ms(timespec ts) {
   if (ts.tv_nsec == UTIME_NOW) {
     return emscripten_date_now();
   }
-  // Round down tv_nsec to the nearest 10 microseconds (10,000 ns) to prevent
-  // floating-point rounding into the next whole second when converting to host/Windows timestamps.
-  long tv_nsec_10us = (ts.tv_nsec / 10000) * 10000;
-  return (double(ts.tv_sec) + double(tv_nsec_10us) / 1e9) * 1000;
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec / (1000 * 1000));
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -1479,7 +1481,12 @@ int __syscall_fallocate(int fd, int mode, off_t offset, off_t len) {
     return -EBADF;
   }
 
-  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  auto file = openFile->locked().getFile();
+  if (!file->isSeekable()) {
+    return -ESPIPE;
+  }
+
+  auto dataFile = file->dynCast<DataFile>();
   // TODO: support for symlinks.
   if (!dataFile) {
     return -ENODEV;
@@ -1867,6 +1874,13 @@ int __syscall_recvmsg(int sockfd,
 }
 
 int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  if (!openFile->locked().getFile()->isSeekable()) {
+    return -ESPIPE;
+  }
   // Advice is currently ignored. TODO some backends might use it
   return 0;
 }
@@ -1879,13 +1893,6 @@ int __syscall_linkat(int olddirfd,
   // Hardlinks are not supported in WASMFS.
   return -EMLINK;
 }
-
-// NODERAWFS credential reporting is implemented in the legacy JS syscall layer
-// only.
-uid_t __syscall_getuid32(void) { return 0; }
-uid_t __syscall_geteuid32(void) { return 0; }
-gid_t __syscall_getgid32(void) { return 0; }
-gid_t __syscall_getegid32(void) { return 0; }
 
 // epoll is implemented in the legacy (non-WASMFS) JS syscall layer only.
 int __syscall_epoll_create1(int flags) { return -ENOSYS; }

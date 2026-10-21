@@ -381,7 +381,7 @@ def get_command_with_possible_response_file(cmd):
 
   # Different OS have different limits. The most limiting usually is Windows one
   # which is set at 8191 characters. We could just use that, but it leads to
-  # problems when invoking shell wrappers (e.g. emcc.bat), which, in turn,
+  # problems when invoking wrappers (e.g. pylauncher.exe), which, in turn,
   # pass arguments to some longer command like `(full path to Clang) ...args`.
   # In that scenario, even if the initial command line is short enough, the
   # subprocess can still run into the Command Line Too Long error.
@@ -620,14 +620,6 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     V8_EXTERNS = [path_from_root('src/closure-externs/v8-externs.js')]
     SPIDERMONKEY_EXTERNS = [path_from_root('src/closure-externs/spidermonkey-externs.js')]
     CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
-
-  # Web environment specific externs
-  if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-    browser_externs_dir = path_from_root('src/closure-externs/browser-externs')
-    if os.path.isdir(browser_externs_dir):
-      browser_externs = os.listdir(browser_externs_dir)
-      browser_externs = [os.path.join(browser_externs_dir, name) for name in browser_externs if name.endswith('.js')]
-      CLOSURE_EXTERNS += browser_externs
 
   if settings.DYNCALLS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]

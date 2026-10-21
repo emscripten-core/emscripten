@@ -160,8 +160,6 @@ mi_decl_noinline bool _mi_pthread_key_create(pthread_key_t* pkey, void (*destruc
 // --------------------------------------------------------
 // Detect CPU features
 // --------------------------------------------------------
-mi_decl_cache_align size_t _mi_cpu_movsb_max = 0;  // for size <= max, rep movsb is fast
-mi_decl_cache_align size_t _mi_cpu_stosb_max = 0;  // for size <= max, rep stosb is fast
 mi_decl_cache_align bool   _mi_cpu_has_popcnt = false;
 
 #if (MI_ARCH_X64 || MI_ARCH_X86)
@@ -192,39 +190,15 @@ static bool mi_cpuid(uint32_t* regs4, uint32_t level, uint32_t sublevel) {
 #endif
 
 void _mi_detect_cpu_features(void) {
-  // FSRM for fast short rep movsb support (AMD Zen3+ (~2020) or Intel Ice Lake+ (~2017))
-  // EMRS for fast enhanced rep movsb/stosb support (not used at the moment, memcpy always seems faster?)
-  // FSRS for fast short rep stosb
-  bool amd = false;
-  bool fsrm = false;
-  // bool erms = false;
-  bool fsrs = false;
   uint32_t cpu_info[4];
-  if (mi_cpuid(cpu_info, 0, 0)) {
-    amd = (cpu_info[2]==0x444d4163); // (Auth enti cAMD)
-  }
-  if (mi_cpuid(cpu_info, 7, 0)) {
-    fsrm = ((cpu_info[3] & (1 << 4)) != 0); // bit 4 of EDX : see <https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features>
-    // erms = ((cpu_info[1] & (1 << 9)) != 0); // bit 9 of EBX : see <https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features>
-  }
-  if (mi_cpuid(cpu_info, 7, 1)) {
-    fsrs = ((cpu_info[1] & (1 << 11)) != 0); // bit 11 of EBX: see <https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=1:_Extended_Features>
-  }
   if (mi_cpuid(cpu_info, 1, 0)) {
     _mi_cpu_has_popcnt = ((cpu_info[2] & (1 << 23)) != 0); // bit 23 of ECX : see <https://en.wikipedia.org/wiki/CPUID#EAX=1:_Processor_Info_and_Feature_Bits>
-  }
-
-  if (fsrm) {
-    _mi_cpu_movsb_max = 127;
-  }
-  if (fsrs || (amd && fsrm)) {  // fsrm on amd implies fsrs, see: https://marc.info/?l=git-commits-head&m=168186277717803
-    _mi_cpu_stosb_max = 127;
   }
 }
 
 #else
 void _mi_detect_cpu_features(void) {
-  #if MI_ARCH_ARM64
+  #if MI_ARCH_ARM64 || defined(__riscv_zbb) || defined(__riscv_b)
   _mi_cpu_has_popcnt = true;
   #endif
 }

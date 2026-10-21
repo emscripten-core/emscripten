@@ -14,7 +14,7 @@ terms of the MIT license. A copy of the license can be found in the file
   Initialization.
 ----------------------------------------------------------- */
 #ifndef MI_DEFAULT_PHYSICAL_MEMORY_IN_KIB
-#if MI_INTPTR_SIZE < 8
+#if MI_SIZE_SIZE < 8
 #define MI_DEFAULT_PHYSICAL_MEMORY_IN_KIB   4*MI_MiB    // 4 GiB
 #else
 #define MI_DEFAULT_PHYSICAL_MEMORY_IN_KIB   32*MI_MiB   // 32 GiB
@@ -119,7 +119,7 @@ bool _mi_os_commit(mi_subproc_t* subproc, void* addr, size_t size, bool* is_zero
 // On systems with enough virtual address bits, we can do efficient aligned allocation by using
 // the 2TiB to 30TiB area to allocate those. If we have at least 46 bits of virtual address
 // space (64TiB) we use this technique. (but see issue #939)
-#if (MI_INTPTR_SIZE >= 8) && !defined(MI_NO_ALIGNED_HINT) // && !defined(WIN32) && !defined(ANDROID)
+#if (MI_SIZE_SIZE >= 8) && !defined(MI_NO_ALIGNED_HINT) // && !defined(WIN32) && !defined(ANDROID)
 
 // Return a `try_alignment` aligned address that is probably available.
 // If this returns NULL, the OS will determine the address but on some OS's that may not be
@@ -361,7 +361,7 @@ static void* mi_os_prim_alloc_aligned(mi_subproc_t* subproc, size_t size, size_t
   if (!(alignment >= _mi_os_page_size() && ((alignment & (alignment - 1)) == 0))) return NULL;
   size = _mi_align_up(size, _mi_os_page_size());
 
-  #if MI_INTPTR_SIZE >= 8
+  #if MI_SIZE_SIZE >= 8
   const bool try_direct_alloc = true;
   #else
   // try a direct allocation if the alignment is below the default, or less than or equal to 1/4 fraction of the size.
@@ -730,7 +730,7 @@ and possibly associated with a specific NUMA node. (use `numa_node>=0`)
 #define MI_HUGE_OS_PAGE_SIZE  (MI_GiB)
 
 
-#if (MI_INTPTR_SIZE >= 8)
+#if (MI_SIZE_SIZE >= 8)
 // To ensure proper alignment, use our own area for huge OS pages
 static mi_decl_cache_align _Atomic(uintptr_t)  mi_huge_start; // = 0
 
