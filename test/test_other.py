@@ -7325,6 +7325,10 @@ int main() {
 
       int main() {
         EM_ASM({
+          // Call gc() twice because V8 sweeps ArrayBuffer backing stores
+          // concurrently on a background thread; the start of the second gc()
+          // waits for the first gc()'s ArrayBufferSweeper job to finish.
+          gc();
           gc();
           globalThis.before = process.memoryUsage().arrayBuffers;
         });
@@ -7333,6 +7337,7 @@ int main() {
         int (*side_fn)(int) = dlsym(h, "side_fn");
         assert(side_fn && side_fn(1) == 2);
         int retained_mb = EM_ASM_INT({
+          gc();
           gc();
           return (process.memoryUsage().arrayBuffers - globalThis.before) >> 20;
         });
