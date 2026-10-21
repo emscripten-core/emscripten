@@ -62,7 +62,8 @@ class WasmSourceMap {
   lookup(offset) {
     const normalized = this.normalizeOffset(offset);
     const info = this.mapping[normalized];
-    if (!info) {
+    // A segment with only an offset marks code that has no source location.
+    if (!info || info.source === undefined) {
       return null;
     }
     return {
