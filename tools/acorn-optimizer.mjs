@@ -2,16 +2,16 @@
 
 import * as acorn from 'acorn';
 import importPhases from 'acorn-import-phases';
-import * as terser from '../third_party/terser/terser.js';
+import {minify_sync} from 'terser';
 import * as fs from 'node:fs';
 import assert from 'node:assert';
 import {parseArgs} from 'node:util';
 
 // Extend acorn to understand source-phase import syntax
 // (`import source foo from './bar.wasm'`) emitted under -sSOURCE_PHASE_IMPORTS.
-// The plugin annotates ImportDeclaration nodes with a `phase` field; the
-// bundled terser carries this through from_mozilla_ast / to_mozilla_ast and
-// emits it back on output.
+// The plugin annotates ImportDeclaration nodes with a `phase` field; terser
+// carries this through from_mozilla_ast / to_mozilla_ast and emits it back on
+// output.
 const parser = acorn.Parser.extend(importPhases());
 
 // Utilities
@@ -1249,11 +1249,8 @@ function makeCallGrowMemViews() {
 
 function makeSequence(...expressions) {
   return {
-    type: 'ParenthesizedExpression',
-    expression: {
-      type: 'SequenceExpression',
-      expressions,
-    }
+    type: 'SequenceExpression',
+    expressions,
   };
 }
 
@@ -1339,11 +1336,10 @@ function isHEAPAccess(node) {
 function isGrowHEAPAccess(node) {
   if (
     node.type !== 'MemberExpression' ||
-    !node.computed || // notice a[X] but not a.X
-    (node.object.type !== 'ParenthesizedExpression' && node.object.type !== 'SequenceExpression')
+    !node.computed // notice a[X] but not a.X
   )
     return false;
-  const obj = node.object.type === 'ParenthesizedExpression' ? node.object.expression : node.object;
+  const obj = node.object;
   return (
     obj.type === 'SequenceExpression' &&
     obj.expressions.length === 2 &&
@@ -1740,17 +1736,29 @@ function minifyGlobals(ast) {
 
 // Utilities
 
-function reattachComments(ast, commentsMap) {
+function reattachComments(ast, commentsMap, parenSpans) {
   const symbols = [];
 
   // Collect all code symbols
-  ast.walk(
-    new terser.TreeWalker((node) => {
+  ast.walk({
+    _visit(node, descend) {
       if (node.start?.pos) {
         symbols.push(node);
+        if (
+          node.TYPE !== 'Toplevel' &&
+          node.TYPE !== 'SimpleStatement' &&
+          parenSpans.has(`${node.start.pos}:${node.end?.pos}`)
+        ) {
+          node.needs_parens = () => false;
+          const origCodegen = node._codegen;
+          node._codegen = (self, output) => {
+            output.with_parens(() => origCodegen(self, output));
+          };
+        }
       }
-    }),
-  );
+      descend?.call(node);
+    },
+  });
 
   // Sort them by ascending line number
   symbols.sort((a, b) => a.start.pos - b.start.pos);
@@ -1775,18 +1783,11 @@ function reattachComments(ast, commentsMap) {
     symbols[j].start.comments_before ??= [];
     for (const comment of comments) {
       trace('reattaching comment');
-      symbols[j].start.comments_before.push(
-        new terser.AST_Token(
-          comment.type == 'Line' ? 'comment1' : 'comment2',
-          comment.value,
-          undefined,
-          undefined,
-          false,
-          undefined,
-          undefined,
-          '0',
-        ),
-      );
+      symbols[j].start.comments_before.push({
+        type: comment.type == 'Line' ? 'comment1' : 'comment2',
+        value: comment.value,
+        nlb: false,
+      });
     }
   }
 }
@@ -1802,6 +1803,7 @@ const {
     verbose,
     'no-print': noPrint,
     'minify-whitespace': minifyWhitespace,
+    compress,
     outfile,
   },
   positionals: [infile, ...passes],
@@ -1812,6 +1814,7 @@ const {
     verbose: {type: 'boolean'},
     'no-print': {type: 'boolean'},
     'minify-whitespace': {type: 'boolean'},
+    compress: {type: 'boolean'},
     outfile: {type: 'string', short: 'o'},
   },
   allowPositionals: true,
@@ -1871,8 +1874,27 @@ const registry = {
 };
 
 let ast;
+const parenSpans = new Set();
 try {
   ast = parser.parse(input, params);
+  if (closureFriendly) {
+    // Unwrap ParenthesizedExpression nodes before running passes or converting
+    // to a Terser AST, recording their spans so reattachComments can restore
+    // the parentheses (needed for Closure inline type-cast comments).
+    fullWalk(ast, (node) => {
+      if (node.type === 'ParenthesizedExpression') {
+        const {start, end, expression} = node;
+        if (sourceComments[expression.start]) {
+          sourceComments[start] ??= [];
+          sourceComments[start].push(...sourceComments[expression.start]);
+          delete sourceComments[expression.start];
+        }
+        delete node.expression;
+        Object.assign(node, expression, {start, end});
+        parenSpans.add(`${start}:${end}`);
+      }
+    });
+  }
   for (let pass of passes) {
     const resolvedPass = registry[pass];
     assert(resolvedPass, `unknown optimizer pass: ${pass}`);
@@ -1889,20 +1911,42 @@ try {
 }
 
 if (!noPrint) {
-  const terserAst = terser.AST_Node.from_mozilla_ast(ast);
-
-  if (closureFriendly) {
-    reattachComments(terserAst, sourceComments);
-  }
-
-  let output = terserAst.print_to_string({
+  const format = {
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 2,
     keep_quoted_props: closureFriendly, // for closure
     wrap_func_args: false, // don't add extra braces
     comments: true, // for closure as well
     shorthand: true, // Use object literal shorthand notation
-  });
+  };
+
+  let output;
+  if (closureFriendly) {
+    const {ast: terserAst} = minify_sync(ast, {
+      parse: {spidermonkey: true},
+      compress: false,
+      mangle: false,
+      format: {ast: true, code: false},
+    });
+    reattachComments(terserAst, sourceComments, parenSpans);
+    output = terserAst.print_to_string(format);
+  } else {
+    output = minify_sync(ast, {
+      parse: {spidermonkey: true},
+      compress: compress
+        ? {
+            defaults: false,
+            evaluate: true,
+            keep_fargs: false,
+            reduce_vars: true,
+            toplevel: true,
+            unused: true,
+          }
+        : false,
+      mangle: false,
+      format,
+    }).code;
+  }
 
   output += '\n';
   if (suffix) {

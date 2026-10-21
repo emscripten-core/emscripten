@@ -1,12 +1,12 @@
 {
   "a.out.mjs": 683,
   "a.out.mjs.gz": 410,
-  "a.out.support.mjs": 2963,
-  "a.out.support.mjs.gz": 1233,
+  "a.out.support.mjs": 1506,
+  "a.out.support.mjs.gz": 691,
   "a.out.nodebug.wasm": 75,
   "a.out.nodebug.wasm.gz": 87,
-  "total": 3721,
-  "total_gz": 1730,
+  "total": 2264,
+  "total_gz": 1188,
   "sent": [],
   "imports": [],
   "exports": [

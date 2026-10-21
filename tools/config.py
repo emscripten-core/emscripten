@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# ruff: file-ignore[missing-f-string-syntax]
+
 import logging
 import os
 import shutil
@@ -13,11 +15,19 @@ from .utils import __rootpath__, exit_with_error, path_from_root
 
 logger = logging.getLogger('config')
 
-# The following class can be overridden by the config file and/or
-# environment variables.  Specifically any variable whose name
-# is in ALL_UPPER_CASE is considered a valid config file key.
-# See parse_config_file below.
-EMSCRIPTEN_ROOT = __rootpath__
+CONFIG_KEYS = {
+  'NODE_JS',
+  'BINARYEN_ROOT',
+  'LLVM_ROOT',
+  'LLVM_ADD_VERSION',
+  'CLANG_ADD_VERSION',
+  'CLOSURE_COMPILER',
+  'FROZEN_CACHE',
+  'CACHE',
+  'PORTS',
+  'COMPILER_WRAPPER',
+}
+
 NODE_JS = None
 BINARYEN_ROOT = None
 LLVM_ADD_VERSION = None
@@ -57,11 +67,10 @@ def normalize_relative_python_path():
   #  EMSDK_PYTHON=../../path/to/python emcc test/hello_world.c
   #
   # As part of its operation, emcc may spawn sub-emcc tasks when building
-  # libraries to cache. These sub-emcc tasks will run in a different CWD, so
-  # reinitialize EMSDK_PYTHON here so that sub-tool spawns will use the same
-  # Python interpreter as the parent.
-  if os.environ.get('EMSDK_PYTHON'):
-    os.environ['EMSDK_PYTHON'] = sys.executable
+  # libraries to cache. These sub-emcc tasks may have a different CWD, so
+  # ensure that EMSDK_PYTHON is an absolute path here.
+  if 'EMSDK_PYTHON' in os.environ:
+    os.environ['EMSDK_PYTHON'] = os.path.abspath(os.environ['EMSDK_PYTHON'])
 
 
 def set_config_from_tool_location(config_key, tool_binary, f):
@@ -100,19 +109,6 @@ def parse_config_file():
   except Exception as e:
     exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, e, config_text)
 
-  CONFIG_KEYS = (
-    'NODE_JS',
-    'BINARYEN_ROOT',
-    'LLVM_ROOT',
-    'LLVM_ADD_VERSION',
-    'CLANG_ADD_VERSION',
-    'CLOSURE_COMPILER',
-    'FROZEN_CACHE',
-    'CACHE',
-    'PORTS',
-    'COMPILER_WRAPPER',
-  )
-
   if '_EM_TEST_RUNNER' in os.environ:
     # TODO(sbc): Move this completely out of the core compiler and into the test framework.
     TEST_KEYS = (
@@ -124,7 +120,7 @@ def parse_config_file():
       'WASMTIME',
       'WASM_ENGINES',
     )
-    CONFIG_KEYS += TEST_KEYS
+    CONFIG_KEYS.update(TEST_KEYS)
     for key in TEST_KEYS:
       globals()[key] = None
 
@@ -181,19 +177,19 @@ def generate_config(path):
   # write
   utils.write_file(path, config_data)
 
-  print('''\
+  print(f'''\
 An Emscripten settings file has been generated at:
 
-  %s
+  {path}
 
 It contains our best guesses for the important paths, which are:
 
-  LLVM_ROOT       = %s
-  BINARYEN_ROOT   = %s
-  NODE_JS         = %s
+  LLVM_ROOT       = {llvm_root}
+  BINARYEN_ROOT   = {binaryen_root}
+  NODE_JS         = {node}
 
 Please edit the file if any of those are incorrect.\
-''' % (path, llvm_root, binaryen_root, node), file=sys.stderr)
+''', file=sys.stderr)
 
 
 def find_config_file():
@@ -237,7 +233,7 @@ def find_config_file():
   # We could remove this special case if emsdk were to write its embedded config
   # file into the emscripten directory itself.
   # See: https://github.com/emscripten-core/emsdk/pull/367
-  emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
+  emsdk_root = os.path.dirname(os.path.dirname(__rootpath__))
   emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
 
   if os.path.isfile(emsdk_embedded_config):

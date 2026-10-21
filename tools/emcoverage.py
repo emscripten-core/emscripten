@@ -56,7 +56,7 @@ def main():
     return
 
   if sys.argv[1] == 'reset':
-    shutil.rmtree(store)
+    shutil.rmtree(store, ignore_errors=True)
     return
 
   if sys.argv[1] in {'html', 'report', 'xml'}:
@@ -67,10 +67,14 @@ def main():
     sys.argv = [*old_argv, '-i']
     return coverage.cmdline.main()
 
-  if not os.path.exists(sys.argv[1]):
-    # If argv[1] is not a file path, instead try to interpret it as an emscripten command.
-    # This allows `emcoverage.py emcc` or `emcoverage.py embuilder` to work.
-    sys.argv[1] = os.path.join(os.path.dirname(sys.executable), '..', sys.argv[1] + '.py')
+  if sys.argv[1] == '-E':
+    sys.argv.pop(1)
+
+  # If argv[1] is an emscripten command rather than a python script path, resolve it
+  # to the corresponding python script living alongside it.
+  candidate = os.path.splitext(sys.argv[1])[0] + '.py'
+  if os.path.exists(candidate):
+    sys.argv[1] = candidate
 
   try:
     os.mkdir(store)

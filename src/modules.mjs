@@ -61,6 +61,7 @@ function calculateLibraries() {
     'libwasi.js',
     'libeventloop.js',
     'libpromise.js',
+    'libsyscall_shared.js',
   ];
 
   if (LINK_AS_CXX) {
@@ -291,7 +292,7 @@ export const LibraryManager = {
   },
 
   isAlias(entry) {
-    return (typeof entry == 'string' && entry[0] != '=' && (this.library.hasOwnProperty(entry) || WASM_EXPORTS.has(entry)));
+    return (typeof entry === 'string' && entry[0] != '=' && (this.library.hasOwnProperty(entry) || WASM_EXPORTS.has(entry)));
   },
 
   /**
@@ -609,7 +610,7 @@ function exportLibrarySymbols() {
   assert(MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
-    if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident) || extraExports.has(ident)) && !nativeAliases[ident]) {
+    if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident) || extraExports.has(ident)) && !nativeAliases[ident] && !ident.startsWith('HEAP')) {
       results.push(exportSymbol(ident));
     }
   }

@@ -17,7 +17,7 @@ var SyscallsLibrary = {
     // global constants
 
     // shared utilities
-    calculateAt(dirfd, path, allowEmpty) {
+    calculateAt(dirfd, path, allowEmpty = false) {
       if (PATH.isAbs(path)) {
         return path;
       }
@@ -340,15 +340,17 @@ var SyscallsLibrary = {
 #endif
     return socket;
   },
-  $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
+  $getSocketAddress__deps: ['$readSockaddr', '$FS',
+#if !NODERAWSOCKETS
+    '$DNS',
+#endif
+  ],
   $getSocketAddress: (addrp, addrlen) => {
     var info = readSockaddr(addrp, addrlen);
     if (info.errno) throw new FS.ErrnoError(info.errno);
-#if NODERAWSOCKETS
-    // AF_UNIX addresses are filesystem paths, not IP names; pass them verbatim.
-    if (info.family != {{{ cDefs.AF_UNIX }}})
-#endif
+#if !NODERAWSOCKETS
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
+#endif
 #if SYSCALL_DEBUG
     dbg(`    (socketaddress: "${[info.addr, info.port]}")`);
 #endif
@@ -414,6 +416,11 @@ var SyscallsLibrary = {
   __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
     var sock = getSocketFromFD(fd);
     var newsock = sock.sock_ops.accept(sock);
+#if NODERAWSOCKETS
+    // Linux: the accepted fd's status flags come only from `flags`, never from
+    // the listener.
+    if (flags & {{{ cDefs.SOCK_NONBLOCK }}}) newsock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
+#endif
     if (addr) {
       var errno = writeSockaddr(addr, newsock.family, newsock.daddr, newsock.dport, len);
 #if ASSERTIONS
@@ -583,7 +590,7 @@ var SyscallsLibrary = {
 
     return bytesRead;
   },
-#endif // ~PROXY_POSIX_SOCKETS==0
+#endif // PROXY_POSIX_SOCKETS == 0 && WASMFS == 0
   __syscall_fchdir: (fd) => {
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.chdir(stream.path);
@@ -942,7 +949,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     mode &= ~SYSCALLS.currentUmask;
-    FS.mkdir(path, mode, 0);
+    FS.mkdir(path, mode);
     return 0;
   },
   __syscall_mknodat: (dirfd, path, mode, dev) => {
@@ -1075,25 +1082,19 @@ var SyscallsLibrary = {
       atime = now;
       mtime = now;
     } else {
-      var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
-      var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
-        atime = now;
-      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
-        atime = null;
-      } else {
-        atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      function readTimespec(ptr) {
+        var tv_nsec = {{{ makeGetValue('ptr', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+        if (tv_nsec == {{{ cDefs.UTIME_NOW }}}) {
+          return now;
+        }
+        if (tv_nsec == {{{ cDefs.UTIME_OMIT }}}) {
+          return null;
+        }
+        var tv_sec = {{{ makeGetValue('ptr', C_STRUCTS.timespec.tv_sec, 'i53') }}};
+        return (tv_sec*1000) + Math.floor(tv_nsec/(1000*1000));
       }
-      times += {{{ C_STRUCTS.timespec.__size__ }}};
-      seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
-      nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
-        mtime = now;
-      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
-        mtime = null;
-      } else {
-        mtime = (seconds*1000) + (nanoseconds/(1000*1000));
-      }
+      atime = readTimespec(times);
+      mtime = readTimespec(times + {{{ C_STRUCTS.timespec.__size__ }}});
     }
     // null here means UTIME_OMIT was passed. If both were set to UTIME_OMIT then
     // we can skip the call completely.
@@ -1134,23 +1135,6 @@ var SyscallsLibrary = {
     }
     return 0;
   },
-  __syscall_getuid32__nothrow: true,
-  __syscall_geteuid32__nothrow: true,
-  __syscall_getgid32__nothrow: true,
-  __syscall_getegid32__nothrow: true,
-#if NODERAWFS
-  // NODERAWFS reports the real host process credentials (0 on Windows, which
-  // has no uid/gid concept).
-  __syscall_getuid32: () => process.getuid?.() ?? 0,
-  __syscall_geteuid32: () => process.geteuid?.() ?? 0,
-  __syscall_getgid32: () => process.getgid?.() ?? 0,
-  __syscall_getegid32: () => process.getegid?.() ?? 0,
-#else
-  __syscall_getuid32: () => 0,
-  __syscall_geteuid32: () => 0,
-  __syscall_getgid32: () => 0,
-  __syscall_getegid32: () => 0,
-#endif
   __syscall_dup3: (fd, newfd, flags) => {
     if (fd === newfd) return -{{{ cDefs.EINVAL }}};
     if (flags & ~{{{ cDefs.O_CLOEXEC }}}) return -{{{ cDefs.EINVAL }}};

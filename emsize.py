@@ -46,9 +46,9 @@ def parse_args(argv):
 
 def print_sizes(js_file):
   if not os.path.isfile(js_file):
-    return error('Input JS file %s not found' % js_file)
+    return error(f'Input JS file {js_file} not found')
   if not js_file.endswith('.js'):
-    return error('Input file %s does not have a JS extension' % js_file)
+    return error(f'Input file {js_file} does not have a JS extension')
 
   basename = js_file[:-3]
 
@@ -59,7 +59,7 @@ def print_sizes(js_file):
   # Find the rest of the sizes
   wasm_file = basename + '.wasm'
   if not os.path.isfile(wasm_file):
-    return error('Wasm file %s not found' % wasm_file)
+    return error(f'Wasm file {wasm_file} not found')
 
   sizes = shared.check_call([LLVM_SIZE, '--format=sysv', wasm_file],
                             stdout=subprocess.PIPE).stdout
@@ -73,8 +73,8 @@ def print_sizes(js_file):
   for line in lines[:-1]:
     print(line)
 
-  print('JS\t\t%s\t0' % js_size)
-  print('Total\t\t%s' % total)
+  print(f'JS\t\t{js_size}\t0')
+  print(f'Total\t\t{total}')
 
 
 if __name__ == '__main__':

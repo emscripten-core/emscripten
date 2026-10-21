@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# ruff: file-ignore[multiple-spaces-before-keyword]
 
 import errno
 import glob
@@ -35,15 +36,28 @@ import common
 import jsrun
 import line_endings
 from common import (
+  CLANG_CC,
+  CLANG_CXX,
+  EMAR,
   EMBUILDER,
+  EMCC,
   EMCMAKE,
   EMCONFIG,
   EMCONFIGURE,
   EMMAKE,
+  EMRANLIB,
+  EMXX,
+  FILE_PACKAGER,
+  LLVM_AR,
+  LLVM_DWARFDUMP,
+  LLVM_DWP,
+  LLVM_NM,
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
-  WASM_MERGE,
+  WASM_DIS,
+  WASM_LD,
+  WASM_SPLIT,
   WEBIDL_BINDER,
   RunnerCore,
   check_node_version,
@@ -100,26 +114,9 @@ from decorators import (
   with_env_modify,
 )
 
-from tools import building, cache, response_file, shared, utils, webassembly
+from tools import building, cache, config, response_file, shared, utils, webassembly
 from tools.building import get_building_env
-from tools.cmdline import options
 from tools.link import binary_encode
-from tools.settings import settings
-from tools.shared import (
-  CLANG_CC,
-  CLANG_CXX,
-  EMAR,
-  EMCC,
-  EMRANLIB,
-  EMXX,
-  FILE_PACKAGER,
-  LLVM_AR,
-  LLVM_DWARFDUMP,
-  LLVM_DWP,
-  LLVM_NM,
-  WASM_LD,
-  config,
-)
 from tools.system_libs import DETERMINISTIC_PREFIX
 from tools.utils import (
   MACOS,
@@ -196,7 +193,7 @@ def also_with_llvm_libc(func):
 
   @wraps(func)
   def metafunc(self, llvm_libc, *args, **kwargs):
-    if shared.DEBUG:
+    if common.EMTEST_VERBOSE:
       print('parameterize:llvm_libc=%d' % llvm_libc)
     if llvm_libc:
       self.cflags += ['-lllvmlibc']
@@ -247,8 +244,10 @@ def requires_tool(tool, env_name=None):
       else:
         env_var = f'EMTEST_SKIP_{tool.upper()}'
       if not shutil.which(tool):
-        if env_var in os.environ:
+        if utils.get_env_bool(env_var):
           self.skipTest(f'test requires {tool} and {env_var} is set')
+        elif utils.get_env_bool('EMTEST_AUTOSKIP'):
+          self.skipTest(f'test requires {tool} (missing in PATH) and EMTEST_AUTOSKIP is set')
         else:
           self.fail(f'{tool} required to run this test.  Use {env_var} to skip')
       return func(self, *args, **kwargs)
@@ -271,6 +270,11 @@ def requires_scons(func):
 def requires_rust(func):
   assert callable(func)
   return requires_tool('cargo', 'RUST')(func)
+
+
+def requires_wasm_bindgen(func):
+  assert callable(func)
+  return requires_tool('wasm-bindgen', 'WASM_BINDGEN')(func)
 
 
 def requires_pkg_config(func):
@@ -325,10 +329,10 @@ class other(RunnerCore):
     super().setUp()
 
   def assertIsObjectFile(self, filename):
-    self.assertTrue(building.is_wasm(filename))
+    self.assertTrue(webassembly.is_wasm(filename))
 
   def assertIsWasmDylib(self, filename):
-    self.assertTrue(building.is_wasm_dylib(filename))
+    self.assertTrue(webassembly.is_wasm_dylib(filename))
 
   def do_other_test(self, testname, cflags=None, **kwargs):
     return self.do_runf_out_file(test_file('other', testname), cflags=cflags, **kwargs)
@@ -620,7 +624,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # of output.  For example, specifying an output filename that ends in `.bc` does
     # *not* imply the output is actually bitcode.
     self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'out.bc'])
-    self.assertTrue(building.is_wasm('out.bc'))
+    self.assertIsObjectFile('out.bc')
 
   def test_bc_as_archive(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c'), '-flto', '-o', 'out.a'])
@@ -764,6 +768,14 @@ f.close()
     self.run_process([EMCC, 'out.o'] + self.get_cflags())
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
+  def get_expected_lib_dir(self, args):
+    target = 'wasm64-emscripten' if '-m64' in args else 'wasm32-emscripten'
+    cache_dir = Path(self.run_process([EMCONFIG, 'CACHE'], stdout=PIPE).stdout.strip())
+    libdir = cache_dir / 'sysroot' / 'lib' / target
+    if '-flto' in args:
+      libdir /= 'lto'
+    return libdir
+
   @crossplatform
   @parameterized({
     '': ([],),
@@ -779,9 +791,7 @@ f.close()
     libpath = output.split('libraries: =', 1)[1].strip()
     libpath = libpath.split(os.pathsep)
     libpath = [Path(p) for p in libpath]
-    options.lto = 'full' if '-flto' in args else None
-    settings.MEMORY64 = int('-m64' in args)
-    expected = cache.get_lib_dir(absolute=True)
+    expected = self.get_expected_lib_dir(args)
     self.assertIn(expected, libpath)
 
   @crossplatform
@@ -794,11 +804,8 @@ f.close()
     output = self.run_process([EMCC, '-print-libgcc-file-name'] + args, stdout=PIPE).stdout
     output2 = self.run_process([EMCC, '--print-libgcc-file-name'] + args, stdout=PIPE).stdout
     self.assertEqual(output, output2)
-    options.lto = 'full' if '-flto' in args else None
-    settings.MEMORY64 = int('-m64' in args)
-    libdir = cache.get_lib_dir(absolute=True)
-    expected = os.path.join(libdir, 'libclang_rt.builtins.a')
-    self.assertEqual(output.strip(), expected)
+    expected = self.get_expected_lib_dir(args) / 'libclang_rt.builtins.a'
+    self.assertEqual(Path(output.strip()), expected)
 
   @crossplatform
   def test_print_resource_dir(self):
@@ -830,10 +837,8 @@ f.close()
     output = self.run_process([EMCC, '-print-file-name=libc.a'] + args, stdout=PIPE).stdout.rstrip()
     output2 = self.run_process([EMCC, '--print-file-name=libc.a'] + args, stdout=PIPE).stdout.rstrip()
     self.assertEqual(output, output2)
-    filename = Path(output)
-    options.lto = 'full' if '-flto' in args else None
-    settings.MEMORY64 = int('-m64' in args)
-    self.assertContained(cache.get_lib_name('libc.a'), str(filename))
+    expected = self.get_expected_lib_dir(args) / 'libc.a'
+    self.assertEqual(Path(output), expected)
 
   @crossplatform
   def test_print_file_name_resdir(self):
@@ -1094,9 +1099,9 @@ f.close()
     self.run_process([EMCMAKE, 'cmake', f'-DSET_CUSTOM_SUFFIX_IN_PROJECT={custom}', test_file('cmake/static_lib')])
     self.run_process(['cmake', '--build', '.'])
     if custom == '1':
-      self.assertTrue(building.is_ar('myprefix_static_lib.somecustomsuffix'))
+      self.assertTrue(utils.is_ar('myprefix_static_lib.somecustomsuffix'))
     else:
-      self.assertTrue(building.is_ar('libstatic_lib.a'))
+      self.assertTrue(utils.is_ar('libstatic_lib.a'))
 
   # Tests that cmake functions which require evaluation via the node runtime run properly with pthreads
   def test_cmake_pthreads(self):
@@ -1125,6 +1130,7 @@ f.close()
     self.run_process([EMCC, test_file('hello_world.c'), '-sUSE_ZLIB'])
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_stuff')])
 
+  @crossplatform
   def test_cmake_install(self):
     # Build and install a library `foo`
     os.mkdir('build1')
@@ -1193,6 +1199,9 @@ f.close()
     '': (None,),
     'wasm64': ('-m64',),
     'pthreads': ('-pthread',),
+    'wasm_workers': ('-sWASM_WORKERS',),
+    'exit_runtime': ('-sEXIT_RUNTIME',),
+    'lto': ('-flto',),
   })
   def test_cmake_check_type_size(self, cflag):
     if cflag == '-m64':
@@ -1575,8 +1584,8 @@ f.close()
     self.run_process([EMAR, 'rc', 'libfoo.a', 'foo.o'])
     self.run_process([EMAR, 'rc', 'libmain.a', 'main.o'])
     self.run_process([
-        EMXX, test_file('test_whole_archive_init.cpp'),
-        '-O1', 'libfoo.a', '-Wl,--whole-archive', 'libmain.a', '-Wl,--no-whole-archive'])
+      EMXX, test_file('test_whole_archive_init.cpp'),
+      '-O1', 'libfoo.a', '-Wl,--whole-archive', 'libmain.a', '-Wl,--no-whole-archive'])
     self.assertContained('Result: 11', self.run_js('a.out.js'))
 
   def test_link_group_bitcode(self):
@@ -1626,7 +1635,6 @@ int f() {
     self.emcc('main.c', ['libA.so', 'libA.so', '-o', 'a.out.js'])
     self.assertContained('result: 1', self.run_js('a.out.js'))
 
-  @no_mac('https://github.com/emscripten-core/emscripten/issues/16649')
   @crossplatform
   def test_dot_a_all_contents_invalid(self):
     # check that we error if an object file in a .a is not valid bitcode.
@@ -2015,8 +2023,6 @@ Module['postRun'] = () => {
     text = self.run_process([EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
     self.assertEqual(text.count('common.o'), 2)
 
-    # With fastcomp we don't support duplicate members so this should generate
-    # a warning.  With the wasm backend (lld) this is fully supported.
     self.do_runf('main.c', 'a\nb...\n', cflags=['-L.', '-ldup'])
 
   def test_export_from_archive(self):
@@ -2187,8 +2193,9 @@ Module['postRun'] = () => {
 
     self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '!*hello.exe', '--exclude-file', '*.exe'])
 
+  @also_with_pthreads
   def test_dylink_strict(self):
-    self.do_runf_out_file('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1', '-Wno-experimental'])
 
   def test_dylink_legacy(self):
     self.do_runf_out_file('hello_world.c', cflags=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
@@ -2505,6 +2512,26 @@ int main() {
 }''')
     self.do_runf('test.c', 'done\n', cflags=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
 
+  @requires_pthreads
+  def test_dylink_webgl_alias(self):
+    create_file('test.c', r'''
+#include <GLES3/gl3.h>
+#include <stdio.h>
+
+int main() {
+  printf("glGetVertexAttribIuiv: %p\n", &glGetVertexAttribIuiv);
+  printf("done\n");
+  return 0;
+}''')
+    self.do_runf('test.c', 'done\n', cflags=[
+      '-sMAIN_MODULE=1',
+      '-sMAX_WEBGL_VERSION=2',
+      '-sOFFSCREEN_FRAMEBUFFER=1',
+      '-sEXPORT_ALL=1',
+      '-pthread',
+      '-Wno-experimental',
+    ])
+
   def test_dylink_library_search(self):
     # Test library resolution in the case when both static and dynamic library are present.
     create_file('side_dyn.c', r'''
@@ -2629,7 +2656,6 @@ F1 -> ''
   def test_sdl3_linkable(self):
     # Ensure that SDL3 can be built with MAIN_MODULE.  This implies there are no undefined
     # symbols in the library (because MAIN_MODULE=1 includes the entire library).
-    self.cflags.append('-Wno-experimental')
     self.emcc('browser/test_sdl3_misc.c', ['-sMAIN_MODULE', '-sUSE_SDL=3', '-o', 'a.out.js'])
     self.emcc('browser/test_sdl3_misc.c', ['-sMAIN_MODULE', '--use-port=sdl3', '-o', 'a.out.js'])
 
@@ -2772,8 +2798,8 @@ F1 -> ''
   @requires_network
   def test_sdl3_ttf(self):
     # A compile-only test that checks if sdl3-ttf, and dependencies freetype and harfbuzz, are buildable.
-    self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['-Wno-experimental', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3'])
-    self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['-Wno-experimental', '--use-port=sdl3', '--use-port=sdl3_ttf'])
+    self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['-sUSE_SDL=3', '-sUSE_SDL_TTF=3'])
+    self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['--use-port=sdl3', '--use-port=sdl3_ttf'])
 
   @requires_network
   def test_contrib_ports(self):
@@ -2825,6 +2851,7 @@ More info: https://emscripten.org
 ''', stdout)
 
   @requires_network
+  @also_with_pthreads
   def test_port_contrib_lua(self):
     self.do_runf('other/test_port_contrib_lua.c', 'hello world\nHELLO WORLD\nsqrt(16)=4\n', cflags=['--use-port=contrib.lua'])
 
@@ -3346,7 +3373,8 @@ More info: https://emscripten.org
     # this test copies the site_scons directory alongside the test
     copytree(test_file('scons/simple'), '.')
     copytree(path_from_root('tools/scons/site_scons'), 'site_scons')
-    self.run_process(['scons'])
+    proc = self.run_process(['scons'], stderr=PIPE)
+    self.assertContained('emscripten: warning: SCons integration is deprecated', proc.stderr)
     output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
@@ -3395,7 +3423,8 @@ More info: https://emscripten.org
   @requires_scons
   def test_emscons(self):
     copytree(test_file('scons/simple'), '.')
-    self.run_process([path_from_root('emscons'), 'scons'])
+    proc = self.run_process([path_from_root('emscons'), 'scons'], stderr=PIPE)
+    self.assertContained('emscons: warning: emscons is deprecated', proc.stderr)
     output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
@@ -3635,6 +3664,21 @@ More info: https://emscripten.org
   def test_embind_return_value_policy(self):
     self.do_runf('embind/test_return_value_policy.cpp', cflags=['-lembind'])
 
+  @parameterized({
+    '': (),
+    'no_dynamic': ('-sDYNAMIC_EXECUTION=0',),
+    'aot_js': ('-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT'),
+    'wasm64': ('-m64', '-sDYNAMIC_EXECUTION=0'),
+  })
+  def test_embind_trivial_value_stack(self, *extra_args):
+    # Trivially constructible/destructible value_object and value_array
+    # arguments marshal on the wasm stack; the test overrides malloc/free and
+    # asserts the trivial paths never allocate while the non-trivial and
+    # over-aligned fallbacks still balance the heap.
+    if '-m64' in extra_args:
+      self.require_wasm64()
+    self.do_runf('embind/test_embind_trivial_value_stack.cpp', 'done\n', cflags=['-lembind', *extra_args])
+
   @requires_node_25
   def test_embind_resource_management(self):
     self.node_args.append('--js-explicit-resource-management')
@@ -3760,7 +3804,7 @@ More info: https://emscripten.org
            '-sASSERTIONS=0',
            '-sSTRICT=1',
           ], 'embind_tsgen_ignore_2.d.ts'),
-    '3': (['-sWASM=0'], 'embind_tsgen_ignore_3.d.ts'),
+    '3': (['-sWASM=0', '-Wno-deprecated'], 'embind_tsgen_ignore_3.d.ts'),
     '4': (['-fsanitize=undefined', '-gsource-map'], 'embind_tsgen_ignore_3.d.ts'),
     '5': (['-sASYNCIFY'], 'embind_tsgen_ignore_3.d.ts'),
     '6': (['-sENVIRONMENT=worker', '-lworkerfs.js'], 'embind_tsgen.d.ts'),
@@ -3927,6 +3971,17 @@ More info: https://emscripten.org
     self.assertContained("    HEAPF32: Float32Array;", actual)
     self.assertContained("    HEAPF64: Float64Array;", actual)
 
+  @requires_dev_dependency('typescript')
+  def test_emit_tsd_callmain(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd.d.ts',
+                      '-sEXPORT_ES6', '-sMODULARIZE',
+                      '-sEXPORTED_RUNTIME_METHODS=callMain',
+                      '-o', 'test_emit_tsd.js'] +
+                     self.get_cflags())
+    actual = read_file('test_emit_tsd.d.ts')
+    self.assertContained("    callMain: any;", actual)
+
   def test_emconfig(self):
     output = self.run_process([EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
@@ -3934,15 +3989,14 @@ More info: https://emscripten.org
     # itself (its not configurable via the config file but driven by the location for arg0)
     output = self.run_process([EMCONFIG, 'EMSCRIPTEN_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, os.path.dirname(EMCONFIG))
-    invalid = 'Usage: em-config VAR_NAME'
     # Don't accept variables that do not exist
-    self.assert_fail([EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], invalid)
+    self.assert_fail([EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], 'Invalid config key: VAR_WHICH_DOES_NOT_EXIST')
     # Don't accept no arguments
-    self.assert_fail([EMCONFIG], invalid)
+    self.assert_fail([EMCONFIG], 'Usage: em-config VAR_NAME')
     # Don't accept more than one variable
-    self.assert_fail([EMCONFIG, 'LLVM_ROOT', 'EMCC'], invalid)
+    self.assert_fail([EMCONFIG, 'LLVM_ROOT', 'EMCC'], 'Usage: em-config VAR_NAME')
     # Don't accept arbitrary python code
-    self.assert_fail([EMCONFIG, 'sys.argv[1]'], invalid)
+    self.assert_fail([EMCONFIG, 'sys.argv[1]'], 'Invalid config key: sys.argv[1]')
 
   def test_link_s(self):
     # -s OPT=VALUE can conflict with -s as a linker option. We warn and ignore
@@ -4006,7 +4060,7 @@ More info: https://emscripten.org
 
     def clean(txt):
       lines = txt.splitlines()
-      lines = [l for l in lines if 'PACKAGE_UUID' not in l and 'loadPackage({' not in l]
+      lines = [line for line in lines if 'PACKAGE_UUID' not in line and 'loadPackage({' not in line]
       return ''.join(lines)
 
     self.assertTextDataIdentical(clean(proc.stdout), clean(proc2.stdout))
@@ -4938,14 +4992,14 @@ int main() {
   def test_oz_size(self):
     sizes = {}
     for name, args in [
-        ('0', []),
-        ('1', ['-O1']),
-        ('2', ['-O2']),
-        ('s', ['-Os']),
-        ('z', ['-Oz']),
-        ('3', ['-O3']),
-        ('g', ['-Og']),
-      ]:
+      ('0', []),
+      ('1', ['-O1']),
+      ('2', ['-O2']),
+      ('s', ['-Os']),
+      ('z', ['-Oz']),
+      ('3', ['-O3']),
+      ('g', ['-Og']),
+    ]:
       print(name, args)
       self.clear()
       self.run_process([EMCC, '-c', path_from_root('system/lib/dlmalloc.c')] + args)
@@ -4957,72 +5011,6 @@ int main() {
     self.assertLess(opt_min - opt_max, opt_max * 0.1)
     # unopt build is quite larger'
     self.assertGreater(sizes['0'], (1.20 * opt_max))
-
-  @disabled('relies on fastcomp EXIT_RUNTIME=0 optimization not implemented/disabled')
-  def test_global_inits(self):
-    create_file('inc.h', r'''
-#include <stdio.h>
-
-template<int x>
-struct Waste {
-  int state;
-  Waste() : state(10) {}
-  void test(int a) {
-    printf("%d\n", a + state);
-  }
-  ~Waste() {
-    printf("going away %d\n", x);
-  }
-};
-
-Waste<3> *getMore();
-''')
-
-    create_file('main.cpp', r'''
-#include "inc.h"
-
-Waste<1> mw1;
-Waste<2> mw2;
-
-int main(int argc, char **argv) {
-  printf("argc: %d\n", argc);
-  mw1.state += argc;
-  mw2.state += argc;
-  mw1.test(5);
-  mw2.test(6);
-  getMore()->test(0);
-  return 0;
-}
-''')
-
-    create_file('side.cpp', r'''
-#include "inc.h"
-
-Waste<3> sw3;
-
-Waste<3> *getMore() {
-  return &sw3;
-}
-''')
-
-    for opts, has_global in [
-      (['-O2', '-g', '-sEXIT_RUNTIME'], True),
-      # no-exit-runtime removes the atexits, and then globalgce can work
-      # it's magic to remove the global initializer entirely
-      (['-O2', '-g'], False),
-      (['-Os', '-g', '-sEXIT_RUNTIME'], True),
-      (['-Os', '-g'], False),
-      (['-O2', '-g', '-flto', '-sEXIT_RUNTIME'], True),
-      (['-O2', '-g', '-flto'], False),
-    ]:
-      print(opts, has_global)
-      self.run_process([EMXX, 'main.cpp', '-c'] + opts)
-      self.run_process([EMXX, 'side.cpp', '-c'] + opts)
-      self.run_process([EMCC, 'main.o', 'side.o'] + opts)
-      self.run_js('a.out.js')
-      src = read_file('a.out.js')
-      self.assertContained('argc: 1\n16\n17\n10\n', self.run_js('a.out.js'))
-      self.assertContainedIf('globalCtors', src, has_global)
 
   @requires_native_clang
   @crossplatform
@@ -5196,8 +5184,8 @@ int main() {
     self.run_process([EMCC, '-flto', '-c', test_file('hello_world.c')])
     self.assertExists('hello_world.o')
     self.run_process([EMCC, '-flto', '-r', 'hello_world.o', '-o', 'hello_world2.o'])
-    is_bitcode('hello_world.o')
-    building.is_wasm('hello_world2.o')
+    self.assertTrue(is_bitcode('hello_world.o'))
+    self.assertIsObjectFile('hello_world2.o')
 
   @parameterized({
     '': ([],),
@@ -5683,6 +5671,11 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
   def test_fs_bad_lookup(self):
     self.do_runf('fs/test_fs_bad_lookup.c', 'ok')
 
+  def test_fs_base(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
+    self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
+    self.do_runf_out_file('fs/test_fs_base.c')
+
   @also_with_nodefs_both
   @crossplatform
   @parameterized({
@@ -5819,6 +5812,14 @@ int main()
 
   def test_strptime_symmetry(self):
     self.do_other_test('test_strptime_symmetry.c')
+
+  def test_utime_now(self):
+    self.do_runf('utime/test_utime_now.c', 'done\n')
+
+  @crossplatform
+  @also_with_nodefs_both
+  def test_utime_roundtrip(self):
+    self.do_runf('utime/test_utime_roundtrip.c', 'done\n')
 
   @also_with_wasmfs
   def test_truncate_from_0(self):
@@ -6104,8 +6105,8 @@ This locale is not the C locale.
     'o1': (['-O1'], 91000),
     'o2': (['-O2'], 46000),
     'o3_closure': (['-O3', '--closure=1'], 17000),
-    'o3_closure_js': (['-O3', '--closure=1', '-sWASM=0'], 36000),
-    'o3_closure2_js': (['-O3', '--closure=2', '-sWASM=0'], 33000), # might change now and then
+    'o3_closure_js': (['-O3', '--closure=1', '-sWASM=0', '-Wno-deprecated'], 36000),
+    'o3_closure2_js': (['-O3', '--closure=2', '-sWASM=0', '-Wno-deprecated'], 33000), # might change now and then
   })
   def test_no_filesystem_code_size(self, opts, absolute):
     print('opts, absolute:', opts, absolute)
@@ -6388,6 +6389,23 @@ int main(void) {
 
     self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
+  def test_esm_integration_incompatible_settings(self):
+    base_cmd = [EMCC, test_file('hello_world.c'), '-sWASM_ESM_INTEGRATION']
+    self.assert_fail(base_cmd + ['-sMAIN_MODULE'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with MAIN_MODULE (dynamic linking is not supported)')
+    self.assert_fail(base_cmd + ['-sSIDE_MODULE'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with SIDE_MODULE (dynamic linking is not supported)')
+    self.assert_fail(base_cmd + ['-sASYNCIFY'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    self.assert_fail(base_cmd + ['-sWASM_WORKERS'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+    self.assert_fail(base_cmd + ['-sWASM_ASYNC_COMPILATION=0'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
+    self.assert_fail(base_cmd + ['-sWASM=0'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with WASM2JS')
+    self.assert_fail(base_cmd + ['-sABORT_ON_WASM_EXCEPTIONS'],
+                     'emcc: error: WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
+
   def test_modularize_instantiation_error(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_cflags())
     create_file('run.mjs', '''
@@ -6559,7 +6577,7 @@ print(os.environ.get('CROSS_COMPILE'))
 import os
 print(os.environ.get('NM'))
 ''')
-    check(EMCONFIGURE, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+    check(EMCONFIGURE, [PYTHON, 'test.py'], expect=LLVM_NM, fail=False)
 
     create_file('test.c', 'int main() { return 0; }')
     os.mkdir('test_cache')
@@ -7761,7 +7779,7 @@ addToLibrary({
     'mimalloc': (['-sMALLOC=mimalloc'], 260000),
     'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 131000),
     'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 137000),
-    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 196000),
+    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 197000),
   })
   # This test verifies the output code size of the different -sMALLOC= modes.
   def test_malloc_size(self, args, max_size):
@@ -8435,6 +8453,8 @@ int main() {
     self.assertNotContained('Hello, world!', out)
     # and with memory growth, all should be good
     self.do_runf_out_file('hello_world.c', cflags=['-sINITIAL_MEMORY=16mb', '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sIMPORTED_MEMORY'])
+    # as it should without growth, given a large enough maximum
+    self.do_runf_out_file('hello_world.c', cflags=['-Werror', '-sINITIAL_MEMORY=16mb', '-sMAXIMUM_MEMORY=64mb', '--pre-js', 'pre.js', '-sIMPORTED_MEMORY'])
 
   @parameterized({
     '': ([], 16 * 1024 * 1024), # Default behavior: 16MB initial heap
@@ -8460,15 +8480,15 @@ int main() {
 
   def test_memory_size(self):
     for args, expect_initial, expect_max in [
-        ([], 320, 320),
-        (['-sALLOW_MEMORY_GROWTH'], 320, 32768),
-        (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=40MB'], 320, 640),
-      ]:
+      ([], 320, 320),
+      (['-sALLOW_MEMORY_GROWTH'], 320, 32768),
+      (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=40MB'], 320, 640),
+    ]:
       cmd = [EMCC, test_file('hello_world.c'), '-O2', '-sINITIAL_MEMORY=20MB'] + args
       print(' '.join(cmd))
       self.run_process(cmd)
       wat = self.get_wasm_text('a.out.wasm')
-      memories = [l for l in wat.splitlines() if '(memory ' in l]
+      memories = [line for line in wat.splitlines() if '(memory ' in line]
       self.assertEqual(len(memories), 2)
       line = memories[0]
       parts = line.strip().replace('(', '').replace(')', '').split()
@@ -8499,7 +8519,7 @@ int main() {
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sMAXIMUM_MEMORY=34603009', '-sALLOW_MEMORY_GROWTH'], expected) # 33MB + 1 byte
 
   def test_invalid_memory_max(self):
-    expected = 'emcc: error: MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH'
+    expected = 'emcc: error: MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH or IMPORTED_MEMORY'
     self.assert_fail([EMCC, '-Werror', test_file('hello_world.c'), '-sMAXIMUM_MEMORY=41943040'], expected)
 
   def test_dasho_invalid_dir(self):
@@ -8540,25 +8560,25 @@ int main() {
   @crossplatform
   def test_binaryen_debug(self):
     for args, expect_clean_js, expect_whitespace_js, expect_closured in [
-        (['-O0'], False, True, False),
-        (['-O0', '-g1'], False, True, False),
-        (['-O0', '-g2'], False, True, False),
-        (['-O0', '-g'], False, True, False),
-        (['-O0', '--profiling-funcs'], False, True, False),
-        (['-O0', '-gline-tables-only'], False, True, False),
-        (['-O1'], False, True, False),
-        (['-O3'], True, False, False),
-        (['-Oz', '-gsource-map'], True, False, False),
-        (['-O2'], True,  False, False),
-        (['-O2', '-gz'], True,  False, False), # -gz means debug compression, it should not enable debugging
-        (['-O2', '-g1'], False, True, False),
-        (['-O2', '-g'],  False, True, False),
-        (['-O2', '--closure=1'], True, False, True),
-        (['-O2', '--closure=1', '-g1'], True, True,  True),
-        (['-O2', '--minify=0'], False, True, False),
-        (['-O2', '--profiling-funcs'], True, False, False),
-        (['-O2', '--profiling'], False, True, False),
-      ]:
+      (['-O0'], False, True, False),
+      (['-O0', '-g1'], False, True, False),
+      (['-O0', '-g2'], False, True, False),
+      (['-O0', '-g'], False, True, False),
+      (['-O0', '--profiling-funcs'], False, True, False),
+      (['-O0', '-gline-tables-only'], False, True, False),
+      (['-O1'], False, True, False),
+      (['-O3'], True, False, False),
+      (['-Oz', '-gsource-map'], True, False, False),
+      (['-O2'], True,  False, False),
+      (['-O2', '-gz'], True,  False, False), # -gz means debug compression, it should not enable debugging
+      (['-O2', '-g1'], False, True, False),
+      (['-O2', '-g'],  False, True, False),
+      (['-O2', '--closure=1'], True, False, True),
+      (['-O2', '--closure=1', '-g1'], True, True,  True),
+      (['-O2', '--minify=0'], False, True, False),
+      (['-O2', '--profiling-funcs'], True, False, False),
+      (['-O2', '--profiling'], False, True, False),
+    ]:
       print(args, expect_clean_js, expect_whitespace_js, expect_closured)
       delete_file('a.out.wat')
       cmd = [EMCC, test_file('hello_world.c')] + args
@@ -8574,9 +8594,9 @@ int main() {
     sizes = []
     with env_modify({'EMCC_DEBUG': '1'}):
       for args, expect in [
-          ([], False),
-          (['-sBINARYEN_IGNORE_IMPLICIT_TRAPS'], True),
-        ]:
+        ([], False),
+        (['-sBINARYEN_IGNORE_IMPLICIT_TRAPS'], True),
+      ]:
         print(args, expect)
         cmd = [EMXX, test_file('hello_libcxx.cpp'), '-O3'] + args
         print(' '.join(cmd))
@@ -8731,7 +8751,7 @@ int main() {
       self.run_process([EMCC, test_file('hello_world.c'), '-sSIDE_MODULE', '-Werror'] + opts)
       for x in os.listdir('.'):
         self.assertFalse(x.endswith('.js'))
-      self.assertTrue(building.is_wasm_dylib(target))
+      self.assertIsWasmDylib(target)
 
       create_file('main.c', '')
       self.do_runf('main.c', cflags=['-sMAIN_MODULE=2', 'main.c', '-Werror', target])
@@ -8795,12 +8815,12 @@ int main() {
     src = test_file('hello_libcxx.cpp')
     # wasm in object
     self.run_process([EMXX, src] + args + ['-c', '-o', 'hello_obj.o'])
-    self.assertTrue(building.is_wasm('hello_obj.o'))
+    self.assertIsObjectFile('hello_obj.o')
     self.assertFalse(is_bitcode('hello_obj.o'))
 
     # bitcode in object
     self.run_process([EMXX, src] + args + ['-c', '-o', 'hello_bitcode.o', '-flto'])
-    self.assertFalse(building.is_wasm('hello_bitcode.o'))
+    self.assertFalse(webassembly.is_wasm('hello_bitcode.o'))
     self.assertTrue(is_bitcode('hello_bitcode.o'))
 
     # use bitcode object (LTO)
@@ -9076,7 +9096,7 @@ int main() {
 
   @with_all_eh_sjlj
   def test_multi_inheritance_exception_message(self):
-    # Regression test for a bug that getting exception message in the DEBUG mode
+    # Regression test for a bug that getting exception message in the debug mode
     # did not retrieve the correct thrown object pointer in case of multiple
     # inheritance
     create_file('src.cpp', r'''
@@ -9378,7 +9398,7 @@ int main(int argc, char** argv) {
 
   def test_wasm2js_no_clobber_wasm(self):
     create_file('hello_world.wasm', 'not wasm')
-    self.do_runf_out_file('hello_world.c', cflags=['-sWASM=0'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sWASM=0', '-Wno-deprecated'])
     self.assertExists('hello_world.js')
     self.assertFileContents('hello_world.wasm', 'not wasm')
 
@@ -9506,7 +9526,7 @@ end
     '': ([],),
     # wasm2js support is interesting to test here because it changes which
     # binaryen tools get run, which can affect how debug info is kept around
-    'wasm2js': (['-sWASM=0'],),
+    'wasm2js': (['-sWASM=0', '-Wno-deprecated'],),
     'pthread': (['-pthread', '-Wno-experimental'],),
     'pthread_offscreen': (['-pthread', '-Wno-experimental', '-sOFFSCREEN_FRAMEBUFFER'],),
     'wasmfs': (['-sWASMFS'],),
@@ -9709,6 +9729,7 @@ end
     self.assert_fail(base + ['--preload-file', 'somefile'], expected)
     self.assert_fail(base + ['--embed-file', 'somefile'], expected)
 
+  @crossplatform
   def test_noderawfs_access_abspath(self):
     create_file('foo', 'bar')
     create_file('access.c', r'''
@@ -9718,6 +9739,24 @@ end
       }
     ''')
     self.do_runf('access.c', cflags=['-sNODERAWFS'], args=[os.path.abspath('foo')])
+
+  @crossplatform
+  def test_noderawfs_getcwd(self):
+    create_file('getcwd.c', r'''
+      #include <assert.h>
+      #include <limits.h>
+      #include <stdio.h>
+      #include <unistd.h>
+
+      int main() {
+        char buf[PATH_MAX];
+        char* cwd = getcwd(buf, sizeof(buf));
+        assert(cwd == buf);
+        printf("cwd: %s\n", cwd);
+        return 0;
+      }
+    ''')
+    self.do_runf('getcwd.c', f'cwd: {os.getcwd()}\n', cflags=['-sNODERAWFS'])
 
   def test_noderawfs_readfile_prerun(self):
     create_file('foo', 'bar')
@@ -9732,33 +9771,6 @@ end
     returncode, output = self.run_on_pty(config.NODE_JS + ['a.out.js'], input='secret\n')
     self.assertEqual(returncode, 0)
     self.assertIn(b'done', output)
-
-  @disabled('https://github.com/nodejs/node/issues/18265')
-  def test_node_code_caching(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sNODE_CODE_CACHING',
-                      '-sWASM_ASYNC_COMPILATION=0'])
-
-    def get_cached():
-      cached = glob.glob('a.out.wasm.*.cached')
-      if not cached:
-        return None
-      self.assertEqual(len(cached), 1)
-      return cached[0]
-
-    # running the program makes it cache the code
-    self.assertFalse(get_cached())
-    self.assertEqual('Hello, world!', self.run_js('a.out.js').strip())
-    self.assertTrue(get_cached(), 'should be a cache file')
-
-    # hard to test it actually uses it to speed itself up, but test that it
-    # does try to deserialize it at least
-    create_file(get_cached(), 'waka waka')
-    ERROR = 'NODE_CODE_CACHING: failed to deserialize, bad cache file?'
-    self.assertContained(ERROR, self.run_js('a.out.js'))
-    # we cached proper code after showing that error
-    self.assertEqual(read_binary(get_cached()).count(b'waka'), 0)
-    self.assertNotContained(ERROR, self.run_js('a.out.js'))
 
   @with_env_modify({'LC_ALL': 'C'})
   def test_autotools_shared_check(self):
@@ -10680,11 +10692,11 @@ T6:(else) !ASSERTIONS""", output)
 
     with open(fname, 'wb') as f:
       f.write(b'foo')
-    self.assertFalse(building.is_ar(fname))
+    self.assertFalse(utils.is_ar(fname))
 
     with open(fname, 'wb') as f:
       f.write(b'!<arch>\n')
-    self.assertTrue(building.is_ar(fname))
+    self.assertTrue(utils.is_ar(fname))
 
   def test_dash_s_list_parsing(self):
     create_file('src.c', r'''
@@ -11024,6 +11036,15 @@ ok.
   def test_gethostbyname(self):
     self.do_runf_out_file('sockets/test_gethostbyname.c')
 
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_dns_table(self, args):
+    # gethostbyname, getaddrinfo and getnameinfo share one DNS table, also
+    # when called from a pthread.
+    self.do_runf('sockets/test_dns_table.c', 'done\n', cflags=args)
+
   def test_getprotobyname(self):
     self.do_runf('sockets/test_getprotobyname.c', 'done\n')
 
@@ -11102,25 +11123,6 @@ int main () {
     check_size('a.out.js', 150000)
     check_size('a.out.wasm', 80000)
 
-  # Checks that C++ exceptions managing invoke_*() wrappers will not be generated if exceptions are disabled
-  def test_no_invoke_functions_are_generated_if_exception_catching_is_disabled(self):
-    self.skipTest('Skipping other.test_no_invoke_functions_are_generated_if_exception_catching_is_disabled: Enable after new version of fastcomp has been tagged')
-    for args in ([], ['-sWASM=0']):
-      self.run_process([EMXX, test_file('hello_world.cpp'), '-sDISABLE_EXCEPTION_CATCHING', '-o', 'a.html'] + args)
-      output = read_file('a.js')
-      self.assertContained('_main', output) # Smoke test that we actually compiled
-      self.assertNotContained('invoke_', output)
-
-  # Verifies that only the minimal needed set of invoke_*() functions will be generated when C++ exceptions are enabled
-  def test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled(self):
-    self.skipTest('Skipping other.test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled: Enable after new version of fastcomp has been tagged')
-    for args in ([], ['-sWASM=0']):
-      self.run_process([EMXX, test_file('invoke_i.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'a.html'] + args)
-      output = read_file('a.js')
-      self.assertContained('invoke_i', output)
-      self.assertNotContained('invoke_ii', output)
-      self.assertNotContained('invoke_v', output)
-
   @parameterized({
     'O0': (False, ['-O0']),
     'O0_emit': (True, ['-O0', '-sEMIT_EMSCRIPTEN_LICENSE']),
@@ -11132,10 +11134,9 @@ int main () {
     'O2_closure_js_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE', '--closure=1', '-sWASM=0']),
   })
   def test_emscripten_license(self, expect_license, args):
-    # fastcomp does not support the new license flag
     self.run_process([EMCC, test_file('hello_world.c')] + args)
     js = read_file('a.out.js')
-    licenses_found = len(re.findall('Copyright [0-9]* The Emscripten Authors', js))
+    licenses_found = len(re.findall(r'Copyright [0-9]* The Emscripten Authors', js))
     if expect_license:
       self.assertNotEqual(licenses_found, 0, 'Unable to find license block in output file!')
       self.assertEqual(licenses_found, 1, 'Found too many license blocks in the output file!')
@@ -11157,7 +11158,7 @@ int main () {
   })
   @parameterized({
     'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
-    'wasm2js': (['-sWASM=0'],),
+    'wasm2js': (['-sWASM=0', '-Wno-deprecated'],),
   })
   def test_function_exports_are_small(self, args, opt, closure):
     extra_args = args + opt + closure
@@ -11302,6 +11303,13 @@ int main () {
     self.assert_fail(cmd + ['-sSTRICT'], 'ReferenceError: SPLIT_MEMORY is not defined')
     with env_modify({'EMCC_STRICT': '1'}):
       self.assert_fail(cmd, 'ReferenceError: SPLIT_MEMORY is not defined')
+
+    # Also test a renamed legacy setting (TOTAL_MEMORY -> INITIAL_MEMORY), where
+    # the new setting name is modified after STRICT is enabled.
+    create_file('lib_renamed.js', 'var foo = {{{TOTAL_MEMORY}}};')
+    cmd = [EMCC, test_file('hello_world.c'), '-o', 'out.js', '--js-library', 'lib_renamed.js']
+    self.run_process(cmd)
+    self.assert_fail(cmd + ['-sSTRICT'], 'ReferenceError: TOTAL_MEMORY is not defined')
 
   def test_strict_mode_link_cxx(self):
     # In strict mode C++ programs fail to link unless run with `em++`.
@@ -11710,6 +11718,29 @@ int main(void) {
     self.assert_fail([EMCC, '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
     self.assert_fail([EMCC, '-sSTRICT', '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
 
+  def test_exceptions_allowed_misuse(self):
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['foo'])
+
+    # Test old =2 setting for DISABLE_EXCEPTION_CATCHING
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
+    expected = 'error: DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED [-Wdeprecated] [-Werror]'
+    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
+
+    # =0 should also be a warning
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    expected = 'error: DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED [-Wdeprecated] [-Werror]'
+    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
+
+    # =1 should be a hard error
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+    expected = 'error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive'
+    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
+
+    # even setting an empty list should trigger the error;
+    self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
+    expected = 'error: DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive'
+    self.assert_fail([EMCC, test_file('hello_world.c')] + self.get_cflags(), expected)
+
   def test_exception_settings(self):
     for catching, throwing, opts in itertools.product([0, 1], repeat=3):
       cmd = [EMXX, test_file('other/exceptions_modes_symbols_defined.cpp'), '-sDISABLE_EXCEPTION_THROWING=%d' % (1 - throwing), '-sDISABLE_EXCEPTION_CATCHING=%d' % (1 - catching), '-O%d' % opts]
@@ -11786,6 +11817,38 @@ int main(void) {
       }
       ''')
     self.run_process([EMXX, 'src.cpp', '-fexceptions', '--closure=1'])
+
+  def test_exceptions_no_link_flag(self):
+    # We compile this code using -fexceptions but link without it. The necessary
+    # functions and variables still should be in depending on the existing
+    # functions and the compilation should not crash with undeclared variable
+    # errors.
+    create_file('src.cpp', r'''
+      #include <string>
+      #include <stdio.h>
+
+      void foo() {
+        std::string a = std::to_string(42);
+        std::string b = a + a;
+      }
+
+      int bar() {
+        try {
+          return std::stoi("1");
+        } catch (...) {
+          return 2;
+        }
+      }
+
+      int main() {
+        foo();
+        printf("%d\n", bar());
+        return 0;
+      }
+      ''')
+    self.run_process([EMXX, '-fexceptions', '-c', 'src.cpp', '-o', 'src.o'])
+    self.run_process([EMXX, 'src.o', '-o', 'out.js'])
+    self.assertContained('1', self.run_js('out.js'))
 
   def test_assertions_on_incoming_module_api_changes(self):
     create_file('pre.js', 'Module.read = () => {};')
@@ -12009,7 +12072,8 @@ int main(void) {
 
   def test_linker_flags_unused(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-c', '-lbar'], stderr=PIPE).stderr
-    self.assertContained("warning: -lbar: 'linker' input unused [-Wunused-command-line-argument]", err)
+    self.assertContained("warning: -lbar: 'linker' input unused", err)
+    self.assertContained("[-Wunused-command-line-argument]", err)
 
     # Check that we don't see these "input unused" errors for linker flags when
     # compiling and linking in single step (i.e. ensure that we don't pass them to clang when
@@ -12023,7 +12087,8 @@ int main(void) {
   def test_linker_input_unused(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
     err = self.run_process([EMCC, 'hello_world.o', '-c', '-o', 'out.o'], stderr=PIPE).stderr
-    self.assertContained("clang: warning: hello_world.o: 'linker' input unused [-Wunused-command-line-argument]", err)
+    self.assertContained("clang: warning: hello_world.o: 'linker' input unused", err)
+    self.assertContained("[-Wunused-command-line-argument]", err)
     # In this case the compiler does not produce any output file.
     self.assertNotExists('out.o')
 
@@ -12031,7 +12096,7 @@ int main(void) {
   def test_non_wasm_without_wasm_in_vm(self):
     create_file('pre.js', 'var WebAssembly = null;\n')
     # Test that our non-wasm output does not depend on wasm support in the vm.
-    self.do_runf_out_file('hello_world.c', cflags=['-sWASM=0', '-sENVIRONMENT=node,shell', '--extern-pre-js=pre.js'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sWASM=0', '-sENVIRONMENT=node,shell', '--extern-pre-js=pre.js', '-Wno-deprecated'])
 
   def test_empty_output_extension(self):
     # Default to JS output when no extension is present
@@ -12077,7 +12142,7 @@ int main(void) {
 
     # check that `-Wno-pthreads-mem` disables pthread + ALLOW_GROWTH_MEMORY warning
     stderr = self.run_process(cmd + ['-Wno-pthreads-mem-growth', '-pthread', '-sALLOW_MEMORY_GROWTH'], stderr=PIPE).stderr
-    self.assertNotContained('pthreads + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271', stderr)
+    self.assertNotContained('pthreads + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, consider -sGROWABLE_ARRAYBUFFERS=2', stderr)
 
   def test_emranlib(self):
     create_file('foo.c', 'int foo = 1;')
@@ -12086,12 +12151,12 @@ int main(void) {
 
     # Create a library with no archive map
     self.run_process([EMAR, 'crS', 'liba.a', 'foo.o', 'bar.o'])
-    output = self.run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
+    output = self.run_process([LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
     self.assertNotContained('Archive map', output)
 
     # Add an archive map
     self.run_process([EMRANLIB, 'liba.a'])
-    output = self.run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
+    output = self.run_process([LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
     self.assertContained('Archive map', output)
 
   def test_pthread_stub(self):
@@ -12325,13 +12390,34 @@ int main(void) {
       else:
         self.assertContained(outcome, proc.stderr)
 
+  @parameterized({
+    '': ([],),
+    'nodefs_sockfs': (['-lnodefs.js', '-lsockfs.js'],),
+  })
+  def test_closure_fs_es6(self, args):
+    # TODO: Delete this test once test_closure_full_js_library can run with
+    # -sEXPORT_ES6. Currently -sINCLUDE_FULL_LIBRARY + -sEXPORT_ES6 fails due
+    # to Closure internal compiler errors (JSC_ILLEGAL_MODULE_RENAMING_CONFLICT):
+    # https://github.com/google/closure-compiler/issues/4344
+    self.build('hello_world.c', output_suffix='.mjs', cflags=[
+      '-O2',
+      '-sEXPORT_ES6',
+      '-sFORCE_FILESYSTEM',
+      '--closure=1',
+    ] + args)
+    create_file('run.mjs', '''
+      import Module from './hello_world.mjs';
+      await Module();
+    ''')
+    self.assertContained('Hello, world!\n', self.run_js('run.mjs'))
+
   def test_bitcode_input(self):
     # Verify that bitcode files are accepted as input
     create_file('main.c', 'void foo(); int main() { return 0; }')
     self.run_process([EMCC, '-emit-llvm', '-c', '-o', 'main.bc', 'main.c'])
     self.assertTrue(is_bitcode('main.bc'))
     self.run_process([EMCC, '-c', '-o', 'main.o', 'main.bc'])
-    self.assertTrue(building.is_wasm('main.o'))
+    self.assertIsObjectFile('main.o')
 
   @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_nostdlib(self):
@@ -12461,7 +12547,7 @@ int main(int argc, char **argv) {
   // do some i64 math, but return 0
   return (x % (x - 20)) == 42;
 }''')
-    self.do_runf('src.c', cflags=['-O3', '-sWASM=0'])
+    self.do_runf('src.c', cflags=['-O3', '-sWASM=0', '-Wno-deprecated'])
 
   @crossplatform
   def test_deterministic(self):
@@ -12634,6 +12720,13 @@ exec "$@"
   def test_compiler_wrapper_ccache(self):
     self.do_runf_out_file('hello_world.c')
 
+  @requires_tool('ccache')
+  @with_env_modify({'_EMCC_CCACHE': '1', 'CCACHE_LOGFILE': 'ccache.log'})
+  def test_emcc_ccache(self):
+    self.do_runf_out_file('hello_world.c')
+    self.assertExists('ccache.log')
+    self.assertContained('=== CCACHE', read_file('ccache.log'))
+
   def test_llvm_option_dash_o(self):
     # emcc used to interpret -mllvm's option value as the output file if it
     # began with -o
@@ -12707,21 +12800,30 @@ exec "$@"
       err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM=0', arg])
       self.assertContained(r'emcc: error: WASM2JS is not compatible with .*_MODULE \(wasm2js does not support dynamic linking\)', err, regex=True)
 
+  def test_wasm2js_incompatible_settings(self):
+    base_cmd = [EMCC, test_file('hello_world.c'), '-sWASM=0']
+    self.assert_fail(base_cmd + ['-sSUPPORT_BIG_ENDIAN'],
+                     'emcc: error: WASM2JS is not compatible with SUPPORT_BIG_ENDIAN')
+    self.assert_fail(base_cmd + ['-sMEMORY64'],
+                     'emcc: error: WASM2JS is not compatible with MEMORY64')
+    self.assert_fail(base_cmd + ['-sWASM_BIGINT'],
+                     'emcc: error: WASM_BIGINT=1 is not compatible with wasm2js')
+
   def test_wasm2js_standalone(self):
-    self.do_runf_out_file('hello_world.c', cflags=['-sSTANDALONE_WASM', '-sWASM=0'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSTANDALONE_WASM', '-sWASM=0', '-Wno-deprecated'])
 
   def test_oformat(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=wasm', '-o', 'out.foo'])
-    self.assertTrue(building.is_wasm('out.foo'))
+    self.assertTrue(webassembly.is_wasm('out.foo'))
     self.clear()
 
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=html', '-o', 'out.foo'])
-    self.assertFalse(building.is_wasm('out.foo'))
+    self.assertFalse(webassembly.is_wasm('out.foo'))
     self.assertContained('<html ', read_file('out.foo'))
     self.clear()
 
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=js', '-o', 'out.foo'])
-    self.assertFalse(building.is_wasm('out.foo'))
+    self.assertFalse(webassembly.is_wasm('out.foo'))
     self.assertContained('new ExitStatus', read_file('out.foo'))
     self.clear()
 
@@ -12845,8 +12947,7 @@ exec "$@"
     self.assertExists('test_split_module.wasm.orig')
     self.assertExists('profile.data')
 
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    wasm_split_run = [wasm_split, '-g',
+    wasm_split_run = [WASM_SPLIT, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
                       '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
     if self.is_wasm64():
@@ -12888,8 +12989,7 @@ exec "$@"
     self.assertExists('test_split_main_module.wasm.orig')
     self.assertExists('profile.data')
 
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    self.run_process([wasm_split, '-g',
+    self.run_process([WASM_SPLIT, '-g',
                       'test_split_main_module.wasm.orig',
                       '--export-prefix=%',
                       f'--initial-table={initialTableSize}',
@@ -12926,8 +13026,7 @@ exec "$@"
     self.assertExists('test_split_module_embind_jspi.wasm.orig')
     self.assertExists('profile.data')
 
-    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    wasm_split_run = [wasm_split, '-g',
+    wasm_split_run = [WASM_SPLIT, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
                       '--export-prefix=%', 'test_split_module_embind_jspi.wasm.orig', '-o1', 'test_split_module_embind_jspi.wasm', '-o2', 'test_split_module_embind_jspi.deferred.wasm', '--profile=profile.data']
     self.run_process(wasm_split_run)
@@ -12939,7 +13038,6 @@ exec "$@"
                   result)
 
   @crossplatform
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25206')
   def test_gen_struct_info(self):
     # This test will start failing whenever the struct info changes (e.g. offset or defines
     # change).  However it's easy to rebaseline with --rebaseline.
@@ -13142,8 +13240,8 @@ exec "$@"
     self.run_process([EMCC, '-o', 'hello.wasm', '--oformat=js', test_file('hello_world.c')])
     self.assertExists('hello.wasm')
     self.assertExists('hello_.wasm')
-    self.assertFalse(building.is_wasm('hello.wasm'))
-    self.assertTrue(building.is_wasm('hello_.wasm'))
+    self.assertFalse(webassembly.is_wasm('hello.wasm'))
+    self.assertTrue(webassembly.is_wasm('hello_.wasm'))
     # Node cannot actually run the generated JS if it's in a file with the .wasm extension
     os.rename('hello.wasm', 'hello.js')
     self.assertContained('Hello, world!', self.run_js('hello.js'))
@@ -13426,90 +13524,6 @@ void foo() {}
     self.set_setting('EXIT_RUNTIME')
     self.do_runf('other/test_pthread_js_exception.c', 'missing is not defined', assert_returncode=NON_ZERO, cflags=['-pthread'])
 
-  @requires_pthreads
-  @requires_node_25
-  def test_shared_wasmgc(self):
-    create_file('test_shared_wasmgc.c', r'''
-    #include <pthread.h>
-    #include <emscripten.h>
-    #include <emscripten/console.h>
-
-    __attribute__((import_module("wat"))) void shared_gc_main(void);
-
-    void print_int(int val) {
-      emscripten_console_logf("%d", val);
-    }
-
-    void* thread_main(void* arg) {
-      shared_gc_main();
-      return NULL;
-    }
-
-    int main() {
-      shared_gc_main();
-
-      pthread_t t1, t2, t3;
-      pthread_create(&t1, NULL, thread_main, NULL);
-      pthread_create(&t2, NULL, thread_main, NULL);
-      pthread_create(&t3, NULL, thread_main, NULL);
-
-      pthread_join(t1, NULL);
-      pthread_join(t2, NULL);
-      pthread_join(t3, NULL);
-
-      return 0;
-    }
-    ''')
-
-    create_file('shared_gc.wat', r'''
-    (module
-      (type $counter (shared (struct (field (mut i32)))))
-
-      (import "app" "print_int" (func $print_int (param i32)))
-
-      (global $root
-        (export "_shared_heap_root")
-        (import "env" "_shared_heap_root")
-        (mut (ref null (shared any)))
-      )
-
-      (func $init
-        (if (ref.is_null (global.get $root))
-          (then
-            (global.set $root (struct.new $counter (i32.const 0)))
-          )
-        )
-      )
-      (start $init)
-
-      (func (export "shared_gc_main")
-        (call $print_int (ref.is_null (global.get $root)))
-      )
-    )
-    ''')
-
-    out_js = self.in_dir('test_shared_wasmgc.js')
-    out_wasm = self.in_dir('test_shared_wasmgc.wasm')
-
-    self.run_process([
-      EMCC, '-pthread', '-sSHARED_WASMGC', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
-      '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD',
-      '-sEXPORTED_FUNCTIONS=_main,_print_int', 'test_shared_wasmgc.c', '-o',
-      out_js,
-    ])
-
-    self.run_process([
-      WASM_MERGE, '--enable-threads', '--enable-reference-types',
-      '--enable-gc', '--enable-shared-everything', out_wasm, 'app',
-      'shared_gc.wat', 'wat', '-o', out_wasm,
-    ])
-
-    self.node_args.append('--experimental-wasm-shared')
-
-    # TODO: Once multithreaded casting is fixed, increment and print the counter value.
-    output = self.run_js(out_js)
-    self.assertEqual(output.splitlines(), ['0', '0', '0', '0'])
-
   @crossplatform
   def test_config_closure_compiler(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'])
@@ -13578,6 +13592,99 @@ void foo() {}
     # the instance down.
     self.do_runf('other/test_epoll_dup.c', 'done\n')
 
+  def test_epoll_callback(self):
+    # emscripten_epoll_listener_add delivers an epoll set's readiness by a
+    # persistent callback with no blocking and no ASYNCIFY/JSPI.
+    self.do_runf('other/test_epoll_callback.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  @parameterized({
+    '': ([],),
+    'dup': (['-DMODE_DUP'],),
+  })
+  def test_epoll_callback_multi(self, cflags):
+    # Multiple listeners on one epoll: broadcast wake, racing collectors take
+    # disjoint slices of the shared ready list (load balancing).
+    self.do_runf('other/test_epoll_callback_multi.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', *cflags])
+
+  def test_epoll_callback_dup(self):
+    # A registration added via a dup'd epoll fd is delivered to a callback armed
+    # on the original fd, since both fds share one epoll instance.
+    self.do_runf('other/test_epoll_callback_dup.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  @parameterized({
+    '': ([],),
+    'dup2': (['-DMODE_DUP2'],),
+  })
+  def test_epoll_callback_dup_close(self, cflags):
+    self.do_runf('other/test_epoll_callback_dup_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', *cflags])
+
+  def test_epoll_callback_overflow(self):
+    # A callback that collects one event per tick (epoll_wait maxevents=1) is
+    # re-triggered to drain the remainder across ticks (no app loop to re-call it).
+    self.do_runf('other/test_epoll_callback_overflow.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_replace(self):
+    # Listener identity is (callback, userdata): the same callback registers
+    # once per userdata, a duplicate pair is EEXIST; removal is by pair
+    # (ENOENT/EBADF errors).
+    self.do_runf('other/test_epoll_callback_replace.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_close(self):
+    # Closing the watched fd from the callback wakes the epoll only to evict the
+    # stale registration; the process exits with the listener still registered.
+    self.do_runf('other/test_epoll_callback_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_nested(self):
+    # A callback on an outer epoll fires when a leaf edge propagates through an
+    # inner (nested) epoll.
+    self.do_runf('other/test_epoll_callback_nested.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_nested_close(self):
+    # Closing the inner epoll wakes the outer to drop its stale registration
+    # rather than deliver; the same close -> wake -> evict path one level up.
+    self.do_runf('other/test_epoll_callback_nested_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_edge(self):
+    # EPOLLET on the callback path: fires once per edge, stays silent while
+    # continuously readable, re-fires only on a fresh edge.
+    self.do_runf('other/test_epoll_callback_edge.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_level(self):
+    # A structurally-always-ready level fd (EPOLLOUT on a writable end) re-fires
+    # the callback every tick: documents the spin contract (use EPOLLET/unregister).
+    self.do_runf('other/test_epoll_callback_level.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  @parameterized({
+    '': ([], 3),
+    'pending': (['-DMODE_PENDING'], 3),
+    'ready': (['-DMODE_READY'], 3),
+    'hold': (['-DMODE_HOLD'], 0),
+    'hold_ready': (['-DMODE_HOLD', '-DMODE_LEAVE_READY'], 0),
+  })
+  def test_epoll_callback_unref(self, cflags, returncode):
+    # A listener is unref'd: even a pending delivery does not keep the runtime
+    # alive. With an explicit keepalive the delivery runs and its pop exits.
+    self.do_runf('other/test_epoll_callback_unref.c', 'done\nexited %d\n' % returncode,
+                 cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
+
+  def test_epoll_callback_macrotask(self):
+    # A delivery runs on a later event-loop turn, after the call that made the
+    # set ready and the current microtask checkpoint have completed.
+    self.do_runf('other/test_epoll_callback_macrotask.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_abort(self):
+    # A fatal error in the callback is an uncaught exception from the delivery
+    # task, not an unhandled rejection (which would be reported differently
+    # and exit 0 here).
+    output = self.do_runf('other/test_epoll_callback_abort.c', 'Aborted(native code called abort())', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'], assert_returncode=NON_ZERO)
+    self.assertNotContained('unhandled rejection', output)
+
+  @requires_pthreads
+  def test_epoll_callback_thread(self):
+    # Listeners are main-thread only: registration from another thread is
+    # ENOTSUP.
+    self.do_runf('other/test_epoll_callback_thread.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD'])
+
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_pthread_trap(self):
@@ -13590,7 +13697,6 @@ void foo() {}
     self.assertContained('at (test_pthread_trap.wasm.)?thread_main', output, regex=True)
 
   @requires_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/24725')
   def test_pthread_kill(self):
     self.do_runf_out_file('pthread/test_pthread_kill.c')
 
@@ -13692,6 +13798,17 @@ void foo() {}
     self.do_runf('emscripten_set_timeout_loop.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   @parameterized({
+    'fires': ([], 0, 'fired\ndone\n'),
+    'cleared': (['-DMODE_CLEARED'], 42, 'done\n'),
+    'idempotent': (['-DMODE_IDEMPOTENT'], 0, 'fired\nfired\ndone\n'),
+    'immediate': (['-DMODE_IMMEDIATE'], 0, 'fired\ndone\n'),
+    'bounded': (['-DMODE_BOUNDED'], 0, 'done\n'),
+    'bounded_immediate': (['-DMODE_BOUNDED_IMMEDIATE'], 0, 'done\n'),
+  })
+  def test_emscripten_clear_timeout(self, cflags, returncode, expected):
+    self.do_runf('test_emscripten_clear_timeout.c', expected, cflags=['-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
+
+  @parameterized({
     '': ([],),
     'asyncify': (['-sASYNCIFY'],),
     'jspi': (['-sJSPI'],),
@@ -13706,12 +13823,11 @@ void foo() {}
                  'poll probe ok from main\npoll probe ok from callback\n',
                  cflags=args)
 
-  # Verify that we are able to successfully compile a script when the Windows 7
-  # and Python workaround env. vars are enabled.
+  # Verify that we are able to successfully compile a script when the Windows
+  # Python workaround env. var is enabled.
   # See https://bugs.python.org/issue34780
-  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1',
-                    'EM_WORKAROUND_WIN7_BAD_ERRORLEVEL_BUG': '1'})
-  def test_windows_batch_script_workaround(self):
+  @with_env_modify({'EM_WORKAROUND_PYTHON_BUG_34780': '1'})
+  def test_windows_python_bug_workaround(self):
     self.run_process([EMCC, test_file('hello_world.c')])
     self.assertExists('a.out.js')
 
@@ -13897,6 +14013,7 @@ Module.postRun = () => {{
     self.build('fetch/test_fetch_idb_store.c')
     self.build('fetch/test_fetch_redirect.c')
     self.build('fetch/test_fetch_stream_async.c')
+    self.build('fetch/test_fetch_stream_error.c')
     self.build('fetch/test_fetch_sync.c')
     self.build('fetch/test_fetch_progress.c')
 
@@ -14408,12 +14525,10 @@ out.js
     self.assertContained('This page was compiled without support for Firefox browser', content)
     self.assertContained('This page was compiled without support for Chrome browser', content)
 
-  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer(self):
     self.do_other_test('test_itimer.c')
 
   @requires_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_pthread(self):
     self.do_other_test('test_itimer.c')
 
@@ -14424,7 +14539,6 @@ out.js
       self.assertContained('done\n', self.run_js('test_itimer_standalone.wasm', engine))
 
   @requires_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
@@ -14693,12 +14807,6 @@ throw_tag:
     create_file('post.js', 'err(1, 2, "hello"); out("foo", 42);')
     self.do_runf('hello_world.c', '1 2 hello\nfoo 42\n', cflags=['--post-js=post.js'])
 
-  @only_windows('This test verifies Windows batch script behavior against bug https://github.com/microsoft/terminal/issues/15212')
-  @with_env_modify({'PATH': path_from_root() + os.pathsep + os.getenv('PATH')})
-  def test_windows_batch_file_dp0_expansion_bug(self):
-    create_file('build_with_quotes.bat', f'@"emcc" "{test_file("hello_world.c")}"')
-    self.run_process(['build_with_quotes.bat'])
-
   @only_windows('Check that directory permissions are properly retrieved on Windows')
   @requires_node
   def test_windows_nodefs_execution_permission(self):
@@ -14745,8 +14853,8 @@ throw_tag:
 
   @parameterized({
     '': ([],),
-    'wasm2js': (['-sWASM=0'],),
-    'wasm2js_fallback': (['-sWASM=2'],),
+    'wasm2js': (['-sWASM=0', '-Wno-deprecated'],),
+    'wasm2js_fallback': (['-sWASM=2', '-Wno-deprecated'],),
   })
   def test_add_js_function(self, args):
     self.set_setting('INVOKE_RUN', 0)
@@ -15034,8 +15142,8 @@ addToLibrary({
     self.assertNotIn(b'hello from dtor', read_binary('test_unused_destructor.wasm'))
 
   def test_strip_all(self):
-    def has_debug_section(wasm):
-      with webassembly.Module('hello_world.wasm') as wasm:
+    def has_debug_section(wasm_file):
+      with webassembly.Module(wasm_file) as wasm:
         return wasm.get_custom_section('.debug_info') is not None
 
     # Use -O2 to ensure wasm-opt gets run
@@ -15081,7 +15189,7 @@ addToLibrary({
     self.do_other_test('test_stdint_limits.c', cflags=['-iwithsysroot/include'])
 
   def test_force_filesystem_error(self):
-    expected = 'emcc: error: `-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`'
+    expected = 'emcc: error: FORCE_FILESYSTEM is not compatible with FILESYSTEM=0'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sFILESYSTEM=0', '-sFORCE_FILESYSTEM'], expected)
 
   def test_aligned_alloc(self):
@@ -15203,11 +15311,7 @@ addToLibrary({
     print('running cmd:', cmd)
     with env_modify({'PATH': new_path}):
       proc = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
-      # There is currently a bug in the windows .bat files that leads to stdout
-      # not being empty in this case.
-      # See https://github.com/emscripten-core/emscripten/pull/25416
-      if not WINDOWS:
-        self.assertEqual(proc.stdout, '')
+      self.assertEqual(proc.stdout, '')
       self.assertEqual(proc.stderr, '')
 
   def test_browser_too_old(self):
@@ -15385,22 +15489,97 @@ addToLibrary({
     self.do_runf('main.cpp', 'Hello from rust!', cflags=[lib])
 
   @requires_rust
+  @requires_wasm_bindgen
   def test_wasm_bindgen_integration(self):
     copytree(test_file('rust/bindgen_integration'), '.')
-    self.run_process(['cargo', 'add', 'wasm-bindgen'])
+    # Pin the library to the (managed) wasm-bindgen-cli version on PATH;
+    # wasm-bindgen requires the CLI and the library to match exactly.
+    self.run_process(['cargo', 'add', 'wasm-bindgen@=0.2.128'])
     self.run_process(['cargo', 'build'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     self.assertExists(lib)
 
-    create_file('empty.c', '')
+    # A hand-written EMSCRIPTEN_KEEPALIVE C export must remain surfaced
+    # alongside wasm-bindgen's self-registered API; the wasm-bindgen glue
+    # suppression must not drop it.
+    create_file('native.c', '''
+      #include <emscripten.h>
+      EMSCRIPTEN_KEEPALIVE int em_double(int x) { return x * 2; }
+    ''')
     create_file('post.js', '''
-      Module.onRuntimeInitialized = () => out(Module.rs_add(17, 25));
+      Module.onRuntimeInitialized = () => {
+        out('rs_add=' + Module.rs_add(17, 25));
+        out('em_double=' + Module._em_double(20));
+      };
     ''')
 
-    self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
-    self.do_runf('empty.c', '42', cflags=[lib, '-sWASM_BINDGEN', '-Wno-experimental', '--post-js=post.js', '-lexports.js'])
+    output = self.do_runf('native.c', cflags=[lib, '-sWASM_BINDGEN', '-Wno-experimental', '--post-js=post.js', '-lexports.js'])
+    self.assertContained('rs_add=42', output)
+    self.assertContained('em_double=40', output)
+
+  # ESM integration and ES6 MODULARIZE surface the clean wasm-bindgen API
+  # differently (named ESM exports vs `Module.<name>`). Both must expose exactly
+  # the `Greeter` class and none of the raw wasm exports rustc lists.
+  @requires_rust
+  @requires_wasm_bindgen
+  @parameterized({
+    'esm_integration': (['-sWASM_ESM_INTEGRATION'], '''
+      import init, * as mod from './bindgen_greeter.js';
+      await init();
+    '''),
+    'es6': (['-sMODULARIZE', '-sEXPORT_ES6'], '''
+      import Module from './bindgen_greeter.js';
+      const mod = await Module();
+    '''),
+  })
+  def test_wasm_bindgen_rustc_driven(self, ldflags, prelude):
+    # cargo/rustc links via emcc; pass -sWASM_BINDGEN (plus the output-mode
+    # settings) through as link args so emcc runs wasm-bindgen as a post-link step.
+    copytree(test_file('rust/bindgen_greeter'), '.')
+    link_args = ['-sWASM_BINDGEN', '-Wno-experimental'] + ldflags
+    rustflags = ', '.join(f'"-Clink-arg={a}"' for a in link_args)
+    ensure_dir('.cargo')
+    create_file('.cargo/config.toml', f'''
+      [build]
+      target = "wasm32-unknown-emscripten"
+      rustflags = [{rustflags}]
+
+      [target.wasm32-unknown-emscripten]
+      linker = "{EMCC}"
+    ''')
+    self.run_process(['cargo', 'build'])
+
+    # cargo copies only the .js and .wasm; the ESM support module and snippets
+    # stay in deps/, so run from there.
+    out_dir = 'target/wasm32-unknown-emscripten/debug/deps'
+    create_file(os.path.join(out_dir, 'run.mjs'), prelude + '''
+      const greeting = new mod.Greeter('Hello').greet('world');
+      if (greeting !== 'Hello, world!') throw new Error('unexpected greeting: ' + greeting);
+      // None of the raw wasm exports leak into the user-facing API.
+      for (const name of ['_main', 'greeter_greet', '_greeter_greet',
+                          '__wbindgen_malloc', '___wbindgen_malloc']) {
+        if (mod[name] !== undefined) throw new Error('leaked export: ' + name);
+      }
+      console.log(greeting);
+    ''')
+    # Importing wasm modules is stable from node 25.
+    if not self.try_require_node_version(25):
+      self.node_args += ['--experimental-wasm-modules']
+    self.node_args += ['--no-warnings']
+    output = self.run_js(os.path.join(out_dir, 'run.mjs'))
+    self.assertContained('Hello, world!', output)
+    # `main` runs automatically on init (matching the emscripten C++ idiom),
+    # even though `_main` is not surfaced as a user-facing export.
+    self.assertContained('main ran', output)
+
+  def test_wasm_bindgen_no_marker(self):
+    # -sWASM_BINDGEN is a no-op for an ordinary build with no wasm-bindgen
+    # marker section: wasm-bindgen is never invoked (so it need not be installed)
+    # and the program builds and runs normally.
+    self.do_runf('hello_world.c', 'Hello, world!', cflags=['-sWASM_BINDGEN', '-Wno-experimental'])
 
   @requires_rust
+  @requires_wasm_bindgen
   @requires_dev_dependency('typescript')
   def test_wasm_bindgen_tsd_multi_return(self):
     copytree(test_file('rust/bindgen_integration'), '.')
@@ -15411,14 +15590,16 @@ addToLibrary({
           Ok(42)
       }
     ''')
-    self.run_process(['cargo', 'add', 'wasm-bindgen'])
+    self.run_process(['cargo', 'add', 'wasm-bindgen@=0.2.128'])
     self.run_process(['cargo', 'build'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     create_file('empty.c', '')
-    self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
     self.run_process([EMCC, 'empty.c', '--emit-tsd', 'test_multi.d.ts', '-sWASM_BINDGEN', '-Wno-experimental', '-o', 'test_multi.js'] + [lib] + self.get_cflags())
     actual = read_file('test_multi.d.ts')
-    self.assertContained("multi_value_return(): [number, number, number];", actual)
+    # Only wasm-bindgen's unwrapping wrapper is surfaced; the raw multi-value
+    # `Result` ABI export stays internal.
+    self.assertContained("multi_value_return(): number;", actual)
+    self.assertNotContained("_multi_value_return(", actual)
 
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):
@@ -15903,7 +16084,7 @@ addToLibrary({
     # functions first, and the rest is split with the outer path.
     def has_defined_function(file, func):
       func = ''.join('\\' + c if c in {'(', ')'} else c for c in func)
-      self.run_process([common.WASM_DIS, file, '-o', 'test.wast'])
+      self.run_process([WASM_DIS, file, '-o', 'test.wast'])
       pattern = re.compile(r'^\s*\(\s*func\s+\$("?)' + func + r'\1[\s\(\)]', flags=re.MULTILINE)
       return pattern.search(utils.read_file('test.wast')) is not None
 
@@ -16010,6 +16191,9 @@ console.log('OK');'''
     err = self.run_process([EMCC, '-sMEMORY64', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: MEMORY64 is deprecated (prefer the standard -m64 or --target=wasm64 flags). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
 
+    err = self.run_process([EMCC, '-sMEMORY64=2', test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: MEMORY64=2 is deprecated (under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27952)). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
+
     err = self.run_process([EMCC, '-sUSE_PTHREADS', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
 
@@ -16020,6 +16204,7 @@ console.log('OK');'''
       INTERNAL_SETTINGS,
       JS_ONLY_SETTINGS,
       MEM_SIZE_SETTINGS,
+      settings,
     )
     setting_names = (
       COMPILE_TIME_SETTINGS
@@ -16101,8 +16286,8 @@ console.log('OK');'''
   def test_dead_code_esm(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-O2', '-o', 'hello.mjs'])
     rollup_cmd = shared.get_npm_cmd('rollup') + [
-        'hello.mjs', '--format', 'es', '--file', 'hello.rolled.mjs',
-        '--external', 'node:module',
+      'hello.mjs', '--format', 'es', '--file', 'hello.rolled.mjs',
+      '--external', 'node:module',
     ]
     self.run_process(rollup_cmd)
     prettier_cmd = shared.get_npm_cmd('prettier')
@@ -16155,4 +16340,5 @@ SHA512 = 'dummy'
 PORT_FILE = 'port.py'
 EXTERNAL_PORT = URL
 ''')
-    self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
+    err = self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
+    self.assertContained('retrying in 1s', err)

@@ -11,11 +11,11 @@ WebAssembly.instantiate(c.wasm, {
             k.call(g, a);
         }
     }
-}).then((a => {
+}).then(a => {
     a = a.instance.exports;
     f = a.d;
     h = a.b;
     e = new Uint8Array(h.buffer);
     a.c();
     f();
-}));
+});

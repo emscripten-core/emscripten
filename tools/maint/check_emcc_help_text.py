@@ -20,7 +20,7 @@ def main():
   docs_file = os.path.join(root_dir, 'docs', 'emcc.txt')
 
   if not os.path.exists(build_output):
-    print('doc build output not found: %s' % build_output)
+    print(f'doc build output not found: {build_output}')
     return 1
 
   emcc_docs_output = Path(build_output).read_text(encoding='utf-8')

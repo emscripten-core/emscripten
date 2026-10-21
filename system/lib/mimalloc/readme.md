@@ -15,9 +15,9 @@ is a general purpose allocator with excellent [performance](#performance) charac
 Initially developed by Daan Leijen for the runtime systems of the
 [Koka](https://koka-lang.github.io) and [Lean](https://github.com/leanprover/lean) languages.
 
-Latest release   : `v3.4.1`  (2026-07-14) recommended.  
-Latest v2 release: `v2.4.1`  (2026-07-14) stable.  
-Latest v1 release: `v1.9.11` (2026-07-14) legacy.
+Latest release   : `v3.5.1`  (2026-09-01) recommended.  
+Latest v2 release: `v2.5.1`  (2026-09-01) stable, legacy.  
+Latest v1 release: `v1.15.1` (2026-09-01) legacy.
 
 mimalloc is a drop-in replacement for `malloc` and can be used in other programs
 without code changes, for example, on dynamically linked ELF-based systems (Linux, BSD, etc.) you can use it as:
@@ -84,10 +84,35 @@ New development is mostly on v3, while v1 and v2 are maintained with security an
         (much) less memory. Also supports true first-class heaps (that can allocate from any thread) 
         and has more efficient heap-walking (for the CPython GC for example).
         (release tags: `v3.x`, development branch `dev3`).
-- __v2__: stable mimalloc version. Uses thread-local segments to reduce fragmentation. (release tags: `v2.x`, development branch `dev2` and `main`)
-- __v1__: legacy version: initial design of mimalloc (release tags: `v1.9.x`, development branch `dev`). Send PR's against this version if possible.
+- __v2__: stable legacy mimalloc version. Uses thread-local segments to reduce fragmentation. (release tags: `v2.x`, development branch `dev2` and `main`)
+- __v1__: legacy version: initial design of mimalloc (release tags: `v1.x`, development branch `dev`). 
+        __Send PR's against this version if possible.__
 
 ### Releases
+
+* 2026-09-01: Added a readme section on [getting the best performance](#getting-the-best-performance).
+* 2026-09-01, `v3.5.1`, `v2.5.1`, `v1.15.1`: (v3) Yet better performance for `free` calls.
+  (v3) Added `mi_free_small(_nonnull)` for runtimes, and `mi_free_csize(_nonnull)` for inlined constant size free-ing.
+  (v3) Improved MI_OPT_ARCH options; on arm64, defaults to armv8.3 on Apple and armv8.1 otherwise. 
+  (v3) Default to `-DMI_ALLOW_THP=FULL` on Linux, where we never split transparent huge pages (THP) during purging (#1282). This
+  may increase rss but can also improve performance. Use `-DMI_ALLOW_THP=OFF` to disable the use of THP.
+  (v3) Improved cache behavior for small allocations. Improved riscV suppor, add riscV to CI. Various small build fixes.
+* 2026-08-18, `v1.15.0`, `v2.5.0`, `v3.5.0`: (v3) slightly better performance for `free`
+  using aligned chunks, cleanup cmake options, require armv8.3 (with MI_OPT_ARCH) for 
+  faster load-acquire, increase retired page count from 1 to 3, faster double free 
+  detection in secure mode, use faster atomics for the arena bitmaps (thank you Alan 
+  Andrade, #1346), faster pagemap lookup.
+  Other: fix numa sparse node count detection (#1365), add theap stats retrieval,
+  use __builtin_thread_pointer on riscV (#1363), fix C mode compilation on x86 with 
+  msvc (#1361), improved mingw-ucrt64 support.
+* 2026-08-05, `v1.9.15`, `v2.4.5`, `v3.4.5`: Fix compilation with xmalloc (#1353), make the build deterministic (#1355),
+  mi_zalloc_aligned fix (#763), improve support for mingw (ucrt64), fix fputs fallback on windows (#1354), (v3): use proper 
+  lock backoff for first-class heap deletion, improved riscv64 codegen.
+* 2026-08-01, `v1.9.14`, `v2.4.4`, `v3.4.4`: various bug and security fixes through Opus 5 LLM audit (issue #1271, by @Zoxc). 
+  (v3): use pthreads by default on macOS (issue #1333, issue #1327), fix glibc 2.44 crash (issue #1341), fix alignment check for realloc_aligned. (v1,v2,v3): Add initial mingw support,
+  set `errno` on allocation errors, improved double-free checks and size checks in secure mode, enable 
+  build for universal windows platform and xbox (pr #1340), fix numa node detection when numa nodes are sparse. 
+* 2026-07-20, `v3.4.3`: revert TLS slots on macOS to 108/109 (issue #1333).
 * 2026-07-14, `v1.9.11`, `v2.4.1`, `v3.4.1`: various bug and security fixes through LLM audit (by @Zoxc). 
   Fix issue with using OS memory instead of arenas for > 4GiB memory usage (v3), fix concurrency bug in concurrent
   heap destroy (v3), detect riscV virtual address bits at runtime, add riscV TLS support, reduce spinlock waits (v2),
@@ -121,24 +146,6 @@ New development is mostly on v3, while v1 and v2 are maintained with security an
   v3 uses faster TLS access on Windows, and has improved performance for `mi_calloc` and aligned allocations.
   Fixed rare race condition on older v3, fixed potential buffer overflow in debug statistics, add API for returning
   allocated sizes on allocation and free.
-* 2025-06-09, `v1.9.4`, `v2.2.4`, `v3.1.4` (beta) : Some important bug fixes, including a case where OS memory
-  was not always fully released. Improved v3 performance, build on XBox, fix build on Android, support interpose 
-  for older macOS versions, use MADV_FREE_REUSABLE on macOS, always check commit success, better support for Windows 
-  fixed TLS offset, etc.
-* 2025-03-28, `v1.9.3`, `v2.2.3`, `v3.0.3` (beta) : Various small bug and build fixes, including:
-  fix arm32 pre v7 builds, fix mingw build, get runtime statistics, improve statistic commit counts, 
-  fix execution on non BMI1 x64 systems. 
-* 2025-03-06, `v1.9.2`, `v2.2.2`, `v3.0.2-beta`: Various small bug and build fixes. 
-  Add `mi_options_print`, `mi_arenas_print`, and the experimental `mi_stat_get` and `mi_stat_get_json`. 
-  Add `mi_thread_set_in_threadpool` and `mi_heap_set_numa_affinity` (v3 only). Add vcpkg portfile. 
-  Upgrade mimalloc-redirect to v1.3.2. `MI_OPT_ARCH` is off by default now but still assumes armv8.1-a on arm64
-  for fast atomic operations. Add QNX support.
-* 2025-01-03, `v1.8.9`, `v2.1.9`, `v3.0.1-alpha`: Interim release. Support Windows arm64. New [guarded](#guarded) build that can place OS 
-  guard pages behind objects to catch buffer overflows as they occur. 
-  Many small fixes: build on Windows arm64, cygwin, riscV, and dragonfly; fix Windows static library initialization to account for
-  thread local destructors (in Rust/C++); macOS tag change; macOS TLS slot fix; improve stats; 
-  consistent `mimalloc.dll` on Windows (instead of `mimalloc-override.dll`); fix mimalloc-redirect on Win11 H2; 
-  add 0-byte to canary; upstream CPython fixes; reduce .bss size; allow fixed TLS slot on Windows for improved performance.
 
 * [Older release notes](#older-release-notes)
 
@@ -369,14 +376,15 @@ Advanced options:
 - `MIMALLOC_PURGE_DECOMMITS=1`: By default "purging" memory means unused memory is decommitted (`MEM_DECOMMIT` on Windows,
    `MADV_DONTNEED` (which decresease rss immediately) on `mmap` systems). Set this to 0 to instead "reset" unused
    memory on a purge (`MEM_RESET` on Windows, generally `MADV_FREE` (which does not decrease rss immediately) on `mmap` systems).
-   Mimalloc generally does not "free" OS memory but only "purges" OS memory, in other words, it tries to keep virtual
-   address ranges and decommits within those ranges (to make the underlying physical memory available to other processes).
+   Mimalloc generally does not "free" OS memory but only "purges" OS memory, in other words, it will keep virtual
+   address ranges, but decommits within those ranges (to make the underlying physical memory available to other processes).
 
 Further options for large workloads and services:
 
-- `MIMALLOC_ALLOW_THP=1`: By default always allow transparent huge pages (THP) on Linux systems. On Android only this is
-   by default off. When set to `0`, THP is disabled for the process that mimalloc runs in. If enabled, mimalloc also sets
-   the `MIMALLOC_MINIMAL_PURGE_SIZE` in v3 to 2MiB to avoid potentially breaking up transparent huge pages when purging memory.
+- `MIMALLOC_ALLOW_THP=[0,1,2]`: When set to `0`, the use of transparent huge pages (THP) is disabled for the process that mimalloc 
+   runs in, and otherwise it is enabled whenever THP is [enabled in the OS][linux-thp] (`[always]` or `[madvise]`). If set to 2 (default on Linux),
+   mimalloc also sets the `MIMALLOC_MINIMAL_PURGE_SIZE` in v3 to 2MiB to avoid potentially breaking up transparent huge pages when 
+   purging memory which is better for performance (but may increase the rss!). On Android the default setting is 0 to reduce rss.
 - `MIMALLOC_USE_NUMA_NODES=N`: pretend there are at most `N` NUMA nodes. If not set, the actual NUMA nodes are detected
    at runtime. Setting `N` to 1 may avoid problems in some virtual environments. Also, setting it to a lower number than
    the actual NUMA nodes is fine and will only cause threads to potentially allocate more memory across actual NUMA
@@ -403,6 +411,7 @@ Use caution when using `fork` in combination with either large or huge OS pages:
 for all pages in the original process including the huge OS pages. When any memory is now written in that area, the
 OS will copy the entire 1GiB huge page (or 2MiB large page) which can cause the memory usage to grow in large increments.
 
+[linux-thp]: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/performance_tuning_guide/sect-red_hat_enterprise_linux-performance_tuning_guide-configuring_transparent_huge_pages
 [linux-huge]: https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/5/html/tuning_and_optimizing_red_hat_enterprise_linux_for_oracle_9i_and_10g_databases/sect-oracle_9i_and_10g_tuning_guide-large_memory_optimization_big_pages_and_huge_pages-configuring_huge_pages_in_red_hat_enterprise_linux_4_or_5
 [windows-huge]: https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows?view=sql-server-2017
 
@@ -419,7 +428,7 @@ to make mimalloc more robust against exploits. In particular:
 - The free lists are initialized in a random order and allocation randomly chooses between extension and reuse within a page to
   mitigate against attacks that rely on a predicable allocation order. Similarly, the larger heap blocks allocated by mimalloc
   from the OS are also address randomized.
-- If enabling `-DMI_SECURE_FULL=ON` there will also be guard pages at the end of each (64KiB) mimalloc page (thus interleaving
+- If using `-DMI_SECURE=FULL` there will also be guard pages at the end of each (64KiB) mimalloc page (thus interleaving
   valid block data with inaccessible gaps). This setting is not recommended in general as it is more expensive and can lead to
   reaching the maximum VMA limit on Linux systems if the heap gets too large.
 
@@ -427,7 +436,7 @@ As always, evaluate with care as part of an overall security strategy as all of 
 
 ## Debug Mode
 
-When _mimalloc_ is built using debug mode, (`-DCMAKE_BUILD_TYPE=Debug`), 
+When _mimalloc_ is built using debug mode, (`-DCMAKE_BUILD_TYPE=Debug`) (or when using `-DMI_DEBUG=ON` explicitly), 
 various checks are done at runtime to catch development errors.
 
 - Statistics are maintained in detail for each object size. They can be shown using `MIMALLOC_SHOW_STATS=1` at runtime.
@@ -465,6 +474,33 @@ many system calls. Therefore, there are various environment variables (and optio
 # Overriding Standard Malloc
 
 Overriding the standard `malloc` (and `new`) can be done either _dynamically_ or _statically_.
+
+
+## Static override
+
+On Unix like systems, you can statically link with _mimalloc_ to override the standard
+malloc interface. The recommended way is to link the final program with the
+_mimalloc_ single object file (`mimalloc.o`). We use
+an object file instead of a library file as linkers give preference to
+that over archives to resolve symbols. To ensure that the standard
+malloc interface resolves to the _mimalloc_ library, link it as the first
+object file. For example:
+
+```
+> gcc -o myprogram mimalloc.o  myfile1.c ...
+```
+
+Another way to override statically that works on all platforms, is to
+link statically to mimalloc (as shown in the introduction) and include a
+header file in each source file that re-defines `malloc` etc. to `mi_malloc`.
+This is provided by [`mimalloc-override.h`](include/mimalloc-override.h). This only works 
+reliably though if all sources are
+under your control or otherwise mixing of pointers from different heaps may occur!
+
+Note: recently we also enabled static overloading on Windows. In that case you need
+to link with the static CRT _release_ runtime (`/MT`) and link with the static 
+`mimalloc(-debug).obj` (to take precendence over the definitions in the CRT library).
+
 
 ## Dynamic override
 
@@ -543,30 +579,55 @@ first in the import table. In such cases the [`minject`](bin) tool can be used
 to patch the executable's import tables.
 
 
-## Static override
+# Getting the best performance
 
-On Unix-like systems, you can also statically link with _mimalloc_ to override the standard
-malloc interface. The recommended way is to link the final program with the
-_mimalloc_ single object file (`mimalloc.o`). We use
-an object file instead of a library file as linkers give preference to
-that over archives to resolve symbols. To ensure that the standard
-malloc interface resolves to the _mimalloc_ library, link it as the first
-object file. For example:
+Consider the following build options (v3):
 
-```
-> gcc -o myprogram mimalloc.o  myfile1.c ...
-```
+- `-DMI_OPT_ARCH=ON` (by default ON on arm64): enables architecture specific optimizations. 
+  This uses `-march=haswell;-march=avx2` on x64 (available since 2013), `-march=armv8.1` on arm64 (2016), 
+  and `-march=rv64gcb_zacas` on riscV (2023). 
+  Each benefits mimalloc with better bit operations and/or native atomic operations (but also, if your
+  emulator or hardware does not support these extensions the program will fail with an illegal instruction). 
+  On Apple arm64 the default is `-march=armv8.3` (which is supported on the M1 and better) which includes 
+  efficient load-acquire instructions which mimalloc uses. For riscV the corresponding `zalasr` extension 
+  can be enabled as `-DMI_OPT_ARCH=rv64gcb_zacas_zalasr` when your hardware supports it.
 
-Another way to override statically that works on all platforms, is to
-link statically to mimalloc (as shown in the introduction) and include a
-header file in each source file that re-defines `malloc` etc. to `mi_malloc`.
-This is provided by [`mimalloc-override.h`](include/mimalloc-override.h). This only works 
-reliably though if all sources are
-under your control or otherwise mixing of pointers from different heaps may occur!
+- `-DMI_ALLOW_THP=OFF`: disabling THP can reduce the rss of certain programs significantly.
 
-Note: recently we also enabled static overloading on Windows. In that case you need
-to link with the static CRT _release_ runtime (`/MT`) and link with the static 
-`mimalloc(-debug).obj` (to take precendence over the definitions in the CRT library).
+- `-DMI_ALLOW_THP=FULL`: enabling THP can increase performance of certain programs significantly. This setting
+  still disables THP if the OS THP setting is configured as `[never]`.
+
+- `-DMI_FREE_IS_CHECKED=ON` (by default ON in secure mode): slightly slower performance but checks validity
+  of every pointer passed to `mi_free`. Sometimes needed when overriding malloc/free process wide.
+  Note also that `mi_cfree` (checked free) always checks the validity of pointers passed to it which can
+  also be used if appropiate without needing to check all pointers process wide.
+
+In the source code:
+
+- Use `mi_zalloc` for zero initialized allocations.
+
+- Use the typed macros `mi_malloc_tp` etc. as these are both more safe and also use `mi_malloc_csize` internally.
+  
+- Use `mi_malloc_csize`/`mi_free_csize` etc. when the allocated or free'd size is a constant as these are inlined
+  and statically redirect to `mi_malloc_small`/`mi_free_small` when possible.
+  These are also used by the C++ `mimalloc-new-delete.h` sized overrides.
+  You can use `mi_free_csize_nonnull` when the pointer is guaranteed to be not `NULL` as well.
+
+- Use `mi_malloc_small` when the allocation size is guaranteed to be less than `MI_SMALL_SIZE_MAX` (1KiB) for faster allocations.
+
+- Use `mi_free_small` when the pointer was returned from `mi_malloc_small` (and guaranteed to have a
+  size of less than `MI_SMALL_SIZE_MAX`). Use `mi_free_small_nonnull` when the pointer is guaranteed to be not `NULL` as well.
+
+For run-time systems and compilers (like Koka, Lean, etc.), we can do slightly better still.
+
+- If the allocation size is statically known, use `mi_malloc_csize` and `mi_free_csize` etc. when possible. 
+  (or directly `mi_malloc_small`/`mi_free_small`).
+
+- If the runtime already carries thread local state, it may be faster to get the default `theap` for each thread
+  up-front (`mi_theap_get_default()`) and use the very fast `mi_theap_malloc(_small)` etc. passing the theap
+  pointer directly. This avoids having mimalloc look up the thread local pointer all the time. Whether this is 
+  faster depends a bit on the OS implementation of thread local variables. 
+
 
 # Tools
 
@@ -662,9 +723,11 @@ use a tool like [TraceControl] that is specialized for analyzing mimalloc traces
 [TraceControl]: https://github.com/xinglonghe/TraceControl
 
 
+
 # Performance
 
-Last update: 2021-01-30
+Last update: 2021-01-30.  
+(Note 2026-09-01: this is a while ago now, many of these allocators have improved over time as well. YMMV.)
 
 We tested _mimalloc_ against many other top allocators over a wide
 range of benchmarks, ranging from various real world programs to
@@ -921,6 +984,25 @@ provided by the bot. You will only need to do this once across all repos using o
 
 
 # Older Release Notes
+
+* 2025-06-09, `v1.9.4`, `v2.2.4`, `v3.1.4` (beta) : Some important bug fixes, including a case where OS memory
+  was not always fully released. Improved v3 performance, build on XBox, fix build on Android, support interpose 
+  for older macOS versions, use MADV_FREE_REUSABLE on macOS, always check commit success, better support for Windows 
+  fixed TLS offset, etc.
+* 2025-03-28, `v1.9.3`, `v2.2.3`, `v3.0.3` (beta) : Various small bug and build fixes, including:
+  fix arm32 pre v7 builds, fix mingw build, get runtime statistics, improve statistic commit counts, 
+  fix execution on non BMI1 x64 systems. 
+* 2025-03-06, `v1.9.2`, `v2.2.2`, `v3.0.2-beta`: Various small bug and build fixes. 
+  Add `mi_options_print`, `mi_arenas_print`, and the experimental `mi_stat_get` and `mi_stat_get_json`. 
+  Add `mi_thread_set_in_threadpool` and `mi_heap_set_numa_affinity` (v3 only). Add vcpkg portfile. 
+  Upgrade mimalloc-redirect to v1.3.2. `MI_OPT_ARCH` is off by default now but still assumes armv8.1-a on arm64
+  for fast atomic operations. Add QNX support.
+* 2025-01-03, `v1.8.9`, `v2.1.9`, `v3.0.1-alpha`: Interim release. Support Windows arm64. New [guarded](#guarded) build that can place OS 
+  guard pages behind objects to catch buffer overflows as they occur. 
+  Many small fixes: build on Windows arm64, cygwin, riscV, and dragonfly; fix Windows static library initialization to account for
+  thread local destructors (in Rust/C++); macOS tag change; macOS TLS slot fix; improve stats; 
+  consistent `mimalloc.dll` on Windows (instead of `mimalloc-override.dll`); fix mimalloc-redirect on Win11 H2; 
+  add 0-byte to canary; upstream CPython fixes; reduce .bss size; allow fixed TLS slot on Windows for improved performance.
 
 * 2024-05-21, `v1.8.7`, `v2.1.7`: Fix build issues on less common platforms. Started upstreaming patches
   from the CPython [integration](https://github.com/python/cpython/issues/113141#issuecomment-2119255217). Upstream `vcpkg` patches.

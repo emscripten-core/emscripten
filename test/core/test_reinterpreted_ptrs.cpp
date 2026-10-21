@@ -26,7 +26,7 @@ int Foo::getBar() const {
 const Foo *magic1 = reinterpret_cast<Foo *>(0xDEAD111F);
 const Foo *magic2 = reinterpret_cast<Foo *>(0xDEAD888F);
 
-static void runTest() {
+void runTest() {
 
   const Foo *a = new Foo();
   const Foo *b = a;

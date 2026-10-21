@@ -13,7 +13,7 @@
 
 int result = 1;
 
-static char *TouchFingerTypeToString(int type) {
+char *TouchFingerTypeToString(int type) {
   if (type == SDL_FINGERMOTION) return "SDL_FINGERMOTION";
   if (type == SDL_FINGERDOWN) return "SDL_FINGERDOWN";
   if (type == SDL_FINGERUP) return "SDL_FINGERUP";

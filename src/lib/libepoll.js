@@ -45,31 +45,33 @@ var EpollLibrary = {
   },
 
   $epollNewInstance__internal: true,
-  $epollNewInstance__deps: ['$FS', '$epollWouldBlock'],
+  $epollNewInstance__deps: ['$FS', '$epollWouldBlock', '$epollClearListener'],
   $epollNewInstance: () => {
     // Its own (detached) node, so the epoll fd can be watched by a parent epoll
     // (nesting) and carry the readiness wait-queue methods. Shared across dups.
     var node = new FS.FSNode(0, '', 0, 0);
     var stream = FS.createStream({
       node,
+      listeners: new Map(),
       stream_ops: {
         // Readable when any listed registration is currently ready: this is what
         // lets an epoll fd be polled/nested.
         poll(stream) {
           return epollWouldBlock(stream.shared) ? 0 : {{{ cDefs.POLLIN }}};
         },
-        // dup(2): another fd to the same epoll instance (Linux: another reference
-        // to the eventpoll). The instance state lives on the shared open file
-        // description, already propagated by reference to the dup'd stream, so
-        // there is nothing to copy - just count the new reference.
+        // A dup shares readiness but starts without callbacks.
         dup(stream) {
           stream.shared.refcount++;
+          stream.listeners = new Map();
         },
         // close(2): drop one reference. Only the last close reclaims the
         // instance: drop every registration's listener (a fired EPOLLONESHOT has
         // already dropped its own) from its watched node. A surviving dup keeps
         // it all live.
         close(stream) {
+          for (var it of stream.listeners.values()) {
+            epollClearListener(stream, it);
+          }
           var ep = stream.shared;
           // FS.close already fired POLLNVAL on the (shared) node, waking any
           // parent epoll watching this fd so it re-derives and drops the
@@ -221,9 +223,10 @@ var EpollLibrary = {
     // (ep_poll_callback: on an edge, list the reg and wake any waiter on this
     // epoll - and through ep.node any parent epoll nesting it.)
     if (!reg.listener) {
-      reg.listener = target.node.addListener(() => {
+      reg.listener = target.node.addListener((flags) => {
         readyListAdd(ep, reg);
-        ep.node.notifyListeners({{{ cDefs.POLLIN }}});
+        // A closing fd (POLLNVAL) wakes the epoll as a teardown, not readiness.
+        ep.node.notifyListeners(flags & {{{ cDefs.POLLNVAL }}} ? {{{ cDefs.POLLNVAL }}} : {{{ cDefs.POLLIN }}});
       // EPOLLEXCLUSIVE: when one fd is watched by several epolls, the watched
       // node wakes only one of them per edge (round-robin), not all.
       }, !!(events & {{{ cDefs.EPOLLEXCLUSIVE }}}));
@@ -344,6 +347,59 @@ var EpollLibrary = {
     if (!count && timeout != 0) warnOnce('non-zero epoll_wait() timeout not supported: ' + timeout)
 #endif
     return count;
+  },
+
+  $epollClearListener__internal: true,
+  $epollClearListener: (stream, it) => {
+    stream.listeners.delete(it.key);
+    it.cleared = true;
+    it.listener.listeners.delete(it.listener.entry);
+  },
+
+  // See <emscripten/epoll.h>. A listener is keyed by (callback, userdata) and
+  // signals the callback while the set has uncollected ready events.
+  emscripten_epoll_listener_add__deps: ['$FS', '$epollWouldBlock', '$epollClearListener', '$callUserCallback', '$emSetImmediate'],
+  emscripten_epoll_listener_add: (epfd, callback, userdata) => {
+#if PTHREADS
+    // Readiness is tracked on the main thread and the callback runs there.
+    if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};
+#endif
+    var stream = FS.getStream(epfd);
+    // A public API, not a syscall: positive errno.
+    if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
+    var ep = stream.shared;
+    var key = callback + ':' + userdata;
+    if (stream.listeners.has(key)) return {{{ cDefs.EEXIST }}};
+    var it = {key};
+    stream.listeners.set(key, it);
+
+    // Every delivery is an event-loop task, never under the notifying wasm
+    // call's frames. Every wake schedules its own turn; one that finds nothing
+    // to deliver is a no-op.
+    function turn() {
+      if (it.cleared || epollWouldBlock(ep)) return;
+      callUserCallback(() => {
+        {{{ makeDynCall('vip', 'callback') }}}(epfd, userdata);
+        // A still-ready level fd yields to I/O before the next delivery.
+        if (!it.cleared && !epollWouldBlock(ep)) emSetImmediate(turn);
+      });
+    }
+    it.listener = ep.node.addListener(() => emSetImmediate(turn));
+    emSetImmediate(turn);
+    return 0;
+  },
+
+  emscripten_epoll_listener_remove__deps: ['$FS', '$epollClearListener'],
+  emscripten_epoll_listener_remove: (epfd, callback, userdata) => {
+#if PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};
+#endif
+    var stream = FS.getStream(epfd);
+    if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
+    var it = stream.listeners.get(callback + ':' + userdata);
+    if (!it) return {{{ cDefs.ENOENT }}};
+    epollClearListener(stream, it);
+    return 0;
   },
 };
 

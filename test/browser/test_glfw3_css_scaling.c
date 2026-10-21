@@ -45,7 +45,7 @@ EM_JS(double, getDevicePixelRatio, (), {return (typeof devicePixelRatio == 'numb
 
 /**
  * Checks window size and framebuffer size according to ratio */
-static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedHeight, float ratio) {
+void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedHeight, float ratio) {
   // first check the window size
   int w, h;
   glfwGetWindowSize(window, &w, &h);

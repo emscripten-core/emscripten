@@ -18,8 +18,68 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.9 (in development)
-----------------------
+6.0.13 (in development)
+-----------------------
+- Support for windows .bat/.ps1 launcher files was completely removed.  These
+  days we use a native windows launcher program. (#27359)
+- `MEMORY64=2` was marked as deprecated. (#27952)
+- The undocumented `FS.filesystems` object was removed. Replace things like
+  `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
+- libpng port updated from 1.6.58 to 1.6.59. (#27956)
+
+6.0.12 - 10/08/26
+-----------------
+- The embind library functions `getInheritedInstanceCount` and
+  `getLiveInheritedInstances` were marked as deprecated. (#27899)
+- `MAXIMUM_MEMORY` is now honored with `IMPORTED_MEMORY` even without
+  `ALLOW_MEMORY_GROWTH`: the module accepts an imported memory of any size up to
+  the maximum, but never grows it. Previously the maximum was ignored, with a
+  warning, and only a memory of exactly `INITIAL_MEMORY` was accepted.
+  (#27859)
+- Added experimental `emscripten_epoll_listener_add` and
+  `emscripten_epoll_listener_remove` in the new `<emscripten/epoll.h>`. These
+  listeners deliver an epoll set's readiness to a callback, supported on the
+  main thread only. The callback itself is then able to collect the events via
+  a zero-timeout `epoll_wait`, without an `ASYNCIFY`/`JSPI` requirement.
+  (#27547)
+
+6.0.11 - 10/02/26
+-----------------
+- Built-in SCons support (`emscons` and `tools/scons`) was marked as deprecated.
+  (See #27835)
+- The legacy `FS.findObject` function was removed (#27764) and `FS.analyzePath`
+  was marked as deprecated (`FS.lookupPath` or `FS.stat` should be used
+  instead). (#27765)
+- OpenMP was updated to LLVM commit 9076414489ed. This adds Wasm64 support and
+  raises the generic microtask dispatcher limit from 15 to 32 arguments.
+  (#27221)
+
+6.0.10 - 09/21/26
+-----------------
+- The SDL3 port is no longer considered experimental, and the compiler
+  diagnostic warning has been removed. (#27646)
+- `WASM=0` and `WASM=2` (wasm2js) were marked as deprecated. (See #27608)
+- mimalloc was updated to 3.5.1. (#27662)
+- `-sWASM_BINDGEN` supports emcc usage as a post-link step, where
+  `EXPORTED_FUNCTIONS` is authoritative. wasm-bindgen processing is only
+  performed when the linker inputs carry the wasm-bindgen Emscripten marker
+  section, so `-sWASM_BINDGEN` can safely be passed to non-wasm-bindgen builds.
+  (#27208)
+- Embind `value_object` and `value_array` argument temporaries for trivially
+  constructible/destructible types (up to `alignof` 16) are now placed on the
+  wasm stack instead of being heap-allocated per call, and per-field destructor
+  bookkeeping is skipped when the type registers no destructor. This removes
+  the per-call garbage on such calls. The registration ABI gained size and
+  triviality parameters, so object files built against an older `bind.h` need
+  to be rebuilt. (#27610)
+- `emscripten_clear_timeout` now releases the runtime keepalive held by the
+  pending timeout, and both `emscripten_clear_timeout` and
+  `emscripten_clear_immediate` are no-ops for ids that already fired. (#27720)
+- The `NODE_CODE_CACHING` setting was removed, as node's support for
+  serializing WebAssembly modules has been missing for over 5 years now.
+
+6.0.9 - 09/01/26
+----------------
 - The `WASM_BINDGEN` setting is now marked experimental, and enabling it
   produces a compiler diagnostic warning, since the integration is still
   evolving and subject to change. (#27616)
@@ -142,6 +202,10 @@ See docs/process.md for more on how version tagging works.
   process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
   and `-pthread` with `PROXY_TO_PTHREAD`. Uses the public node APIs where
   available, falling back to `tcp_wrap`/`udp_wrap` on older Node.js. (#27080)
+- Under `-sNODERAWSOCKETS`, `getaddrinfo` now performs real name resolution
+  via `node:dns`, blocking the caller where its stack can wait (a proxied
+  pthread, `ASYNCIFY`/`JSPI`) and returning `EAI_AGAIN` otherwise. Results may
+  now be a linked list, which `freeaddrinfo` frees in full. (#27693)
 - The following symbols are no longer included in `INCOMING_MODULE_JS_API`
   by default:
   - GL_MAX_TEXTURE_IMAGE_UNITS

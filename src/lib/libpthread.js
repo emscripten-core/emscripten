@@ -259,7 +259,7 @@ var LibraryPThread = {
     },
 #if OFFSCREENCANVAS_SUPPORT
     receiveOffscreenCanvases(data) {
-      if (typeof GL != 'undefined') {
+      if (typeof GL !== 'undefined') {
         Object.assign(GL.offscreenCanvases, data.offscreenCanvases);
         if (!Module['canvas'] && data.moduleCanvasId && GL.offscreenCanvases[data.moduleCanvasId]) {
           Module['canvas'] = GL.offscreenCanvases[data.moduleCanvasId].offscreenCanvas;
@@ -441,9 +441,6 @@ var LibraryPThread = {
 #if LOAD_SOURCE_MAP
         wasmSourceMap,
 #endif
-#if SHARED_WASMGC
-        sharedHeapRootVal: wasmExports['_shared_heap_root'].value,
-#endif
 #if MAIN_MODULE
         dynamicLibraries,
         // Share all modules that have been loaded so far.  New workers
@@ -500,7 +497,7 @@ var LibraryPThread = {
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
         if (Module['mainScriptUrlOrBlob']) {
           var pthreadMainJs = Module['mainScriptUrlOrBlob'];
-          if (typeof pthreadMainJs != 'string') {
+          if (typeof pthreadMainJs !== 'string') {
             pthreadMainJs = URL.createObjectURL(pthreadMainJs);
           }
           worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
@@ -539,7 +536,7 @@ var LibraryPThread = {
       // call URL.createObjectURL on the mainScriptUrlOrBlob.
       if (Module['mainScriptUrlOrBlob']) {
         pthreadMainJs = Module['mainScriptUrlOrBlob'];
-        if (typeof pthreadMainJs != 'string') {
+        if (typeof pthreadMainJs !== 'string') {
           pthreadMainJs = URL.createObjectURL(pthreadMainJs);
         }
       }
@@ -587,7 +584,7 @@ var LibraryPThread = {
 #if ENVIRONMENT_MAY_BE_NODE
         }
 #endif
-#endif // PTHREAD_POOL_SIZE_STRICT
+#endif // (PTHREAD_POOL_SIZE_STRICT && ASSERTIONS) || PTHREAD_POOL_SIZE_STRICT == 2
 #if PTHREAD_POOL_SIZE_STRICT < 2 || ENVIRONMENT_MAY_BE_NODE
         var newWorker = PThread.allocateUnusedWorker();
         PThread.loadWasmModuleToWorker(newWorker);
@@ -843,7 +840,7 @@ var LibraryPThread = {
           name = Module['canvas'].id;
         }
 #if ASSERTIONS
-        assert(typeof GL == 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with \'-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$GL\')');
+        assert(typeof GL === 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with \'-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$GL\')');
 #endif
         if (GL.offscreenCanvases[name]) {
           offscreenCanvasInfo = GL.offscreenCanvases[name];
@@ -1024,7 +1021,7 @@ var LibraryPThread = {
     var b = {{{ getHeapOffset('args', 'i64') }}};
     for (var arg of callArgs) {
 #if WASM_BIGINT
-      if (typeof arg == 'bigint') {
+      if (typeof arg === 'bigint') {
         // The prefix is non-zero to indicate a bigint.
         HEAP64[b++] = 1n;
         HEAP64[b++] = arg;
@@ -1089,14 +1086,15 @@ var LibraryPThread = {
     var rtn = func(...proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
     if (ctx) {
-      rtn.then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, rtn));
+      // A PROXY_SYNC_ASYNC function may complete synchronously with a plain value.
+      Promise.resolve(rtn).then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, rtn));
       return;
     }
 
 #if MEMORY64
     // In memory64 mode some proxied functions return bigint/pointer but
     // our return type is i53/double.
-    if (typeof rtn == 'bigint') {
+    if (typeof rtn === 'bigint') {
       rtn = bigintToI53Checked(rtn);
     }
 #endif
@@ -1104,7 +1102,7 @@ var LibraryPThread = {
     // Proxied functions can return any type except bigint.  All other types
     // coerce to f64/double (the return type of this function in C) but not
     // bigint.
-    assert(typeof rtn != 'bigint');
+    assert(typeof rtn !== 'bigint');
 #endif
     return rtn;
   },
@@ -1363,20 +1361,7 @@ var LibraryPThread = {
       }
       worker.postMessage({cmd: {{{ CMD_CHECK_MAILBOX }}}});
     }
-  },
-
-#if SHARED_WASMGC
-  _shared_heap_root__deps: ['$makeSharedHeapRootGlobal'],
-  _shared_heap_root: "makeSharedHeapRootGlobal()",
-  $makeSharedHeapRootGlobal: () => {
-    // Wasm module for acquiring a shared anyref WebAssembly.Global:
-    // (module (global (export "g") (mut (ref null (shared any))) (ref.null (shared any))))
-    var bytes = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 6, 9, 1, 99, 101, 110, 1, 208, 101, 113, 11, 7, 5, 1, 1, 103, 3, 0]);
-    var module = new WebAssembly.Module(bytes);
-    var instance = new WebAssembly.Instance(module, {});
-    return instance.exports.g;
-  },
-#endif // SHARED_WASMGC
+  }
 };
 
 autoAddDeps(LibraryPThread, '$PThread');

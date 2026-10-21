@@ -13,7 +13,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static void create_file(const char* path, const char* data) {
+void create_file(const char* path, const char* data) {
   int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   assert(fd >= 0);
   assert(write(fd, data, strlen(data)) == (ssize_t)strlen(data));

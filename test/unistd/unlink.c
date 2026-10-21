@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-static void create_file(const char *path, const char *buffer, int mode) {
+void create_file(const char *path, const char *buffer, int mode) {
   printf("creating: %s\n", path);
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   assert(fd >= 0);
@@ -140,7 +140,8 @@ void test() {
   // Update: Removing cwd on Linux does not return EBUSY.
   // WASMFS behaviour will match the native FS.
 #ifndef __APPLE__
-  getcwd(buffer, sizeof(buffer));
+  char* cwd = getcwd(buffer, sizeof(buffer));
+  assert(cwd != NULL);
   printf("CWD: %s\n", buffer);
   err = rmdir(buffer);
   assert(err == -1);

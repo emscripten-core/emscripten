@@ -329,7 +329,8 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
 
 int __syscall_fdatasync(int fd) {
   // TODO: Optimize this to avoid unnecessarily flushing unnecessary metadata.
-  return __wasi_fd_sync(fd);
+  // Translate from WASI positive error codes to negative error codes.
+  return -__wasi_fd_sync(fd);
 }
 
 backend_t wasmfs_get_backend_by_fd(int fd) {
@@ -1137,7 +1138,7 @@ static double timespec_to_ms(timespec ts) {
   if (ts.tv_nsec == UTIME_NOW) {
     return emscripten_date_now();
   }
-  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec / (1000 * 1000));
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -1366,6 +1367,11 @@ int __syscall_ioctl(int fd, int request, ...) {
       // TTY operations that we do nothing for anyhow can just be ignored.
       return 0;
     }
+    case TIOCGPGRP: {
+      // Set argp to 0 just like in JS FS
+      *static_cast<int*>(argp) = 0;
+      return 0;
+    }
     default: {
       return -EINVAL; // not supported
     }
@@ -1374,7 +1380,12 @@ int __syscall_ioctl(int fd, int request, ...) {
 
 int __syscall_pipe2(int fd[2], int flags) {
   auto* fds = (__wasi_fd_t*)fd;
-  if (flags && flags != O_CLOEXEC) {
+  
+  if (!fds) {
+    return -EFAULT;
+  }
+
+  if (flags & ~(O_CLOEXEC | O_NONBLOCK)) {
     return -ENOTSUP;
   }
 
@@ -1386,9 +1397,11 @@ int __syscall_pipe2(int fd[2], int flags) {
   auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
   auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
+  oflags_t nonBlock = flags & O_NONBLOCK;
+
   std::shared_ptr<OpenFileState> openReader, openWriter;
-  (void)OpenFileState::create(reader, O_RDONLY, openReader);
-  (void)OpenFileState::create(writer, O_WRONLY, openWriter);
+  (void)OpenFileState::create(reader, O_RDONLY | nonBlock, openReader);
+  (void)OpenFileState::create(writer, O_WRONLY | nonBlock, openWriter);
 
   auto fileTable = wasmFS.getFileTable().locked();
   fds[0] = fileTable.addEntry(openReader);
@@ -1462,7 +1475,12 @@ int __syscall_fallocate(int fd, int mode, off_t offset, off_t len) {
     return -EBADF;
   }
 
-  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  auto file = openFile->locked().getFile();
+  if (!file->isSeekable()) {
+    return -ESPIPE;
+  }
+
+  auto dataFile = file->dynCast<DataFile>();
   // TODO: support for symlinks.
   if (!dataFile) {
     return -ENODEV;
@@ -1580,17 +1598,16 @@ doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   }
 
   // NOTE: None of the constants here are true. We're just returning safe and
-  //       sane values, that match the long-existing JS FS behavior (except for
-  //       the inode number, where we can do better).
+  //       sane values, that match the long-existing JS FS behavior.
   buf->f_type = 0;
   buf->f_bsize = 4096;
   buf->f_frsize = 4096;
   buf->f_blocks = 1000000;
   buf->f_bfree = 500000;
   buf->f_bavail = 500000;
-  buf->f_files = file->getIno();
-  buf->f_ffree = 1000000;
-  buf->f_fsid = {0, 0};
+  buf->f_files = 1000000;
+  buf->f_ffree = 500000;
+  buf->f_fsid = {42, 0};
   buf->f_flags = ST_NOSUID;
   buf->f_namelen = 255;
   return 0;
@@ -1851,6 +1868,13 @@ int __syscall_recvmsg(int sockfd,
 }
 
 int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  if (!openFile->locked().getFile()->isSeekable()) {
+    return -ESPIPE;
+  }
   // Advice is currently ignored. TODO some backends might use it
   return 0;
 }
@@ -1863,13 +1887,6 @@ int __syscall_linkat(int olddirfd,
   // Hardlinks are not supported in WASMFS.
   return -EMLINK;
 }
-
-// NODERAWFS credential reporting is implemented in the legacy JS syscall layer
-// only.
-uid_t __syscall_getuid32(void) { return 0; }
-uid_t __syscall_geteuid32(void) { return 0; }
-gid_t __syscall_getgid32(void) { return 0; }
-gid_t __syscall_getegid32(void) { return 0; }
 
 // epoll is implemented in the legacy (non-WASMFS) JS syscall layer only.
 int __syscall_epoll_create1(int flags) { return -ENOSYS; }

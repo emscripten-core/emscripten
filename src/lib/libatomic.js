@@ -110,7 +110,7 @@ addToLibrary({
       if (liveAtomicWaitAsyncs[counter]) {
         {{{ runtimeKeepalivePop() }}}
         delete liveAtomicWaitAsyncs[counter];
-        callUserCallback(() => {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(addr, val, atomicWaitStates.indexOf(value), userData));
+        callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, addr, val, atomicWaitStates.indexOf(value), userData);
       }
     });
     return -counter;

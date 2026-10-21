@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-var MAGIC = 0;
+let MAGIC = 0;
 Math.random = () => {
   MAGIC = Math.pow(MAGIC + 1.8912, 3) % 1;
   return MAGIC;
 };
 
-var TIME = 10000;
+let TIME = 10_000;
 function deterministicNow() {
   return TIME++;
 }

@@ -36,7 +36,7 @@ int *pointer(int *in) {
 struct test_struct {
   int arg1, arg2, arg3;
 };
-static intptr_t* stackChecker = 0;
+intptr_t* stackChecker = 0;
 __attribute__((noinline))
 intptr_t get_stack() { int i; return (intptr_t)&i; }
 int uses_stack(test_struct* t1) {

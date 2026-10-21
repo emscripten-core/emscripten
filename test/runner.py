@@ -48,10 +48,10 @@ import common
 import jsrun
 import parallel_testsuite
 from color_runner import ColorTextRunner
-from common import errlog
+from common import CLANG_CC, errlog
 from single_line_runner import SingleLineTestRunner
 
-from tools import building, colored_logger, config, shared, utils
+from tools import colored_logger, config, shared, utils
 
 logger = logging.getLogger("runner")
 
@@ -66,6 +66,9 @@ else:
   # The test framework depends on writing files to the `out/` directory.
   # For git checkouts the bootstrap.py script would take care of creating this.
   os.makedirs('out', exist_ok=True)
+
+EMCC_DEBUG = utils.get_env_bool('EMCC_DEBUG')
+RUNNING_IN_CI = utils.get_env_bool('CI')
 
 
 # Test modes from 'core' that fully pass all tests. When running a random
@@ -105,15 +108,22 @@ passing_core_test_modes = [
 # The default core test mode, used when none is specified
 default_core_test_mode = 'core0'
 
+# The 'misc' test alias encompasses `other` plus any suites split out from `test_other.py`.
+misc_tests = [
+  'other',
+  'jslib',
+]
+
+aliases = {'misc': misc_tests}
+
 # All test modes aside from passing_core_test_modes. These modes might be wip
 # and not all pass yet, or they might be non-'core' (e.g., if they open a
 # browser window or otherwise have custom functionality). Random tests are not
 # picked from here, but you can force them to be, using something like
 # randombrowser10 (which runs 10 random tests from 'browser').
-misc_test_modes = [
+non_core_test_modes = [
+  *misc_tests,
   'codesize',
-  'other',
-  'jslib',
   'browser',
   'sanity',
   'sockets_node',
@@ -134,7 +144,7 @@ misc_test_modes = [
   'llvmlibc',
 ]
 
-default_tests = ['jslib', 'other', 'core0']
+default_tests = ['misc', 'core0']
 
 
 def check_js_engines():
@@ -159,7 +169,7 @@ def get_and_import_modules():
 def get_all_tests(modules):
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
-  suites = passing_core_test_modes + misc_test_modes
+  suites = passing_core_test_modes + non_core_test_modes
   for m in modules:
     for s in suites:
       if hasattr(m, s):
@@ -169,7 +179,7 @@ def get_all_tests(modules):
 
 
 def get_crossplatform_tests(modules):
-  suites = ['core0', 'other', 'sanity'] # We don't need all versions of every test
+  suites = ['core0', 'sanity'] + misc_tests # We don't need all versions of every test
   crossplatform_tests = []
   # Walk over the test suites and find the test functions with the
   # is_crossplatform_test attribute applied by @crossplatform decorator
@@ -248,7 +258,7 @@ def get_random_test_parameters(arg):
   relevant_modes = passing_core_test_modes
   if len(arg):
     num_str = arg
-    for mode in passing_core_test_modes + misc_test_modes:
+    for mode in passing_core_test_modes + non_core_test_modes:
       if arg.startswith(mode):
         base_module = mode
         relevant_modes = [mode]
@@ -270,11 +280,10 @@ def choose_random_tests(base, num_tests, relevant_modes):
     chosen.add(new_test)
     if len(chosen) > before:
       print('* ' + new_test)
-    else:
-      # we may have hit the limit
-      if len(chosen) == len(tests) * len(relevant_modes):
-        print('(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes)))
-        break
+    elif len(chosen) == len(tests) * len(relevant_modes):
+      # we hit the limit
+      print(f'(all possible tests chosen! {len(chosen)} = {len(tests)}*{len(relevant_modes)})')
+      break
   return list(chosen)
 
 
@@ -282,15 +291,13 @@ def print_random_test_statistics(num_tests):
   std = 0.5 / math.sqrt(num_tests)
   expected = 100.0 * (1.0 - std)
   print()
-  print('running those %d randomly-selected tests. if they all pass, then there is a '
-        'greater than 95%% chance that at least %.2f%% of the test suite will pass'
-        % (num_tests, expected))
+  print(f'running those {num_tests} randomly-selected tests. if they all pass, then there is a '
+        f'greater than 95% chance that at least {expected:.2f}% of the test suite will pass')
   print()
 
   def show():
-    print('if all tests passed then there is a greater than 95%% chance that at least '
-          '%.2f%% of the test suite will pass'
-          % (expected))
+    print('if all tests passed then there is a greater than 95% chance that at least '
+          f'{expected:.2f}% of the test suite will pass')
   atexit.register(show)
 
 
@@ -379,7 +386,7 @@ def create_test_run_sorter(sort_failing_tests_at_front):
 
 def use_parallel_suite(module):
   suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets_node', 'test_sockets_browser', 'test_interactive', 'test_stress', 'test_emrun'}
-  if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
+  if not common.EMTEST_SAVE_DIR and not EMCC_DEBUG:
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_cores:
       return True
@@ -410,20 +417,14 @@ def load_test_suite(args, modules, options):
       except AttributeError:
         pass
     if names_in_module:
-      # Ensure verbose output for the benchmark suite, as otherwise no benchmark
-      # results are emitted.
-      if m.__name__ == 'test_benchmark':
-        options.verbose = max(options.verbose, 1)
-
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests += flattened_tests(loaded_tests)
       is_parallel_module = use_parallel_suite(m)
       if using_parallel_suite is None:
         using_parallel_suite = is_parallel_module
-      else:
+      elif is_parallel_module != using_parallel_suite:
         # All the following modules must match in their support for the parallel runner.
-        if is_parallel_module != using_parallel_suite:
-          utils.exit_with_error(f'attempt to mix parallel and non-parallel test modules ({m.__name__})')
+        utils.exit_with_error(f'attempt to mix parallel and non-parallel test modules ({m.__name__})')
 
   # If we are only running a single tests, never use the parallel tests suite.
   # This means that the output of a single test is always going to be in `out/test/` rather
@@ -462,7 +463,7 @@ def flattened_tests(loaded_tests):
 
 def run_tests(options, suite):
   # Run the discovered tests
-  if utils.get_env_bool('CI'):
+  if RUNNING_IN_CI:
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
     import xmlrunner  # type: ignore
@@ -482,13 +483,13 @@ def run_tests(options, suite):
 
   run_start_time = time.perf_counter()
 
-  errlog('Running %s tests' % suite.countTestCases())
+  errlog(f'Running {suite.countTestCases()} tests')
   res = testRunner.run(suite)
   num_failures = len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
 
   total_run_time = time.perf_counter() - run_start_time
   if hasattr(res, 'core_time'):
-    errlog('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (res.core_time, total_run_time, res.core_time / total_run_time))
+    errlog(f'Total core time: {res.core_time:.3f}s. Wallclock time: {total_run_time:.3f}s. Parallelization: {res.core_time / total_run_time:.2f}x.')
 
   if options.bell:
     sys.stdout.write('\a')
@@ -541,7 +542,7 @@ def parse_args():
 
   if options.ansi is None:
     options.ansi = colored_logger.ansi_color_available()
-  else:
+  else:  # ruff: ignore[collapsible-else-if]
     if options.ansi:
       colored_logger.enable(force=True)
     else:
@@ -566,7 +567,7 @@ def configure():
   common.EMTEST_RETRY_FLAKY = utils.get_env_int('EMTEST_RETRY_FLAKY')
   common.EMTEST_LACKS_NATIVE_CLANG = utils.get_env_bool('EMTEST_LACKS_NATIVE_CLANG')
   common.EMTEST_REBASELINE = utils.get_env_bool('EMTEST_REBASELINE')
-  common.EMTEST_VERBOSE = utils.get_env_bool('EMTEST_VERBOSE') or shared.DEBUG
+  common.EMTEST_VERBOSE = utils.get_env_bool('EMTEST_VERBOSE') or EMCC_DEBUG
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 
@@ -603,14 +604,14 @@ def log_test_environment():
   print(f'Python: "{sys.executable}". Version: {sys.version}')
   print(f'Emscripten test runner path: "{os.path.realpath(__file__)}"')
 
-  if os.path.isdir(utils.path_from_root('.git')):
+  if os.path.exists(utils.path_from_root('.git')):
     print(f'\nEmscripten repository: "{__rootpath__}"')
 
   emscripten_version = utils.path_from_root('emscripten-version.txt')
   if os.path.isfile(emscripten_version):
     print(f'emscripten-version.txt: {utils.EMSCRIPTEN_VERSION}')
 
-  if os.path.isdir(os.path.join(__rootpath__, '.git')):
+  if os.path.exists(os.path.join(__rootpath__, '.git')):
     print_repository_info(__rootpath__, 'Emscripten')
 
   print(f'EM_CONFIG: "{config.EM_CONFIG}"')
@@ -622,14 +623,14 @@ def log_test_environment():
 
   print(f'JS_ENGINES: {config.JS_ENGINES}')
   print(f'BINARYEN_ROOT: {config.BINARYEN_ROOT}')
-  wasm_opt_version = building.get_binaryen_version(building.get_binaryen_bin()).strip()
+  wasm_opt_version = utils.run_process([common.WASM_OPT, '--version'], stdout=subprocess.PIPE).stdout.strip()
   print(f'wasm-opt version: {wasm_opt_version}')
 
   binaryen_git_dir = config.BINARYEN_ROOT
   # Detect emsdk directory structure (build root vs source root)
   if re.match(r'main_.*_64bit_binaryen', os.path.basename(binaryen_git_dir)):
     binaryen_git_dir = os.path.realpath(os.path.join(binaryen_git_dir, '..', 'main'))
-  if os.path.isdir(os.path.join(binaryen_git_dir, '.git')):
+  if os.path.exists(os.path.join(binaryen_git_dir, '.git')):
     print(f'Binaryen git directory: "{binaryen_git_dir}"')
     print_repository_info(binaryen_git_dir, 'Binaryen')
 
@@ -638,10 +639,10 @@ def log_test_environment():
   # Find LLVM git directory in emsdk aware fashion
   def find_llvm_git_root(dir):
     while True:
-      if os.path.isdir(os.path.join(dir, ".git")):
+      if os.path.exists(os.path.join(dir, '.git')):
         return dir
-      if os.path.isdir(os.path.join(dir, "src", ".git")):
-        return os.path.join(dir, "src")
+      if os.path.exists(os.path.join(dir, 'src', '.git')):
+        return os.path.join(dir, 'src')
       if os.path.dirname(dir) == dir:
         return None
       dir = os.path.dirname(dir)
@@ -651,8 +652,8 @@ def log_test_environment():
     print(f'LLVM git directory: "{llvm_git_root}"')
     print_repository_info(llvm_git_root, 'LLVM')
 
-  clang_version = utils.run_process([shared.CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
-  print(f'Clang: "{shared.CLANG_CC}"\n{clang_version}\n')
+  clang_version = utils.run_process([CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
+  print(f'Clang: "{CLANG_CC}"\n{clang_version}\n')
 
   print(f'EMTEST_BROWSER: {browser_common.EMTEST_BROWSER}')
   if browser_common.is_firefox():
@@ -671,10 +672,20 @@ def log_test_environment():
   emsdk_dir = os.getenv('EMSDK')
   print(f'\nEMSDK: "{emsdk_dir}"')
   if emsdk_dir:
-    if os.path.isdir(os.path.join(emsdk_dir, '.git')):
+    if os.path.exists(os.path.join(emsdk_dir, '.git')):
       print_repository_info(emsdk_dir, 'Emsdk')
 
   print('==================== End of Test Setup =====================')
+
+
+def expand_aliases(tests):
+  new_tests = []
+  for t in tests:
+    if t in aliases:
+      new_tests += aliases[t]
+    else:
+      new_tests.append(t)
+  return new_tests
 
 
 def main():
@@ -710,7 +721,7 @@ def main():
   set_env('EMTEST_CORES', options.cores)
 
   if common.EMTEST_DETECT_TEMPFILE_LEAKS:
-    if shared.DEBUG:
+    if EMCC_DEBUG:
       # In EMCC_DEBUG mode emscripten explicitly leaves stuff in the tmp directory
       utils.exit_with_error('EMTEST_DETECT_TEMPFILE_LEAKS is not compatible with EMCC_DEBUG')
     if common.EMTEST_SAVE_DIR:
@@ -726,13 +737,13 @@ def main():
   # emscripten.lock from shared.py).
   # Note: We only do this in the CI environment, since it prevents multiple
   # emscripten checkouts from running tests at the same time.
-  if os.getenv('CI') and not (shared.DEBUG or common.EMTEST_SAVE_DIR):
+  if RUNNING_IN_CI and not (EMCC_DEBUG or common.EMTEST_SAVE_DIR):
     cleanup_temp_directory()
   utils.delete_file(common.flaky_tests_log_filename)
 
   browser_common.init(options.force_browser_process_termination)
 
-  if options.log_test_environment or os.getenv('CI'):
+  if options.log_test_environment or RUNNING_IN_CI:
     log_test_environment()
 
   def prepend_default(arg):
@@ -745,6 +756,8 @@ def main():
   if not tests:
     errlog(f"Using default tests: {' '.join(default_tests)}")
     tests = default_tests
+
+  tests = expand_aliases(tests)
 
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
@@ -780,14 +793,14 @@ if __name__ == '__main__':
   except KeyboardInterrupt:
     logger.warning('KeyboardInterrupt')
     sys.exit(1)
-else:
-  # We are not the main process, and most likely a child process of
-  # the multiprocess pool.  In this mode the modifications made to the
-  # test class by `skip_test` need to be re-applied in each child
-  # subprocess (sad but true).  This is needed in particular on macOS
-  # and Windows where the default mode for multiprocessing is `spawn`
-  # rather than `fork`
-  if 'EMTEST_SKIP' in os.environ:
-    modules = get_and_import_modules()
-    for skip in os.environ['EMTEST_SKIP'].split():
-      skip_test(skip, modules)
+
+# We are not the main process, and most likely a child process of
+# the multiprocess pool.  In this mode the modifications made to the
+# test class by `skip_test` need to be re-applied in each child
+# subprocess (sad but true).  This is needed in particular on macOS
+# and Windows where the default mode for multiprocessing is `spawn`
+# rather than `fork`
+if 'EMTEST_SKIP' in os.environ:
+  modules = get_and_import_modules()
+  for skip in os.environ['EMTEST_SKIP'].split():
+    skip_test(skip, modules)

@@ -62,7 +62,7 @@ function h() {
     };
     WebAssembly.instantiate(c.wasm, {
         a: D
-    }).then((a => {
+    }).then(a => {
         var b = (a.instance || a).exports;
         u = a.module || c.wasm;
         B = b.i;
@@ -71,7 +71,7 @@ function h() {
         l = b.j;
         e ? (C(f.A, f.u, f.v), removeEventListener("message", n), k = k.forEach(m), addEventListener("message", m)) : b.h();
         e || B();
-    }));
+    });
 }
 
 e || h();

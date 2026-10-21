@@ -10,7 +10,7 @@
 #include <emscripten/wasmfs.h>
 #include <stdio.h>
 
-static backend_t my_js_file_backend;
+backend_t my_js_file_backend;
 
 void wasmfs_before_preload(void) {
   emscripten_console_log("before_preload");

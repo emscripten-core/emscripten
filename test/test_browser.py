@@ -31,6 +31,7 @@ from browser_common import (
   browser_should_skip_feature,
   find_browser_test_file,
   get_browser,
+  get_chrome_version,
   get_firefox_version,
   get_safari_version,
   is_chrome,
@@ -38,6 +39,8 @@ from browser_common import (
   is_safari,
 )
 from common import (
+  EMCC,
+  FILE_PACKAGER,
   WEBIDL_BINDER,
   copy_asset,
   copytree,
@@ -60,7 +63,6 @@ from decorators import (
   no_2gb,
   no_4gb,
   no_highmem,
-  no_wasm64,
   parameterized,
   requires_dev_dependency,
   requires_wasm2js,
@@ -72,7 +74,6 @@ from decorators import (
 from tools import ports, shared, utils
 from tools.feature_matrix import Feature
 from tools.link import binary_encode
-from tools.shared import EMCC, FILE_PACKAGER
 from tools.utils import WINDOWS, delete_dir, write_binary, write_file
 
 
@@ -180,6 +181,7 @@ def requires_version(name, version_getter):
 
 requires_safari_version = requires_version('safari', get_safari_version)
 requires_firefox_version = requires_version('firefox', get_firefox_version)
+requires_chrome_version = requires_version('chrome', get_chrome_version)
 
 
 def is_jspi(args):
@@ -187,7 +189,7 @@ def is_jspi(args):
 
 
 def skipIfFeatureNotAvailable(skip_env_var, feature, message):
-  for env_var in skip_env_var if type(skip_env_var) == list else [skip_env_var]:
+  for env_var in skip_env_var if isinstance(skip_env_var, list) else [skip_env_var]:
     should_skip = browser_should_skip_feature(env_var, feature)
     if should_skip:
       break
@@ -288,7 +290,7 @@ window.close = () => {
     kwargs['cflags'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
 
     try:
-      return self.btest(filename, expected=expected, *args, **kwargs)
+      return self.btest(filename, *args, expected=expected, **kwargs)
     finally:
       if common.EMTEST_REBASELINE and os.path.exists('actual.png'):
         print(f'overwriting expected image: {reference}')
@@ -1642,12 +1644,11 @@ window.close = () => {
     'pthreads': (['-pthread'],),
   })
   def test_glgears(self, args):
-    self.reftest('hello_world_gles.c', 'gears.png', reference_slack=3, cflags=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + args)
+    self.reftest('hello_world_gles.c', 'gears.png', reference_slack=3, cflags=['-lGL', '-lglut'] + args)
 
   @requires_graphics_hardware
   def test_glgears_long(self):
-    args = ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
-    self.btest('hello_world_gles.c', expected='0', cflags=args)
+    self.btest('hello_world_gles.c', expected='0', cflags=['-DLONGTEST', '-lGL', '-lglut', '-DANIMATE'])
 
   @requires_graphics_hardware
   @parameterized({
@@ -1658,8 +1659,7 @@ window.close = () => {
   @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_animation(self, filename):
     copy_asset('browser/fake_events.js')
-    args = ['-o', 'something.html',
-            '-DHAVE_BUILTIN_SINCOS', '-sGL_TESTING', '-lGL', '-lglut',
+    args = ['-o', 'something.html', '-sGL_TESTING', '-lGL', '-lglut',
             '--shell-file', test_file('hello_world_gles_shell.html')]
     if 'full' in filename:
       args += ['-sFULL_ES2']
@@ -1668,14 +1668,13 @@ window.close = () => {
 
   @requires_graphics_hardware
   def test_fulles2_sdlproc(self):
-    self.btest_exit('full_es2_sdlproc.c', cflags=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS', '-Wno-int-conversion'])
+    self.btest_exit('full_es2_sdlproc.c', cflags=['-sGL_TESTING', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   @requires_graphics_hardware
   @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_deriv(self):
-    self.reftest('hello_world_gles_deriv.c', 'gears.png', reference_slack=2,
-                 cflags=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'])
-    assert 'gl-matrix' not in read_file('test.html'), 'Should not include glMatrix when not needed'
+    self.reftest('hello_world_gles_deriv.c', 'gears.png', reference_slack=2, cflags=['-lGL', '-lglut'])
+    self.assertNotIn('gl-matrix', read_file('test.html'), 'Should not include glMatrix when not needed')
 
   @requires_graphics_hardware
   @parameterized({
@@ -1709,7 +1708,7 @@ window.close = () => {
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
-    libs = [l for l in libs if program in os.path.basename(l)]
+    libs = [lib for lib in libs if program in os.path.basename(lib)]
 
     self.reftest(libs[0], book_path(program.replace('.o', '.png')), cflags=cflags)
 
@@ -2130,14 +2129,13 @@ void *getBindBuffer() {
     self.reftest('test_sdl_canvas_palette_2.c', 'test_sdl_canvas_palette_b.png', cflags=['--pre-js', 'pre.js', '--pre-js', 'args-b.js', '-lSDL', '-lGL'])
 
   def test_sdl_ttf_render_text_solid(self):
-    self.reftest('test_sdl_ttf_render_text_solid.c', cflags=['-O2', '-lSDL', '-lGL', '-Wno-experimental'])
+    self.reftest('test_sdl_ttf_render_text_solid.c', cflags=['-O2', '-lSDL', '-lGL'])
 
   def test_sdl3_ttf_render_text_solid(self):
-    self.cflags.append('-Wno-experimental')
     copy_asset('freetype/LiberationSansBold.ttf')
     self.reftest('test_sdl3_ttf_render_text_solid.c', 'test_sdl3_ttf_render_text_solid.png',
                  cflags=[
-                  '-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '-lGL', '-Wno-experimental',
+                  '-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '-lGL',
                   '--embed-file', 'LiberationSansBold.ttf'])
 
   def test_sdl_alloctext(self):
@@ -2567,6 +2565,7 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @requires_offscreen_canvas
   # Verify bug https://github.com/emscripten-core/emscripten/issues/22943: creating a WebGL context with explicit swap control and offscreenCanvas
+  @also_with_pthreads
   @parameterized({
     'offscreencanvas': (['-sOFFSCREENCANVAS_SUPPORT'],),
     'offscreenframebuffer': (['-sOFFSCREEN_FRAMEBUFFER', '-DUSE_OFFSCREEN_FRAMEBUFFER'],),
@@ -2905,17 +2904,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_key.c', 37182145, cflags=['-sUSE_SDL=2', '--pre-js', test_file('browser/fake_events.js')])
 
   def test_sdl2_text(self):
-    create_file('pre.js', '''
-      Module.postRun = () => {
-        function doOne() {
-          Module._one();
-          setTimeout(doOne, 1000/60);
-        }
-        setTimeout(doOne, 1000/60);
-      }
-    ''')
-
-    self.btest_exit('test_sdl2_text.c', cflags=['--pre-js', 'pre.js', '--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_text.c', cflags=['--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_mouse(self):
@@ -3110,7 +3099,7 @@ Module["preRun"] = () => {
   def test_sdl3_ttf(self):
     copy_asset('freetype/LiberationSansBold.ttf')
     self.reftest('test_sdl3_ttf.c', 'test_sdl3_ttf.png',
-                 cflags=['-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '--embed-file', 'LiberationSansBold.ttf', '-Wno-experimental'])
+                 cflags=['-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '--embed-file', 'LiberationSansBold.ttf'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf_rtl(self):
@@ -3167,19 +3156,19 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_mixer_music.c', cflags=args)
 
   def test_sdl3_misc(self):
-    self.cflags.append('-Wno-experimental')
     self.btest_exit('test_sdl3_misc.c', cflags=['-sUSE_SDL=3'])
 
   def test_sdl3_canvas_write(self):
-    self.cflags.append('-Wno-experimental')
     self.btest_exit('test_sdl3_canvas_write.c', cflags=['-sUSE_SDL=3'])
 
+  def test_sdl3_text(self):
+    self.btest_exit('test_sdl3_text.c', cflags=['--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=3', '-Wno-experimental'])
+
   @requires_graphics_hardware
-  @no_wasm64('cocos2d ports does not compile with wasm64')
   def test_cocos2d_hello(self):
     # cocos2d build contains a bunch of warnings about tiff symbols being missing at link time:
     # e.g. warning: undefined symbol: TIFFClientOpen
-    cocos2d_root = os.path.join(ports.Ports.get_dir(), 'cocos2d', 'Cocos2d-version_3_3r1')
+    cocos2d_root = os.path.join(ports.Ports.get_dir(), 'cocos2d', 'Cocos2d-version_3_4')
     preload_file = os.path.join(cocos2d_root, 'samples', 'Cpp', 'HelloCpp', 'Resources') + '@'
     self.reftest('cocos2d_hello.cpp', reference_slack=1,
                  cflags=['-sUSE_COCOS2D=3', '-sERROR_ON_UNDEFINED_SYMBOLS=0',
@@ -3435,7 +3424,6 @@ Module["preRun"] = () => {
     self.assertExists('glue.js')
     self.btest('webidl/test.cpp', '1', cflags=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + args)
 
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_dylink(self):
     create_file('main.c', r'''
       #include <assert.h>
@@ -3519,7 +3507,6 @@ Module["preRun"] = () => {
     self._test_dylink_dso_needed(do_run)
 
   @requires_graphics_hardware
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_dylink_glemu(self):
     create_file('main.c', r'''
       #include <stdio.h>
@@ -4383,14 +4370,6 @@ Module["preRun"] = () => {
     self.set_setting('DEFAULT_TO_CXX')  # emdawnwebgpu uses C++ internally
     self.btest_exit('webgpu_required_limits.c', cflags=['--use-port=emdawnwebgpu'])
 
-  # Tests the feature that shell html page can preallocate the typed array and place it
-  # to Module.buffer before loading the script page.
-  # In this build mode, the -sINITIAL_MEMORY=xxx option will be ignored.
-  # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
-  @requires_wasm2js
-  def test_preallocated_heap(self):
-    self.btest_exit('test_preallocated_heap.c', cflags=['-sWASM=0', '-sIMPORTED_MEMORY', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('browser/test_preallocated_heap_shell.html')])
-
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   @also_with_wasm2js
   @also_with_fetch_streaming
@@ -4529,6 +4508,9 @@ Module["preRun"] = () => {
   def test_fetch_stream_abort(self):
     self.make_largefile()
     self.btest_exit('fetch/test_fetch_stream_abort.cpp', cflags=['-sFETCH', '-sFETCH_STREAMING', '-sALLOW_MEMORY_GROWTH'])
+
+  def test_fetch_stream_error(self):
+    self.btest_exit('fetch/test_fetch_stream_error.c', cflags=['-sFETCH', '-sFETCH_STREAMING'])
 
   @also_with_fetch_streaming
   def test_fetch_persist(self):
@@ -4717,8 +4699,6 @@ Module["preRun"] = () => {
     self.assertExists('test.html')
     self.assertNotExists('test.js')
     self.assertNotExists('test.wasm')
-    self.assertNotExists('test.asm.js')
-    self.assertNotExists('test.js')
     self.assertNotExists('test.worker.js')
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
@@ -5154,7 +5134,6 @@ Module["preRun"] = () => {
 
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25270')
   def test_wasm_worker_lock_async_acquire(self):
     self.btest_exit('wasm_worker/lock_async_acquire.c', cflags=['--closure=1', '-sWASM_WORKERS'])
 
@@ -5197,6 +5176,11 @@ Module["preRun"] = () => {
   @also_with_minimal_runtime
   def test_wasm_worker_semaphore_try_acquire(self):
     self.btest_exit('wasm_worker/semaphore_try_acquire.c', cflags=['-sWASM_WORKERS'])
+
+  # Tests emscripten_semaphore_async_acquire() function when semaphore is acquired both synchronously and asynchronously.
+  @also_with_minimal_runtime
+  def test_wasm_worker_semaphore_async_and_sync_acquire(self):
+    self.btest_exit('wasm_worker/semaphore_async_and_sync_acquire.c', cflags=['-sWASM_WORKERS'])
 
   @also_with_minimal_runtime
   def test_wasm_worker_condvar_waitinf(self):
@@ -5291,6 +5275,7 @@ Module["preRun"] = () => {
   @parameterized({
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'jspi': (['-sJSPI'],),
+    'pthread_jspi': (['-pthread', '-sPROXY_TO_PTHREAD', '-sJSPI'],),
     'asyncify': (['-sASYNCIFY=1'],),
   })
   @no_safari('TODO: Fails with abort:Assertion failed: err == 0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
@@ -5441,6 +5426,15 @@ Module["preRun"] = () => {
     if '-sEXPORT_ES6' in args and es6_module_workers_disabled():
       self.skipTest('This test requires a browser with ES6 Module Workers support')
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
+
+  # Tests that AudioWorklet.port (spec-defined shared MessagePort) can be used
+  # without falling back to the em-bootstrap AudioWorkletProcessor.
+  @requires_sound_hardware
+  @no_safari('https://bugs.webkit.org/show_bug.cgi?id=299386')
+  @requires_firefox_version(138)
+  @requires_chrome_version(155, 'https://crbug.com/40210558')
+  def test_audio_worklet_port(self):
+    self.btest_exit('webaudio/test_audio_worklet_port.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
   # Tests that audioworklets and workers can be used at the same time
   # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)

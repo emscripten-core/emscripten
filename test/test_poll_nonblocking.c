@@ -10,7 +10,7 @@
 // event-loop callback, where a suspending call would trap (Suspending
 // imports require a stack entered via a promising export).
 
-static void probe(const char* where) {
+void probe(const char* where) {
   struct pollfd pfd;
   pfd.fd = STDOUT_FILENO;
   pfd.events = POLLOUT;
@@ -21,7 +21,7 @@ static void probe(const char* where) {
   printf("poll probe ok from %s\n", where);
 }
 
-static void on_timeout(void* user_data) {
+void on_timeout(void* user_data) {
   probe("callback");
   // A true shutdown even where the runtime is kept alive (e.g. worker
   // threads under PROXY_TO_PTHREAD).

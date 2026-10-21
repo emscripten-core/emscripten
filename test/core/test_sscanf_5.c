@@ -7,7 +7,7 @@
 
 #include "stdio.h"
 
-static const char *colors[] = {"  c black", ". c #001100", "X c #111100"};
+const char *colors[] = {"  c black", ". c #001100", "X c #111100"};
 
 int main() {
   unsigned char code;

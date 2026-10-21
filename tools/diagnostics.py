@@ -20,13 +20,13 @@ ERROR = 2
 
 # color for use for each diagnostic level
 level_colors = {
-    WARN: colored_logger.MAGENTA,
-    ERROR: colored_logger.RED,
+  WARN: colored_logger.MAGENTA,
+  ERROR: colored_logger.RED,
 }
 
 level_prefixes = {
-    WARN: 'warning: ',
-    ERROR: 'error: ',
+  WARN: 'warning: ',
+  ERROR: 'error: ',
 }
 
 

@@ -16,7 +16,7 @@ addToLibrary({
   $FS_handledByPreloadPlugin: async (byteArray, fullname) => {
 #if LibraryManager.has('libbrowser.js')
     // Ensure plugins are ready.
-    if (typeof Browser != 'undefined') Browser.init();
+    if (typeof Browser !== 'undefined') Browser.init();
 #endif
 
     for (var plugin of preloadPlugins) {
@@ -68,7 +68,7 @@ addToLibrary({
 
     try {
       var byteArray = url;
-      if (typeof url == 'string') {
+      if (typeof url === 'string') {
         byteArray = await asyncLoad(url);
       }
 
@@ -85,7 +85,7 @@ addToLibrary({
 
   // convert the 'r', 'r+', etc. to its corresponding set of O_* flags
   $FS_modeStringToFlags: (str) => {
-    if (typeof str != 'string') return str;
+    if (typeof str !== 'string') return str;
     var flagModes = {
       'r': {{{ cDefs.O_RDONLY }}},
       'r+': {{{ cDefs.O_RDWR }}},
@@ -95,7 +95,7 @@ addToLibrary({
       'a+': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
     };
     var flags = flagModes[str];
-    if (typeof flags == 'undefined') {
+    if (typeof flags === 'undefined') {
       throw new Error(`Unknown file open mode: ${str}`);
     }
     return flags;
@@ -108,7 +108,7 @@ addToLibrary({
   },
 
   $FS_fileDataToTypedArray: (data) => {
-    if (typeof data == 'string') {
+    if (typeof data === 'string') {
       data = intArrayFromString(data, true);
     }
     if (!data.subarray) {
@@ -137,17 +137,8 @@ addToLibrary({
         var buf = Buffer.alloc(BUFSIZE);
         var bytesRead = 0;
 
-        // For some reason we must suppress a closure warning here, even though
-        // fd definitely exists on process.stdin, and is even the proper way to
-        // get the fd of stdin,
-        // https://github.com/nodejs/help/issues/2136#issuecomment-523649904
-        // This started to happen after moving this logic out of library_tty.js,
-        // so it is related to the surrounding code in some unclear manner.
-        /** @suppress {missingProperties} */
-        var fd = process.stdin.fd;
-
         try {
-          bytesRead = fs.readSync(fd, buf, 0, BUFSIZE);
+          bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE);
         } catch(e) {
           // Cross-platform differences: on Windows, reading EOF throws an
           // exception, but on other OSes, reading EOF returns 0. Uniformize
@@ -157,7 +148,7 @@ addToLibrary({
         }
 
         if (bytesRead > 0) {
-          result = buf.slice(0, bytesRead).toString('utf-8');
+          result = buf.toString('utf-8', 0, bytesRead);
         }
       } else
 #endif

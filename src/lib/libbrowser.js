@@ -11,12 +11,10 @@ var LibraryBrowser = {
   $workerHandles: 'new HandleAllocator();',
 
   $Browser__deps: [
-    '$callUserCallback',
     '$getFullscreenElement',
-    '$safeSetTimeout',
-    '$warnOnce',
 #if FILESYSTEM
     '$preloadPlugins',
+    '$safeSetTimeout',
 #if MAIN_MODULE
     '$preloadedWasm',
 #endif
@@ -103,7 +101,7 @@ var LibraryBrowser = {
             err(`warning: browser could not fully decode audio ${name}, trying slower base64 approach`);
             function encode64(data) {
               var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-              var PAD = '=';
+              const PAD = '=';
               var ret = '';
               var leftchar = 0;
               var leftbits = 0;
@@ -132,7 +130,7 @@ var LibraryBrowser = {
           // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
           safeSetTimeout(() => {
             finish(audio); // try to use it even though it is not necessarily ready to play
-          }, 10000);
+          }, 10_000);
         });
       };
       preloadPlugins.push(audioPlugin);
@@ -177,7 +175,7 @@ var LibraryBrowser = {
 #if MIN_WEBGL_VERSION >= 2
           majorVersion: 2,
 #elif MAX_WEBGL_VERSION >= 2 // libbrowser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
-          majorVersion: (typeof WebGL2RenderingContext != 'undefined') ? 2 : 1,
+          majorVersion: (typeof WebGL2RenderingContext !== 'undefined') ? 2 : 1,
 #else
           majorVersion: 1,
 #endif
@@ -192,7 +190,7 @@ var LibraryBrowser = {
         // This check of existence of GL is here to satisfy Closure compiler, which yells if variable GL is referenced below but GL object is not
         // actually compiled in because application is not doing any GL operations. TODO: Ideally if GL is not being used, this function
         // Browser.createContext() should not even be emitted.
-        if (typeof GL != 'undefined') {
+        if (typeof GL !== 'undefined') {
           contextHandle = GL.createContext(canvas, contextAttributes);
           if (contextHandle) {
             ctx = GL.getContext(contextHandle).GLctx;
@@ -206,7 +204,7 @@ var LibraryBrowser = {
 
       if (setInModule) {
 #if ASSERTIONS
-        if (!useWebGL) assert(typeof GLctx == 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
+        if (!useWebGL) assert(typeof GLctx === 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
 #endif
         Module['ctx'] = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
@@ -223,8 +221,8 @@ var LibraryBrowser = {
     requestFullscreen(lockPointer, resizeCanvas) {
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
-      if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
-      if (typeof Browser.resizeCanvas == 'undefined') Browser.resizeCanvas = false;
+      if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
+      if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
 
       var canvas = Browser.getCanvas();
       function fullscreenChange() {
@@ -298,15 +296,6 @@ var LibraryBrowser = {
       return true;
     },
 
-    // abort and pause-aware versions TODO: build main loop on top of this?
-
-    safeSetTimeout(func, timeout) {
-      // Legacy function, this is used by the SDL2 port so we need to keep it
-      // around at least until that is updated.
-      // See https://github.com/libsdl-org/SDL/pull/6304
-      return safeSetTimeout(func, timeout);
-    },
-
     getMimetype(name) {
       return {
         'jpg': 'image/jpeg',
@@ -317,10 +306,6 @@ var LibraryBrowser = {
         'wav': 'audio/wav',
         'mp3': 'audio/mpeg'
       }[name.slice(name.lastIndexOf('.')+1)];
-    },
-
-    getUserMedia(func) {
-      return navigator.mediaDevices.getUserMedia(func);
     },
 
     // Browsers specify wheel direction according to the page CSS pixel Y direction:
@@ -452,13 +437,11 @@ var LibraryBrowser = {
       if (!noUpdates) Browser.updateResizeListeners();
     },
 
-    windowedWidth: 0,
-    windowedHeight: 0,
     setFullscreenCanvasSize() {
       // check if SDL is available
-      if (typeof SDL != 'undefined') {
+      if (typeof SDL !== 'undefined') {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
-        flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
+        flags = flags | {{{ cDefs.SDL_FULLSCREEN }}};
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
       Browser.updateCanvasDimensions(Browser.getCanvas());
@@ -467,9 +450,9 @@ var LibraryBrowser = {
 
     setWindowedCanvasSize() {
       // check if SDL is available
-      if (typeof SDL != 'undefined') {
+      if (typeof SDL !== 'undefined') {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
-        flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
+        flags = flags & ~{{{ cDefs.SDL_FULLSCREEN }}};
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
       Browser.updateCanvasDimensions(Browser.getCanvas());
@@ -495,7 +478,7 @@ var LibraryBrowser = {
         }
       }
 #endif
-      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen != 'undefined')) {
+      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen !== 'undefined')) {
          var factor = Math.min(screen.width / w, screen.height / h);
          w = Math.round(w * factor);
          h = Math.round(h * factor);
@@ -503,14 +486,14 @@ var LibraryBrowser = {
       if (Browser.resizeCanvas) {
         if (canvas.width  != w) canvas.width  = w;
         if (canvas.height != h) canvas.height = h;
-        if (typeof canvas.style != 'undefined') {
+        if (typeof canvas.style !== 'undefined') {
           canvas.style.removeProperty( 'width');
           canvas.style.removeProperty('height');
         }
       } else {
         if (canvas.width  != wNative) canvas.width  = wNative;
         if (canvas.height != hNative) canvas.height = hNative;
-        if (typeof canvas.style != 'undefined') {
+        if (typeof canvas.style !== 'undefined') {
           if (w != wNative || h != hNative) {
             canvas.style.setProperty( 'width', w + 'px', 'important');
             canvas.style.setProperty('height', h + 'px', 'important');
@@ -525,7 +508,6 @@ var LibraryBrowser = {
 
   $requestFullscreen: 'Browser.requestFullscreen',
   $setCanvasSize: 'Browser.setCanvasSize',
-  $getUserMedia: 'Browser.getUserMedia',
   $createContext: 'Browser.createContext',
 
   emscripten_run_preload_plugins__deps: ['$PATH'],
@@ -534,16 +516,19 @@ var LibraryBrowser = {
     {{{ runtimeKeepalivePush() }}}
 
     var _file = UTF8ToString(file);
-    var data = FS.analyzePath(_file);
-    if (!data.exists) return -1;
-    // Here we assume data.object.contents is a TypedArray.
+    var contents;
+    try {
+      contents = FS.readFile(_file);
+    } catch (e) {
+      return -1;
+    }
 #if ASSERTIONS
-    assert(data.object.contents.subarray, 'unexpected file content')
+    assert(contents.subarray, 'unexpected file content');
 #endif
     FS.createPreloadedFile(
       PATH.dirname(_file),
       PATH.basename(_file),
-      data.object.contents, /*canRead=*/true, /*canWrite=*/true,
+      contents, /*canRead=*/true, /*canWrite=*/true,
       () => {
         {{{ runtimeKeepalivePop() }}}
         if (onload) {{{ makeDynCall('vp', 'onload') }}}(file);
@@ -592,7 +577,7 @@ var LibraryBrowser = {
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
-  emscripten_async_load_script__deps: ['$UTF8ToString', '$runDependencies', '$resolveRunDependencies'],
+  emscripten_async_load_script__deps: ['$UTF8ToString', '$runDependencies', '$resolveRunDependencies', '$callUserCallback'],
   emscripten_async_load_script: async (url, onload, onerror) => {
     url = UTF8ToString(url);
 #if PTHREADS
@@ -644,7 +629,7 @@ var LibraryBrowser = {
 
   emscripten_get_window_title__proxy: 'sync',
   emscripten_get_window_title: () => {
-    var buflen = 256;
+    const buflen = 256;
 
     if (!_emscripten_get_window_title.buffer) {
       _emscripten_get_window_title.buffer = _malloc(buflen);
@@ -813,7 +798,7 @@ var LibraryBrowser = {
   emscripten_get_preloaded_image_data: (path, w, h) => getPreloadedImageData(UTF8ToString(path), w, h),
 
   $getPreloadedImageData__internal: true,
-  $getPreloadedImageData__data: ['$PATH_FS', 'malloc'],
+  $getPreloadedImageData__deps: ['$PATH_FS', 'malloc'],
   $getPreloadedImageData: (path, w, h) => {
     path = PATH_FS.resolve(path);
 

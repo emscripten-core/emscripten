@@ -21,36 +21,36 @@ preserve_files = ('readme.txt', '__assertion_handler', '__config_site')
 excludes = ('CMakeLists.txt', 'ryu_long_double_constants.h')
 
 libc_copy_dirs = [
-    'hdr',
-    'include/llvm-libc-macros',
-    'include/llvm-libc-types',
-    'shared',
-    'config',
-    'src/__support',
-    'src/assert',
-    'src/complex',
-    'src/errno',
-    'src/inttypes',
-    'src/math',
-    'src/setjmp',
-    'src/stdio/printf_core',
-    'src/stdlib',
-    'src/string',
-    'src/strings',
-    'src/wchar',
+  'hdr',
+  'include/llvm-libc-macros',
+  'include/llvm-libc-types',
+  'shared',
+  'config',
+  'src/__support',
+  'src/assert',
+  'src/complex',
+  'src/errno',
+  'src/inttypes',
+  'src/math',
+  'src/setjmp',
+  'src/stdio/printf_core',
+  'src/stdlib',
+  'src/string',
+  'src/strings',
+  'src/wchar',
 ]
 
 libc_exclusion_patterns = [
-     # float16 is unsupported in Emscripten.
-    'src/complex/**/*f16*',
-    'src/math/generic/*f16*',
+  # float16 is unsupported in Emscripten.
+  'src/complex/**/*f16*',
+  'src/math/generic/*f16*',
 
-    'src/setjmp/**/*',  # setjmp in Emscripten is implemented by the clang backend.
+  'src/setjmp/**/*',  # setjmp in Emscripten is implemented by the clang backend.
 
-    # locale_t is unsupported in Overlay Mode.
-    'src/strings/str*casecmp_l*',
-    'src/stdlib/str*_l.*',
-    'src/string/str*_l.*',
+  # locale_t is unsupported in Overlay Mode.
+  'src/strings/str*casecmp_l*',
+  'src/stdlib/str*_l.*',
+  'src/string/str*_l.*',
 ]
 
 

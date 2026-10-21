@@ -51,11 +51,11 @@ def parseFiles():
         # print data_type
         # print api_item
 
-        api_reference_items[api_item] = ':%s:%s:`%s`' % (lang, data_type, api_item)
+        api_reference_items[api_item] = f':{lang}:{data_type}:`{api_item}`'
         # Add additional index for functions declared as func() rather than just func
         if data_type == 'func':
             api_item_index = api_item + '()'
-            api_reference_items[api_item_index] = ':%s:%s:`%s`' % (lang, data_type, api_item)
+            api_reference_items[api_item_index] = f':{lang}:{data_type}:`{api_item}`'
 
         # print api_reference_items[api_item]
 
@@ -78,7 +78,7 @@ def exportItems():
 
         for key, value in sorted(api_reference_items.items()):
             # Write out each API item to add
-            infile.write("    mapped_wiki_inline_code['%s'] = '%s'\n" % (key, value))
+            infile.write(f"    mapped_wiki_inline_code['{key}'] = '{value}'\n")
 
         # write the return function
         infile.write("    return mapped_wiki_inline_code\n")

@@ -310,6 +310,13 @@ __kmp_i18n_default_messages[] =
         "%1$s: granularity setting: %2$s does not exist in topology.  Using granularity=%3$s instead.",
         "%1$s: hybrid core type detected: %2$d %3$s cores.",
         "%1$s:   %2$d with core efficiency %3$d.",
+        "trait parser while parsing %1$s: error: %2$s",
+        "trait parser while parsing %1$s: invalid value for trait '%2$s' (%3$s)",
+        "trait parser while parsing %1$s: max recursion depth (%2$d) exceeded",
+        "trait parser while parsing %1$s: failed to parse trait specification (%2$s)",
+        "trait parser while parsing %1$s: value %2$d below limit (%3$d)",
+        "trait parser while parsing %1$s: value %2$d above limit (%3$d)",
+        "legacy device number parser while parsing %1$s: failed to parse device number (%2$s)",
         "%1$s must be bound to a work-sharing or work-queuing construct with an \"ordered\" clause",
         "Detected end of %1$s without first executing a corresponding beginning.",
         "Iteration range too large in %1$s.",
@@ -417,6 +424,10 @@ __kmp_i18n_default_messages[] =
         "Target memory not available, will use default allocator.",
         "%1$s ignored: This machine is not a hybrid architecutre. Using \"%2$s\" instead.",
         "%1$s ignored: %2$s is not available. Using \"%3$s\" instead.",
+        "%1$s() called inside a parallel or teams region; call ignored.",
+        "%1$s() called inside a parallel or teams region; call ignored.",
+        "%1$s: malformed device-scope environment variable name; expected `_ALL`, `_DEV`, or `_DEV_<n>` with a non-negative integer device id; ignored.",
+        "%1$s: device-scope environment variable suffix (`_ALL`/`_DEV`/`_DEV_<n>`) is not allowed on this base name (global-scope ICV); ignored.",
         NULL
     };
 
@@ -469,7 +480,7 @@ __kmp_i18n_sections[] =
         { 5, __kmp_i18n_default_meta },
         { 79, __kmp_i18n_default_strings },
         { 6, __kmp_i18n_default_formats },
-        { 301, __kmp_i18n_default_messages },
+        { 312, __kmp_i18n_default_messages },
         { 29, __kmp_i18n_default_hints },
         { 0, NULL }
     };

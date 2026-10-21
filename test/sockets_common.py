@@ -18,11 +18,10 @@ from subprocess import Popen
 
 import clang_native
 import common
-from common import PYTHON
+from common import CLANG_CC, EMCC, PYTHON
 from decorators import test_file
 
 from tools import config
-from tools.shared import CLANG_CC, EMCC
 from tools.utils import run_process
 
 npm_checked = False
@@ -123,7 +122,7 @@ class WebsockifyServerHarness:
       self.processes.append(process)
 
     # start the websocket proxy
-    print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
+    print(f'running websockify on {self.listen_port}, forward to tcp {self.target_port}', file=sys.stderr)
     # source_is_ipv6=True here signals to websockify that it should prefer ipv6 address when
     # resolving host names.  This matches what the node `ws` module does and means that `localhost`
     # resolves to `::1` on IPv6 systems.
@@ -139,7 +138,7 @@ class WebsockifyServerHarness:
       self.clean_processes()
       raise Exception('[Websockify proxy failed to start up in a timely manner]')
 
-    print('[Websockify on process %s]' % str(self.processes[-2:]))
+    print(f'[Websockify on process {self.processes[-2:]}]')
     return self
 
   def __exit__(self, *args, **kwargs):

@@ -1,12 +1,12 @@
 /* ----------------------------------------------------------------------------
-Copyright (c) 2018-2024, Microsoft Research, Daan Leijen
+Copyright (c) 2018-2026, Microsoft Research, Daan Leijen
 This is free software; you can redistribute it and/or modify it under the
 terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 
 // --------------------------------------------------------
-// This module defines various std libc functions to reduce
+// This module defines various standard libc functions to reduce
 // the dependency on libc, and also prevent errors caused
 // by some libc implementations when called before `main`
 // executes (due to malloc redirection)
@@ -39,8 +39,8 @@ bool _mi_streq(const char* s, const char* t) {
   return (*s == *t);
 }
 
-void _mi_strlcpy(char* dest, const char* src, size_t dest_size) {
-  if (dest==NULL || src==NULL || dest_size == 0) return;
+bool _mi_strlcpy(char* dest, const char* src, size_t dest_size) {
+  if (dest==NULL || src==NULL || dest_size == 0) return (src==NULL || *src==0);
   // copy until end of src, or when dest is (almost) full
   while (*src != 0 && dest_size > 1) {
     *dest++ = *src++;
@@ -48,17 +48,18 @@ void _mi_strlcpy(char* dest, const char* src, size_t dest_size) {
   }
   // always zero terminate
   *dest = 0;
+  return (*src == 0);
 }
 
-void _mi_strlcat(char* dest, const char* src, size_t dest_size) {
-  if (dest==NULL || src==NULL || dest_size == 0) return;
+bool _mi_strlcat(char* dest, const char* src, size_t dest_size) {
+  if (dest==NULL || src==NULL || dest_size == 0) return (src==NULL || *src==0);
   // find end of string in the dest buffer
   while (*dest != 0 && dest_size > 1) {
     dest++;
     dest_size--;
   }
   // and catenate
-  _mi_strlcpy(dest, src, dest_size);
+  return _mi_strlcpy(dest, src, dest_size);
 }
 
 size_t _mi_strnlen(const char* s, size_t max_len) {
@@ -76,7 +77,7 @@ char* _mi_strnstr(char* s, size_t max_len, const char* pat) {
   if (s==NULL) return NULL;
   if (pat==NULL) return s;
   const size_t m = _mi_strnlen(s, max_len);
-  const size_t n = _mi_strlen(pat);  
+  const size_t n = _mi_strlen(pat);
   for (size_t start = 0; start + n <= m; start++) {
     size_t i = 0;
     while (i<n && pat[i]==s[start+i]) {
@@ -96,7 +97,7 @@ int _mi_getenv(const char* name, char* result, size_t result_size) {
 }
 #else
 int _mi_getenv(const char* name, char* result, size_t result_size) {
-  if (name==NULL || result == NULL || result_size < 64) return false;
+  if (name==NULL || result == NULL || result_size < 64) return ENOENT;
   // change the result of _mi_prim_getenv to an errno result
   const int res = _mi_prim_getenv(name,result,result_size);
   return (res > 0 ? 0 : (res == 0 ? ENOENT : EAGAIN));
@@ -118,7 +119,7 @@ bool _mi_atomic_once_enter(mi_atomic_once_t* once) {
   }
   const mi_threadid_t current_tid = _mi_thread_id();
   if (once_tid == current_tid) {
-    return false; // recursive invocation; we need this for process_init for example
+    return false; // recursive invocation; don't block on ourselves
   }
 
   mi_lock_acquire(&once->lock);
@@ -138,6 +139,96 @@ void _mi_atomic_once_release(mi_atomic_once_t* once) {
     mi_lock_release(&once->lock);
   }
 }
+
+#if MI_USE_PTHREADS
+mi_decl_noinline bool _mi_pthread_key_create(pthread_key_t* pkey, void (*destruct)(void*), void* init) {
+  int err = pthread_key_create(pkey,destruct);
+  if mi_unlikely(err!=0) {
+    *pkey = MI_PTHREAD_KEY_INVALID;
+    _mi_error_message(ENOMEM,"unable to allocate a thread local variable (error %d)\n", err);
+    return false;
+  }
+  mi_assert_internal(*pkey != MI_PTHREAD_KEY_INVALID);
+  if (init!=NULL) {
+    pthread_setspecific(*pkey,init);
+  };
+  mi_assert_internal(pthread_getspecific(*pkey)==init);
+  return true;
+}
+#endif
+
+// --------------------------------------------------------
+// Detect CPU features
+// --------------------------------------------------------
+mi_decl_cache_align size_t _mi_cpu_movsb_max = 0;  // for size <= max, rep movsb is fast
+mi_decl_cache_align size_t _mi_cpu_stosb_max = 0;  // for size <= max, rep stosb is fast
+mi_decl_cache_align bool   _mi_cpu_has_popcnt = false;
+
+#if (MI_ARCH_X64 || MI_ARCH_X86)
+#if defined(__GNUC__)
+// #include <cpuid.h>
+static bool mi_cpuid(uint32_t* regs4, uint32_t level, uint32_t sublevel) {
+  // note: use explicit assembly instead of __get_cpuid as we need the sublevel (in ecx)
+  // (on Ubuntu 22 with WSL the __get_cpuid does not clear ecx for level 7 which is incorrect).
+  uint32_t eax, ebx, ecx, edx;
+  __asm __volatile("cpuid" : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx) : "a"(level), "c"(sublevel) : );
+  regs4[0] = eax;
+  regs4[1] = ebx;
+  regs4[2] = ecx;
+  regs4[3] = edx;
+  return true;
+}
+
+#elif defined(_MSC_VER)
+static bool mi_cpuid(uint32_t* regs4, uint32_t level, uint32_t sublevel) {
+  __cpuidex((int32_t*)regs4, (int32_t)level, (int32_t)sublevel);
+  return true;
+}
+#else
+static bool mi_cpuid(uint32_t* regs4, uint32_t level, uint32_t sublevel) {
+  MI_UNUSED(regs4); MI_UNUSED(level); MI_UNUSED(sublevel);
+  return false;
+}
+#endif
+
+void _mi_detect_cpu_features(void) {
+  // FSRM for fast short rep movsb support (AMD Zen3+ (~2020) or Intel Ice Lake+ (~2017))
+  // EMRS for fast enhanced rep movsb/stosb support (not used at the moment, memcpy always seems faster?)
+  // FSRS for fast short rep stosb
+  bool amd = false;
+  bool fsrm = false;
+  // bool erms = false;
+  bool fsrs = false;
+  uint32_t cpu_info[4];
+  if (mi_cpuid(cpu_info, 0, 0)) {
+    amd = (cpu_info[2]==0x444d4163); // (Auth enti cAMD)
+  }
+  if (mi_cpuid(cpu_info, 7, 0)) {
+    fsrm = ((cpu_info[3] & (1 << 4)) != 0); // bit 4 of EDX : see <https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features>
+    // erms = ((cpu_info[1] & (1 << 9)) != 0); // bit 9 of EBX : see <https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features>
+  }
+  if (mi_cpuid(cpu_info, 7, 1)) {
+    fsrs = ((cpu_info[1] & (1 << 11)) != 0); // bit 11 of EBX: see <https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=1:_Extended_Features>
+  }
+  if (mi_cpuid(cpu_info, 1, 0)) {
+    _mi_cpu_has_popcnt = ((cpu_info[2] & (1 << 23)) != 0); // bit 23 of ECX : see <https://en.wikipedia.org/wiki/CPUID#EAX=1:_Processor_Info_and_Feature_Bits>
+  }
+
+  if (fsrm) {
+    _mi_cpu_movsb_max = 127;
+  }
+  if (fsrs || (amd && fsrm)) {  // fsrm on amd implies fsrs, see: https://marc.info/?l=git-commits-head&m=168186277717803
+    _mi_cpu_stosb_max = 127;
+  }
+}
+
+#else
+void _mi_detect_cpu_features(void) {
+  #if MI_ARCH_ARM64
+  _mi_cpu_has_popcnt = true;
+  #endif
+}
+#endif
 
 
 // --------------------------------------------------------
@@ -198,22 +289,20 @@ static void mi_out_num(uintmax_t x, size_t base, char prefix, char** out, char* 
     mi_outc('0',out,end);
   }
   else {
-    // output digits in reverse
-    char* start = *out;
-    while (x > 0) {
+    #define MI_MAX_OUT_DIGITS (160)     /* a 512 bit number has 155 digits */
+    char num[MI_MAX_OUT_DIGITS];  
+    int dcount = 0;
+    while(x>0 && dcount < MI_MAX_OUT_DIGITS) {
       char digit = (char)(x % base);
-      mi_outc((digit <= 9 ? '0' + digit : 'A' + digit - 10),out,end);
+      num[dcount++] = (digit <= 9 ? '0' + digit : 'A' + digit - 10);
       x = x / base;
     }
+    if (dcount>=MI_MAX_OUT_DIGITS) return;  // don't output anything?
     if (prefix != 0) {
       mi_outc(prefix, out, end);
     }
-    size_t len = *out - start;
-    // and reverse in-place
-    for (size_t i = 0; i < (len / 2); i++) {
-      char c = start[len - i - 1];
-      start[len - i - 1] = start[i];
-      start[i] = c;
+    while(dcount-- > 0) {
+      mi_outc(num[dcount], out, end);
     }
   }
 }
@@ -260,7 +349,10 @@ int _mi_vsnprintf(char* buf, size_t bufsize, const char* fmt, va_list args) {
       if (c >= '1' && c <= '9') {
         width = (c - '0'); MI_NEXTC();
         while (c >= '0' && c <= '9') {
-          width = (10 * width) + (c - '0'); MI_NEXTC();
+          if (width < SIZE_MAX/1024) {  // no overflow
+            width = (10 * width) + (c - '0');
+          }
+          MI_NEXTC();
         }
         if (c == 0) break;  // extra check due to while
       }
@@ -299,7 +391,7 @@ int _mi_vsnprintf(char* buf, size_t bufsize, const char* fmt, va_list args) {
         if (width == 0 && (c == 'x' || c == 'p')) {
           if (c == 'p')   { width = 2 * (x <= UINT32_MAX ? 4 : ((x >> 16) <= UINT32_MAX ? 6 : sizeof(void*))); }
           if (width == 0) { width = 2; }
-          fill = '0';
+          if (alignright) { fill = '0'; }
         }
         mi_out_num(x, (c == 'x' || c == 'p' ? 16 : 10), numplus, &out, end);
       }
@@ -352,6 +444,7 @@ int _mi_snprintf(char* buf, size_t buflen, const char* fmt, ...) {
   return written;
 }
 
+#undef MI_NEXTC
 
 
 // --------------------------------------------------------
@@ -367,7 +460,7 @@ static size_t mi_ctz_generic32(uint32_t x) {
     31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
   };
   if (x==0) return 32;
-  return debruijn[(uint32_t)((x & -(int32_t)x) * (uint32_t)(0x077CB531U)) >> 27];
+  return debruijn[(uint32_t)((x & (~x + 1U)) * (uint32_t)(0x077CB531U)) >> 27];
 }
 
 static size_t mi_clz_generic32(uint32_t x) {

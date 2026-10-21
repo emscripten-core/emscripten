@@ -5,6 +5,7 @@
 # found in the LICENSE file.
 
 import os
+import sys
 
 
 def path_to_bin(emscripten_root, bin_name):
@@ -16,6 +17,7 @@ def path_to_bin(emscripten_root, bin_name):
 
 def generate(env, **_kw):
   """SCons tool entry point."""
+  print('emscripten: warning: SCons integration is deprecated (see https://github.com/emscripten-core/emscripten/issues/27835)', file=sys.stderr)
   # SCons does not by default invoke the compiler with the
   # environment variables from the parent calling process,
   # so manually route all environment variables referenced

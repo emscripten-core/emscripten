@@ -74,9 +74,8 @@ int main(void) {
   dest.sin_port = htons(1); // nothing listens on loopback port 1
   inet_pton(AF_INET, "127.0.0.1", &dest.sin_addr);
 
-  // A non-blocking connect may return 0 (emscripten) or -1/EINPROGRESS
-  // (native), or refuse synchronously. The async failure is checked via
-  // SO_ERROR in the main loop below.
+  // A non-blocking connect may return -1/EINPROGRESS, or refuse synchronously.
+  // The async failure is checked via SO_ERROR in the main loop below.
   int r = connect(fd, (struct sockaddr*)&dest, sizeof(dest));
   if (r == -1 && errno == ECONNREFUSED) {
     printf("connect resolved with errno %d (%s)\n", errno, strerror(errno));

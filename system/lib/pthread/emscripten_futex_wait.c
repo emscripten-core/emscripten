@@ -85,10 +85,7 @@ static int futex_wait_main_browser_thread(volatile void* addr,
       // We were told to stop waiting, so stop.
       break;
     }
-    bool timer_fired = _emscripten_yield(now);
-    if (timer_fired) {
-      return -EINTR;
-    }
+    _emscripten_yield(now);
 
     // Check the value, as if we were starting the futex all over again.
     // This handles the following case:
@@ -163,9 +160,13 @@ static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
     return futex_wait_main_browser_thread(addr, val, max_wait_ms, cancelable);
   }
 
-  bool is_runtime_thread = emscripten_is_main_runtime_thread();
-  if (is_runtime_thread) {
-    max_wait_ms = fmin(max_wait_ms, fmax(0, _emscripten_next_timer()));
+  bool timeout_adjusted = false;
+  if (emscripten_is_main_runtime_thread()) {
+    double next_timer = _emscripten_next_timer();
+    if (next_timer < max_wait_ms) {
+      max_wait_ms = fmax(0, next_timer);
+      timeout_adjusted = true;
+    }
   }
 
   // -1 (or any negative number) means wait indefinitely.
@@ -188,7 +189,7 @@ static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   }
 
   // Clear the wait_addr
-  bool notified = atomic_exchange(&self->wait_addr, 0) & NOTIFY_BIT;
+  self->wait_addr = 0;
 
   // Here we are mimicking the behaviour of musl's __syscall_cp_c which wraps
   // the linux futex syscall.
@@ -196,28 +197,26 @@ static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
     return __cancel();
   }
 
-  DBG("emscripten_futex_wait done notified=%d cancelable=%d cancel=%d", notified, cancelable, self->cancel);
+  DBG("emscripten_futex_wait done cancelable=%d cancel=%d", cancelable, self->cancel);
+#else // __EMSCRIPTEN_PTHREADS__
+  ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
+#endif // __EMSCRIPTEN_PTHREADS__
 
   // Pass 0 here, which means we don't have access to the current time in this
   // function.  This tells _emscripten_yield to call emscripten_get_now if (and
   // only if) it needs to know the time.
-  bool timer_fired = _emscripten_yield(0);
-  if (notified || timer_fired) {
-    return -EINTR;
-  }
-#else // __EMSCRIPTEN_PTHREADS__
-  ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
-  bool timer_fired = _emscripten_yield(0);
-  if (timer_fired) {
-    return -EINTR;
-  }
-#endif // __EMSCRIPTEN_PTHREADS__
-
+  _emscripten_yield(0);
 
   if (ret == ATOMICS_WAIT_NOT_EQUAL) {
     return -EWOULDBLOCK;
   }
   if (ret == ATOMICS_WAIT_TIMED_OUT) {
+    if (timeout_adjusted) {
+      // If the wait duration was shortened to service the next timer (rather
+      // than the caller's actual timeout expiring), treat this as a spurious
+      // wakeup rather.
+      return 0;
+    }
     return -ETIMEDOUT;
   }
   assert(ret == ATOMICS_WAIT_OK);

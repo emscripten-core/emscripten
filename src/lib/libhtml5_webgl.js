@@ -9,7 +9,7 @@ var LibraryHtml5WebGL = {
   $writeGLArray: (arr, dst, dstLength, heapType) => {
 #if ASSERTIONS
     assert(arr);
-    assert(typeof arr.length != 'undefined');
+    assert(typeof arr.length !== 'undefined');
 #endif
     var len = arr.length;
     var writeLength = dstLength < len ? dstLength : len;
@@ -43,6 +43,8 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_get_current_context: 'emscripten_webgl_do_get_current_context',
 
   emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
+
+  emscripten_webgl_destroy_context: 'emscripten_webgl_do_destroy_context',
 #endif
 
 #if OFFSCREENCANVAS_SUPPORT
@@ -153,7 +155,7 @@ var LibraryHtml5WebGL = {
 
 #if GL_DEBUG
     if (_emscripten_supports_offscreencanvas() && canvas instanceof OffscreenCanvas) dbg(`emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "${targetStr}"`);
-    else if (typeof HTMLCanvasElement != 'undefined' && canvas instanceof HTMLCanvasElement) dbg(`emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "${targetStr}"`);
+    else if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) dbg(`emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "${targetStr}"`);
 #endif
 
     if (contextAttributes.explicitSwapControl) {
@@ -270,7 +272,7 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_do_commit_frame: () => {
 #if TRACE_WEBGL_CALLS
-    var threadId = (typeof _pthread_self != 'undefined') ? _pthread_self : () => 1;
+    var threadId = (typeof _pthread_self !== 'undefined') ? _pthread_self : () => 1;
     err(`[Thread ${threadId()}, GL ctx: ${GL.currentContext.handle}]: emscripten_webgl_do_commit_frame()`);
 #endif
     if (!GL.currentContext || !GL.currentContext.GLctx) {
@@ -331,20 +333,11 @@ var LibraryHtml5WebGL = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_destroy_context: (contextHandle) => {
+  emscripten_webgl_do_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
+  emscripten_webgl_do_destroy_context: (contextHandle) => {
     if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);
   },
-
-#if PTHREADS
-  // Special function that will be invoked on the thread calling emscripten_webgl_destroy_context(), before routing
-  // the call over to the target thread.
-  $emscripten_webgl_destroy_context_before_on_calling_thread__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
-  $emscripten_webgl_destroy_context_before_on_calling_thread: (contextHandle) => {
-    if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
-  },
-#endif
 
   emscripten_webgl_enable_extension__deps: [
 #if GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
@@ -415,7 +408,7 @@ var LibraryHtml5WebGL = {
     // TODO: Add a new build mode, e.g. OFFSCREENCANVAS_SUPPORT=2, which
     // necessitates OffscreenCanvas support at build time, and "return 1;" here in that build mode.
 #if OFFSCREENCANVAS_SUPPORT
-    typeof OffscreenCanvas != 'undefined'
+    typeof OffscreenCanvas !== 'undefined'
 #else
     0
 #endif
@@ -601,11 +594,7 @@ function handleWebGLProxying(funcs) {
       const funcArgsString = funcArgs.join();
       const retStatement = sig[0] != 'v' ? 'return' : '';
       const contextCheck = proxyContextHandle ? 'GL.contexts[p0]' : 'GLctx';
-      var funcBody = `${retStatement} ${contextCheck} ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;
-      if (funcs[i + '_before_on_calling_thread']) {
-        funcs[i + '__deps'].push('$' + i + '_before_on_calling_thread');
-        funcBody = `${i}_before_on_calling_thread(${funcArgsString}); ` + funcBody;
-      }
+      const funcBody = `${retStatement} ${contextCheck} ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;
       funcs[i] = new Function(funcArgs, funcBody);
     } else if (targetingOffscreenFramebuffer) {
       // When targeting only OFFSCREEN_FRAMEBUFFER, unconditionally proxy all GL

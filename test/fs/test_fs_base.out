@@ -1,4 +1,5 @@
 /
+warning: FS.analyzePath is deprecated; use FS.lookupPath or FS.stat instead
   isRoot: true
   exists: true
   error: 0

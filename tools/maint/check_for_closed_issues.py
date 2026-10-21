@@ -37,7 +37,7 @@ def main():
       continue
     issue = match[2]
     if is_closed(issue):
-      print('Reference to closed github issue (#%s):' % issue)
+      print(f'Reference to closed github issue (#{issue}):')
       print(line)
 
 

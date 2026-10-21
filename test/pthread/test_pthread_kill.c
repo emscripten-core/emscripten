@@ -76,13 +76,11 @@ int main() {
 
   s = pthread_kill(child_thread, SIGTERM);
   assert(s == 0);
-  printf("SIGTERM sent\n");
 
-  pthread_join(child_thread, NULL);
-  printf("joined child_thread\n");
   while (!got_sigusr1) {
     sleepms(1);
   }
-  printf("got SIGUSR1. all done.\n");
+  pthread_join(child_thread, NULL);
+  printf("joined child_thread\n");
   return 0;
 }

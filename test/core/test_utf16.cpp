@@ -27,7 +27,7 @@ EM_JS(void, roundtripString, (const char16_t* str, int strBytes, char16_t* resul
   if (bytesWritten != resultBytes - 2) throw 'stringToUTF16 wrote an invalid length: ' + numBytesWritten;
 });
 
-static void testString(const char16_t* arg) {
+void testString(const char16_t* arg) {
   // Test with null-terminated string.
   std::u16string strz(arg);
   char16_t* result = new char16_t[strz.size() + 1]();

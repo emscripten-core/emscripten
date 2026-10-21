@@ -8,8 +8,8 @@ HASH = '2175d11a90211871f2289c8d57b31fe830e4b46af7361925c2c30cd521c1c677d2ee244f
 
 deps = ['sdl2']
 variants = {
-  'sdl2_image-wasmsjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': 0},
-  'sdl2_image-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': 1},
+  'sdl2_image-wasmsjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': False},
+  'sdl2_image-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': True},
   'sdl2_image-jpg':    {'SDL2_IMAGE_FORMATS': ["jpg"]},
   'sdl2_image-png':    {'SDL2_IMAGE_FORMATS': ["png"]},
   'sdl2_image-jpg-mt': {'SDL2_IMAGE_FORMATS': ["jpg"], 'PTHREADS': 1},
@@ -81,7 +81,7 @@ def get(ports, settings, shared):
 
     if settings.SUPPORT_LONGJMP == 'wasm':
       flags.append('-sSUPPORT_LONGJMP=wasm')
-      flags.append(f'-sWASM_LEGACY_EXCEPTIONS={settings.WASM_LEGACY_EXCEPTIONS}')
+      flags.append(f'-sWASM_LEGACY_EXCEPTIONS={int(settings.WASM_LEGACY_EXCEPTIONS)}')
 
     ports.build_port(src_dir, final, 'sdl2_image', flags=flags, srcs=srcs)
 

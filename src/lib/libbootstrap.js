@@ -57,7 +57,7 @@ addToLibrary({
       var ptr = {{{ makeGetValue('iov', 0, '*') }}};
       var len = {{{ makeGetValue('iov', POINTER_SIZE, '*') }}};
       iov += {{{ POINTER_SIZE }}} * 2;
-      process.stdout.write(HEAPU8.subarray(ptr, ptr + len));
+      fs.writeSync(fd, HEAPU8, ptr, len);
       num += len;
     }
     {{{ makeSetValue('pnum', 0, 'num', '*') }}};

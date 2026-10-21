@@ -71,9 +71,7 @@ var LibraryWget = {
     } catch (e) {
       if (onerror) {
         {{{ runtimeKeepalivePop() }}}
-        callUserCallback(() => {
-          {{{ makeDynCall('vp', 'onerror') }}}(userdata);
-        });
+        callUserCallback({{{ makeDynCall('vp', 'onerror') }}}, userdata);
       }
     }
   },

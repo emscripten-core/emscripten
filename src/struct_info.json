@@ -94,6 +94,19 @@
         }
     },
     {
+        "file": "sys/utsname.h",
+        "structs": {
+            "utsname": [
+                "sysname",
+                "nodename",
+                "release",
+                "version",
+                "machine",
+                "domainname"
+            ]
+        }
+    },
+    {
         "file": "fcntl.h",
         "defines": [
             "F_UNLCK",
@@ -206,7 +219,8 @@
             "NI_NAMEREQD",
             "EAI_NONAME",
             "EAI_SOCKTYPE",
-            "EAI_BADFLAGS"
+            "EAI_BADFLAGS",
+            "EAI_AGAIN"
         ],
         "structs": {
             "addrinfo": [
@@ -327,8 +341,22 @@
              "AF_UNIX",
              "SOL_SOCKET",
              "SO_ERROR",
-             "SO_REUSEPORT"
+             "SO_REUSEPORT",
+             "SO_RCVTIMEO",
+             "SO_SNDTIMEO",
+             "SO_ACCEPTCONN",
+             "SO_DOMAIN",
+             "SO_PROTOCOL"
         ]
+    },
+    {
+        "file": "sys/time.h",
+        "structs": {
+            "timeval": [
+                "tv_sec",
+                "tv_usec"
+            ]
+        }
     },
     {
         "file": "sys/un.h",
@@ -582,7 +610,8 @@
           "SDL_HWSURFACE",
           "SDL_OPENGL",
           "SDL_BUTTON_WHEELUP",
-          "SDL_BUTTON_WHEELDOWN"
+          "SDL_BUTTON_WHEELDOWN",
+          "SDL_FULLSCREEN"
         ]
     },
     {

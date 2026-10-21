@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-static const struct {
+const struct {
   unsigned char left;
   unsigned char right;
 } prioritah[] = {{6, 6}, {6, 6}, {7, 95}, {7, 7}};

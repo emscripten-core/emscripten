@@ -43,8 +43,8 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   kw.setdefault('text', True)
   if kw['text']:
     kw.setdefault('encoding', 'utf-8')
-  ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
-  debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex.join(cmd))
+  ret = subprocess.run(cmd, *args, check=check, input=input, **kw)
+  debug_text = f"{'successfully ' if check else ''}executed {shlex.join(cmd)}"
   logger.debug(debug_text)
   return ret
 
@@ -92,10 +92,9 @@ def find_exe(*pathelems):
 
   if WINDOWS:
     # Should we use PATHEXT environment variable here?
-    # For now, specify only enough extensions to find llvm / binaryen / emscripten executables.
-    for ext in ['.exe', '.bat']:
-      if os.path.isfile(path + ext):
-        return path + ext
+    # For now, specify only .exe since that is what is used by llvm, binaryen
+    # and emscripten executables.
+    return path + '.exe'
 
   return path
 
@@ -177,6 +176,18 @@ def read_binary(file_path):
   """Read from a file opened in binary mode."""
   with open(file_path, 'rb') as fh:
     return fh.read()
+
+
+def is_ar(filename):
+  """Return True if the given filename is an ar archive, False otherwise."""
+  try:
+    with open(filename, 'rb') as f:
+      header = f.read(8)
+  except Exception as e:
+    logger.debug(f'is_ar failed to test whether file \'{filename}\' is a llvm archive file! Failed on exception: {e}')
+    return False
+
+  return header in {b'!<arch>\n', b'!<thin>\n'}
 
 
 def write_file(file_path, text, line_endings=None):

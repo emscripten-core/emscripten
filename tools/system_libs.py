@@ -15,6 +15,7 @@ import subprocess
 import textwrap
 from enum import IntEnum, auto
 from glob import iglob
+from pathlib import Path
 from time import time
 
 from . import building, cache, diagnostics, shared, utils
@@ -84,7 +85,7 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
 
 
 def get_build_dir():
-  return cache.get_path('build')
+  return cache.get_path(Path('build', cache.get_lib_dir_relative()))
 
 
 def clean_env():
@@ -179,6 +180,7 @@ def run_ninja(build_dir):
 def ensure_target_in_ninja_file(ninja_file, target):
   if os.path.isfile(ninja_file) and target in read_file(ninja_file):
     return
+  utils.safe_ensure_dirs(os.path.dirname(ninja_file))
   with open(ninja_file, 'a', encoding='utf-8') as f:
     f.write(target + '\n')
 
@@ -444,16 +446,12 @@ class Library:
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def get_link_flag(self):
-    """Get the link flags needed to use the library.
-
-    This will trigger a build if this library is not in the cache.
-    """
-    fullpath = self.build()
+    """Get the link flags needed to use the library."""
     # For non-libraries (e.g. crt1.o) we pass the entire path to the linker
     if self.get_ext() != '.a':
-      return fullpath
+      return self.get_path(absolute=True)
     # For libraries (.a) files, we pass the abbreviated `-l` form.
-    base = utils.unsuffixed_basename(fullpath)
+    base = utils.unsuffixed_basename(self.get_filename())
     return '-l' + base.removeprefix('lib')
 
   def get_files(self):
@@ -711,8 +709,13 @@ class MTLibrary(Library):
     cflags = super().get_cflags()
     if self.is_mt:
       cflags += ['-pthread']
-    if self.is_ww:
+    elif self.is_ww:
       cflags += ['-sWASM_WORKERS']
+    else:
+      # Posix thread model is the default even without the -pthread flag. This
+      # is safe because non-mt versions of MT libraries never get linked into
+      # MT binaries.
+      cflags += ['-mthread-model', 'single', '-fno-threadsafe-statics']
     return cflags
 
   def get_base_name(self):
@@ -955,13 +958,13 @@ class libclang_rt_builtins(MTLibrary, SjLjLibrary):
   force_object_files = True
 
   cflags = [
-      '-fno-builtin',
-      '-DNDEBUG',
-      '-DCOMPILER_RT_HAS_ATOMICS=1',
-      # TODO: Remove this if the emutls_key_created variable in emutls.c is
-      # fixed or if the scope of the warning is modified again (see
-      # https://github.com/llvm/llvm-project/pull/178342)
-      '-Wno-unused-but-set-variable',
+    '-fno-builtin',
+    '-DNDEBUG',
+    '-DCOMPILER_RT_HAS_ATOMICS=1',
+    # TODO: Remove this if the emutls_key_created variable in emutls.c is
+    # fixed or if the scope of the warning is modified again (see
+    # https://github.com/llvm/llvm-project/pull/178342)
+    '-Wno-unused-but-set-variable',
   ]
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   profile_src_dir = 'system/lib/compiler-rt/lib/profile'
@@ -1023,28 +1026,28 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   never_force = True
   includes = ['system/lib/llvm-libc']
   cflags = [
-      '-Os',
-      '-DLIBC_NAMESPACE=__llvm_libc',
-      '-DLLVM_LIBC',
-      '-DLIBC_COPT_PUBLIC_PACKAGING',
-      # Disable accurate pass to speed up certain math operations
-      '-DLIBC_MATH=LIBC_MATH_FAST',
-      '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
-      # Reduce size bloats from string conversions.
-      '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
-      # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
-      # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
-      '-Wno-unused-variable',
-      '-mrelaxed-simd',
-      '-ffp-contract=fast',
+    '-Os',
+    '-DLIBC_NAMESPACE=__llvm_libc',
+    '-DLLVM_LIBC',
+    '-DLIBC_COPT_PUBLIC_PACKAGING',
+    # Disable accurate pass to speed up certain math operations
+    '-DLIBC_MATH=LIBC_MATH_FAST',
+    '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
+    # Reduce size bloats from string conversions.
+    '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
+    # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
+    # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
+    '-Wno-unused-variable',
+    '-mrelaxed-simd',
+    '-ffp-contract=fast',
   ]
 
   def get_files(self):
     # Overlay mode doesn't support mbstate_t which is used by these sources.
     mbstate_t_excludes = {
-        'wcrtomb.cpp', 'mbrtowc.cpp', 'mbrlen.cpp', 'mbsinit.cpp',
-        'mbsnrtowcs.cpp', 'mbsrtowcs.cpp', 'wcsnrtombs.cpp', 'wcsrtombs.cpp',
-        'mblen.cpp', 'mbtowc.cpp', 'wctomb.cpp', 'mbstowcs.cpp', 'wcstombs.cpp',
+      'wcrtomb.cpp', 'mbrtowc.cpp', 'mbrlen.cpp', 'mbsinit.cpp',
+      'mbsnrtowcs.cpp', 'mbsrtowcs.cpp', 'wcsnrtombs.cpp', 'wcsrtombs.cpp',
+      'mblen.cpp', 'mbtowc.cpp', 'wctomb.cpp', 'mbstowcs.cpp', 'wcstombs.cpp',
     }
 
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
@@ -1143,7 +1146,6 @@ class libc(MuslInternalLibrary,
     other_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-                 'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S',
                  'emscripten_scan_stack.c',
                  'emscripten_get_heap_size.c',  # needed by malloc
                  'emscripten_memmove.c'])
@@ -1178,27 +1180,27 @@ class libc(MuslInternalLibrary,
 
     # musl modules
     ignore = [
-        'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'legacy', 'mq', 'setjmp',
-        'ldso', 'malloc',
+      'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
+      'aio', 'legacy', 'mq', 'setjmp',
+      'ldso', 'malloc',
     ]
 
     # individual files
     ignore += [
-        'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'res_query.c', 'res_querydomain.c',
-        'proto.c',
-        'syscall.c', 'popen.c', 'pclose.c',
-        'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
-        'getauxval.c',
-        'lookup_name.c',
-        # 'process' exclusions
-        'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
-        '_Fork.c',
-        # 'env' exclusions
-        '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
-        # 'exit' exclusions
-        'assert.c', 'exit.c',
+      'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
+      'res_query.c', 'res_querydomain.c',
+      'proto.c',
+      'syscall.c', 'popen.c', 'pclose.c',
+      'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
+      'getauxval.c',
+      'lookup_name.c',
+      # 'process' exclusions
+      'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
+      '_Fork.c',
+      # 'env' exclusions
+      '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
+      # 'exit' exclusions
+      'assert.c', 'exit.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -1392,8 +1394,6 @@ class libc(MuslInternalLibrary,
           'emscripten_memcpy.c',
           'emscripten_memmove.c',
           'emscripten_memset.c',
-          'emscripten_memcpy_bulkmem.S',
-          'emscripten_memset_bulkmem.S',
           'emscripten_mmap.c',
           'emscripten_scan_stack.c',
           'emscripten_time.c',
@@ -1449,19 +1449,9 @@ class libc_optz(libc):
 
   def get_libcall_files(self):
     # see comments in libc.customize_build_cmd
-
-    # some files also appear in libc, and a #define affects them
-    mem_files = files_in_path(
-      path='system/lib/libc',
-      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-                 'emscripten_memmove.c'])
-
-    # some functions have separate files
-    math_files = files_in_path(
+    return files_in_path(
       path='system/lib/libc/musl/src/math',
       filenames=['pow_small.c', 'log_small.c', 'log2_small.c'])
-
-    return mem_files + math_files
 
   def get_files(self):
     libcall_files = self.get_libcall_files()
@@ -1636,14 +1626,14 @@ class crtbegin_mt(MuslInternalLibrary):
 class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
-      '-Oz',
-      '-D_LIBCXXABI_USE_FUTEX',
-      '-D_LIBCPP_BUILDING_LIBRARY',
-      '-D_LIBCXXABI_BUILDING_LIBRARY',
-      '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
-      '-std=c++23',
-      '-Wno-unused-but-set-variable',
-    ]
+    '-Oz',
+    '-D_LIBCXXABI_USE_FUTEX',
+    '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCXXABI_BUILDING_LIBRARY',
+    '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
+    '-std=c++23',
+    '-Wno-unused-but-set-variable',
+  ]
   includes = ['system/lib/libcxx/src', 'system/lib/libunwind/include']
 
   def __init__(self, **kwargs):
@@ -1742,13 +1732,13 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     'time_zone.cpp',
     'tzdb.cpp',
     'tzdb_list.cpp',
-    }
+  }
 
 
 class libunwind(ExceptionLibrary, MTLibrary):
   name = 'libunwind'
-  # Because calls to _Unwind_CallPersonality are generated during LTO, libunwind
-  # can't currently be part of LTO.
+  # Because calls to _Unwind_GetWasmLPadContext are generated during LTO,
+  # libunwind can't currently be part of LTO.
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
@@ -1825,7 +1815,7 @@ class libmalloc(MTLibrary):
     return cflags
 
   def get_base_name_prefix(self):
-    return 'lib%s' % self.malloc
+    return f'lib{self.malloc}'
 
   def get_base_name(self):
     name = super().get_base_name()
@@ -1897,6 +1887,9 @@ class libmimalloc(MTLibrary):
     '-DMI_LIBC_MUSL',
     # enable use of `__builtin_thread_pointer()`
     '-DMI_USE_BUILTIN_THREAD_POINTER',
+    # always use the page map when free-ing a pointer, as we don't support
+    # large OS aligned allocations well
+    '-DMI_FREE_USE_PAGEMAP=1',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
@@ -1915,6 +1908,7 @@ class libmimalloc(MTLibrary):
     excludes={'alloc-override.c', 'free.c', 'page-queue.c', 'static.c'},
   )
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
+  src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim-tls.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
   # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
   src_files += [utils.path_from_root('system/lib/libc/sbrk.c')]
@@ -2334,14 +2328,15 @@ class libopenmp(Library):
   ]
   src_dir = 'system/lib/openmp/src'
   src_files = [
-    'kmp_alloc.cpp', 'kmp_atomic.cpp', 'kmp_csupport.cpp', 'kmp_debug.cpp',
-    'kmp_itt.cpp', 'kmp_environment.cpp', 'kmp_error.cpp', 'kmp_global.cpp',
+    'kmp_adt.cpp', 'kmp_alloc.cpp', 'kmp_atomic.cpp', 'kmp_csupport.cpp',
+    'kmp_debug.cpp', 'kmp_device_env.cpp', 'kmp_itt.cpp', 'kmp_invoke_microtask.cpp',
+    'kmp_environment.cpp', 'kmp_error.cpp', 'kmp_global.cpp',
     'kmp_i18n.cpp', 'kmp_io.cpp', 'kmp_runtime.cpp', 'kmp_settings.cpp',
-    'kmp_str.cpp', 'kmp_tasking.cpp', 'kmp_threadprivate.cpp', 'kmp_utility.cpp',
-    'kmp_barrier.cpp', 'kmp_wait_release.cpp', 'kmp_affinity.cpp', 'kmp_dispatch.cpp',
-    'kmp_lock.cpp', 'kmp_sched.cpp', 'kmp_collapse.cpp', 'z_Linux_util.cpp',
-    'kmp_gsupport.cpp', 'kmp_taskdeps.cpp', 'kmp_cancel.cpp', 'kmp_ftn_cdecl.cpp',
-    'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S',
+    'kmp_str.cpp', 'kmp_tasking.cpp', 'kmp_threadprivate.cpp', 'kmp_traits.cpp',
+    'kmp_utility.cpp', 'kmp_barrier.cpp', 'kmp_wait_release.cpp', 'kmp_affinity.cpp',
+    'kmp_dispatch.cpp', 'kmp_lock.cpp', 'kmp_sched.cpp', 'kmp_collapse.cpp',
+    'z_Linux_util.cpp', 'kmp_gsupport.cpp', 'kmp_taskdeps.cpp', 'kmp_cancel.cpp',
+    'kmp_ftn_cdecl.cpp', 'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S',
   ]
 
 
@@ -2383,10 +2378,10 @@ def get_libs_to_link():
       return
     already_included.add(lib.name)
 
-    logger.debug('including %s (%s)' % (lib.name, lib.get_filename()))
+    logger.debug(f'including {lib.name} ({lib.get_filename()})')
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
-    libs_to_link.append((lib.get_link_flag(), whole_archive or need_whole_archive))
+    libs_to_link.append((lib, whole_archive or need_whole_archive))
 
   if not options.nostartfiles:
     if settings.PTHREADS:
@@ -2514,27 +2509,34 @@ def get_libs_to_link():
   return libs_to_link
 
 
+def ensure_libraries(libs):
+  """Ensure all required system libraries in `libs` exist in the cache."""
+  for lib in libs:
+    lib.build()
+
+
 def calculate():
   libs_to_link = get_libs_to_link()
+  ensure_libraries([lib for lib, _ in libs_to_link])
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
   # shouldn't add any extra `--no-whole-archive` or we will undo the intent of building.link_ldd.
   if settings.LINKABLE or settings.SIDE_MODULE:
-    return [l[0] for l in libs_to_link]
+    return [lib.get_link_flag() for lib, _ in libs_to_link]
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
   ret = []
   in_group = False
-  for name, need_whole_archive in libs_to_link:
+  for lib, need_whole_archive in libs_to_link:
     if need_whole_archive and not in_group:
       ret.append('--whole-archive')
       in_group = True
     if in_group and not need_whole_archive:
       ret.append('--no-whole-archive')
       in_group = False
-    ret.append(name)
+    ret.append(lib.get_link_flag())
   if in_group:
     ret.append('--no-whole-archive')
 

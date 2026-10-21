@@ -220,9 +220,20 @@ class codesize(RunnerCore):
 
     self.check_output_sizes('hello_world.js', 'hello_world.wasm', 'no_asserts.js', 'no_asserts.wasm', 'strict.js', 'strict.wasm')
 
+  def test_no_closure_code_size(self):
+    # Track the size of -Os/-Oz builds without Closure Compiler (which is off
+    # by default).
+    # Run with `--rebaseline` when this test fails.
+    self.build('hello_world.c', cflags=['-Os', '--output-eol=linux'])
+    self.build('hello_world.c', cflags=['-Oz', '--output-eol=linux', '-sENVIRONMENT=web'], output_basename='web')
+    self.build('hello_world.c', cflags=['-Oz', '--output-eol=linux', '-sSTRICT'], output_basename='strict')
+    self.build('codesize/files.cpp', cflags=['-Oz', '--output-eol=linux', '-sNO_WASMFS'], output_basename='files')
+
+    self.check_output_sizes('hello_world.js', 'hello_world.wasm', 'web.js', 'web.wasm', 'strict.js', 'strict.wasm', 'files.js', 'files.wasm')
+
   def run_codesize_test(self, filename, cflags, check_funcs=True, check_full_js=False, skip_gz=False):
     # in -Os, -Oz, we remove imports wasm doesn't need
-    print('Running codesize test: %s:' % filename, cflags, check_funcs, check_full_js)
+    print(f'Running codesize test: {filename}:', cflags, check_funcs, check_full_js)
     filename = test_file('codesize', filename)
     expected_basename = test_file('codesize', self.id().split('.')[-1])
 
@@ -232,7 +243,7 @@ class codesize(RunnerCore):
     outfile = 'a.out.mjs' if esm else 'a.out.js'
     js_file = 'a.out.support.mjs' if esm else outfile
 
-    # Run once without closure and parse output to find the JS->wasm imports.
+    # Run once without closure or terser minification and parse output to find the JS->wasm imports.
     build_cmd = [compiler_for(filename), filename, '-o', outfile, '--output-eol=linux', '--emit-minification-map=minify.map'] + cflags + self.get_cflags()
     self.run_process(build_cmd + ['-g2'])
     # find the imports we send from JS
@@ -282,7 +293,7 @@ class codesize(RunnerCore):
     sent.sort()
 
     # closure is not yet compatible with the WASM_ESM_INTEGRATION module glue.
-    closure_args = [] if esm else ['--closure=1']
+    closure_args = [] if (esm or '--closure=0' in cflags) else ['--closure=1']
     self.run_process(build_cmd + ['--profiling-funcs'] + closure_args)
 
     outputs = [outfile]

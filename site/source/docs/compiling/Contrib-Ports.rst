@@ -67,3 +67,40 @@ Example usage:
 `Project information <https://www.lua.org/>`__
 
 License: MIT License
+
+.. _contrib.libwebp:
+
+contrib.libwebp
+===============
+
+libwebp is a library for encoding and decoding images in the WebP format,
+including animation, alpha and metadata (mux/demux) support.
+
+Example usage:
+
+.. code-block:: text
+
+  // main.c
+  #include <webp/decode.h>
+  #include <webp/encode.h>
+  #include <stdio.h>
+
+  int main() {
+    uint8_t rgba[4 * 4 * 4] = {0};
+    uint8_t *webp = NULL;
+    size_t webp_size = WebPEncodeRGBA(rgba, 4, 4, 4 * 4, 80.0f, &webp);
+    printf("encoded %zu bytes\n", webp_size);
+    WebPFree(webp);
+    return 0;
+  }
+
+  // compile with
+  emcc --use-port=contrib.libwebp main.c -o /tmp/index.html
+
+Passing ``-pthread`` alongside ``--use-port=contrib.libwebp`` builds a
+multi-threaded variant of the library, which can speed up encoding.
+
+`Project information <https://chromium.googlesource.com/webm/libwebp>`__
+
+License: BSD-3-Clause license
+

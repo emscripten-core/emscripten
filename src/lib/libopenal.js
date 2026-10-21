@@ -180,11 +180,11 @@ var LibraryOpenAL = {
 
           audioSrc.connect(src.gain);
 
-          if (typeof audioSrc.start != 'undefined') {
+          if (typeof audioSrc.start !== 'undefined') {
             // Sample the current time as late as possible to mitigate drift
             startTime = Math.max(startTime, src.context.audioCtx.currentTime);
             audioSrc.start(startTime, startOffset);
-          } else if (typeof audioSrc.noteOn != 'undefined') {
+          } else if (typeof audioSrc.noteOn !== 'undefined') {
             startTime = Math.max(startTime, src.context.audioCtx.currentTime);
             audioSrc.noteOn(startTime);
 #if OPENAL_DEBUG
@@ -1779,7 +1779,7 @@ var LibraryOpenAL = {
       // Have to pick a size from 256, 512, 1024, 2048, 4096, 8192, 16384.
       // One can also set it to zero, which leaves the decision up to the impl.
       // An extension could allow specifying this value.
-      var processorFrameCount = 512;
+      const processorFrameCount = 512;
 
       newCapture.scriptProcessorNode = newCapture.audioCtx.createScriptProcessor(
         processorFrameCount, inputChannelCount, outputChannelCount
@@ -2149,7 +2149,7 @@ var LibraryOpenAL = {
     autoResumeAudioContext(ac);
 
     // Old Web Audio API (e.g. Safari 6.0.5) had an inconsistently named createGainNode function.
-    if (typeof ac.createGain == 'undefined') {
+    if (typeof ac.createGain === 'undefined') {
       ac.createGain = ac.createGainNode;
     }
 

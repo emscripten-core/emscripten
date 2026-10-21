@@ -115,10 +115,10 @@ def get_previous_version(changelog_path, version):
 
 def generate_default_notes(tag, previous_tag):
   cmd = [
-      'gh', 'api',
-      f'/repos/{REPO}/releases/generate-notes',
-      '-f', f'tag_name={tag}',
-      '-f', f'previous_tag_name={previous_tag}',
+    'gh', 'api',
+    f'/repos/{REPO}/releases/generate-notes',
+    '-f', f'tag_name={tag}',
+    '-f', f'previous_tag_name={previous_tag}',
   ]
   result = subprocess.run(cmd, capture_output=True, text=True, check=True)
   return json.loads(result.stdout)

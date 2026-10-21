@@ -14,7 +14,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-static void create_file(const char *path, const char *buffer, int mode) {
+void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   assert(fd >= 0);
 

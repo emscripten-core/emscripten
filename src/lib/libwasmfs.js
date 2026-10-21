@@ -133,7 +133,7 @@ addToLibrary({
                                            // on other code including the
                                            // __wasmfs_* method properly.
     readFile(path, opts = {}) {
-      opts.encoding = opts.encoding || 'binary';
+      opts.encoding ??= 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         throw new Error(`Invalid encoding type "${opts.encoding}"`);
       }
@@ -159,19 +159,6 @@ addToLibrary({
 #endif
 
 #if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // see comment above
-    // Full JS API support
-
-    analyzePath(path) {
-      // TODO: Consider simplifying this API, which for now matches the JS FS.
-      var exists = !!FS.findObject(path);
-      return {
-        exists,
-        object: {
-          contents: exists ? FS.readFile(path) : null
-        }
-      };
-    },
-
     // libc methods
 
     mkdir: (path, mode) => FS_mkdir(path, mode),
@@ -190,7 +177,7 @@ addToLibrary({
     unlink: (path) => FS_unlink(path),
     chdir: (path) => withStackSave(() => __wasmfs_chdir(stringToUTF8OnStack(path))),
     read(stream, buffer, offset, length, position) {
-      var seeking = typeof position != 'undefined';
+      var seeking = typeof position !== 'undefined';
 
       var dataBuffer = _malloc(length);
 
@@ -209,7 +196,7 @@ addToLibrary({
     },
     // Note that canOwn is an optimization that we ignore for now in WasmFS.
     write(stream, buffer, offset, length, position, canOwn) {
-      var seeking = typeof position != 'undefined';
+      var seeking = typeof position !== 'undefined';
 
       var dataBuffer = _malloc(length);
       for (var i = 0; i < length; i++) {
@@ -310,16 +297,6 @@ addToLibrary({
     ftruncate(fd, len) {
       return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
     },
-    findObject(path) {
-      var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(path)));
-      if (result == {{{ cDefs.ENOENT }}}) {
-        return null;
-      }
-      return {
-        isFolder: result == {{{ cDefs.EISDIR }}},
-        isDevice: false, // TODO: wasmfs support for devices
-      };
-    },
     readdir: (path) => withStackSave(() => {
       var pathBuffer = stringToUTF8OnStack(path);
       var entries = [];
@@ -337,7 +314,7 @@ addToLibrary({
     }),
     mount: (type, opts, mountpoint) => {
 #if ASSERTIONS
-      if (typeof type == 'string') {
+      if (typeof type === 'string') {
         // The filesystem was not included, and instead we have an error
         // message stored in the variable.
         throw type;
@@ -393,7 +370,7 @@ addToLibrary({
       wasmFSDevices[dev] = backendPointer;
     },
     createDevice(parent, name, input, output) {
-      if (typeof parent != 'string') {
+      if (typeof parent !== 'string') {
         // The old API allowed parents to be objects, which do not exist in WasmFS.
         throw new Error('Only string paths are accepted');
       }

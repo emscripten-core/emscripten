@@ -20,9 +20,9 @@ var LibraryWebSocket = {
     getSocketEvent(socketId) {
       // Singleton event pointer.  Use EmscriptenWebSocketCloseEvent, which is
       // the largest event struct
-      this.socketEvent ||= _malloc({{{ C_STRUCTS.EmscriptenWebSocketCloseEvent.__size__ }}});
-      {{{ makeSetValue('this.socketEvent', 0, 'socketId', 'u32') }}};
-      return this.socketEvent;
+      WS.socketEvent ||= _malloc({{{ C_STRUCTS.EmscriptenWebSocketCloseEvent.__size__ }}});
+      {{{ makeSetValue('WS.socketEvent', 0, 'socketId', 'u32') }}};
+      return WS.socketEvent;
     },
   },
 
@@ -242,7 +242,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG == 2
       dbg(`websocket event "message": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-      var isText = typeof e.data == 'string';
+      var isText = typeof e.data === 'string';
       if (isText) {
         var buf = stringToNewUTF8(e.data);
         var len = lengthBytesUTF8(e.data)+1;
@@ -408,7 +408,7 @@ var LibraryWebSocket = {
   },
 
   emscripten_websocket_is_supported__proxy: 'sync',
-  emscripten_websocket_is_supported: () => typeof WebSocket != 'undefined',
+  emscripten_websocket_is_supported: () => typeof WebSocket !== 'undefined',
 
   emscripten_websocket_deinitialize__deps: ['$webSockets', 'emscripten_websocket_delete'],
   emscripten_websocket_deinitialize__proxy: 'sync',

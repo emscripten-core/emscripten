@@ -11,25 +11,44 @@ LibraryJSEventLoop = {
     throw 'unwind';
   },
 
+  // Just like setTimeout but returns an i32 that can be passed back to wasm
+  // rather than a JS object, and holds a runtime keepalive while pending.
+  // Ids are sequential and, like setTimeout's, never zero; the native handle
+  // is retained only while pending.
   $safeSetTimeout__deps: ['$callUserCallback'],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
+  $safeSetTimeout__postset: 'safeSetTimeout.pending = new Map(); safeSetTimeout.nextId = 1;',
   $safeSetTimeout: (func, timeout) => {
     {{{ runtimeKeepalivePush() }}}
-    return setTimeout(() => {
+    var id = safeSetTimeout.nextId++;
+    safeSetTimeout.pending.set(id, setTimeout(() => {
+      safeSetTimeout.pending.delete(id);
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(func);
-    }, timeout);
+    }, timeout));
+    return id;
+  },
+
+  // Clears a pending safeSetTimeout and releases its keepalive. No-op if the
+  // timeout has already fired or been cleared.
+  $safeClearTimeout__deps: ['$safeSetTimeout'],
+  $safeClearTimeout: (id) => {
+    var handle = safeSetTimeout.pending.get(id);
+    if (!handle) return;
+    safeSetTimeout.pending.delete(id);
+    clearTimeout(handle);
+    {{{ runtimeKeepalivePop() }}}
   },
 
   // Just like setImmediate but returns an i32 that can be passed back
   // to wasm rather than a JS object.
+  $setImmediateWrapped__postset: 'setImmediateWrapped.pending = new Map(); setImmediateWrapped.nextId = 1;',
   $setImmediateWrapped: (func) => {
-    setImmediateWrapped.mapping ||= [];
-    var id = setImmediateWrapped.mapping.length;
-    setImmediateWrapped.mapping[id] = setImmediate(() => {
-      setImmediateWrapped.mapping[id] = undefined;
+    var id = setImmediateWrapped.nextId++;
+    setImmediateWrapped.pending.set(id, setImmediate(() => {
+      setImmediateWrapped.pending.delete(id);
       func();
-    });
+    }));
     return id;
   },
 
@@ -43,13 +62,13 @@ LibraryJSEventLoop = {
   },
 
   // Just like clearImmediate but takes an i32 rather than an object.
+  // Returns true if the immediate was still pending.
   $clearImmediateWrapped: (id) => {
-#if ASSERTIONS
-    assert(id);
-    assert(setImmediateWrapped.mapping[id]);
-#endif
-    clearImmediate(setImmediateWrapped.mapping[id]);
-    setImmediateWrapped.mapping[id] = undefined;
+    var handle = setImmediateWrapped.pending.get(id);
+    if (!handle) return false;
+    setImmediateWrapped.pending.delete(id);
+    clearImmediate(handle);
+    return true;
   },
 
   $emSetImmediate__deps: ['$setImmediateWrapped', '$clearImmediateWrapped', '$emClearImmediate'],
@@ -81,13 +100,15 @@ LibraryJSEventLoop = {
       }
       emClearImmediate = /**@type{function(number=)}*/((id) => {
         var index = id - __setImmediate_id_counter;
+        if (index < 0 || !__setImmediate_queue[index]) return false;
         // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
-        if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = null;
+        __setImmediate_queue[index] = null;
+        return true;
       })
     }`,
   $emSetImmediate: undefined,
 
-  $emClearImmediate_deps: ['$emSetImmediate'],
+  $emClearImmediate__deps: ['$emSetImmediate'],
   $emClearImmediate: undefined,
 
   emscripten_set_immediate__deps: ['$emSetImmediate', '$callUserCallback'],
@@ -95,14 +116,15 @@ LibraryJSEventLoop = {
     {{{ runtimeKeepalivePush(); }}}
     return emSetImmediate(() => {
       {{{ runtimeKeepalivePop(); }}}
-      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
+      callUserCallback({{{ makeDynCall('vp', 'cb') }}}, userData);
     });
   },
 
   emscripten_clear_immediate__deps: ['$emClearImmediate'],
   emscripten_clear_immediate: (id) => {
-    {{{ runtimeKeepalivePop(); }}}
-    emClearImmediate(id);
+    if (emClearImmediate(id)) {
+      {{{ runtimeKeepalivePop(); }}}
+    }
   },
 
   emscripten_set_immediate_loop__deps: ['$emSetImmediate', '$callUserCallback'],
@@ -124,13 +146,7 @@ LibraryJSEventLoop = {
   emscripten_set_timeout: (cb, msecs, userData) =>
     safeSetTimeout(() => {{{ makeDynCall('vp', 'cb') }}}(userData), msecs),
 
-#if AUDIO_WORKLET
-  // Use a wrapper function here since simply aliasing `clearTimeout` would
-  // cause the module to fail to load in the audio worklet context.
-  emscripten_clear_timeout: (id) => clearTimeout(id),
-#else
-  emscripten_clear_timeout: 'clearTimeout',
-#endif
+  emscripten_clear_timeout: '$safeClearTimeout',
 
   emscripten_set_timeout_loop__deps: ['$callUserCallback', 'emscripten_get_now'],
   emscripten_set_timeout_loop: (cb, msecs, userData) => {
@@ -160,9 +176,7 @@ LibraryJSEventLoop = {
   emscripten_set_interval__deps: ['$callUserCallback'],
   emscripten_set_interval: (cb, msecs, userData) => {
     {{{ runtimeKeepalivePush() }}}
-    return setInterval(() => {
-      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
-    }, msecs);
+    return setInterval(() => callUserCallback({{{ makeDynCall('vp', 'cb') }}}, userData), msecs);
   },
 
   emscripten_clear_interval: (id) => {
@@ -188,12 +202,12 @@ LibraryJSEventLoop = {
 
   $registerPostMainLoop: (f) => {
     // Does nothing unless $MainLoop is included/used.
-    typeof MainLoop != 'undefined' && MainLoop.postMainLoop.push(f);
+    typeof MainLoop !== 'undefined' && MainLoop.postMainLoop.push(f);
   },
 
   $registerPreMainLoop: (f) => {
     // Does nothing unless $MainLoop is included/used.
-    typeof MainLoop != 'undefined' && MainLoop.preMainLoop.push(f);
+    typeof MainLoop !== 'undefined' && MainLoop.preMainLoop.push(f);
   },
 
   $MainLoop__internal: true,

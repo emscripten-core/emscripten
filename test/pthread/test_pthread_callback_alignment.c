@@ -24,7 +24,7 @@ extern void _emscripten_run_callback_on_thread(pthread_t t,
                                                size_t event_data_size,
                                                void *user_data);
 
-static bool on_wheel(int event_type, void *event_data, void *user_data) {
+bool on_wheel(int event_type, void *event_data, void *user_data) {
   const EmscriptenWheelEvent *e = (const EmscriptenWheelEvent *)event_data;
   // Test that the event_data contents are properly aligned.  These accesses
   // will fail under SAFE_HEAP if they are not.
@@ -36,7 +36,7 @@ static bool on_wheel(int event_type, void *event_data, void *user_data) {
   return true;
 }
 
-static void *sender(void *arg) {
+void *sender(void *arg) {
   pthread_t target = (pthread_t)arg;
   EmscriptenWheelEvent ev;
   memset(&ev, 0, sizeof(ev));
@@ -48,7 +48,7 @@ static void *sender(void *arg) {
   return NULL;
 }
 
-static void dummy(void) {}
+void dummy(void) {}
 
 int main(void) {
   pthread_t t;

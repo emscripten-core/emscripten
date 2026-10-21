@@ -91,7 +91,7 @@ def run_cmd(cmd):
     cmd[0] = shutil.which(orig_exe)
     if not cmd[0]:
       utils.exit_with_error(f'command not found: {orig_exe}')
-  print(' -> %s' % ' '.join(cmd))
+  print(f" -> {' '.join(cmd)}")
   subprocess.run(cmd, check=True, text=True, encoding='utf-8', cwd=utils.path_from_root())
 
 
@@ -103,9 +103,9 @@ actions = [
   ('create entry points', [
      'tools/maint/create_entry_points.py',
      'tools/pylauncher/pylauncher.exe',
-     'tools/maint/run_python.bat',
+     'tools/pylauncher/pylauncher-arm64.exe',
      'tools/maint/run_python.sh',
-     'tools/maint/run_python.ps1',
+     'tools/maint/run_python_compiler.sh',
    ], [sys.executable, 'tools/maint/create_entry_points.py']),
   ('git submodules', [
      'test/third_party/posixtestsuite/',
@@ -148,17 +148,17 @@ def main(args):
   for name, deps, action in actions:
     if not args.force:
       if check_deps(name, deps):
-        print('Up-to-date: %s' % name)
+        print(f'Up-to-date: {name}')
         continue
-      print('Out-of-date: %s' % name)
+      print(f'Out-of-date: {name}')
     if args.dry_run:
-      if type(action) == list:
+      if isinstance(action, list):
         action_str = ' '.join(action)
       else:
         action_str = action.__name__
       print(f' (skipping: dry run) -> {action_str}')
       continue
-    if type(action) == list:
+    if isinstance(action, list):
       run_cmd(action)
     else:
       action()

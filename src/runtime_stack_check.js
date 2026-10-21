@@ -13,7 +13,7 @@ const stackCookie2 = 0x89BACDFE;
 
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
-  var max = _emscripten_stack_get_end();
+  let max = _emscripten_stack_get_end();
 #if RUNTIME_DEBUG
   dbg(`writeStackCookie: ${ptrToString(max)}`);
 #endif
@@ -45,7 +45,7 @@ function checkStackCookie() {
 #if !MINIMAL_RUNTIME
   if (ABORT) return;
 #endif
-  var max = _emscripten_stack_get_end();
+  let max = _emscripten_stack_get_end();
 #if RUNTIME_DEBUG >= 2
   dbg(`checkStackCookie: ${ptrToString(max)}`);
 #endif
@@ -53,8 +53,8 @@ function checkStackCookie() {
   if (max == 0) {
     max += 4;
   }
-  var val1 = {{{ makeGetValue('max', 0, 'u32') }}};
-  var val2 = {{{ makeGetValue('max', 4, 'u32') }}};
+  const val1 = {{{ makeGetValue('max', 0, 'u32') }}};
+  const val2 = {{{ makeGetValue('max', 4, 'u32') }}};
   if (val1 != stackCookie1 || val2 != stackCookie2) {
     abort(`Stack overflow! Stack cookie has been overwritten at ${ptrToString(max)}, expected hex dwords ${u32ToHexString(stackCookie2)} and ${u32ToHexString(stackCookie1)}, but received ${u32ToHexString(val2)} ${u32ToHexString(val1)}`);
   }

@@ -7,12 +7,11 @@ import argparse
 import os
 import shlex
 import subprocess
+from subprocess import PIPE
 
 from browser_common import BrowserCore, get_browser, has_browser
-from common import EMRUN, RunnerCore, path_from_root, read_file, test_file
+from common import EMCC, EMRUN, RunnerCore, path_from_root, read_file, test_file
 from decorators import also_with_pthreads
-
-from tools.shared import EMCC, PIPE
 
 
 class emrun(RunnerCore):
@@ -102,11 +101,11 @@ class emrun(RunnerCore):
           args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
 
     for args in [
-        [],
-        ['--port', '0'],
-        ['--private_browsing'],
-        ['--dump_out_directory', 'other dir/multiple'],
-        ['--dump_out_directory=foo_bar'],
+      [],
+      ['--port', '0'],
+      ['--private_browsing'],
+      ['--dump_out_directory', 'other dir/multiple'],
+      ['--dump_out_directory=foo_bar'],
     ]:
       args = args_base + args + [self.in_dir('test_emrun.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
       print(shlex.join(args))

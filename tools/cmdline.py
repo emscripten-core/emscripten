@@ -27,13 +27,13 @@ from tools.utils import exit_with_error, read_file
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2', '-mfma']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 CLANG_FLAGS_WITH_ARGS = {
-    '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
-    '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-    '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-    '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-    '-install_name', '-compatibility_version', '-mllvm',
-    '-current_version', '-I', '-L', '-include-pch', '-u',
-    '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
+  '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
+  '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+  '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+  '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+  '-install_name', '-compatibility_version', '-mllvm',
+  '-current_version', '-I', '-L', '-include-pch', '-u',
+  '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
 }
 
 
@@ -134,10 +134,10 @@ def version_string():
     git_rev = utils.run_process(
       ['git', 'rev-parse', 'HEAD'],
       stdout=PIPE, stderr=PIPE, cwd=utils.path_from_root()).stdout.strip()
-    revision_suffix = ' (%s)' % git_rev
+    revision_suffix = f' ({git_rev})'
   elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
     rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
-    revision_suffix = ' (%s)' % rev
+    revision_suffix = f' ({rev})'
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {utils.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
@@ -272,8 +272,8 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       diagnostics.warning('deprecated', f'{arg} is no longer supported')
       continue
 
-    for l in LEGACY_ARGS:
-      if check_arg(l):
+    for legacy_arg in LEGACY_ARGS:
+      if check_arg(legacy_arg):
         consume_arg()
         diagnostics.warning('deprecated', f'{arg} is no longer supported')
         continue
@@ -348,7 +348,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       formats = [f.lower() for f in OFormat.__members__]
       fmt = consume_arg()
       if fmt not in formats:
-        exit_with_error('invalid output format: `%s` (must be one of %s)' % (fmt, formats))
+        exit_with_error(f'invalid output format: `{fmt}` (must be one of {formats})')
       options.oformat = getattr(OFormat, fmt.upper())
     elif check_arg('--minify'):
       arg = consume_arg()
@@ -373,47 +373,45 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
         # for clang
         if debug_level < 3 and not (settings.GENERATE_SOURCE_MAP or settings.SEPARATE_DWARF):
           newargs[i] = '-g0'
+        elif debug_level == 3:
+          settings.GENERATE_DWARF = 1
+        elif debug_level == 4:
+          # In the past we supported, -g4.  But clang never did.
+          # Lower this to -g3, and report a warning.
+          newargs[i] = '-g3'
+          diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
+          settings.GENERATE_SOURCE_MAP = 1
+        elif debug_level > 4:
+          exit_with_error(f"unknown argument: '{arg}'")
+      elif debug_level.startswith('force_dwarf'):
+        exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
+      elif debug_level.startswith('separate-dwarf'):
+        # emit full DWARF but also emit it in a file on the side
+        newargs[i] = '-g'
+        # if a file is provided, use that; otherwise use the default location
+        # (note that we do not know the default location until all args have
+        # been parsed, so just note True for now).
+        if debug_level != 'separate-dwarf':
+          if not debug_level.startswith('separate-dwarf=') or debug_level.count('=') != 1:
+            exit_with_error('invalid -gseparate-dwarf=FILENAME notation')
+          settings.SEPARATE_DWARF = debug_level.split('=')[1]
         else:
-          if debug_level == 3:
-            settings.GENERATE_DWARF = 1
-          elif debug_level == 4:
-            # In the past we supported, -g4.  But clang never did.
-            # Lower this to -g3, and report a warning.
-            newargs[i] = '-g3'
-            diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
-            settings.GENERATE_SOURCE_MAP = 1
-          elif debug_level > 4:
-            exit_with_error(f"unknown argument: '{arg}'")
+          settings.SEPARATE_DWARF = True
+        settings.GENERATE_DWARF = 1
+        settings.DEBUG_LEVEL = 3
+      elif debug_level in {'source-map', 'source-map=inline'}:
+        settings.GENERATE_SOURCE_MAP = 1 if debug_level == 'source-map' else 2
+        newargs[i] = '-g'
+      elif debug_level == 'z':
+        # Ignore `-gz`.  We don't support debug info compression.
+        pass
       else:
-        if debug_level.startswith('force_dwarf'):
-          exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
-        elif debug_level.startswith('separate-dwarf'):
-          # emit full DWARF but also emit it in a file on the side
-          newargs[i] = '-g'
-          # if a file is provided, use that; otherwise use the default location
-          # (note that we do not know the default location until all args have
-          # been parsed, so just note True for now).
-          if debug_level != 'separate-dwarf':
-            if not debug_level.startswith('separate-dwarf=') or debug_level.count('=') != 1:
-              exit_with_error('invalid -gseparate-dwarf=FILENAME notation')
-            settings.SEPARATE_DWARF = debug_level.split('=')[1]
-          else:
-            settings.SEPARATE_DWARF = True
-          settings.GENERATE_DWARF = 1
-          settings.DEBUG_LEVEL = 3
-        elif debug_level in {'source-map', 'source-map=inline'}:
-          settings.GENERATE_SOURCE_MAP = 1 if debug_level == 'source-map' else 2
-          newargs[i] = '-g'
-        elif debug_level == 'z':
-          # Ignore `-gz`.  We don't support debug info compression.
-          pass
-        else:
-          # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
-          # usually clang flags that emit DWARF. So we pass them through to
-          # clang and make the emscripten code treat it like any other DWARF.
-          settings.GENERATE_DWARF = 1
-          settings.EMIT_NAME_SECTION = 1
-          settings.DEBUG_LEVEL = 3
+        # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
+        # usually clang flags that emit DWARF. So we pass them through to
+        # clang and make the emscripten code treat it like any other DWARF.
+        settings.GENERATE_DWARF = 1
+        settings.EMIT_NAME_SECTION = 1
+        settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
       settings.EMIT_NAME_SECTION = 1
@@ -687,7 +685,7 @@ def parse_value(text, expected_type):
       return []
     return parse_string_list_members(text)
 
-  if expected_type == list or (text and text[0] == '['):
+  if expected_type is list or (text and text[0] == '['):
     # if json parsing fails, we fall back to our own parser, which can handle a few
     # simpler syntaxes
     try:
@@ -705,7 +703,7 @@ def parse_value(text, expected_type):
 
     return parsed
 
-  if expected_type == float:
+  if expected_type is float:
     try:
       return float(text)
     except ValueError:
@@ -744,14 +742,14 @@ def apply_user_settings():
     if value and value[0] == '@':
       filename = value.removeprefix('@')
       if not os.path.isfile(filename):
-        exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
+        exit_with_error(f'{filename}: file not found parsing argument: {key}={value}')
       value = read_file(filename).strip()
     else:
       value = value.replace('\\', '\\\\')
 
     expected_type = settings.types.get(key)
 
-    if filename and expected_type == list and value.strip()[0] != '[':
+    if filename and expected_type is list and value.strip()[0] != '[':
       # Prefer simpler one-line-per value parser
       value = parse_symbol_list_file(value)
     else:

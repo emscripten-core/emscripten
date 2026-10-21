@@ -169,7 +169,7 @@ var WasiLibrary = {
       return {{{ cDefs.ENOSYS }}};
     }
     // "now" is in ms, and wasi times are in ns.
-    var nsec = Math.round(now * 1000 * 1000);
+    var nsec = Math.round(now * 1_000_000);
     {{{ makeSetValue('ptime', 0, 'nsec', 'i64') }}};
     return 0;
   },
@@ -184,7 +184,7 @@ var WasiLibrary = {
     var nsec;
     // all wasi clocks but realtime are monotonic
     if (clk_id === {{{ cDefs.CLOCK_REALTIME }}}) {
-      nsec = 1000 * 1000; // educated guess that it's milliseconds
+      nsec = 1_000_000; // educated guess that it's milliseconds
     } else if (nowIsMonotonic) {
       nsec = _emscripten_get_now_res();
     } else {
@@ -217,7 +217,7 @@ var WasiLibrary = {
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
-      if (typeof offset != 'undefined') {
+      if (typeof offset !== 'undefined') {
         offset += curr;
       }
     }
@@ -588,7 +588,7 @@ var WasiLibrary = {
       var nodeCrypto = require('node:crypto');
       return (view) => (nodeCrypto.randomFillSync(view), 0);
     }
-#endif // ENVIRONMENT_MAY_BE_NODE
+#endif // ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
 
 #if ENVIRONMENT_MAY_BE_SHELL
     if (ENVIRONMENT_IS_SHELL) {

@@ -27,7 +27,7 @@ color_enabled = False
 
 def output_color(color):
   if color_enabled:
-    return '\033[3%sm' % color
+    return f'\033[3{color}m'
   return ''
 
 

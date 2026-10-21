@@ -223,9 +223,8 @@ def get_path_to_functions_map(wasm, sourcemap, paths):
 
       if loc and loc.source:
         func_to_src[func_name] = utils.normalize_path(loc.source)
-      else:
-        if not is_synthesized_func(func_name):
-          diagnostics.warn(f"No source file information found in the source map for function '{func_name}'")
+      elif not is_synthesized_func(func_name):
+        diagnostics.warn(f"No source file information found in the source map for function '{func_name}'")
 
     for func_name, src in func_to_src.items():
       if src not in src_to_funcs:
@@ -285,7 +284,7 @@ def parse_paths_file(paths_file_content):
     else:
       path = normalize_path(line)
       if path in path_to_module:
-        exit_with_error("Path '{path}' cannot be assigned to module '{cur_module}; it is already assigned to module '{path_to_module[path]}'")
+        exit_with_error(f"Path '{path}' cannot be assigned to module '{cur_module}; it is already assigned to module '{path_to_module[path]}'")
       cur_paths.append(path)
       path_to_module[path] = cur_module
 

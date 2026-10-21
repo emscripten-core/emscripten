@@ -44,7 +44,14 @@ commands:
           name: download browser (<< parameters.browser_name >>)
           command: |
             npx --yes @puppeteer/browsers install << parameters.browser_name >> --format={{path}} | tee browser_path.txt
-            BROWSER_PATH=`cat browser_path.txt`
+            BROWSER_PATH=$(cat browser_path.txt 2>/dev/null || true)
+            # @puppeteer/browsers can exit 0 on truncated downloads while
+            # failing to extract the binary or outputting an empty path.
+            # See: https://github.com/puppeteer/puppeteer/issues/15487
+            if [[ -z "${BROWSER_PATH}" || ! -x "${BROWSER_PATH}" ]]; then
+              echo "Failed to install browser (empty path or binary missing)"
+              exit 1
+            fi
             echo "browser installed to: ${BROWSER_PATH}"
             "${BROWSER_PATH}" --version
             echo "export EMTEST_BROWSER=\"${BROWSER_PATH}\"" >> $BASH_ENV
@@ -76,12 +83,17 @@ commands:
   install-rust:
     steps:
       - run:
-          name: install rust
+          name: install rust and wasm-bindgen
+          # The wasm-bindgen CLI must exactly match the library version the
+          # test crates pin.
           command: |
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
             export PATH=${HOME}/.cargo/bin:${PATH}
             rustup target add wasm32-unknown-emscripten
             echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> $BASH_ENV
+            WB=wasm-bindgen-0.2.128-x86_64-unknown-linux-musl
+            curl -sSfL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.128/$WB.tar.gz | tar xz -C /tmp
+            mv /tmp/$WB/wasm-bindgen ${HOME}/.cargo/bin/
   install-node-version:
     description: "install a specific version of node"
     parameters:
@@ -227,7 +239,7 @@ commands:
             ls -l ~/cache/sysroot/include/emscripten/heap.h
             cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin-mt.o.ccache-log
             date
-            cat ~/cache/build/libclang_rt.builtins/absvdi2.o.ccache-log
+            cat ~/cache/build/wasm32-emscripten/libclang_rt.builtins/absvdi2.o.ccache-log
             ccache -s
             ccache --print-stats
             ccache -p
@@ -685,6 +697,7 @@ jobs:
             wasmfs.test_fs_errorstack
             wasmfs.test_fs_errorstack_rawfs
             wasmfs.test_fs_emptyPath
+            wasmfs.test_fs_fadvise_fallocate*
             wasmfs.test_webidl
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
@@ -1018,12 +1031,11 @@ jobs:
             core0.test_promise_await*
             "
       - upload-test-results
-  test-other:
+  test-misc:
     executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_RUST: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
       - install-rust
@@ -1031,7 +1043,7 @@ jobs:
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
-          test_targets: "other jslib skip:other.test_native_link_error_message"
+          test_targets: "misc skip:other.test_native_link_error_message"
       - run-tests-linux:
           # Include a single test from test_benchmark.py to ensure it's always
           # kept functional. Must be run separately from above because we cannot
@@ -1147,8 +1159,7 @@ jobs:
             "
   test-windows-browser-firefox:
     # Use spaces and other special chars in the path to emsdk to flush out
-    # issues with windows.  In particular, the .bat file launchers can have
-    # trouble with these.
+    # path-escaping issues on windows.
     working_directory: "~/path with spaces ()/"
     executor:
       name: win/server-2019
@@ -1161,10 +1172,9 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install -y cmake.portable ninja
-            # Choco can return 0 even if package installation/resolution fails (e.g. 504 Gateway Timeout).
-            # See: https://github.com/chocolatey/choco/issues/1609
-            # Explicitly check version commands to ensure executables exist in PATH.
+            # Use pip rather than chocolatey here as we have had trouble with 
+            # the reliablity of chocolatey in the past.
+            pip install cmake ninja
             cmake --version
             ninja --version
       - install-emsdk
@@ -1203,8 +1213,7 @@ jobs:
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
     # Use spaces and other special chars in the path to emsdk to flush out
-    # issues with windows.  In particular, the .bat file launchers can have
-    # trouble with these.
+    # path-escaping issues on windows.
     working_directory: "~/path with spaces ()/"
     executor:
       name: win/server-2019
@@ -1216,9 +1225,6 @@ jobs:
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_WASM_LEGACY_EH: "1"
-      EMTEST_SKIP_WASM_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_25: "1"
@@ -1234,10 +1240,9 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install -y cmake.portable ninja
-            # Choco can return 0 even if package installation/resolution fails (e.g. 504 Gateway Timeout).
-            # See: https://github.com/chocolatey/choco/issues/1609
-            # Explicitly check version commands to ensure executables exist in PATH.
+            # Use pip rather than chocolatey here as we have had trouble with
+            # the reliablity of chocolatey in the past.
+            pip install cmake ninja
             cmake --version
             ninja --version
       # note we do *not* build all libraries and freeze the cache; as we run
@@ -1255,6 +1260,10 @@ jobs:
           command: "test/runner sockets_node.test_nodejs_sockets_echo*"
       - upload-test-results
       - run:
+          name: "sanity tests"
+          command: test/runner sanity.test_windows_path_casing
+      - upload-test-results
+      - run:
           name: "check clean"
           command: |
             git checkout tools/pylauncher
@@ -1266,9 +1275,6 @@ jobs:
       # We don't install d8 or modern node on the mac runner so we skip any
       # tests that depend on those.
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_WASM_LEGACY_EH: "1"
-      EMTEST_SKIP_WASM_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_MESON: "1"
       EMTEST_SKIP_RUST: "1"
@@ -1343,7 +1349,7 @@ workflows:
       - test-wasm2js1:
           requires:
             - build-linux
-      - test-other:
+      - test-misc:
           requires:
             - build-linux
       - test-modularize-instance:

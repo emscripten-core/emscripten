@@ -55,7 +55,7 @@ addToLibrary({
       var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
 
       for (let [x, original] of Object.entries(imports)) {
-        if (typeof original == 'function') {
+        if (typeof original === 'function') {
           let isAsyncifyImport = original.isAsync || importPattern.test(x);
 #if ASYNCIFY == 2
           // Wrap async imports with a suspending WebAssembly function.
@@ -98,7 +98,7 @@ addToLibrary({
           // them to the table.
           imports[x].sig = original.sig;
 #endif // MAIN_MODULE
-#endif // ASSERTIONS
+#endif // ASSERTIONS && ASYNCIFY != 2
         }
       }
     },
@@ -164,7 +164,7 @@ addToLibrary({
 #endif
       var ret = {};
       for (let [x, original] of Object.entries(exports)) {
-        if (typeof original == 'function') {
+        if (typeof original === 'function') {
  #if ASYNCIFY == 2
           // Wrap all exports with a promising WebAssembly function.
           let isAsyncifyExport = exportPattern.test(x);
@@ -246,7 +246,7 @@ addToLibrary({
         {{{ runtimeKeepalivePush(); }}}
         // Keep the runtime alive so that a re-wind can be done later.
         runAndAbortIfError(_asyncify_stop_unwind);
-        if (typeof Fibers != 'undefined') {
+        if (typeof Fibers !== 'undefined') {
           Fibers.trampoline();
         }
       }
@@ -369,7 +369,7 @@ addToLibrary({
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
-          if (typeof MainLoop != 'undefined' && MainLoop.func) {
+          if (typeof MainLoop !== 'undefined' && MainLoop.func) {
             MainLoop.resume();
           }
           var asyncWasmReturnValue, isError = false;
@@ -417,7 +417,7 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
           dbg(`ASYNCIFY: start unwind ${Asyncify.currData}`);
 #endif
-          if (typeof MainLoop != 'undefined' && MainLoop.func) {
+          if (typeof MainLoop !== 'undefined' && MainLoop.func) {
             MainLoop.pause();
           }
           runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
@@ -432,7 +432,9 @@ addToLibrary({
         _free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
-        Asyncify.sleepCallbacks.forEach(callUserCallback);
+        for (var cb of Asyncify.sleepCallbacks) {
+          callUserCallback(cb);
+        }
       } else {
         abort(`invalid state: ${Asyncify.state}`);
       }

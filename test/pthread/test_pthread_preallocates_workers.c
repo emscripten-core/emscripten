@@ -15,7 +15,7 @@
 
 pthread_t threads[5];
 
-static void *thread_start(void *arg)
+void *thread_start(void *arg)
 {
   // This should be long enough for threads to pile up.
   long idx = (long)arg;

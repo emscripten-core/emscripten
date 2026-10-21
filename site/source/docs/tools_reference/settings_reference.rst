@@ -219,8 +219,12 @@ MAXIMUM_MEMORY
 ==============
 
 Set the maximum size of memory in the wasm module (in bytes). This is only
-relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
-INITIAL_MEMORY is the final size of memory anyhow.
+relevant when ALLOW_MEMORY_GROWTH or IMPORTED_MEMORY is set, as otherwise the
+size of INITIAL_MEMORY is the final size of memory anyhow. With
+IMPORTED_MEMORY and without growth, the module accepts an imported memory of
+any size up to this maximum, but never grows it. The memory must not be grown
+from outside the module either; create it with its maximum equal to its
+initial size to guarantee that.
 
 Note that the default value here is 2GB, which means that by default if you
 enable memory growth then we can grow up to 2GB but no higher. 2GB is a
@@ -1530,29 +1534,6 @@ also be controlled separately.
 
 Default value: false
 
-.. _node_code_caching:
-
-NODE_CODE_CACHING
-=================
-
-This saves the compiled wasm module in a file with name
-``$WASM_BINARY_NAME.$V8_VERSION.cached``
-and loads it on subsequent runs. This caches the compiled wasm code from
-v8 in node, which saves compiling on subsequent runs, making them start up
-much faster.
-The V8 version used in node is included in the cache name so that we don't
-try to load cached code from another version, which fails silently (it seems
-to load ok, but we do actually recompile).
-
-- The only version known to work for sure is node 12.9.1, as this has
-  regressed, see
-  https://github.com/nodejs/node/issues/18265#issuecomment-622971547
-- The default location of the .cached files is alongside the wasm binary,
-  as mentioned earlier. If that is in a read-only directory, you may need
-  to place them elsewhere. You can use the locateFile() hook to do so.
-
-Default value: false
-
 .. _exported_functions:
 
 EXPORTED_FUNCTIONS
@@ -1749,10 +1730,13 @@ Changes enabled by this:
 
   - STRICT_JS is enabled.
   - IGNORE_MISSING_MAIN is disabled.
+  - INCOMING_MODULE_JS_API is set to empty by default.
   - AUTO_JS_LIBRARIES is disabled.
   - AUTO_NATIVE_LIBRARIES is disabled.
   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
-  - INCOMING_MODULE_JS_API is set to empty by default.
+
+Note: If you build with -sMAIN_MODULE=1 the last 3 are not disabled since
+they would cause link failures.
 
 .. note:: Applicable during both linking and compilation
 
@@ -1784,14 +1768,9 @@ Default value: false
 WARN_ON_UNDEFINED_SYMBOLS
 =========================
 
-If set to 1, we will warn on any undefined symbols that are not resolved by
-the ``library_*.js`` files. Note that it is common in large projects to not
-implement everything, when you know what is not going to actually be called
-(and don't want to mess with the existing buildsystem), and functions might
-be implemented later on, say in --pre-js, so you may want to build with -s
-WARN_ON_UNDEFINED_SYMBOLS=0 to disable the warnings if they annoy you.  See
-also ERROR_ON_UNDEFINED_SYMBOLS.  Any undefined symbols that are listed in
-EXPORTED_FUNCTIONS will also be reported.
+Like ``ERROR_ON_UNDEFINED_SYMBOLS`` but can be used to also disable warnings.
+Disabling this setting is not advised as it can hide genuine errors in your
+build.
 
 Default value: true
 
@@ -1800,11 +1779,18 @@ Default value: true
 ERROR_ON_UNDEFINED_SYMBOLS
 ==========================
 
-If set to 1, we will give a link-time error on any undefined symbols (see
-WARN_ON_UNDEFINED_SYMBOLS). To allow undefined symbols at link time set this
-to 0, in which case if an undefined function is called a runtime error will
-occur.  Any undefined symbols that are listed in EXPORTED_FUNCTIONS will also
-be reported.
+Disable this setting to allow undefined functions at link time.  Instead of
+a link error you will see a runtime error if an undefined function is ever
+called.
+This setting allows projects to link with undefined function symbols,
+which can be safe if you know those functions will never be called (and don't
+want to mess with the existing build system), or if they are implemented
+outside of the compiler (e.g. in ``--pre-js``).
+Disabling this setting will turn the errors to warnings.  If you don't
+want warnings about undefined symbols you can also disable
+``WARN_ON_UNDEFINED_SYMBOLS``.
+Disabling this setting is not advised as it can hide genuine errors in your
+build.
 
 Default value: true
 
@@ -2025,12 +2011,12 @@ WASM
 ====
 
 Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
-instead of wasm.
+instead of wasm (deprecated).
 
-Specify -sWASM=2 to target both WebAssembly and JavaScript at the same time.
-In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
-the WebAssembly file is loaded if browser/shell supports it. Otherwise the
-.wasm.js fallback will be used.
+Specify -sWASM=2 to target both WebAssembly and JavaScript at the same time
+(deprecated). In that build mode, two files a.wasm and a.wasm.js are produced,
+and at runtime the WebAssembly file is loaded if browser/shell supports it.
+Otherwise the .wasm.js fallback will be used.
 
 If WASM=2 is enabled and the browser fails to compile the WebAssembly module,
 the page will be reloaded in Wasm2JS mode.
@@ -2175,9 +2161,10 @@ USE_SDL
 Specify the SDL version that is being linked against.
 1, the default, is 1.3, which is implemented in JS
 2 is a port of the SDL C code on emscripten-ports
+3 is a port of SDL3 on emscripten-ports
 When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
 is not linked in.
-Alternate syntax for using the port: --use-port=sdl2
+Alternate syntax for using the port: --use-port=sdl3
 
 .. note:: Applicable during both linking and compilation
 
@@ -2474,26 +2461,6 @@ SHARED_MEMORY
 If 1, target compiling a shared Wasm Memory.
 
 .. note:: Applicable during both linking and compilation
-
-Default value: false
-
-.. _shared_wasmgc:
-
-SHARED_WASMGC
-=============
-
-If true, enables support for experimental shared Wasm GC. Expects the
-module to contain a mutable shared anyref global to be imported as "env"
-"_shared_heap_root" and exported as "_shared_heap_root". The import will be
-provided a null value on the main thread, where the user code is expected to
-initialize it with some shared object during the start function. This shared
-object will then be provided as the import when instantiating the module on
-additional Workers. This shared anyref global can be used to bootstrap
-arbitrary shared Wasm GC state. Since LLVM cannot emit Wasm GC instructions
-or shared anyref globals, users are expected to use wasm-merge to add the
-_shared_heap_root global and additional Wasm GC code post-link.
-
-.. note:: This is an experimental setting
 
 Default value: false
 
@@ -2858,16 +2825,14 @@ Default value: false
 SINGLE_FILE
 ===========
 
-If set to 1, embeds all subresources in the emitted file as base64 string
-literals. Embedded subresources may include (but aren't limited to) wasm,
-asm.js, and static memory initialization code.
+If set to 1, embeds all subresources (for example, the Wasm file) as strings
+in the generated JavaScript or HTML file.
 
 When using code that depends on this option, your Content Security Policy may
-need to be updated. Specifically, embedding asm.js requires the script-src
-directive to allow 'unsafe-inline', and using a Worker requires the
-child-src directive to allow blob:. If you aren't using Content Security
-Policy, or your CSP header doesn't include either script-src or child-src,
-then you can safely ignore this warning.
+need to be updated. Specifically, using a Worker requires the child-src
+directive to allow blob:. If you aren't using Content Security Policy, or
+your CSP header doesn't include child-src, then you can safely ignore this
+warning.
 
 Note that SINGLE_FILE with binary encoding requires the HTML/JS files to be
 served with UTF-8 encoding. See the details on SINGLE_FILE_BINARY_ENCODE.
@@ -2922,8 +2887,8 @@ AUTO_NATIVE_LIBRARIES
 =====================
 
 Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
-and libhtml5.   If this is disabled it is necessary to explicitly add
-e.g. -lhtml5 and also to first build the library using ``embuilder``.
+and libhtml5.  This gets set to 0 in STRICT mode.  If this is disabled it is
+necessary to explicitly add libraries to the link command (e.g. -lhtml5).
 
 Default value: true
 
@@ -3371,7 +3336,17 @@ Default value: []
 WASM_BINDGEN
 ============
 
-Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
+Run wasm-bindgen and integrate the rust-exported symbols into the rest of
+Emscripten's JS output.
+Even with this setting enabled, wasm-bindgen processing is only performed
+when the linker inputs carry the wasm-bindgen Emscripten marker section
+(emitted by the wasm-bindgen crate). When the marker is absent the build is
+unchanged, so -sWASM_BINDGEN can safely be passed unconditionally to
+non-wasm-bindgen builds, and by toolchains that link via emcc.
+If EXPORTED_FUNCTIONS is set it is taken as the complete export list and
+must include every export wasm-bindgen reaches by name (rustc supplies this
+when driving the link). Otherwise those exports are discovered from the
+linker inputs.
 
 .. note:: This is an experimental setting
 
@@ -3424,11 +3399,19 @@ GROWABLE_ARRAYBUFFERS
 
 Enable support for growable views of Wasm memory. This is a recent Web
 platform feature that can make growing the Wasm memory more efficient,
-especially in multi-threaded builds.
+especially in multi-threaded builds. For background, see
+https://github.com/WebAssembly/design/issues/1271
+
 Setting this to 1 will auto-detect the presence of this API and use
 it when available.
 Setting this to 2 will unconditionally require it. This is the only way
 to completely remove the overhead of growable memory + pthreads.
+
+Note that while browser support for this feature is widespread
+(https://caniuse.com/mdn-webassembly_api_memory_toresizablebuffer), it
+was not usable on Firefox until Firefox 154,
+https://bugzilla.mozilla.org/show_bug.cgi?id=2021136
+
 This settings does nothing unless ALLOW_MEMORY_GROWTH is set.
 
 Default value: 0
@@ -3533,6 +3516,9 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``USE_PTHREADS``: prefer the standard -pthread flag
  - ``MEMORY64``: prefer the standard -m64 or --target=wasm64 flags
  - ``SOCKET_WEBRTC``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27366)
+ - ``WASM=0``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27608)
+ - ``WASM=2``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27608)
+ - ``MEMORY64=2``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/27952)
 
 .. _legacy-settings:
 
@@ -3627,3 +3613,4 @@ for backwards compatibility with older versions:
  - ``DETERMINISTIC``: No longer supported (Valid values: [0])
  - ``LEGALIZE_JS_FFI``: legacy JS FFI legalization is no longer supported (Valid values: [0])
  - ``SOCKET_WEBRTC``: No longer supported (Valid values: [0])
+ - ``NODE_CODE_CACHING``: No longer supported (Valid values: [0])

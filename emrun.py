@@ -430,6 +430,17 @@ def detect_browser_processes():
 
   current_browser_processes = [p for p in running_browser_processes if not pid_existed(p['pid'])]
 
+  # If a browser process already existed before emrun started up, the process we
+  # launched (browser_process) is typically a short-lived stub that hands off
+  # the URL to the existing browser instance and then exits. (An exception is
+  # --safe-firefox-profile, which passes -no-remote and a fresh --profile so
+  # Firefox runs as a separate instance.) Exclude browser_process.pid here so
+  # the stub's exit is not mistaken for the user closing the browser; if
+  # browser_process does stay running, is_browser_process_alive() still tracks
+  # it directly via browser_process.poll().
+  if previous_browser_processes and browser_process and not emrun_options.safe_firefox_profile:
+    current_browser_processes = [p for p in current_browser_processes if p['pid'] != browser_process.pid]
+
   if len(current_browser_processes) == 0:
     logv('Was unable to detect the browser process that was spawned by emrun. This may occur if the target page was opened in a tab on a browser process that already existed before emrun started up.')
 
@@ -476,7 +487,6 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   # queued message, ignoring the proper order.  This ensures that if any
   # messages are actually lost, that the message queue will be orderly flushed.
   def print_timed_out_messages(self):
-    global last_message_time
     with http_mutex:
       now = tick()
       max_message_queue_time = 5
@@ -514,7 +524,8 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     global page_exit_code, emrun_not_enabled_nag_printed
     self.is_running = True
     self.timeout = timeout
-    logi('Now listening at http://%s/' % ':'.join(map(str, self.socket.getsockname())))
+    host, port = self.socket.getsockname()
+    logi(f'Now listening at http://{host}:{port}/')
     logv("Entering web server loop.")
     while self.is_running:
       now = tick()
@@ -659,7 +670,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       SimpleHTTPRequestHandler.log_request(self, code)
 
   def log_message(self, format, *args):  # noqa: DC04
-    msg = '%s - - [%s] %s\n' % (self.address_string(), self.log_date_time_string(), format % args)
+    msg = f'{self.address_string()} - - [{self.log_date_time_string()}] {format % args}\n'
     # Filter out 404 messages on favicon.ico not being found to remove noise.
     if 'favicon.ico' not in msg:
       sys.stderr.write(msg)
@@ -747,7 +758,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
 # Returns stdout by running command with text=True
 def check_output(cmd, *args, **kwargs):
-  return subprocess.run(cmd, text=True, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
+  return subprocess.run(cmd, *args, text=True, stdout=subprocess.PIPE, check=True, **kwargs).stdout
 
 
 # From http://stackoverflow.com/questions/4842448/getting-processor-information-in-python
@@ -778,9 +789,9 @@ def get_cpu_info():
     elif LINUX:
       for line in open('/proc/cpuinfo', encoding='utf-8').readlines():
         if 'model name' in line:
-          cpu_name = re.sub('.*model name.*:', '', line, count=1).strip()
+          cpu_name = re.sub(r'.*model name.*:', '', line, count=1).strip()
       lscpu = check_output(['lscpu'])
-      frequency = math.ceil(float(re.search('CPU (max )?MHz: (.*)', lscpu).group(2).strip()))
+      frequency = math.ceil(float(re.search(r'CPU (max )?MHz: (.*)', lscpu).group(2).strip()))
       sockets = int(re.search(r'Socket\(s\): (.*)', lscpu).group(1).strip())
       physical_cores = sockets * int(re.search(r'Core\(s\) per socket: (.*)', lscpu).group(1).strip())
       logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
@@ -889,10 +900,10 @@ def linux_get_gpu_info():
   adapterinfo = ''
   try:
     vgainfo = check_output(['lshw', '-C', 'display'], stderr=subprocess.PIPE)
-    vendor = re.search("vendor: (.*)", vgainfo).group(1).strip()
-    product = re.search("product: (.*)", vgainfo).group(1).strip()
-    description = re.search("description: (.*)", vgainfo).group(1).strip()
-    clock = re.search("clock: (.*)", vgainfo).group(1).strip()
+    vendor = re.search(r"vendor: (.*)", vgainfo).group(1).strip()
+    product = re.search(r"product: (.*)", vgainfo).group(1).strip()
+    description = re.search(r"description: (.*)", vgainfo).group(1).strip()
+    clock = re.search(r"clock: (.*)", vgainfo).group(1).strip()
     adapterinfo = vendor + ' ' + product + ', ' + description + ' (' + clock + ')'
   except Exception as e:
     logv(e)
@@ -918,8 +929,8 @@ def macos_get_gpu_info():
     for gpu in info:
       model_name = gpu.split('\n')[0].strip()
       if 'Bus' in gpu and 'VRAM' in gpu:
-        bus = re.search("Bus: (.*)", gpu).group(1).strip()
-        memory = int(re.search("VRAM (.*?): (.*) MB", gpu).group(2).strip())
+        bus = re.search(r"Bus: (.*)", gpu).group(1).strip()
+        memory = int(re.search(r"VRAM (.*?): (.*) MB", gpu).group(2).strip())
         gpus += [{'model': model_name + ' (' + bus + ')', 'ram': memory * 1024 * 1024}]
       else:
         gpus += [{'model': model_name, 'ram': 0}]
@@ -1015,10 +1026,12 @@ def win_get_file_properties(fname):
   # backslash as param returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struct
   fixedInfo = win32api.GetFileVersionInfo(fname, '\\')
   props['FixedFileInfo'] = fixedInfo
-  props['FileVersion'] = "%d.%d.%d.%d" % (fixedInfo['FileVersionMS'] / 65536,
-                                          fixedInfo['FileVersionMS'] % 65536,
-                                          fixedInfo['FileVersionLS'] / 65536,
-                                          fixedInfo['FileVersionLS'] % 65536)
+  props['FileVersion'] = '{}.{}.{}.{}'.format(
+    fixedInfo['FileVersionMS'] // 65536,
+    fixedInfo['FileVersionMS'] % 65536,
+    fixedInfo['FileVersionLS'] // 65536,
+    fixedInfo['FileVersionLS'] % 65536,
+  )
 
   # \VarFileInfo\Translation returns list of available (language, codepage)
   # pairs that can be used to retrieve string info. We are using only the first pair.
@@ -1029,7 +1042,7 @@ def win_get_file_properties(fname):
 
   strInfo = {}
   for propName in propNames:
-    strInfoPath = '\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
+    strInfoPath = f'\\StringFileInfo\\{lang:04X}{codepage:04X}\\{propName}'
     # print str_info
     strInfo[propName] = win32api.GetFileVersionInfo(fname, strInfoPath)
 
@@ -1051,19 +1064,19 @@ def get_computer_model():
       try:
         # http://apple.stackexchange.com/questions/98080/can-a-macs-model-year-be-determined-via-terminal-command
         serial = check_output(['system_profiler', 'SPHardwareDataType'])
-        serial = re.search("Serial Number (.*): (.*)", serial)
+        serial = re.search(r"Serial Number (.*): (.*)", serial)
         serial = serial.group(2).strip()[-4:]
         cmd = ['curl', '-s', 'http://support-sp.apple.com/sp/product?cc=' + serial]
         logv(str(cmd))
         model = check_output(cmd)
-        model = re.search('<configCode>(.*)</configCode>', model)
+        model = re.search(r'<configCode>(.*)</configCode>', model)
         model = model.group(1).strip()
         with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'w', encoding='utf-8') as fh:
           fh.write(model) # Cache the hardware model to disk
         return model
       except Exception:
         hwmodel = check_output(['sysctl', 'hw.model'])
-        hwmodel = re.search('hw.model: (.*)', hwmodel).group(1).strip()
+        hwmodel = re.search(r'hw.model: (.*)', hwmodel).group(1).strip()
         return hwmodel
     elif WINDOWS:
       manufacturer = check_output(['wmic', 'baseboard', 'get', 'manufacturer']).split('\n')[1].strip()
@@ -1658,14 +1671,12 @@ def run(args):  # ruff: ignore[complex-structure, too-many-branches, too-many-st
 
   if options.serve_root:
     serve_dir = os.path.abspath(options.serve_root)
+  elif file_to_serve == '.' or file_to_serve_is_url:
+    serve_dir = os.path.abspath('.')
+  elif file_to_serve.endswith(('/', '\\')) or os.path.isdir(file_to_serve):
+    serve_dir = file_to_serve
   else:
-    if file_to_serve == '.' or file_to_serve_is_url:
-      serve_dir = os.path.abspath('.')
-    else:
-      if file_to_serve.endswith(('/', '\\')) or os.path.isdir(file_to_serve):
-        serve_dir = file_to_serve
-      else:
-        serve_dir = os.path.dirname(os.path.abspath(file_to_serve))
+    serve_dir = os.path.dirname(os.path.abspath(file_to_serve))
   if file_to_serve_is_url:
     url = file_to_serve
   else:
@@ -1677,7 +1688,7 @@ def run(args):  # ruff: ignore[complex-structure, too-many-branches, too-many-st
       logv('Web server root directory: ' + os.path.abspath('.'))
     else:
       logi('Web server root directory: ' + os.path.abspath('.'))
-    logv('Starting web server: http://%s:%i/' % (options.hostname, options.port))
+    logv(f'Starting web server: http://{options.hostname}:{options.port}/')
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
     # to support binding to port zero we must allow the server to open to socket then retrieve the final port number
     options.port = httpd.socket.getsockname()[1]
@@ -1842,7 +1853,7 @@ def run(args):  # ruff: ignore[complex-structure, too-many-branches, too-many-st
     else:
       browser_stderr_handle = open(options.log_stderr, 'a', encoding='utf-8')
   if options.run_browser:
-    logv("Starting browser: %s" % ' '.join(browser))
+    logv(f"Starting browser: {' '.join(browser)}")
     # if browser[0] == 'cmd':
     #   Workaround an issue where passing 'cmd /C start' is not able to detect
     #   when the user closes the page.

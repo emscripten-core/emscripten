@@ -17,7 +17,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-static const char* SOCK_PATH = "/tmp/emscripten_unix_inuse.sock";
+const char* SOCK_PATH = "/tmp/emscripten_unix_inuse.sock";
 
 int main(void) {
   unlink(SOCK_PATH);

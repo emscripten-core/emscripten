@@ -25,13 +25,18 @@ static double current_intervals_ms[3];
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
+static void ms_to_timeval(double ms, struct timeval *tv)
+{
+	uint64_t us = ms * 1000;
+	tv->tv_sec = us / 1000000;
+	tv->tv_usec = us % 1000000;
+}
+
 void __getitimer(int which, struct itimerval *old, double now)
 {
 	double remaining_ms = MAX(current_timeout_ms[which] - now, 0);
-	old->it_value.tv_sec = remaining_ms / 1000;
-	old->it_value.tv_usec = remaining_ms * 1000;
-	old->it_interval.tv_sec = current_intervals_ms[which] / 1000;
-	old->it_interval.tv_usec = current_intervals_ms[which] * 1000;
+	ms_to_timeval(remaining_ms, &old->it_value);
+	ms_to_timeval(current_intervals_ms[which], &old->it_interval);
 }
 
 void _emscripten_timeout(int which, double now)
@@ -64,12 +69,11 @@ void _emscripten_timeout(int which, double now)
 	raise(signum);
 }
 
-bool _emscripten_check_timers(double now)
+void _emscripten_check_timers(double now)
 {
 	// Timers always run on the main runtime thread. They are registered with
 	// _setitimer_js which is proxied to the main runtime thread.
 	assert(emscripten_is_main_runtime_thread());
-	bool rtn = false;
 	for (int which = 0; which < 3; which++) {
 		if (current_timeout_ms[which]) {
 			// Only call out to JS to get the current time if it was not passed in
@@ -77,12 +81,10 @@ bool _emscripten_check_timers(double now)
 			if (!now)
 			 	now = emscripten_get_now();
 			if (now >= current_timeout_ms[which]) {
-				rtn = true;
 				_emscripten_timeout(which, now);
 			}
 		}
 	}
-	return rtn;
 }
 
 double _emscripten_next_timer()

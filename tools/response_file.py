@@ -32,7 +32,7 @@ def create_response_file_contents(args):
   # Arguments containing spaces need to be quoted.
   for arg in args:
     if ' ' in arg:
-      arg = '"%s"' % arg
+      arg = f'"{arg}"'
     contents += arg + '\n'
 
   return contents
