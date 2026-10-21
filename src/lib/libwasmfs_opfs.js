@@ -253,26 +253,20 @@ addToLibrary({
   // Open a sync access handle using 'readwrite-unsafe' if supported
   $wasmfsOPFSCreateSyncAccessHandle__deps: ['$wasmfsOPFSModeSupported'],
   $wasmfsOPFSCreateSyncAccessHandle: async (fileHandle) => {
-    if (wasmfsOPFSModeSupported === undefined) {
-      // browsers may ignore the readwrite-unsafe option so we use a
-      // getter check to see if it is supported
+    // Check if `mode` is supported by the browser by seeing if the browser
+    // reads it from options. A TypeError means the browser rejected the value.
+    async function checkForModeSupport() {
       let modeRead = false;
       const options = { get mode() { modeRead = true; return 'readwrite-unsafe'; } };
       try {
-        const accessHandle = await fileHandle.createSyncAccessHandle(options);
-        wasmfsOPFSModeSupported = modeRead;
-        return accessHandle;
+        let handle = await fileHandle.createSyncAccessHandle(options);
+        await handle.close();
       } catch (e) {
-        // A TypeError after `mode` was read means the browser rejected
-        // the value. Anything else is an ordinary failure of this open.
-        if (e.name !== 'TypeError' || !modeRead) {
-          wasmfsOPFSModeSupported = modeRead;
-          throw e;
-        }
-        wasmfsOPFSModeSupported = false;
+        if (e.name === 'TypeError') return false;
       }
+      return modeRead;
     }
-    if (wasmfsOPFSModeSupported) {
+    if (wasmfsOPFSModeSupported ??= await checkForModeSupport()) {
       return fileHandle.createSyncAccessHandle({mode: 'readwrite-unsafe'});
     }
     return fileHandle.createSyncAccessHandle();
@@ -295,7 +289,7 @@ addToLibrary({
           accessID = wasmfsOPFSAccessHandles.allocate(accessHandle);
         } else {
           // Without 'mode' support this handle is exclusive, so release it.
-          accessHandle.close();
+          await accessHandle.close();
         }
       } catch (e) {
         // Fall back to a blob.
