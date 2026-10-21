@@ -6921,6 +6921,75 @@ int main() {
 ''')
     self.do_runf('test.c', 'done\n', cflags=['-sGLOBAL_BASE=2Gb', '-sTOTAL_MEMORY=4Gb', '-sMAXIMUM_MEMORY=5Gb', '-sALLOW_MEMORY_GROWTH', '-m64'])
 
+  @requires_wasm64
+  @parameterized({
+    '': ([],),
+    'emmalloc': (['-sMALLOC=emmalloc'],),
+    'emmalloc_memvalidate': (['-sMALLOC=emmalloc-memvalidate', '-DEMMALLOC_MEMVALIDATE'],),
+    'mimalloc': (['-sMALLOC=mimalloc'],),
+  })
+  def test_malloc_large_wasm64(self, args):
+    create_file('test.c', r'''
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <emscripten/emmalloc.h>
+#include <emscripten/heap.h>
+
+#define GiB ((size_t)1 << 30)
+#define MiB ((size_t)1 << 20)
+
+int main() {
+  // Overflowing allocation sizes must return NULL.
+  assert(malloc(SIZE_MAX) == NULL);
+  assert(malloc((size_t)-100) == NULL);
+
+  // Allocate and free single blocks of 4 GiB and 5 GiB.
+  const size_t sizes[] = { 4 * GiB, 5 * GiB };
+  for (int i = 0; i < 2; ++i) {
+    size_t size = sizes[i];
+    uint8_t* p = (uint8_t*)malloc(size);
+    assert(p != NULL);
+    p[0] = 0x5a;
+    p[size - 1] = 0xa5;
+    assert(p[0] == 0x5a && p[size - 1] == 0xa5);
+    free(p);
+  }
+
+  // Allocate 10 blocks of 512 MiB (5 GiB total), free them so they merge into
+  // a single >4 GiB free region, and allocate them again without growing the heap.
+  enum { N = 10 };
+  void* blocks[N];
+  for (int i = 0; i < N; ++i) {
+    blocks[i] = malloc(512 * MiB);
+    assert(blocks[i] != NULL);
+    memset(blocks[i], 1, 4096);
+  }
+  size_t heap_after_first = emscripten_get_heap_size();
+  for (int i = 0; i < N; ++i) {
+    free(blocks[i]);
+  }
+#ifdef EMMALLOC_MEMVALIDATE
+  assert(emmalloc_validate_memory_regions() == 0);
+  emmalloc_dump_free_dynamic_memory_fragmentation_map();
+#endif
+  for (int i = 0; i < N; ++i) {
+    blocks[i] = malloc(512 * MiB);
+    assert(blocks[i] != NULL);
+  }
+  assert(emscripten_get_heap_size() == heap_after_first);
+  for (int i = 0; i < N; ++i) {
+    free(blocks[i]);
+  }
+
+  printf("done\n");
+  return 0;
+}
+''')
+    self.do_runf('test.c', 'done\n', cflags=['-m64', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=16GB', '-sABORTING_MALLOC=0'] + args)
+
   def test_libcxx_minimal(self):
     create_file('vector.cpp', r'''
 #include <vector>

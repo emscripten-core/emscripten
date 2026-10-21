@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -30,6 +31,9 @@ void stage(const char* name) {
 
 void basics() {
   stage("basics");
+  stage("allocate too large");
+  assert(malloc(SIZE_MAX) == NULL);
+  assert(malloc((size_t)-100) == NULL);
   stage("allocate 0");
   void* ptr = malloc(0);
   assert(ptr != 0);
