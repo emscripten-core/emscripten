@@ -191,7 +191,7 @@ def get_clang_resource_dir(args):
   if resource_dir:
     return resource_dir[-1].split('=')[1]
   else:
-    output = utils.run_process([shared.CLANG_CC, '-print-resource-dir'], stdout=PIPE).stdout
+    output = shared.run_process([get_clang(), *compile.get_target_flags(), '-print-resource-dir'], stdout=PIPE).stdout
     return output.strip()
 
 
@@ -249,7 +249,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if any(a in PASSTHROUGH_FLAGS for a in args) or any(a.startswith(p) for p in PASSTHROUGH_PREFIXES for a in args):
     # For several -print-xxx-name flags we just defer to clang rather than
     # trying to re-implement the logic.
-    shared.exec_process([get_clang(), *compile.get_cflags(tuple(args)), *newargs])
+    shared.exec_process([get_clang(), *compile.get_target_flags(), *newargs])
     assert False, 'exec_process should not return'
 
   if options.clear_cache:
@@ -296,7 +296,7 @@ def main(args):
   if len(args) == 2 and args[1] == '-v':
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print(cmdline.version_string(), file=sys.stderr)
-    return shared.check_call([get_clang(), '-v', *compile.get_target_flags()], check=False).returncode
+    return shared.check_call([get_clang(), *compile.get_target_flags(), '-v'], check=False).returncode
 
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
