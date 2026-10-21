@@ -6,10 +6,6 @@
 
 var LibraryTracing = {
   $EmscriptenTrace__deps: [
-    '$traceConfigure', 'emscripten_trace_configure_for_google_wtf',
-    '$traceEnterContext', 'emscripten_trace_exit_context',
-    '$traceLogMessage', '$traceMark',
-    'emscripten_get_now',
     '$jsStackTrace'
   ],
   $EmscriptenTrace__postset: 'EmscriptenTrace.init()',
@@ -381,5 +377,4 @@ var LibraryTracing = {
   },
 };
 
-autoAddDeps(LibraryTracing, '$EmscriptenTrace');
 addToLibrary(LibraryTracing);

@@ -10,7 +10,6 @@
 
 
 addToLibrary({
-  $WORKERFS__deps: ['$FS'],
   $WORKERFS: {
     DIR_MODE: {{{ cDefs.S_IFDIR | 0o777 }}},
     FILE_MODE: {{{ cDefs.S_IFREG | 0o777 }}},

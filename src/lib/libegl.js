@@ -311,7 +311,6 @@ var LibraryEGL = {
     return 1; /* Magic ID for Emscripten 'default surface' */
   },
 
-  eglCreateContext__deps: ['$GL'],
 
   // EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_context, const EGLint *attrib_list);
   eglCreateContext__proxy: 'sync',
@@ -375,7 +374,6 @@ var LibraryEGL = {
     }
   },
 
-  eglDestroyContext__deps: ['$GL'],
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext context);
   eglDestroyContext__proxy: 'sync',
@@ -509,7 +507,6 @@ var LibraryEGL = {
   // EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name);
   // The allocated strings are cached and never freed.
   eglQueryString__noleakcheck: true,
-  eglQueryString__deps: ['$stringToNewUTF8'],
   eglQueryString__proxy: 'sync',
   eglQueryString: (display, name) => {
     if (display != {{{ eglDefaultDisplay }}}) {
@@ -571,7 +568,6 @@ var LibraryEGL = {
   eglWaitGL: 'eglWaitClient',
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval);
-  eglSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   eglSwapInterval__proxy: 'sync',
   eglSwapInterval: (display, interval) => {
     if (display != {{{ eglDefaultDisplay }}}) {
@@ -586,7 +582,6 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx);
-  eglMakeCurrent__deps: ['$GL'],
   eglMakeCurrent__proxy: 'sync',
   eglMakeCurrent: (display, draw, read, context) => {
     if (display != {{{ eglDefaultDisplay }}}) {
@@ -634,7 +629,6 @@ var LibraryEGL = {
   eglGetCurrentDisplay: () => EGL.currentContext ? {{{ eglDefaultDisplay }}} : 0,
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
-  eglSwapBuffers__deps: ['$GLctx'],
   eglSwapBuffers__proxy: 'sync',
   eglSwapBuffers: (dpy, surface) => {
     if (!EGL.defaultDisplayInitialized) {
@@ -667,7 +661,5 @@ var LibraryEGL = {
     return 1 /* EGL_TRUE */;
   }
 };
-
-autoAddDeps(LibraryEGL, '$EGL');
 
 addToLibrary(LibraryEGL);
