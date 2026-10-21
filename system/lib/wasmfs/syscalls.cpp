@@ -568,7 +568,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   }
 
   // Ignore truncation if it is a device or FIFO
-  if (flags & O_TRUNC && S_ISREG(fileMode)) {
+    if ((flags & O_TRUNC) && S_ISREG(fileMode)) {
     auto lockedFile = child->cast<DataFile>()->locked();
     if (auto err = lockedFile.setSize(0)) {
       (void)lockedFile.close();
