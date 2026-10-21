@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -173,10 +174,9 @@ int main(int argc, char* argv[]) {
   assert(err == 0);
 
   fd = open("/opfs/working/foo.txt", O_RDONLY | O_TRUNC);
-  assert(fd > 0);
-  emscripten_console_log("truncated while opening read-only");
-  err = close(fd);
-  assert(err == 0);
+  // Blobs cannot be truncated and fail with EIO.
+  assert(fd == -1 && errno == EIO);
+  emscripten_console_log("failed to truncate while opening read-only");
 
   err = stat("/opfs/working/foo.txt", &stat_buf);
   assert(err == 0);
