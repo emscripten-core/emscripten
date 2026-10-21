@@ -10459,27 +10459,27 @@ console.log(JSON.stringify([0x14, 0x18, 0x1c, 0x20].map((pc) => sm.lookup(pc))))
   def test_split_dwarf_dwp(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g', '-gsplit-dwarf'])
     self.assertExists('a.out.wasm')
-    self.assertExists('hello_world.dwo')
+    self.assertExists('a.out.js-hello_world.dwo')
 
     # The wasm will have full debug info for libc (ignore that), but only a
     # skeleton for hello_world.c (no subprogram for main)
     dwdump = self.run_process([LLVM_DWARFDUMP, 'a.out.wasm'], stdout=PIPE).stdout
-    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertIn('DW_AT_GNU_dwo_name\t("a.out.js-hello_world.dwo")', dwdump)
     self.assertNotIn('DW_AT_name\t("main")', dwdump)
 
     # The dwo will have a subprogram for main in a section with a .dwo suffix
-    dwdump = self.run_process([LLVM_DWARFDUMP, 'hello_world.dwo'],
+    dwdump = self.run_process([LLVM_DWARFDUMP, 'a.out.js-hello_world.dwo'],
                               stdout=PIPE).stdout
     self.assertIn('.debug_info.dwo contents:', dwdump)
-    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertIn('DW_AT_GNU_dwo_name\t("a.out.js-hello_world.dwo")', dwdump)
     self.assertIn('DW_AT_name\t("main")', dwdump)
 
     # Check that dwp runs, and results in usable output as well
     self.run_process([LLVM_DWP, '-e', 'a.out.wasm', '-o', 'a.out.wasm.dwp'])
     self.assertExists('a.out.wasm.dwp')
-    self.run_process([LLVM_DWARFDUMP, 'a.out.wasm.dwp'], stdout=PIPE)
+    dwdump = self.run_process([LLVM_DWARFDUMP, 'a.out.wasm.dwp'], stdout=PIPE).stdout
     self.assertIn('.debug_info.dwo contents:', dwdump)
-    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertIn('DW_AT_GNU_dwo_name\t("a.out.js-hello_world.dwo")', dwdump)
     self.assertIn('DW_AT_name\t("main")', dwdump)
 
   def test_separate_dwarf_with_filename(self):
@@ -13499,7 +13499,13 @@ void foo() {}
     # Verify that the dwo file is generated in the current working directory, even when implicitly
     # compiling (compile+link).
     self.run_process([EMCC, test_file('hello_world.c'), '-g', '-gsplit-dwarf'])
-    self.assertExists('hello_world.dwo')
+    self.assertExists('a.out.js-hello_world.dwo')
+
+  def test_ftime_trace_implicit_compile(self):
+    # Verify that the time-trace json file is generated in the current working directory, even when
+    # implicitly compiling (compile+link).
+    self.run_process([EMCC, test_file('hello_world.c'), '-ftime-trace'])
+    self.assertExists('a.out.js-hello_world.json')
 
   @parameterized({
     '': ([],),

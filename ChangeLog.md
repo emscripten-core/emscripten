@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- When compiling and linking in a single command, auxiliary compiler output
+  files (such as `.dwo` files from `-gsplit-dwarf` or `.json` files from
+  `-ftime-trace`) are now named `<output>-<input>.<ext>`, matching the behavior
+  of `clang`. Previously, `.dwo` files were named `<input>.dwo` and other
+  auxiliary files were written to the temporary directory. (#28045)
 - libunwind and compiler-rt were updated to LLVM 23.1.3. (#28011, #28014)
 - mimalloc was updated to 3.5.3. (#28026)
 
