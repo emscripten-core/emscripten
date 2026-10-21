@@ -83,13 +83,15 @@ var LibraryPThread = {
   $PThread__deps: ['_emscripten_thread_init',
                    '$terminateWorker',
                    '$cleanupThread',
+#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
                    '$addOnPreRun',
-#if MAIN_MODULE
-                   '$markAsFinished',
-#endif
-#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE && !PTHREAD_POOL_DELAY_LOAD
+#if !PTHREAD_POOL_DELAY_LOAD
                    '$addRunDependency',
                    '$removeRunDependency',
+#endif
+#endif
+#if MAIN_MODULE
+                   '$markAsFinished',
 #endif
                    '$spawnThread',
                    '_emscripten_thread_free_data',
