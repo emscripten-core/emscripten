@@ -86,6 +86,14 @@ def parse_deps(content):
   return revisions
 
 
+def get_deps_revisions():
+  emsdk_hash = get_emsdk_version()
+  if VERBOSE or DRY_RUN:
+    print(f'Using emscripten-releases revision: {emsdk_hash}')
+  deps_content = fetch_deps(emsdk_hash)
+  return parse_deps(deps_content)
+
+
 def has_revision(repo_dir, revision):
   res = subprocess.run(
       ['git', '-C', repo_dir, 'rev-parse', '--verify', f'{revision}^{{commit}}'],
@@ -165,12 +173,7 @@ def main():
   VERBOSE = args.verbose
   DRY_RUN = args.dry_run
 
-  emsdk_hash = get_emsdk_version()
-  if VERBOSE or args.dry_run:
-    print(f'Using emscripten-releases revision: {emsdk_hash}')
-  deps_content = fetch_deps(emsdk_hash)
-
-  revisions = parse_deps(deps_content)
+  revisions = get_deps_revisions()
   sync_repo('llvm-project', args.llvm_dir, revisions['llvm_project_revision'], LLVM_URL)
   sync_repo('binaryen', args.binaryen_dir, revisions['binaryen_revision'], BINARYEN_URL)
   print('Done.')
