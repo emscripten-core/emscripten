@@ -330,6 +330,11 @@ void _emscripten_thread_exit(void* result) {
     exit(0);
   }
 
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+  // Free the TLS blocks that side modules allocated for this thread.
+  _emscripten_thread_free_tls();
+#endif
+
   /* At this point we are committed to thread termination. */
 
   /* The thread list lock must be AS-safe. */

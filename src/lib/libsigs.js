@@ -349,6 +349,7 @@ sigs = {
   _emscripten_system__sig: 'ip',
   _emscripten_thread_cleanup__sig: 'vp',
   _emscripten_thread_exit_joinable__sig: 'vp',
+  _emscripten_thread_free_tls__sig: 'v',
   _emscripten_thread_mailbox_await__sig: 'vp',
   _emscripten_thread_set_strongref__sig: 'vp',
   _emscripten_throw_longjmp__sig: 'v',
