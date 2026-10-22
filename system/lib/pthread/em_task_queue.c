@@ -188,7 +188,9 @@ void em_task_queue_cancel(em_task_queue* queue) {
   while (!em_task_queue_is_empty(queue)) {
     task t = em_task_queue_dequeue(queue);
     if (t.cancel) {
+      pthread_mutex_unlock(&queue->mutex);
       t.cancel(t.arg);
+      pthread_mutex_lock(&queue->mutex);
     }
   }
   pthread_mutex_unlock(&queue->mutex);
