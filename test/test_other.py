@@ -10112,6 +10112,41 @@ int main() {
     # has only two entries
     self.assertRegex(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
 
+  def test_wasm_sourcemap_line_zero(self):
+    # code at DWARF line 0 should map to no location, not to the row before it
+    wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
+    emsymbolizer = importlib.import_module('tools.emsymbolizer')
+    entries = [
+      {'address': 0x10, 'line': 5, 'column': 3, 'file': 'a.c', 'eos': False},
+      {'address': 0x18, 'line': 0, 'column': 0, 'file': 'a.c', 'eos': False},
+      {'address': 0x1a, 'line': 0, 'column': 0, 'file': 'a.c', 'eos': False},
+      {'address': 0x20, 'line': 6, 'column': 1, 'file': 'a.c', 'eos': False},
+    ]
+    options = wasm_sourcemap.parse_args(['unused.wasm'])
+    write_file('a.wasm.map', json.dumps(wasm_sourcemap.build_sourcemap(entries, [], 0, options)))
+    source_map = emsymbolizer.WasmSourceMap()
+    source_map.parse('a.wasm.map')
+    # consecutive line 0 rows share one segment
+    self.assertEqual(source_map.offsets, [0x10, 0x18, 0x20])
+    self.assertEqual(source_map.lookup(0x14).line, 5)
+    self.assertIsNone(source_map.lookup(0x18).source)
+    self.assertIsNone(source_map.lookup(0x1c).source)
+    self.assertEqual(source_map.lookup(0x20).line, 6)
+    # the runtime's reader in source_map_support.js should agree
+    js = read_file(path_from_root('src/source_map_support.js'))
+    js = js[js.index('class WasmSourceMap'):js.index('let wasmSourceMap;')]
+    create_file('lookup.js', js + '''
+const map = JSON.parse(require('fs').readFileSync('a.wasm.map', 'utf8'));
+const sm = new WasmSourceMap(map);
+console.log(JSON.stringify([0x14, 0x18, 0x1c, 0x20].map((pc) => sm.lookup(pc))));
+''')
+    self.assertEqual(json.loads(self.run_js('lookup.js')), [
+      {'file': 'a.c', 'line': 5, 'column': 3},
+      None,
+      None,
+      {'file': 'a.c', 'line': 6, 'column': 1},
+    ])
+
   def test_wasm_sourcemap_relative_paths(self):
     ensure_dir('build')
 
