@@ -184,6 +184,7 @@ void em_task_queue_execute(em_task_queue* queue) {
 }
 
 void em_task_queue_cancel(em_task_queue* queue) {
+  queue->processing = 1;
   pthread_mutex_lock(&queue->mutex);
   while (!em_task_queue_is_empty(queue)) {
     task t = em_task_queue_dequeue(queue);
@@ -200,6 +201,7 @@ void em_task_queue_cancel(em_task_queue* queue) {
   // proxying queue and mailbox cases, there are no more outstanding references
   // to the queue after thread shutdown.
   queue->notification = NOTIFICATION_NONE;
+  queue->processing = 0;
 }
 
 bool em_task_queue_enqueue(em_task_queue* queue, task t) {
