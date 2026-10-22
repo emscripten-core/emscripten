@@ -1785,7 +1785,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.SIDE_MODULE:
     # For side modules, we ignore all REQUIRED_EXPORTS that might have been added above.
     # They all come from either libc or compiler-rt.  The exception is __wasm_call_ctors
-    # and _emscripten_tls_init which are per-module exports.
+    # and _emscripten_tls_init/_emscripten_tls_free which are per-module exports.
     settings.REQUIRED_EXPORTS.clear()
 
   if not settings.STANDALONE_WASM:
@@ -1793,6 +1793,8 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
   if settings.PTHREADS:
     settings.REQUIRED_EXPORTS.append('_emscripten_tls_init')
+    if settings.SIDE_MODULE:
+      settings.REQUIRED_EXPORTS.append('_emscripten_tls_free')
 
   if settings.NODERAWFS:
     default_setting('NODE_HOST_ENV', 1)

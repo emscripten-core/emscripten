@@ -80,6 +80,7 @@ void _emscripten_thread_set_strongref(pthread_t thread);
 int _emscripten_thread_is_valid(pthread_t thread);
 
 void _emscripten_thread_exit_joinable(pthread_t thread);
+void _emscripten_thread_free_tls(void);
 void _emscripten_thread_exit(void* result);
 void _emscripten_process_dlopen_queue(void);
 extern em_proxying_queue* _Atomic _dlopen_proxying_queue;
