@@ -415,7 +415,6 @@ const PROXY_SYNC_ASYNC = 2;
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
   const libraryAliases = [];
-  const symbolDeps = {};
   const asyncFuncs = [];
   let postSets = [];
 
@@ -629,13 +628,6 @@ function(${args}) {
       }
 
       if (symbolsOnly) {
-        if (LibraryManager.library.hasOwnProperty(symbol)) {
-          // Resolve aliases before looking up deps
-          var transitiveDeps = getTransitiveDeps(symbol);
-          symbolDeps[symbol] = transitiveDeps.filter(
-            (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),
-          );
-        }
         return;
       }
 
@@ -1008,6 +1000,15 @@ var proxiedFunctionTable = [
   timer.stop('symbolHandler');
 
   if (symbolsOnly) {
+    const symbolDeps = {};
+    for (const sym of Object.keys(LibraryManager.library)) {
+      if (!isDecorator(sym)) {
+        const transitiveDeps = getTransitiveDeps(sym);
+        symbolDeps[sym] = transitiveDeps.filter(
+          (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),
+        );
+      }
+    }
     writeOutput(
       JSON.stringify({
         deps: symbolDeps,
