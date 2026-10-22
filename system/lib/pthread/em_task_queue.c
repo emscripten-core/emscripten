@@ -195,13 +195,14 @@ void em_task_queue_cancel(em_task_queue* queue) {
     }
   }
   pthread_mutex_unlock(&queue->mutex);
+  queue->processing = 0;
   // Any subsequent messages to this queue (for example if a pthread struct is
   // reused for a future thread, potentially on a different worker) will require
   // a new notification. Clearing the flag is safe here because in both the
   // proxying queue and mailbox cases, there are no more outstanding references
-  // to the queue after thread shutdown.
+  // to the queue after thread shutdown. This must be the last access to the
+  // queue because cull_zombies may free it once the flag is cleared.
   queue->notification = NOTIFICATION_NONE;
-  queue->processing = 0;
 }
 
 bool em_task_queue_enqueue(em_task_queue* queue, task t) {
