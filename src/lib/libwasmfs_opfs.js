@@ -257,7 +257,9 @@ addToLibrary({
     // reads it from options. A TypeError means the browser rejected the value.
     async function checkForModeSupport() {
       let modeRead = false;
-      const options = { get mode() { modeRead = true; return 'readwrite-unsafe'; } };
+      const options = {
+        get mode() { modeRead = true; return 'readwrite-unsafe'; }
+      };
       try {
         let handle = await fileHandle.createSyncAccessHandle(options);
         await handle.close();

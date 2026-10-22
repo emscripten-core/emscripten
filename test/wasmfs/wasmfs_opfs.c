@@ -174,15 +174,21 @@ int main(int argc, char* argv[]) {
   assert(err == 0);
 
   fd = open("/opfs/working/foo.txt", O_RDONLY | O_TRUNC);
+#ifdef WASMFS_OPFS_SHARED_ACCESS
+  // Shared access handles truncate the file, as Linux does.
+  assert(fd > 0);
+  emscripten_console_log("truncated while opening read-only");
+  err = close(fd);
+  assert(err == 0);
+#else
   // Files opened read-only use a Blob, which can't be truncated, so open fails
   // with EIO.
   assert(fd == -1 && errno == EIO);
   emscripten_console_log("failed to truncate while opening read-only");
+#endif
 
   err = stat("/opfs/working/foo.txt", &stat_buf);
   assert(err == 0);
-  // Shared access handles truncate the file when O_RDONLY | O_TRUNC is used,
-  // as Linux does. Blobs cannot be truncated, so the truncation is skipped.
 #ifdef WASMFS_OPFS_SHARED_ACCESS
   assert(stat_buf.st_size == 0);
   emscripten_console_log("statted after successful truncation");
