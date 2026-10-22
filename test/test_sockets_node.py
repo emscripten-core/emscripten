@@ -239,6 +239,29 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_dns.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_dns_unparsed(self):
+    # Resolver entries whose address does not parse (here a CNAME target name,
+    # as a non-conforming dns.lookup has returned) are skipped rather than
+    # handed to getaddrinfo as a null address.
+    create_file('dns_stub.js', '''
+      if (typeof process == 'object' && process.getBuiltinModule) {
+        var stubbed = {
+          'mixed.test': [{ address: 'github.com.', family: 4 },
+                         { address: '20.250.119.67', family: 4 },
+                         { address: 'github.com.', family: 6 }],
+          'names.test': [{ address: 'github.com.', family: 4 }],
+        };
+        var dns = process.getBuiltinModule('dns');
+        var lookup = dns.lookup;
+        dns.lookup = (name, opts, cb) => {
+          if (!stubbed[name]) return lookup(name, opts, cb);
+          setTimeout(() => cb(null, stubbed[name]), 0);
+        };
+      }
+    ''')
+    self.do_runf('sockets/test_dns_unparsed.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '--pre-js=dns_stub.js'])
+
   @requires_jspi_node
   def test_noderawsockets_dns_blocking_jspi(self):
     # Same, but getaddrinfo() suspends the wasm stack under JSPI.

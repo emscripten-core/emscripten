@@ -97,10 +97,14 @@ var NodeSockFSLibrary = {
                 return resolve({{{ cDefs.EAI_NONAME }}});
             }
           }
-          if (!addresses.length) return resolve({{{ cDefs.EAI_NONAME }}});
-          resolve(addresses.map((a) => a.family === 6 ?
+          // Skip entries whose address does not parse (e.g. a CNAME target
+          // name from a non-conforming resolver). With none left, the name
+          // has no address.
+          var entries = addresses.map((a) => a.family === 6 ?
             { family: {{{ cDefs.AF_INET6 }}}, addr: inetPton6(a.address) } :
-            { family: {{{ cDefs.AF_INET }}}, addr: inetPton4(a.address) }));
+            { family: {{{ cDefs.AF_INET }}}, addr: inetPton4(a.address) })
+            .filter((e) => e.addr !== null);
+          resolve(entries.length ? entries : {{{ cDefs.EAI_NONAME }}});
         });
       });
     },
