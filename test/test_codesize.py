@@ -19,7 +19,25 @@ from common import (
 )
 from decorators import parameterized, requires_pthreads
 
-from tools import building, shared
+from tools import building, diagnostics, shared, utils
+from tools.maint import sync_deps
+
+
+def get_llvm_revision():
+  proc = shared.check_call([shared.CLANG_CC, '--target=wasm32', '--version'], stdout=shared.PIPE)
+  m = re.search(r'\(\S+\s+([0-9a-f]{7,40})\)', proc.stdout)
+  if not m:
+    utils.exit_with_error(f'unable to parse llvm revision from clang version: {proc.stdout}')
+  return m.group(1)
+
+
+def get_binaryen_revision():
+  bindir = building.get_binaryen_bin()
+  version = building.get_binaryen_version(bindir)
+  m = re.search(r'\(version_\d+-\d+-g([0-9a-f]+)\)', version)
+  if not m:
+    utils.exit_with_error(f'unable to parse binaryen revision from wasm-opt version: {version}')
+  return m.group(1)
 
 
 def deminify_syms(names, minification_map):
@@ -33,6 +51,32 @@ def deminify_syms(names, minification_map):
 
 
 class codesize(RunnerCore):
+  checked_versions = False
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    # Check versions here in `__init__` (which runs in the main process during
+    # test loading) rather than `setUpClass` (which runs in each worker process
+    # when using the parallel test runner).
+    if not codesize.checked_versions:
+      codesize.checked_versions = True
+      revisions = sync_deps.get_deps_revisions()
+      expected_llvm = revisions['llvm_project_revision']
+      expected_binaryen = revisions['binaryen_revision']
+
+      doc_url = 'https://emscripten.org/docs/contributing/developers_guide.html#setting-up'
+      actual_llvm = get_llvm_revision()
+      if not expected_llvm.startswith(actual_llvm):
+        diagnostics.warn('Running codesize tests requires a specific LLVM version. '
+                         f'The current revision ({actual_llvm}) does not match test/emsdk_version.txt ({expected_llvm})\n'
+                         f'See {doc_url} for how to get the correct versions installed.')
+
+      actual_binaryen = get_binaryen_revision()
+      if not expected_binaryen.startswith(actual_binaryen):
+        diagnostics.warn('Running codesize tests requires a specific Binaryen version. '
+                         f'The current revision ({actual_binaryen}) does not match test/emsdk_version.txt ({expected_binaryen})\n'
+                         f'See {doc_url} for how to get the correct versions installed.')
+
   @parameterized({
     'audio_worklet': ('audio_worklet', False, True),
     'hello_world_wasm': ('hello_world', False, True),
