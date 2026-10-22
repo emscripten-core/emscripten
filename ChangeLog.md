@@ -30,8 +30,8 @@ See docs/process.md for more on how version tagging works.
 - `MEMORY64=2` was marked as deprecated. (#27953)
 - The undocumented `FS.filesystems` object was removed. Replace things like
   `FS.filesystems['MEMFS']` with plain `MEMFS`. If you want to access things
-  like `MEMFS` outside of the main JS, you can export it by adding it to
-  `EXPORTED_FUNCTIONS` (e.g. `-sEXPORTED_FUNCTIONS=_main,MEMFS`). (#27940)
+  like `MEMFS` outside of the main JS, you can export it:
+  `-sEXPORTED_RUNTIME_METHODS=MEMFS`. (#27940)
 - libpng port updated from 1.6.58 to 1.6.59. (#27956)
 
 6.0.12 - 10/08/26
