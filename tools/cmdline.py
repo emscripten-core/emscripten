@@ -209,6 +209,7 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   skip = False
+  dash_x = None
   builtin_settings = set(settings.keys())
   LEGACY_ARGS = {'--js-opts', '--llvm-opts', '--llvm-lto', '--memory-init-file'}
   LEGACY_FLAGS = {'--separate-asm', '--jcache', '--proxy-to-worker', '--default-obj-ext',
@@ -576,7 +577,9 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       options.dash_M = True
     elif arg.startswith('-x'):
       # TODO(sbc): Handle multiple -x flags on the same command line
-      options.input_language = arg
+      if dash_x:
+        newargs[dash_x[0]] = ''
+      dash_x = (i, arg)
     elif arg == '-fsyntax-only':
       options.syntax_only = True
     elif arg in SIMD_INTEL_FEATURE_TOWER or arg in SIMD_NEON_FLAGS:
@@ -600,7 +603,15 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
     elif arg.startswith('-fno-sanitize='):
       options.sanitize.difference_update(arg.split('=', 1)[1].split(','))
     elif arg and (arg == '-' or not arg.startswith('-')):
+      if dash_x:
+        options.input_language = dash_x[1]
+        dash_x = None
       options.input_files.append(arg)
+
+  if dash_x and options.input_files:
+    idx, arg = dash_x
+    newargs[idx] = ''
+    diagnostics.warning('unused-command-line-argument', f"'-x {arg.removeprefix('-x')}' after last input file has no effect")
 
   return [a for a in newargs if a]
 

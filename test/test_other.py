@@ -8448,6 +8448,7 @@ int main() {
     self.assertContained('Test_source_fixed_lang_hello', self.run_js('a.out.js'))
 
     self.assert_fail([EMXX, '-Wall', 'src_tmp_fixed_lang'], 'unknown file type: src_tmp_fixed_lang')
+    self.assert_fail([EMXX, '-Werror', 'src_tmp_fixed_lang', '-x', 'c++'], "'-x c++' after last input file has no effect [-Wunused-command-line-argument] [-Werror]")
 
   def test_disable_inlining(self):
     create_file('test.c', r'''
@@ -14370,8 +14371,8 @@ int main() {
 
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
-    self.do_other_test('test_xlocale.c')
-    self.do_other_test('test_xlocale.c', cflags=['-x', 'c++'])
+    self.do_other_test('test_xlocale.cpp')
+    self.do_other_test('test_xlocale.cpp', force_c=True)
 
   def test_print_map(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
