@@ -36,6 +36,16 @@ static void* thread_main(void* arg) {
   return NULL;
 }
 
+// Started after the library is loaded: it catches up on the library as it
+// starts, before running any code of its own.
+static void* late_thread_main(void* arg) {
+  func_t func_addr = p_side_func_address();
+  assert(func_addr == expected_func_addr);
+  assert(func_addr() == 43);
+  printf("late thread: done\n");
+  return NULL;
+}
+
 int main() {
   printf("in main\n");
 
@@ -67,6 +77,12 @@ int main() {
   expected_func_addr = p_side_func_address();
   printf("p_side_func_address -> %p\n", expected_func_addr);
   assert(expected_func_addr() == 43);
+
+  pthread_t late_thread;
+  int rc = pthread_create(&late_thread, NULL, late_thread_main, NULL);
+  assert(rc == 0);
+  rc = pthread_join(late_thread, NULL);
+  assert(rc == 0);
 
   // Wait until all threads execute their entry points
   pthread_barrier_wait(&started);

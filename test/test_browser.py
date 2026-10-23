@@ -3447,10 +3447,18 @@ Module["preRun"] = () => {
     self.emcc('side.c', ['-sSIDE_MODULE', '-O2', '-o', 'side.wasm'])
     self.btest_exit('main.c', cflags=['-sMAIN_MODULE=2', '-O2', 'side.wasm'])
 
-  def test_dlopen_async(self):
+  @parameterized({
+    '': ([],),
+    # The onsuccess callback (and the dlsym inside it) runs outside of any
+    # promising export, so syncing the other threads must not suspend.
+    'pthread_jspi': (['-pthread', '-Wno-experimental', '-sJSPI'],),
+  })
+  def test_dlopen_async(self, args):
+    if is_jspi(args):
+      self.require_jspi()
     create_file('side.c', 'int foo = 42;\n')
-    self.emcc('side.c', ['-o', 'libside.so', '-sSIDE_MODULE'])
-    self.btest_exit('other/test_dlopen_async.c', cflags=['-sMAIN_MODULE=2'])
+    self.emcc('side.c', ['-o', 'libside.so', '-sSIDE_MODULE'] + [a for a in args if a != '-sJSPI'])
+    self.btest_exit('other/test_dlopen_async.c', cflags=['-sMAIN_MODULE=2'] + args)
 
   def test_dlopen_blocking(self):
     self.emcc('other/test_dlopen_blocking_side.c', ['-o', 'libside.so', '-sSIDE_MODULE', '-pthread', '-Wno-experimental'])
@@ -3460,9 +3468,18 @@ Module["preRun"] = () => {
     # But with PROXY_TO_PTHEAD it does work, since we can do blocking and sync XHR in a worker.
     self.btest_exit('other/test_dlopen_blocking.c', cflags=['-sMAIN_MODULE=2', '-sPROXY_TO_PTHREAD', '-pthread', '-Wno-experimental', '-sAUTOLOAD_DYLIBS=0', 'libside.so'])
 
-  def test_pthread_dlopen(self):
+  @parameterized({
+    '': ([],),
+    # A thread started after the dlopen catches up on the library from its
+    # entry point, which is not a promising export, so that load must not
+    # suspend.
+    'jspi': (['-sJSPI'],),
+  })
+  def test_pthread_dlopen(self, args):
+    if is_jspi(args):
+      self.require_jspi()
     self.emcc('core/pthread/test_pthread_dlopen_side.c', ['-o', 'libside.so', '-sSIDE_MODULE', '-pthread', '-Wno-experimental'])
-    self.btest_exit('core/pthread/test_pthread_dlopen.c', cflags=['-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-sPTHREAD_POOL_SIZE=8', '-pthread', '-Wno-experimental', 'libside.so'])
+    self.btest_exit('core/pthread/test_pthread_dlopen.c', cflags=['-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-sPTHREAD_POOL_SIZE=9', '-pthread', '-Wno-experimental', 'libside.so'] + args)
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
