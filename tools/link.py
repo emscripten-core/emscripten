@@ -1524,6 +1524,8 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     default_setting('ABORTING_MALLOC', 0)
 
   if settings.EMBIND:
+    if settings.MAIN_MODULE and not settings.DYNAMIC_EXECUTION:
+      exit_with_error('EMBIND with MAIN_MODULE is not compatible with DYNAMIC_EXECUTION=0')
     # Workaround for embind+LTO issue:
     # https://github.com/emscripten-core/emscripten/issues/21653
     settings.REQUIRED_EXPORTS.append('__getTypeName')
@@ -1931,7 +1933,7 @@ def phase_post_link(in_wasm, wasm_target, target, js_syms, base_metadata=None):
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
-  if settings.EMBIND_AOT:
+  if settings.EMBIND_AOT and (settings.MODULARIZE == 'instance' or settings.WASM_ESM_INTEGRATION):
     phase_embind_aot(wasm_target, js_syms)
 
   if options.emit_tsd:
@@ -2081,9 +2083,8 @@ def phase_embind_aot(wasm_target, js_syms):
   if DEBUG:
     write_file(in_temp('embind_aot.json'), out)
   out = json.loads(out)
-  src = read_file(final_js)
-  src = do_replace(src, '<<< EMBIND_AOT_INVOKERS >>>', out['invokers'])
   if settings.MODULARIZE == 'instance':
+    src = read_file(final_js)
     # Add ES module exports for the embind exports.
     decls = '\n'.join([f'export var {name};' for name in out['publicSymbols']])
     # Assign the runtime exports from Module to the ES export.
@@ -2095,7 +2096,7 @@ addOnPostCtor(assignEmbindExports);
 {decls}
 // end embind exports'''
     src = do_replace(src, '<<< EMBIND_AOT_EXPORTS >>>', exports)
-  write_file(final_js, src)
+    write_file(final_js, src)
   if settings.WASM_ESM_INTEGRATION:
     # With ESM integration the embind exports also need to be exported by the main file.
     settings.EXPORTED_RUNTIME_METHODS.extend(out['publicSymbols'])

@@ -8,9 +8,7 @@
 var LibraryEmbind = {
   $UnboundTypeError: class extends Error {},
   $PureVirtualError: class extends Error {},
-#if EMBIND_AOT
-  $InvokerFunctions: '<<< EMBIND_AOT_INVOKERS >>>',
-#endif
+  $InvokerFunctions: `{${EMBIND_INVOKERS.map((sig) => `'${sig}': ${LibraryEmbindShared.$createJsInvoker(sig)},`).join('\n')}}`,
   // If register_type is used, emval will be registered multiple times for
   // different type ids, but only a single type object is needed on the JS side
   // for all of them. Store the type for reuse.
@@ -23,7 +21,6 @@ var LibraryEmbind = {
     },
     toWireType: (destructors, value) => Emval.toHandle(value),
     readValueFromPointer: readPointer,
-    destructorFunction: null, // This type does not need a destructor
 
     // TODO: do we need a deleteObject here?  write a test where
     // emval is passed into JS via an interface
@@ -200,7 +197,6 @@ var LibraryEmbind = {
       readValueFromPointer: function(pointer) {
         return this.fromWireType(HEAPU8[pointer]);
       },
-      destructorFunction: null, // This type does not need a destructor
     });
   },
 
@@ -296,7 +292,6 @@ var LibraryEmbind = {
         return value;
       },
       readValueFromPointer: integerReadValueFromPointer(name, size, minRange !== 0),
-      destructorFunction: null, // This type does not need a destructor
     });
   },
 
@@ -340,7 +335,6 @@ var LibraryEmbind = {
         return value;
       },
       readValueFromPointer: integerReadValueFromPointer(name, size, !isUnsignedType),
-      destructorFunction: null, // This type does not need a destructor
     });
   },
 #else
@@ -364,7 +358,6 @@ var LibraryEmbind = {
         return value;
       },
       readValueFromPointer: floatReadValueFromPointer(name, size),
-      destructorFunction: null, // This type does not need a destructor
     });
   },
 
@@ -479,15 +472,9 @@ var LibraryEmbind = {
           HEAPU8.set(value, ptr);
         }
 
-        if (destructors !== null) {
-          destructors.push(_free, base);
-        }
         return base;
       },
       readValueFromPointer: readPointer,
-      destructorFunction(ptr) {
-        _free(ptr);
-      },
     });
   },
 
@@ -529,15 +516,9 @@ var LibraryEmbind = {
 
         encodeString(value, ptr + {{{ POINTER_SIZE }}}, length + charSize);
 
-        if (destructors !== null) {
-          destructors.push(_free, ptr);
-        }
         return ptr;
       },
       readValueFromPointer: readPointer,
-      destructorFunction(ptr) {
-        _free(ptr);
-      }
     });
   },
 
@@ -629,7 +610,6 @@ var LibraryEmbind = {
 
 
     // Determine if we need to use a dynamic stack to store the destructors for the function parameters.
-    // TODO: Remove this completely once all function invokers are being dynamically generated.
     var needsDestructorStack = usesDestructorStack(argTypes);
 
     // Stack-allocating trivial value types get a stackSave/stackRestore
@@ -650,80 +630,6 @@ var LibraryEmbind = {
 #if ASSERTIONS
     var minArgs = getRequiredArgCount(argTypes);
 #endif
-#if DYNAMIC_EXECUTION == 0 && !EMBIND_AOT
-    var argsWired = new Array(expectedArgCount);
-    var invokerFuncArgs = [];
-    var destructors = [];
-    var invokerFn = function(...args) {
-#if ASSERTIONS
-      checkArgCount(args.length, minArgs, expectedArgCount, humanName, throwBindingError);
-#endif
-#if EMSCRIPTEN_TRACING
-      Module.emscripten_trace_enter_context(`embind::${humanName}`);
-#endif
-      destructors.length = 0;
-      var sp;
-      if (useStackFrame) {
-        sp = stackSave();
-      }
-      var thisWired;
-      invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
-      invokerFuncArgs[0] = cppTargetFunc;
-      if (isClassMethodFunc) {
-        thisWired = argTypes[1].toWireType(destructors, this);
-        invokerFuncArgs[1] = thisWired;
-      }
-      for (var i = 0; i < expectedArgCount; ++i) {
-        var argType = argTypes[i + 2];
-        // Stack-allocating types take the stack path only under a frame; a
-        // null destructors argument is that contract.
-        argsWired[i] = argType.toWireType(useStackFrame && argType.argStackAlloc ? null : destructors, args[i]);
-        invokerFuncArgs.push(argsWired[i]);
-      }
-
-      var rv = cppInvokerFunc(...invokerFuncArgs);
-      if (useStackFrame) {
-        // The callee has consumed the stack-allocated argument temporaries.
-        // As everywhere else in emscripten, the frame is not restored on an
-        // exception path; a JS caller that catches and continues must
-        // stackSave/stackRestore around the call (see the exceptions docs).
-        stackRestore(sp);
-      }
-
-      function onDone(rv) {
-        if (needsDestructorStack) {
-          runDestructors(destructors);
-        } else {
-          for (var i = isClassMethodFunc ? 1 : 2; i < argTypes.length; i++) {
-            var param = i === 1 ? thisWired : argsWired[i - 2];
-            if (argTypes[i].destructorFunction !== null) {
-              argTypes[i].destructorFunction(param);
-            }
-          }
-        }
-
-  #if EMSCRIPTEN_TRACING
-        Module.emscripten_trace_exit_context();
-  #endif
-
-        if (returns) {
-          return argTypes[0].fromWireType(rv);
-        }
-      }
-
-#if ASYNCIFY == 1
-      if (Asyncify.currData) {
-        return Asyncify.whenDone().then(onDone);
-      }
-#elif ASYNCIFY == 2
-      if (isAsync) {
-        return rv.then(onDone);
-      }
-#endif
-
-      return onDone(rv);
-    };
-#else
     // Build the arguments that will be passed into the closure around the invoker
     // function.
     var retType = argTypes[0];
@@ -743,27 +649,22 @@ var LibraryEmbind = {
 #if ASYNCIFY == 1
     closureArgs.push(Asyncify);
 #endif
-    if (!needsDestructorStack) {
-      // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
-      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) {
-        if (argTypes[i].destructorFunction !== null) {
-          closureArgs.push(argTypes[i].destructorFunction);
-        }
-      }
-    }
 #if ASSERTIONS
     closureArgs.push(checkArgCount, minArgs, expectedArgCount);
 #endif
 
-#if EMBIND_AOT
-    var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
-    var invokerFn = InvokerFunctions[signature](...closureArgs);
-#else
-
-    let invokerFactory = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
+    var cleanupMode = useStackFrame ? 's' : (needsDestructorStack ? 'd' : 'n');
+    var signature = `${isClassMethodFunc ? 't' : 'f'}${returns ? 't' : 'f'}${isAsync ? 't' : 'f'}${cleanupMode}${expectedArgCount}`;
+    var invokerFactory = InvokerFunctions[signature];
+#if MAIN_MODULE && DYNAMIC_EXECUTION
+    if (!invokerFactory) {
+      invokerFactory = InvokerFunctions[signature] = createJsInvoker(signature);
+    }
+#endif
+#if ASSERTIONS
+    assert(invokerFactory, `Missing embind invoker for signature: ${signature}`);
+#endif
     var invokerFn = invokerFactory(...closureArgs);
-#endif
-#endif
     return createNamedFunction(humanName, invokerFn);
   },
 
@@ -886,7 +787,7 @@ var LibraryEmbind = {
         const setter = elt.setter;
         const setterContext = elt.setterContext;
         elt.read = (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr));
-        if (setterArgumentType.destructorFunction === null && !setterArgumentType.argStackAlloc) {
+        if (!setterArgumentType.usesDestructor && !setterArgumentType.argStackAlloc) {
           // The element type never registers a destructor, so skip the
           // per-write destructors array. (Stack-allocating types still need
           // the array here: a null destructors argument means an
@@ -940,7 +841,7 @@ var LibraryEmbind = {
         readValueFromPointer: readPointer,
         // Trivial types have nothing to run after the call: the stack frame
         // (or the destructors array, on the deferred path) covers cleanup.
-        destructorFunction: isTrivial ? null : rawDestructor,
+        usesDestructor: !isTrivial,
         argStackAlloc: isTrivial,
       }];
     });
@@ -1010,7 +911,7 @@ var LibraryEmbind = {
         const setter = field.setter;
         const setterContext = field.setterContext;
         var write;
-        if (setterArgumentType.destructorFunction === null && !setterArgumentType.argStackAlloc) {
+        if (!setterArgumentType.usesDestructor && !setterArgumentType.argStackAlloc) {
           // See the matching element-write logic in _embind_finalize_value_array.
           write = (ptr, o) => setter(setterContext, ptr, setterArgumentType.toWireType(null, o));
         } else {
@@ -1065,7 +966,7 @@ var LibraryEmbind = {
           return ptr;
         },
         readValueFromPointer: readPointer,
-        destructorFunction: isTrivial ? null : rawDestructor,
+        usesDestructor: !isTrivial,
         argStackAlloc: isTrivial,
       }];
     });
@@ -1250,17 +1151,14 @@ var LibraryEmbind = {
     if (!isSmartPointer && registeredClass.baseClass === undefined) {
       if (isConst) {
         this.toWireType = constNoSmartPtrRawPointerToWireType;
-        this.destructorFunction = null;
       } else {
         this.toWireType = nonConstNoSmartPtrRawPointerToWireType;
-        this.destructorFunction = null;
       }
     } else {
       this.toWireType = genericPointerToWireType;
-      // Here we must leave this.destructorFunction undefined, since whether genericPointerToWireType returns
-      // a pointer that needs to be freed up is runtime-dependent, and cannot be evaluated at registration time.
-      // TODO: Create an alternative mechanism that allows removing the use of var destructors = []; array in
-      //       craftInvokerFunction altogether.
+      if (isSmartPointer) {
+        this.usesDestructor = true;
+      }
     }
   },
 
@@ -2170,7 +2068,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
           },
           toWireType: (destructors, c) => c.value,
           readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
-          destructorFunction: null,
         });
 
         exposePublicSymbol(name, ctor);
@@ -2186,7 +2083,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
           fromWireType: (c) => c,
           toWireType: (destructors, c) => c,
           readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
-          destructorFunction: null,
         });
 
         exposePublicSymbol(name, keysMap);
@@ -2212,7 +2108,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
             return this.valuesMap[c];
           },
           readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
-          destructorFunction: null,
         });
 
         exposePublicSymbol(name, keysMap);

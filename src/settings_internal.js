@@ -36,7 +36,8 @@ var SIDE_MODULE_IMPORTS = [];
 // won't exist.
 var EXPORT_IF_DEFINED = ['__start_em_asm', '__stop_em_asm',
                          '__start_em_lib_deps', '__stop_em_lib_deps',
-                         '__start_em_js', '__stop_em_js'];
+                         '__start_em_js', '__stop_em_js',
+                         '__start_em_embind', '__stop_em_embind'];
 
 // Like EXPORTED_FUNCTIONS, but symbol is required to exist in native code.
 // This means wasm-ld will fail if these symbols are missing.
@@ -87,6 +88,9 @@ var EMIT_TSD = false;
 // This will be true during the generation of code in run_embind_gen. Helpful
 // for detecting if either TSD file or embind AOT JS generation is running.
 var EMBIND_GEN_MODE = false;
+
+// List of 5-tuple embind invoker signatures expanded from the em_embind section.
+var EMBIND_INVOKERS = [];
 
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = true;
