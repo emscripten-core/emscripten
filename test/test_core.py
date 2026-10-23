@@ -4047,7 +4047,6 @@ caught outer int: 123
     self.clear_setting('SIDE_MODULE')
     so_file = os.path.join(so_dir, so_name)
 
-    # Using -shared + -sFAKE_DYLIBS should be the same as `-sSIDE_MODULE`
     flags = ['-sSIDE_MODULE']
     if isinstance(side, list):
       # side is just a library
@@ -4059,6 +4058,7 @@ caught outer int: 123
     shutil.move(so_file, so_file + '.orig')
 
     # Verify that building with -sSIDE_MODULE is essentially the same as building with `-shared -fPIC`
+    # (when no static archives are involved)
     flags = ['-shared', '-fPIC']
     if isinstance(side, list):
       # side is just a library
