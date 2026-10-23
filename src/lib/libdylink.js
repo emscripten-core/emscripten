@@ -1307,6 +1307,15 @@ var LibraryDylink = {
     dlopenInternal(handle, { loadAsync: false }),
 #endif
 
+  // Synchronous version of _dlopen_js, used by _emscripten_dlsync_self when a
+  // background thread catches up on libraries the main thread has already
+  // loaded.  A worker can always do that synchronously, and the callers
+  // (thread startup, the proxying queue) are not promising, so under JSPI an
+  // async import would trap with "trying to suspend without
+  // WebAssembly.promising".
+  _dlopen_js_sync__deps: ['$dlopenInternal'],
+  _dlopen_js_sync: (handle) => dlopenInternal(handle, { loadAsync: false }),
+
   // Async version of dlopen.
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
   _emscripten_dlopen_js: (handle, onsuccess, onerror, user_data) => {

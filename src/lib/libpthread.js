@@ -1280,7 +1280,7 @@ var LibraryPThread = {
   // synchronously block the main thread until all other threads are in sync.
   // When `dlopen` is called from a worker, the worker itself is blocked but
   // the operation its waiting on (on the main thread) can be async.
-  _emscripten_dlsync_threads__deps: ['_emscripten_proxy_dlsync', '$dlsyncThreadsAsync'],
+  _emscripten_dlsync_threads__deps: ['_emscripten_dlsync_threads_sync', '$dlsyncThreadsAsync'],
   _emscripten_dlsync_threads__async: 'auto',
   _emscripten_dlsync_threads__proxy: 'sync',
   _emscripten_dlsync_threads: () => {
@@ -1288,6 +1288,15 @@ var LibraryPThread = {
     if (callingThread) {
       return dlsyncThreadsAsync();
     }
+    __emscripten_dlsync_threads_sync();
+  },
+
+  // The main thread's synchronous loop, as an import that is not marked
+  // `__async`: under JSPI an async import always suspends, and it is called
+  // from contexts that are not promising (e.g. emscripten_dlopen's onsuccess
+  // callback).
+  _emscripten_dlsync_threads_sync__deps: ['_emscripten_proxy_dlsync'],
+  _emscripten_dlsync_threads_sync: () => {
     for (const ptr of Object.keys(PThread.pthreads)) {
       const pthread_ptr = Number(ptr);
       if (!PThread.finishedThreads.has(pthread_ptr)) {
