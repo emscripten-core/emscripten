@@ -27,6 +27,9 @@ See docs/process.md for more on how version tagging works.
   auxiliary files were written to the temporary directory. (#28045)
 - libunwind and compiler-rt were updated to LLVM 23.1.3. (#28011, #28014)
 - mimalloc was updated to 3.6.0. (#28026, #28068)
+- Restored `--whole-archive` behaviour when linking with `-sSIDE_MODULE=1`
+  (fixing a regression from 6.0.0 where static archives were no longer included
+  in full), while keeping native archive behaviour for `-shared`. (#28055)
 
 6.0.13 - 10/19/26
 -----------------

@@ -832,7 +832,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   apply_library_settings(linker_args)
 
   if options.shared and not settings.FAKE_DYLIBS:
-    default_setting('SIDE_MODULE', 1)
+    default_setting('SIDE_MODULE', 2)
 
   if not settings.SIDE_MODULE and not settings.FAKE_DYLIBS:
     options.dylibs = get_dylibs(linker_args)

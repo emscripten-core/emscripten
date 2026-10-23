@@ -12722,6 +12722,43 @@ int main () {
     self.assertNotContained('warning: -shared/-r used with executable output suffix', err)
     self.assertIsWasmDylib('out.wasm')
 
+    # Verify how `-shared` compares to `-sSIDE_MODULE=1` and `-sSIDE_MODULE=2`
+    # when linking object files and static archives.
+    create_file('foo.c', 'int foo() { return 1; }\n')
+    create_file('bar.c', 'int bar() { return 2; }\n')
+    self.run_process([EMCC, '-fPIC', '-c', 'foo.c'])
+    self.run_process([EMCC, '-fPIC', '-c', 'bar.c'])
+    self.run_process([EMAR, 'rc', 'libbar.a', 'bar.o'])
+
+    # `-shared`: exports `foo` from `foo.o`, but does not pull in unreferenced `libbar.a`
+    self.run_process([EMCC, '-shared', 'foo.o', 'libbar.a', '-o', 'out.so'])
+    exports = {e.name for e in webassembly.get_exports('out.so')}
+    self.assertIn('foo', exports)
+    self.assertNotIn('bar', exports)
+
+    # `-sSIDE_MODULE=1`: exports both `foo` and `bar` (`--whole-archive`)
+    self.run_process([EMCC, '-sSIDE_MODULE=1', 'foo.o', 'libbar.a', '-o', 'out.so'])
+    exports = {e.name for e in webassembly.get_exports('out.so')}
+    self.assertIn('foo', exports)
+    self.assertIn('bar', exports)
+
+    # `-sSIDE_MODULE=2`: exports neither `foo` nor `bar` (`--no-export-dynamic`)
+    self.run_process([EMCC, '-sSIDE_MODULE=2', 'foo.o', 'libbar.a', '-o', 'out.so'])
+    exports = {e.name for e in webassembly.get_exports('out.so')}
+    self.assertNotIn('foo', exports)
+    self.assertNotIn('bar', exports)
+
+    # When both `-shared` and `-sSIDE_MODULE` are specified, `SIDE_MODULE` takes precedence.
+    self.run_process([EMCC, '-shared', '-sSIDE_MODULE=1', 'foo.o', 'libbar.a', '-o', 'out.so'])
+    exports = {e.name for e in webassembly.get_exports('out.so')}
+    self.assertIn('foo', exports)
+    self.assertIn('bar', exports)
+
+    self.run_process([EMCC, '-shared', '-sSIDE_MODULE=2', 'foo.o', 'libbar.a', '-o', 'out.so'])
+    exports = {e.name for e in webassembly.get_exports('out.so')}
+    self.assertNotIn('foo', exports)
+    self.assertNotIn('bar', exports)
+
   @no_windows('windows does not support shbang syntax')
   @with_env_modify({'EMMAKEN_JUST_CONFIGURE': '1'})
   def test_autoconf_mode(self):
