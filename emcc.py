@@ -586,14 +586,16 @@ def phase_compile_inputs(state, newargs):
       if ext == '.pcm':
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
     cmd += [*compile_args, '-c', input_file, '-o', output_file]
-    if options.requested_debug == '-gsplit-dwarf':
+    if ext not in ASSEMBLY_EXTENSIONS:
       # When running in COMPILE_AND_LINK mode we compile objects to a temporary location
-      # but we want the `.dwo` file to be generated in the current working directory,
-      # like it is under clang.  We could avoid this hack if we use the clang driver
-      # to generate the temporary files, but that would also involve using the clang
-      # driver to perform linking which would be a big change.
-      cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
-      cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
+      # but we want side-effect files (such as `.dwo` or `-ftime-trace` `.json` files)
+      # to be generated in the current working directory, like they are under clang.
+      # We could avoid this hack if we use the clang driver to generate the temporary
+      # files, but that would also involve using the clang driver to perform linking
+      # which would be a big change.
+      # See https://github.com/emscripten-core/emscripten/pull/27866
+      target = options.output_file or 'a.out.js'
+      cmd += ['-dumpdir', f'{target}-']
     shared.check_call(cmd)
     if not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
