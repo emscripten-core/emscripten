@@ -478,34 +478,23 @@ var callRuntimeCallbacks = callbacks => {
 
 var onPreRuns = [];
 
-/** @type {!Int8Array} */ var HEAP8;
-
-/** @type {!Uint8Array} */ var HEAPU8;
-
 /** @type {!Uint32Array} */ var HEAPU32;
 
-/** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
-  // Gather all iovecs into one contiguous buffer and issue a single
-  // FS.write, matching POSIX writev's single gather-write semantics (as
-  // __syscall_sendmsg already does). Per-iovec writes fragment a stream
-  // socket send into multiple segments, breaking stream byte semantics.
-  if (iovcnt == 1) {
-    // Single iovec: write directly from HEAP8, no gather buffer needed.
-    return FS.write(stream, HEAP8, HEAPU32[((iov) >> 2)], HEAPU32[(((iov) + (4)) >> 2)], offset);
+var FS_createDataFile = (...args) => FS.createDataFile(...args);
+
+var preloadPlugins = [];
+
+var FS_handledByPreloadPlugin = async (byteArray, fullname) => {
+  // Ensure plugins are ready.
+  if (typeof Browser !== "undefined") Browser.init();
+  for (var plugin of preloadPlugins) {
+    if (plugin["canHandle"](fullname)) {
+      return plugin["handle"](byteArray, fullname);
+    }
   }
-  var total = 0;
-  for (var i = 0, p = iov; i < iovcnt; i++, p += 8) {
-    total += HEAPU32[(((p) + (4)) >> 2)];
-  }
-  var view = new Uint8Array(total);
-  var voff = 0;
-  for (var i = 0; i < iovcnt; i++, iov += 8) {
-    var ptr = HEAPU32[((iov) >> 2)];
-    var len = HEAPU32[(((iov) + (4)) >> 2)];
-    view.set(HEAPU8.subarray(ptr, ptr + len), voff);
-    voff += len;
-  }
-  return FS.write(stream, view, 0, total, offset);
+  // If no plugin handled this file then return the original/unmodified
+  // byteArray.
+  return byteArray;
 };
 
 var PATH = {
@@ -566,17 +555,6 @@ var PATH = {
   join2: (l, r) => PATH.normalize(l + "/" + r)
 };
 
-var initRandomFill = () => {
-  // This block is not needed on v19+ since crypto.getRandomValues is builtin
-  if (ENVIRONMENT_IS_NODE) {
-    var nodeCrypto = require("node:crypto");
-    return view => (nodeCrypto.randomFillSync(view), 0);
-  }
-  return view => (crypto.getRandomValues(view), 0);
-};
-
-var randomFill = view => (randomFill = initRandomFill())(view);
-
 var PATH_FS = {
   resolve: (...args) => {
     var resolvedPath = "", resolvedAbsolute = false;
@@ -630,302 +608,96 @@ var PATH_FS = {
   }
 };
 
-var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
+var dependenciesPromise = null;
 
-/**
-   * heapOrArray is either a regular array, or a JavaScript typed array view.
-   * @param {number} idx
-   * @param {number=} maxBytesToRead
-   * @param {boolean=} ignoreNul
-   * @return {number}
-   */ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
-  var maxIdx = idx + maxBytesToRead;
-  if (ignoreNul) return maxIdx;
-  // TextDecoder needs to know the byte length in advance, it doesn't stop on
-  // null terminator by itself.
-  // As a tiny code save trick, compare idx against maxIdx using a negation,
-  // so that maxBytesToRead=undefined/NaN means Infinity.
-  while (heapOrArray[idx] && !(idx >= maxIdx)) ++idx;
-  return idx;
-};
+var dependenciesPromiseResolve = null;
 
-/**
-   * Given a pointer 'idx' to a null-terminated UTF8-encoded string in the given
-   * array that contains uint8 values, returns a copy of that string as a
-   * Javascript String object.
-   * heapOrArray is either a regular array, or a JavaScript typed array view.
-   * @param {number=} idx
-   * @param {number=} maxBytesToRead
-   * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
-   * @return {string}
-   */ var UTF8ArrayToString = (heapOrArray, idx = 0, maxBytesToRead, ignoreNul) => {
-  var endPtr = findStringEnd(heapOrArray, idx, maxBytesToRead, ignoreNul);
-  // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
-  if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
-    return UTF8Decoder.decode(heapOrArray.subarray(idx, endPtr));
-  }
-  var str = "";
-  while (idx < endPtr) {
-    // For UTF8 byte structure, see:
-    // http://en.wikipedia.org/wiki/UTF-8#Description
-    // https://www.ietf.org/rfc/rfc2279.txt
-    // https://tools.ietf.org/html/rfc3629
-    var u0 = heapOrArray[idx++];
-    if (!(u0 & 128)) {
-      str += String.fromCharCode(u0);
-      continue;
-    }
-    var u1 = heapOrArray[idx++] & 63;
-    if ((u0 & 224) == 192) {
-      str += String.fromCharCode(((u0 & 31) << 6) | u1);
-      continue;
-    }
-    var u2 = heapOrArray[idx++] & 63;
-    if ((u0 & 240) == 224) {
-      u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
-    } else {
-      u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heapOrArray[idx++] & 63);
-    }
-    if (u0 < 65536) {
-      str += String.fromCharCode(u0);
-    } else {
-      var ch = u0 - 65536;
-      str += String.fromCharCode(55296 | (ch >> 10), 56320 | (ch & 1023));
-    }
-  }
-  return str;
-};
+var resolveRunDependencies = async () => dependenciesPromise;
 
-var FS_stdin_getChar_buffer = [];
+var runDependencies = 0;
 
-var lengthBytesUTF8 = str => {
-  var len = 0;
-  for (var i = 0; i < str.length; ++i) {
-    var u = str.codePointAt(i);
-    if (u <= 127) {
-      len++;
-    } else if (u <= 2047) {
-      len += 2;
-    } else if (u <= 65535) {
-      len += 3;
-    } else {
-      len += 4;
-      // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
-      // We need to manually skip over the second code unit for correct iteration.
-      i++;
-    }
-  }
-  return len;
-};
-
-var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
-  // Parameter maxBytesToWrite is not optional. Negative values, 0, null,
-  // undefined and false each don't write out any bytes.
-  if (!(maxBytesToWrite > 0)) return 0;
-  var startIdx = outIdx;
-  var endIdx = outIdx + maxBytesToWrite - 1;
-  // -1 for string null terminator.
-  for (var i = 0; i < str.length; ++i) {
-    // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description
-    // and https://www.ietf.org/rfc/rfc2279.txt
-    // and https://tools.ietf.org/html/rfc3629
-    var u = str.codePointAt(i);
-    if (u <= 127) {
-      if (outIdx >= endIdx) break;
-      heap[outIdx++] = u;
-    } else if (u <= 2047) {
-      if (outIdx + 1 >= endIdx) break;
-      heap[outIdx++] = 192 | (u >> 6);
-      heap[outIdx++] = 128 | (u & 63);
-    } else if (u <= 65535) {
-      if (outIdx + 2 >= endIdx) break;
-      heap[outIdx++] = 224 | (u >> 12);
-      heap[outIdx++] = 128 | ((u >> 6) & 63);
-      heap[outIdx++] = 128 | (u & 63);
-    } else {
-      if (outIdx + 3 >= endIdx) break;
-      heap[outIdx++] = 240 | (u >> 18);
-      heap[outIdx++] = 128 | ((u >> 12) & 63);
-      heap[outIdx++] = 128 | ((u >> 6) & 63);
-      heap[outIdx++] = 128 | (u & 63);
-      // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
-      // We need to manually skip over the second code unit for correct iteration.
-      i++;
-    }
-  }
-  // Null-terminate the pointer to the buffer.
-  heap[outIdx] = 0;
-  return outIdx - startIdx;
-};
-
-/** @type {function(string, boolean=, number=)} */ var intArrayFromString = (stringy, dontAddNull, length) => {
-  var len = length > 0 ? length : lengthBytesUTF8(stringy) + 1;
-  var u8array = new Array(len);
-  var numBytesWritten = stringToUTF8Array(stringy, u8array, 0, u8array.length);
-  if (dontAddNull) u8array.length = numBytesWritten;
-  return u8array;
-};
-
-var FS_stdin_getChar = () => {
-  if (!FS_stdin_getChar_buffer.length) {
-    var result = null;
-    if (ENVIRONMENT_IS_NODE) {
-      // we will read data by chunks of BUFSIZE
-      var BUFSIZE = 256;
-      var buf = Buffer.alloc(BUFSIZE);
-      var bytesRead = 0;
-      try {
-        bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE);
-      } catch (e) {
-        // Cross-platform differences: on Windows, reading EOF throws an
-        // exception, but on other OSes, reading EOF returns 0. Uniformize
-        // behavior by treating the EOF exception to return 0.
-        if (e.toString().includes("EOF")) bytesRead = 0; else throw e;
-      }
-      if (bytesRead > 0) {
-        result = buf.toString("utf-8", 0, bytesRead);
-      }
-    } else if (globalThis.window?.prompt) {
-      // Browser.
-      result = window.prompt("Input: ");
-      // returns null on cancel
-      if (result !== null) {
-        result += "\n";
-      }
-    } else {}
-    if (!result) {
-      return null;
-    }
-    FS_stdin_getChar_buffer = intArrayFromString(result, true);
-  }
-  return FS_stdin_getChar_buffer.shift();
-};
-
-var TTY = {
-  ttys: [],
-  init() {},
-  shutdown() {},
-  register(dev, ops) {
-    TTY.ttys[dev] = {
-      input: [],
-      output: [],
-      ops
-    };
-    FS.registerDevice(dev, TTY.stream_ops);
-  },
-  stream_ops: {
-    open(stream) {
-      var tty = TTY.ttys[stream.node.rdev];
-      if (!tty) {
-        throw new FS.ErrnoError(43);
-      }
-      stream.tty = tty;
-      stream.seekable = false;
-    },
-    close(stream) {
-      // flush any pending line data
-      stream.tty.ops.fsync(stream.tty);
-    },
-    fsync(stream) {
-      stream.tty.ops.fsync(stream.tty);
-    },
-    read(stream, buffer, offset, length, pos) {
-      if (!stream.tty || !stream.tty.ops.get_char) {
-        throw new FS.ErrnoError(60);
-      }
-      var bytesRead = 0;
-      for (var i = 0; i < length; i++) {
-        var result;
-        try {
-          result = stream.tty.ops.get_char(stream.tty);
-        } catch (e) {
-          throw new FS.ErrnoError(29);
-        }
-        if (result === undefined && !bytesRead) {
-          throw new FS.ErrnoError(6);
-        }
-        if (result === null || result === undefined) break;
-        bytesRead++;
-        buffer[offset + i] = result;
-        // We currently only support canonical mode (ICANON), where
-        // read(2) returns as soon as a line delimiter is read.
-        if (result === 10) break;
-      }
-      if (bytesRead) {
-        stream.node.atime = Date.now();
-      }
-      return bytesRead;
-    },
-    write(stream, buffer, offset, length, pos) {
-      if (!stream.tty || !stream.tty.ops.put_char) {
-        throw new FS.ErrnoError(60);
-      }
-      try {
-        for (var i = 0; i < length; i++) {
-          stream.tty.ops.put_char(stream.tty, buffer[offset + i]);
-        }
-      } catch (e) {
-        throw new FS.ErrnoError(29);
-      }
-      if (length) {
-        stream.node.mtime = stream.node.ctime = Date.now();
-      }
-      return i;
-    }
-  },
-  default_tty_ops: {
-    get_char(tty) {
-      return FS_stdin_getChar();
-    },
-    put_char(tty, val) {
-      if (val === null || val === 10) {
-        out(UTF8ArrayToString(tty.output));
-        tty.output = [];
-      } else {
-        if (val != 0) tty.output.push(val);
-      }
-    },
-    fsync(tty) {
-      if (tty.output?.length > 0) {
-        out(UTF8ArrayToString(tty.output));
-        tty.output = [];
-      }
-    },
-    ioctl_tcgets(tty) {
-      // typical setting
-      return {
-        c_iflag: 25856,
-        c_oflag: 5,
-        c_cflag: 191,
-        c_lflag: 35387,
-        c_cc: [ 3, 28, 127, 21, 4, 0, 1, 0, 17, 19, 26, 0, 18, 15, 23, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
-      };
-    },
-    ioctl_tcsets(tty, optional_actions, data) {
-      // currently just ignore
-      return 0;
-    },
-    ioctl_tiocgwinsz(tty) {
-      return [ 24, 80 ];
-    }
-  },
-  default_tty1_ops: {
-    put_char(tty, val) {
-      if (val === null || val === 10) {
-        err(UTF8ArrayToString(tty.output));
-        tty.output = [];
-      } else {
-        if (val != 0) tty.output.push(val);
-      }
-    },
-    fsync(tty) {
-      if (tty.output?.length > 0) {
-        err(UTF8ArrayToString(tty.output));
-        tty.output = [];
-      }
-    }
+var removeRunDependency = id => {
+  runDependencies--;
+  if (!runDependencies) {
+    dependenciesPromiseResolve();
   }
 };
+
+var addRunDependency = id => {
+  if (!runDependencies) {
+    dependenciesPromise = new Promise(resolve => dependenciesPromiseResolve = resolve);
+  }
+  runDependencies++;
+};
+
+var asyncLoad = async url => {
+  var arrayBuffer = await readAsync(url);
+  return new Uint8Array(arrayBuffer);
+};
+
+var getUniqueRunDependency = id => id;
+
+var FS_preloadFile = async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
+  // TODO we should allow people to just pass in a complete filename instead
+  // of parent and name being that we just join them anyways
+  var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
+  var dep = getUniqueRunDependency(`cp ${fullname}`);
+  // might have several active requests for the same fullname
+  addRunDependency(dep);
+  try {
+    var byteArray = url;
+    if (typeof url === "string") {
+      byteArray = await asyncLoad(url);
+    }
+    byteArray = await FS_handledByPreloadPlugin(byteArray, fullname);
+    preFinish?.();
+    if (!dontCreateFile) {
+      FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
+    }
+  } finally {
+    removeRunDependency(dep);
+  }
+};
+
+var FS_createPreloadedFile = (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+  FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish).then(onload).catch(onerror);
+};
+
+var FS_fileDataToTypedArray = data => {
+  if (typeof data === "string") {
+    data = intArrayFromString(data, true);
+  }
+  if (!data.subarray) {
+    data = new Uint8Array(data);
+  }
+  return data;
+};
+
+var FS_getMode = (canRead, canWrite) => {
+  var mode = 0;
+  if (canRead) mode |= 292 | 73;
+  if (canWrite) mode |= 146;
+  return mode;
+};
+
+var FS_modeStringToFlags = str => {
+  if (typeof str !== "string") return str;
+  var flagModes = {
+    "r": 0,
+    "r+": 2,
+    "w": 512 | 64 | 1,
+    "w+": 512 | 64 | 2,
+    "a": 1024 | 64 | 1,
+    "a+": 1024 | 64 | 2
+  };
+  var flags = flagModes[str];
+  if (typeof flags === "undefined") {
+    throw new Error(`Unknown file open mode: ${str}`);
+  }
+  return flags;
+};
+
+/** @type {!Int8Array} */ var HEAP8;
 
 var mmapAlloc = size => {
   abort();
@@ -1228,111 +1000,313 @@ var MEMFS = {
   }
 };
 
-var FS_modeStringToFlags = str => {
-  if (typeof str !== "string") return str;
-  var flagModes = {
-    "r": 0,
-    "r+": 2,
-    "w": 512 | 64 | 1,
-    "w+": 512 | 64 | 2,
-    "a": 1024 | 64 | 1,
-    "a+": 1024 | 64 | 2
-  };
-  var flags = flagModes[str];
-  if (typeof flags === "undefined") {
-    throw new Error(`Unknown file open mode: ${str}`);
-  }
-  return flags;
-};
+var FS_stdin_getChar_buffer = [];
 
-var FS_fileDataToTypedArray = data => {
-  if (typeof data === "string") {
-    data = intArrayFromString(data, true);
-  }
-  if (!data.subarray) {
-    data = new Uint8Array(data);
-  }
-  return data;
-};
-
-var FS_getMode = (canRead, canWrite) => {
-  var mode = 0;
-  if (canRead) mode |= 292 | 73;
-  if (canWrite) mode |= 146;
-  return mode;
-};
-
-var asyncLoad = async url => {
-  var arrayBuffer = await readAsync(url);
-  return new Uint8Array(arrayBuffer);
-};
-
-var FS_createDataFile = (...args) => FS.createDataFile(...args);
-
-var getUniqueRunDependency = id => id;
-
-var dependenciesPromise = null;
-
-var resolveRunDependencies = async () => dependenciesPromise;
-
-var runDependencies = 0;
-
-var dependenciesPromiseResolve = null;
-
-var removeRunDependency = id => {
-  runDependencies--;
-  if (!runDependencies) {
-    dependenciesPromiseResolve();
-  }
-};
-
-var addRunDependency = id => {
-  if (!runDependencies) {
-    dependenciesPromise = new Promise(resolve => dependenciesPromiseResolve = resolve);
-  }
-  runDependencies++;
-};
-
-var preloadPlugins = [];
-
-var FS_handledByPreloadPlugin = async (byteArray, fullname) => {
-  // Ensure plugins are ready.
-  if (typeof Browser !== "undefined") Browser.init();
-  for (var plugin of preloadPlugins) {
-    if (plugin["canHandle"](fullname)) {
-      return plugin["handle"](byteArray, fullname);
+var lengthBytesUTF8 = str => {
+  var len = 0;
+  for (var i = 0; i < str.length; ++i) {
+    var u = str.codePointAt(i);
+    if (u <= 127) {
+      len++;
+    } else if (u <= 2047) {
+      len += 2;
+    } else if (u <= 65535) {
+      len += 3;
+    } else {
+      len += 4;
+      // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
+      // We need to manually skip over the second code unit for correct iteration.
+      i++;
     }
   }
-  // If no plugin handled this file then return the original/unmodified
-  // byteArray.
-  return byteArray;
+  return len;
 };
 
-var FS_preloadFile = async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
-  // TODO we should allow people to just pass in a complete filename instead
-  // of parent and name being that we just join them anyways
-  var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
-  var dep = getUniqueRunDependency(`cp ${fullname}`);
-  // might have several active requests for the same fullname
-  addRunDependency(dep);
-  try {
-    var byteArray = url;
-    if (typeof url === "string") {
-      byteArray = await asyncLoad(url);
+var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
+  // Parameter maxBytesToWrite is not optional. Negative values, 0, null,
+  // undefined and false each don't write out any bytes.
+  if (!(maxBytesToWrite > 0)) return 0;
+  var startIdx = outIdx;
+  var endIdx = outIdx + maxBytesToWrite - 1;
+  // -1 for string null terminator.
+  for (var i = 0; i < str.length; ++i) {
+    // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description
+    // and https://www.ietf.org/rfc/rfc2279.txt
+    // and https://tools.ietf.org/html/rfc3629
+    var u = str.codePointAt(i);
+    if (u <= 127) {
+      if (outIdx >= endIdx) break;
+      heap[outIdx++] = u;
+    } else if (u <= 2047) {
+      if (outIdx + 1 >= endIdx) break;
+      heap[outIdx++] = 192 | (u >> 6);
+      heap[outIdx++] = 128 | (u & 63);
+    } else if (u <= 65535) {
+      if (outIdx + 2 >= endIdx) break;
+      heap[outIdx++] = 224 | (u >> 12);
+      heap[outIdx++] = 128 | ((u >> 6) & 63);
+      heap[outIdx++] = 128 | (u & 63);
+    } else {
+      if (outIdx + 3 >= endIdx) break;
+      heap[outIdx++] = 240 | (u >> 18);
+      heap[outIdx++] = 128 | ((u >> 12) & 63);
+      heap[outIdx++] = 128 | ((u >> 6) & 63);
+      heap[outIdx++] = 128 | (u & 63);
+      // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
+      // We need to manually skip over the second code unit for correct iteration.
+      i++;
     }
-    byteArray = await FS_handledByPreloadPlugin(byteArray, fullname);
-    preFinish?.();
-    if (!dontCreateFile) {
-      FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
+  }
+  // Null-terminate the pointer to the buffer.
+  heap[outIdx] = 0;
+  return outIdx - startIdx;
+};
+
+/** @type {function(string, boolean=, number=)} */ var intArrayFromString = (stringy, dontAddNull, length) => {
+  var len = length > 0 ? length : lengthBytesUTF8(stringy) + 1;
+  var u8array = new Array(len);
+  var numBytesWritten = stringToUTF8Array(stringy, u8array, 0, u8array.length);
+  if (dontAddNull) u8array.length = numBytesWritten;
+  return u8array;
+};
+
+var FS_stdin_getChar = () => {
+  if (!FS_stdin_getChar_buffer.length) {
+    var result = null;
+    if (ENVIRONMENT_IS_NODE) {
+      // we will read data by chunks of BUFSIZE
+      var BUFSIZE = 256;
+      var buf = Buffer.alloc(BUFSIZE);
+      var bytesRead = 0;
+      try {
+        bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE);
+      } catch (e) {
+        // Cross-platform differences: on Windows, reading EOF throws an
+        // exception, but on other OSes, reading EOF returns 0. Uniformize
+        // behavior by treating the EOF exception to return 0.
+        if (e.toString().includes("EOF")) bytesRead = 0; else throw e;
+      }
+      if (bytesRead > 0) {
+        result = buf.toString("utf-8", 0, bytesRead);
+      }
+    } else if (globalThis.window?.prompt) {
+      // Browser.
+      result = window.prompt("Input: ");
+      // returns null on cancel
+      if (result !== null) {
+        result += "\n";
+      }
+    } else {}
+    if (!result) {
+      return null;
     }
-  } finally {
-    removeRunDependency(dep);
+    FS_stdin_getChar_buffer = intArrayFromString(result, true);
+  }
+  return FS_stdin_getChar_buffer.shift();
+};
+
+var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
+
+/**
+   * heapOrArray is either a regular array, or a JavaScript typed array view.
+   * @param {number} idx
+   * @param {number=} maxBytesToRead
+   * @param {boolean=} ignoreNul
+   * @return {number}
+   */ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
+  var maxIdx = idx + maxBytesToRead;
+  if (ignoreNul) return maxIdx;
+  // TextDecoder needs to know the byte length in advance, it doesn't stop on
+  // null terminator by itself.
+  // As a tiny code save trick, compare idx against maxIdx using a negation,
+  // so that maxBytesToRead=undefined/NaN means Infinity.
+  while (heapOrArray[idx] && !(idx >= maxIdx)) ++idx;
+  return idx;
+};
+
+/**
+   * Given a pointer 'idx' to a null-terminated UTF8-encoded string in the given
+   * array that contains uint8 values, returns a copy of that string as a
+   * Javascript String object.
+   * heapOrArray is either a regular array, or a JavaScript typed array view.
+   * @param {number=} idx
+   * @param {number=} maxBytesToRead
+   * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
+   * @return {string}
+   */ var UTF8ArrayToString = (heapOrArray, idx = 0, maxBytesToRead, ignoreNul) => {
+  var endPtr = findStringEnd(heapOrArray, idx, maxBytesToRead, ignoreNul);
+  // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
+  if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
+    return UTF8Decoder.decode(heapOrArray.subarray(idx, endPtr));
+  }
+  var str = "";
+  while (idx < endPtr) {
+    // For UTF8 byte structure, see:
+    // http://en.wikipedia.org/wiki/UTF-8#Description
+    // https://www.ietf.org/rfc/rfc2279.txt
+    // https://tools.ietf.org/html/rfc3629
+    var u0 = heapOrArray[idx++];
+    if (!(u0 & 128)) {
+      str += String.fromCharCode(u0);
+      continue;
+    }
+    var u1 = heapOrArray[idx++] & 63;
+    if ((u0 & 224) == 192) {
+      str += String.fromCharCode(((u0 & 31) << 6) | u1);
+      continue;
+    }
+    var u2 = heapOrArray[idx++] & 63;
+    if ((u0 & 240) == 224) {
+      u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
+    } else {
+      u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heapOrArray[idx++] & 63);
+    }
+    if (u0 < 65536) {
+      str += String.fromCharCode(u0);
+    } else {
+      var ch = u0 - 65536;
+      str += String.fromCharCode(55296 | (ch >> 10), 56320 | (ch & 1023));
+    }
+  }
+  return str;
+};
+
+var TTY = {
+  ttys: [],
+  init() {},
+  shutdown() {},
+  register(dev, ops) {
+    TTY.ttys[dev] = {
+      input: [],
+      output: [],
+      ops
+    };
+    FS.registerDevice(dev, TTY.stream_ops);
+  },
+  stream_ops: {
+    open(stream) {
+      var tty = TTY.ttys[stream.node.rdev];
+      if (!tty) {
+        throw new FS.ErrnoError(43);
+      }
+      stream.tty = tty;
+      stream.seekable = false;
+    },
+    close(stream) {
+      // flush any pending line data
+      stream.tty.ops.fsync(stream.tty);
+    },
+    fsync(stream) {
+      stream.tty.ops.fsync(stream.tty);
+    },
+    read(stream, buffer, offset, length, pos) {
+      if (!stream.tty || !stream.tty.ops.get_char) {
+        throw new FS.ErrnoError(60);
+      }
+      var bytesRead = 0;
+      for (var i = 0; i < length; i++) {
+        var result;
+        try {
+          result = stream.tty.ops.get_char(stream.tty);
+        } catch (e) {
+          throw new FS.ErrnoError(29);
+        }
+        if (result === undefined && !bytesRead) {
+          throw new FS.ErrnoError(6);
+        }
+        if (result === null || result === undefined) break;
+        bytesRead++;
+        buffer[offset + i] = result;
+        // We currently only support canonical mode (ICANON), where
+        // read(2) returns as soon as a line delimiter is read.
+        if (result === 10) break;
+      }
+      if (bytesRead) {
+        stream.node.atime = Date.now();
+      }
+      return bytesRead;
+    },
+    write(stream, buffer, offset, length, pos) {
+      if (!stream.tty || !stream.tty.ops.put_char) {
+        throw new FS.ErrnoError(60);
+      }
+      try {
+        for (var i = 0; i < length; i++) {
+          stream.tty.ops.put_char(stream.tty, buffer[offset + i]);
+        }
+      } catch (e) {
+        throw new FS.ErrnoError(29);
+      }
+      if (length) {
+        stream.node.mtime = stream.node.ctime = Date.now();
+      }
+      return i;
+    }
+  },
+  default_tty_ops: {
+    get_char(tty) {
+      return FS_stdin_getChar();
+    },
+    put_char(tty, val) {
+      if (val === null || val === 10) {
+        out(UTF8ArrayToString(tty.output));
+        tty.output = [];
+      } else {
+        if (val != 0) tty.output.push(val);
+      }
+    },
+    fsync(tty) {
+      if (tty.output?.length > 0) {
+        out(UTF8ArrayToString(tty.output));
+        tty.output = [];
+      }
+    },
+    ioctl_tcgets(tty) {
+      // typical setting
+      return {
+        c_iflag: 25856,
+        c_oflag: 5,
+        c_cflag: 191,
+        c_lflag: 35387,
+        c_cc: [ 3, 28, 127, 21, 4, 0, 1, 0, 17, 19, 26, 0, 18, 15, 23, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+      };
+    },
+    ioctl_tcsets(tty, optional_actions, data) {
+      // currently just ignore
+      return 0;
+    },
+    ioctl_tiocgwinsz(tty) {
+      return [ 24, 80 ];
+    }
+  },
+  default_tty1_ops: {
+    put_char(tty, val) {
+      if (val === null || val === 10) {
+        err(UTF8ArrayToString(tty.output));
+        tty.output = [];
+      } else {
+        if (val != 0) tty.output.push(val);
+      }
+    },
+    fsync(tty) {
+      if (tty.output?.length > 0) {
+        err(UTF8ArrayToString(tty.output));
+        tty.output = [];
+      }
+    }
   }
 };
 
-var FS_createPreloadedFile = (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
-  FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish).then(onload).catch(onerror);
+var initRandomFill = () => {
+  // This block is not needed on v19+ since crypto.getRandomValues is builtin
+  if (ENVIRONMENT_IS_NODE) {
+    var nodeCrypto = require("node:crypto");
+    return view => (nodeCrypto.randomFillSync(view), 0);
+  }
+  return view => (crypto.getRandomValues(view), 0);
 };
+
+var randomFill = view => (randomFill = initRandomFill())(view);
 
 var FS = {
   root: null,
@@ -2971,6 +2945,12 @@ var FS = {
   }
 };
 
+/** @type {!Int32Array} */ var HEAP32;
+
+/** not-@type {!BigInt64Array} */ var HEAP64;
+
+/** @type {!Uint8Array} */ var HEAPU8;
+
 /**
    * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
    * emscripten HEAP, returns a copy of that string as a Javascript String object.
@@ -2984,10 +2964,6 @@ var FS = {
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */ var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : "";
-
-/** @type {!Int32Array} */ var HEAP32;
-
-/** not-@type {!BigInt64Array} */ var HEAP64;
 
 var SYSCALLS = {
   currentUmask: 18,
@@ -3066,6 +3042,30 @@ var SYSCALLS = {
     var ret = UTF8ToString(ptr);
     return ret;
   }
+};
+
+/** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
+  // Gather all iovecs into one contiguous buffer and issue a single
+  // FS.write, matching POSIX writev's single gather-write semantics (as
+  // __syscall_sendmsg already does). Per-iovec writes fragment a stream
+  // socket send into multiple segments, breaking stream byte semantics.
+  if (iovcnt == 1) {
+    // Single iovec: write directly from HEAP8, no gather buffer needed.
+    return FS.write(stream, HEAP8, HEAPU32[((iov) >> 2)], HEAPU32[(((iov) + (4)) >> 2)], offset);
+  }
+  var total = 0;
+  for (var i = 0, p = iov; i < iovcnt; i++, p += 8) {
+    total += HEAPU32[(((p) + (4)) >> 2)];
+  }
+  var view = new Uint8Array(total);
+  var voff = 0;
+  for (var i = 0; i < iovcnt; i++, iov += 8) {
+    var ptr = HEAPU32[((iov) >> 2)];
+    var len = HEAPU32[(((iov) + (4)) >> 2)];
+    view.set(HEAPU8.subarray(ptr, ptr + len), voff);
+    voff += len;
+  }
+  return FS.write(stream, view, 0, total, offset);
 };
 
 function _fd_write(fd, iov, iovcnt, pnum) {

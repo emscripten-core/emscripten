@@ -871,7 +871,12 @@ function(${args}) {
 
       const joinChunks = (chunks) => chunks.filter(Boolean).join('\n');
 
-      const depsText = joinChunks(deps.map(addDependency));
+      // Sort string dependencies alphabetically for deterministic output order
+      // regardless of how __deps are declared or discovered. Keep function
+      // callbacks after string dependencies in their original order.
+      const stringDeps = deps.filter((d) => typeof d !== 'function').sort();
+      const funcDeps = deps.filter((d) => typeof d === 'function');
+      const depsText = joinChunks([...stringDeps, ...funcDeps].map(addDependency));
 
       // Defer direct JS value aliases (`var _alias = _target;`) to `libraryAliases`
       // so the target symbol is guaranteed to be defined first. Skip native
