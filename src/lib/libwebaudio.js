@@ -161,6 +161,7 @@ var LibraryWebAudio = {
   // etc., but the created worklet does.
   _emscripten_create_audio_worklet__deps: [
     '$_emAudioDispatchProcessorCallback',
+    '$emAudio',
     '$stackAlloc', '$stackRestore', '$stackSave', '$HEAP32', '$HEAPU32', '$HEAPF32',
 #if WASM_BIGINT || MEMORY64
     '$HEAP64', '$HEAPU64',

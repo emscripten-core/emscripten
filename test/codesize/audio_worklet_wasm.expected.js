@@ -102,9 +102,9 @@ u || (x = new WebAssembly.Memory({
     shared: !0
 }), y());
 
-var M = a => {
+var L = [], M = a => {
     L.push(a);
-}, L = [], N = a => {
+}, N = a => {
     a = a.data;
     var b = a._wsc;
     b && A.get(b)(...a.x);
@@ -114,7 +114,7 @@ var M = a => {
     a = a.data;
     var b = a._wsc;
     b && A.get(b)(...a.D);
-}, ca = (a, b, c, k, d, g, f) => {
+}, Q = {}, ca = (a, b, c, k, d, g, f) => {
     var l = Q[b], n = l.audioWorklet;
     d = () => {
         A.get(g)(b, 0, f);
@@ -159,7 +159,7 @@ var M = a => {
         } else k += String.fromCharCode(d);
     }
     return k;
-}, Q = {}, T = 0, ea = a => {
+}, T = 0, ea = a => {
     if (a) {
         var b = G[a >> 2];
         b = (b ? S(b) : "") || void 0;

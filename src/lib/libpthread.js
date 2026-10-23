@@ -81,13 +81,18 @@ const pthreadWorkerOptions = `{
 var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
+                   '$callUserCallback',
+                   '$checkMailbox',
                    '$terminateWorker',
                    '$cleanupThread',
-#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
+#if !MINIMAL_RUNTIME
+                   '$wasmMemory',
+#if PTHREAD_POOL_SIZE
                    '$addOnPreRun',
 #if !PTHREAD_POOL_DELAY_LOAD
                    '$addRunDependency',
                    '$removeRunDependency',
+#endif
 #endif
 #endif
 #if MAIN_MODULE

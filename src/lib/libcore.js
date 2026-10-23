@@ -1408,6 +1408,7 @@ addToLibrary({
   $timers: {},
 
   $clearTimers__internal: true,
+  $clearTimers__deps: ['$timers'],
   $clearTimers: () => {
     for (var t of Object.values(timers)) {
       clearTimeout(t.id);
@@ -2079,9 +2080,12 @@ addToLibrary({
   emscripten_throw_string: (str) => { throw UTF8ToString(str); },
 
 #if !MINIMAL_RUNTIME
+  $handleException__deps: [
+    '$ExitStatus',
 #if STACK_OVERFLOW_CHECK
-  $handleException__deps: ['emscripten_stack_get_current'],
+    'emscripten_stack_get_current',
 #endif
+  ],
   $handleException: (e) => {
     // Certain exception types we do not treat as errors since they are used for
     // internal control flow.

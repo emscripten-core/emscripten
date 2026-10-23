@@ -107,6 +107,7 @@ addToLibrary({
     return mode;
   },
 
+  $FS_fileDataToTypedArray__deps: ['$intArrayFromString'],
   $FS_fileDataToTypedArray: (data) => {
     if (typeof data === 'string') {
       data = intArrayFromString(data, true);

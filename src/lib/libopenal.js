@@ -3274,6 +3274,7 @@ var LibraryOpenAL = {
   // alDopplerVelocity() sets a multiplier for the speed of sound.
   // It's deprecated since it's equivalent to directly calling
   // alSpeedOfSound() with an appropriately premultiplied value.
+  alDopplerVelocity__deps: ['$warnOnce'],
   alDopplerVelocity__proxy: 'sync',
   alDopplerVelocity: (value) => {
     warnOnce('alDopplerVelocity() is deprecated, and only kept for compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
