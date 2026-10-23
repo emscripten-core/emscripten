@@ -2453,6 +2453,8 @@ def phase_binaryen(target, wasm_target):
 
     if settings.SINGLE_FILE_BINARY_ENCODE:
       js = do_replace(js, '"<<< WASM_BINARY_DATA >>>"', binary_encode(wasm_target))
+      if settings.ASSERTIONS:
+        js = do_replace(js, '"<<< WASM_BINARY_SIZE >>>"', str(os.path.getsize(wasm_target)))
     else:
       js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
     delete_file(wasm_target)

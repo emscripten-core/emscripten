@@ -4727,6 +4727,18 @@ Module["preRun"] = () => {
 
     self.run_browser('test.html', '/report_result?0')
 
+  # Tests that a SINGLE_FILE build loaded from a page whose charset is not UTF-8
+  # reports that, rather than failing to compile the mangled Wasm binary.
+  def test_single_file_not_utf8(self):
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-sSINGLE_FILE', '-sASSERTIONS'])
+
+    create_file('test.html', '''
+      <meta charset="windows-1252">
+      <script src="test.js"></script>
+    ''')
+
+    self.run_browser('test.html', 'this file was not read as UTF-8')
+
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     self.btest_exit('browser_test_hello_world.c', cflags=['-sSINGLE_FILE'], run_in_worker=True)

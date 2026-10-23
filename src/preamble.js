@@ -418,7 +418,11 @@ function getWasmBinary(file) {}
 
 function findWasmBinary() {
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#if ASSERTIONS
+  return binaryDecode("<<< WASM_BINARY_DATA >>>", "<<< WASM_BINARY_SIZE >>>");
+#else
   return binaryDecode("<<< WASM_BINARY_DATA >>>");
+#endif
 #elif SINGLE_FILE
   return base64Decode('<<< WASM_BINARY_DATA >>>');
 #elif AUDIO_WORKLET || !EXPORT_ES6 // For an Audio Worklet, we cannot use `new URL()`.
