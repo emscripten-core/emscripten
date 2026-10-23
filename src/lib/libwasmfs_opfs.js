@@ -247,10 +247,73 @@ addToLibrary({
     wasmfsOPFSDirectoryHandles.free(dirID);
   },
 
+#if PTHREADS
+  $wasmfsOPFSModeSupported: undefined,
+
+  // Open a sync access handle using 'readwrite-unsafe' if supported
+  $wasmfsOPFSCreateSyncAccessHandle__deps: ['$wasmfsOPFSModeSupported'],
+  $wasmfsOPFSCreateSyncAccessHandle: async (fileHandle) => {
+    // Check if `mode` is supported by the browser by seeing if the browser
+    // reads it from options. A TypeError means the browser rejected the value.
+    async function checkForModeSupport() {
+      let modeRead = false;
+      const options = {
+        get mode() { modeRead = true; return 'readwrite-unsafe'; }
+      };
+      try {
+        let handle = await fileHandle.createSyncAccessHandle(options);
+        await handle.close();
+      } catch (e) {
+        if (e.name === 'TypeError') return false;
+      }
+      return modeRead;
+    }
+    if (wasmfsOPFSModeSupported ??= await checkForModeSupport()) {
+      return fileHandle.createSyncAccessHandle({mode: 'readwrite-unsafe'});
+    }
+    return fileHandle.createSyncAccessHandle();
+  },
+
+  // Open an access handle for reading only if it does not lock the file for
+  // other tabs and workers. Otherwise report -1
+  _wasmfs_opfs_open_shared_access__deps: ['$wasmfsOPFSFileHandles',
+                                          '$wasmfsOPFSAccessHandles',
+                                          '$wasmfsOPFSProxyFinish',
+                                          '$wasmfsOPFSModeSupported',
+                                          '$wasmfsOPFSCreateSyncAccessHandle'],
+  _wasmfs_opfs_open_shared_access: async (ctx, fileID, accessIDPtr) => {
+    let accessID = -1;
+    if (wasmfsOPFSModeSupported !== false) {
+      let fileHandle = wasmfsOPFSFileHandles.get(fileID);
+      try {
+        let accessHandle = await wasmfsOPFSCreateSyncAccessHandle(fileHandle);
+        if (wasmfsOPFSModeSupported) {
+          accessID = wasmfsOPFSAccessHandles.allocate(accessHandle);
+        } else {
+          // Without 'mode' support this handle is exclusive, so release it.
+          await accessHandle.close();
+        }
+      } catch (e) {
+        // Fall back to a blob.
+#if ASSERTIONS
+        if (e.name !== 'NoModificationAllowedError' &&
+            e.name !== 'InvalidStateError') {
+          err('unexpected error:', e, e.stack);
+        }
+#endif
+      }
+    }
+    {{{ makeSetValue('accessIDPtr', 0, 'accessID', 'i32') }}};
+    wasmfsOPFSProxyFinish(ctx);
+  },
+#endif
+
   _wasmfs_opfs_open_access__deps: ['$wasmfsOPFSFileHandles',
                                    '$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish',
-#if !PTHREADS
-                                   '$wasmfsOPFSCreateAsyncAccessHandle'
+#if PTHREADS
+                                   '$wasmfsOPFSCreateSyncAccessHandle',
+#else
+                                   '$wasmfsOPFSCreateAsyncAccessHandle',
 #endif
                                   ],
   _wasmfs_opfs_open_access__async: {{{ ASYNCIFY_NEEDED }}},
@@ -260,17 +323,7 @@ addToLibrary({
     try {
       let accessHandle;
 #if PTHREADS
-      // TODO: Remove this once the Access Handles API has settled.
-      // TODO: Closure is confused by this code that supports two versions of
-      //       the same API, so suppress type checking on it.
-      /** @suppress {checkTypes} */
-      var len = FileSystemFileHandle.prototype.createSyncAccessHandle.length;
-      if (len == 0) {
-        accessHandle = await fileHandle.createSyncAccessHandle();
-      } else {
-        accessHandle = await fileHandle.createSyncAccessHandle(
-            {mode: 'in-place'});
-      }
+      accessHandle = await wasmfsOPFSCreateSyncAccessHandle(fileHandle);
 #else
       accessHandle = await wasmfsOPFSCreateAsyncAccessHandle(fileHandle);
 #endif
