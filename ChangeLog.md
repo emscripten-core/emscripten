@@ -38,6 +38,13 @@ See docs/process.md for more on how version tagging works.
   like `MEMFS` outside of the main JS, you can export it:
   `-sEXPORTED_RUNTIME_METHODS=MEMFS`. (#27940)
 - libpng port updated from 1.6.58 to 1.6.59. (#27956)
+- When exports are wrapped for pointer conversions (`MEMORY64`, or
+  `MAXIMUM_MEMORY` over 2GB), the `wasmExports` object no longer contains a
+  copy of every export.  Only the wrapped exports are its own properties and
+  the rest are inherited from the original `WebAssembly.Instance` exports.
+  This speeds up startup for programs with many exports (e.g. `MAIN_MODULE`).
+  Code that enumerates `wasmExports` should use `for...in` rather than
+  `Object.keys`/`Object.entries`. (#27996)
 
 6.0.12 - 10/08/26
 -----------------

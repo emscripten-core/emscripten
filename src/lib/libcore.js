@@ -1765,7 +1765,11 @@ addToLibrary({
 #endif
   ],
   $assignWasmExports: (wasmExports) => {
-    for (var [name, exportedSymbol] of Object.entries(wasmExports)) {
+    // Use `for...in` rather than `Object.entries` here since, after
+    // `applySignatureConversions`, some exports are inherited rather than own
+    // properties.
+    for (var name in wasmExports) {
+      var exportedSymbol = wasmExports[name];
       name = asmjsMangle(name);
 #if DYNCALLS || !WASM_BIGINT
       if (name.startsWith('dynCall_')) {
