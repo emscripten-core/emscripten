@@ -1224,6 +1224,12 @@ var LibraryPThread = {
   },
 
   $markAsFinished: (pthread_ptr) => {
+    // When this is reached via a message from the exiting thread, the thread
+    // may already have been joined and cleaned up, and its pthread_t reused by
+    // a new thread that is still running, which must not be marked.
+    if (!PThread.pthreads[pthread_ptr]) return;
+    var state = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.detach_state, 'i32') }}};
+    if (state != {{{ cDefs.DT_EXITING }}} && state != {{{ cDefs.DT_EXITED }}}) return;
 #if PTHREADS_DEBUG
     dbg(`markAsFinished: ${ptrToString(pthread_ptr)}`);
 #endif
