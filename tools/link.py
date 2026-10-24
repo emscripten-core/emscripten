@@ -1278,7 +1278,12 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       settings.INCLUDE_FULL_LIBRARY = 1
     # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
-    settings.REQUIRED_EXPORTS += ['__stack_pointer']
+    # `__stack_pointer` is exported for PIC side modules. `__heap_base` is used
+    # by `$getMemory` in `libdylink.js` (cannot be in `$getMemory__deps` because
+    # `wasm-ld` processes stub library dependencies before synthesizing optional
+    # symbols like `__heap_base`).
+    # See https://github.com/llvm/llvm-project/issues/180632
+    settings.REQUIRED_EXPORTS += ['__stack_pointer', '__heap_base']
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1

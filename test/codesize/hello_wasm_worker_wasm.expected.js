@@ -16,9 +16,9 @@ e || (g = new WebAssembly.Memory({
     shared: !0
 }));
 
-var l = a => {
+var k = [], l = a => {
     k.push(a);
-}, k = [], n = a => {
+}, n = a => {
     a = a.data;
     var b = a._wsc;
     b && m.get(b)(...a.x);
