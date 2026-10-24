@@ -26,7 +26,7 @@ See docs/process.md for more on how version tagging works.
   of `clang`. Previously, `.dwo` files were named `<input>.dwo` and other
   auxiliary files were written to the temporary directory. (#28045)
 - libunwind and compiler-rt were updated to LLVM 23.1.3. (#28011, #28014)
-- mimalloc was updated to 3.5.3. (#28026)
+- mimalloc was updated to 3.6.0. (#28026, #28068)
 
 6.0.13 - 10/19/26
 -----------------
