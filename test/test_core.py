@@ -2214,6 +2214,8 @@ int main(int argc, char **argv) {
   @parameterized({
     'nogrow': ([],),
     'grow': (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],),
+    'mimalloc_nogrow': (['-sMALLOC=mimalloc'],),
+    'mimalloc_grow': (['-sMALLOC=mimalloc', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],),
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
@@ -2226,12 +2228,29 @@ int main(int argc, char **argv) {
   @parameterized({
     'nogrow': (['-sABORTING_MALLOC=0'],),
     'grow': (['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],),
+    'mimalloc_nogrow': (['-sMALLOC=mimalloc', '-sABORTING_MALLOC=0'],),
+    'mimalloc_grow': (['-sMALLOC=mimalloc', '-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],),
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
   @no_highmem('depends on MAXIMUM_MEMORY')
   def test_nothrow_new(self, args):
     self.do_core_test('test_nothrow_new.cpp', cflags=args)
+
+  @with_all_eh_sjlj
+  @parameterized({
+    'dlmalloc': ('dlmalloc',),
+    'emmalloc': ('emmalloc',),
+    'mimalloc': ('mimalloc',),
+  })
+  @no_asan('ASan replaces the allocator')
+  @no_lsan('LSan replaces the allocator')
+  @no_highmem('depends on MAXIMUM_MEMORY')
+  def test_new_oom(self, allocator):
+    self.do_core_test('test_new_oom.cpp', cflags=[
+      '-std=c++17', f'-sMALLOC={allocator}', '-sABORTING_MALLOC=0',
+      '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=64MB', '-sALLOW_MEMORY_GROWTH',
+    ])
 
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')

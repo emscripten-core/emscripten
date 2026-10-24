@@ -7877,6 +7877,8 @@ addToLibrary({
     # dlmalloc/emmalloc, and this is the main test we have for mimalloc
     'mimalloc':          ('mimalloc', ['-DWORKERS=1']),
     'mimalloc_pthreads': ('mimalloc', ['-DWORKERS=4', '-pthread']),
+    'mimalloc_wasm_eh': ('mimalloc', ['-DWORKERS=1', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']),
+    'mimalloc_pthreads_wasm_eh': ('mimalloc', ['-DWORKERS=4', '-pthread', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']),
   })
   def test_malloc_multithreading(self, allocator, args):
     cflags = [
