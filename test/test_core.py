@@ -5262,6 +5262,107 @@ main main sees -524, -534, 72.
     self.dylink_testf(test_file('core/test_dylink_weak_undef.c'))
 
   @needs_dylink
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread', '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-Wno-experimental'],),
+  })
+  def test_dylink_main_module_precedence(self, args):
+    # When the main module and a side module both define a symbol, the main
+    # module's definition takes precedence when the symbol is accessed via the
+    # GOT, both from the defining side module (libside1) and from a later side
+    # module (libside2).  The main module never takes the address of these
+    # symbols itself, so it has no GOT entries for them on startup.
+    if args:
+      self.require_pthreads()
+    self.cflags += args
+    create_file('libside1.c', r'''
+      int dup_data1 = 2;
+      int dup_func1(void) { return 2; }
+      int dup_data2 = 2;
+      int dup_func2(void) { return 2; }
+      void* side1_get_func(void) { return (void*)&dup_func1; }
+      int* side1_get_data(void) { return &dup_data1; }
+    ''')
+    create_file('libside2.c', r'''
+      int dup_func2(void);
+      extern int dup_data2;
+      void* side2_get_func(void) { return (void*)&dup_func2; }
+      int* side2_get_data(void) { return &dup_data2; }
+    ''')
+    create_file('libmissing.c', r'''
+      extern int missing_data;
+      int* missing_get_data(void) { return &missing_data; }
+    ''')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+      #ifdef __EMSCRIPTEN_PTHREADS__
+      #include <pthread.h>
+      #endif
+
+      typedef int (*func_t)(void);
+
+      EMSCRIPTEN_KEEPALIVE int dup_data1 = 1;
+      EMSCRIPTEN_KEEPALIVE int dup_func1(void) { return 1; }
+      EMSCRIPTEN_KEEPALIVE int dup_data2 = 1;
+      EMSCRIPTEN_KEEPALIVE int dup_func2(void) { return 1; }
+
+      void* thread_main(void* arg) {
+        printf("thread: %d\n", ((func_t)arg)());
+        return NULL;
+      }
+
+      void check(const char* lib_name, const char* get_func, const char* get_data,
+                 const char* func_name, const char* data_name) {
+        void* lib = dlopen(lib_name, RTLD_NOW);
+        assert(lib);
+        func_t f = ((func_t(*)(void))dlsym(lib, get_func))();
+        int* d = ((int*(*)(void))dlsym(lib, get_data))();
+        printf("%s: func=%d data=%d\n", lib_name, f(), *d);
+        assert(f == (func_t)dlsym(RTLD_DEFAULT, func_name));
+        assert(d == (int*)dlsym(RTLD_DEFAULT, data_name));
+      #ifdef __EMSCRIPTEN_PTHREADS__
+        // Function pointers must be the same on a newly started thread.
+        pthread_t t;
+        pthread_create(&t, NULL, thread_main, f);
+        pthread_join(t, NULL);
+      #endif
+      }
+
+      int main() {
+        check("libside1.so", "side1_get_func", "side1_get_data", "dup_func1", "dup_data1");
+        check("libside2.so", "side2_get_func", "side2_get_data", "dup_func2", "dup_data2");
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    create_file('missing.c', r'''
+      #include <dlfcn.h>
+      #include <stdio.h>
+      int main() {
+        printf("libmissing: %s\n", dlopen("libmissing.so", RTLD_NOW) ? "loaded" : "failed");
+        return 0;
+      }
+    ''')
+    self.build_dlfcn_lib('libside1.c', outfile='libside1.so')
+    self.build_dlfcn_lib('libside2.c', outfile='libside2.so')
+    self.build_dlfcn_lib('libmissing.c', outfile='libmissing.so')
+    self.prep_dlfcn_main(libs=['libside1.so', 'libside2.so'])
+    expected = 'libside1.so: func=1 data=1\n'
+    if args:
+      expected += 'thread: 1\n'
+    expected += 'libside2.so: func=1 data=1\n'
+    if args:
+      expected += 'thread: 1\n'
+    expected += 'done\n'
+    self.do_runf('main.c', expected)
+
+    # A missing (non-weak) GOT import is still an error.
+    self.do_runf('missing.c', 'libmissing: failed\n')
+
+  @needs_dylink
   def test_dylink_weak_multilib(self):
     create_file('liba.c', '''
       #include <stdio.h>
