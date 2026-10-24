@@ -1064,6 +1064,9 @@ var LibraryGLEmulation = {
       var TEX_COORD_VARYING_PREFIX = 'vTexCoord';
       var PRIM_COLOR_VARYING = 'vPrimColor';
       var TEX_MATRIX_UNIFORM_PREFIX = 'uTexMatrix';
+      // Bit i set: texture unit i needs a projective lookup (see
+      // GLImmediate.getProjectiveTexUnits).
+      var s_projectiveTexUnits = 0;
 
       // Static vars:
       var s_texUnits = null; //[];
@@ -1104,6 +1107,11 @@ var LibraryGLEmulation = {
         var texCoordExpr = TEX_COORD_VARYING_PREFIX + texUnitID;
         if (TEX_MATRIX_UNIFORM_PREFIX != null) {
           texCoordExpr = `(${TEX_MATRIX_UNIFORM_PREFIX}${texUnitID} * ${texCoordExpr})`;
+        }
+        if (func == 'texture2D' && (s_projectiveTexUnits & (1 << texUnitID))) {
+          // GL divides s and t by q. Only done when q can differ from 1, since
+          // texture2D is cheaper and needs no division.
+          return `texture2DProj(${TEX_UNIT_UNIFORM_PREFIX}${texUnitID}, ${texCoordExpr})`;
         }
         return `${func}(${TEX_UNIT_UNIFORM_PREFIX}${texUnitID}, ${texCoordExpr}.xy)`;
       }
@@ -1581,8 +1589,9 @@ var LibraryGLEmulation = {
           TEX_MATRIX_UNIFORM_PREFIX = uTexMatrixPrefix;
         },
 
-        genAllPassLines: (resultDest, indentSize = 0) => {
+        genAllPassLines: (resultDest, indentSize = 0, projectiveTexUnits = 0) => {
           s_requiredTexUnitsForPass.length = 0; // Clear the list.
+          s_projectiveTexUnits = projectiveTexUnits;
           var lines = [];
           var lastPassVar = PRIM_COLOR_VARYING;
           for (var i = 0; i < s_texUnits.length; i++) {
@@ -2064,12 +2073,39 @@ var LibraryGLEmulation = {
       }
     },
 
+    // Bit i set: texture unit i may have a q texture coordinate other than 1,
+    // so the fixed-function shader must divide by it. That is the case with
+    // four-component texture coordinates, or when the unit's texture matrix
+    // has a last row other than (0, 0, 0, 1). Checked on every draw, since
+    // the texture matrix can change without any of the state changes that
+    // make getRenderer look the renderer up again.
+    getProjectiveTexUnits() {
+#if !GL_FFP_ONLY
+      if (GL.currProgram) return 0; // The user's shaders do their own sampling.
+#endif
+      var mask = 0;
+      for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
+        var name = GLImmediate.TEXTURE0 + i;
+        if (!GLImmediate.enabledClientAttributes[name]) continue;
+        var attr = GLImmediate.clientAttributes[name];
+        var m = GLImmediate.matrix[2/*t*/ + i];
+        if ((attr && attr.size == 4) ||
+            (GLImmediate.useTextureMatrix && (m[3] || m[7] || m[11] || m[15] != 1))) {
+          mask |= 1 << i;
+        }
+      }
+      return mask;
+    },
+    projectiveTexUnits: 0,
+
     getRenderer() {
+      var projectiveTexUnits = GLImmediate.getProjectiveTexUnits();
       // If no FFP state has changed that would have forced to re-evaluate which FFP emulation shader to use,
       // we have the currently used renderer in cache, and can immediately return that.
-      if (GLImmediate.currentRenderer) {
+      if (GLImmediate.currentRenderer && GLImmediate.projectiveTexUnits == projectiveTexUnits) {
         return GLImmediate.currentRenderer;
       }
+      GLImmediate.projectiveTexUnits = projectiveTexUnits;
       // return a renderer object given the liveClientAttributes
       // we maintain a cache of renderers, optimized to not generate garbage
       var attributes = GLImmediate.liveClientAttributes;
@@ -2129,6 +2165,7 @@ var LibraryGLEmulation = {
       if (!GL.currProgram) {
 #endif
         GLImmediate.TexEnvJIT.traverseState(keyView);
+        keyView.next(projectiveTexUnits);
 #if !GL_FFP_ONLY
       }
 #endif
@@ -2210,7 +2247,7 @@ var LibraryGLEmulation = {
             }
 
             GLImmediate.TexEnvJIT.setGLSLVars(uTexUnitPrefix, vTexCoordPrefix, vPrimColor, uTexMatrixPrefix);
-            var fsTexEnvPass = GLImmediate.TexEnvJIT.genAllPassLines('gl_FragColor', 2);
+            var fsTexEnvPass = GLImmediate.TexEnvJIT.genAllPassLines('gl_FragColor', 2, GLImmediate.projectiveTexUnits);
 
             var texUnitAttribList = '';
             var texUnitVaryingList = '';
