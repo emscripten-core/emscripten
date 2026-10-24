@@ -125,7 +125,7 @@ def sync_repo(name, repo_dir, revision, url):
   cur_rev = get_current_revision(repo_dir)
   if cur_rev.startswith(revision) or revision.startswith(cur_rev):
     print('  already at the requested revision')
-    return
+    return False
 
   if is_dirty(repo_dir):
     utils.exit_with_error(f"Directory for {name} is dirty: '{repo_dir}'")
@@ -143,6 +143,8 @@ def sync_repo(name, repo_dir, revision, url):
   print('  Checking out revision')
   if not DRY_RUN:
     subprocess.check_call(['git', '-C', repo_dir, 'checkout', revision])
+
+  return True
 
 
 def main():
@@ -175,7 +177,17 @@ def main():
 
   revisions = get_deps_revisions()
   sync_repo('llvm-project', args.llvm_dir, revisions['llvm_project_revision'], LLVM_URL)
-  sync_repo('binaryen', args.binaryen_dir, revisions['binaryen_revision'], BINARYEN_URL)
+  if sync_repo('binaryen', args.binaryen_dir, revisions['binaryen_revision'], BINARYEN_URL):
+    # Binaryen only runs `git describe` when configuring CMake, so switching
+    # git revisions without re-running CMake leaves `config.h` (and `wasm-opt
+    # --version`) stale. Touch `config.h.in` to force CMake to re-run on the
+    # next build. See https://github.com/WebAssembly/binaryen/pull/9299.
+    config_h_in = os.path.join(args.binaryen_dir, 'config.h.in')
+    if os.path.exists(config_h_in):
+      if VERBOSE:
+        print(f'  Touching {config_h_in}')
+      if not DRY_RUN:
+        os.utime(config_h_in)
   print('Done.')
 
 
