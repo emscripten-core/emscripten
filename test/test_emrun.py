@@ -11,7 +11,7 @@ from subprocess import PIPE
 
 from browser_common import BrowserCore, get_browser, has_browser
 from common import EMCC, EMRUN, RunnerCore, path_from_root, read_file, test_file
-from decorators import also_with_pthreads
+from decorators import also_with_pthreads, parameterized
 
 
 class emrun(RunnerCore):
@@ -60,7 +60,13 @@ class emrun(RunnerCore):
     self.assertContained('remember to add `--` between arguments', err)
 
   @also_with_pthreads
-  def test_emrun(self):
+  @parameterized({
+    '': (False,),
+    'wasm_workers': (True,)
+  })
+  def test_emrun(self, wasm_workers):
+    if wasm_workers:
+      self.cflags += ['-sWASM_WORKERS']
     self.emcc('test_emrun.c', ['--emrun', '-o', 'test_emrun.html'])
     if not has_browser():
       self.skipTest('need a browser')
@@ -73,12 +79,12 @@ class emrun(RunnerCore):
 
     # emrun tests may run in parallel processes, so each test case should use a unique port number
     # to avoid port address already in use errors.
-    port = '6939'
+    port = 6941 if wasm_workers else 6939
     if '-pthread' in self.cflags:
-      port = '6940'
+      port += 1
 
     args_base = [EMRUN, '--timeout', '30', '--safe_firefox_profile',
-                 '--kill-exit', '--port', port, '--verbose',
+                 '--kill-exit', '--port', str(port), '--verbose',
                  '--log-stdout', self.in_dir('stdout.txt'),
                  '--log-stderr', self.in_dir('stderr.txt')]
 
@@ -100,13 +106,13 @@ class emrun(RunnerCore):
         if browser_args:
           args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
 
-    for args in [
+    for run, args in enumerate([
       [],
       ['--port', '0'],
       ['--private_browsing'],
       ['--dump_out_directory', 'other dir/multiple'],
       ['--dump_out_directory=foo_bar'],
-    ]:
+    ], start=1):
       args = args_base + args + [self.in_dir('test_emrun.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
       print(shlex.join(args))
       proc = self.run_process(args, check=False)
@@ -129,3 +135,7 @@ class emrun(RunnerCore):
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
       self.assertContained('hello, error stream!', stderr)
+      if wasm_workers:
+        for worker in ['Wasm worker', 'nested Wasm worker']:
+          self.assertEqual(stdout.splitlines().count(f'Hello from {worker}!'), run)
+          self.assertEqual(stderr.splitlines().count(f'Error from {worker}!'), run)

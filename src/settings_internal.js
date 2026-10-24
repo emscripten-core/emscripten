@@ -58,6 +58,9 @@ var SYSCALLS_REQUIRE_FILESYSTEM = true;
 // runtime logging that can help in debugging.
 var AUTODEBUG = false;
 
+// Whether --emrun output forwarding is enabled.
+var EMRUN = false;
+
 // Whether we should use binaryen's wasm2js to convert our wasm to JS. Set when
 // wasm backend is in use with WASM=0 (to enable non-wasm output, we compile to
 // wasm normally, then compile that to JS).
