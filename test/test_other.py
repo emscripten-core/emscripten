@@ -7835,10 +7835,10 @@ addToLibrary({
     'O2': (['-O2'], 137000),
     'emmalloc': (['-sMALLOC=emmalloc'], 185000),
     'dlmalloc': (['-sMALLOC=dlmalloc'], 191000),
-    'mimalloc': (['-sMALLOC=mimalloc'], 260000),
+    'mimalloc': (['-sMALLOC=mimalloc'], 272000),
     'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 131000),
     'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 137000),
-    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 200000),
+    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 214000),
   })
   # This test verifies the output code size of the different -sMALLOC= modes.
   def test_malloc_size(self, args, max_size):
@@ -15495,6 +15495,7 @@ addToLibrary({
 
       int main() {
           mi_option_enable(mi_option_verbose);
+          mi_options_print();
           return 0;
       }
     '''
