@@ -8,7 +8,7 @@ function binaryDecode(bin, expectedLength) {
   // differ, the file was not read as UTF-8 (for example a page without
   // <meta charset="utf-8"> loading it from file://), and the bytes are wrong.
   // Say so here, rather than let it fail as a confusing wasm CompileError.
-  assert(bin.length == expectedLength, `The embedded Wasm binary is ${bin.length} characters long, but should be ${expectedLength}: this file was not read as UTF-8 (SINGLE_FILE_BINARY_ENCODE). Serve it with charset=utf-8, add <meta charset="utf-8"> to the page, or build with -sSINGLE_FILE_BINARY_ENCODE=0`);
+  assert(bin.length === expectedLength, `The embedded Wasm binary is ${bin.length} characters long, but should be ${expectedLength}: this file was not read as UTF-8 (SINGLE_FILE_BINARY_ENCODE). Serve it with charset=utf-8, add <meta charset="utf-8"> to the page, or build with -sSINGLE_FILE_BINARY_ENCODE=0`);
 #else
 function binaryDecode(bin) {
 #endif
