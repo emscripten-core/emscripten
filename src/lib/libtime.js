@@ -8,7 +8,6 @@ assert(!STANDALONE_WASM, 'library_time.js should not be included in standalone m
 
 addToLibrary({
   _mktime_js__i53abi: true,
-  _mktime_js__deps: ['$ydayFromDate'],
   _mktime_js: (tmPtr) => {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -101,7 +100,6 @@ addToLibrary({
   },
 
   _localtime_js__i53abi: true,
-  _localtime_js__deps: ['$ydayFromDate'],
   _localtime_js: (time, tmPtr) => {
     var date = new Date(time*1000);
     if (isNaN(date.getTime())) {
@@ -157,11 +155,6 @@ addToLibrary({
     return buf;
   },
 
-  _tzset_js__deps: ['$stringToUTF8',
-#if ASSERTIONS
-    '$lengthBytesUTF8',
-#endif
-  ],
   _tzset_js__internal: true,
   _tzset_js: (timezone, daylight, std_name, dst_name) => {
     // TODO: Use (malleable) environment variables instead of system settings.
@@ -225,7 +218,6 @@ addToLibrary({
 
   $isLeapYear: (year) => year%4 === 0 && (year%100 !== 0 || year%400 === 0),
 
-  $ydayFromDate__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP_CUMULATIVE', '$MONTH_DAYS_REGULAR_CUMULATIVE'],
   $ydayFromDate: (date) => {
     var leap = isLeapYear(date.getFullYear());
     var monthDaysCumulative = (leap ? MONTH_DAYS_LEAP_CUMULATIVE : MONTH_DAYS_REGULAR_CUMULATIVE);
@@ -242,7 +234,6 @@ addToLibrary({
     return sum;
   },
 
-  $addDays__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP', '$MONTH_DAYS_REGULAR'],
   $addDays: (date, days) => {
     var newDate = new Date(date.getTime());
     while (days > 0) {
@@ -270,8 +261,6 @@ addToLibrary({
     return newDate;
   },
 
-  strptime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
-                   '$lengthBytesUTF8'],
   strptime: (buf, format, tm) => {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
@@ -529,6 +518,5 @@ addToLibrary({
 
     return 0;
   },
-  strptime_l__deps: ['strptime'],
   strptime_l: (buf, format, tm, locale) => _strptime(buf, format, tm), // no locale support yet
 });

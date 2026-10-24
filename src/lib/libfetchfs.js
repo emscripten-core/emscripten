@@ -5,7 +5,7 @@
  */
 
 addToLibrary({
-  $FETCHFS__deps: ['$stringToUTF8OnStack', 'wasmfs_create_fetch_backend'],
+  $FETCHFS__deps: ['wasmfs_create_fetch_backend'],
   $FETCHFS: {
     createBackend(opts) {
       return withStackSave(

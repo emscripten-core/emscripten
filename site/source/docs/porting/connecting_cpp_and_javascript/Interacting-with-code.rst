@@ -584,16 +584,15 @@ See the `library_*.js`_ files for other examples.
 
 .. note::
 
-   - JavaScript libraries can declare dependencies (``__deps``), however
-     those are only for other JavaScript libraries. See examples in
-     `/src <https://github.com/emscripten-core/emscripten/tree/main/src>`_
-     with the name format **library_*.js**
-   - You can add dependencies for all your methods using
-     ``autoAddDeps(myLibrary, name)`` where myLibrary is the object with
-     all your methods, and ``name`` is the thing they all depend upon.
-     This is useful when all the implemented methods use a JavaScript
-     singleton containing helper methods. See ``library_webgl.js`` for
-     an example.
+   - Direct dependencies between JavaScript library symbols are detected
+     automatically by the compiler. Explicit dependency declarations
+     (``__deps``) are only needed for compiled C/C++ functions or indirect
+     dependencies that are not referenced directly in the symbol's body (such
+     as ``$method_support`` above). See examples in
+     `/src/lib <https://github.com/emscripten-core/emscripten/tree/main/src/lib>`_.
+   - You can add an explicit dependency to all methods in a library using
+     ``autoAddDeps(myLibrary, name)``, where ``myLibrary`` is the object with
+     all your methods and ``name`` is the symbol they all depend upon.
    - The keys passed into `addToLibrary` generate functions that are prefixed
      by ``_``. In other words ``my_func: function() {},`` becomes
      ``function _my_func() {}``, as all C methods in emscripten have a ``_`` prefix. Keys starting with ``$`` have the ``$``

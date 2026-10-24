@@ -785,7 +785,7 @@ def setup_cross_origin_storage():
 def add_required_heap_symbols():
   """Auto-include heap views and helper symbols required by certain build modes or runtime.
 
-  Because addImplicitDeps only scans library functions and user code (pre-js/post-js/EM_JS),
+  Because calculateDeps only scans library functions and user code (pre-js/post-js/EM_JS),
   runtime scaffolding files (e.g., postamble.js, runtime_stack_check.js, memoryprofiler.js)
   that access linear memory directly must have their heap views explicitly declared here
   so they are emitted in the final JS bundle.

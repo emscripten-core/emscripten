@@ -108,7 +108,6 @@ addToLibrary({
     create_file('lib.js', r'''
 addToLibrary({
   $doNotCall: (x) => {},
-  foo__deps: ['$doNotCall'],
   foo__proxy: 'sync',
   foo: () => doNotCall(() => {
     out('should never see this');
@@ -248,7 +247,6 @@ addToLibrary({
   def test_jslib_using_asm_lib(self):
     create_file('lib.js', r'''
 addToLibrary({
-  jslibfunc__deps: ['asmlibfunc'],
   jslibfunc: (x) => 2 * _asmlibfunc(x),
 
   asmlibfunc__asm: true,
@@ -285,7 +283,6 @@ int main() {
   def test_jslib_internal_deps(self):
     create_file('lib.js', r'''
 addToLibrary({
-  jslibfunc__deps: ['$callRuntimeCallbacks'],
   jslibfunc: (x) => {
     callRuntimeCallbacks();
   },
@@ -606,9 +603,7 @@ extraLibraryFuncs.push('jsfunc');
       addToLibrary({
         // Create a dependency cycle (foo -> $call_alias -> foo_alias -> foo)
         // to test that `var _foo_alias = _foo;` is still emitted after `_foo`.
-        $call_alias__deps: ['foo_alias'],
         $call_alias: () => _foo_alias(),
-        foo__deps: ['$call_alias'],
         foo: () => {
           if (!call_alias) return 0;
           return 42;
@@ -629,7 +624,6 @@ extraLibraryFuncs.push('jsfunc');
         call_native: () => _native_func(),
 
         // JS function that calls nativeAlias
-        call_native_alias__deps: ['$nativeAlias'],
         call_native_alias: () => nativeAlias(),
 
         // This is a JS-only symbol (i.e. no leading underscore) that
@@ -805,6 +799,7 @@ console.error('JSLIB: none of the above');
   # Tests that it is possible to hook into/override a symbol defined in a system library.
   def test_jslib_override_system_symbol(self):
     # This test verifies it is possible to override a symbol from WebGL library.
+    self.cflags += ['-Wno-js-compiler']
 
     # When WebGL is implicitly linked in, the implicit linking should happen before any user
     # --js-libraries, so that they can adjust the behavior afterwards.
@@ -827,11 +822,9 @@ console.error('JSLIB: none of the above');
       class ParentClass {}
       addToLibrary({
         $ParentClass: ParentClass,
-        $MyClass__deps: ['$ParentClass'],
         $MyClass: class extends ParentClass {
           constructor() { super(); this.x = 42; }
         },
-        log_class__deps: ['$MyClass'],
         log_class: () => {
           var i = new MyClass();
           out('MyClass: ' + i.x);
@@ -850,6 +843,51 @@ console.error('JSLIB: none of the above');
       }
     ''')
     self.do_runf('src.c', 'MyClass: 42', cflags=['--js-library', 'lib.js'])
+
+  def test_jslib_auto_deps(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $unusedHelper: () => 99,
+        $helper: () => 10,
+        other_js_func: () => helper() + 20,
+        $myObj: {
+          unusedHelper: 12,
+          getVal() {
+            return _other_js_func() + this.unusedHelper;
+          },
+        },
+        entry_func: () => {
+          out('val: ' + myObj.getVal());
+          out('done');
+        },
+      });
+    ''')
+    create_file('src.c', r'''
+      void entry_func(void);
+      int main() {
+        entry_func();
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'val: 42\ndone\n', cflags=['--js-library', 'lib.js'])
+    self.assertNotContained('unusedHelper =', read_file('src.js'))
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js', '-sVERBOSE'], stderr=PIPE).stderr
+    self.assertContained('auto-detected dependency: entry_func -> $myObj', err)
+    self.assertContained('auto-detected dependency: $myObj -> other_js_func', err)
+    self.assertContained('auto-detected dependency: other_js_func -> $helper', err)
+
+    # Test warning when an explicit __deps entry duplicates an auto-detected dependency
+    create_file('redundant.js', r'''
+      addToLibrary({
+        $helper: () => 10,
+        entry_func__deps: ['$helper'],
+        entry_func: () => helper(),
+      });
+    ''')
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'redundant.js'], stderr=PIPE).stderr
+    self.assertNotContained('redundant __deps entry', err)
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'redundant.js', '-sSTRICT'], stderr=PIPE).stderr
+    self.assertContained('warning: entry_func: redundant __deps entry: $helper', err)
 
   # Tests that JS library functions containing multiline strings are not disturbed by e.g. inserting indentation into the output.
   @parameterized({
