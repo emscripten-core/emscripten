@@ -24,7 +24,7 @@ terms of the MIT license. A copy of the license can be found in the file
 // OS memory configuration
 typedef struct mi_os_mem_config_s {
   size_t  page_size;              // default to 4KiB
-  size_t  large_page_size;        // 0 if not supported, usually 2MiB 
+  size_t  large_page_size;        // 0 if not supported, usually 2MiB
   size_t  alloc_granularity;      // smallest allocation size (usually 4KiB, on Windows 64KiB)
   size_t  physical_memory_in_kib; // physical memory size in KiB
   size_t  virtual_address_bits;   // usually 48 or 56 bits on 64-bit systems. (used to determine secure randomization)
@@ -132,5 +132,23 @@ bool _mi_prim_thread_is_in_threadpool(void);
 // Yield to other threads. Should be similar to `sleep(0)`.
 // Is called only in rare situations and does not have to be lightning fast.
 void _mi_prim_thread_yield(void);
+
+// Return `true` if the process is forcefully shutdown (with potentially killed threads that might still hold a lock)
+// If this returns true, mimalloc skips graceful shutdown (as locks might still be held by threads that are killed).
+// See also issue #1377
+bool _mi_prim_process_is_killed(void);
+
+
+// The following are predefined by default
+
+// Is the mimalloc-redirect running (Windows only)
+bool _mi_is_redirected(void);
+
+// Called to initialize the allocator
+bool _mi_allocator_init(const char** message);
+
+// Called to clean up the allocator
+void _mi_allocator_done(void);
+
 
 #endif  // MI_PRIM_H

@@ -8,9 +8,8 @@ terms of the MIT license. A copy of the license can be found in the file
 // This file is included in `src/prim/prim.c`
 
 #include "mimalloc.h"
-#include "mimalloc/internal.h"
-#include "mimalloc/atomic.h"
 #include "mimalloc/prim.h"
+#include "mimalloc/heap/init.h"
 
 #include <sched.h>   // sched_yield
 #include <unistd.h>  // getentropy
@@ -58,10 +57,12 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config) {
   config->has_virtual_reserve = false;
 }
 
-extern void emmalloc_free(void*);
+// Use the builtin allocator (dlmalloc by default) rather than requiring
+// the program to link with -sMALLOC=emmalloc.
+#include <emscripten/heap.h>  // emscripten_builtin_memalign, emscripten_builtin_free
 
 int _mi_prim_free(void* addr, size_t size) {
-  emmalloc_free(addr);
+  emscripten_builtin_free(addr);
   return 0;
 }
 
@@ -69,8 +70,6 @@ int _mi_prim_free(void* addr, size_t size) {
 //---------------------------------------------
 // Allocation
 //---------------------------------------------
-
-extern void* emmalloc_memalign(size_t alignment, size_t size);
 
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
 int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
@@ -85,7 +84,7 @@ int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool comm
   if (try_alignment < MIN_EMMALLOC_ALIGN) {
     try_alignment = MIN_EMMALLOC_ALIGN;
   }
-  void* p = emmalloc_memalign(try_alignment, size);
+  void* p = emscripten_builtin_memalign(try_alignment, size);
   *addr = p;
   if (p == 0) {
     return ENOMEM;
@@ -155,7 +154,7 @@ size_t _mi_prim_numa_node_count(void) {
 
 mi_msecs_t _mi_prim_clock_now(void) {
   // todo: use a monotonic clock instead
-  return emscripten_date_now();  
+  return emscripten_date_now();
 }
 
 
@@ -212,7 +211,8 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
 
 // use pthread local storage keys to detect thread ending
 // (and used with MI_TLS_PTHREADS for the default theap)
-pthread_key_t _mi_heap_default_key = MI_PTHREAD_KEY_INVALID;
+// atomic as a thread may initialize while the process is exiting and deleting the key
+static _Atomic(pthread_key_t) _mi_heap_default_key = MI_ATOMIC_VAR_INIT(MI_PTHREAD_KEY_INVALID);
 
 static void mi_pthread_done(void* value) {
   if (value!=NULL) {
@@ -221,21 +221,24 @@ static void mi_pthread_done(void* value) {
 }
 
 void _mi_prim_thread_init_auto_done(void) {
-  mi_assert_internal(_mi_heap_default_key == MI_PTHREAD_KEY_INVALID);
-  pthread_key_create(&_mi_heap_default_key, &mi_pthread_done);
+  mi_assert_internal(mi_atomic_load_relaxed(&_mi_heap_default_key) == MI_PTHREAD_KEY_INVALID);
+  pthread_key_t key;
+  if (pthread_key_create(&key, &mi_pthread_done) == 0) {
+    mi_atomic_store_release(&_mi_heap_default_key, key);
+  }
 }
 
 void _mi_prim_thread_done_auto_done(void) {
-  pthread_key_t key = _mi_heap_default_key;
+  pthread_key_t key = mi_atomic_exchange_relaxed(&_mi_heap_default_key, MI_PTHREAD_KEY_INVALID);
   if (key != MI_PTHREAD_KEY_INVALID) {  // do not leak the key, see issue #809
-    _mi_heap_default_key = MI_PTHREAD_KEY_INVALID;
     pthread_key_delete(key);
   }
 }
 
 void _mi_prim_thread_associate_default_theap(mi_theap_t* theap) {
-  if (_mi_heap_default_key != MI_PTHREAD_KEY_INVALID) {  // can happen during recursive invocation on freeBSD
-    pthread_setspecific(_mi_heap_default_key, theap);
+  pthread_key_t key = mi_atomic_load_relaxed(&_mi_heap_default_key);
+  if (key != MI_PTHREAD_KEY_INVALID) {  // can happen during recursive invocation on freeBSD
+    pthread_setspecific(key, theap);
   }
 }
 
@@ -260,4 +263,8 @@ bool _mi_prim_thread_is_in_threadpool(void) {
 
 void _mi_prim_thread_yield(void) {
   sched_yield();
+}
+
+bool _mi_prim_process_is_killed(void) {
+  return false;
 }

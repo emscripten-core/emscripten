@@ -8,8 +8,11 @@ terms of the MIT license. A copy of the license can be found in the file
 // This file is included in `src/prim/prim.c`
 
 #include "mimalloc.h"
-#include "mimalloc/internal.h"
 #include "mimalloc/prim.h"
+#include "mimalloc/prim/os.h"
+#include "mimalloc/util/libc.h"
+#include "mimalloc/util/options.h"
+#include "mimalloc/heap/init.h"
 #include <stdio.h>   // fputs, stderr
 #include <stdlib.h>  // atexit
 
@@ -71,12 +74,14 @@ typedef BOOL (__stdcall* PGetNumaNodeProcessorMaskEx)(USHORT Node, PGROUP_AFFINI
 typedef BOOL (__stdcall *PGetNumaProcessorNode)(UCHAR Processor, PUCHAR NodeNumber);
 typedef BOOL (__stdcall* PGetNumaNodeProcessorMask)(UCHAR Node, PULONGLONG ProcessorMask);
 typedef BOOL (__stdcall* PGetNumaHighestNodeNumber)(PULONG Node);
+typedef BOOL (__stdcall* PRtlDllShutdownInProgress)(VOID);
 static PGetCurrentProcessorNumberEx pGetCurrentProcessorNumberEx = NULL;
 static PGetNumaProcessorNodeEx      pGetNumaProcessorNodeEx = NULL;
 static PGetNumaNodeProcessorMaskEx  pGetNumaNodeProcessorMaskEx = NULL;
 static PGetNumaProcessorNode        pGetNumaProcessorNode = NULL;
 static PGetNumaNodeProcessorMask    pGetNumaNodeProcessorMask = NULL;
 static PGetNumaHighestNodeNumber    pGetNumaHighestNodeNumber = NULL;
+static PRtlDllShutdownInProgress    pRtlDllShutdownInProgress = NULL;
 
 // Not available on xbox
 typedef SIZE_T(__stdcall* PGetLargePageMinimum)(VOID);
@@ -88,19 +93,19 @@ typedef BOOL (__stdcall* PGetVersionExW)(LPOSVERSIONINFOW lpVersionInformation);
 
 
 // Load a library
-static HMODULE mi_win_loadlibrary(const TCHAR* library) {
+static HMODULE mi_win_loadlibrary(const wchar_t* library) {
   #if MI_WIN_DESKTOP
-    return LoadLibrary(library);
+    return LoadLibraryW(library);
   #else
     return LoadPackagedLibrary(library, 0);
   #endif
 }
 
 // Get a library handle (and possibly load it)
-static HMODULE mi_win_getlibrary(const TCHAR* library, bool* should_free) {
+static HMODULE mi_win_getlibrary(const wchar_t* library, bool* should_free) {
   #if MI_WIN_DESKTOP
   // avoid calling LoadLibrary for "kernel32", "ntdll", and "kernelbase" (also to avoid hitting the loader lock)
-  HMODULE mod = GetModuleHandle(library);
+  HMODULE mod = GetModuleHandleW(library);
   if (mod!=NULL) {
     *should_free = false;
     return mod;
@@ -195,7 +200,7 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config )
 
   // get the VirtualAlloc2 function
   bool hDllFree;
-  HINSTANCE hDll = mi_win_getlibrary(TEXT("kernelbase.dll"), &hDllFree);
+  HINSTANCE hDll = mi_win_getlibrary(L"kernelbase.dll", &hDllFree);
   if (hDll != NULL) {
     // use VirtualAlloc2FromApp if possible as it is available to Windows store apps
     pVirtualAlloc2 = (PVirtualAlloc2)(void (*)(void))GetProcAddress(hDll, "VirtualAlloc2FromApp");
@@ -203,13 +208,14 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config )
     mi_win_freelibrary(hDll, hDllFree);
   }
   // NtAllocateVirtualMemoryEx is used for huge page allocation
-  hDll = mi_win_getlibrary(TEXT("ntdll.dll"), &hDllFree);
+  hDll = mi_win_getlibrary(L"ntdll.dll", &hDllFree);
   if (hDll != NULL) {
     pNtAllocateVirtualMemoryEx = (PNtAllocateVirtualMemoryEx)(void (*)(void))GetProcAddress(hDll, "NtAllocateVirtualMemoryEx");
+    pRtlDllShutdownInProgress = (PRtlDllShutdownInProgress)(void (*)(void))GetProcAddress(hDll, "RtlDllShutdownInProgress");
     mi_win_freelibrary(hDll, hDllFree);
   }
   // Try to use Win7+ numa API
-  hDll = mi_win_getlibrary(TEXT("kernel32.dll"), &hDllFree);
+  hDll = mi_win_getlibrary(L"kernel32.dll", &hDllFree);
   if (hDll != NULL) {
     pGetCurrentProcessorNumberEx = (PGetCurrentProcessorNumberEx)(void (*)(void))GetProcAddress(hDll, "GetCurrentProcessorNumberEx");
     pGetNumaProcessorNodeEx = (PGetNumaProcessorNodeEx)(void (*)(void))GetProcAddress(hDll, "GetNumaProcessorNodeEx");
@@ -439,8 +445,13 @@ int _mi_prim_reuse(void* addr, size_t size) {
 }
 
 int _mi_prim_protect(void* addr, size_t size, bool protect) {
+  #if !MI_WIN_DESKTOP && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+  ULONG oldprotect = 0;
+  BOOL ok = VirtualProtectFromApp(addr, size, protect ? PAGE_NOACCESS : PAGE_READWRITE, &oldprotect);
+  #else
   DWORD oldprotect = 0;
   BOOL ok = VirtualProtect(addr, size, protect ? PAGE_NOACCESS : PAGE_READWRITE, &oldprotect);
+  #endif
   return (ok ? 0 : (int)GetLastError());
 }
 
@@ -608,7 +619,7 @@ void _mi_prim_process_info(mi_process_info_t* pinfo)
 
   // load psapi on demand
   mi_atomic_do_once{
-    HINSTANCE hDll = mi_win_loadlibrary(TEXT("psapi.dll"));
+    HINSTANCE hDll = mi_win_loadlibrary(L"psapi.dll");
     if (hDll != NULL) {
       pGetProcessMemoryInfo = (PGetProcessMemoryInfo)(void (*)(void))GetProcAddress(hDll, "GetProcessMemoryInfo");
       // mi_win_freelibrary(hDll, true);  // don't free
@@ -644,10 +655,6 @@ void _mi_prim_out_stderr( const char* msg )
     if (hcon == INVALID_HANDLE_VALUE) {
       hcon = GetStdHandle(STD_ERROR_HANDLE);   // returns NULL if no stderr is available
       #if MI_WIN_DESKTOP
-      if (hcon==NULL) {
-        AttachConsole(ATTACH_PARENT_PROCESS);  // if started from a parent console, try to attach to that
-        hcon = GetStdHandle(STD_ERROR_HANDLE);
-      }
       CONSOLE_SCREEN_BUFFER_INFO sbi;
       hconIsConsole = ((hcon != NULL && hcon != INVALID_HANDLE_VALUE) && GetConsoleScreenBufferInfo(hcon, &sbi));
       #endif
@@ -667,6 +674,13 @@ void _mi_prim_out_stderr( const char* msg )
           WriteFile(hcon, msg, (DWORD)len, &written, NULL);
         }
       }
+      #if MI_WIN_DESKTOP
+      else if (hcon == NULL) {
+        // no stderr handle: this is usually a GUI or detached process. Send the
+        // output to the debugger instead (see issue #1354 and #1429)
+        OutputDebugStringA(msg);
+      }
+      #endif
       // don't fall back to fputs or _cputs as the crt can have it locked
     }
   }
@@ -692,41 +706,63 @@ int _mi_prim_getenv(const char* name, char* result, size_t result_size) {
 // Random
 //----------------------------------------------------------------
 
-#if defined(MI_USE_RTLGENRANDOM) // || defined(__cplusplus)
-// We prefer to use BCryptGenRandom instead of (the unofficial) RtlGenRandom but when using
-// dynamic overriding, we observed it can raise an exception when compiled with C++, and
-// sometimes deadlocks when also running under the VS debugger.
-// In contrast, issue #623 implies that on Windows Server 2019 we need to use BCryptGenRandom.
-// To be continued..
+#if defined(MI_USE_RTLGENRANDOM) || MI_WIN_DESKTOP
+#if defined(_MSC_VER)
 #pragma comment (lib,"advapi32.lib")
+#endif
 #define RtlGenRandom  SystemFunction036
 mi_decl_externc BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 
-bool _mi_prim_random_buf(void* buf, size_t buf_len) {
+static bool mi_win_rtl_gen_random(void* buf, size_t buf_len) {
+  mi_assert(buf_len <= ULONG_MAX);
+  if (buf_len > ULONG_MAX) return false;
   return (RtlGenRandom(buf, (ULONG)buf_len) != 0);
 }
+#endif
 
-#else
+#if defined(MI_USE_RTLGENRANDOM)
+bool _mi_prim_random_buf(void* buf, size_t buf_len) {
+  return mi_win_rtl_gen_random(buf, buf_len);
+}
 
+#elif !MI_WIN_DESKTOP
+// UWP/Xbox cannot dynamically load system libraries, so we link to BCryptGenRandom directly.
+#include <bcrypt.h>
+#if defined(_MSC_VER)
+#pragma comment (lib,"bcrypt.lib")
+#endif
 #ifndef BCRYPT_USE_SYSTEM_PREFERRED_RNG
 #define BCRYPT_USE_SYSTEM_PREFERRED_RNG 0x00000002
 #endif
 
-typedef LONG (NTAPI *PBCryptGenRandom)(HANDLE, PUCHAR, ULONG, ULONG);
-static  PBCryptGenRandom pBCryptGenRandom = NULL;
-
 bool _mi_prim_random_buf(void* buf, size_t buf_len) {
   mi_assert(buf_len <= ULONG_MAX);
   if (buf_len > ULONG_MAX) return false;
+  return (BCryptGenRandom(NULL, (PUCHAR)buf, (ULONG)buf_len, BCRYPT_USE_SYSTEM_PREFERRED_RNG) >= 0);
+}
+
+#else
+// We use the documented ProcessPrng (Windows 8+) which always succeeds, and fall back to RtlGenRandom
+// if it is not available. We avoid BCryptGenRandom as on Windows 7 / Server 2008 R2 it seems it can deadlock
+// when called while the loader lock is held (as during process attach) (issues #1395 and #1426).
+typedef BOOL (WINAPI *PProcessPrng)(PBYTE pbData, SIZE_T cbData);
+static  PProcessPrng pProcessPrng = NULL;
+
+bool _mi_prim_random_buf(void* buf, size_t buf_len) {
   mi_atomic_do_once {
-    HINSTANCE hDll = mi_win_loadlibrary(TEXT("bcrypt.dll"));
-    if (hDll != NULL) {
-      pBCryptGenRandom = (PBCryptGenRandom)(void (*)(void))GetProcAddress(hDll, "BCryptGenRandom");
-      // mi_win_freelibrary(hDll);  // don't free
+    if (win_major_version > 6 || (win_major_version == 6 && win_minor_version >= 2)) {
+      bool should_free = false;
+      HMODULE hDll = mi_win_getlibrary(L"bcryptprimitives.dll", &should_free);
+      if (hDll != NULL) {
+        pProcessPrng = (PProcessPrng)(void (*)(void))GetProcAddress(hDll, "ProcessPrng");
+        if (pProcessPrng == NULL) { mi_win_freelibrary(hDll, should_free); }  // otherwise don't free
+      }
     }
   }
-  if (pBCryptGenRandom == NULL) return false;
-  return (pBCryptGenRandom(NULL, (PUCHAR)buf, (ULONG)buf_len, BCRYPT_USE_SYSTEM_PREFERRED_RNG) >= 0);
+  if (pProcessPrng != NULL) {
+    return (pProcessPrng((PBYTE)buf, buf_len) != FALSE);
+  }
+  return mi_win_rtl_gen_random(buf, buf_len);
 }
 
 #endif  // MI_USE_RTLGENRANDOM
@@ -751,6 +787,15 @@ bool _mi_prim_thread_is_in_threadpool(void) {
 
 void _mi_prim_thread_yield(void) {
   SwitchToThread();
+}
+
+bool _mi_prim_process_is_killed(void) {
+  if (pRtlDllShutdownInProgress != NULL) {
+    return (*pRtlDllShutdownInProgress)();
+  }
+  else {
+    return false;
+  }
 }
 
 //----------------------------------------------------------------
@@ -792,7 +837,7 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
 
 #if defined(MI_WIN_INIT_USE_CRT_TLS)
   #if !defined(__MINGW32__) || defined(MI_MINGW_UCRT64)  // on mingw without UCRT use the constructor attribute (in `src/prim/prim.c`)
-  #define MI_PRIM_HAS_PROCESS_ATTACH  1   
+  #define MI_PRIM_HAS_PROCESS_ATTACH  1
   #endif
 
   // nothing to do since `_mi_thread_done` is handled through the DLL_THREAD_DETACH event.
@@ -809,10 +854,20 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
     return ((imageNtHeaders->FileHeader.Characteristics & IMAGE_FILE_DLL) == IMAGE_FILE_DLL);
   }
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+  extern IMAGE_DOS_HEADER __ImageBase;   // supplied by the linker
+#if defined(__cplusplus)
+}
+#endif
+
   static bool mi_current_module_is_dll(void) {
-    HMODULE mod = NULL;
-    const BOOL ok = GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)mi_current_module_is_dll, &mod);
-    return (ok && mi_module_is_dll(mod));
+    // HMODULE mod = NULL;
+    // const BOOL ok = GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)mi_current_module_is_dll, &mod);
+    // return (ok && mi_module_is_dll(mod));
+    const HMODULE mod = (HMODULE)(&__ImageBase);
+    return mi_module_is_dll(mod);
   }
 
   // Hook into CRT initialization and finalization.
@@ -868,7 +923,7 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
 
   typedef int (mi_cdecl* mi_crt_callback_t)(void);
 
-  #if defined(_WIN64) && defined(_MSC_VER) // 64-bit
+  #if (defined(_WIN64) || defined(_M_ARM)) && defined(_MSC_VER) // no underscore
     #pragma comment(linker, "/INCLUDE:_tls_used")
     #pragma comment(linker, "/INCLUDE:_mi_tls_callback_pre")
     #pragma comment(linker, "/INCLUDE:_mi_tls_callback_post")
@@ -885,7 +940,7 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
       extern const mi_crt_callback_t _mi_crt_callback_init[];
       const mi_crt_callback_t _mi_crt_callback_init[] = { &mi_crt_init };
     #pragma const_seg()
-  #elif defined(_MSC_VER) // 32-bit
+  #elif defined(_MSC_VER) // x86 32-bit, add underscore
     #pragma comment(linker, "/INCLUDE:__tls_used")
     #pragma comment(linker, "/INCLUDE:__mi_tls_callback_pre")
     #pragma comment(linker, "/INCLUDE:__mi_tls_callback_post")
@@ -974,7 +1029,7 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
   extern "C" {
   #endif
 
-  #if defined(_WIN64) && defined(_MSC_VER) // 64-bit
+  #if (defined(_WIN64) || defined(_M_ARM)) && defined(_MSC_VER) // no underscore
     #pragma comment(linker, "/INCLUDE:_tls_used")
     #pragma comment(linker, "/INCLUDE:_mi_tls_callback_pre")
     #pragma comment(linker, "/INCLUDE:_mi_tls_callback_post")
@@ -986,7 +1041,7 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
       extern const PIMAGE_TLS_CALLBACK _mi_tls_callback_post[];
       const PIMAGE_TLS_CALLBACK _mi_tls_callback_post[] = { &mi_tls_detach };
     #pragma const_seg()
-  #elif defined(_MSC_VER) // 32-bit
+  #elif defined(_MSC_VER) // x86 32-bit
     #pragma comment(linker, "/INCLUDE:__tls_used")
     #pragma comment(linker, "/INCLUDE:__mi_tls_callback_pre")
     #pragma comment(linker, "/INCLUDE:__mi_tls_callback_post")
@@ -1048,7 +1103,7 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
   extern "C" {
   #endif
 
-  #if defined(_WIN64) && defined(_MSC_VER) // 64-bit
+  #if (defined(_WIN64) || defined(_M_ARM)) && defined(_MSC_VER) // no underscore
     #pragma comment(linker, "/INCLUDE:_tls_used")
     #pragma comment(linker, "/INCLUDE:_mi_tls_callback_pre")
     #pragma comment(linker, "/INCLUDE:_mi_tls_callback_post")
@@ -1060,7 +1115,7 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
     extern const PIMAGE_TLS_CALLBACK _mi_tls_callback_post[];
     const PIMAGE_TLS_CALLBACK _mi_tls_callback_post[] = { &mi_win_main_detach };
     #pragma const_seg()
-  #elif defined(_MSC_VER) // 32-bit
+  #elif defined(_MSC_VER) // x86 32-bit
     #pragma comment(linker, "/INCLUDE:__tls_used")
     #pragma comment(linker, "/INCLUDE:__mi_tls_callback_pre")
     #pragma comment(linker, "/INCLUDE:__mi_tls_callback_post")
@@ -1073,8 +1128,8 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
   #elif defined(__MINGW32__)
     extern const IMAGE_TLS_DIRECTORY _tls_used;
     __attribute__((used)) static const void* const mi_tls_used_ref = &_tls_used; // pull in the CRT tls
-    __attribute__((used, section(".CRT$XLB"))) PIMAGE_TLS_CALLBACK _mi_tls_callback_pre  = &mi_tls_attach;
-    __attribute__((used, section(".CRT$XLY"))) PIMAGE_TLS_CALLBACK _mi_tls_callback_post = &mi_tls_detach;
+    __attribute__((used, section(".CRT$XLB"))) PIMAGE_TLS_CALLBACK _mi_tls_callback_pre  = &mi_win_main_attach;
+    __attribute__((used, section(".CRT$XLY"))) PIMAGE_TLS_CALLBACK _mi_tls_callback_post = &mi_win_main_detach;
   #endif
 
   #if defined(__cplusplus)
@@ -1199,4 +1254,3 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
     mi_allocator_done();
   }
 #endif
-
