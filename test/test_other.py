@@ -7314,7 +7314,12 @@ int main() {
     # Repeat the test without NO_AUTOLOAD_DYLIBS
     self.do_runf('main.c', 'done\n', cflags=['-g', '-sMAIN_MODULE=2', 'libside.wasm'])
 
-  def test_dlopen_exported_globals(self):
+  @parameterized({
+    '': ([], True),
+    # At -Oz the loader skips parsing the binary and probes each global instead.
+    'Oz': (['-Oz'], False),
+  })
+  def test_dlopen_exported_globals(self, args, expect_parsed):
     # A side module's data symbols are exported as immutable globals that must
     # be relocated by the module's memory base, while an exported mutable
     # global must be passed through as is.
@@ -7351,22 +7356,26 @@ int main() {
         assert(side_data && side_data == side_data_addr());
         assert(*side_data == 42);
         EM_ASM({
-          // The loader read the mutable globals from the binary, rather than
-          // falling back to probing each one.
+          // Unless optimizing for size, the loader read the mutable globals
+          // from the binary, rather than falling back to probing each one.
           var metadata = getDylinkMetadata(new Uint8Array(require('fs').readFileSync('libside.wasm')));
-          assert(metadata.mutableGlobals, 'mutableGlobals not parsed');
-          assert(metadata.mutableGlobals.size == 1 && metadata.mutableGlobals.has('side_global'));
+          if ($1) {
+            if (!metadata.mutableGlobals) throw new Error('mutableGlobals not parsed');
+            if (metadata.mutableGlobals.size != 1 || !metadata.mutableGlobals.has('side_global')) throw new Error('wrong mutableGlobals');
+          } else if (metadata.mutableGlobals) {
+            throw new Error('mutableGlobals unexpectedly parsed');
+          }
 
           var g = LDSO.loadedLibsByHandle[$0].exports['side_global'];
-          assert(g instanceof WebAssembly.Global);
+          if (!(g instanceof WebAssembly.Global)) throw new Error('side_global is not a Global');
           g.value = 7;
-        }, h);
+        }, h, EXPECT_PARSED);
         assert(get_side_global() == 7);
         printf("done\n");
         return 0;
       }''')
-    self.run_process([EMCC, 'side.c', '-sSIDE_MODULE', '-o', 'libside.wasm'])
-    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2'])
+    self.run_process([EMCC, 'side.c', '-sSIDE_MODULE', '-o', 'libside.wasm'] + args)
+    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2', f'-DEXPECT_PARSED={int(expect_parsed)}'] + args)
 
   @requires_node
   def test_dlopen_binary_not_retained(self):
