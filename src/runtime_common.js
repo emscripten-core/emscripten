@@ -22,14 +22,10 @@
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
 #include "binaryDecode.js"
 #if ASSERTIONS
-// Each byte of the binary is one character of the string, so if the lengths
-// differ, the file was not read as UTF-8 (for example a page without
-// <meta charset="utf-8"> loading it from file://), and the bytes are wrong.
-// Say so here, rather than let it fail as a confusing wasm CompileError.
 // Not inlined, for the same reason as binaryDecode() itself.
 /** @noinline */
 function checkBinaryLength(bin, expectedLength) {
-  assert(bin.length === expectedLength, `The embedded Wasm binary is ${bin.length} characters long, but should be ${expectedLength}: this file was not read as UTF-8 (SINGLE_FILE_BINARY_ENCODE). Serve it with charset=utf-8, add <meta charset="utf-8"> to the page, or build with -sSINGLE_FILE_BINARY_ENCODE=0`);
+  assert(bin.length === expectedLength, `The embedded Wasm binary is ${bin.length} characters long, but should be ${expectedLength}: this file was not read as UTF-8. See the documentation on SINGLE_FILE_BINARY_ENCODE for ways to address this issue`);
   return bin;
 }
 #endif
