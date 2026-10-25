@@ -281,11 +281,15 @@ var LibraryDylink = {
       }
 #endif
       // Detect immutable wasm global exports. These represent data addresses
-      // which are relative to `memoryBase`.  `mutableGlobals`, when known,
-      // saves probing each global.
+      // which are relative to `memoryBase`.
+#if SHRINK_LEVEL < 2
+      // `mutableGlobals`, when known, saves probing each global.
       var immutable = mutableGlobals
         ? value instanceof WebAssembly.Global && !mutableGlobals.has(name)
         : isImmutableGlobal(value);
+#else
+      var immutable = isImmutableGlobal(value);
+#endif
       if (immutable) {
         return new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}'}, value.value + {{{ to64('memoryBase') }}});
       }
@@ -465,6 +469,7 @@ var LibraryDylink = {
       if (condition) throw new Error(message);
     }
 
+#if SHRINK_LEVEL < 2
     // Returns the names of the exported globals that are mutable, read from
     // the import, global and export sections that follow the dylink section.
     // This saves relocateExports from probing each exported global with
@@ -545,6 +550,7 @@ var LibraryDylink = {
       }
       return result;
     }
+#endif // SHRINK_LEVEL < 2
 
     var isModule = binary instanceof WebAssembly.Module;
     if (isModule) {
@@ -633,9 +639,11 @@ var LibraryDylink = {
     dbg('dylink needed:', customSection.neededDynlibs);
 #endif
 
+#if SHRINK_LEVEL < 2
     if (!isModule) {
       customSection.mutableGlobals = getMutableGlobals();
     }
+#endif
     return customSection;
   },
 
