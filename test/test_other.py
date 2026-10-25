@@ -14087,6 +14087,47 @@ Module.postRun = () => {{
   def test_hello_world_above_2gb(self):
     self.do_runf_out_file('hello_world.c', cflags=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
+  @parameterized({
+    '': ([],),
+    # Minified export names
+    'O3': (['-O3'],),
+  })
+  def test_signature_conversions(self, args):
+    # Exports returning pointers get wrapped so that they return unsigned
+    # values when memory can be above 2GB.  Check that the wrapped exports are
+    # used, and that all other exports are still present on `wasmExports`
+    # (including when enumerated).
+    create_file('main.c', r'''
+      #include <stdint.h>
+      #include <emscripten.h>
+
+      EMSCRIPTEN_KEEPALIVE void* get_high_ptr() { return (void*)(uintptr_t)0x90000000u; }
+      EMSCRIPTEN_KEEPALIVE int add_one(int x) { return x + 1; }
+
+      int main() {
+        EM_ASM({
+          out('_get_high_ptr: ' + _get_high_ptr());
+          out('wasmExports.get_high_ptr: ' + wasmExports['get_high_ptr']());
+          out('_add_one: ' + _add_one(41));
+          out('wasmExports.add_one: ' + wasmExports['add_one'](41));
+          var found = 0;
+          for (var name in wasmExports) {
+            if (wasmExports[name] === wasmExports['get_high_ptr']) found |= 1;
+            if (wasmExports[name] === wasmExports['add_one']) found |= 2;
+          }
+          out('enumerated: ' + found);
+        });
+      }
+    ''')
+    expected = '''\
+_get_high_ptr: 2415919104
+wasmExports.get_high_ptr: 2415919104
+_add_one: 42
+wasmExports.add_one: 42
+enumerated: 3
+'''
+    self.do_runf('main.c', expected, cflags=['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB', '-sSIGNATURE_CONVERSIONS=get_high_ptr:p'] + args)
+
   def test_unistd_strerror(self):
     self.do_runf_out_file('unistd/strerror.c')
 

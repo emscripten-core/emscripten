@@ -464,11 +464,12 @@ function isExportSpecifierList(node) {
 function isExportUse(node) {
   // Match usages of symbols on the `wasmExports` object. e.g:
   //   wasmExports['X']
+  // `origExports` holds the unwrapped exports in applySignatureConversions.
   return (
     node.type === 'MemberExpression' &&
     node.object.type === 'Identifier' &&
     isLiteralString(node.property) &&
-    node.object.name === 'wasmExports'
+    (node.object.name === 'wasmExports' || node.object.name === 'origExports')
   );
 }
 
