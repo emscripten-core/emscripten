@@ -155,7 +155,7 @@ var instantiatePromise;
 
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
 #if ASSERTIONS
-Module['wasm'] = binaryDecode("<<< WASM_BINARY_DATA >>>", "<<< WASM_BINARY_SIZE >>>");
+Module['wasm'] = binaryDecode(checkBinaryLength("<<< WASM_BINARY_DATA >>>", "<<< WASM_BINARY_SIZE >>>"));
 #else
 Module['wasm'] = binaryDecode("<<< WASM_BINARY_DATA >>>");
 #endif

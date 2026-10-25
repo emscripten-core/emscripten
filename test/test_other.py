@@ -9445,7 +9445,7 @@ int main(int argc, char** argv) {
     self.run_process([EMCC, test_file('hello_world.c'), '-sSINGLE_FILE', '-sASSERTIONS=1', '-o', 'out.js'])
     code = read_file('out.js')
     # Stub out binaryDecode so that it returns an invalid wasm binary.
-    code = code.replace('function binaryDecode(bin, expectedLength) {', 'function binaryDecode(bin, expectedLength) { return new Uint8Array([0]);')
+    code = code.replace('function binaryDecode(bin) {', 'function binaryDecode(bin) { return new Uint8Array([0]);')
     write_file('out_bad.js', code)
     out = self.run_js('out_bad.js', assert_returncode=1)
     self.assertContained('Aborted(CompileError', out)
