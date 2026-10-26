@@ -7356,14 +7356,15 @@ int main() {
         assert(side_data && side_data == side_data_addr());
         assert(*side_data == 42);
         EM_ASM({
-          // Unless optimizing for size, the loader read the mutable globals
+          // Unless optimizing for size, the loader read the immutable globals
           // from the binary, rather than falling back to probing each one.
           var metadata = getDylinkMetadata(new Uint8Array(require('fs').readFileSync('libside.wasm')));
           if ($1) {
-            if (!metadata.mutableGlobals) throw new Error('mutableGlobals not parsed');
-            if (metadata.mutableGlobals.size != 1 || !metadata.mutableGlobals.has('side_global')) throw new Error('wrong mutableGlobals');
-          } else if (metadata.mutableGlobals) {
-            throw new Error('mutableGlobals unexpectedly parsed');
+            var immutableGlobals = metadata.immutableGlobals;
+            if (!immutableGlobals) throw new Error('immutableGlobals not parsed');
+            if (!immutableGlobals.has('side_data') || immutableGlobals.has('side_global')) throw new Error('wrong immutableGlobals');
+          } else if (metadata.immutableGlobals) {
+            throw new Error('immutableGlobals unexpectedly parsed');
           }
 
           var g = LDSO.loadedLibsByHandle[$0].exports['side_global'];

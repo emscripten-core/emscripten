@@ -280,8 +280,8 @@ var LibraryDylink = {
   // Applies relocations to exported things.
   $relocateExports__internal: true,
   $relocateExports__deps: ['$isImmutableGlobal'],
-  $relocateExports__docs: '/** @param {Set<string>=} mutableGlobals */',
-  $relocateExports: (exports, memoryBase, mutableGlobals) => {
+  $relocateExports__docs: '/** @param {Set<string>=} immutableGlobals */',
+  $relocateExports: (exports, memoryBase, immutableGlobals) => {
 #if DYLINK_DEBUG
     dbg(`relocateExports memoryBase=${memoryBase} count=${Object.keys(exports).length}`);
 #endif
@@ -296,9 +296,9 @@ var LibraryDylink = {
       // Detect immutable wasm global exports. These represent data addresses
       // which are relative to `memoryBase`.
 #if SHRINK_LEVEL < 2
-      // `mutableGlobals`, when known, saves probing each global.
-      var immutable = mutableGlobals
-        ? value instanceof WebAssembly.Global && !mutableGlobals.has(name)
+      // `immutableGlobals`, when known, saves probing each global.
+      var immutable = immutableGlobals
+        ? immutableGlobals.has(name)
         : isImmutableGlobal(value);
 #else
       var immutable = isImmutableGlobal(value);
@@ -486,12 +486,12 @@ var LibraryDylink = {
     }
 
 #if SHRINK_LEVEL < 2
-    // Returns the names of the exported globals that are mutable, read from
+    // Returns the names of the exported globals that are immutable, read from
     // the import, global and export sections that follow the dylink section.
     // This saves relocateExports from probing each exported global with
     // isImmutableGlobal, which throws for every immutable one.  Returns
     // undefined if it finds something it doesn't handle.
-    function getMutableGlobals() {
+    function getImmutableGlobals() {
       // The mutability of each global, imported globals first.
       var mutable = [];
       var result = new Set();
@@ -550,7 +550,7 @@ var LibraryDylink = {
             skipString();
             var kind = getU8();
             var index = getLEB();
-            if (kind === 3 && mutable[index]) {
+            if (kind === 3 && mutable[index] === 0) {
               var saved = offset;
               offset = nameStart;
               result.add(getString());
@@ -657,7 +657,7 @@ var LibraryDylink = {
 
 #if SHRINK_LEVEL < 2
     if (!isModule) {
-      customSection.mutableGlobals = getMutableGlobals();
+      customSection.immutableGlobals = getImmutableGlobals();
     }
 #endif
     return customSection;
@@ -983,7 +983,7 @@ var LibraryDylink = {
 #endif
       // add new entries to functionsInTableMap
       updateTableMap(tableBase, metadata.tableSize);
-      moduleExports = relocateExports(instance.exports, memoryBase, metadata.mutableGlobals);
+      moduleExports = relocateExports(instance.exports, memoryBase, metadata.immutableGlobals);
       updateGOT(moduleExports);
 #if ASYNCIFY
       moduleExports = Asyncify.instrumentWasmExports(moduleExports);
