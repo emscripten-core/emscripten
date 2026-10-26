@@ -21,14 +21,6 @@
 
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
 #include "binaryDecode.js"
-#if ASSERTIONS
-// Not inlined, for the same reason as binaryDecode() itself.
-/** @noinline */
-function checkBinaryLength(bin, expectedLength) {
-  assert(bin.length === expectedLength, `The embedded Wasm binary is ${bin.length} characters long, but should be ${expectedLength}: this file was not read as UTF-8. See the documentation on SINGLE_FILE_BINARY_ENCODE for ways to address this issue`);
-  return bin;
-}
-#endif
 #endif
 
 #if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS != 2
