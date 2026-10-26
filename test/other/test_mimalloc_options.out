@@ -1,122 +1,61 @@
 v3.6.0
-
 option 'show_errors': 0 
-
 option 'show_stats': 0 
-
 option 'verbose': 1 
-
 option 'deprecated_eager_commit': 1 
-
 option 'arena_eager_commit': 2 
-
 option 'purge_decommits': 1 
-
 option 'allow_large_os_pages': 0 
-
 option 'reserve_huge_os_pages': 0 
-
 option 'reserve_huge_os_pages_at': -1 
-
 option 'reserve_os_memory': 0 KiB
-
 option 'deprecated_segment_cache': 0 
-
 option 'deprecated_page_reset': 0 
-
 option 'deprecated_abandoned_page_purge': 0 
-
 option 'deprecated_segment_reset': 0 
-
 option 'deprecated_eager_commit_delay': 1 
-
 option 'purge_delay': 1000 
-
 option 'use_numa_nodes': 0 
-
 option 'disallow_os_alloc': 0 
-
 option 'os_tag': 100 
-
 option 'max_errors': 32 
-
 option 'max_warnings': 32 
-
 option 'deprecated_max_segment_reclaim': 10 
-
 option 'destroy_on_exit': 0 
-
 option 'arena_reserve': 65536 KiB
-
 option 'arena_purge_mult': 4 
-
 option 'deprecated_purge_extend_delay': 1 
-
 option 'disallow_arena_alloc': 0 
-
 option 'retry_on_oom': 400 
-
 option 'deprecated_visit_abandoned': 1 
-
 option 'guarded_min': 0 
-
 option 'guarded_max': 1073741824 
-
 option 'unsafe_guarded_precise': 0 
-
 option 'guarded_sample_rate': 0 
-
 option 'guarded_sample_seed': 0 
-
 option 'generic_collect': 10000 
-
 option 'page_reclaim_on_free': 1 
-
 option 'page_full_retain': 2 
-
 option 'page_max_candidates': 4 
-
 option 'max_vabits': 0 
-
 option 'pagemap_commit': 0 
-
 option 'page_commit_on_demand': 0 
-
 option 'page_max_reclaim': -1 
-
 option 'page_cross_thread_max_reclaim': 32 
-
 option 'allow_thp': 2 
-
 option 'arena_purge_min_size': 0 KiB
-
 option 'arena_max_object_size': 131072 KiB
-
 option 'arena_is_numa_local': 0 
-
 option 'stats_merge_on_collect': 1 
-
 option 'profile_alloc_interval': 1073741824 B
-
 option 'profile_inuse_interval': 0 B
-
 option 'profile_time_interval': 0 
-
 option 'profile_sample_rate': 524288 B
-
 option 'stats_merge_threshold': 524288 B
-
 option 'arena_purge_immediate_size': 2048 KiB
-
 free mode   : pagemap, page size: 76
-
 profiling   : enabled
-
 mem tracking: none
-
 debug level : 0
-
 secure level: 0
-
 padding     : none
-
