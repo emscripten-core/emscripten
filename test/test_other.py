@@ -7803,6 +7803,15 @@ addToLibrary({
   def test_resolve_mountpoint_parent(self):
     self.do_other_test('test_resolve_mountpoint_parent.c', cflags=['-sFORCE_FILESYSTEM', '-lnodefs.js'])
 
+  @requires_node
+  def test_nodefs_permission_model(self):
+    # Under node's permission model `process.binding` throws ERR_ACCESS_DENIED,
+    # so NODEFS must not use it to look up the fs open flags.
+    if not self.try_require_node_version(22, 13):
+      self.skipTest('test requires node v22.13 or above for --permission')
+    self.node_args += ['--permission', '--allow-fs-read=*', '--allow-fs-write=*']
+    self.do_runf('fs/test_nodefs_nofollow.c', 'done\n', cflags=['-lnodefs.js'])
+
   @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
