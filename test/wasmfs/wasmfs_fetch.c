@@ -280,6 +280,22 @@ void test_big_chunks() {
   assert(close(fd) == 0);
 }
 
+void test_whole_file_then_cross_chunk() {
+  printf("Running %s...\n", __FUNCTION__);
+
+  // 12 bytes with chunk size 8 is <= 2 chunks, so the backend downloads the
+  // whole file on first access. A later read that crosses the first chunk
+  // boundary must still see all of it (#28001).
+  backend_t backend = wasmfs_create_fetch_backend("data.dat", 8);
+  int fd = wasmfs_create_file("/testfile12", 0777, backend);
+  char buf[13] = {};
+  assert(read(fd, buf, 4) == 4);
+  assert(read(fd, buf + 4, 8) == 8);
+  printf("buf %s\n", buf);
+  assert(strcmp(buf, "hello, fetch") == 0);
+  assert(close(fd) == 0);
+}
+
 int main() {
   getUrlOrigin(url_orig, sizeof(url_orig));
   test_default();
@@ -291,6 +307,7 @@ int main() {
   test_small_chunks_divisor_of_size();
   test_nonexistent();
   test_big_chunks();
+  test_whole_file_then_cross_chunk();
 
   return 0;
 }

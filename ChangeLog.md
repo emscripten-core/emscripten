@@ -27,6 +27,9 @@ See docs/process.md for more on how version tagging works.
   auxiliary files were written to the temporary directory. (#28045)
 - libunwind and compiler-rt were updated to LLVM 23.1.3. (#28011, #28014)
 - mimalloc was updated to 3.5.3. (#28026)
+- Fix WasmFS fetch backend returning corrupt data for files it had downloaded
+  whole (server without Range support, or file no larger than two chunks)
+  once a read crossed the first chunk boundary. (#28001)
 
 6.0.13 - 10/19/26
 -----------------
