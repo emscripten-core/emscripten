@@ -470,6 +470,10 @@ function addMissingLibraryStubs(unusedLibSymbols) {
   return rtn;
 }
 
+export function shouldExportLibrarySymbol(name) {
+  return EXPORT_ALL || EXPORTED_FUNCTIONS.has(name) || extraExports.has(name);
+}
+
 function exportSymbol(name) {
   // In MODULARIZE=instance mode symbols are exported by being included in
   // an export { foo, bar } list so we build up the simple list of names
@@ -481,6 +485,8 @@ function exportSymbol(name) {
 
 // export parts of the JS runtime that the user asked for
 function exportRuntimeSymbols() {
+  const librarySymbolSet = new Set(librarySymbols);
+
   // optionally export something.
   function shouldExport(name) {
     // Native exports are not available to be exported initially.  Instead,
@@ -488,15 +494,17 @@ function exportRuntimeSymbols() {
     if (nativeAliases[name]) {
       return false;
     }
-    // If requested to be exported, export it.
-    if (EXPORTED_RUNTIME_METHODS.has(name)) {
-      // Unless we are in MODULARIZE=instance mode then HEAP objects are
-      // exported separately in updateMemoryViews
-      if (MODULARIZE == 'instance' || !name.startsWith('HEAP')) {
-        return true;
-      }
+    // Unless we are in MODULARIZE=instance mode then HEAP objects are
+    // exported separately in updateMemoryViews
+    if (MODULARIZE != 'instance' && name.startsWith('HEAP')) {
+      return false;
     }
-    return false;
+    // Symbols already exported via `exportLibrarySymbols` (or at declaration
+    // time in MODULARIZE=instance mode) should not be exported again here.
+    if (librarySymbolSet.has(name) && shouldExportLibrarySymbol(name)) {
+      return false;
+    }
+    return EXPORTED_RUNTIME_METHODS.has(name);
   }
 
   // All possible runtime elements that can be exported
@@ -582,8 +590,7 @@ function exportRuntimeSymbols() {
     for (const name of runtimeElements) {
       if (
         !EXPORTED_RUNTIME_METHODS.has(name) &&
-        !EXPORTED_FUNCTIONS.has(name) &&
-        !extraExports.has(name) &&
+        !shouldExportLibrarySymbol(name) &&
         !unusedLibSymbols.has(name)
       ) {
         unexported.push(name);
@@ -610,7 +617,7 @@ function exportLibrarySymbols() {
   assert(MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
-    if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident) || extraExports.has(ident)) && !nativeAliases[ident] && !ident.startsWith('HEAP')) {
+    if (shouldExportLibrarySymbol(ident) && !nativeAliases[ident] && !ident.startsWith('HEAP')) {
       results.push(exportSymbol(ident));
     }
   }

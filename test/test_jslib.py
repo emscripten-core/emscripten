@@ -863,3 +863,45 @@ console.error('JSLIB: none of the above');
   def test_export(self):
     create_file('post.js', 'Module.myFunc();')
     self.do_runf('hello_world.c', 'myFunc included\nmyFunc called\n', cflags=['--js-library', test_file('jslib/test_export.js'), '--extern-post-js=post.js'])
+
+  @parameterized({
+    '': ([],),
+    'export_all': (['-sEXPORT_ALL'],),
+    'instance': (['-sMODULARIZE=instance', '-Wno-experimental'],),
+  })
+  def test_duplicate_jslib_exports(self, args):
+    create_file('lib.js', '''\
+addToLibrary({
+  $decoratedExport__export: true,
+  $decoratedExport: () => 41,
+  $runtimeExport: () => 42,
+});
+''')
+    create_file('main.c', 'int main() { return 0; }')
+    common_flags = ['--js-library', 'lib.js',
+                    '-sEXPORTED_RUNTIME_METHODS=decoratedExport,runtimeExport,HEAP32'] + args
+    if '-sMODULARIZE=instance' in args:
+      self.emcc('main.c', ['-o', 'mod.mjs'] + common_flags)
+      create_file('runner.mjs', '''
+        import { strict as assert } from 'assert';
+        import init, { decoratedExport, runtimeExport, HEAP32 } from './mod.mjs';
+        await init();
+        assert.equal(decoratedExport(), 41);
+        assert.equal(runtimeExport(), 42);
+        assert.equal(typeof HEAP32, 'object');
+        console.log('done');
+      ''')
+      self.assertContained('done\n', self.run_js('runner.mjs'))
+    else:
+      create_file('post.js', '''
+        Module.onRuntimeInitialized = () => {
+          assert(Module.decoratedExport() === 41);
+          assert(Module.runtimeExport() === 42);
+          assert(typeof Module.HEAP32 === 'object');
+          out('done');
+        };
+      ''')
+      self.do_runf('main.c', 'done\n', cflags=common_flags + ['--post-js=post.js'])
+      js = read_file('main.js')
+      self.assertEqual(js.count("Module['decoratedExport'] = decoratedExport;"), 1)
+      self.assertEqual(js.count("Module['runtimeExport'] = runtimeExport;"), 1)
