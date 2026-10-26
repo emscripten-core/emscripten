@@ -30,7 +30,7 @@ See docs/process.md for more on how version tagging works.
 - NODEFS now works under Node's permission model (`node --permission`). It
   used `process.binding('constants')` to look up the fs open flags, which
   throws `ERR_ACCESS_DENIED` there; it now uses `fs.constants`, which holds the
-  same values.
+  same values. (#28070)
 
 6.0.13 - 10/19/26
 -----------------
