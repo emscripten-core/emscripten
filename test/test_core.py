@@ -5914,6 +5914,17 @@ got: 10
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_nodefs_nofollow.c', 'done\n', cflags=['-lnodefs.js'])
 
+  @requires_node
+  def test_fs_nodefs_permission_model(self):
+    # Under node's permission model `process.binding` throws ERR_ACCESS_DENIED,
+    # so NODEFS must not use it to look up the fs open flags.
+    if not self.try_require_node_version(22, 13):
+      self.skipTest('test requires node v22.13 or above for --permission')
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.node_args += ['--permission', '--allow-fs-read=*', '--allow-fs-write=*']
+    self.do_runf('fs/test_nodefs_nofollow.c', 'done\n', cflags=['-lnodefs.js'])
+
   @crossplatform
   @requires_node
   @no_modularize_instance('expects js filename')

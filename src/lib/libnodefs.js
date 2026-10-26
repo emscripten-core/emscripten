@@ -19,7 +19,7 @@ addToLibrary({
     isWindows: false,
     staticInit() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
-      var flags = process.binding('constants')['fs'];
+      var flags = fs.constants;
       NODEFS.flagsForNodeMap = {
         '{{{ cDefs.O_APPEND }}}': flags['O_APPEND'],
         '{{{ cDefs.O_CREAT }}}': flags['O_CREAT'],
