@@ -7314,6 +7314,70 @@ int main() {
     # Repeat the test without NO_AUTOLOAD_DYLIBS
     self.do_runf('main.c', 'done\n', cflags=['-g', '-sMAIN_MODULE=2', 'libside.wasm'])
 
+  @parameterized({
+    '': ([], True),
+    # At -Oz the loader skips parsing the binary and probes each global instead.
+    'Oz': (['-Oz'], False),
+  })
+  def test_dlopen_exported_globals(self, args, expect_parsed):
+    # A side module's data symbols are exported as immutable globals that must
+    # be relocated by the module's memory base, while an exported mutable
+    # global must be passed through as is.
+    create_file('side.c', r'''
+      __asm__(
+        ".section .data.side_global,\"\",@\n"
+        ".globl side_global\n"
+        ".globaltype side_global, i32\n"
+        "side_global:\n"
+      );
+
+      int side_data = 42;
+      int* side_data_addr() { return &side_data; }
+
+      int get_side_global() {
+        int val;
+        __asm__ volatile("global.get side_global\n"
+                         "local.set %0\n" : "=r" (val));
+        return val;
+      }
+      ''')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        void* h = dlopen("libside.wasm", RTLD_NOW);
+        assert(h);
+        int* side_data = dlsym(h, "side_data");
+        int* (*side_data_addr)() = dlsym(h, "side_data_addr");
+        int (*get_side_global)() = dlsym(h, "get_side_global");
+        assert(side_data && side_data == side_data_addr());
+        assert(*side_data == 42);
+        EM_ASM({
+          // Unless optimizing for size, the loader read the immutable globals
+          // from the binary, rather than falling back to probing each one.
+          var metadata = getDylinkMetadata(new Uint8Array(require('fs').readFileSync('libside.wasm')));
+          if ($1) {
+            var immutableGlobals = metadata.immutableGlobals;
+            if (!immutableGlobals) throw new Error('immutableGlobals not parsed');
+            if (!immutableGlobals.has('side_data') || immutableGlobals.has('side_global')) throw new Error('wrong immutableGlobals');
+          } else if (metadata.immutableGlobals) {
+            throw new Error('immutableGlobals unexpectedly parsed');
+          }
+
+          var g = LDSO.loadedLibsByHandle[$0].exports['side_global'];
+          if (!(g instanceof WebAssembly.Global)) throw new Error('side_global is not a Global');
+          g.value = 7;
+        }, h, EXPECT_PARSED);
+        assert(get_side_global() == 7);
+        printf("done\n");
+        return 0;
+      }''')
+    self.run_process([EMCC, 'side.c', '-sSIDE_MODULE', '-o', 'libside.wasm'] + args)
+    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2', f'-DEXPECT_PARSED={int(expect_parsed)}'] + args)
+
   @requires_node
   def test_dlopen_binary_not_retained(self):
     # The bytes of a side module should not be kept alive once it has been
