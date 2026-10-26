@@ -415,7 +415,6 @@ const PROXY_SYNC_ASYNC = 2;
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
   const libraryAliases = [];
-  const symbolDeps = {};
   const asyncFuncs = [];
   let postSets = [];
 
@@ -629,13 +628,6 @@ function(${args}) {
       }
 
       if (symbolsOnly) {
-        if (LibraryManager.library.hasOwnProperty(symbol)) {
-          // Resolve aliases before looking up deps
-          var transitiveDeps = getTransitiveDeps(symbol);
-          symbolDeps[symbol] = transitiveDeps.filter(
-            (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),
-          );
-        }
         return;
       }
 
@@ -868,10 +860,7 @@ function(${args}) {
       // Add the docs if they exist and if we are actually emitting a declaration.
       // See the TODO about wasmTable above.
       let docs = LibraryManager.library[symbol + '__docs'];
-      let commentText = '';
-      if (contentText != '' && docs) {
-        commentText += docs + '\n';
-      }
+      const commentText = contentText && docs ? docs : '';
 
       if (EMIT_TSD) {
         LibraryManager.libraryDefinitions[mangled] = {
@@ -880,22 +869,25 @@ function(${args}) {
         };
       }
 
-      const depsText = deps
-        ? deps
-            .map(addDependency)
-            .filter((x) => x != '')
-            .join('\n') + '\n'
-        : '';
+      const joinChunks = (chunks) => chunks.filter(Boolean).join('\n');
+
+      // Sort string dependencies alphabetically for deterministic output order
+      // regardless of how __deps are declared or discovered. Keep function
+      // callbacks after string dependencies in their original order.
+      const stringDeps = deps.filter((d) => typeof d !== 'function').sort();
+      const funcDeps = deps.filter((d) => typeof d === 'function');
+      const depsText = joinChunks([...stringDeps, ...funcDeps].map(addDependency));
+
       // Defer direct JS value aliases (`var _alias = _target;`) to `libraryAliases`
       // so the target symbol is guaranteed to be defined first. Skip native
       // aliases (which emit no code here) and signature-mismatch aliases (where
       // `isFunction` is set because they are emitted as forwarding wrapper
       // functions rather than immediate value assignments).
       if (aliasTarget && !isNativeAlias && !isFunction) {
-        libraryAliases.push(commentText + contentText);
-        return depsText.trim();
+        libraryAliases.push(joinChunks([commentText, contentText]));
+        return depsText;
       }
-      return depsText + commentText + contentText;
+      return joinChunks([depsText, commentText, contentText]);
     }
 
     const JS = addFromLibrary(symbol, 'root reference (e.g. compiled C/C++ code)');
@@ -1008,6 +1000,15 @@ var proxiedFunctionTable = [
   timer.stop('symbolHandler');
 
   if (symbolsOnly) {
+    const symbolDeps = {};
+    for (const sym of Object.keys(LibraryManager.library)) {
+      if (!isDecorator(sym)) {
+        const transitiveDeps = getTransitiveDeps(sym);
+        symbolDeps[sym] = transitiveDeps.filter(
+          (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),
+        );
+      }
+    }
     writeOutput(
       JSON.stringify({
         deps: symbolDeps,

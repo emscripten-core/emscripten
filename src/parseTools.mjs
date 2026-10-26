@@ -346,13 +346,13 @@ function splitI64(value) {
 
 export function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
-  if (text.length > 1024 * 1024) return text;
+  if (!text || text.length > 1024 * 1024) return text;
 
   indent = ' '.repeat(indent);
 
   // Perform indentation in a smart fashion that does not leak indentation
   // inside multiline strings enclosed in `` characters.
-  let out = '';
+  let out = indent;
   for (let i = 0; i < text.length; ++i) {
     // Output a C++ comment as-is, don't get confused by ` inside a C++ comment.
     if (text[i] == '/' && text[i + 1] == '/') {

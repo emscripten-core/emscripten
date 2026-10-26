@@ -712,7 +712,6 @@ async function createWasm() {
 
 // Begin JS library code
 
-
   class ExitStatus {
       name = 'ExitStatus';
       constructor(status) {
@@ -720,34 +719,26 @@ async function createWasm() {
         this.status = status;
       }
     }
-
   /** @type {!Int32Array} */
   var HEAP32;
-
   /** @type {!Int8Array} */
   var HEAP8;
-
   /** @type {!Uint32Array} */
   var HEAPU32;
-
   var callRuntimeCallbacks = (callbacks) => {
       while (callbacks.length > 0) {
         // Pass the module as the first argument.
         callbacks.shift()(Module);
       }
     };
-
   function ptrToString(ptr) {
       assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
       // Convert to 32-bit unsigned value
       ptr >>>= 0;
       return '0x' + ptr.toString(16).padStart(8, '0');
     }
-
   var stackRestore = (val) => __emscripten_stack_restore(val);
-
   var stackSave = () => _emscripten_stack_get_current();
-
   var warnOnce = (text) => {
       warnOnce.shown ||= {};
       if (!warnOnce.shown[text]) {
@@ -757,7 +748,6 @@ async function createWasm() {
       }
     };
 
-  
 // End JS library code
 
 // include: postlibrary.js

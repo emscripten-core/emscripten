@@ -16,7 +16,7 @@ const UNDEFINED_ADDR = to64(-1);
 
 var LibraryDylink = {
 #if FILESYSTEM
-  $registerWasmPlugin__deps: ['$preloadPlugins'],
+  $registerWasmPlugin__deps: ['$preloadPlugins', '$loadWebAssemblyModule', '$preloadedWasm'],
   $registerWasmPlugin: () => {
     // Use string keys here for public methods to avoid minification since the
     // plugin consumer also uses string keys.
@@ -310,7 +310,7 @@ var LibraryDylink = {
   },
 
   $reportUndefinedSymbols__internal: true,
-  $reportUndefinedSymbols__deps: ['$GOT', '$resolveGlobalSymbol'],
+  $reportUndefinedSymbols__deps: ['$GOT', '$resolveGlobalSymbol', '$addFunction'],
   $reportUndefinedSymbols: () => {
 #if DYLINK_DEBUG
     dbg('reportUndefinedSymbols');
@@ -393,7 +393,11 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['emscripten_get_sbrk_ptr', '__heap_base', '$alignMemory', 'calloc'],
+  // `__heap_base` is also used below, but is added via `REQUIRED_EXPORTS` in
+  // `link.py` rather than `__deps` because `wasm-ld` processes stub library
+  // dependencies before synthesizing optional symbols like `__heap_base`.
+  // See https://github.com/llvm/llvm-project/issues/180632
+  $getMemory__deps: ['emscripten_get_sbrk_ptr', '$alignMemory', 'calloc'],
   $getMemory: (size) => {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -684,6 +688,9 @@ var LibraryDylink = {
     '$loadDynamicLibrary',
     '$getDylinkMetadata',
     '$instantiateModule',
+#if FILESYSTEM
+    '$findLibraryFS',
+#endif
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
@@ -722,6 +729,7 @@ var LibraryDylink = {
   $instantiateModule__deps: [
     '$getMemory', '$updateGOT',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
+    '$reportUndefinedSymbols',
     '$alignMemory', '$updateTableMap',
     '$wasmTable', '$addOnPostCtor',
     '$addEmAsm', '$addEmJs',
@@ -996,6 +1004,7 @@ var LibraryDylink = {
   },
 #endif
 
+  $newDSO__deps: ['$LDSO'],
   $newDSO: (name, handle, syms) => {
     var dso = {
       refcount: Infinity,
@@ -1082,6 +1091,7 @@ var LibraryDylink = {
                               '$mergeLibSymbols', '$newDSO',
                               '$asyncLoad',
 #if FILESYSTEM
+                              '$FS',
                               '$preloadedWasm',
                               '$findLibraryFS',
 #endif

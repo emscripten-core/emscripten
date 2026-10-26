@@ -244,7 +244,9 @@ class ExitStatus {
   }
 }
 
-var printCharBuffers = [ null, [], [] ];
+/** @type {!Uint32Array} */ var HEAPU32;
+
+/** @type {!Uint8Array} */ var HEAPU8;
 
 var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
@@ -312,6 +314,8 @@ var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
   return str;
 };
 
+var printCharBuffers = [ null, [], [] ];
+
 var printChar = (stream, curr) => {
   var buffer = printCharBuffers[stream];
   if (!curr || curr === 10) {
@@ -321,10 +325,6 @@ var printChar = (stream, curr) => {
     buffer.push(curr);
   }
 };
-
-/** @type {!Uint8Array} */ var HEAPU8;
-
-/** @type {!Uint32Array} */ var HEAPU32;
 
 var _fd_write = (fd, iov, iovcnt, pnum) => {
   // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0

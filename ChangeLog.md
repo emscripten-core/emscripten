@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- When compiling and linking in a single command, auxiliary compiler output
+  files (such as `.dwo` files from `-gsplit-dwarf` or `.json` files from
+  `-ftime-trace`) are now named `<output>-<input>.<ext>`, matching the behavior
+  of `clang`. Previously, `.dwo` files were named `<input>.dwo` and other
+  auxiliary files were written to the temporary directory. (#28045)
 - libunwind and compiler-rt were updated to LLVM 23.1.3. (#28011, #28014)
 - mimalloc was updated to 3.5.3. (#28026)
 
@@ -29,8 +34,17 @@ See docs/process.md for more on how version tagging works.
   days we use a native windows launcher program. (#27359)
 - `MEMORY64=2` was marked as deprecated. (#27953)
 - The undocumented `FS.filesystems` object was removed. Replace things like
-  `FS.filesystems['MEMFS']` with plain `MEMFS`. (#27940)
+  `FS.filesystems['MEMFS']` with plain `MEMFS`. If you want to access things
+  like `MEMFS` outside of the main JS, you can export it:
+  `-sEXPORTED_RUNTIME_METHODS=MEMFS`. (#27940)
 - libpng port updated from 1.6.58 to 1.6.59. (#27956)
+- When exports are wrapped for pointer conversions (`MEMORY64`, or
+  `MAXIMUM_MEMORY` over 2GB), the `wasmExports` object no longer contains a
+  copy of every export.  Only the wrapped exports are its own properties and
+  the rest are inherited from the original `WebAssembly.Instance` exports.
+  This speeds up startup for programs with many exports (e.g. `MAIN_MODULE`).
+  Code that enumerates `wasmExports` should use `for...in` rather than
+  `Object.keys`/`Object.entries`. (#27996)
 
 6.0.12 - 10/08/26
 -----------------
