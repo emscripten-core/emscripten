@@ -8,9 +8,8 @@ terms of the MIT license. A copy of the license can be found in the file
 // This file is included in `src/prim/prim.c`
 
 #include "mimalloc.h"
-#include "mimalloc/internal.h"
-#include "mimalloc/atomic.h"
 #include "mimalloc/prim.h"
+#include "mimalloc/heap/init.h"
 
 #include <sched.h>   // sched_yield
 #include <unistd.h>  // getentropy
@@ -151,7 +150,7 @@ size_t _mi_prim_numa_node_count(void) {
 
 mi_msecs_t _mi_prim_clock_now(void) {
   // todo: use a monotonic clock instead
-  return emscripten_date_now();  
+  return emscripten_date_now();
 }
 
 
@@ -208,7 +207,8 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
 
 // use pthread local storage keys to detect thread ending
 // (and used with MI_TLS_PTHREADS for the default theap)
-pthread_key_t _mi_heap_default_key = MI_PTHREAD_KEY_INVALID;
+// atomic as a thread may initialize while the process is exiting and deleting the key
+static _Atomic(pthread_key_t) _mi_heap_default_key = MI_ATOMIC_VAR_INIT(MI_PTHREAD_KEY_INVALID);
 
 static void mi_pthread_done(void* value) {
   if (value!=NULL) {
@@ -217,21 +217,24 @@ static void mi_pthread_done(void* value) {
 }
 
 void _mi_prim_thread_init_auto_done(void) {
-  mi_assert_internal(_mi_heap_default_key == MI_PTHREAD_KEY_INVALID);
-  pthread_key_create(&_mi_heap_default_key, &mi_pthread_done);
+  mi_assert_internal(mi_atomic_load_relaxed(&_mi_heap_default_key) == MI_PTHREAD_KEY_INVALID);
+  pthread_key_t key;
+  if (pthread_key_create(&key, &mi_pthread_done) == 0) {
+    mi_atomic_store_release(&_mi_heap_default_key, key);
+  }
 }
 
 void _mi_prim_thread_done_auto_done(void) {
-  pthread_key_t key = _mi_heap_default_key;
+  pthread_key_t key = mi_atomic_exchange_relaxed(&_mi_heap_default_key, MI_PTHREAD_KEY_INVALID);
   if (key != MI_PTHREAD_KEY_INVALID) {  // do not leak the key, see issue #809
-    _mi_heap_default_key = MI_PTHREAD_KEY_INVALID;
     pthread_key_delete(key);
   }
 }
 
 void _mi_prim_thread_associate_default_theap(mi_theap_t* theap) {
-  if (_mi_heap_default_key != MI_PTHREAD_KEY_INVALID) {  // can happen during recursive invocation on freeBSD
-    pthread_setspecific(_mi_heap_default_key, theap);
+  pthread_key_t key = mi_atomic_load_relaxed(&_mi_heap_default_key);
+  if (key != MI_PTHREAD_KEY_INVALID) {  // can happen during recursive invocation on freeBSD
+    pthread_setspecific(key, theap);
   }
 }
 
@@ -256,4 +259,8 @@ bool _mi_prim_thread_is_in_threadpool(void) {
 
 void _mi_prim_thread_yield(void) {
   sched_yield();
+}
+
+bool _mi_prim_process_is_killed(void) {
+  return false;
 }
