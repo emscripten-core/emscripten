@@ -8,11 +8,11 @@ terms of the MIT license. A copy of the license can be found in the file
 #ifndef MIMALLOC_STATS_H
 #define MIMALLOC_STATS_H
 
-#include <mimalloc.h>
+#include "mimalloc.h"
 #include <string.h>   // memset
 #include <stdint.h>   // int64_t
 
-#define MI_STAT_VERSION   5  // increased on every backward incompatible change
+#define MI_STAT_VERSION   6  // increased on every backward incompatible change
 
 // alignment for atomic fields
 #if defined(_MSC_VER)
@@ -47,8 +47,10 @@ typedef struct mi_stat_counter_s {
   MI_STAT_COUNT(page_committed)             /* committed memory inside pages */ \
   MI_STAT_COUNT(pages_abandoned)            /* abandoned pages count */ \
   MI_STAT_COUNT(threads)                    /* number of threads */ \
-  MI_STAT_COUNT(malloc_normal)              /* allocated bytes <= MI_LARGE_OBJ_SIZE_MAX */ \
-  MI_STAT_COUNT(malloc_huge)                /* allocated bytes in huge pages */ \
+  MI_STAT_COUNT(allocated)                  /* allocated bytes */ \
+  MI_STAT_COUNTER(malloc_count)             /* total number of malloc calls */ \
+  MI_STAT_COUNTER(free_count)               /* total number of free calls */ \
+  MI_STAT_COUNTER(freed)                    /* total free'd bytes (note: total allocated is `allocated.total`) */ \
   MI_STAT_COUNTER(malloc_requested)         /* malloc requested bytes */ \
   \
   MI_STAT_COUNTER(mmap_calls) \
@@ -56,8 +58,6 @@ typedef struct mi_stat_counter_s {
   MI_STAT_COUNTER(reset_calls) \
   MI_STAT_COUNTER(purge_calls) \
   MI_STAT_COUNTER(arena_count)              /* number of memory arena's */ \
-  MI_STAT_COUNTER(malloc_normal_count)      /* number of blocks <= MI_LARGE_OBJ_SIZE_MAX */ \
-  MI_STAT_COUNTER(malloc_huge_count)        /* number of huge bloks */ \
   MI_STAT_COUNTER(malloc_guarded_count)     /* number of allocations with guard pages */ \
   \
   /* internal statistics */ \
@@ -81,10 +81,17 @@ typedef struct mi_stat_counter_s {
   MI_STAT_COUNTER(pages_reclaim_on_free) \
   MI_STAT_COUNTER(pages_reabandon_full) \
   MI_STAT_COUNTER(pages_unabandon_busy_wait) \
+  MI_STAT_COUNTER(pages_unown_cas_retry) \
   MI_STAT_COUNTER(heaps_delete_wait) \
   MI_STAT_COUNTER(pages_stat_updates)      /* calls to successful page_stat_update */ \
   MI_STAT_COUNTER(pages_stat_update_count) /* total free/allocs */ \
   MI_STAT_COUNTER(profile_samples)         /* total sampled profiled allocations */ \
+  /* deprecated */ \
+  MI_STAT_COUNT(malloc_normal)              /* allocated bytes <= MI_LARGE_OBJ_SIZE_MAX */ \
+  MI_STAT_COUNT(malloc_huge)                /* allocated bytes in huge pages */ \
+  MI_STAT_COUNTER(malloc_normal_count)      /* number of blocks <= MI_LARGE_OBJ_SIZE_MAX */ \
+  MI_STAT_COUNTER(malloc_huge_count)        /* number of huge bloks */ \
+
 
 // Size bins for chunks
 typedef enum mi_chunkbin_e {
@@ -105,8 +112,8 @@ typedef enum mi_chunkbin_e {
 
 typedef struct mi_stats_s
 {
-  size_t size;          // size of the mi_stats_t structure 
-  size_t version;       
+  size_t size;          // size of the mi_stats_t structure
+  size_t version;
 
   mi_decl_align(8)  MI_STAT_FIELDS()
 
@@ -133,6 +140,8 @@ static inline void mi_stats_init(mi_stats_t* stats) {
   mi_stats_header_init(stats);
 }
 
+// Always use this to declare and initialize a `mi_stats_t` variable such
+// that the version and size can be checked at runtime.
 #define mi_stats_t_decl(name)  mi_stats_t name; mi_stats_init(&name);
 
 // Exported definitions

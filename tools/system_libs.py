@@ -1910,11 +1910,16 @@ class libmimalloc(MTLibrary):
   # allocator underneath it.
   src_dir = 'system/lib/'
   src_files = glob_in_path(
-    path='system/lib/mimalloc/src',
+    path='system/lib/mimalloc/src/alloc',
     glob_pattern='*.c',
-    # mimalloc includes some files at the source level, so exclude them here.
-    excludes={'alloc-override.c', 'free.c', 'page-queue.c', 'static.c'},
+    # included from alloc.c, so exclude them here.
+    excludes={'alloc-override.c', 'free.c'},
   )
+  src_files += glob_in_path('system/lib/mimalloc/src/arena', '*.c')
+  src_files += glob_in_path('system/lib/mimalloc/src/heap', '*.c')
+  src_files += glob_in_path('system/lib/mimalloc/src/profile', '*.c')
+  src_files += glob_in_path('system/lib/mimalloc/src/util', '*.c')
+  src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/os.c')]
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim-tls.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
