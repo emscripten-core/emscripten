@@ -124,6 +124,22 @@ fs.Stats.prototype.ctimeMs;
 fs.Stats.prototype.blksize;
 
 /**
+ * @const
+ */
+fs.constants = {
+  O_APPEND: 0,
+  O_CREAT: 0,
+  O_EXCL: 0,
+  O_NOCTTY: 0,
+  O_RDONLY: 0,
+  O_RDWR: 0,
+  O_SYNC: 0,
+  O_TRUNC: 0,
+  O_WRONLY: 0,
+  O_NOFOLLOW: 0,
+};
+
+/**
  * @param {string} p
  * @return {boolean}
  * @nosideeffects

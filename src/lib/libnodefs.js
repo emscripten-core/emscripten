@@ -21,21 +21,21 @@ addToLibrary({
       NODEFS.isWindows = !!process.platform.match(/^win/);
       var flags = fs.constants;
       NODEFS.flagsForNodeMap = {
-        '{{{ cDefs.O_APPEND }}}': flags['O_APPEND'],
-        '{{{ cDefs.O_CREAT }}}': flags['O_CREAT'],
-        '{{{ cDefs.O_EXCL }}}': flags['O_EXCL'],
-        '{{{ cDefs.O_NOCTTY }}}': flags['O_NOCTTY'],
-        '{{{ cDefs.O_RDONLY }}}': flags['O_RDONLY'],
-        '{{{ cDefs.O_RDWR }}}': flags['O_RDWR'],
-        '{{{ cDefs.O_DSYNC }}}': flags['O_SYNC'],
-        '{{{ cDefs.O_TRUNC }}}': flags['O_TRUNC'],
-        '{{{ cDefs.O_WRONLY }}}': flags['O_WRONLY'],
-        '{{{ cDefs.O_NOFOLLOW }}}': flags['O_NOFOLLOW'],
+        {{{ cDefs.O_APPEND }}}: flags.O_APPEND,
+        {{{ cDefs.O_CREAT }}}: flags.O_CREAT,
+        {{{ cDefs.O_EXCL }}}: flags.O_EXCL,
+        {{{ cDefs.O_NOCTTY }}}: flags.O_NOCTTY,
+        {{{ cDefs.O_RDONLY }}}: flags.O_RDONLY,
+        {{{ cDefs.O_RDWR }}}: flags.O_RDWR,
+        {{{ cDefs.O_DSYNC }}}: flags.O_SYNC,
+        {{{ cDefs.O_TRUNC }}}: flags.O_TRUNC,
+        {{{ cDefs.O_WRONLY }}}: flags.O_WRONLY,
+        {{{ cDefs.O_NOFOLLOW }}}: flags.O_NOFOLLOW,
       };
 #if ASSERTIONS
       // The 0 define must match on both sides, as otherwise we would not
       // know to add it.
-      assert(NODEFS.flagsForNodeMap['0'] === 0);
+      assert(NODEFS.flagsForNodeMap[0] === 0);
 #endif
     },
     convertNodeCode(e) {
