@@ -330,11 +330,6 @@ void _emscripten_thread_exit(void* result) {
     exit(0);
   }
 
-#ifdef EMSCRIPTEN_DYNAMIC_LINKING
-  // Free the TLS blocks that side modules allocated for this thread.
-  _emscripten_thread_free_tls();
-#endif
-
   /* At this point we are committed to thread termination. */
 
   /* The thread list lock must be AS-safe. */
@@ -370,6 +365,12 @@ void _emscripten_thread_exit(void* result) {
   self->prev = self->next = self;
 
   __tl_unlock();
+
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+  // Free side module TLS after cleanup, since robust mutexes may live in it.
+  // Keep the thread identity valid until the TLS blocks have been freed.
+  _emscripten_thread_free_tls();
+#endif
 
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
   __set_thread_state(NULL, 0, 0, 1);
