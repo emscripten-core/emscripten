@@ -248,9 +248,11 @@ addToLibrary({
   },
 
 #if PTHREADS
+  $wasmfsOPFSModeSupported__internal: true,
   $wasmfsOPFSModeSupported: undefined,
 
   // Open a sync access handle using 'readwrite-unsafe' if supported
+  $wasmfsOPFSCreateSyncAccessHandle__internal: true,
   $wasmfsOPFSCreateSyncAccessHandle__deps: ['$wasmfsOPFSModeSupported'],
   $wasmfsOPFSCreateSyncAccessHandle: async (fileHandle) => {
     // Check if `mode` is supported by the browser by seeing if the browser
