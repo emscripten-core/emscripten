@@ -15530,17 +15530,8 @@ addToLibrary({
     self.assertFalse(os.path.exists('out.js'))
     self.assertContained('error with `--use-port=sdl2_image:formats=jpg:formats=png` | duplicate option `formats`', stderr)
 
-  def test_mimalloc_headers(self):
-    src = r'''
-      #include <mimalloc.h>
-
-      int main() {
-          mi_option_enable(mi_option_verbose);
-          mi_options_print();
-          return 0;
-      }
-    '''
-    self.do_run(src, cflags=['-sMALLOC=mimalloc'])
+  def test_mimalloc_options(self):
+    self.do_other_test('test_mimalloc_options.c', cflags=['-sMALLOC=mimalloc'])
 
   def test_SUPPORT_BIG_ENDIAN(self):
     # Just a simple build-only test for now

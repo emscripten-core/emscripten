@@ -169,10 +169,10 @@ void _mi_prim_process_info(mi_process_info_t* pinfo)
 // Output
 //----------------------------------------------------------------
 
-#include <emscripten/console.h>
+#include <stdio.h>  // fputs
 
 void _mi_prim_out_stderr( const char* msg) {
-  emscripten_err(msg);
+  fputs(msg, stderr);  // not `emscripten_console_error` as that appends a newline
 }
 
 

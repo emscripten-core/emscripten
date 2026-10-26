@@ -259,7 +259,7 @@ git branch -D temp-mimalloc-init
 
 ### Step 4: Verify with Tests
 ```bash
-./test/runner test_other.test_mimalloc_headers
+./test/runner test_other.test_mimalloc_options
 ./test/runner test_other.test_mimalloc_no_asan
 ./test/runner test_hello_world -sMALLOC=mimalloc
 ```
@@ -302,7 +302,7 @@ git subtree pull --prefix=system/lib/mimalloc \
 
 # Resolve any merge conflicts in-place if necessary
 # Run tests
-./test/runner test_other.test_mimalloc_headers
+./test/runner test_other.test_mimalloc_options
 ```
 
 ### 3. Cherry-Picking an Upstream Bugfix
