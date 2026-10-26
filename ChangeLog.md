@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- The undocumented `Module['ctx']` property was removed. Replace references to
+  `Module['ctx']` inside JS libraries or `EM_ASM`/`EM_JS` with `GLctx` (or
+  `GL.currentContext.GLctx`, exporting `GL` via `-sEXPORTED_RUNTIME_METHODS=GL`
+  if accessed from outside the module).
 - When compiling and linking in a single command, auxiliary compiler output
   files (such as `.dwo` files from `-gsplit-dwarf` or `.json` files from
   `-ftime-trace`) are now named `<output>-<input>.<ext>`, matching the behavior
