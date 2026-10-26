@@ -374,12 +374,8 @@ var EpollLibrary = {
     stream.listeners.set(key, it);
 
     // Every delivery is an event-loop task, never under the notifying wasm
-    // call's frames. A turn re-derives readiness when it runs, so one pending
-    // turn covers every wake before it: a burst of edges within one loop turn
-    // (a run of socket chunks) costs one task, not one per edge, which matters
-    // on hosts that cap pending timers and do not service them while I/O keeps
-    // completing. The flag clears as the turn starts, so a wake during the
-    // callback schedules the next.
+    // call's frames. At most one task is pending per listener: a turn
+    // re-derives readiness, so it covers every wake before it.
     function schedule() {
       if (it.pending) return;
       it.pending = true;
