@@ -6,6 +6,7 @@
 
 addToLibrary({
   $FETCHFS__deps: ['wasmfs_create_fetch_backend'],
+  $FETCHFS__export: true,
   $FETCHFS: {
     createBackend(opts) {
       return withStackSave(

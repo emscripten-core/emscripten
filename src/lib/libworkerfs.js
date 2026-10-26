@@ -14,6 +14,7 @@ addToLibrary({
     $WORKERFS_DIR_MODE: cDefs.S_IFDIR | cDefs.S_IRWXUGO,
     $WORKERFS_FILE_MODE: cDefs.S_IFREG | cDefs.S_IRWXUGO,
   }),
+  $WORKERFS__export: true,
   $WORKERFS: {
     reader: null,
     mount(mount) {

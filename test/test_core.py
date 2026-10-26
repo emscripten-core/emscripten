@@ -8712,18 +8712,24 @@ Module.onRuntimeInitialized = () => {
     ''')
     self.do_runf('hello_world.c', 'able to run memprof', cflags=['--memoryprofiler', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized'])
 
-  @no_wasmfs('depends on MEMFS which WASMFS does not have')
+  @no_modularize_instance('uses Module object directly')
+  @no_wasmfs('IDBFS is not yet supported in WasmFS')
   def test_fs_dict(self):
-    self.set_setting('FORCE_FILESYSTEM')
-    create_file('pre.js', '''
-      Module.preRun = () => {
-        out(typeof MEMFS);
-        out(typeof IDBFS);
-        out(typeof NODEFS);
-      };
-    ''')
-    self.cflags += ['-lidbfs.js', '-lnodefs.js', '--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=preRun']
-    self.do_run('int main() { return 0; }', 'object\nobject\nobject')
+    self.do_run('''
+      #include <emscripten/em_asm.h>
+
+      int main() {
+        EM_ASM({
+          out(typeof Module['IDBFS']);
+          out(typeof Module['NODEFS']);
+          out(typeof Module['PROXYFS']);
+          out(typeof Module['WORKERFS']);
+        });
+        return 0;
+      }
+    ''', 'object\nobject\nobject\nobject',
+                cflags=['-sFORCE_FILESYSTEM', '-sENVIRONMENT=web,worker,node',
+                        '-lidbfs.js', '-lnodefs.js', '-lproxyfs.js', '-lworkerfs.js'])
 
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict_none(self):
