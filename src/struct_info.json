@@ -399,7 +399,8 @@
         "file": "limits.h",
         "defines": [
             "TZNAME_MAX",
-            "SYMLOOP_MAX"
+            "SYMLOOP_MAX",
+            "PIPE_BUF"
         ]
     },
     {

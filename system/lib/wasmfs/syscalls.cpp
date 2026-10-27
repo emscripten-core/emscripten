@@ -133,10 +133,29 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     }
   }
 
+  // PIPE_BUF rule: a small write is all-or-nothing, a larger one takes what
+  // fits.
+  off_t budget = -1;
+  if (S_ISFIFO(lockedFile.getMode()) &&
+      (lockedOpenFile.getFlags() & O_NONBLOCK)) {
+    off_t total = 0;
+    for (size_t i = 0; i < iovs_len; i++) {
+      total += iovs[i].buf_len;
+    }
+    off_t room = PipeFile::capacity - lockedFile.getSize();
+    if (room <= 0 || (total <= PIPE_BUF && total > room)) {
+      return __WASI_ERRNO_AGAIN;
+    }
+    budget = room;
+  }
+
   size_t bytesWritten = 0;
-  for (size_t i = 0; i < iovs_len; i++) {
+  for (size_t i = 0; i < iovs_len && budget != 0; i++) {
     const uint8_t* buf = iovs[i].buf;
     off_t len = iovs[i].buf_len;
+    if (budget > 0 && len > budget) {
+      len = budget;
+    }
 
     // Check if buf_len specifies a positive length buffer but buf is a
     // null pointer
@@ -160,7 +179,10 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     }
     // The write was successful.
     bytesWritten += result;
-    if (result < len) {
+    if (budget > 0) {
+      budget -= result;
+    }
+    if (result < (off_t)iovs[i].buf_len) {
       // The write was short, so stop here.
       break;
     }
@@ -1437,12 +1459,32 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
       mask = 0;
       auto flags = openFile->locked().getFlags();
       auto accessMode = flags & O_ACCMODE;
+      auto file = openFile->locked().getFile();
+      auto isPipe = S_ISFIFO(file->locked().getMode());
       auto readBit = pollfd->events & POLLOUT;
-      if (readBit && (accessMode == O_WRONLY || accessMode == O_RDWR)) {
+      auto writeBit = pollfd->events & POLLIN;
+      if (isPipe) {
+        auto pipe = std::static_pointer_cast<PipeFile>(file);
+        auto size = file->locked().getSize();
+        if (accessMode == O_WRONLY) {
+          if (pipe->isReadClosed()) {
+            mask |= readBit | POLLERR;
+          } else if (PipeFile::capacity - size >= PIPE_BUF) {
+            mask |= readBit;
+          }
+        } else {
+          if (size > 0) {
+            mask |= writeBit;
+          }
+          if (pipe->isWriteClosed()) {
+            mask |= writeBit | POLLHUP;
+          }
+        }
+      } else if (readBit && (accessMode == O_WRONLY || accessMode == O_RDWR)) {
         mask |= readBit;
       }
-      auto writeBit = pollfd->events & POLLIN;
-      if (writeBit && (accessMode == O_RDONLY || accessMode == O_RDWR)) {
+      if (!isPipe && writeBit &&
+          (accessMode == O_RDONLY || accessMode == O_RDWR)) {
         // If there is data in the file, then there is also the ability to read.
         // TODO: Does this need to consider the position as well? That is, if
         // the position is at the end, we can't read from the current position
