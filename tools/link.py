@@ -869,6 +869,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     default_setting('ASSERTIONS', 0)
 
   if options.emrun:
+    settings.EMRUN = True
     options.pre_js.append(utils.path_from_root('src/emrun_prejs.js'))
     options.post_js.append(utils.path_from_root('src/emrun_postjs.js'))
     if settings.MINIMAL_RUNTIME:
