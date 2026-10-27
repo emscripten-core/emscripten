@@ -201,12 +201,11 @@ You can use ``__async: 1`` if you just want to include the function in
 wrapper in ``Asyncify.handleAsync``.
 
 ``__async: 'auto'`` allows the same function to work synchronously without
-``ASYNCIFY``.  A function whose last parameter, following those of its
-``__sig``, is named ``sync`` is told there whether it must return
-synchronously.  This is ``false`` under ``ASYNCIFY``/JSPI, and when called from
-a pthread with ``__proxy: 'sync'`` (the main thread awaits the result on its
-behalf); it is ``true`` otherwise, where a returned ``Promise`` could not be
-waited for:
+``ASYNCIFY``.  A function whose last parameter is named ``sync`` is told there
+whether it must return synchronously.  This is ``false`` under
+``ASYNCIFY``/JSPI, and when called from a pthread with ``__proxy: 'sync'`` (the
+main thread awaits the result on its behalf); it is ``true`` otherwise, where a
+returned ``Promise`` could not be waited for:
 
 .. code-block:: js
 

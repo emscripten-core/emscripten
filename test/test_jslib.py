@@ -150,7 +150,7 @@ addToLibrary({
     if (sync) return -1;
     return new Promise((resolve) => setTimeout(() => resolve(value), ms));
   },
-  wait_ms__sig: 'vi',
+  // No __sig: `sync` is found by name alone.
   wait_ms__async: 'auto',
   wait_ms__proxy: 'sync',
   wait_ms: (ms, sync) => {

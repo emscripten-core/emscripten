@@ -395,6 +395,30 @@ ${body};
   });
 }
 
+// An `__async: 'auto'` body returns a value or a Promise, as it can. A body
+// whose last parameter is named `sync` receives there whether it must complete
+// synchronously on this call, as a returned Promise could not be waited for.
+// That is never the case under ASYNCIFY/JSPI, nor on behalf of a sync-proxied
+// pthread caller, which awaits it; otherwise it is.
+function handleSyncArg(symbol, snippet, sig, proxyingMode) {
+  const sync = ASYNCIFY ? 'false' :
+    PTHREADS && proxyingMode == 'sync' ? '!PThread.currentProxiedOperationCallerThread' : 'true';
+  return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+    const params = args.split(',').map((a) => a.trim()).filter((a) => a);
+    if (params.at(-1) != 'sync') return snippet;
+    if (sig && params.length != sig.length) {
+      error(`JS library error: '${symbol}' must take 'sync' as parameter ${sig.length}, after the ${sig.length - 1} of its '__sig'`);
+      return snippet;
+    }
+    if (!oneliner) body = `{\n${body}\n}`;
+    const outer = params.slice(0, -1).join(', ');
+    return `\
+function(${outer}) {
+  return (${async_}(${args}) => ${body})(${outer}${outer ? ', ' : ''}${sync});
+}\n`;
+  });
+}
+
 function handleAsyncFunction(snippet, sig, proxied) {
   const return64 = sig && (MEMORY64 && sig.startsWith('p') || sig.startsWith('j'))
   let handleAsync = 'Asyncify.handleAsync(innerFunc)'
@@ -536,29 +560,8 @@ function(${args}) {
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
 
-    if (LibraryManager.library[symbol + '__async'] == 'auto' && sig) {
-      // An 'auto' body returns a value or a Promise, as it can. A body whose
-      // last parameter, following those of its __sig, is named `sync` receives
-      // there whether it must complete synchronously on this call, as a
-      // returned Promise could not be waited for. That is never the case under
-      // ASYNCIFY/JSPI, nor on behalf of a sync-proxied pthread caller, which
-      // awaits it; otherwise it is.
-      const sync = ASYNCIFY ? 'false' :
-        PTHREADS && proxyingMode == 'sync' ? '!PThread.currentProxiedOperationCallerThread' : 'true';
-      snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
-        const params = args.split(',').map((a) => a.trim()).filter((a) => a);
-        if (params.at(-1) != 'sync') return snippet;
-        if (params.length != sig.length) {
-          error(`JS library error: '${symbol}' must take 'sync' as parameter ${sig.length}, after the ${sig.length - 1} of its '__sig'`);
-          return snippet;
-        }
-        if (!oneliner) body = `{\n${body}\n}`;
-        const outer = params.slice(0, -1).join(', ');
-        return `\
-function(${outer}) {
-  return (${async_}(${args}) => ${body})(${outer}${outer ? ', ' : ''}${sync});
-}\n`;
-      });
+    if (LibraryManager.library[symbol + '__async'] == 'auto') {
+      snippet = handleSyncArg(symbol, snippet, sig, proxyingMode);
     }
 
     if (ASYNCIFY && isAsyncFunction == 'auto') {
