@@ -1202,54 +1202,54 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       if (context.initExtensionsDone) return;
       context.initExtensionsDone = true;
 
-      var GLctx = context.GLctx;
+      var gl = context.GLctx;
 
       // Detect the presence of a few extensions manually, since the GL interop
       // layer itself will need to know if they exist.
 #if LEGACY_GL_EMULATION
-      context.compressionExt = GLctx.getExtension('WEBGL_compressed_texture_s3tc');
-      context.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic');
+      context.compressionExt = gl.getExtension('WEBGL_compressed_texture_s3tc');
+      context.anisotropicExt = gl.getExtension('EXT_texture_filter_anisotropic');
 #endif
 
       // Extensions that are available in both WebGL 1 and WebGL 2
-      webgl_enable_WEBGL_multi_draw(GLctx);
-      webgl_enable_EXT_polygon_offset_clamp(GLctx);
-      webgl_enable_EXT_clip_control(GLctx);
-      webgl_enable_WEBGL_polygon_mode(GLctx);
+      webgl_enable_WEBGL_multi_draw(gl);
+      webgl_enable_EXT_polygon_offset_clamp(gl);
+      webgl_enable_EXT_clip_control(gl);
+      webgl_enable_WEBGL_polygon_mode(gl);
 #if MIN_WEBGL_VERSION == 1
       // Extensions that are only available in WebGL 1 (the calls will be no-ops
       // if called on a WebGL 2 context active)
-      webgl_enable_ANGLE_instanced_arrays(GLctx);
-      webgl_enable_OES_vertex_array_object(GLctx);
-      webgl_enable_WEBGL_draw_buffers(GLctx);
+      webgl_enable_ANGLE_instanced_arrays(gl);
+      webgl_enable_OES_vertex_array_object(gl);
+      webgl_enable_WEBGL_draw_buffers(gl);
 #endif
 #if MAX_WEBGL_VERSION >= 2
       // Extensions that are available from WebGL >= 2 (no-op if called on a WebGL 1 context active)
-      webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
-      webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
+      webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(gl);
+      webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(gl);
 
       // On WebGL 2, EXT_disjoint_timer_query is replaced with an alternative
       // that's based on core APIs, and exposes only the queryCounterEXT()
       // entrypoint.
       if (context.version >= 2) {
-        GLctx.disjointTimerQueryExt = GLctx.getExtension('EXT_disjoint_timer_query_webgl2');
+        gl.disjointTimerQueryExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');
       }
 
       // However, Firefox exposes the WebGL 1 version on WebGL 2 as well and
       // thus we look for the WebGL 1 version again if the WebGL 2 version
       // isn't present. https://bugzil.la/1328882
-      if (context.version < 2 || !GLctx.disjointTimerQueryExt)
+      if (context.version < 2 || !gl.disjointTimerQueryExt)
 #endif
       {
-        GLctx.disjointTimerQueryExt = GLctx.getExtension('EXT_disjoint_timer_query');
+        gl.disjointTimerQueryExt = gl.getExtension('EXT_disjoint_timer_query');
       }
 
-      for (var ext of getEmscriptenSupportedExtensions(GLctx)) {
+      for (var ext of getEmscriptenSupportedExtensions(gl)) {
         // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders
         // are not enabled by default.
         if (!ext.includes('lose_context') && !ext.includes('debug')) {
           // Call .getExtension() to enable that extension permanently.
-          GLctx.getExtension(ext);
+          gl.getExtension(ext);
         }
       }
     },
