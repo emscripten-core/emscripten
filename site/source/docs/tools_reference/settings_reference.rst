@@ -3478,9 +3478,10 @@ FAKE_DYLIBS
 
 This setting changes the behaviour of the ``-shared`` flag.  When set to true
 you get the old emscripten behaviour where the ``-shared`` flag actually
-produces a normal object file (i.e. ``ld -r``).  When set to true (the
-default) the ``-shared`` flag is equivelent to :ref:`SIDE_MODULE` and will
-produce a Wasn dynamic library.
+produces a normal object file (i.e. ``ld -r``).  When set to false (the
+default) the ``-shared`` flag will produce a Wasm dynamic library (similar
+to :ref:`SIDE_MODULE`, but matching native linker behaviour for archives and
+exports).
 
 Default value: false
 
