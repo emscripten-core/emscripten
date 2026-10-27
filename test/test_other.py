@@ -16255,13 +16255,14 @@ addToLibrary({
     write_binary('data.tmp', test_data)
     binary_encoded = binary_encode('data.tmp')
     test_js = extra + '''
-var u16 = new Uint16Array(binaryDecode(src, ''' + str(len(test_data)) + ''').buffer);
+function assert(c, m) { if (!c) throw m; }
+var u16 = new Uint16Array(binaryDecode(src, src.length).buffer);
 for(var i = 0; i < 65536; ++i)
   if (u16[i] != i) throw i;
 console.log('OK');'''
     # binaryDecode.js uses the preprocessor (and, with ASSERTIONS, assert()).
     decode_js = building.read_and_preprocess(path_from_root('src/binaryDecode.js'))
-    write_file('test.js', 'function assert(c, m) { if (!c) throw m; }\n' + decode_js + '\nvar src = ' + binary_encoded + ';\n' + test_js)
+    write_file('test.js', decode_js + '\nvar src = ' + binary_encoded + ';\n' + test_js)
     self.assertContained('OK', self.run_js('test.js'))
 
   @crossplatform

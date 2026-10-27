@@ -5654,9 +5654,10 @@ Module["preRun"] = () => {
     # binaryDecode.js uses the preprocessor (and, with ASSERTIONS, assert()).
     decode_js = building.read_and_preprocess(path_from_root('src/binaryDecode.js'))
     write_file('test.html', '''<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>
-''' + extra + '\nfunction assert(c, m) { if (!c) throw m; }\n' + decode_js + '''
+''' + extra + '\n' + decode_js + '''
 var src = ''' + binary_encoded + ''';
-var u16 = new Uint16Array(binaryDecode(src, ''' + str(len(test_data)) + ''').buffer);
+function assert(c, m) { if (!c) throw m; }
+var u16 = new Uint16Array(binaryDecode(src, src.length).buffer);
 for(var i = 0; i < 65536; ++i)
   if (u16[i] != i) throw i;
 console.log('OK');
