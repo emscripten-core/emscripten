@@ -285,7 +285,6 @@ int main() {
   def test_jslib_internal_deps(self):
     create_file('lib.js', r'''
 addToLibrary({
-  jslibfunc__deps: ['$callRuntimeCallbacks'],
   jslibfunc: (x) => {
     callRuntimeCallbacks();
   },
@@ -805,6 +804,7 @@ console.error('JSLIB: none of the above');
   # Tests that it is possible to hook into/override a symbol defined in a system library.
   def test_jslib_override_system_symbol(self):
     # This test verifies it is possible to override a symbol from WebGL library.
+    self.cflags += ['-Wno-js-compiler']
 
     # When WebGL is implicitly linked in, the implicit linking should happen before any user
     # --js-libraries, so that they can adjust the behavior afterwards.
@@ -827,11 +827,9 @@ console.error('JSLIB: none of the above');
       class ParentClass {}
       addToLibrary({
         $ParentClass: ParentClass,
-        $MyClass__deps: ['$ParentClass'],
         $MyClass: class extends ParentClass {
           constructor() { super(); this.x = 42; }
         },
-        log_class__deps: ['$MyClass'],
         log_class: () => {
           var i = new MyClass();
           out('MyClass: ' + i.x);
@@ -850,6 +848,51 @@ console.error('JSLIB: none of the above');
       }
     ''')
     self.do_runf('src.c', 'MyClass: 42', cflags=['--js-library', 'lib.js'])
+
+  def test_jslib_auto_deps(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $unusedHelper: () => 99,
+        $helper: () => 10,
+        other_js_func: () => helper() + 20,
+        $myObj: {
+          unusedHelper: 12,
+          getVal() {
+            return _other_js_func() + this.unusedHelper;
+          },
+        },
+        entry_func: () => {
+          out('val: ' + myObj.getVal());
+          out('done');
+        },
+      });
+    ''')
+    create_file('src.c', r'''
+      void entry_func(void);
+      int main() {
+        entry_func();
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'val: 42\ndone\n', cflags=['--js-library', 'lib.js'])
+    self.assertNotContained('unusedHelper =', read_file('src.js'))
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js', '-sVERBOSE'], stderr=PIPE).stderr
+    self.assertContained('auto-detected dependency: entry_func -> $myObj', err)
+    self.assertContained('auto-detected dependency: $myObj -> other_js_func', err)
+    self.assertContained('auto-detected dependency: other_js_func -> $helper', err)
+
+    # Test warning when an explicit __deps entry duplicates an auto-detected dependency
+    create_file('redundant.js', r'''
+      addToLibrary({
+        $helper: () => 10,
+        entry_func__deps: ['$helper'],
+        entry_func: () => helper(),
+      });
+    ''')
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'redundant.js'], stderr=PIPE).stderr
+    self.assertNotContained('redundant __deps entry', err)
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'redundant.js', '-sSTRICT'], stderr=PIPE).stderr
+    self.assertContained('warning: entry_func: redundant __deps entry: $helper', err)
 
   # Tests that JS library functions containing multiline strings are not disturbed by e.g. inserting indentation into the output.
   @parameterized({

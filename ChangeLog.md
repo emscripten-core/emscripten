@@ -32,6 +32,10 @@ See docs/process.md for more on how version tagging works.
 - Restored `--whole-archive` behaviour when linking with `-sSIDE_MODULE=1`
   (fixing a regression from 6.0.0 where static archives were no longer included
   in full), while keeping native archive behaviour for `-shared`. (#28055)
+- JavaScript library dependencies on other JavaScript library symbols are now
+  detected automatically by the compiler, so `__deps` is no longer required for
+  direct JS-to-JS references (`__deps` is still supported for dependencies on
+  compiled C/C++ symbols or indirect dependencies). (#27995)
 
 6.0.13 - 10/19/26
 -----------------
