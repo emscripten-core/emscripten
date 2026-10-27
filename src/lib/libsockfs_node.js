@@ -455,7 +455,7 @@ var NodeSockFSLibrary = {
       });
     },
   },
-  $nodeSockOps__deps: ['$nodeSockHelpers', '$SOCKFS', '$ERRNO_CODES', '$readI53FromI64', '$writeI53ToI64'],
+  $nodeSockOps__deps: ['$nodeSockHelpers', '$SOCKFS', '$readI53FromI64', '$writeI53ToI64'],
   $nodeSockOps__postset: `
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error('NODERAWSOCKETS is currently only supported on Node.js environment.')

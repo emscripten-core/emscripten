@@ -16,7 +16,7 @@ const UNDEFINED_ADDR = to64(-1);
 
 var LibraryDylink = {
 #if FILESYSTEM
-  $registerWasmPlugin__deps: ['$preloadPlugins'],
+  $registerWasmPlugin__deps: ['$preloadPlugins', '$loadWebAssemblyModule', '$preloadedWasm'],
   $registerWasmPlugin: () => {
     // Use string keys here for public methods to avoid minification since the
     // plugin consumer also uses string keys.
@@ -108,8 +108,9 @@ var LibraryDylink = {
   // the canonical name of the symbol (in some cases modifying the symbol as
   // part of the loop process, so that actual symbol looked up has a different
   // name).
-  $resolveGlobalSymbol__deps: ['$isSymbolDefined', '$createNamedFunction',
+  $resolveGlobalSymbol__deps: ['$isSymbolDefined',
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
+    '$createNamedFunction',
     '$createInvokeFunction',
 #endif
   ],
@@ -309,7 +310,7 @@ var LibraryDylink = {
   },
 
   $reportUndefinedSymbols__internal: true,
-  $reportUndefinedSymbols__deps: ['$GOT', '$resolveGlobalSymbol'],
+  $reportUndefinedSymbols__deps: ['$GOT', '$resolveGlobalSymbol', '$addFunction'],
   $reportUndefinedSymbols: () => {
 #if DYLINK_DEBUG
     dbg('reportUndefinedSymbols');
@@ -392,7 +393,11 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['$GOT', 'emscripten_get_sbrk_ptr', '__heap_base', '$alignMemory', 'calloc'],
+  // `__heap_base` is also used below, but is added via `REQUIRED_EXPORTS` in
+  // `link.py` rather than `__deps` because `wasm-ld` processes stub library
+  // dependencies before synthesizing optional symbols like `__heap_base`.
+  // See https://github.com/llvm/llvm-project/issues/180632
+  $getMemory__deps: ['emscripten_get_sbrk_ptr', '$alignMemory', 'calloc'],
   $getMemory: (size) => {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -634,6 +639,43 @@ var LibraryDylink = {
   },
 #endif
 
+  $addEmAsm__internal: true,
+  $addEmAsm: (addr, body) => {
+    var args = [];
+    for (var arity = 0; ; arity++) {
+      var argName = '$' + arity;
+      if (!body.includes(argName)) break;
+      args.push(argName);
+    }
+    args = args.join();
+    var func = `(${args}) => { ${body} };`;
+#if DYLINK_DEBUG
+    dbg('adding new EM_ASM constant at:', ptrToString(addr));
+#endif
+    {{{ makeEval('ASM_CONSTS[addr] = eval(func)') }}};
+  },
+
+  $addEmJs__internal: true,
+  $addEmJs: (cSig, body) => {
+    // The signature here is a C signature (e.g. "(int foo, char* bar)").
+    // See `create_em_js` in emcc.py` for the build-time version of this
+    // code.
+    var jsArgs = [];
+    cSig = cSig.slice(1, -1);
+    if (cSig != 'void') {
+      cSig = cSig.split(',');
+      for (var arg of cSig) {
+        var jsArg = arg.split(' ').pop();
+        jsArgs.push(jsArg.replaceAll('*', ''));
+      }
+    }
+    var func = `(${jsArgs}) => ${body};`;
+#if DYLINK_DEBUG
+    dbg(`adding new EM_JS function: ${jsArgs} = ${func}`);
+#endif
+    {{{ makeEval('return eval(func)') }}};
+  },
+
   // Loads a side module from binary data or compiled Module. Returns the module's exports or a
   // promise that resolves to its exports if the loadAsync flag is set.
   $loadWebAssemblyModule__docs: `
@@ -643,12 +685,12 @@ var LibraryDylink = {
     * @param {number=} handle
     */`,
   $loadWebAssemblyModule__deps: [
-    '$loadDynamicLibrary', '$getMemory', '$updateGOT',
-    '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
-    '$getDylinkMetadata', '$alignMemory',
-    '$updateTableMap',
-    '$wasmTable',
-    '$addOnPostCtor',
+    '$loadDynamicLibrary',
+    '$getDylinkMetadata',
+    '$instantiateModule',
+#if FILESYSTEM
+    '$findLibraryFS',
+#endif
   ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
@@ -656,309 +698,10 @@ var LibraryDylink = {
 #endif
     var metadata = getDylinkMetadata(binary);
 
-    // loadModule loads the wasm module after all its dependencies have been loaded.
-    // can be called both sync/async.
-    function loadModule() {
-#if ASSERTIONS
-      var originalTable = wasmTable;
-#endif
-#if PTHREADS
-      // The first thread to load a given module needs to allocate the static
-      // table and memory regions.  Later threads re-use the same table region
-      // and can ignore the memory region (since memory is shared between
-      // threads already).
-      // If `handle` is specified then it is assumed that the calling thread has
-      // exclusive access to it for the duration of this function.  See the
-      // locking in `dynlink.c`.
-      var firstLoad = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
-#if DYLINK_DEBUG
-      dbg('firstLoad:', firstLoad);
-#endif
-      if (firstLoad) {
-#endif
-        // alignments are powers of 2
-        var memAlign = Math.pow(2, metadata.memoryAlign);
-        // prepare memory
-        var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
-        var tableBase = metadata.tableSize ? {{{ from64Expr('wasmTable.length') }}} : 0;
-        if (handle) {
-          {{{ makeSetValue('handle', C_STRUCTS.dso.mem_allocated, '1', 'i8') }}};
-          {{{ makeSetValue('handle', C_STRUCTS.dso.mem_addr, 'memoryBase', '*') }}};
-          {{{ makeSetValue('handle', C_STRUCTS.dso.mem_size, 'metadata.memorySize', 'i32') }}};
-          {{{ makeSetValue('handle', C_STRUCTS.dso.table_addr, 'tableBase', '*') }}};
-          {{{ makeSetValue('handle', C_STRUCTS.dso.table_size, 'metadata.tableSize', 'i32') }}};
-        }
-#if PTHREADS
-      } else {
-        // Read the values for tableBase and memoryBase from shared memory. The
-        // thread that first loaded the DLL already set these values.
-        memoryBase = {{{ makeGetValue('handle', C_STRUCTS.dso.mem_addr, '*') }}};
-        tableBase = {{{ makeGetValue('handle', C_STRUCTS.dso.table_addr, '*') }}};
-      }
-#endif
-
-      if (metadata.tableSize) {
-#if ASSERTIONS
-        assert({{{ from64Expr('wasmTable.length') }}} == tableBase, `unexpected table size while loading ${libName}: ${wasmTable.length}`);
-#endif
-#if DYLINK_DEBUG
-        dbg(`loadModule: growing table by: ${metadata.tableSize}`);
-#endif
-        wasmTable.grow({{{ toIndexType('metadata.tableSize') }}});
-      }
-#if DYLINK_DEBUG
-      dbg(`loadModule: memory[${memoryBase}:${memoryBase + metadata.memorySize}]` +
-                     ` table[${tableBase}:${tableBase + metadata.tableSize}]`);
-#endif
-
-      // This is the export map that we ultimately return.  We declare it here
-      // so it can be used within resolveSymbol.  We resolve symbols against
-      // this local symbol map in the case where they are not present on the
-      // global Module object.  We need this fallback because Modules sometime
-      // need to import their own symbols
-      var moduleExports;
-
-      function resolveSymbol(sym) {
-        var resolved = resolveGlobalSymbol(sym).sym;
-        if (!resolved && localScope) {
-          resolved = localScope[sym];
-        }
-        if (!resolved) {
-          resolved = moduleExports[sym];
-        }
-#if ASSERTIONS
-        assert(resolved, `undefined symbol '${sym}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
-#endif
-        return resolved;
-      }
-
-      // TODO kill ↓↓↓ (except "symbols local to this module", it will likely be
-      // not needed if we require that if A wants symbols from B it has to link
-      // to B explicitly: similarly to -Wl,--no-undefined)
-      //
-      // wasm dynamic libraries are pure wasm, so they cannot assist in
-      // their own loading. When side module A wants to import something
-      // provided by a side module B that is loaded later, we need to
-      // add a layer of indirection, but worse, we can't even tell what
-      // to add the indirection for, without inspecting what A's imports
-      // are. To do that here, we use a JS proxy (another option would
-      // be to inspect the binary directly).
-      var proxyHandler = {
-        get(stubs, prop) {
-          // symbols that should be local to this module
-          switch (prop) {
-            case '__memory_base':
-              return {{{ to64('memoryBase') }}};
-            case '__table_base':
-              return {{{ to64('tableBase') }}};
-#if MEMORY64
-#if MEMORY64 == 2
-            case '__memory_base32':
-              return memoryBase;
-#endif
-            case '__table_base32':
-              return tableBase;
-#endif
-          }
-          if (prop in wasmImports && !wasmImports[prop].stub) {
-            // No stub needed, symbol already exists in symbol table
-            var res = wasmImports[prop];
-#if ASYNCIFY
-            // Asyncify wraps exports, and we need to look through those wrappers.
-            if (res.orig) {
-              res = res.orig;
-            }
-#endif
-            return res;
-          }
-          // Return a stub function that will resolve the symbol
-          // when first called.
-          if (!(prop in stubs)) {
-            var resolved;
-            stubs[prop] = (...args) => {
-              resolved ||= resolveSymbol(prop);
-              return resolved(...args);
-            };
-          }
-          return stubs[prop];
-        }
-      };
-      var proxy = new Proxy({}, proxyHandler);
-      var GOTProxy = new Proxy(metadata.weakImports, GOTHandler);
-      var info = {
-        'GOT.mem': GOTProxy,
-        'GOT.func': GOTProxy,
-        'env': proxy,
-        '{{{ WASI_MODULE_NAME }}}': proxy,
-      };
-
-      function postInstantiation(module, instance) {
-#if ASSERTIONS
-        // the table should be unchanged
-        assert(wasmTable === originalTable);
-#endif
-#if PTHREADS
-        if (!ENVIRONMENT_IS_PTHREAD && libName) {
-#if DYLINK_DEBUG
-          dbg('registering sharedModules:', libName)
-#endif
-          // cache all loaded modules in `sharedModules`, which gets passed
-          // to new workers when they are created.
-          sharedModules[libName] = module;
-        }
-#endif
-        // add new entries to functionsInTableMap
-        updateTableMap(tableBase, metadata.tableSize);
-        moduleExports = relocateExports(instance.exports, memoryBase);
-        updateGOT(moduleExports);
-#if ASYNCIFY
-        moduleExports = Asyncify.instrumentWasmExports(moduleExports);
-#endif
-        if (!flags.allowUndefined) {
-          reportUndefinedSymbols();
-        }
-#if STACK_OVERFLOW_CHECK >= 2
-        // If the runtime has already been initialized we set the stack limits
-        // now.  Otherwise this is delayed until `setDylinkStackLimits` is
-        // called after initialization.
-        if (moduleExports['__set_stack_limits'] && runtimeInitialized) {
-          moduleExports['__set_stack_limits']({{{ to64('_emscripten_stack_get_base()') }}}, {{{ to64('_emscripten_stack_get_end()') }}});
-        }
-#endif
-
-#if MAIN_MODULE
-        function addEmAsm(addr, body) {
-          var args = [];
-          for (var arity = 0; ; arity++) {
-            var argName = '$' + arity;
-            if (!body.includes(argName)) break;
-            args.push(argName);
-          }
-          args = args.join();
-          var func = `(${args}) => { ${body} };`;
-#if DYLINK_DEBUG
-          dbg('adding new EM_ASM constant at:', ptrToString(start));
-#endif
-          {{{ makeEval('ASM_CONSTS[start] = eval(func)') }}};
-        }
-
-        // Add any EM_ASM functions that exist in the side module
-        if ('__start_em_asm' in moduleExports) {
-          var start = moduleExports['__start_em_asm'].value;
-          var stop = moduleExports['__stop_em_asm'].value;
-#if CAN_ADDRESS_2GB
-          start >>>= 0;
-          stop >>>= 0;
-#else
-          {{{ from64('start') }}}
-          {{{ from64('stop') }}}
-#endif
-          while (start < stop) {
-            var jsString = UTF8ToString(start);
-            addEmAsm(start, jsString);
-            start = HEAPU8.indexOf(0, start) + 1;
-          }
-        }
-
-        function addEmJs(name, cSig, body) {
-          // The signature here is a C signature (e.g. "(int foo, char* bar)").
-          // See `create_em_js` in emcc.py` for the build-time version of this
-          // code.
-          var jsArgs = [];
-          cSig = cSig.slice(1, -1)
-          if (cSig != 'void') {
-            cSig = cSig.split(',');
-            for (var arg of cSig) {
-              var jsArg = arg.split(' ').pop();
-              jsArgs.push(jsArg.replaceAll('*', ''));
-            }
-          }
-          var func = `(${jsArgs}) => ${body};`;
-#if DYLINK_DEBUG
-          dbg(`adding new EM_JS function: ${jsArgs} = ${func}`);
-#endif
-          {{{ makeEval('moduleExports[name] = eval(func)') }}};
-        }
-
-        for (var name in moduleExports) {
-          if (name.startsWith('__em_js__')) {
-            var start = moduleExports[name].value
-            var jsString = UTF8ToString({{{ from64Expr('start') }}});
-            // EM_JS strings are stored in the data section in the form
-            // SIG<::>BODY.
-            var [sig, body] = jsString.split('<::>');
-            addEmJs(name.replace('__em_js__', ''), sig, body);
-            delete moduleExports[name];
-          }
-        }
-#endif
-
-        // initialize the module
-#if PTHREADS
-        // Only one thread should call __wasm_call_ctors, but all threads need
-        // to call _emscripten_tls_init
-        registerTLSInit(moduleExports['_emscripten_tls_init'], instance.exports, metadata)
-        if (firstLoad) {
-#endif
-          var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
-          if (applyRelocs) {
-            if (runtimeInitialized) {
-#if DYLINK_DEBUG
-              dbg('running __wasm_apply_data_relocs');
-#endif
-              applyRelocs();
-            } else {
-#if DYLINK_DEBUG
-              dbg('delaying __wasm_apply_data_relocs');
-#endif
-              __RELOC_FUNCS__.push(applyRelocs);
-            }
-          }
-          var init = moduleExports['__wasm_call_ctors'];
-          if (init) {
-            if (runtimeInitialized) {
-#if DYLINK_DEBUG
-              dbg('running __wasm_call_ctors');
-#endif
-              init();
-            } else {
-#if DYLINK_DEBUG
-              dbg('delaying __wasm_call_ctors');
-#endif
-              // we aren't ready to run compiled code yet
-              addOnPostCtor(init);
-            }
-          }
-#if PTHREADS
-        }
-#endif
-        return moduleExports;
-      }
-
-      if (flags.loadAsync) {
-        return (async () => {
-          var instance;
-          if (binary instanceof WebAssembly.Module) {
-            instance = new WebAssembly.Instance(binary, info);
-          } else {
-            // Destructuring assignment without declaration has to be wrapped
-            // with parens or parser will treat the l-value as an object
-            // literal instead.
-            ({ module: binary, instance } = await WebAssembly.instantiate(binary, info));
-          }
-          return postInstantiation(binary, instance);
-        })();
-      }
-
-      var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
-      var instance = new WebAssembly.Instance(module, info);
-      return postInstantiation(module, instance);
-    }
-
     // We need to set rpath in flags based on the current library's rpath.
     // We can't mutate flags or else if a depends on b and c and b depends on d,
     // then c will be loaded with b's rpath instead of a's.
-    flags = {...flags, rpath: { parentLibPath: libName, paths: metadata.runtimePaths }}
+    flags = {...flags, rpath: { parentLibPath: libName, paths: metadata.runtimePaths }};
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
       return metadata.neededDynlibs
@@ -968,16 +711,282 @@ var LibraryDylink = {
 #endif
           return loadDynamicLibrary(needed, flags, localScope);
         }), Promise.resolve())
-        .then(loadModule);
+        .then(() => instantiateModule(binary, metadata, flags, libName, localScope, handle));
     }
 
     for (var needed of metadata.neededDynlibs) {
 #if FILESYSTEM
       needed = findLibraryFS(needed, flags.rpath) ?? needed;
 #endif
-      loadDynamicLibrary(needed, flags, localScope)
+      loadDynamicLibrary(needed, flags, localScope);
     }
-    return loadModule();
+    return instantiateModule(binary, metadata, flags, libName, localScope, handle);
+  },
+
+  // Instantiates a side module after all its dependencies have been loaded.
+  // Can be called both sync and async.
+  $instantiateModule__internal: true,
+  $instantiateModule__deps: [
+    '$getMemory', '$updateGOT',
+    '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
+    '$reportUndefinedSymbols',
+    '$alignMemory', '$updateTableMap',
+    '$wasmTable', '$addOnPostCtor',
+    '$addEmAsm', '$addEmJs',
+  ],
+  $instantiateModule: (binary, metadata, flags, libName, localScope, handle) => {
+#if ASSERTIONS
+    var originalTable = wasmTable;
+#endif
+#if PTHREADS
+    // The first thread to load a given module needs to allocate the static
+    // table and memory regions.  Later threads re-use the same table region
+    // and can ignore the memory region (since memory is shared between
+    // threads already).
+    // If `handle` is specified then it is assumed that the calling thread has
+    // exclusive access to it for the duration of this function.  See the
+    // locking in `dynlink.c`.
+    var firstLoad = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
+#if DYLINK_DEBUG
+    dbg('firstLoad:', firstLoad);
+#endif
+    if (firstLoad) {
+#endif
+      // alignments are powers of 2
+      var memAlign = Math.pow(2, metadata.memoryAlign);
+      // prepare memory
+      var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
+      var tableBase = metadata.tableSize ? {{{ from64Expr('wasmTable.length') }}} : 0;
+      if (handle) {
+        {{{ makeSetValue('handle', C_STRUCTS.dso.mem_allocated, '1', 'i8') }}};
+        {{{ makeSetValue('handle', C_STRUCTS.dso.mem_addr, 'memoryBase', '*') }}};
+        {{{ makeSetValue('handle', C_STRUCTS.dso.mem_size, 'metadata.memorySize', 'i32') }}};
+        {{{ makeSetValue('handle', C_STRUCTS.dso.table_addr, 'tableBase', '*') }}};
+        {{{ makeSetValue('handle', C_STRUCTS.dso.table_size, 'metadata.tableSize', 'i32') }}};
+      }
+#if PTHREADS
+    } else {
+      // Read the values for tableBase and memoryBase from shared memory. The
+      // thread that first loaded the DLL already set these values.
+      memoryBase = {{{ makeGetValue('handle', C_STRUCTS.dso.mem_addr, '*') }}};
+      tableBase = {{{ makeGetValue('handle', C_STRUCTS.dso.table_addr, '*') }}};
+    }
+#endif
+
+    if (metadata.tableSize) {
+#if ASSERTIONS
+      assert({{{ from64Expr('wasmTable.length') }}} == tableBase, `unexpected table size while loading ${libName}: ${wasmTable.length}`);
+#endif
+#if DYLINK_DEBUG
+      dbg(`loadModule: growing table by: ${metadata.tableSize}`);
+#endif
+      wasmTable.grow({{{ toIndexType('metadata.tableSize') }}});
+    }
+#if DYLINK_DEBUG
+    dbg(`loadModule: memory[${memoryBase}:${memoryBase + metadata.memorySize}]` +
+                   ` table[${tableBase}:${tableBase + metadata.tableSize}]`);
+#endif
+
+    // This is the export map that we ultimately return.  We declare it here
+    // so it can be used within resolveSymbol.  We resolve symbols against
+    // this local symbol map in the case where they are not present on the
+    // global Module object.  We need this fallback because Modules sometime
+    // need to import their own symbols
+    var moduleExports;
+
+    function resolveSymbol(sym) {
+      var resolved = resolveGlobalSymbol(sym).sym;
+      if (!resolved && localScope) {
+        resolved = localScope[sym];
+      }
+      if (!resolved) {
+        resolved = moduleExports[sym];
+      }
+#if ASSERTIONS
+      assert(resolved, `undefined symbol '${sym}'. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment`);
+#endif
+      return resolved;
+    }
+
+    // TODO kill ↓↓↓ (except "symbols local to this module", it will likely be
+    // not needed if we require that if A wants symbols from B it has to link
+    // to B explicitly: similarly to -Wl,--no-undefined)
+    //
+    // wasm dynamic libraries are pure wasm, so they cannot assist in
+    // their own loading. When side module A wants to import something
+    // provided by a side module B that is loaded later, we need to
+    // add a layer of indirection, but worse, we can't even tell what
+    // to add the indirection for, without inspecting what A's imports
+    // are. To do that here, we use a JS proxy (another option would
+    // be to inspect the binary directly).
+    var proxyHandler = {
+      get(stubs, prop) {
+        // symbols that should be local to this module
+        switch (prop) {
+          case '__memory_base':
+            return {{{ to64('memoryBase') }}};
+          case '__table_base':
+            return {{{ to64('tableBase') }}};
+#if MEMORY64
+#if MEMORY64 == 2
+          case '__memory_base32':
+            return memoryBase;
+#endif
+          case '__table_base32':
+            return tableBase;
+#endif
+        }
+        if (prop in wasmImports && !wasmImports[prop].stub) {
+          // No stub needed, symbol already exists in symbol table
+          var res = wasmImports[prop];
+#if ASYNCIFY
+          // Asyncify wraps exports, and we need to look through those wrappers.
+          if (res.orig) {
+            res = res.orig;
+          }
+#endif
+          return res;
+        }
+        // Return a stub function that will resolve the symbol
+        // when first called.
+        if (!(prop in stubs)) {
+          var resolved;
+          stubs[prop] = (...args) => {
+            resolved ||= resolveSymbol(prop);
+            return resolved(...args);
+          };
+        }
+        return stubs[prop];
+      }
+    };
+    var proxy = new Proxy({}, proxyHandler);
+    var GOTProxy = new Proxy(metadata.weakImports, GOTHandler);
+    var info = {
+      'GOT.mem': GOTProxy,
+      'GOT.func': GOTProxy,
+      'env': proxy,
+      '{{{ WASI_MODULE_NAME }}}': proxy,
+    };
+
+    function postInstantiation(module, instance) {
+#if ASSERTIONS
+      // the table should be unchanged
+      assert(wasmTable === originalTable);
+#endif
+#if PTHREADS
+      if (!ENVIRONMENT_IS_PTHREAD && libName) {
+#if DYLINK_DEBUG
+        dbg('registering sharedModules:', libName)
+#endif
+        // cache all loaded modules in `sharedModules`, which gets passed
+        // to new workers when they are created.
+        sharedModules[libName] = module;
+      }
+#endif
+      // add new entries to functionsInTableMap
+      updateTableMap(tableBase, metadata.tableSize);
+      moduleExports = relocateExports(instance.exports, memoryBase);
+      updateGOT(moduleExports);
+#if ASYNCIFY
+      moduleExports = Asyncify.instrumentWasmExports(moduleExports);
+#endif
+      if (!flags.allowUndefined) {
+        reportUndefinedSymbols();
+      }
+#if STACK_OVERFLOW_CHECK >= 2
+      // If the runtime has already been initialized we set the stack limits
+      // now.  Otherwise this is delayed until `setDylinkStackLimits` is
+      // called after initialization.
+      if (moduleExports['__set_stack_limits'] && runtimeInitialized) {
+        moduleExports['__set_stack_limits']({{{ to64('_emscripten_stack_get_base()') }}}, {{{ to64('_emscripten_stack_get_end()') }}});
+      }
+#endif
+
+      // Add any EM_ASM functions that exist in the side module
+      if ('__start_em_asm' in moduleExports) {
+        var start = moduleExports['__start_em_asm'].value;
+        var stop = moduleExports['__stop_em_asm'].value;
+#if CAN_ADDRESS_2GB
+        start >>>= 0;
+        stop >>>= 0;
+#else
+        {{{ from64('start') }}}
+        {{{ from64('stop') }}}
+#endif
+        while (start < stop) {
+          var jsString = UTF8ToString(start);
+          addEmAsm(start, jsString);
+          start = HEAPU8.indexOf(0, start) + 1;
+        }
+      }
+
+      for (var name in moduleExports) {
+        if (name.startsWith('__em_js__')) {
+          var start = moduleExports[name].value
+          var jsString = UTF8ToString({{{ from64Expr('start') }}});
+          // EM_JS strings are stored in the data section in the form
+          // SIG<::>BODY.
+          var [sig, body] = jsString.split('<::>');
+          moduleExports[name.replace('__em_js__', '')] = addEmJs(sig, body);
+          delete moduleExports[name];
+        }
+      }
+
+      // initialize the module
+#if PTHREADS
+      // Only one thread should call __wasm_call_ctors, but all threads need
+      // to call _emscripten_tls_init
+      registerTLSInit(moduleExports['_emscripten_tls_init'], instance.exports, metadata)
+      if (firstLoad) {
+#endif
+        var applyRelocs = moduleExports['__wasm_apply_data_relocs'];
+        if (applyRelocs) {
+          if (runtimeInitialized) {
+#if DYLINK_DEBUG
+            dbg('running __wasm_apply_data_relocs');
+#endif
+            applyRelocs();
+          } else {
+#if DYLINK_DEBUG
+            dbg('delaying __wasm_apply_data_relocs');
+#endif
+            __RELOC_FUNCS__.push(applyRelocs);
+          }
+        }
+        var init = moduleExports['__wasm_call_ctors'];
+        if (init) {
+          if (runtimeInitialized) {
+#if DYLINK_DEBUG
+            dbg('running __wasm_call_ctors');
+#endif
+            init();
+          } else {
+#if DYLINK_DEBUG
+            dbg('delaying __wasm_call_ctors');
+#endif
+            // we aren't ready to run compiled code yet
+            addOnPostCtor(init);
+          }
+        }
+#if PTHREADS
+      }
+#endif
+      return moduleExports;
+    }
+
+    if (flags.loadAsync) {
+      if (binary instanceof WebAssembly.Module) {
+        var instance = new WebAssembly.Instance(binary, info);
+        return Promise.resolve(postInstantiation(binary, instance));
+      }
+      return WebAssembly.instantiate(binary, info).then(
+        ({ module, instance }) => postInstantiation(module, instance),
+      );
+    }
+
+    var module = binary instanceof WebAssembly.Module ? binary : new WebAssembly.Module(binary);
+    var instance = new WebAssembly.Instance(module, info);
+    return postInstantiation(module, instance);
   },
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -995,6 +1004,7 @@ var LibraryDylink = {
   },
 #endif
 
+  $newDSO__deps: ['$LDSO'],
   $newDSO: (name, handle, syms) => {
     var dso = {
       refcount: Infinity,
@@ -1015,9 +1025,7 @@ var LibraryDylink = {
     '_emscripten_find_dylib',
     '$withStackSave',
     '$stackAlloc',
-    '$lengthBytesUTF8',
     '$stringToUTF8OnStack',
-    '$stringToUTF8',
     '$FS',
     '$PATH',
 #if WASMFS
@@ -1083,6 +1091,7 @@ var LibraryDylink = {
                               '$mergeLibSymbols', '$newDSO',
                               '$asyncLoad',
 #if FILESYSTEM
+                              '$FS',
                               '$preloadedWasm',
                               '$findLibraryFS',
 #endif

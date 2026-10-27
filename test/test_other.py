@@ -413,6 +413,17 @@ class other(RunnerCore):
     self.assertContained(WASM_LD, proc.stderr)
     self.assertExists('a.out.js')
 
+  def test_clang_target_flags(self):
+    proc = self.run_process([EMCC, '-v', '-dumpmachine'], stdout=PIPE, stderr=PIPE)
+    self.assertTrue(proc.stderr.strip().endswith(' -target wasm32-unknown-emscripten -v -dumpmachine'))
+
+    # -print-search-dirs queries clang for `-print-resource-dir` via get_clang_resource_dir()
+    proc = self.run_process([EMCC, '-v', '-print-search-dirs'], stdout=PIPE, stderr=PIPE)
+    self.assertTrue(proc.stderr.strip().endswith(' -target wasm32-unknown-emscripten -print-resource-dir'))
+
+    proc = self.run_process([EMCC, '-v', '--check'], stdout=PIPE, stderr=PIPE)
+    self.assertContained(' --target=wasm32 --version\n', proc.stderr)
+
   def test_skip_subcommands(self):
     # The -### flag is like `-v` but it doesn't actually execute the sub-commands
     proc = self.run_process([EMCC, '-###', '-O3', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
@@ -7303,6 +7314,54 @@ int main() {
     # Repeat the test without NO_AUTOLOAD_DYLIBS
     self.do_runf('main.c', 'done\n', cflags=['-g', '-sMAIN_MODULE=2', 'libside.wasm'])
 
+  @requires_node
+  def test_dlopen_binary_not_retained(self):
+    # The bytes of a side module should not be kept alive once it has been
+    # loaded.  The side module imports a symbol that is not yet defined, which
+    # creates a lazy JS import stub that lives as long as the module does.
+    create_file('side.c', r'''
+      #include <emscripten.h>
+
+      // Make retention of the module's bytes easy to measure.
+      EMSCRIPTEN_KEEPALIVE char padding[32 * 1024 * 1024] = {0xfe};
+
+      int not_yet_defined(int);
+      int side_fn(int x) { return x == 1234 ? not_yet_defined(x) : x + 1; }
+      ''')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        EM_ASM({
+          // Call gc() twice because V8 sweeps ArrayBuffer backing stores
+          // concurrently on a background thread; the start of the second gc()
+          // waits for the first gc()'s ArrayBufferSweeper job to finish.
+          gc();
+          gc();
+          globalThis.before = process.memoryUsage().arrayBuffers;
+        });
+        void* h = dlopen("libside.wasm", RTLD_NOW);
+        assert(h);
+        int (*side_fn)(int) = dlsym(h, "side_fn");
+        assert(side_fn && side_fn(1) == 2);
+        int retained_mb = EM_ASM_INT({
+          gc();
+          gc();
+          return (process.memoryUsage().arrayBuffers - globalThis.before) >> 20;
+        });
+        printf("retained: %dMB\n", retained_mb);
+        assert(retained_mb < 16);
+        printf("done\n");
+        return 0;
+      }''')
+    self.run_process([EMCC, 'side.c', '-sSIDE_MODULE', '-o', 'libside.wasm'])
+    self.assertGreater(os.path.getsize('libside.wasm'), 32 * 1024 * 1024)
+    self.node_args += ['--expose-gc']
+    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2', '-sINITIAL_MEMORY=64MB'])
+
   def test_dlopen_rtld_global(self):
     # This test checks RTLD_GLOBAL where a module is loaded
     # before the module providing a global it needs is. in asm.js we use JS
@@ -7744,6 +7803,15 @@ addToLibrary({
   def test_resolve_mountpoint_parent(self):
     self.do_other_test('test_resolve_mountpoint_parent.c', cflags=['-sFORCE_FILESYSTEM', '-lnodefs.js'])
 
+  @requires_node
+  def test_nodefs_permission_model(self):
+    # Under node's permission model `process.binding` throws ERR_ACCESS_DENIED,
+    # so NODEFS must not use it to look up the fs open flags.
+    if not self.try_require_node_version(22, 13):
+      self.skipTest('test requires node v22.13 or above for --permission')
+    self.node_args += ['--permission', '--allow-fs-read=*', '--allow-fs-write=*']
+    self.do_runf('fs/test_nodefs_nofollow.c', 'done\n', cflags=['-lnodefs.js'])
+
   @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
@@ -7776,10 +7844,10 @@ addToLibrary({
     'O2': (['-O2'], 137000),
     'emmalloc': (['-sMALLOC=emmalloc'], 185000),
     'dlmalloc': (['-sMALLOC=dlmalloc'], 191000),
-    'mimalloc': (['-sMALLOC=mimalloc'], 260000),
+    'mimalloc': (['-sMALLOC=mimalloc'], 254000),
     'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 131000),
     'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 137000),
-    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 197000),
+    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 198000),
   })
   # This test verifies the output code size of the different -sMALLOC= modes.
   def test_malloc_size(self, args, max_size):
@@ -8389,6 +8457,7 @@ int main() {
     self.assertContained('Test_source_fixed_lang_hello', self.run_js('a.out.js'))
 
     self.assert_fail([EMXX, '-Wall', 'src_tmp_fixed_lang'], 'unknown file type: src_tmp_fixed_lang')
+    self.assert_fail([EMXX, '-Werror', 'src_tmp_fixed_lang', '-x', 'c++'], "'-x c++' after last input file has no effect [-Wunused-command-line-argument] [-Werror]")
 
   def test_disable_inlining(self):
     create_file('test.c', r'''
@@ -10052,6 +10121,41 @@ int main() {
     # has only two entries
     self.assertRegex(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
 
+  def test_wasm_sourcemap_line_zero(self):
+    # code at DWARF line 0 should map to no location, not to the row before it
+    wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
+    emsymbolizer = importlib.import_module('tools.emsymbolizer')
+    entries = [
+      {'address': 0x10, 'line': 5, 'column': 3, 'file': 'a.c', 'eos': False},
+      {'address': 0x18, 'line': 0, 'column': 0, 'file': 'a.c', 'eos': False},
+      {'address': 0x1a, 'line': 0, 'column': 0, 'file': 'a.c', 'eos': False},
+      {'address': 0x20, 'line': 6, 'column': 1, 'file': 'a.c', 'eos': False},
+    ]
+    options = wasm_sourcemap.parse_args(['unused.wasm'])
+    write_file('a.wasm.map', json.dumps(wasm_sourcemap.build_sourcemap(entries, [], 0, options)))
+    source_map = emsymbolizer.WasmSourceMap()
+    source_map.parse('a.wasm.map')
+    # consecutive line 0 rows share one segment
+    self.assertEqual(source_map.offsets, [0x10, 0x18, 0x20])
+    self.assertEqual(source_map.lookup(0x14).line, 5)
+    self.assertIsNone(source_map.lookup(0x18).source)
+    self.assertIsNone(source_map.lookup(0x1c).source)
+    self.assertEqual(source_map.lookup(0x20).line, 6)
+    # the runtime's reader in source_map_support.js should agree
+    js = read_file(path_from_root('src/source_map_support.js'))
+    js = js[js.index('class WasmSourceMap'):js.index('let wasmSourceMap;')]
+    create_file('lookup.js', js + '''
+const map = JSON.parse(require('fs').readFileSync('a.wasm.map', 'utf8'));
+const sm = new WasmSourceMap(map);
+console.log(JSON.stringify([0x14, 0x18, 0x1c, 0x20].map((pc) => sm.lookup(pc))));
+''')
+    self.assertEqual(json.loads(self.run_js('lookup.js')), [
+      {'file': 'a.c', 'line': 5, 'column': 3},
+      None,
+      None,
+      {'file': 'a.c', 'line': 6, 'column': 1},
+    ])
+
   def test_wasm_sourcemap_relative_paths(self):
     ensure_dir('build')
 
@@ -10364,27 +10468,27 @@ int main() {
   def test_split_dwarf_dwp(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g', '-gsplit-dwarf'])
     self.assertExists('a.out.wasm')
-    self.assertExists('hello_world.dwo')
+    self.assertExists('a.out.js-hello_world.dwo')
 
     # The wasm will have full debug info for libc (ignore that), but only a
     # skeleton for hello_world.c (no subprogram for main)
     dwdump = self.run_process([LLVM_DWARFDUMP, 'a.out.wasm'], stdout=PIPE).stdout
-    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertIn('DW_AT_GNU_dwo_name\t("a.out.js-hello_world.dwo")', dwdump)
     self.assertNotIn('DW_AT_name\t("main")', dwdump)
 
     # The dwo will have a subprogram for main in a section with a .dwo suffix
-    dwdump = self.run_process([LLVM_DWARFDUMP, 'hello_world.dwo'],
+    dwdump = self.run_process([LLVM_DWARFDUMP, 'a.out.js-hello_world.dwo'],
                               stdout=PIPE).stdout
     self.assertIn('.debug_info.dwo contents:', dwdump)
-    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertIn('DW_AT_GNU_dwo_name\t("a.out.js-hello_world.dwo")', dwdump)
     self.assertIn('DW_AT_name\t("main")', dwdump)
 
     # Check that dwp runs, and results in usable output as well
     self.run_process([LLVM_DWP, '-e', 'a.out.wasm', '-o', 'a.out.wasm.dwp'])
     self.assertExists('a.out.wasm.dwp')
-    self.run_process([LLVM_DWARFDUMP, 'a.out.wasm.dwp'], stdout=PIPE)
+    dwdump = self.run_process([LLVM_DWARFDUMP, 'a.out.wasm.dwp'], stdout=PIPE).stdout
     self.assertIn('.debug_info.dwo contents:', dwdump)
-    self.assertIn('DW_AT_GNU_dwo_name\t("hello_world.dwo")', dwdump)
+    self.assertIn('DW_AT_GNU_dwo_name\t("a.out.js-hello_world.dwo")', dwdump)
     self.assertIn('DW_AT_name\t("main")', dwdump)
 
   def test_separate_dwarf_with_filename(self):
@@ -13404,7 +13508,13 @@ void foo() {}
     # Verify that the dwo file is generated in the current working directory, even when implicitly
     # compiling (compile+link).
     self.run_process([EMCC, test_file('hello_world.c'), '-g', '-gsplit-dwarf'])
-    self.assertExists('hello_world.dwo')
+    self.assertExists('a.out.js-hello_world.dwo')
+
+  def test_ftime_trace_implicit_compile(self):
+    # Verify that the time-trace json file is generated in the current working directory, even when
+    # implicitly compiling (compile+link).
+    self.run_process([EMCC, test_file('hello_world.c'), '-ftime-trace'])
+    self.assertExists('a.out.js-hello_world.json')
 
   @parameterized({
     '': ([],),
@@ -13653,6 +13763,13 @@ void foo() {}
     # A structurally-always-ready level fd (EPOLLOUT on a writable end) re-fires
     # the callback every tick: documents the spin contract (use EPOLLET/unregister).
     self.do_runf('other/test_epoll_callback_level.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_coalesce(self):
+    # A burst of edges before the loop turns (many writes, a run of socket
+    # chunks) schedules one delivery task, not one per edge: on hosts where
+    # setImmediate is a counted timer not serviced while I/O completes, a task
+    # per edge piles up to the host's cap.
+    self.do_runf('other/test_epoll_callback_coalesce.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   @parameterized({
     '': ([], 3),
@@ -13986,6 +14103,47 @@ Module.postRun = () => {{
   def test_hello_world_above_2gb(self):
     self.do_runf_out_file('hello_world.c', cflags=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
+  @parameterized({
+    '': ([],),
+    # Minified export names
+    'O3': (['-O3'],),
+  })
+  def test_signature_conversions(self, args):
+    # Exports returning pointers get wrapped so that they return unsigned
+    # values when memory can be above 2GB.  Check that the wrapped exports are
+    # used, and that all other exports are still present on `wasmExports`
+    # (including when enumerated).
+    create_file('main.c', r'''
+      #include <stdint.h>
+      #include <emscripten.h>
+
+      EMSCRIPTEN_KEEPALIVE void* get_high_ptr() { return (void*)(uintptr_t)0x90000000u; }
+      EMSCRIPTEN_KEEPALIVE int add_one(int x) { return x + 1; }
+
+      int main() {
+        EM_ASM({
+          out('_get_high_ptr: ' + _get_high_ptr());
+          out('wasmExports.get_high_ptr: ' + wasmExports['get_high_ptr']());
+          out('_add_one: ' + _add_one(41));
+          out('wasmExports.add_one: ' + wasmExports['add_one'](41));
+          var found = 0;
+          for (var name in wasmExports) {
+            if (wasmExports[name] === wasmExports['get_high_ptr']) found |= 1;
+            if (wasmExports[name] === wasmExports['add_one']) found |= 2;
+          }
+          out('enumerated: ' + found);
+        });
+      }
+    ''')
+    expected = '''\
+_get_high_ptr: 2415919104
+wasmExports.get_high_ptr: 2415919104
+_add_one: 42
+wasmExports.add_one: 42
+enumerated: 3
+'''
+    self.do_runf('main.c', expected, cflags=['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB', '-sSIGNATURE_CONVERSIONS=get_high_ptr:p'] + args)
+
   def test_unistd_strerror(self):
     self.do_runf_out_file('unistd/strerror.c')
 
@@ -14311,8 +14469,8 @@ int main() {
 
   def test_xlocale(self):
     # Test for xlocale.h compatibility header
-    self.do_other_test('test_xlocale.c')
-    self.do_other_test('test_xlocale.c', cflags=['-x', 'c++'])
+    self.do_other_test('test_xlocale.cpp')
+    self.do_other_test('test_xlocale.cpp', force_c=True)
 
   def test_print_map(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
@@ -15388,16 +15546,8 @@ addToLibrary({
     self.assertFalse(os.path.exists('out.js'))
     self.assertContained('error with `--use-port=sdl2_image:formats=jpg:formats=png` | duplicate option `formats`', stderr)
 
-  def test_mimalloc_headers(self):
-    src = r'''
-      #include <mimalloc.h>
-
-      int main() {
-          mi_option_enable(mi_option_verbose);
-          return 0;
-      }
-    '''
-    self.do_run(src, cflags=['-sMALLOC=mimalloc'])
+  def test_mimalloc_options(self):
+    self.do_other_test('test_mimalloc_options.c', cflags=['-sMALLOC=mimalloc'])
 
   def test_SUPPORT_BIG_ENDIAN(self):
     # Just a simple build-only test for now

@@ -550,6 +550,15 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -ENOTDIR;
   }
 
+  if (flags & O_TRUNC) {
+    if (!child->is<DataFile>()) {
+      return -EISDIR;
+    }
+    if ((fileMode & WASMFS_PERM_WRITE) == 0) {
+      return -EACCES;
+    }
+  }
+
   // Note that we open the file before truncating it because some backends may
   // truncate opened files more efficiently (e.g. OPFS).
   std::shared_ptr<OpenFileState> openFile;
@@ -558,16 +567,13 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return err;
   }
 
-  // If O_TRUNC, truncate the file if possible.
-  if (flags & O_TRUNC) {
-    if (!child->is<DataFile>()) {
-      return -EISDIR;
+  // Ignore truncation if it is a device or FIFO
+  if ((flags & O_TRUNC) && S_ISREG(fileMode)) {
+    auto lockedFile = child->cast<DataFile>()->locked();
+    if (auto err = lockedFile.setSize(0)) {
+      (void)lockedFile.close();
+      return err;
     }
-    if ((fileMode & WASMFS_PERM_WRITE) == 0) {
-      return -EACCES;
-    }
-    // Try to truncate the file, continuing silently if we cannot.
-    (void)child->cast<DataFile>()->locked().setSize(0);
   }
 
   return wasmFS.getFileTable().locked().addEntry(openFile);

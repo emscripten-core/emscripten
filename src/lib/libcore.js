@@ -1408,6 +1408,7 @@ addToLibrary({
   $timers: {},
 
   $clearTimers__internal: true,
+  $clearTimers__deps: ['$timers'],
   $clearTimers: () => {
     for (var t of Object.values(timers)) {
       clearTimeout(t.id);
@@ -1765,7 +1766,11 @@ addToLibrary({
 #endif
   ],
   $assignWasmExports: (wasmExports) => {
-    for (var [name, exportedSymbol] of Object.entries(wasmExports)) {
+    // Use `for...in` rather than `Object.entries` here since, after
+    // `applySignatureConversions`, some exports are inherited rather than own
+    // properties.
+    for (var name in wasmExports) {
+      var exportedSymbol = wasmExports[name];
       name = asmjsMangle(name);
 #if DYNCALLS || !WASM_BIGINT
       if (name.startsWith('dynCall_')) {
@@ -2079,9 +2084,12 @@ addToLibrary({
   emscripten_throw_string: (str) => { throw UTF8ToString(str); },
 
 #if !MINIMAL_RUNTIME
+  $handleException__deps: [
+    '$ExitStatus',
 #if STACK_OVERFLOW_CHECK
-  $handleException__deps: ['emscripten_stack_get_current'],
+    'emscripten_stack_get_current',
 #endif
+  ],
   $handleException: (e) => {
     // Certain exception types we do not treat as errors since they are used for
     // internal control flow.
@@ -2683,7 +2691,7 @@ function wrapSyscallFunction(x, library, isWasi) {
 
   library[x] = t;
   // Automatically add dependency on `$SYSCALLS`
-  if (!WASMFS && t.includes('SYSCALLS')) {
+  if (!WASMFS && t.includes('SYSCALLS.')) {
     library[x + '__deps'].push('$SYSCALLS');
   }
 #if PTHREADS

@@ -15,6 +15,7 @@ want to keep them in sync with the versions implied by test/emsdk_version.txt.
 
 import argparse
 import base64
+import json
 import os
 import re
 import subprocess
@@ -42,13 +43,34 @@ def get_emsdk_version(emsdk_version_file=None):
   return utils.read_file(emsdk_version_file).strip()
 
 
-def fetch_deps(emsdk_hash):
+def is_tagged_release(emsdk_hash):
   url = (
       'https://chromium.googlesource.com/emscripten-releases/+/'
-      f'{emsdk_hash}/DEPS?format=TEXT'
+      f'{emsdk_hash}?format=JSON'
   )
   if VERBOSE:
-    print(f'Fetching DEPS file from {url}...')
+    print(f'Fetching commit info from {url}...')
+  with urllib.request.urlopen(url) as response:
+    data = response.read().decode('utf-8')
+  if data.startswith(")]}'"):
+    data = data[4:]
+  info = json.loads(data)
+  return any(
+      d.get('new_path') == 'DEPS.tagged-release'
+      for d in info.get('tree_diff', [])
+  )
+
+
+def fetch_deps(emsdk_hash):
+  deps_file = 'DEPS'
+  if is_tagged_release(emsdk_hash):
+    deps_file = 'DEPS.tagged-release'
+  url = (
+      'https://chromium.googlesource.com/emscripten-releases/+/'
+      f'{emsdk_hash}/{deps_file}?format=TEXT'
+  )
+  if VERBOSE:
+    print(f'Fetching {deps_file} file from {url}...')
   with urllib.request.urlopen(url) as response:
     return base64.b64decode(response.read()).decode('utf-8')
 
@@ -62,6 +84,14 @@ def parse_deps(content):
       utils.exit_with_error(f"Failed to parse '{key}' from DEPS file")
     revisions[key] = m.group(1)
   return revisions
+
+
+def get_deps_revisions():
+  emsdk_hash = get_emsdk_version()
+  if VERBOSE or DRY_RUN:
+    print(f'Using emscripten-releases revision: {emsdk_hash}')
+  deps_content = fetch_deps(emsdk_hash)
+  return parse_deps(deps_content)
 
 
 def has_revision(repo_dir, revision):
@@ -143,12 +173,7 @@ def main():
   VERBOSE = args.verbose
   DRY_RUN = args.dry_run
 
-  emsdk_hash = get_emsdk_version()
-  if VERBOSE or args.dry_run:
-    print(f'Using emscripten-releases revision: {emsdk_hash}')
-  deps_content = fetch_deps(emsdk_hash)
-
-  revisions = parse_deps(deps_content)
+  revisions = get_deps_revisions()
   sync_repo('llvm-project', args.llvm_dir, revisions['llvm_project_revision'], LLVM_URL)
   sync_repo('binaryen', args.binaryen_dir, revisions['binaryen_revision'], BINARYEN_URL)
   print('Done.')

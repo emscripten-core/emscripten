@@ -1001,7 +1001,15 @@ class libclang_rt_builtins(MTLibrary, SjLjLibrary):
   }
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += glob_in_path(profile_src_dir, '*.c')
-  src_files += glob_in_path(profile_src_dir, '*.cpp')
+  src_files += glob_in_path(
+      profile_src_dir,
+      '*.cpp',
+      excludes={
+        # These are only part of upstream's separate profile_rocm runtime.
+        'InstrProfilingPlatformROCm.cpp',
+        'InstrProfilingPlatformROCmHSA.cpp',
+      },
+  )
   src_files += files_in_path(
       path='system/lib/compiler-rt',
       filenames=[
@@ -1890,6 +1898,11 @@ class libmimalloc(MTLibrary):
     # always use the page map when free-ing a pointer, as we don't support
     # large OS aligned allocations well
     '-DMI_FREE_USE_PAGEMAP=1',
+    # to reduce code size, disable environ customization, profiling and
+    # nonessential stats
+    '-DMI_NO_GETENV',
+    '-DMI_PROFILE=0',
+    '-DMI_STATS=0',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
@@ -1902,11 +1915,16 @@ class libmimalloc(MTLibrary):
   # allocator underneath it.
   src_dir = 'system/lib/'
   src_files = glob_in_path(
-    path='system/lib/mimalloc/src',
+    path='system/lib/mimalloc/src/alloc',
     glob_pattern='*.c',
-    # mimalloc includes some files at the source level, so exclude them here.
-    excludes={'alloc-override.c', 'free.c', 'page-queue.c', 'static.c'},
+    # included from alloc.c, so exclude them here.
+    excludes={'alloc-override.c', 'free.c'},
   )
+  src_files += glob_in_path('system/lib/mimalloc/src/arena', '*.c')
+  src_files += glob_in_path('system/lib/mimalloc/src/heap', '*.c')
+  src_files += glob_in_path('system/lib/mimalloc/src/profile', '*.c')
+  src_files += glob_in_path('system/lib/mimalloc/src/util', '*.c')
+  src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/os.c')]
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim-tls.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]

@@ -9849,6 +9849,7 @@ int main() {
 
   @requires_wasm_workers
   @also_with_pthreads
+  @flaky('https://github.com/emscripten-core/emscripten/issues/27551')
   def test_wasm_worker_futex_wait(self):
     self.do_runf('wasm_worker/wasm_worker_futex_wait.c', cflags=['-sWASM_WORKERS'])
 
@@ -9942,7 +9943,6 @@ int main() {
 
     self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
 
-  @disabled('https://github.com/emscripten-core/emscripten/issues/27223')
   @no_esm_integration('fcoverage is not compatible with WASM_ESM_INTEGRATION')
   @no_wasm2js('wasm binary required to produce code coverage results with llvm-cov')
   def test_fcoverage_mapping(self):

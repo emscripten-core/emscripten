@@ -74,6 +74,7 @@ addToLibrary({
   // which these postponed function calls can be dispatched.
   $_wasmWorkerDelayedMessageQueue: [],
 
+  $_wasmWorkerAppendToQueue__deps: ['$_wasmWorkerDelayedMessageQueue'],
   $_wasmWorkerAppendToQueue: (e) => {
     _wasmWorkerDelayedMessageQueue.push(e);
   },

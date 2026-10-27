@@ -235,7 +235,8 @@ def get_npm_cmd(name, missing_ok=False):
 def get_clang_version():
   if not os.path.exists(CLANG_CC):
     exit_with_error(f'clang executable not found at `{CLANG_CC}`')
-  proc = check_call([CLANG_CC, '--version'], stdout=PIPE)
+  # Pass `--target=wasm32` to avoid clang probing the host toolchain (e.g. gcc on linux)
+  proc = check_call([CLANG_CC, '--target=wasm32', '--version'], stdout=PIPE)
   m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
   return m and m.group(1)
 
@@ -258,7 +259,8 @@ def get_clang_targets():
   if not os.path.exists(CLANG_CC):
     exit_with_error(f'clang executable not found at `{CLANG_CC}`')
   try:
-    target_info = utils.run_process([CLANG_CC, '-print-targets'], stdout=PIPE).stdout
+    # Pass `--target=wasm32` to avoid clang probing the host toolchain (e.g. gcc on linux)
+    target_info = utils.run_process([CLANG_CC, '--target=wasm32', '-print-targets'], stdout=PIPE).stdout
   except subprocess.CalledProcessError:
     exit_with_error(f'error running `clang -print-targets`.  Check your llvm installation ({CLANG_CC})')
   if 'Registered Targets:' not in target_info:

@@ -374,18 +374,24 @@ var EpollLibrary = {
     stream.listeners.set(key, it);
 
     // Every delivery is an event-loop task, never under the notifying wasm
-    // call's frames. Every wake schedules its own turn; one that finds nothing
-    // to deliver is a no-op.
+    // call's frames. At most one task is pending per listener: a turn
+    // re-derives readiness, so it covers every wake before it.
+    function schedule() {
+      if (it.pending) return;
+      it.pending = true;
+      emSetImmediate(turn);
+    }
     function turn() {
+      it.pending = false;
       if (it.cleared || epollWouldBlock(ep)) return;
       callUserCallback(() => {
         {{{ makeDynCall('vip', 'callback') }}}(epfd, userdata);
         // A still-ready level fd yields to I/O before the next delivery.
-        if (!it.cleared && !epollWouldBlock(ep)) emSetImmediate(turn);
+        if (!it.cleared && !epollWouldBlock(ep)) schedule();
       });
     }
-    it.listener = ep.node.addListener(() => emSetImmediate(turn));
-    emSetImmediate(turn);
+    it.listener = ep.node.addListener(schedule);
+    schedule();
     return 0;
   },
 

@@ -29,7 +29,7 @@ int main() {
 
   emscripten_set_main_loop(one, 0, 0);
 
-  // Mimic window.close with unload event
+  // Mimic window.close with pagehide event
   // (actual window.close won't work as the test will be done inside an iframe)
-  emscripten_run_script("setTimeout(function() { window.dispatchEvent(new Event('unload')) }, 2000)");
+  emscripten_run_script("setTimeout(function() { window.dispatchEvent(new Event('pagehide')) }, 2000)");
 }

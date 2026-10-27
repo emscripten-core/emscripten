@@ -114,7 +114,7 @@ addToLibrary({
 #endif
   },
 
-  $updateTableMap__deps: ['$getWasmTableEntry'],
+  $updateTableMap__deps: ['$getWasmTableEntry', '$functionsInTableMap'],
   $updateTableMap: (offset, count) => {
     if (functionsInTableMap) {
       for (var i = offset; i < offset + count; i++) {

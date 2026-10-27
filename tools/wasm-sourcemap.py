@@ -522,6 +522,7 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
   last_line = 1
   last_column = 1
   last_func_id = 0
+  last_was_unmapped = False
 
   active_funcs = []
   next_func_range_id = 0
@@ -550,9 +551,17 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
   for entry in entries:
     line = entry['line']
     column = entry['column']
-    # ignore entries with line 0
+    # line 0 means no source location; end the previous mapping with a
+    # segment that has only the offset, which the spec uses for unmapped
+    # code. The other fields are deltas, so they keep their last values.
     if line == 0:
+      if mappings and not last_was_unmapped:
+        address = entry['address'] + code_section_offset
+        mappings.append(encode_vlq(address - last_address))
+        last_address = address
+        last_was_unmapped = True
       continue
+    last_was_unmapped = False
     # start at least at column 1
     if column == 0:
       column = 1
