@@ -9,7 +9,7 @@ addToLibrary({
   $PIPEFS__deps: ['$FS'],
   $PIPEFS: {
     BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer
-    CAPACITY: 65536, // as on Linux
+    CAPACITY: 1024 * 64, // as on Linux
 
     mount(mount) {
       // Do not pollute the real root directory or its child nodes with pipes
@@ -72,7 +72,7 @@ addToLibrary({
         writable_fd: writableStream.fd
       };
     },
-    queued(pipe) {
+    queuedBytes(pipe) {
       var n = 0;
       for (var bucket of pipe.buckets) n += bucket.offset - bucket.roffset;
       return n;
@@ -105,7 +105,7 @@ addToLibrary({
           // writable (the write itself fails with EPIPE) while also signalling
           // POLLERR once every read end is closed.
           var mask = 0;
-          if (pipe.readClosed || PIPEFS.CAPACITY - PIPEFS.queued(pipe) >= {{{ cDefs.PIPE_BUF }}}) {
+          if (pipe.readClosed || PIPEFS.CAPACITY - PIPEFS.queuedBytes(pipe) >= {{{ cDefs.PIPE_BUF }}}) {
             mask = {{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}};
           }
           if (pipe.readClosed) {
@@ -114,7 +114,7 @@ addToLibrary({
           return mask;
         }
         var mask = 0;
-        if (PIPEFS.queued(pipe)) {
+        if (PIPEFS.queuedBytes(pipe)) {
           mask = {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}};
         }
         // With every write end closed the read end is at EOF: readable (read
@@ -134,7 +134,7 @@ addToLibrary({
       },
       ioctl(stream, request, argp) {
         if (request == {{{ cDefs.FIONREAD }}}) {
-          {{{ makeSetValue('argp', 0, 'PIPEFS.queued(stream.node.pipe)', 'i32') }}};
+          {{{ makeSetValue('argp', 0, 'PIPEFS.queuedBytes(stream.node.pipe)', 'i32') }}};
           return 0;
         }
         return {{{ cDefs.EINVAL }}};
@@ -144,7 +144,7 @@ addToLibrary({
       },
       read(stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
-        var currentLength = PIPEFS.queued(pipe);
+        var currentLength = PIPEFS.queuedBytes(pipe);
 
 #if ASSERTIONS && !(MEMORY64 && MAXIMUM_MEMORY > FOUR_GB)
 #if PTHREADS
@@ -230,7 +230,7 @@ addToLibrary({
         // PIPE_BUF rule: a small write is all-or-nothing, a larger one takes
         // what fits.
         if (stream.flags & {{{ cDefs.O_NONBLOCK }}}) {
-          var room = PIPEFS.CAPACITY - PIPEFS.queued(pipe);
+          var room = PIPEFS.CAPACITY - PIPEFS.queuedBytes(pipe);
           if (room <= 0 || (dataLen <= {{{ cDefs.PIPE_BUF }}} && dataLen > room)) {
             throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
           }
