@@ -42,7 +42,13 @@ import {
   localFile,
   timer,
 } from './utility.mjs';
-import {extraExports, LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
+import {
+  extraExports,
+  LibraryManager,
+  librarySymbols,
+  nativeAliases,
+  shouldExportLibrarySymbol,
+} from './modules.mjs';
 
 const addedLibraryItems = {};
 
@@ -833,7 +839,7 @@ function(${args}) {
         contentText = `var ${mangled} = ${snippet};`;
       }
 
-      if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled) || extraExports.has(mangled)) && !isStub) {
+      if (contentText && MODULARIZE == 'instance' && shouldExportLibrarySymbol(mangled) && !isStub) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;
