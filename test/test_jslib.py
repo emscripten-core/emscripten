@@ -6,7 +6,13 @@
 from subprocess import PIPE
 
 from common import EMCC, RunnerCore, copy_asset, create_file, read_file, test_file
-from decorators import also_with_wasm2js, also_with_wasm64, parameterized, requires_node_25
+from decorators import (
+  also_with_wasm2js,
+  also_with_wasm64,
+  parameterized,
+  requires_node_25,
+  with_env_modify,
+)
 
 from tools.utils import delete_file
 
@@ -888,6 +894,20 @@ console.error('JSLIB: none of the above');
     self.assertNotContained('redundant __deps entry', err)
     err = self.run_process([EMCC, 'src.c', '--js-library', 'redundant.js', '-sSTRICT'], stderr=PIPE).stderr
     self.assertContained('warning: entry_func: redundant __deps entry: $helper', err)
+
+  @with_env_modify({'EMCC_CHECK_DEPS': '1'})
+  def test_emcc_check_deps(self):
+    # Test EMCC_CHECK_DEPS debug mode catches local bindings shadowing library symbols
+    create_file('shadow.js', r'''
+      addToLibrary({
+        $foo: () => 10,
+        js_func: (foo) => foo,
+      });
+    ''')
+    # Shadowing in user libraries are ignored by default, unless -sSTRICT is enabled
+    self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'shadow.js', '-sINCLUDE_FULL_LIBRARY'])
+    self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'shadow.js', '-sINCLUDE_FULL_LIBRARY', '-sSTRICT'],
+                     "error: js_func: local binding 'foo' shadows library symbol '$foo'")
 
   # Tests that JS library functions containing multiline strings are not disturbed by e.g. inserting indentation into the output.
   @parameterized({

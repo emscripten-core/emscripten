@@ -53,6 +53,12 @@ import {
 
 const addedLibraryItems = {};
 
+// Debug-only mode (`EMCC_CHECK_DEPS=1` in the environment) that performs a full
+// AST parse on JS library items and reports an error if any local binding
+// shadows a library symbol (which could cause false positives in the
+// token-based `calcImplicitDeps` scanner above).
+const CHECK_DEPS = process.env.EMCC_CHECK_DEPS;
+
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not
@@ -230,6 +236,20 @@ const implicitSnippetDeps = new Set([
   'HEAPU64',
 ]);
 
+function findLibrarySymbol(name, isUserSnippet = false) {
+  let sym;
+  if ('$' + name in LibraryManager.library) {
+    sym = '$' + name;
+  } else if (!isUserSnippet && name.startsWith('_') && name.slice(1) in LibraryManager.library) {
+    sym = name.slice(1);
+  }
+  // $noExitRuntime cannot be referenced via __deps (it must be included via
+  // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS).
+  if (sym && sym !== '$noExitRuntime') {
+    return sym;
+  }
+}
+
 // Scan a JS snippet for references to JS library symbols using `acorn.tokenizer`.
 // Because this uses a flat token scan rather than full AST/scope analysis (for
 // speed and to handle partial JS fragments in `--pre-js`/`--post-js`), it is
@@ -302,21 +322,76 @@ function calcImplicitDeps(snippet, isUserSnippet = false) {
       continue;
     }
 
-    let dep;
-    if ('$' + name in LibraryManager.library) {
-      dep = '$' + name;
-    } else if (!isUserSnippet && name.startsWith('_') && name.slice(1) in LibraryManager.library) {
-      dep = name.slice(1);
-    }
-
-    // $noExitRuntime cannot be referenced via __deps (it must be included via
-    // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS).
-    if (dep && dep !== '$noExitRuntime') {
+    const dep = findLibrarySymbol(name, isUserSnippet);
+    if (dep) {
       found.add(dep);
     }
   }
 
   return found;
+}
+
+function checkShadowing(symbol, mangled, contentText) {
+  function checkBoundName(name) {
+    if (name === mangled) return;
+    const shadowed = findLibrarySymbol(name);
+    if (shadowed) {
+      error(`${symbol}: local binding '${name}' shadows library symbol '${shadowed}'`);
+    }
+  }
+
+  function walkPattern(node) {
+    if (!node) return;
+    switch (node.type) {
+      case 'Identifier':
+        checkBoundName(node.name);
+        break;
+      case 'AssignmentPattern':
+        walkPattern(node.left);
+        break;
+      case 'ArrayPattern':
+        node.elements.forEach(walkPattern);
+        break;
+      case 'ObjectPattern':
+        node.properties.forEach((p) => walkPattern(p.value || p.argument));
+        break;
+      case 'RestElement':
+        walkPattern(node.argument);
+        break;
+    }
+  }
+
+  function walk(node) {
+    switch (node.type) {
+      case 'VariableDeclarator':
+        walkPattern(node.id);
+        break;
+      case 'FunctionDeclaration':
+      case 'FunctionExpression':
+      case 'ArrowFunctionExpression':
+        if (node.id) checkBoundName(node.id.name);
+        node.params.forEach(walkPattern);
+        break;
+      case 'ClassDeclaration':
+      case 'ClassExpression':
+        if (node.id) checkBoundName(node.id.name);
+        break;
+      case 'CatchClause':
+        walkPattern(node.param);
+        break;
+    }
+    for (const child of Object.values(node)) {
+      if (typeof child?.type === 'string') {
+        walk(child);
+      } else if (Array.isArray(child)) {
+        for (const elem of child) {
+          if (typeof elem?.type === 'string') walk(elem);
+        }
+      }
+    }
+  }
+
+  walk(acorn.parse(contentText, {ecmaVersion: 2022}));
 }
 
 function sigToArgs(sig) {
@@ -909,6 +984,10 @@ function(${args}) {
           snippet = snippet.slice(1);
         }
         contentText = `var ${mangled} = ${snippet};`;
+      }
+
+      if (CHECK_DEPS && (STRICT || !isUserSymbol) && !isStub && contentText) {
+        checkShadowing(symbol, mangled, contentText);
       }
 
       if (contentText && MODULARIZE == 'instance' && shouldExportLibrarySymbol(mangled) && !isStub) {
