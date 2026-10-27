@@ -57,9 +57,6 @@ var LibraryHtml5WebGL = {
   });`,
 #endif
 
-#if OFFSCREENCANVAS_SUPPORT
-  _emscripten_webgl_do_create_context__deps: ['malloc'],
-#endif
   // This function performs proxying manually, depending on the style of context that is to be created.
   _emscripten_webgl_do_create_context: (target, attributes) => {
 #if ASSERTIONS
@@ -104,10 +101,6 @@ var LibraryHtml5WebGL = {
 #endif
 
     var canvas = findCanvasEventTarget(target);
-#if OFFSCREENCANVAS_SUPPORT
-    // If our canvas from findCanvasEventTarget is actually an offscreen canvas record, we should extract the inner canvas.
-    if (canvas?.canvas) { canvas = canvas.canvas; }
-#endif
 #if GL_DEBUG
     var targetStr = UTF8ToString(target);
 #endif
@@ -175,8 +168,7 @@ var LibraryHtml5WebGL = {
 #endif
         if (!canvas.controlTransferredOffscreen) {
           GL.offscreenCanvases[canvas.id] = {
-            canvas: canvas.transferControlToOffscreen(),
-            canvasSharedPtr: _malloc(12),
+            offscreenCanvas: canvas.transferControlToOffscreen(),
             id: canvas.id
           };
           canvas.controlTransferredOffscreen = true;
@@ -186,7 +178,7 @@ var LibraryHtml5WebGL = {
 #endif
           return 0;
         }
-        canvas = GL.offscreenCanvases[canvas.id].canvas;
+        canvas = GL.offscreenCanvases[canvas.id].offscreenCanvas;
       }
     }
 #else // !OFFSCREENCANVAS_SUPPORT

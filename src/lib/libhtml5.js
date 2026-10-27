@@ -2104,13 +2104,16 @@ var LibraryHTML5 = {
     }
     return setCanvasElementSizeMainThread(target, width, height);
   },
-#else
+#else // PTHREADS
   emscripten_set_canvas_element_size: (target, width, height) => {
 #if GL_DEBUG
     dbg(`emscripten_set_canvas_element_size(target=${target},width=${width},height=${height}`);
 #endif
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
+#if OFFSCREENCANVAS_SUPPORT
+    if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
+#endif
     canvas.width = width;
     canvas.height = height;
 #if OFFSCREEN_FRAMEBUFFER
@@ -2118,7 +2121,7 @@ var LibraryHTML5 = {
 #endif
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
-#endif
+#endif // !PTHREADS
 
   $setCanvasElementSize: (target, width, height) => {
 #if GL_DEBUG
@@ -2178,14 +2181,18 @@ var LibraryHTML5 = {
     }
     return getCanvasSizeMainThread(target, width, height);
   },
-#else
+#else // PTHREADS
   emscripten_get_canvas_element_size: (target, width, height) => {
     var canvas = findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
+#if OFFSCREENCANVAS_SUPPORT
+    if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
+#endif
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
+    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
-#endif
+#endif // !PTHREADS
 
   // JavaScript-friendly API, returns pair [width, height]
   $getCanvasElementSize: (target) => {
