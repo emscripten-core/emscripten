@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <mutex>
 #include <queue>
 
 #include "file.h"
@@ -16,6 +17,9 @@ namespace wasmfs {
 // TODO: Consider switching to a ring buffer for performance and code size if we
 //       don't need unbounded pipes.
 struct PipeData {
+  // Each end is a separate PipeFile with its own lock, so the shared data needs
+  // its own.
+  std::mutex mutex;
   std::queue<uint8_t> bytes;
   bool readClosed = false;
   bool writeClosed = false;
@@ -30,11 +34,13 @@ class PipeFile : public DataFile {
 
   int open(oflags_t) override { return 0; }
   int close() override {
+    std::lock_guard lock(data->mutex);
     (writeEnd ? data->writeClosed : data->readClosed) = true;
     return 0;
   }
 
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
+    std::lock_guard lock(data->mutex);
     if (data->readClosed) {
       return -EPIPE;
     }
@@ -45,6 +51,7 @@ class PipeFile : public DataFile {
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
+    std::lock_guard lock(data->mutex);
     for (size_t i = 0; i < len; i++) {
       if (data->bytes.empty()) {
         if (i) {
@@ -60,7 +67,10 @@ class PipeFile : public DataFile {
 
   int flush() override { return 0; }
 
-  off_t getSize() override { return data->bytes.size(); }
+  off_t getSize() override {
+    std::lock_guard lock(data->mutex);
+    return data->bytes.size();
+  }
 
   // TODO: Should this return an error?
   int setSize(off_t size) override { return 0; }
@@ -68,8 +78,14 @@ class PipeFile : public DataFile {
 public:
   static constexpr off_t capacity = 65536;
 
-  bool isReadClosed() { return data->readClosed; }
-  bool isWriteClosed() { return data->writeClosed; }
+  bool isReadClosed() {
+    std::lock_guard lock(data->mutex);
+    return data->readClosed;
+  }
+  bool isWriteClosed() {
+    std::lock_guard lock(data->mutex);
+    return data->writeClosed;
+  }
 
   // PipeFiles do not have or need a backend. Pass NullBackend to the parent for
   // that.
