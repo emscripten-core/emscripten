@@ -1898,6 +1898,11 @@ class libmimalloc(MTLibrary):
     # always use the page map when free-ing a pointer, as we don't support
     # large OS aligned allocations well
     '-DMI_FREE_USE_PAGEMAP=1',
+    # to reduce code size, disable environ customization, profiling and
+    # nonessential stats
+    '-DMI_NO_GETENV',
+    '-DMI_PROFILE=0',
+    '-DMI_STATS=0',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO

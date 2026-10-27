@@ -54,7 +54,6 @@ option 'profile_sample_rate': 524288 B
 option 'stats_merge_threshold': 524288 B
 option 'arena_purge_immediate_size': 2048 KiB
 free mode   : pagemap, page size: 76
-profiling   : enabled
 mem tracking: none
 debug level : 0
 secure level: 0
