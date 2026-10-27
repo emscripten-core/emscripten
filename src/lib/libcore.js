@@ -1975,7 +1975,6 @@ addToLibrary({
     wasmTableMirror[idx] = wasmTable.get({{{ toIndexType('idx') }}});
   },
 
-  $getWasmTableEntry__internal: true,
   $getWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
 #if MEMORY64
