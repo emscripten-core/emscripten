@@ -22,6 +22,7 @@ var LibraryBrowser = {
   ],
 
   $Browser: {
+    ctx: null,
     useWebGL: false,
     isFullscreen: false,
     pointerLock: false,
@@ -163,7 +164,7 @@ var LibraryBrowser = {
     },
 
     createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
-      if (useWebGL && Module['ctx'] && canvas == Browser.getCanvas()) return Module['ctx']; // no need to recreate GL context if it's already been created for this canvas.
+      if (useWebGL && Browser.ctx && canvas == Browser.getCanvas()) return Browser.ctx; // no need to recreate GL context if it's already been created for this canvas.
 
       var ctx;
       var contextHandle;
@@ -206,7 +207,7 @@ var LibraryBrowser = {
 #if ASSERTIONS
         if (!useWebGL) assert(typeof GLctx === 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
 #endif
-        Module['ctx'] = ctx;
+        Browser.ctx = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
         Browser.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());

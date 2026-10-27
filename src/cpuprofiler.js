@@ -588,8 +588,7 @@ const emscriptenCpuProfiler = {
 
   detectWebGLContext() {
     if (Module['canvas']?.GLctxObject?.GLctx) return Module['canvas'].GLctxObject.GLctx;
-    else if (typeof GLctx !== 'undefined') return GLctx;
-    else if (Module['ctx']) return Module['ctx'];
+    if (typeof GLctx !== 'undefined') return GLctx;
     return null;
   },
 

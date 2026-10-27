@@ -1167,7 +1167,7 @@ var LibraryGLFW = {
       }
 
       // If context creation failed, do not return a valid window
-      if (!Module['ctx'] && useWebGL) return 0;
+      if (!Browser.ctx && useWebGL) return 0;
 
       // Initializes the framebuffer size from the canvas
       var win = new GLFW_Window(id, width, height, canvas.width, canvas.height, title, monitor, share);
@@ -1204,7 +1204,7 @@ var LibraryGLFW = {
         if (win !== null) return;
       }
 
-      delete Module['ctx'];
+      Browser.ctx = null;
     },
 
     swapBuffers: (winid) => {

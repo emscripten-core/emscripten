@@ -496,7 +496,7 @@ LibraryJSEventLoop = {
       } else if (MainLoop.timingMode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
         MainLoop.tickStartTime = _emscripten_get_now();
 #if ASSERTIONS
-        if (Module['ctx']) {
+        if ((typeof GLctx !== 'undefined' && GLctx) || (typeof Browser !== 'undefined' && Browser.ctx)) {
           warnOnce('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
         }
 #endif
