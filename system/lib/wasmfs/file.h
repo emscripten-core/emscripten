@@ -11,10 +11,12 @@
 #include <assert.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>
+#include <fcntl.h>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <poll.h>
 #include <sys/stat.h>
 #include <variant>
 #include <vector>
@@ -106,6 +108,23 @@ protected:
   // called on files that have not been opened.
   virtual off_t getSize() = 0;
 
+  // The poll() events ready on this file when open with `flags`. A file is
+  // writable at any time and readable while it has data; pipes override this.
+  virtual short poll(oflags_t flags) {
+    auto accessMode = flags & O_ACCMODE;
+    short mask = 0;
+    if (accessMode == O_WRONLY || accessMode == O_RDWR) {
+      mask |= POLLOUT;
+    }
+    // TODO: Does this need to consider the position as well? That is, if the
+    // position is at the end, we can't read from the current position at
+    // least. If we update this, make sure the size isn't an error!
+    if ((accessMode == O_RDONLY || accessMode == O_RDWR) && getSize() > 0) {
+      mask |= POLLIN;
+    }
+    return mask;
+  }
+
   mode_t mode = 0; // User and group mode bits for access permission.
 
   double atime; // Time when the content was last accessed, in ms.
@@ -142,6 +161,10 @@ protected:
   // multiple iovecs to make it possible to implement pipes. See #16269.
   virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) = 0;
   virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) = 0;
+
+  // How much of a `len` byte write the file takes without blocking: a byte
+  // count, or -EAGAIN for none. Only pipes and the like have a limit.
+  virtual ssize_t writableBytes(size_t len) { return len; }
 
   // Sets the size of the file to a specific size. If new space is allocated, it
   // should be zero-initialized. May be called on files that have not been
@@ -308,6 +331,7 @@ public:
   Handle(std::shared_ptr<File> file, std::defer_lock_t)
     : lock(file->mutex, std::defer_lock), file(file) {}
   off_t getSize() { return file->getSize(); }
+  short poll(oflags_t flags) { return file->poll(flags); }
   mode_t getMode() { return file->mode; }
   void setMode(mode_t mode) {
     // The type bits can never be changed (whether something is a file or a
@@ -363,6 +387,7 @@ public:
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) {
     return getFile()->write(buf, len, offset);
   }
+  ssize_t writableBytes(size_t len) { return getFile()->writableBytes(len); }
 
   [[nodiscard]] int setSize(off_t size) { return getFile()->setSize(size); }
 

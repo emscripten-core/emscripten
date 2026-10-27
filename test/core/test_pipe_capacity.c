@@ -11,7 +11,6 @@
 #include <limits.h>
 #include <poll.h>
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 
 #define CAPACITY 65536
@@ -23,7 +22,7 @@ int writable(int fd) {
 }
 
 size_t drain(int fd) {
-  char buf[8192];
+  char buf[8192] = {0};
   size_t total = 0;
   ssize_t n;
   while ((n = read(fd, buf, sizeof buf)) > 0)
@@ -38,9 +37,8 @@ int main() {
   assert(fcntl(p[1], F_SETFL, O_NONBLOCK) == 0);
   assert(writable(p[1]));
 
-  char chunk[PIPE_BUF];
-  memset(chunk, 'x', sizeof chunk);
-  char buf[8192];
+  char chunk[PIPE_BUF] = {0};
+  char buf[8192] = {0};
 
   size_t total = 0;
   ssize_t n;

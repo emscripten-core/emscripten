@@ -10,6 +10,8 @@ addToLibrary({
   $PIPEFS: {
     BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer
     CAPACITY: 1024 * 64, // as on Linux
+    // Queued bytes above which a PIPE_BUF write no longer fits.
+    THRESHOLD: 1024 * 64 - {{{ cDefs.PIPE_BUF }}},
 
     mount(mount) {
       // Do not pollute the real root directory or its child nodes with pipes
@@ -105,7 +107,7 @@ addToLibrary({
           // writable (the write itself fails with EPIPE) while also signalling
           // POLLERR once every read end is closed.
           var mask = 0;
-          if (pipe.readClosed || PIPEFS.CAPACITY - PIPEFS.queuedBytes(pipe) >= {{{ cDefs.PIPE_BUF }}}) {
+          if (pipe.readClosed || PIPEFS.queuedBytes(pipe) <= PIPEFS.THRESHOLD) {
             mask = {{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}};
           }
           if (pipe.readClosed) {
@@ -200,9 +202,10 @@ addToLibrary({
 
         pipe.buckets.splice(0, toRemove);
 
-        // Wake POLLOUT waiters once a PIPE_BUF write fits again.
-        var threshold = PIPEFS.CAPACITY - {{{ cDefs.PIPE_BUF }}};
-        if (currentLength > threshold && currentLength - totalRead <= threshold) {
+        // Wake POLLOUT waiters on the transition to writable: listeners only
+        // notify on readiness changes, and a waiter only exists while the
+        // pipe is above the threshold.
+        if (currentLength > PIPEFS.THRESHOLD && currentLength - totalRead <= PIPEFS.THRESHOLD) {
           pipe.writeNode.notifyListeners({{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
         }
         return totalRead;

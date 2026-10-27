@@ -133,20 +133,17 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     }
   }
 
-  // PIPE_BUF rule: a small write is all-or-nothing, a larger one takes what
-  // fits.
+  // A non-blocking write takes only what the file can take right now.
   off_t budget = -1;
-  if (S_ISFIFO(lockedFile.getMode()) &&
-      (lockedOpenFile.getFlags() & O_NONBLOCK)) {
-    off_t total = 0;
+  if (lockedOpenFile.getFlags() & O_NONBLOCK) {
+    size_t total = 0;
     for (size_t i = 0; i < iovs_len; i++) {
       total += iovs[i].buf_len;
     }
-    off_t room = PipeFile::capacity - lockedFile.getSize();
-    if (room <= 0 || (total <= PIPE_BUF && total > room)) {
-      return __WASI_ERRNO_AGAIN;
+    budget = lockedFile.writableBytes(total);
+    if (budget < 0) {
+      return -budget;
     }
-    budget = room;
   }
 
   size_t bytesWritten = 0;
@@ -1456,47 +1453,11 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
     auto mask = POLLNVAL;
     auto openFile = fileTable.getEntry(fd);
     if (openFile) {
-      mask = 0;
       auto flags = openFile->locked().getFlags();
-      auto accessMode = flags & O_ACCMODE;
       auto file = openFile->locked().getFile();
-      auto isPipe = S_ISFIFO(file->locked().getMode());
-      auto readBit = pollfd->events & POLLOUT;
-      auto writeBit = pollfd->events & POLLIN;
-      if (isPipe) {
-        auto pipe = std::static_pointer_cast<PipeFile>(file);
-        auto size = file->locked().getSize();
-        if (accessMode == O_WRONLY) {
-          if (pipe->isReadClosed()) {
-            mask |= readBit | POLLERR;
-          } else if (PipeFile::capacity - size >= PIPE_BUF) {
-            mask |= readBit;
-          }
-        } else {
-          if (size > 0) {
-            mask |= writeBit;
-          }
-          if (pipe->isWriteClosed()) {
-            mask |= writeBit | POLLHUP;
-          }
-        }
-      } else if (readBit && (accessMode == O_WRONLY || accessMode == O_RDWR)) {
-        mask |= readBit;
-      }
-      if (!isPipe && writeBit &&
-          (accessMode == O_RDONLY || accessMode == O_RDWR)) {
-        // If there is data in the file, then there is also the ability to read.
-        // TODO: Does this need to consider the position as well? That is, if
-        // the position is at the end, we can't read from the current position
-        // at least. If we update this, make sure the size isn't an error!
-        if (openFile->locked().getFile()->locked().getSize() > 0) {
-          mask |= writeBit;
-        }
-      }
-      // TODO: get mask from File dynamically using a poll() hook?
+      // POLLERR and POLLHUP are reported whether or not they were requested.
+      mask = file->locked().poll(flags) & (pollfd->events | POLLERR | POLLHUP);
     }
-    // TODO: set the state based on the state of the other end of the pipe, for
-    //       pipes (POLLERR | POLLHUP)
     if (mask) {
       nonzero++;
     }
