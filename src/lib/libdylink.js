@@ -552,8 +552,7 @@ var LibraryDylink = {
     }
 #endif // SHRINK_LEVEL < 2
 
-    var isModule = binary instanceof WebAssembly.Module;
-    if (isModule) {
+    if (binary instanceof WebAssembly.Module) {
       var dylinkSection = WebAssembly.Module.customSections(binary, 'dylink.0');
       failIf(!dylinkSection.length, 'need dylink section');
       binary = new Uint8Array(dylinkSection[0]);
@@ -573,6 +572,12 @@ var LibraryDylink = {
       end = offset + section_size;
       var name = getString();
       failIf(name !== 'dylink.0');
+#if SHRINK_LEVEL < 2
+      var dylinkStart = offset;
+      offset = end;
+      var immutableGlobals = getImmutableGlobals();
+      offset = dylinkStart;
+#endif
     }
 
     var customSection = { neededDynlibs: [], tlsExports: new Set(), weakImports: new Set(), runtimePaths: [] };
@@ -640,9 +645,7 @@ var LibraryDylink = {
 #endif
 
 #if SHRINK_LEVEL < 2
-    if (!isModule) {
-      customSection.immutableGlobals = getImmutableGlobals();
-    }
+    customSection.immutableGlobals = immutableGlobals;
 #endif
     return customSection;
   },
