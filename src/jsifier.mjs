@@ -704,13 +704,6 @@ function(${args}) {
       if (!isStub && LibraryManager.library[symbol + '__export']) {
         extraExports.add(mangled);
       }
-      const isUserSymbol = LibraryManager.library[symbol + '__user'];
-      // Check for dependencies on `__internal` symbols from user libraries.
-      for (const dep of deps) {
-        if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
-          warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
-        }
-      }
 
       let isFunction = typeof snippet === 'function';
       let isNativeAlias = false;
@@ -762,11 +755,21 @@ function(${args}) {
         isFunction = true;
       }
 
+      const isUserSymbol = LibraryManager.library[symbol + '__user'];
       if (isFunction) {
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
         if (CHECK_DEPS && !isUserSymbol) {
           checkDependencies(symbol, snippet, deps, postset?.toString());
+        }
+      }
+
+      // Check for dependencies on `__internal` symbols from user libraries.
+      if (isUserSymbol) {
+        for (const dep of deps) {
+          if (LibraryManager.library[dep + '__internal']) {
+            warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
+          }
         }
       }
 
