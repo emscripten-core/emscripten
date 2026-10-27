@@ -11,7 +11,7 @@ from subprocess import PIPE
 
 from browser_common import BrowserCore, get_browser, has_browser
 from common import EMCC, EMRUN, RunnerCore, path_from_root, read_file, test_file
-from decorators import also_with_pthreads
+from decorators import also_with_pthreads, parameterized
 
 
 class emrun(RunnerCore):
@@ -60,7 +60,14 @@ class emrun(RunnerCore):
     self.assertContained('remember to add `--` between arguments', err)
 
   @also_with_pthreads
-  def test_emrun(self):
+  @parameterized({
+    '': ([],),
+    'zero_port': (['--port', '0'],),
+    'private_browsing': (['--private_browsing'],),
+    'dump_dir': (['--dump_out_directory=foo_bar'],),
+    'dump_dir_with_spaces': (['--dump_out_directory', 'other dir/multiple'],),
+  })
+  def test_emrun(self, args):
     self.emcc('test_emrun.c', ['--emrun', '-o', 'test_emrun.html'])
     if not has_browser():
       self.skipTest('need a browser')
@@ -100,32 +107,25 @@ class emrun(RunnerCore):
         if browser_args:
           args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
 
-    for args in [
-      [],
-      ['--port', '0'],
-      ['--private_browsing'],
-      ['--dump_out_directory', 'other dir/multiple'],
-      ['--dump_out_directory=foo_bar'],
-    ]:
-      args = args_base + args + [self.in_dir('test_emrun.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
-      print(shlex.join(args))
-      proc = self.run_process(args, check=False)
-      self.assertEqual(proc.returncode, 100)
-      dump_dir = 'dump_out'
-      if '--dump_out_directory' in args:
-        dump_dir = 'other dir/multiple'
-      elif '--dump_out_directory=foo_bar' in args:
-        dump_dir = 'foo_bar'
-      self.assertExists(self.in_dir(f'{dump_dir}/test.dat'))
-      self.assertExists(self.in_dir(f'{dump_dir}/heap.dat'))
-      self.assertExists(self.in_dir(f'{dump_dir}/nested/with space.dat'))
-      stdout = read_file(self.in_dir('stdout.txt'))
-      stderr = read_file(self.in_dir('stderr.txt'))
-      self.assertContained('argc: 6', stdout)
-      self.assertContained('argv[3]: --3', stdout)
-      self.assertContained('argv[4]: escaped space', stdout)
-      self.assertContained('argv[5]: with_underscore', stdout)
-      self.assertContained('Hello, world!', stdout)
-      self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
-      self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
-      self.assertContained('hello, error stream!', stderr)
+    args = args_base + args + [self.in_dir('test_emrun.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
+    print(shlex.join(args))
+    proc = self.run_process(args, check=False)
+    self.assertEqual(proc.returncode, 100)
+    dump_dir = 'dump_out'
+    if '--dump_out_directory' in args:
+      dump_dir = 'other dir/multiple'
+    elif '--dump_out_directory=foo_bar' in args:
+      dump_dir = 'foo_bar'
+    self.assertExists(self.in_dir(f'{dump_dir}/test.dat'))
+    self.assertExists(self.in_dir(f'{dump_dir}/heap.dat'))
+    self.assertExists(self.in_dir(f'{dump_dir}/nested/with space.dat'))
+    stdout = read_file(self.in_dir('stdout.txt'))
+    stderr = read_file(self.in_dir('stderr.txt'))
+    self.assertContained('argc: 6', stdout)
+    self.assertContained('argv[3]: --3', stdout)
+    self.assertContained('argv[4]: escaped space', stdout)
+    self.assertContained('argv[5]: with_underscore', stdout)
+    self.assertContained('Hello, world!', stdout)
+    self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
+    self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
+    self.assertContained('hello, error stream!', stderr)
