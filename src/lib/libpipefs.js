@@ -9,6 +9,10 @@ addToLibrary({
   $PIPEFS__deps: ['$FS'],
   $PIPEFS: {
     BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer
+    CAPACITY: 1024 * 64, // as on Linux
+    // Queued bytes above which a PIPE_BUF write no longer fits.
+    THRESHOLD: 1024 * 64 - {{{ cDefs.PIPE_BUF }}},
+
     mount(mount) {
       // Do not pollute the real root directory or its child nodes with pipes
       // Looks like it is OK to create another pseudo-root node not linked to the FS.root hierarchy this way
@@ -70,6 +74,11 @@ addToLibrary({
         writable_fd: writableStream.fd
       };
     },
+    queuedBytes(pipe) {
+      var n = 0;
+      for (var bucket of pipe.buckets) n += bucket.offset - bucket.roffset;
+      return n;
+    },
     stream_ops: {
       getattr(stream) {
         var node = stream.node;
@@ -94,20 +103,21 @@ addToLibrary({
         var pipe = stream.node.pipe;
 
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
-          // Linux keeps the write end writable (the write itself fails with
-          // EPIPE) while also signalling POLLERR once every read end is closed.
-          var mask = {{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}};
+          // Writable while a PIPE_BUF write fits. Linux keeps the write end
+          // writable (the write itself fails with EPIPE) while also signalling
+          // POLLERR once every read end is closed.
+          var mask = 0;
+          if (pipe.readClosed || PIPEFS.queuedBytes(pipe) <= PIPEFS.THRESHOLD) {
+            mask = {{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}};
+          }
           if (pipe.readClosed) {
             mask |= {{{ cDefs.POLLERR }}};
           }
           return mask;
         }
         var mask = 0;
-        for (var bucket of pipe.buckets) {
-          if (bucket.offset - bucket.roffset > 0) {
-            mask = {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}};
-            break;
-          }
+        if (PIPEFS.queuedBytes(pipe)) {
+          mask = {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}};
         }
         // With every write end closed the read end is at EOF: readable (read
         // returns 0) and hung up.
@@ -126,12 +136,7 @@ addToLibrary({
       },
       ioctl(stream, request, argp) {
         if (request == {{{ cDefs.FIONREAD }}}) {
-          var pipe = stream.node.pipe;
-          var currentLength = 0;
-          for (var bucket of pipe.buckets) {
-            currentLength += bucket.offset - bucket.roffset;
-          }
-          {{{ makeSetValue('argp', 0, 'currentLength', 'i32') }}};
+          {{{ makeSetValue('argp', 0, 'PIPEFS.queuedBytes(stream.node.pipe)', 'i32') }}};
           return 0;
         }
         return {{{ cDefs.EINVAL }}};
@@ -141,11 +146,7 @@ addToLibrary({
       },
       read(stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
-        var currentLength = 0;
-
-        for (var bucket of pipe.buckets) {
-          currentLength += bucket.offset - bucket.roffset;
-        }
+        var currentLength = PIPEFS.queuedBytes(pipe);
 
 #if ASSERTIONS && !(MEMORY64 && MAXIMUM_MEMORY > FOUR_GB)
 #if PTHREADS
@@ -160,6 +161,7 @@ addToLibrary({
           return 0;
         }
         if (currentLength == 0) {
+          if (pipe.writeClosed) return 0;
           // Behave as if the read end is always non-blocking
           throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
         }
@@ -200,6 +202,12 @@ addToLibrary({
 
         pipe.buckets.splice(0, toRemove);
 
+        // Wake POLLOUT waiters on the transition to writable: listeners only
+        // notify on readiness changes, and a waiter only exists while the
+        // pipe is above the threshold.
+        if (currentLength > PIPEFS.THRESHOLD && currentLength - totalRead <= PIPEFS.THRESHOLD) {
+          pipe.writeNode.notifyListeners({{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
+        }
         return totalRead;
       },
       write(stream, buffer, offset, length, position /* ignored */) {
@@ -217,6 +225,22 @@ addToLibrary({
         var dataLen = data.byteLength;
         if (dataLen <= 0) {
           return 0;
+        }
+        if (pipe.readClosed) {
+          throw new FS.ErrnoError({{{ cDefs.EPIPE }}});
+        }
+
+        // PIPE_BUF rule: a small write is all-or-nothing, a larger one takes
+        // what fits.
+        if (stream.flags & {{{ cDefs.O_NONBLOCK }}}) {
+          var room = PIPEFS.CAPACITY - PIPEFS.queuedBytes(pipe);
+          if (room <= 0 || (dataLen <= {{{ cDefs.PIPE_BUF }}} && dataLen > room)) {
+            throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+          }
+          if (dataLen > room) {
+            data = data.subarray(0, room);
+            dataLen = room;
+          }
         }
 
         var currBucket = null;

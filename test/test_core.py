@@ -9767,6 +9767,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pipe_pollhup(self):
     self.do_runf('core/test_pipe_pollhup.c', 'done\n')
 
+  @also_with_wasmfs
+  def test_pipe_capacity(self):
+    self.do_runf('core/test_pipe_capacity.c', 'done\n')
+
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to receive i64 argument in syscalls.

@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- Pipes now have a 64 KiB capacity: non-blocking writes to a full pipe fail
+  with `EAGAIN`. For now, blocking writes remain unbounded. (#27831)
 - When compiling and linking in a single command, auxiliary compiler output
   files (such as `.dwo` files from `-gsplit-dwarf` or `.json` files from
   `-ftime-trace`) are now named `<output>-<input>.<ext>`, matching the behavior
