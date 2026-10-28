@@ -49,6 +49,16 @@ typedef struct em_proxying_ctx em_proxying_ctx;
 // Signal the end of a task proxied with `emscripten_proxy_sync_with_ctx`.
 void emscripten_proxy_finish(em_proxying_ctx* ctx);
 
+// As `emscripten_proxy_finish`, with a result: the promise returned by
+// `emscripten_proxy_promise_with_ctx` is fulfilled with it.
+void emscripten_proxy_finish_result(em_proxying_ctx* ctx, void* result);
+
+// Signal that a task proxied with a context has failed: the promise returned
+// by `emscripten_proxy_promise_with_ctx` is rejected, or the `cancel` callback
+// of `emscripten_proxy_callback_with_ctx` is called, as if the target thread
+// had exited.
+void emscripten_proxy_fail(em_proxying_ctx* ctx);
+
 // Enqueue `func` on the given queue and thread and return immediately. Returns
 // true if the work was successfully enqueued and the target thread notified or
 // false otherwise.
@@ -104,6 +114,19 @@ bool emscripten_proxy_callback_with_ctx(em_proxying_queue* q,
                                         void (*callback)(void*),
                                         void (*cancel)(void*),
                                         void* arg);
+
+// Enqueue `func` on the given queue and thread and return a file descriptor
+// that becomes readable (`poll`, `select`, `epoll`) once the task is marked
+// finished with `emscripten_proxy_finish` or `emscripten_proxy_finish_result`,
+// or readable with `POLLERR` if it fails or is cancelled because the target
+// thread exits. `read()` of an `intptr_t` from the fd yields the result (0 for
+// `emscripten_proxy_finish`; `EIO` on failure), after which it is at end of
+// file; the fd must be closed. Only the main runtime thread is supported as the
+// target thread for now.
+int emscripten_proxy_fd_with_ctx(em_proxying_queue* q,
+                                 pthread_t target_thread,
+                                 void (*func)(em_proxying_ctx*, void*),
+                                 void* arg);
 
 __attribute__((warn_unused_result)) em_promise_t
 emscripten_proxy_promise(em_proxying_queue* q,
