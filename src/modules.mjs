@@ -344,8 +344,11 @@ export const LibraryManager = {
             this.library[name + decorator] = this.library[base + decorator];
           }
         }
-        if (PTHREADS && variant == 'promise' && this.library[base + '__proxy'] == 'sync') {
-          this.library[name + '__deps'] = [...(this.library[name + '__deps'] ?? []), '$proxyToMainThreadPromise'];
+        if (PTHREADS && this.library[base + '__proxy'] == 'sync') {
+          // The proxying helper is found from the generated body, but the
+          // symbols-only pass sees only the source, so its native entry is
+          // declared here for the variant to be linked.
+          this.library[name + '__deps'] = [...(this.library[name + '__deps'] ?? []), `_emscripten_run_js_on_main_thread_${variant}`];
         }
       }
     }
