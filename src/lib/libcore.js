@@ -1171,7 +1171,7 @@ addToLibrary({
   // synchronously; under NODERAWSOCKETS a hostname awaits node:dns, or is
   // EAI_AGAIN where the caller cannot wait. getaddrinfo() itself
   // (system/lib/libc/getaddrinfo.c) calls the synchronous form.
-  emscripten_dns_lookup__async: ['promise', 'callback'],
+  emscripten_dns_lookup__async: ['auto', 'promise', 'callback'],
   emscripten_dns_lookup__proxy: 'sync',
   emscripten_dns_lookup: (node, service, hint, sync) => {
     var desc = getAddrInfo(node, service, hint);
