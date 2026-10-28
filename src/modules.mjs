@@ -286,9 +286,45 @@ export const LibraryManager = {
     }
     timer.stop('executeJS')
 
+    this.expandAsyncOptions();
     this.addAliasDependencies();
 
     timer.stop('load')
+  },
+
+  /**
+   * `__async: ['auto', 'sync']` lists async options. 'auto' is as
+   * `__async: 'auto'`; without it the function never suspends. 'sync' has the
+   * body told, in a trailing `sync` parameter, whether it must complete
+   * synchronously (see handleSyncArg in jsifier). Alone, 'sync' leaves the
+   * sync-proxied pthread path as the only asynchronous one.
+   */
+  expandAsyncOptions() {
+    for (const [key, options] of Object.entries(this.library)) {
+      if (!key.endsWith('__async') || typeof options != 'object') continue;
+      const base = key.slice(0, -'__async'.length);
+      if (!Array.isArray(options) || !options.length) {
+        error(`JS library error: '${key}' must be true, 'auto', or a non-empty array of options`);
+        continue;
+      }
+      for (const option of options) {
+        if (!['auto', 'sync'].includes(option)) {
+          error(`JS library error: unknown async option '${option}' in '${key}'`);
+        }
+      }
+      if (options.includes('auto')) {
+        this.library[key] = 'auto';
+      } else {
+        delete this.library[key];
+        if (this.library[base + '__proxy'] != 'sync') {
+          error(`JS library error: '${key}' lists only 'sync', which has an asynchronous path only with '__proxy' set to 'sync'`);
+          continue;
+        }
+      }
+      if (options.includes('sync')) {
+        this.library[base + '__sync_arg'] = true;
+      }
+    }
   },
 
   isAlias(entry) {

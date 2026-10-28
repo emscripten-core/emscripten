@@ -291,6 +291,13 @@ function sigToArgs(sig) {
   return args.join(',');
 }
 
+// Whether the body returns a value or a Promise as it can: an 'auto' function,
+// or one told by a `sync` argument.
+function isAutoBody(symbol) {
+  const lib = LibraryManager.library;
+  return lib[symbol + '__async'] == 'auto' || !!lib[symbol + '__sync_arg'];
+}
+
 function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
   // Handle i64 parameters and return values.
   //
@@ -354,7 +361,7 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       // An 'auto' body may return a Promise even without ASYNCIFY (on a
       // pthread's behalf, which awaits it), which must not be cast but
       // resolve to the cast value.
-      const maybePromise = !isAsyncFunction && LibraryManager.library[symbol + '__async'] == 'auto';
+      const maybePromise = !isAsyncFunction && isAutoBody(symbol);
       const convert = (v) => maybePromise ?
         `(${v} instanceof Promise ? ${v}.then((v) => ${makeReturn64('v')}) : ${makeReturn64(v)})` :
         makeReturn64(await_ + v);
@@ -395,19 +402,18 @@ ${body};
   });
 }
 
-// An `__async: 'auto'` body returns a value or a Promise, as it can. A body
-// whose last parameter is named `sync` receives there whether it must complete
-// synchronously on this call, as a returned Promise could not be waited for.
-// That is never the case under ASYNCIFY/JSPI, nor on behalf of a sync-proxied
-// pthread caller, which awaits it; otherwise it is.
-function handleSyncArg(symbol, snippet, sig, proxyingMode) {
-  const sync = ASYNCIFY ? 'false' :
+// A body listing 'sync' in its `__async` options receives, in its trailing
+// `sync` parameter, whether it must complete synchronously on this call, as a
+// returned Promise would have nowhere to go: it never must where the function
+// itself suspends under ASYNCIFY/JSPI, nor on behalf of a sync-proxied pthread
+// caller, which awaits it; otherwise it must.
+function handleSyncArg(symbol, snippet, proxyingMode, canWait) {
+  const sync = canWait ? 'false' :
     PTHREADS && proxyingMode == 'sync' ? '!PThread.currentProxiedOperationCallerThread' : 'true';
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     const params = args.split(',').map((a) => a.trim()).filter((a) => a);
-    if (params.at(-1) != 'sync') return snippet;
-    if (sig && params.length != sig.length) {
-      error(`JS library error: '${symbol}' must take 'sync' as parameter ${sig.length}, after the ${sig.length - 1} of its '__sig'`);
+    if (params.at(-1) != 'sync') {
+      error(`JS library error: '${symbol}' lists 'sync' in '__async' but its last parameter is not named 'sync'`);
       return snippet;
     }
     if (!oneliner) body = `{\n${body}\n}`;
@@ -560,8 +566,8 @@ function(${args}) {
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
 
-    if (LibraryManager.library[symbol + '__async'] == 'auto') {
-      snippet = handleSyncArg(symbol, snippet, sig, proxyingMode);
+    if (LibraryManager.library[symbol + '__sync_arg']) {
+      snippet = handleSyncArg(symbol, snippet, proxyingMode, isAsyncFunction);
     }
 
     if (ASYNCIFY && isAsyncFunction == 'auto') {
@@ -580,8 +586,9 @@ function(${args}) {
             }
             let proxyMode = PROXY_ASYNC;
             if (proxyingMode === 'sync') {
-              const isAsyncFunction = LibraryManager.library[symbol + '__async'];
-              if (isAsyncFunction) {
+              // A body told by `sync` may complete through a Promise on the
+              // pthread's behalf even where the function never suspends.
+              if (LibraryManager.library[symbol + '__async'] || isAutoBody(symbol)) {
                 proxyMode = PROXY_SYNC_ASYNC;
               } else {
                 proxyMode = PROXY_SYNC;

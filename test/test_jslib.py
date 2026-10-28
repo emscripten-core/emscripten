@@ -132,32 +132,36 @@ addToLibrary({
     'asyncify': (['-sASYNCIFY', '-DASYNC'],),
     'jspi': (['-sJSPI', '-DASYNC'],),
     'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'proxy_only': (['-DPROXY_ONLY'],),
+    'proxy_only_asyncify': (['-sASYNCIFY', '-DASYNC', '-DPROXY_ONLY'],),
+    'proxy_only_pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-DPROXY_ONLY'],),
   })
   def test_jslib_async_auto_sync(self, args):
     # `answer(ms, value)` resolves to `value` after `ms` milliseconds
     # (synchronously if `ms` is 0), or is -1 where the caller cannot wait.
+    # With PROXY_ONLY (`['sync']`) only a proxied pthread call can wait.
     if '-sJSPI' in args:
       self.require_jspi()
     if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    options = "['sync']" if '-DPROXY_ONLY' in args else "['auto', 'sync']"
     create_file('lib.js', r'''
 addToLibrary({
   answer__sig: 'pip',
-  answer__async: 'auto',
+  answer__async: OPTIONS,
   answer__proxy: 'sync',
   answer: (ms, value, sync) => {
     if (!ms) return value;
     if (sync) return -1;
     return new Promise((resolve) => setTimeout(() => resolve(value), ms));
   },
-  // No __sig: `sync` is found by name alone.
-  wait_ms__async: 'auto',
+  wait_ms__async: OPTIONS,
   wait_ms__proxy: 'sync',
   wait_ms: (ms, sync) => {
     if (ms && !sync) return new Promise((resolve) => setTimeout(resolve, ms));
   },
 });
-''')
+'''.replace('OPTIONS', options))
     create_file('src.c', r'''
 #include <assert.h>
 #include <stdint.h>
@@ -168,7 +172,7 @@ void wait_ms(int ms);
 
 int main() {
   assert(answer(0, 7) == 7);
-#if defined(__EMSCRIPTEN_PTHREADS__) || defined(ASYNC)
+#if defined(__EMSCRIPTEN_PTHREADS__) || (defined(ASYNC) && !defined(PROXY_ONLY))
   assert(answer(5, 42) == 42);
 #else
   assert(answer(5, 42) == -1);
@@ -181,16 +185,22 @@ int main() {
 ''')
     self.do_runf('src.c', 'done\n', cflags=args + ['-sEXIT_RUNTIME', '--js-library', 'lib.js'])
 
-  def test_jslib_async_auto_sync_arity(self):
-    create_file('lib.js', '''
-addToLibrary({
-  jslibfunc__sig: 'iii',
-  jslibfunc__async: 'auto',
-  jslibfunc: (x, sync) => x,
-});
+  @parameterized({
+    'empty': ('[]', '(x, sync) => x', "'jslibfunc__async' must be true, 'auto', or a non-empty array of options"),
+    'unknown': ("['foo']", '(x, sync) => x', "unknown async option 'foo' in 'jslibfunc__async'"),
+    'param': ("['auto', 'sync']", '(x) => x', "'jslibfunc' lists 'sync' in '__async' but its last parameter is not named 'sync'"),
+    'proxy': ("['sync']", '(x, sync) => x', "'jslibfunc__async' lists only 'sync', which has an asynchronous path only with '__proxy' set to 'sync'"),
+  })
+  def test_jslib_async_options_errors(self, options, body, expected):
+    create_file('lib.js', f'''
+addToLibrary({{
+  jslibfunc__sig: 'ii',
+  jslibfunc__async: {options},
+  jslibfunc: {body},
+}});
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
-                     "error: JS library error: 'jslibfunc' must take 'sync' as parameter 3, after the 2 of its '__sig'")
+                     'error: JS library error: ' + expected)
 
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''

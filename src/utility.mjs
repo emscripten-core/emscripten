@@ -182,7 +182,7 @@ export function mergeInto(obj, other, options = null) {
           __noleakcheck: 'boolean',
           __internal: 'boolean',
           __user: 'boolean',
-          __async: ['string', 'boolean'],
+          __async: ['string', 'boolean', 'object'],
           __i53abi: 'boolean',
           __export: 'boolean',
           __force: 'boolean',
@@ -223,6 +223,7 @@ export const decoratorSuffixes = [
   '__i53abi',
   '__export',
   '__force',
+  '__sync_arg',
 ];
 
 export function isDecorator(ident) {

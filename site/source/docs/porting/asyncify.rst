@@ -200,30 +200,51 @@ You can use ``__async: 1`` if you just want to include the function in
 :ref:`ASYNCIFY_IMPORTS` or ``__async: 'auto'`` if you also want the function to
 wrapper in ``Asyncify.handleAsync``.
 
-``__async: 'auto'`` allows the same function to work synchronously without
-``ASYNCIFY``.  A function whose last parameter is named ``sync`` is told there
-whether it must return synchronously.  This is ``false`` under
-``ASYNCIFY``/JSPI, and when called from a pthread with ``__proxy: 'sync'`` (the
-main thread awaits the result on its behalf); it is ``true`` otherwise, where a
-returned ``Promise`` could not be waited for:
+An ``'auto'`` function may return a Promise only when something can wait for
+it.  There are two such situations: the function suspends under ``ASYNCIFY``
+or JSPI, or it was called from a pthread with ``__proxy: 'sync'``, in which
+case the pthread is blocked and the main thread awaits the Promise for it.  On
+a plain main thread call nothing can wait, and the function has to return a
+value right away.
+
+To let one body handle both, give ``__async`` a list of options and include
+``'sync'``.  The body then takes a trailing ``sync`` parameter: ``true`` means
+"return a value now", ``false`` means "you may return a Promise":
 
 .. code-block:: js
 
    addToLibrary({
      lookup__sig: 'pp',
-     lookup__async: 'auto',
+     lookup__async: ['auto', 'sync'],
      lookup__proxy: 'sync',
      lookup: (name, sync) => {
-       if (sync) return -EAGAIN;
-       return fetchSomething(name);  // returns a Promise
+       if (sync) return -EAGAIN;      // main thread, nothing can wait
+       return fetchSomething(name);   // returns a Promise
      },
    });
 
-In the above example, the same ``lookup`` supports the async promise-returning
-path for ``ASYNCIFY`` and a pthread, while returning the ``EAGAIN`` error when
-called synchronously.  As ``sync`` is always ``false`` under ``ASYNCIFY``/JSPI,
-the function must then be called from a stack that can suspend, as with any
-other async import (under JSPI, within one of the :ref:`JSPI_EXPORTS`).
+With ``['auto', 'sync']`` the function suspends under ``ASYNCIFY``/JSPI like
+any ``'auto'`` function (so it must be called from a stack that can suspend;
+under JSPI, within one of the :ref:`JSPI_EXPORTS`), and also waits when called
+from a pthread.  ``sync`` is ``true`` only on a main thread call without
+``ASYNCIFY``/JSPI.
+
+Some functions must never suspend, because they are called from everywhere:
+``write()`` on a pipe is behind every ``printf``, and a suspending import there
+would instrument or trap every caller.  Such a function can still block when
+called from a pthread.  Listing ``['sync']`` without ``'auto'`` gives exactly
+that: the function stays a plain import in every build, and ``sync`` is
+``false`` only when a pthread is waiting on it.  It requires ``__proxy:
+'sync'``.
+
+====================== ============================ =======================
+``__async``            ``sync`` on the main thread  ``sync`` from a pthread
+====================== ============================ =======================
+``['auto', 'sync']``   ``false`` under              ``false``
+                       ``ASYNCIFY``/JSPI, else
+                       ``true``
+``['sync']``           ``true``                     ``false``
+====================== ============================ =======================
 
 
 Ways to use Asyncify APIs in older engines

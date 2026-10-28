@@ -621,7 +621,7 @@ var SyscallsLibrary = {
     return flags & (events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLNVAL }}});
   },
   __syscall_poll__proxy: 'sync',
-  __syscall_poll__async: 'auto',
+  __syscall_poll__async: ['auto', 'sync'],
   __syscall_poll__deps: ['$doPollSync',
 #if PTHREADS || ASYNCIFY
     '$doPollAsync',
@@ -735,7 +735,7 @@ var SyscallsLibrary = {
     return epollCtl(ep.shared, op, fd, ev);
   },
   __syscall_epoll_pwait__proxy: 'sync',
-  __syscall_epoll_pwait__async: 'auto',
+  __syscall_epoll_pwait__async: ['auto', 'sync'],
   __syscall_epoll_pwait__deps: ['$FS', '$epollPwait'],
   __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize, sync) => {
     var ep = FS.getStream(epfd);
