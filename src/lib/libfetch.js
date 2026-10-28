@@ -8,17 +8,8 @@
 
 var LibraryFetch = {
   $Fetch__postset: 'Fetch.init();',
-  $Fetch__deps: [
-    '$HandleAllocator',
-#if FETCH_SUPPORT_INDEXEDDB
-    '$addRunDependency',
-    '$removeRunDependency',
-#endif
-  ],
   $Fetch: Fetch,
-  _emscripten_fetch_get_response_headers_length__deps: ['$lengthBytesUTF8'],
   _emscripten_fetch_get_response_headers_length: fetchGetResponseHeadersLength,
-  _emscripten_fetch_get_response_headers__deps: ['$stringToUTF8'],
   _emscripten_fetch_get_response_headers: fetchGetResponseHeaders,
   emscripten_fetch_free: fetchFree,
 
@@ -36,17 +27,9 @@ var LibraryFetch = {
   emscripten_start_fetch__deps: [
     'malloc',
     'realloc',
-    '$Fetch',
-    '$fetchXHR',
-    '$callUserCallback',
     '$writeI53ToI64',
     '$stringToUTF8',
     '$stringToNewUTF8',
-#if FETCH_SUPPORT_INDEXEDDB
-    '$fetchCacheData',
-    '$fetchLoadCachedData',
-    '$fetchDeleteCachedData',
-#endif
 #if FETCH_STREAMING
     '$FetchXHR',
 #endif

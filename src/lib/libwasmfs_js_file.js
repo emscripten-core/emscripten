@@ -3,10 +3,6 @@ addToLibrary({
   // entries here that contain typed arrays.
   $wasmFS$JSMemoryFiles: {},
 
-  _wasmfs_create_js_file_backend_js__deps: [
-    '$wasmFS$backends',
-    '$wasmFS$JSMemoryFiles',
-  ],
   _wasmfs_create_js_file_backend_js: (backend) => {
     wasmFS$backends[backend] = {
       allocFile: (file) => {

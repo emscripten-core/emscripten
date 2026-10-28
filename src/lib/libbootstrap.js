@@ -38,7 +38,6 @@ addToLibrary({
     }
   },
 
-  $exitJS__deps: ['$ExitStatus'],
   $exitJS: (code) => quit_(code, new ExitStatus(code)),
 
   $handleException: (e) => {

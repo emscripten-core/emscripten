@@ -8,11 +8,6 @@ addToLibrary({
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS', '$ERRNO_CODES',
-#if NODERAWSOCKETS
-    '$nodeSockOps',
-#endif
-  ],
   $SOCKFS: {
 #if expectToReceiveOnModule('websocket')
     websocketArgs: {},
@@ -832,7 +827,6 @@ addToLibrary({
    * Passing a NULL callback function to a emscripten_set_socket_*_callback call
    * will deregister the callback registered for that Event.
    */
-  $_setNetworkCallback__deps: ['$withStackSave', '$callUserCallback', '$stringToUTF8OnStack'],
   $_setNetworkCallback: (event, userData, callback) => {
     function _callback(data) {
       callUserCallback(() => {
@@ -852,22 +846,16 @@ addToLibrary({
     {{{ runtimeKeepalivePush() }}}
     SOCKFS.on(event, callback ? _callback : null);
   },
-  emscripten_set_socket_error_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_error_callback: (userData, callback) =>
     _setNetworkCallback('error', userData, callback),
-  emscripten_set_socket_open_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_open_callback: (userData, callback) =>
     _setNetworkCallback('open', userData, callback),
-  emscripten_set_socket_listen_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_listen_callback: (userData, callback) =>
     _setNetworkCallback('listen', userData, callback),
-  emscripten_set_socket_connection_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_connection_callback: (userData, callback) =>
     _setNetworkCallback('connection', userData, callback),
-  emscripten_set_socket_message_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_message_callback: (userData, callback) =>
     _setNetworkCallback('message', userData, callback),
-  emscripten_set_socket_close_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_close_callback: (userData, callback) =>
     _setNetworkCallback('close', userData, callback),
 });

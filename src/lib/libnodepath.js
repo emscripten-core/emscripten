@@ -13,7 +13,6 @@
 
 addToLibrary({
   $nodePath: "require('node:path')",
-  $PATH__deps: ['$nodePath'],
   $PATH: `{
     isAbs: nodePath.isAbsolute,
     normalize: nodePath.normalize,
@@ -24,7 +23,6 @@ addToLibrary({
   }`,
   // The FS-using parts are split out into a separate object, so simple path
   // usage does not require the FS.
-  $PATH_FS__deps: ['$FS', '$nodePath'],
   $PATH_FS__docs: '/** @type{{resolve: function(...*)}} */',
   $PATH_FS: {
     resolve: (...paths) => {

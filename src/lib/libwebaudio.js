@@ -16,7 +16,6 @@ var LibraryWebAudio = {
   // you have already created manually without calling emscripten_create_audio_context().
   // Note: To let that AudioContext be garbage collected later, call the function
   // emscriptenDestroyAudioContext() to unbind it from Wasm.
-  $emscriptenRegisterAudioObject__deps: ['$emAudio', '$emAudioCounter'],
   $emscriptenRegisterAudioObject: (object) => {
 #if ASSERTIONS
     assert(object, 'null pointer passed to emscriptenRegisterAudioObject');
@@ -85,7 +84,7 @@ var LibraryWebAudio = {
   // the user will not be able to utilize the node unless they call
   // emscriptenGetAudioObject() on it on JS side to connect it to the graph, so
   // this avoids the user needing to manually add the dependency on the command line.
-  emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject', '$emscriptenGetAudioObject'],
+  emscripten_create_audio_context__deps: ['$emscriptenGetAudioObject'],
   emscripten_create_audio_context: (options) => {
     // Safari added unprefixed AudioContext support in Safari 14.5 on iOS: https://caniuse.com/audio-api
 #if ASSERTIONS
@@ -160,8 +159,6 @@ var LibraryWebAudio = {
   // _emscripten_create_audio_worklet() doesn't use stackAlloc, HEAPs,
   // etc., but the created worklet does.
   _emscripten_create_audio_worklet__deps: [
-    '$_emAudioDispatchProcessorCallback',
-    '$emAudio',
     '$stackAlloc', '$stackRestore', '$stackSave', '$HEAP32', '$HEAPU32', '$HEAPF32',
 #if WASM_BIGINT || MEMORY64
     '$HEAP64', '$HEAPU64',
@@ -267,7 +264,6 @@ var LibraryWebAudio = {
     }).catch(audioWorkletCreationFailed);
   },
 
-  $_emAudioDispatchProcessorCallback__deps: ['$getWasmTableEntry'],
   $_emAudioDispatchProcessorCallback: (e) => {
     var data = e.data;
     // '_wsc' is short for 'wasm call', trying to use an identifier name that
@@ -323,7 +319,6 @@ var LibraryWebAudio = {
     });
   },
 
-  emscripten_create_wasm_audio_worklet_node__deps: ['$emscriptenGetContextQuantumSize'],
   emscripten_create_wasm_audio_worklet_node: (contextHandle, name, options, callback, userData) => {
 #if ASSERTIONS || WEBAUDIO_DEBUG
     emAudioExpectContext(contextHandle, 'emscripten_create_wasm_audio_worklet_node');
@@ -360,7 +355,6 @@ var LibraryWebAudio = {
   },
 #endif // ~AUDIO_WORKLET
 
-  emscripten_audio_context_quantum_size__deps: ['$emscriptenGetContextQuantumSize'],
   emscripten_audio_context_quantum_size: (contextHandle) => {
 #if ASSERTIONS || WEBAUDIO_DEBUG
     emAudioExpectContext(contextHandle, 'emscripten_audio_context_quantum_size')
@@ -402,55 +396,44 @@ var LibraryWebAudio = {
 
   emscripten_current_thread_is_audio_worklet: () => ENVIRONMENT_IS_AUDIO_WORKLET,
 
-  emscripten_audio_worklet_post_function_v__deps: ['$emAudioWorkletPostFunction'],
   emscripten_audio_worklet_post_function_v: (audioContext, funcPtr) => {
     emAudioWorkletPostFunction(audioContext, funcPtr, []);
   },
 
-  $emscripten_audio_worklet_post_function_1__deps: ['$emAudioWorkletPostFunction'],
   $emscripten_audio_worklet_post_function_1: (audioContext, funcPtr, arg0) => {
     emAudioWorkletPostFunction(audioContext, funcPtr, [arg0]);
   },
 
-  emscripten_audio_worklet_post_function_vi__deps: ['$emscripten_audio_worklet_post_function_1'],
   emscripten_audio_worklet_post_function_vi(audioContext, funcPtr, arg0) {
     emscripten_audio_worklet_post_function_1(audioContext, funcPtr, arg0)
   },
 
-  emscripten_audio_worklet_post_function_vd__deps: ['$emscripten_audio_worklet_post_function_1'],
   emscripten_audio_worklet_post_function_vd(audioContext, funcPtr, arg0) {
     emscripten_audio_worklet_post_function_1(audioContext, funcPtr, arg0)
   },
 
-  $emscripten_audio_worklet_post_function_2__deps: ['$emAudioWorkletPostFunction'],
   $emscripten_audio_worklet_post_function_2: (audioContext, funcPtr, arg0, arg1) => {
     emAudioWorkletPostFunction(audioContext, funcPtr, [arg0, arg1]);
   },
 
-  emscripten_audio_worklet_post_function_vii__deps: ['$emscripten_audio_worklet_post_function_2'],
   emscripten_audio_worklet_post_function_vii: (audioContext, funcPtr, arg0, arg1) => {
     emscripten_audio_worklet_post_function_2(audioContext, funcPtr, arg0, arg1);
   },
 
-  emscripten_audio_worklet_post_function_vdd__deps: ['$emscripten_audio_worklet_post_function_2'],
   emscripten_audio_worklet_post_function_vdd: (audioContext, funcPtr, arg0, arg1) => {
     emscripten_audio_worklet_post_function_2(audioContext, funcPtr, arg0, arg1);
   },
 
-  $emscripten_audio_worklet_post_function_3__deps: ['$emAudioWorkletPostFunction'],
   $emscripten_audio_worklet_post_function_3: (audioContext, funcPtr, arg0, arg1, arg2) => {
     emAudioWorkletPostFunction(audioContext, funcPtr, [arg0, arg1, arg2]);
   },
-  emscripten_audio_worklet_post_function_viii__deps: ['$emscripten_audio_worklet_post_function_3'],
   emscripten_audio_worklet_post_function_viii: (audioContext, funcPtr, arg0, arg1, arg2) => {
     emscripten_audio_worklet_post_function_3(audioContext, funcPtr, arg0, arg1, arg2);
   },
-  emscripten_audio_worklet_post_function_vddd__deps: ['$emscripten_audio_worklet_post_function_3'],
   emscripten_audio_worklet_post_function_vddd: (audioContext, funcPtr, arg0, arg1, arg2) => {
     emscripten_audio_worklet_post_function_3(audioContext, funcPtr, arg0, arg1, arg2);
   },
 
-  emscripten_audio_worklet_post_function_sig__deps: ['$readEmAsmArgs', '$emAudioWorkletPostFunction'],
   emscripten_audio_worklet_post_function_sig: (audioContext, funcPtr, sigPtr, varargs) => {
 #if ASSERTIONS
     assert(sigPtr);
@@ -460,12 +443,5 @@ var LibraryWebAudio = {
     emAudioWorkletPostFunction(audioContext, funcPtr, readEmAsmArgs(sigPtr, varargs));
   }
 };
-
-#if ASSERTIONS || WEBAUDIO_DEBUG
-autoAddDeps(LibraryWebAudio, '$_emAudioExpectHandle');
-autoAddDeps(LibraryWebAudio, '$emAudioExpectNode');
-autoAddDeps(LibraryWebAudio, '$emAudioExpectContext');
-autoAddDeps(LibraryWebAudio, '$emAudioExpectNodeOrContext');
-#endif
 
 addToLibrary(LibraryWebAudio);

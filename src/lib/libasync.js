@@ -21,19 +21,10 @@ addToLibrary({
 
 #if ASYNCIFY
   $Asyncify__force: true,
-  $Asyncify__deps: [
-#if useRuntimeKeepaliveStack()
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
 #if ASYNCIFY == 1
-    '$runAndAbortIfError', '$callUserCallback',
-#if ASSERTIONS
-    '$createNamedFunction',
+  // Needed by allocateData and handleSleep respectively
+  $Asyncify__deps: ['malloc', 'free'],
 #endif
-    // Needed by allocateData and handleSleep respectively
-    'malloc', 'free',
-#endif
-  ],
 
   $Asyncify: {
     //
@@ -484,7 +475,7 @@ addToLibrary({
   emscripten_sleep__async: 'auto',
   emscripten_sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 
-  emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
+  emscripten_wget_data__deps: ['malloc'],
   emscripten_wget_data__async: 'auto',
   emscripten_wget_data: async (url, pbuffer, pnum, perror) => {
     /* no need for run dependency, this is async but will not do any prepare etc. step */
@@ -501,7 +492,6 @@ addToLibrary({
     }
   },
 
-  emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers__async: true,
   emscripten_scan_registers: (func) => {
     return Asyncify.handleSleep((wakeUp) => {
@@ -518,7 +508,7 @@ addToLibrary({
     });
   },
 
-  $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits', '$stackRestore'],
+  $Fibers__deps: ['emscripten_stack_set_limits'],
   $Fibers: {
     nextFiber: 0,
     trampolineRunning: false,
@@ -578,7 +568,6 @@ addToLibrary({
     },
   },
 
-  emscripten_fiber_swap__deps: ['$Asyncify', '$Fibers', '$stackSave'],
   emscripten_fiber_swap__async: true,
   emscripten_fiber_swap: (oldFiber, newFiber) => {
     if (ABORT) return;

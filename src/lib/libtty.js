@@ -5,11 +5,6 @@
  */
 
 addToLibrary({
-  $TTY__deps: [
-    '$FS',
-    '$UTF8ArrayToString',
-    '$FS_stdin_getChar'
-  ],
 #if !MINIMAL_RUNTIME
   $TTY__postset: () => {
     addAtInit('TTY.init();');

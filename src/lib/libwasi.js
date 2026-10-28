@@ -13,7 +13,6 @@ var WasiLibrary = {
       this.status = status;
     }
   },
-  proc_exit__deps: ['$ExitStatus', '$keepRuntimeAlive'],
 #endif
 
   proc_exit__nothrow: true,
@@ -41,11 +40,6 @@ var WasiLibrary = {
   sched_yield__nothrow: true,
   sched_yield: () => 0,
 
-  $getEnvStrings__deps: ['$ENV',
-#if !PURE_WASI
-    '$getExecutableName'
-#endif
-  ],
   $getEnvStrings: () => {
     if (!getEnvStrings.strings) {
       // Default values.
@@ -84,7 +78,6 @@ var WasiLibrary = {
     return getEnvStrings.strings;
   },
 
-  environ_sizes_get__deps: ['$getEnvStrings', '$lengthBytesUTF8'],
   environ_sizes_get__nothrow: true,
   environ_sizes_get: (penviron_count, penviron_buf_size) => {
     var strings = getEnvStrings();
@@ -97,7 +90,6 @@ var WasiLibrary = {
     return 0;
   },
 
-  environ_get__deps: ['$getEnvStrings', '$stringToUTF8'],
   environ_get__nothrow: true,
   environ_get: (__environ, environ_buf) => {
     var bufSize = 0;
@@ -130,7 +122,6 @@ var WasiLibrary = {
   },
 
   args_get__nothrow: true,
-  args_get__deps: ['$stringToAscii'],
   args_get: (argv, argv_buf) => {
 #if MAIN_READS_PARAMS
     var bufSize = 0;
@@ -154,7 +145,6 @@ var WasiLibrary = {
   clock_time_get__i53abi: true,
   clock_time_get__nothrow: true,
   clock_time_get__proxy: 'none',
-  clock_time_get__deps: ['emscripten_get_now', 'emscripten_date_now', '$nowIsMonotonic', '$checkWasiClock'],
   clock_time_get: (clk_id, ignored_precision, ptime) => {
     if (!checkWasiClock(clk_id)) {
       return {{{ cDefs.EINVAL }}};
@@ -176,7 +166,7 @@ var WasiLibrary = {
 
   clock_res_get__nothrow: true,
   clock_res_get__proxy: 'none',
-  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', '$nowIsMonotonic', '$checkWasiClock'],
+  clock_res_get__deps: ['emscripten_get_now'],
   clock_res_get: (clk_id, pres) => {
     if (!checkWasiClock(clk_id)) {
       return {{{ cDefs.EINVAL }}};
@@ -252,7 +242,6 @@ var WasiLibrary = {
   $printCharBuffers: [null, [], []], // 1 => stdout, 2 => stderr
   $printCharBuffers__internal: true,
   $printChar__internal: true,
-  $printChar__deps: ['$printCharBuffers', '$UTF8ArrayToString'],
   $printChar: (stream, curr) => {
     var buffer = printCharBuffers[stream];
 #if ASSERTIONS
@@ -268,9 +257,7 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
 
 #if SYSCALLS_REQUIRE_FILESYSTEM
-  fd_write__deps: ['$doWritev'],
 #elif (!MINIMAL_RUNTIME || EXIT_RUNTIME)
-  $flush_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers'],
   $flush_NO_FILESYSTEM: () => {
     // flush anything remaining in the buffers during shutdown
 #if hasExportedSymbol('fflush')
@@ -279,10 +266,9 @@ var WasiLibrary = {
     if (printCharBuffers[1].length) printChar(1, {{{ charCode('\n') }}});
     if (printCharBuffers[2].length) printChar(2, {{{ charCode('\n') }}});
   },
-  fd_write__deps: ['$flush_NO_FILESYSTEM', '$printChar'],
+  fd_write__deps: ['$flush_NO_FILESYSTEM'],
   fd_write__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
 #else
-  fd_write__deps: ['$printChar'],
 #endif
   fd_write: (fd, iov, iovcnt, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -305,9 +291,6 @@ var WasiLibrary = {
     return 0;
   },
 
-#if SYSCALLS_REQUIRE_FILESYSTEM
-  fd_pwrite__deps: ['$doWritev'],
-#endif
   fd_pwrite__i53abi: true,
   fd_pwrite: (fd, iov, iovcnt, offset, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -342,9 +325,6 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-#if SYSCALLS_REQUIRE_FILESYSTEM
-  fd_read__deps: ['$doReadv'],
-#endif
   fd_read: (fd, iov, iovcnt, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -358,9 +338,6 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
-#if SYSCALLS_REQUIRE_FILESYSTEM
-  fd_pread__deps: ['$doReadv'],
-#endif
   fd_pread__i53abi: true,
   fd_pread: (fd, iov, iovcnt, offset, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -430,7 +407,6 @@ var WasiLibrary = {
   $preopens: {3: '/'},
 
   path_open__sig: 'iiiiiiiiii',
-  path_open__deps: ['$wasiRightsToMuslOFlags', '$wasiOFlagsToMuslOFlags', '$preopens'],
   path_open: (fd, dirflags, path, path_len, oflags,
               fs_rights_base, fs_rights_inheriting,
               fdflags, opened_fd) => {
@@ -451,7 +427,6 @@ var WasiLibrary = {
     return 0;
   },
 
-  fd_prestat_dir_name__deps: ['$preopens'],
   fd_prestat_dir_name__sig: 'iiii',
   fd_prestat_dir_name__nothrow: true,
   fd_prestat_dir_name: (fd, path, path_len) => {
@@ -466,7 +441,6 @@ var WasiLibrary = {
     return 0;
   },
 
-  fd_prestat_get__deps: ['$preopens'],
   fd_prestat_get__sig: 'iii',
   fd_prestat_get__nothrow: true,
   fd_prestat_get: (fd, stat_buf) => {
@@ -502,9 +476,6 @@ var WasiLibrary = {
   },
 #endif
 
-#if PURE_WASI
-  fd_fdstat_get__deps: ['$preopens'],
-#endif
   fd_fdstat_get: (fd, pbuf) => {
     var rightsBase = 0;
     var rightsInheriting = 0;
@@ -578,9 +549,6 @@ var WasiLibrary = {
 
   // random.h
 
-#if ENVIRONMENT_MAY_BE_SHELL
-  $initRandomFill__deps: ['$base64Decode'],
-#endif
   $initRandomFill: () => {
 #if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
     // This block is not needed on v19+ since crypto.getRandomValues is builtin
@@ -619,13 +587,11 @@ var WasiLibrary = {
 #endif
   },
 
-  $randomFill__deps: ['$initRandomFill'],
   // Lazily init on the first invocation.
   $randomFill: (view) => (randomFill = initRandomFill())(view),
 
   random_get__proxy: 'none',
   random_get__nothrow: true,
-  random_get__deps: ['$randomFill'],
   random_get: (buffer, size) => randomFill(HEAPU8.subarray(buffer, buffer + size)),
 };
 
