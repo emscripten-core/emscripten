@@ -137,18 +137,24 @@ addToLibrary({
     'asyncify': (['-sASYNCIFY', '-DASYNC'],),
     'jspi': (['-sJSPI', '-DASYNC'],),
     'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'proxy': (['-DPROXY'],),
+    'proxy_asyncify': (['-sASYNCIFY', '-DASYNC', '-DPROXY'],),
+    'proxy_jspi': (['-sJSPI', '-DASYNC', '-DPROXY'],),
+    'proxy_pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-DPROXY'],),
   })
   def test_jslib_async_auto_sync(self, args):
     # `answer(ms, value)` resolves to `value` after `ms` milliseconds
     # (synchronously if `ms` is 0), or is -1 where the caller cannot wait.
+    # With PROXY (`__async: 'proxy'`) only a proxied pthread call can wait.
     if '-sJSPI' in args:
       self.require_jspi()
     if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    mode = "'proxy'" if '-DPROXY' in args else "'auto'"
     create_file('lib.js', r'''
 addToLibrary({
   answer__sig: 'pip',
-  answer__async: 'auto',
+  answer__async: MODE,
   answer__proxy: 'sync',
   answer: (ms, value, sync) => {
     if (!ms) return value;
@@ -156,13 +162,13 @@ addToLibrary({
     return new Promise((resolve) => setTimeout(() => resolve(value), ms));
   },
   // No __sig: `sync` is found by name alone.
-  wait_ms__async: 'auto',
+  wait_ms__async: MODE,
   wait_ms__proxy: 'sync',
   wait_ms: (ms, sync) => {
     if (ms && !sync) return new Promise((resolve) => setTimeout(resolve, ms));
   },
 });
-''')
+'''.replace('MODE', mode))
     create_file('src.c', r'''
 #include <assert.h>
 #include <stdint.h>
@@ -173,7 +179,7 @@ void wait_ms(int ms);
 
 int main() {
   assert(answer(0, 7) == 7);
-#if defined(__EMSCRIPTEN_PTHREADS__) || defined(ASYNC)
+#if defined(__EMSCRIPTEN_PTHREADS__) || (defined(ASYNC) && !defined(PROXY))
   assert(answer(5, 42) == 42);
 #else
   assert(answer(5, 42) == -1);
@@ -196,6 +202,17 @@ addToLibrary({
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
                      "error: JS library error: 'jslibfunc' must take 'sync' as parameter 3, after the 2 of its '__sig'")
+
+  def test_jslib_async_proxy_requires_proxying(self):
+    create_file('lib.js', '''
+addToLibrary({
+  jslibfunc__sig: 'ii',
+  jslibfunc__async: 'proxy',
+  jslibfunc: (x, sync) => x,
+});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
+                     "error: JS library error: 'jslibfunc' is '__async: 'proxy'' and requires '__proxy: 'sync''")
 
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
