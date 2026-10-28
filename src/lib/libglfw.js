@@ -85,6 +85,9 @@ var LibraryGLFW = {
 
   $GLFW__deps: [
 #if !OFFSCREEN_FRAMEBUFFER
+    // Needed indirectly via `Browser.createContext` (which guards `GL` with
+    // `typeof GL !== 'undefined'`). Under `OFFSCREEN_FRAMEBUFFER`, `$GLFW`
+    // references `GL` directly so `$GL` is auto-detected.
     '$GL',
 #endif
     'malloc', 'free',
