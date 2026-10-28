@@ -31,6 +31,30 @@ size_t drain(int fd) {
   return total;
 }
 
+// Bytes go through the pipe as a running counter so wrap-around and growth
+// bugs show up as data out of order.
+unsigned char next_out, next_in;
+
+void write_seq(int fd, size_t n) {
+  static unsigned char data[CAPACITY];
+  for (size_t i = 0; i < n; i++)
+    data[i] = next_out++;
+  assert(write(fd, data, n) == n);
+}
+
+void read_seq(int fd, size_t n) {
+  // The guard catches a read that writes before the start of `data`.
+  static struct {
+    unsigned char guard[CAPACITY];
+    unsigned char data[CAPACITY];
+  } dest;
+  assert(read(fd, dest.data, n) == n);
+  for (size_t i = 0; i < n; i++)
+    assert(dest.data[i] == next_in++);
+  for (size_t i = 0; i < CAPACITY; i++)
+    assert(dest.guard[i] == 0);
+}
+
 int main() {
   int p[2];
   assert(pipe(p) == 0);
@@ -72,6 +96,27 @@ int main() {
   assert(pipe(p) == 0);
   assert(close(p[0]) == 0);
   assert(write(p[1], "x", 1) == -1 && errno == EPIPE);
+  assert(close(p[1]) == 0);
+
+  // Wrap around the end of the initial buffer, grow while wrapped, then wrap
+  // the full-size buffer.
+  assert(pipe(p) == 0);
+  assert(fcntl(p[1], F_SETFL, O_NONBLOCK) == 0);
+  write_seq(p[1], 6000);
+  read_seq(p[0], 5000);
+  write_seq(p[1], 4000);
+  write_seq(p[1], 8000);
+  read_seq(p[0], 2000);
+  write_seq(p[1], 50000);
+  read_seq(p[0], 60000);
+  write_seq(p[1], 40000);
+  read_seq(p[0], 6000);
+  read_seq(p[0], 35000);
+  assert(drain(p[0]) == 0);
+  write_seq(p[1], CAPACITY);
+  assert(!writable(p[1]));
+  read_seq(p[0], CAPACITY);
+  assert(close(p[0]) == 0);
   assert(close(p[1]) == 0);
 
   printf("done\n");

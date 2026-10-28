@@ -9,6 +9,9 @@ addToLibrary({
   $PIPEFS__deps: ['$FS'],
   $PIPEFS: {
     CAPACITY: 1024 * 64, // as on Linux
+    // A new pipe starts with a small buffer that doubles as data arrives, so
+    // the many mostly-empty pipes some programs create stay cheap.
+    INITIAL_SIZE: 1024 * 8,
     // Queued bytes above which a PIPE_BUF write no longer fits.
     THRESHOLD: 1024 * 64 - {{{ cDefs.PIPE_BUF }}},
 
@@ -19,9 +22,11 @@ addToLibrary({
     },
     createPipe() {
       var pipe = {
-        buffer: new Uint8Array(PIPEFS.CAPACITY),
-        offset: 0,
-        roffset: 0,
+        // Ring buffer: `count` unread bytes starting at `head`, wrapping
+        // around the end of `buffer`.
+        buffer: new Uint8Array(PIPEFS.INITIAL_SIZE),
+        head: 0,
+        count: 0,
         // Open write ends. When it drops to 0 the reader sees EOF and poll must
         // report POLLHUP (Linux semantics). The buffer is freed once both counts
         // reach 0.
@@ -70,7 +75,26 @@ addToLibrary({
       };
     },
     queuedBytes(pipe) {
-      return pipe.offset - pipe.roffset;
+      return pipe.count;
+    },
+    // Grows the buffer (doubling, up to CAPACITY) until `needed` bytes fit,
+    // unwrapping the queued bytes to the start of the new buffer.
+    grow(pipe, needed) {
+      var size = pipe.buffer.length;
+      while (size < needed) size *= 2;
+      var buffer = new Uint8Array(size);
+      PIPEFS.copyOut(pipe, buffer, 0, pipe.count);
+      pipe.buffer = buffer;
+      pipe.head = 0;
+    },
+    // Copies `length` queued bytes starting at `head` into `dest` at `offset`,
+    // in at most two pieces when the data wraps.
+    copyOut(pipe, dest, offset, length) {
+      var first = Math.min(length, pipe.buffer.length - pipe.head);
+      dest.set(pipe.buffer.subarray(pipe.head, pipe.head + first), offset);
+      if (first < length) {
+        dest.set(pipe.buffer.subarray(0, length - first), offset + first);
+      }
     },
     stream_ops: {
       getattr(stream) {
@@ -157,13 +181,10 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
         }
         var toRead = Math.min(currentLength, length);
-        buffer.set(pipe.buffer.subarray(pipe.roffset, pipe.roffset + toRead), offset);
-        pipe.roffset += toRead;
-        // Reset cursors when fully drained so subsequent writes start at 0
-        // without needing to shift data.
-        if (pipe.roffset == pipe.offset) {
-          pipe.roffset = pipe.offset = 0;
-        }
+        PIPEFS.copyOut(pipe, buffer, offset, toRead);
+        pipe.count -= toRead;
+        // Restart at 0 once drained so the next write does not wrap.
+        pipe.head = pipe.count ? (pipe.head + toRead) % pipe.buffer.length : 0;
 
         // Wake POLLOUT waiters on the transition to writable: listeners only
         // notify on readiness changes, and a waiter only exists while the
@@ -204,15 +225,18 @@ addToLibrary({
           data = data.subarray(0, room);
           dataLen = room;
         }
-        // Lazily compact unread bytes to the start of the buffer only when a
-        // write would run past the end of the 64 KiB array.
-        if (pipe.offset + dataLen > PIPEFS.CAPACITY) {
-          pipe.buffer.copyWithin(0, pipe.roffset, pipe.offset);
-          pipe.offset -= pipe.roffset;
-          pipe.roffset = 0;
+        if (pipe.count + dataLen > pipe.buffer.length) {
+          PIPEFS.grow(pipe, pipe.count + dataLen);
         }
-        pipe.buffer.set(data, pipe.offset);
-        pipe.offset += dataLen;
+        // Write after the queued bytes, wrapping around the end of the buffer.
+        var size = pipe.buffer.length;
+        var tail = (pipe.head + pipe.count) % size;
+        var first = Math.min(dataLen, size - tail);
+        pipe.buffer.set(data.subarray(0, first), tail);
+        if (first < dataLen) {
+          pipe.buffer.set(data.subarray(first), 0);
+        }
+        pipe.count += dataLen;
 
         pipe.readNode.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
         return dataLen;
