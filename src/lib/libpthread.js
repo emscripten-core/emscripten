@@ -971,31 +971,17 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['_emscripten_run_js_on_main_thread'],
-  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
-  $proxyToMainThread: (funcIndex, emAsmAddr, proxyMode, ...callArgs) => {
-    // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
-    // content as `emAsmAddr`.  JS library proxying is done by passing an index
-    // into `proxiedJSCallArgs` as `funcIndex`. If `emAsmAddr` is non-zero then
-    // `funcIndex` will be ignored.
-    // Additional arguments are passed after the first three are the actual
-    // function arguments.
-    // The serialization buffer contains the number of call params, and then
-    // all the args here.
-    //
-    // We also pass 'proxyMode' to C separately, since C needs to look at it.
-    //
-    // Allocate a buffer (on the stack), which will be copied if necessary by
-    // the C code.
-    //
-    // First passed parameter specifies the number of arguments to the function.
-    // When BigInt support is enabled, we must handle types in a more complex
-    // way, detecting at runtime if a value is a BigInt or not (as we have no
-    // type info here). To do that, add a "prefix" before each value that
-    // indicates if it is a BigInt, which effectively doubles the number of
-    // values we serialize for proxying. TODO: pack this?
+  // Serializes proxied call arguments to a stack buffer (8 bytes per argument,
+  // 16 with BigInt support), returning its address and size. The C code copies
+  // it if necessary; the caller restores the stack after the call.
+  // When BigInt support is enabled, we must handle types in a more complex
+  // way, detecting at runtime if a value is a BigInt or not (as we have no
+  // type info here). To do that, add a "prefix" before each value that
+  // indicates if it is a BigInt, which effectively doubles the number of
+  // values we serialize for proxying. TODO: pack this?
+  $serializeProxiedArgs__internal: true,
+  $serializeProxiedArgs: (callArgs) => {
     var bufSize = 8 * callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
-    var sp = stackSave();
     var args = stackAlloc(bufSize);
     var b = {{{ getHeapOffset('args', 'i64') }}};
     for (var arg of callArgs) {
@@ -1013,10 +999,33 @@ var LibraryPThread = {
       HEAPF64[b++] = arg;
 #endif
     }
-    var rtn = __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, bufSize, args, proxyMode);
-    stackRestore(sp);
-    return rtn;
+    return [args, bufSize];
   },
+
+  // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
+  // content as `emAsmAddr`.  JS library proxying is done by passing an index
+  // into `proxiedJSCallArgs` as `funcIndex`. If `emAsmAddr` is non-zero then
+  // `funcIndex` will be ignored.
+  // Additional arguments are passed after the first three are the actual
+  // function arguments.
+  //
+  // We also pass 'proxyMode' to C separately, since C needs to look at it.
+  $proxyToMainThread__deps: ['_emscripten_run_js_on_main_thread'],
+  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
+  $proxyToMainThread: (funcIndex, emAsmAddr, proxyMode, ...callArgs) => withStackSave(() => {
+    var [bufPtr, bufSize] = serializeProxiedArgs(callArgs);
+    return __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, bufSize, bufPtr, proxyMode);
+  }),
+
+  // As proxyToMainThread, returning an em_promise_t of the main-thread result
+  // (the _promise variant), settled once this thread next runs its proxying
+  // queue. Separate so the promise machinery is only linked when used.
+  $proxyToMainThreadPromise__deps: ['_emscripten_run_js_on_main_thread_promise'],
+  $proxyToMainThreadPromise__docs: '/** @type{function(number, (number|boolean), ...number)} */',
+  $proxyToMainThreadPromise: (funcIndex, emAsmAddr, ...callArgs) => withStackSave(() => {
+    var [bufPtr, bufSize] = serializeProxiedArgs(callArgs);
+    return __emscripten_run_js_on_main_thread_promise(funcIndex, emAsmAddr, bufSize, bufPtr);
+  }),
 
   // Reuse global JS array to avoid creating JS garbage for each proxied call
   $proxiedJSCallArgs: [],
@@ -1072,8 +1081,11 @@ var LibraryPThread = {
     var coerceRtn = (rtn) => rtn;
 #endif
     if (ctx) {
-      // A PROXY_SYNC_ASYNC function may complete synchronously with a plain value.
-      Promise.resolve(rtn).then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn)));
+      // A PROXY_SYNC_ASYNC / PROXY_PROMISE function may complete synchronously
+      // with a plain value, so we cannot just do `rtn.then(..)` here.
+      Promise.resolve(rtn).then(
+        (resolvedRtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(resolvedRtn), true),
+        () => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, 0, false));
       return;
     }
     rtn = coerceRtn(rtn);

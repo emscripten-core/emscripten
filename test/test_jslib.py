@@ -197,6 +197,47 @@ addToLibrary({
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
                      "error: JS library error: 'jslibfunc' must take 'sync' as parameter 3, after the 2 of its '__sig'")
 
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY'],),
+    'asyncify_auto': (['-sASYNCIFY', '-DAUTO'],),
+    'jspi': (['-sJSPI'],),
+    'jspi_auto': (['-sJSPI', '-DAUTO'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_jslib_async_auto_variants(self, args):
+    # `answer(ms, value)` resolves to `value` after `ms` milliseconds
+    # (synchronously if `ms` is 0, rejecting if `value` is 0), with an
+    # `answer_promise` variant. Where the caller cannot wait, `answer()` is -1:
+    # without 'auto' in the list it never suspends, even under ASYNCIFY/JSPI.
+    # `wait_ms(ms)` is the same without a result.
+    if '-sJSPI' in args:
+      self.require_jspi()
+    if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    forms = "['auto', 'promise']" if '-DAUTO' in args else "['promise']"
+    self.do_runf(test_file('jslib/test_jslib_async_auto_variants.c'), 'done\n',
+                 cflags=args + ['-sEXIT_RUNTIME', f'-jsDFORMS={forms}', '--js-library', test_file('jslib/test_jslib_async_auto_variants.js')])
+
+  @parameterized({
+    'empty': ("'pi'", '[]', '', "'jslibfunc__async' must be 'auto', or a non-empty array of variants"),
+    'unknown': ("'pi'", "['foo']", '', "unknown async variant 'foo' in 'jslibfunc__async'"),
+    'sig': ("'di'", "['promise']", '', "async variants of 'jslibfunc' require a native function with a '__sig' returning 'v', 'p' or 'i'"),
+    'defined': ("'pi'", "['promise']", 'jslibfunc_promise: () => 0,', "'jslibfunc_promise' is defined explicitly, conflicting with the 'promise' variant of 'jslibfunc'"),
+  })
+  def test_jslib_async_variants_errors(self, sig, variants, extra, expected):
+    create_file('lib.js', f'''
+addToLibrary({{
+  jslibfunc__sig: {sig},
+  jslibfunc__async: {variants},
+  jslibfunc: (x) => x,
+  {extra}
+}});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
+                     'error: JS library error: ' + expected)
+
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
 addToLibrary({
