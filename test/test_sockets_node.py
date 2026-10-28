@@ -281,6 +281,14 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sASYNCIFY', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_tcp_blocking_join(self):
+    # Plain -pthread: main() blocks in pthread_join on the main thread, whose
+    # futex wait runs proxied calls but never returns to the event loop. A
+    # thread's accept() and recv() with a connection and data already pending
+    # complete synchronously, delivering their results without a microtask.
+    self.do_runf('sockets/test_tcp_blocking_join.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPTHREAD_POOL_SIZE=1'])
+
   def test_noderawsockets_tcp_blocking_error(self):
     # A blocking recv() is woken by a connection error that lands after it
     # blocked, and returns it (rather than spinning on EAGAIN while poll()
