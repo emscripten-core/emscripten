@@ -754,6 +754,10 @@ em_promise_t _emscripten_run_js_on_main_thread_promise(int func_index,
     emscripten_main_runtime_thread_id(),
     run_js_func_with_ctx,
     arg);
+  // The function's own Promise rejecting is carried in `arg->fulfilled`, with
+  // `done` fulfilled either way; `done` itself is rejected only if the
+  // proxying failed (the target thread exited before running it), leaving
+  // `fulfilled` false. Both outcomes settle from `arg` and free it.
   em_promise_t promise =
     emscripten_promise_then(done, js_promise_settle, js_promise_settle, arg);
   emscripten_promise_destroy(done);
