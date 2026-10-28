@@ -539,7 +539,7 @@ var LibraryHTML5 = {
       target,
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
-      allowsDeferredCalls: !['mousemove', 'mouseenter', 'mouseleave'].includes(eventTypeString),
+      allowsDeferredCalls: eventTypeString != 'mousemove' && eventTypeString != 'mouseenter' && eventTypeString != 'mouseleave',
 #endif
       eventTypeString,
       eventTypeId,
