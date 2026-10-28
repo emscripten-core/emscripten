@@ -254,7 +254,8 @@ function findLibrarySymbol(name, isUserSnippet = false) {
 // Because this uses a flat token scan rather than full AST/scope analysis (for
 // speed and to handle partial JS fragments in `--pre-js`/`--post-js`), it is
 // conservative and can produce false positives if local variables or parameters
-// shadow a library symbol name.
+// shadow a library symbol name.  (We use a full AST walk in EMCC_CHECK_DEPS to
+// detect such shadowing in system libraries).
 function calcImplicitDeps(snippet, isUserSnippet = false) {
   const found = new Set();
   const typeofSyms = new Set();
