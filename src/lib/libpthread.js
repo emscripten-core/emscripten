@@ -1072,8 +1072,15 @@ var LibraryPThread = {
     var coerceRtn = (rtn) => rtn;
 #endif
     if (ctx) {
-      // A PROXY_SYNC_ASYNC function may complete synchronously with a plain value.
-      Promise.resolve(rtn).then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn)));
+      // A PROXY_SYNC_ASYNC function may complete synchronously with a plain
+      // value, delivered on the spot: a microtask needs the main thread's event
+      // loop, which a main() blocked in pthread_join never reaches, though its
+      // futex wait still runs proxied calls.
+      if (rtn instanceof Promise) {
+        rtn.then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn)));
+      } else {
+        __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn));
+      }
       return;
     }
     rtn = coerceRtn(rtn);

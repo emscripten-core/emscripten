@@ -392,51 +392,45 @@ var SyscallsLibrary = {
   },
   // Run a receive-side socket syscall body `op(sock)` that may block. The
   // backend is strictly synchronous: `op` throws EAGAIN when it would block,
-  // whatever the fd's mode. On a blocking socket (no O_NONBLOCK, no
-  // MSG_DONTWAIT) a caller that can wait (`sync` false: a sync-proxied pthread,
-  // ASYNCIFY/JSPI) then gets a Promise that parks on the socket's wait-queue
-  // and retries; where no stack can wait the EAGAIN surfaces unchanged.
+  // whatever the fd's mode. A result that is ready is returned as is, so that
+  // a proxied pthread's call completes without a microtask. On a blocking
+  // socket (no O_NONBLOCK, no MSG_DONTWAIT) a caller that can wait (`sync`
+  // false: a sync-proxied pthread, ASYNCIFY/JSPI) then gets a Promise that
+  // parks on the socket's wait-queue and retries; where no stack can wait the
+  // EAGAIN surfaces unchanged.
   $sockCall__internal: true,
   $sockCall: (fd, dontWait, sync, op) => {
     var sock = getSocketFromFD(fd);
-#if PTHREADS || ASYNCIFY
-    if (!sync) return sockCallAsync(sock, dontWait, op);
-#endif
-#if ASSERTIONS
     try {
       return op(sock);
     } catch (e) {
-      if (sockWouldBlock(e, sock, dontWait)) {
-        warnOnce('a blocking socket operation would block, returning EAGAIN instead (this stack cannot block: use O_NONBLOCK with poll/epoll, or call from a pthread or with ASYNCIFY/JSPI)');
-      }
+      if (!sockWouldBlock(e, sock, dontWait)) throw e;
+#if PTHREADS || ASYNCIFY
+      if (!sync) return sockCallAsync(sock, dontWait, op);
+#endif
+#if ASSERTIONS
+      warnOnce('a blocking socket operation would block, returning EAGAIN instead (this stack cannot block: use O_NONBLOCK with poll/epoll, or call from a pthread or with ASYNCIFY/JSPI)');
+#endif
       throw e;
     }
-#else
-    return op(sock);
-#endif
   },
   // Whether a failed `op` on a blocking socket should wait and retry.
   $sockWouldBlock__internal: true,
   $sockWouldBlock: (e, sock, dontWait) =>
     e.name === 'ErrnoError' && e.errno === {{{ cDefs.EAGAIN }}} && !dontWait && !(sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}),
 #if PTHREADS || ASYNCIFY
-  // Async sockCall(): run `op`, and on a would-block park on the socket's node
+  // Async sockCall() after `op` would block: park on the socket's node
   // wait-queue until poll() reports something to consume (readable, hung up or
   // errored; readiness is re-derived on each wake, the wake flags are just the
-  // trigger), then retry. Always parks after an EAGAIN rather than re-checking
-  // readiness first: nothing can have changed since `op` ran, and a backend
-  // whose poll() disagrees with its recv must wait, not spin. Resolves to the
-  // result or -errno: wrapSyscallFunction's catch only covers the synchronous
-  // part of the syscall, so a rejection would escape it.
+  // trigger), then retry. Parks first rather than re-checking readiness:
+  // nothing can have changed since `op` ran, and a backend whose poll()
+  // disagrees with its recv must wait, not spin. Resolves to the result or
+  // -errno: wrapSyscallFunction's catch only covers the synchronous part of
+  // the syscall, so a rejection would escape it.
   $sockCallAsync__internal: true,
   $sockCallAsync: async (sock, dontWait, op) => {
     try {
       for (;;) {
-        try {
-          return op(sock);
-        } catch (e) {
-          if (!sockWouldBlock(e, sock, dontWait)) throw e;
-        }
         await new Promise((resolve) => {
           var reg = sock.stream.node.addListener(() => {
             if (!(sock.sock_ops.poll(sock) & {{{ cDefs.POLLIN | cDefs.POLLERR | cDefs.POLLHUP }}})) return;
@@ -444,6 +438,11 @@ var SyscallsLibrary = {
             resolve();
           });
         });
+        try {
+          return op(sock);
+        } catch (e) {
+          if (!sockWouldBlock(e, sock, dontWait)) throw e;
+        }
       }
     } catch (e) {
       if (e.name !== 'ErrnoError') throw e;
