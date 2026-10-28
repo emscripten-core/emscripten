@@ -226,9 +226,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     'free', // Needed by deleteContext
 #endif
 #endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-#if FULL_ES2 || LEGACY_GL_EMULATION
-    '$registerPreMainLoop',
-#endif
   ],
 #if FULL_ES2 || LEGACY_GL_EMULATION
   $GL__postset: `

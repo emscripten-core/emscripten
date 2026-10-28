@@ -166,7 +166,6 @@ addToLibrary({
 #endif
   },
 
-  _emscripten_create_wasm_worker__deps: ['$_wasmWorkerAppendToQueue'],
   _emscripten_create_wasm_worker__postset: `
 if (ENVIRONMENT_IS_WASM_WORKER
 // AudioWorkletGlobalScope does not contain addEventListener

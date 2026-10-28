@@ -58,7 +58,7 @@ var LibraryHtml5WebGL = {
 #endif
 
 #if OFFSCREENCANVAS_SUPPORT
-  _emscripten_webgl_do_create_context__deps: ['$registerPreMainLoop', 'malloc'],
+  _emscripten_webgl_do_create_context__deps: ['malloc'],
 #endif
   // This function performs proxying manually, depending on the style of context that is to be created.
   _emscripten_webgl_do_create_context: (target, attributes) => {

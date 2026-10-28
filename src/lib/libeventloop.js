@@ -68,7 +68,6 @@ LibraryJSEventLoop = {
     return true;
   },
 
-  $emSetImmediate__deps: ['$setImmediateWrapped', '$clearImmediateWrapped', '$emClearImmediate'],
   $emSetImmediate__postset: `
     if (globalThis.setImmediate) {
       emSetImmediate = setImmediateWrapped;

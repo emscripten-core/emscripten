@@ -39,7 +39,6 @@ var LibraryDylink = {
     preloadPlugins.push(wasmPlugin);
   },
 
-  $preloadedWasm__deps: ['$registerWasmPlugin'],
   $preloadedWasm__postset: `
     registerWasmPlugin();
     `,

@@ -765,6 +765,7 @@ function(${args}) {
       addedLibraryItems[symbol] = true;
 
       const deps = LibraryManager.library[symbol + '__deps'] ??= [];
+      const explicitDeps = new Set(deps);
       let sig = LibraryManager.library[symbol + '__sig'];
       if (!WASM_BIGINT && sig && sig[0] == 'j') {
         // Without WASM_BIGINT functions that return i64 depend on setTempRet0
@@ -783,11 +784,12 @@ function(${args}) {
       function addImplicitDeps(snippet) {
         for (const dep of calcImplicitDeps(snippet)) {
           if (dep === symbol) continue;
-          if (deps.includes(dep)) {
+          if (explicitDeps.has(dep)) {
             if (!symbolsOnly && (STRICT || !isUserSymbol) && LibraryManager.library[symbol] !== dep) {
               warn(`${symbol}: redundant __deps entry: ${dep}`);
+              explicitDeps.delete(dep);
             }
-          } else {
+          } else if (!deps.includes(dep)) {
             if (!symbolsOnly) {
               debugLog(`auto-detected dependency: ${symbol} -> ${dep}`);
             }
@@ -795,6 +797,9 @@ function(${args}) {
           }
         }
       }
+
+      const postsetId = symbol + '__postset';
+      const postset = LibraryManager.library[postsetId];
 
       if (symbolsOnly) {
         if (LibraryManager.library.hasOwnProperty(symbol)) {
@@ -810,6 +815,9 @@ function(${args}) {
             if (typeof snippet === 'string') {
               addImplicitDeps(snippet);
             }
+          }
+          if (typeof postset === 'string') {
+            addImplicitDeps(postset);
           }
         }
         return;
@@ -886,8 +894,6 @@ function(${args}) {
       let isFunction = typeof snippet === 'function';
       let isNativeAlias = false;
 
-      const postsetId = symbol + '__postset';
-      const postset = LibraryManager.library[postsetId];
       if (postset) {
         // A postset is either code to run right now, or some text we should emit.
         // If it's code, it may return some text to emit as well.
@@ -895,6 +901,9 @@ function(${args}) {
         if (postsetString && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
           postSets.push(postsetString + ';');
+          if (typeof postset === 'string') {
+            addImplicitDeps(postsetString);
+          }
         }
       }
 

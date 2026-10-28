@@ -1217,9 +1217,6 @@ var LibraryEmbind = {
     @param {*=} rawShare,
     @param {*=} rawDestructor,
      */`,
-  $RegisteredPointer__deps: [
-    '$init_RegisteredPointer'
-  ],
   $RegisteredPointer__postset: 'init_RegisteredPointer()',
   $RegisteredPointer: function(
     name,
@@ -1531,7 +1528,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
   },
 
   $ClassHandle__docs: '/** @constructor */',
-  $ClassHandle__deps: ['$init_ClassHandle'],
   $ClassHandle__postset: 'init_ClassHandle()',
   // root of all pointer and smart pointer handles in embind
   $ClassHandle: function() {

@@ -921,9 +921,11 @@ console.error('JSLIB: none of the above');
       addToLibrary({
         $unusedHelper: () => 99,
         $helper: () => 10,
+        $postsetHelper: () => { myObj.unusedHelper += 2; },
         other_js_func: () => helper() + 20,
+        $myObj__postset: 'postsetHelper();',
         $myObj: {
-          unusedHelper: 12,
+          unusedHelper: 10,
           getVal() {
             return _other_js_func() + this.unusedHelper;
           },
@@ -945,6 +947,7 @@ console.error('JSLIB: none of the above');
     self.assertNotContained('unusedHelper =', read_file('src.js'))
     err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js', '-sVERBOSE'], stderr=PIPE).stderr
     self.assertContained('auto-detected dependency: entry_func -> $myObj', err)
+    self.assertContained('auto-detected dependency: $myObj -> $postsetHelper', err)
     self.assertContained('auto-detected dependency: $myObj -> other_js_func', err)
     self.assertContained('auto-detected dependency: other_js_func -> $helper', err)
 

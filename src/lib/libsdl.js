@@ -2269,7 +2269,6 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-  SDL_OpenAudio__deps: ['$registerPostMainLoop'],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio__postset: `
     // Queue new audio data. This is important to be right after the main loop

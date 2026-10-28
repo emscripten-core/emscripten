@@ -23,7 +23,6 @@ addToLibrary({
   // This polyfill performs polling with setTimeout() to observe a change in the
   // target memory location.
   $waitAsyncPolyfilled: '=(!Atomics.waitAsync || (globalThis.navigator?.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91));',
-  $polyfillWaitAsync__deps: ['$waitAsyncPolyfilled'],
   $polyfillWaitAsync__postset: `if (waitAsyncPolyfilled) {
   let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
   function __Atomics_pollWaitAsyncAddresses() {
