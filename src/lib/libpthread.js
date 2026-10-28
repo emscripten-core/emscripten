@@ -1087,7 +1087,7 @@ var LibraryPThread = {
 #endif
     if (ctx) {
       // A PROXY_SYNC_ASYNC / PROXY_PROMISE function may complete synchronously
-      // with a plain value.
+      // with a plain value, so we cannot just do `rtn.then(..)` here.
       Promise.resolve(rtn).then(
         (rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn), true),
         () => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, 0, false));
