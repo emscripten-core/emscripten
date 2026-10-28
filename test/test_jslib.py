@@ -131,6 +131,72 @@ addToLibrary({
     ''')
     self.do_runf('src.c', 'main\ndone\n', cflags=['-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
 
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY', '-DASYNC'],),
+    'jspi': (['-sJSPI', '-DASYNC'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_jslib_async_auto_sync(self, args):
+    # `answer(ms, value)` resolves to `value` after `ms` milliseconds
+    # (synchronously if `ms` is 0), or is -1 where the caller cannot wait.
+    if '-sJSPI' in args:
+      self.require_jspi()
+    if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    create_file('lib.js', r'''
+addToLibrary({
+  answer__sig: 'pip',
+  answer__async: 'auto',
+  answer__proxy: 'sync',
+  answer: (ms, value, sync) => {
+    if (!ms) return value;
+    if (sync) return -1;
+    return new Promise((resolve) => setTimeout(() => resolve(value), ms));
+  },
+  // No __sig: `sync` is found by name alone.
+  wait_ms__async: 'auto',
+  wait_ms__proxy: 'sync',
+  wait_ms: (ms, sync) => {
+    if (ms && !sync) return new Promise((resolve) => setTimeout(resolve, ms));
+  },
+});
+''')
+    create_file('src.c', r'''
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+
+intptr_t answer(int ms, intptr_t value);
+void wait_ms(int ms);
+
+int main() {
+  assert(answer(0, 7) == 7);
+#if defined(__EMSCRIPTEN_PTHREADS__) || defined(ASYNC)
+  assert(answer(5, 42) == 42);
+#else
+  assert(answer(5, 42) == -1);
+#endif
+  wait_ms(0);
+  wait_ms(5);
+  printf("done\n");
+  return 0;
+}
+''')
+    self.do_runf('src.c', 'done\n', cflags=args + ['-sEXIT_RUNTIME', '--js-library', 'lib.js'])
+
+  def test_jslib_async_auto_sync_arity(self):
+    create_file('lib.js', '''
+addToLibrary({
+  jslibfunc__sig: 'iii',
+  jslibfunc__async: 'auto',
+  jslibfunc: (x, sync) => x,
+});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
+                     "error: JS library error: 'jslibfunc' must take 'sync' as parameter 3, after the 2 of its '__sig'")
+
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
 addToLibrary({
