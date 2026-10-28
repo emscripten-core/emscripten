@@ -261,6 +261,50 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_epoll_socket_blocking.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_tcp_blocking(self):
+    # Blocking accept() and recv() on empty sockets wait on the socket's
+    # readiness wait-queue and are woken by a connection, data, or the peer
+    # closing after they blocked, with main() proxied to a worker so the wait
+    # can suspend. A non-blocking call or MSG_DONTWAIT still returns EAGAIN at
+    # once, and pending data is returned without waiting.
+    self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  @requires_jspi_node
+  def test_noderawsockets_tcp_blocking_jspi(self):
+    # Same, but the blocking calls suspend the wasm stack under JSPI.
+    self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_tcp_blocking_asyncify(self):
+    # Same under ASYNCIFY, where the import is re-entered on rewind.
+    self.do_runf('sockets/test_tcp_blocking.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sASYNCIFY', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_tcp_blocking_join(self):
+    # Plain -pthread: main() blocks in pthread_join on the main thread, whose
+    # futex wait runs proxied calls but never returns to the event loop. A
+    # thread's accept() and recv() with a connection and data already pending
+    # complete synchronously, delivering their results without a microtask.
+    self.do_runf('sockets/test_tcp_blocking_join.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPTHREAD_POOL_SIZE=1'])
+
+  def test_noderawsockets_tcp_blocking_error(self):
+    # A blocking recv() is woken by a connection error that lands after it
+    # blocked, and returns it (rather than spinning on EAGAIN while poll()
+    # reports POLLERR).
+    self.do_runf('sockets/test_tcp_blocking_error.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  @requires_jspi_node
+  def test_noderawsockets_tcp_blocking_error_jspi(self):
+    self.do_runf('sockets/test_tcp_blocking_error.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_tcp_blocking_error_asyncify(self):
+    self.do_runf('sockets/test_tcp_blocking_error.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sASYNCIFY', '-sEXIT_RUNTIME'])
+
   def test_noderawsockets_epoll_rdhup(self):
     # A blocking epoll_wait reports EPOLLRDHUP when the TCP peer half-closes its
     # write side (FIN), distinct from a full EPOLLHUP, and only when requested.
@@ -269,11 +313,9 @@ class sockets_node(RunnerCore):
 
   def test_noderawsockets_nonblock_flags(self):
     # socket()/accept4() SOCK_NONBLOCK, FIONBIO, no listener flag inheritance on
-    # accept, non-blocking connect EINPROGRESS (TCP and AF_UNIX), and a warning
-    # when a blocking fd would-blocks.
-    out = self.do_runf('sockets/test_nonblock_flags.c', 'done\n',
-                       cflags=['-sNODERAWSOCKETS', '-sNODERAWFS', '-sASSERTIONS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
-    self.assertContained('a blocking socket operation would block', out)
+    # accept, and non-blocking connect EINPROGRESS (TCP and AF_UNIX).
+    self.do_runf('sockets/test_nonblock_flags.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sNODERAWFS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
 
   @requires_jspi_node
   def test_noderawsockets_epoll_rdhup_jspi(self):
