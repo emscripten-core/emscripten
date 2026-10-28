@@ -648,7 +648,7 @@ static void run_js_func_with_ctx(em_proxying_ctx* ctx, void* arg) {
     f->funcIndex, f->emAsmAddr, f->callingThread, f->bufSize, f->argBuffer, ctx, arg);
 
   // The arg of a function run with a context is never freed on the main
-  // thread: it is the calling thread's, which reads the result from it.
+  // thread: it is owned by the calling thread, which reads the result from it.
   assert(!f->owned);
 }
 
