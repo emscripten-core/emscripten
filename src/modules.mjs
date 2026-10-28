@@ -307,10 +307,10 @@ export const LibraryManager = {
         error(`JS library error: '${key}' must be true, 'auto', or a non-empty array of options`);
         continue;
       }
-      for (const option of options) {
-        if (!['auto', 'sync'].includes(option)) {
-          error(`JS library error: unknown async option '${option}' in '${key}'`);
-        }
+      const unknown = options.find((option) => !['auto', 'sync'].includes(option));
+      if (unknown) {
+        error(`JS library error: unknown async option '${unknown}' in '${key}'`);
+        continue;
       }
       if (options.includes('auto')) {
         this.library[key] = 'auto';
