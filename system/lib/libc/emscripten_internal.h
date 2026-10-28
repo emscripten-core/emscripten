@@ -88,6 +88,9 @@ struct dso;
 typedef void (*dlopen_callback_func)(struct dso*, void* user_data);
 
 void* _dlopen_js(struct dso* handle);
+// Like _dlopen_js but never asynchronous, for background threads catching up
+// on libraries already loaded by the main thread.
+void* _dlopen_js_sync(struct dso* handle);
 void* _dlsym_js(struct dso* handle, const char* symbol, int* sym_index);
 void _emscripten_dlopen_js(struct dso* handle,
                            dlopen_callback_func onsuccess,
@@ -101,6 +104,8 @@ int _setitimer_js(int which, double timeout);
 // Runs _emscripten_dlsync_self on each of the threads that are running at
 // the time of the call.
 void _emscripten_dlsync_threads();
+// The main thread's form of _emscripten_dlsync_threads, which never suspends.
+void _emscripten_dlsync_threads_sync();
 
 #ifdef _GNU_SOURCE
 void __call_sighandler(sighandler_t handler, int sig);

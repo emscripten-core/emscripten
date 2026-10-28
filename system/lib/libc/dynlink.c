@@ -145,6 +145,22 @@ void new_dlevent(struct dso* p, int sym_index) {
 #endif
 }
 
+#ifdef _REENTRANT
+// Block until all other threads have loaded the latest DSO changes.
+// On the main thread this is a synchronous loop over the other threads, so use
+// the import that never suspends: under JSPI a suspending import traps when it
+// is reached from a context that is not promising, such as the onsuccess
+// callback of emscripten_dlopen.  Other threads proxy the work to the main
+// thread, which completes it asynchronously.
+static void dlsync_threads() {
+  if (emscripten_is_main_runtime_thread()) {
+    _emscripten_dlsync_threads_sync();
+  } else {
+    _emscripten_dlsync_threads();
+  }
+}
+#endif
+
 static void load_library_done(struct dso* p) {
   dbg("load_library_done: dso=%p mem_addr=%p mem_size=%zu "
       "table_addr=%p table_size=%zu",
@@ -156,7 +172,7 @@ static void load_library_done(struct dso* p) {
   new_dlevent(p, -1);
 #ifdef _REENTRANT
   // Block until all other threads have loaded this module.
-  _emscripten_dlsync_threads();
+  dlsync_threads();
 #endif
   // TODO: figure out some way to tell when its safe to free p->file_data.  Its
   // not safe to do here because some threads could have been asleep then when
@@ -295,7 +311,7 @@ bool _emscripten_dlsync_self() {
           p->dso->mem_size,
           p->dso->table_addr,
           p->dso->table_size);
-      void* success = _dlopen_js(p->dso);
+      void* success = _dlopen_js_sync(p->dso);
       if (!success) {
         // If any on the libraries fails to load here then we give up.
         // TODO(sbc): Ideally this would never happen and we could/should
@@ -643,7 +659,7 @@ void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
     new_dlevent(p, sym_index);
 #ifdef _REENTRANT
     // Block until all other threads have loaded this module.
-    _emscripten_dlsync_threads();
+    dlsync_threads();
 #endif
   }
   dbg("__dlsym done dso:%p res:%p", p, res);
