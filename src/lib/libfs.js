@@ -9,11 +9,7 @@ var LibraryFS = {
   // Include FS even when it is not referenced by compiled code.
   $FS__force: true,
 #endif
-  $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
-    '$FS_modeStringToFlags',
-    '$FS_fileDataToTypedArray',
-    '$FS_getMode',
-    '$intArrayFromString',
+  $FS__deps: [
 #if LibraryManager.has('libidbfs.js')
     '$IDBFS',
 #endif
@@ -28,12 +24,6 @@ var LibraryFS = {
 #endif
 #if LibraryManager.has('libproxyfs.js')
     '$PROXYFS',
-#endif
-#if ASSERTIONS
-    '$strError', '$ERRNO_CODES',
-#if !STRICT
-    '$warnOnce',
-#endif
 #endif
 #if !MINIMAL_RUNTIME
     '$FS_createPreloadedFile',
@@ -1957,7 +1947,6 @@ FS.staticInit();`;
    * @param {number=} mode Optionally, the mode to create in. Uses mkdir's
    *                       default if not set.
    */`,
-   $FS_mkdirTree__deps: ['$FS'],
    $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
 };
 
@@ -1969,6 +1958,5 @@ for (let key in LibraryFS.$FS) {
     continue;
   }
   LibraryFS[alias] = `(...args) => FS.${key}(...args)`;
-  LibraryFS[`${alias}__deps`] = ['$FS'];
 }
 addToLibrary(LibraryFS);

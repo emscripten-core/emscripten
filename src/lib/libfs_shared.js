@@ -12,7 +12,6 @@ addToLibrary({
   // Tries to handle an input byteArray using preload plugins. Returns true if
   // it was handled.
   $FS_handledByPreloadPlugin__internal: true,
-  $FS_handledByPreloadPlugin__deps: ['$preloadPlugins'],
   $FS_handledByPreloadPlugin: async (byteArray, fullname) => {
 #if LibraryManager.has('libbrowser.js')
     // Ensure plugins are ready.
@@ -33,7 +32,6 @@ addToLibrary({
   },
 
   // Legacy version of FS_preloadFile that uses callback rather than async
-  $FS_createPreloadedFile__deps: ['$FS_preloadFile'],
   $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
     FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish).then(onload).catch(onerror);
   },
@@ -50,15 +48,6 @@ addToLibrary({
   // You can also call this with a typed array instead of a url. It will then
   // do preloading for the Image/Audio part, as if the typed array were the
   // result of an XHR that you did manually.
-  $FS_preloadFile__deps: [
-    '$asyncLoad',
-    '$PATH_FS',
-    '$FS_createDataFile',
-    '$getUniqueRunDependency',
-    '$addRunDependency',
-    '$removeRunDependency',
-    '$FS_handledByPreloadPlugin',
-  ],
   $FS_preloadFile: async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
     // TODO we should allow people to just pass in a complete filename instead
     // of parent and name being that we just join them anyways
@@ -107,7 +96,6 @@ addToLibrary({
     return mode;
   },
 
-  $FS_fileDataToTypedArray__deps: ['$intArrayFromString'],
   $FS_fileDataToTypedArray: (data) => {
     if (typeof data === 'string') {
       data = intArrayFromString(data, true);
@@ -124,10 +112,6 @@ addToLibrary({
   // a.) the next character represented as an integer
   // b.) undefined to signal that no data is currently available
   // c.) null to signal an EOF
-  $FS_stdin_getChar__deps: [
-    '$FS_stdin_getChar_buffer',
-    '$intArrayFromString',
-  ],
   $FS_stdin_getChar: () => {
     if (!FS_stdin_getChar_buffer.length) {
       var result = null;
@@ -180,15 +164,11 @@ addToLibrary({
     return FS_stdin_getChar_buffer.shift();
   },
 
-  $FS_unlink__deps: ['$FS'],
   $FS_unlink: 'FS.unlink',
 
-  $FS_createPath__deps: ['$FS'],
   $FS_createPath: 'FS.createPath',
 
-  $FS_createDevice__deps: ['$FS'],
   $FS_createDevice: 'FS.createDevice',
 
-  $FS_readFile__deps: ['$FS'],
   $FS_readFile: 'FS.readFile',
 });

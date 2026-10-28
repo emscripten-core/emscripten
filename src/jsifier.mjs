@@ -9,6 +9,7 @@
 
 import assert from 'node:assert';
 import * as fs from 'node:fs/promises';
+import * as acorn from 'acorn';
 import {
   ATMODULES,
   ATEXITS,
@@ -52,8 +53,10 @@ import {
 
 const addedLibraryItems = {};
 
-// Experimental feature to check for invalid __deps entries.
-// See `EMCC_CHECK_DEPS` in in the environment to try it out.
+// Debug-only mode (`EMCC_CHECK_DEPS=1` in the environment) that performs a full
+// AST parse on JS library items and reports an error if any local binding
+// shadows a library symbol (which could cause false positives in the
+// token-based `calcImplicitDeps` scanner above).
 const CHECK_DEPS = process.env.EMCC_CHECK_DEPS;
 
 // Some JS-implemented library functions are proxied to be called on the main
@@ -186,101 +189,210 @@ function preJS() {
   return result;
 }
 
-// Certain library functions have specific indirect dependencies.  See the
-// comments alongside eaach of these.
-const checkDependenciesSkip = new Set([
-  '_mmap_js',
-  '_emscripten_throw_longjmp',
-  '_emscripten_receive_on_main_thread_js',
-  'emscripten_start_fetch',
-  'emscripten_start_wasm_audio_worklet_thread_async',
-]);
-
-const checkDependenciesIgnore = new Set([
-  // These are added in bulk to whole library files are so are not precise
-  '$PThread',
-  '$SDL',
-  '$GLUT',
-  '$GLEW',
-  '$Browser',
-  '$AL',
-  '$GL',
-  '$IDBStore',
-  // These are added purely for their side effects
-  '$polyfillWaitAsync',
-  '$GLImmediateSetup',
-  '$emscriptenGetAudioObject',
-  // These get conservatively injected via i53ConversionDeps
-  '$bigintToI53Checked',
-  '$convertI32PairToI53Checked',
-  'setTempRet0',
-]);
-
-/**
- * Hacky attempt to find unused `__deps` entries.  This is not enabled by default
- * but can be enabled by setting CHECK_DEPS above.
- * TODO: Use a more precise method such as tokenising using acorn.
- */
-function checkDependencies(symbol, snippet, deps, postset) {
-  if (checkDependenciesSkip.has(symbol)) {
-    return;
+// Check if tokens[i] is the name of an object/class method definition `foo(...) {`
+function isMethodDef(tokens, i) {
+  if (tokens[i + 1]?.type.label !== '(') {
+    return false;
   }
-  for (const dep of deps) {
-    if (typeof dep === 'function') {
-      continue;
+  let depth = 1;
+  for (let j = i + 2; j < tokens.length; j++) {
+    const label = tokens[j].type.label;
+    if (label === '(') {
+      depth++;
+    } else if (label === ')') {
+      depth--;
+      if (depth === 0) {
+        return tokens[j + 1]?.type.label === '{';
+      }
     }
-    if (checkDependenciesIgnore.has(dep)) {
-      continue;
-    }
-    const mangled = mangleCSymbolName(dep);
-    if (!snippet.includes(mangled) && !postset?.includes(mangled)) {
-      error(`${symbol}: unused dependency: ${dep}`);
-    }
+  }
+  return false;
+}
+
+// Unlike JS library symbols, user code in `--pre-js`, `--post-js`, and
+// `EM_JS`/`EM_ASM` snippets does not automatically pull in arbitrary JS
+// library symbols (users must pass `-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or
+// `-sEXPORTED_RUNTIME_METHODS`). Only these common runtime helpers and heap
+// views are implicitly included when referenced in those snippets.
+const implicitSnippetDeps = new Set([
+  'getDynCaller',
+  'getWasmTableEntry',
+  'makeBigInt',
+  'runtimeKeepalivePush',
+  'runtimeKeepalivePop',
+  'UTF8ToString',
+  // TODO: Consider removing getValue and setValue if they are rarely used implicitly.
+  'getValue',
+  'setValue',
+  'HEAP8',
+  'HEAP16',
+  'HEAPU8',
+  'HEAPU16',
+  'HEAP32',
+  'HEAPU32',
+  'HEAPF32',
+  'HEAPF64',
+  'HEAP64',
+  'HEAPU64',
+]);
+
+function findLibrarySymbol(name, isUserSnippet = false) {
+  let sym;
+  if ('$' + name in LibraryManager.library) {
+    sym = '$' + name;
+  } else if (!isUserSnippet && name.startsWith('_') && name.slice(1) in LibraryManager.library) {
+    sym = name.slice(1);
+  }
+  // $noExitRuntime cannot be referenced via __deps (it must be included via
+  // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS).
+  if (sym && sym !== '$noExitRuntime') {
+    return sym;
   }
 }
 
-function addImplicitDeps(snippet, deps) {
-  // There are some common dependencies that we inject automatically by
-  // conservatively scanning the input functions for their usage.
-  // Specifically, these are dependencies that are very common and would be
-  // burdensome to add manually to all functions.
-  // The first four are deps that are automatically/conditionally added
-  // by the {{{ makeDynCall }}}, and {{{ runtimeKeepalivePush/Pop }}} macros.
-  const autoDeps = [
-    'getDynCaller',
-    'getWasmTableEntry',
-    'runtimeKeepalivePush',
-    'runtimeKeepalivePop',
-    'UTF8ToString',
-    // TODO: Consider removing getValue and setValue if they are rarely used implicitly.
-    'getValue',
-    'setValue',
-  ];
-  for (const dep of autoDeps) {
-    if (snippet.includes(dep + '(')) {
-      deps.push('$' + dep);
+// Scan a JS snippet for references to JS library symbols using `acorn.tokenizer`.
+// Because this uses a flat token scan rather than full AST/scope analysis (for
+// speed and to handle partial JS fragments in `--pre-js`/`--post-js`), it is
+// conservative and can produce false positives if local variables or parameters
+// shadow a library symbol name.  (We use a full AST walk in EMCC_CHECK_DEPS to
+// detect such shadowing in system libraries).
+function calcImplicitDeps(snippet, isUserSnippet = false) {
+  const found = new Set();
+  const typeofSyms = new Set();
+  const tokens = Array.from(acorn.tokenizer(snippet, {ecmaVersion: 2022}));
+
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+    if (tok.type.label !== 'name') {
+      continue;
+    }
+    const name = tok.value;
+    const prevToken = tokens[i - 1];
+    const nextToken = tokens[i + 1];
+
+    // Ignore property accesses (e.g. `obj.foo` or `obj?.foo`)
+    if (prevToken?.type.label === '.' || prevToken?.type.label === '?.') {
+      continue;
+    }
+    // Ignore function or class declarations' own name (e.g. `function foo()` or `class Foo`)
+    if (prevToken?.type.keyword === 'function' || prevToken?.type.keyword === 'class') {
+      continue;
+    }
+    // Ignore object literal property keys (e.g. `{ foo: 123 }`)
+    if (nextToken?.type.label === ':' && (prevToken?.type.label === '{' || prevToken?.type.label === ',')) {
+      continue;
+    }
+    // Ignore object/class shorthand method definitions (e.g. `foo() { ... }`)
+    if (isMethodDef(tokens, i)) {
+      continue;
+    }
+    // Ignore `typeof foo` existence checks (e.g. `if (typeof SDL !== 'undefined') SDL.foo()`).
+    if (prevToken?.type.keyword === 'typeof') {
+      if (nextToken?.type.label !== '.') {
+        typeofSyms.add(name);
+      }
+      continue;
+    }
+    if (typeofSyms.has(name)) {
+      continue;
+    }
+
+    // If the snippet contains eval(), it may dynamically evaluate code loaded from memory at runtime
+    // (for example, in emscripten_run_script where the snippet is eval(UTF8ToString(ptr))).
+    // Because static analysis cannot inspect what strings are stored in memory or evaluated
+    // at runtime, we must conservatively include all heap views whenever a snippet uses eval().
+    if (name === 'eval' && nextToken?.type.label === '(') {
+      found.add('$HEAP8');
+      found.add('$HEAPU8');
+      found.add('$HEAP16');
+      found.add('$HEAPU16');
+      found.add('$HEAP32');
+      found.add('$HEAPU32');
+      found.add('$HEAPF32');
+      found.add('$HEAPF64');
+      if (WASM_BIGINT || MEMORY64) {
+        found.add('$HEAP64');
+        found.add('$HEAPU64');
+      }
+      continue;
+    }
+
+    // When scanning `--pre-js`, `--post-js`, or `EM_JS`/`EM_ASM`,
+    // only auto-include symbols from `implicitSnippetDeps`.
+    if (isUserSnippet && !implicitSnippetDeps.has(name)) {
+      continue;
+    }
+
+    const dep = findLibrarySymbol(name, isUserSnippet);
+    if (dep) {
+      found.add(dep);
     }
   }
-  // If the snippet contains eval(), it may dynamically evaluate code loaded from memory at runtime
-  // (for example, in emscripten_run_script where the snippet is eval(UTF8ToString(ptr))).
-  // Because static string matching cannot inspect what strings are stored in memory or evaluated
-  // at runtime, we must conservatively include all heap views whenever a snippet uses eval().
-  if (snippet.includes('eval(')) {
-    deps.push('$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16', '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64');
-    if (WASM_BIGINT || MEMORY64) {
-      deps.push('$HEAP64', '$HEAPU64');
+
+  return found;
+}
+
+function checkShadowing(symbol, mangled, contentText) {
+  function checkBoundName(name) {
+    if (name === mangled) return;
+    const shadowed = findLibrarySymbol(name);
+    if (shadowed) {
+      error(`${symbol}: local binding '${name}' shadows library symbol '${shadowed}'`);
     }
   }
-  const heapDeps = [
-    'HEAP8', 'HEAP16', 'HEAPU8', 'HEAPU16',
-    'HEAP32', 'HEAPU32', 'HEAPF32', 'HEAPF64',
-    'HEAP64', 'HEAPU64',
-  ];
-  for (const heap of heapDeps) {
-    if (snippet.includes(heap)) {
-      deps.push('$' + heap);
+
+  function walkPattern(node) {
+    if (!node) return;
+    switch (node.type) {
+      case 'Identifier':
+        checkBoundName(node.name);
+        break;
+      case 'AssignmentPattern':
+        walkPattern(node.left);
+        break;
+      case 'ArrayPattern':
+        node.elements.forEach(walkPattern);
+        break;
+      case 'ObjectPattern':
+        node.properties.forEach((p) => walkPattern(p.value || p.argument));
+        break;
+      case 'RestElement':
+        walkPattern(node.argument);
+        break;
     }
   }
+
+  function walk(node) {
+    switch (node.type) {
+      case 'VariableDeclarator':
+        walkPattern(node.id);
+        break;
+      case 'FunctionDeclaration':
+      case 'FunctionExpression':
+      case 'ArrowFunctionExpression':
+        if (node.id) checkBoundName(node.id.name);
+        node.params.forEach(walkPattern);
+        break;
+      case 'ClassDeclaration':
+      case 'ClassExpression':
+        if (node.id) checkBoundName(node.id.name);
+        break;
+      case 'CatchClause':
+        walkPattern(node.param);
+        break;
+    }
+    for (const child of Object.values(node)) {
+      if (typeof child?.type === 'string') {
+        walk(child);
+      } else if (Array.isArray(child)) {
+        for (const elem of child) {
+          if (typeof elem?.type === 'string') walk(elem);
+        }
+      }
+    }
+  }
+
+  walk(acorn.parse(contentText, {ecmaVersion: 2022}));
 }
 
 function sigToArgs(sig) {
@@ -480,11 +592,11 @@ export async function runJSify(outputFile, symbolsOnly) {
     for (const fileName of [...PRE_JS_FILES, ...POST_JS_FILES]) {
       const content = getIncludeFile(fileName);
       if (!errorOccured()) {
-        addImplicitDeps(content, symbolsNeeded);
+        symbolsNeeded.push(...calcImplicitDeps(content, /*isUserSnippet=*/ true));
       }
     }
     for (const snippet of EM_JS_SNIPPETS) {
-      addImplicitDeps(snippet, symbolsNeeded);
+      symbolsNeeded.push(...calcImplicitDeps(snippet, /*isUserSnippet=*/ true));
     }
   }
   for (const sym of EXPORTED_RUNTIME_METHODS) {
@@ -555,7 +667,6 @@ function(${args}) {
       ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))
     ) {
       snippet = handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction);
-      compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
     }
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
@@ -590,7 +701,6 @@ function(${args}) {
             const rtnType = sig?.[0];
             const proxyFunc =
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
-            deps.push('$' + proxyFunc);
             return `
 ${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
@@ -656,6 +766,7 @@ function(${args}) {
       addedLibraryItems[symbol] = true;
 
       const deps = LibraryManager.library[symbol + '__deps'] ??= [];
+      const explicitDeps = new Set(deps);
       let sig = LibraryManager.library[symbol + '__sig'];
       if (!WASM_BIGINT && sig && sig[0] == 'j') {
         // Without WASM_BIGINT functions that return i64 depend on setTempRet0
@@ -669,7 +780,47 @@ function(${args}) {
         asyncFuncs.push(symbol);
       }
 
+      const isUserSymbol = LibraryManager.library[symbol + '__user'];
+
+      function addImplicitDeps(snippet) {
+        for (const dep of calcImplicitDeps(snippet)) {
+          if (dep === symbol) continue;
+          if (explicitDeps.has(dep)) {
+            if (!symbolsOnly && (STRICT || !isUserSymbol) && LibraryManager.library[symbol] !== dep) {
+              warn(`${symbol}: redundant __deps entry: ${dep}`);
+              explicitDeps.delete(dep);
+            }
+          } else if (!deps.includes(dep)) {
+            if (!symbolsOnly) {
+              debugLog(`auto-detected dependency: ${symbol} -> ${dep}`);
+            }
+            deps.push(dep);
+          }
+        }
+      }
+
+      const postsetId = symbol + '__postset';
+      const postset = LibraryManager.library[postsetId];
+
       if (symbolsOnly) {
+        if (LibraryManager.library.hasOwnProperty(symbol)) {
+          let snippet = LibraryManager.library[symbol];
+          if (!LibraryManager.isAlias(snippet)) {
+            if (typeof snippet === 'object') {
+              snippet = stringifyWithFunctions(snippet);
+            } else if (typeof snippet === 'function') {
+              snippet = snippet.toString();
+            } else if (typeof snippet === 'string') {
+              snippet = snippet.replace(/^[=;]/, '');
+            }
+            if (typeof snippet === 'string') {
+              addImplicitDeps(snippet);
+            }
+          }
+          if (typeof postset === 'string') {
+            addImplicitDeps(postset);
+          }
+        }
         return;
       }
 
@@ -744,8 +895,6 @@ function(${args}) {
       let isFunction = typeof snippet === 'function';
       let isNativeAlias = false;
 
-      const postsetId = symbol + '__postset';
-      const postset = LibraryManager.library[postsetId];
       if (postset) {
         // A postset is either code to run right now, or some text we should emit.
         // If it's code, it may return some text to emit as well.
@@ -753,6 +902,9 @@ function(${args}) {
         if (postsetString && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
           postSets.push(postsetString + ';');
+          if (typeof postset === 'string') {
+            addImplicitDeps(postsetString);
+          }
         }
       }
 
@@ -785,18 +937,20 @@ function(${args}) {
         }
       } else if (typeof snippet === 'object') {
         snippet = stringifyWithFunctions(snippet);
-        addImplicitDeps(snippet, deps);
-      } else if (typeof snippet === 'string' && (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/))) {
-        // Support functions that are already "stringified"
-        isFunction = true;
+        addImplicitDeps(snippet);
+      } else if (typeof snippet === 'string') {
+        if (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/)) {
+          // Support functions that are already "stringified"
+          isFunction = true;
+        } else {
+          addImplicitDeps(snippet.replace(/^[=;]/, ''));
+        }
       }
 
-      const isUserSymbol = LibraryManager.library[symbol + '__user'];
       if (isFunction) {
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
-        addImplicitDeps(snippet, deps);
-        if (CHECK_DEPS && !isUserSymbol) {
-          checkDependencies(symbol, snippet, deps, postset?.toString());
+        if (!isStub) {
+          addImplicitDeps(snippet);
         }
       }
 
@@ -876,6 +1030,10 @@ function(${args}) {
           snippet = snippet.slice(1);
         }
         contentText = `var ${mangled} = ${snippet};`;
+      }
+
+      if (CHECK_DEPS && (STRICT || !isUserSymbol) && !isStub && contentText) {
+        checkShadowing(symbol, mangled, contentText);
       }
 
       if (contentText && MODULARIZE == 'instance' && shouldExportLibrarySymbol(mangled) && !isStub) {

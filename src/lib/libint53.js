@@ -5,13 +5,6 @@
  */
 
 addToLibrary({
-#if ASSERTIONS
-  $writeI53ToI64__deps: ['$readI53FromI64', '$readI53FromU64'
-#if MINIMAL_RUNTIME
-    , '$warnOnce'
-#endif
-  ],
-#endif
   // Writes the given JavaScript Number to the WebAssembly heap as a 64-bit integer variable.
   // If the given number is not in the range [-2^53, 2^53] (inclusive), then an unexpectedly
   // rounded or incorrect number can be written to the heap. ('garbage in, garbage out')
@@ -31,7 +24,6 @@ addToLibrary({
 
   // Same as writeI53ToI64, but if the double precision number does not fit within the
   // 64-bit number, the number is clamped to range [-2^63, 2^63-1].
-  $writeI53ToI64Clamped__deps: ['$writeI53ToI64'],
   $writeI53ToI64Clamped: (ptr, num) => {
     if (num > 0x7FFFFFFFFFFFFFFF) {
       {{{ makeSetValue('ptr', 0, 0xFFFFFFFF, 'u32') }}};
@@ -45,7 +37,6 @@ addToLibrary({
   },
 
   // Like writeI53ToI64, but throws if the passed number is out of range of int64.
-  $writeI53ToI64Signaling__deps: ['$writeI53ToI64'],
   $writeI53ToI64Signaling: (ptr, num) => {
     if (num > 0x7FFFFFFFFFFFFFFF || num < -0x8000000000000000) {
 #if ASSERTIONS
@@ -59,7 +50,6 @@ addToLibrary({
 
   // Uint64 variant of writeI53ToI64Clamped. Writes the Number to a Uint64 variable on
   // the heap, clamping out of range values to range [0, 2^64-1].
-  $writeI53ToU64Clamped__deps: ['$writeI53ToI64'],
   $writeI53ToU64Clamped: (ptr, num) => {
     if (num > 0xFFFFFFFFFFFFFFFF) {
       {{{ makeSetValue('ptr', 0, 0xFFFFFFFF, 'u32') }}};
@@ -73,7 +63,6 @@ addToLibrary({
   },
 
   // Like writeI53ToI64, but throws if the passed number is out of range of uint64.
-  $writeI53ToU64Signaling__deps: ['$writeI53ToI64'],
   $writeI53ToU64Signaling: (ptr, num) => {
     if (num < 0 || num > 0xFFFFFFFFFFFFFFFF) {
 #if ASSERTIONS
@@ -136,7 +125,6 @@ addToLibrary({
   // JS Number.  This is used when we have an incoming i64 that we know is a
   // pointer or size_t and is expected to be within the int53 range.
   // Returns NaN if the incoming bigint is outside the range.
-  $bigintToI53Checked__deps: ['$INT53_MAX', '$INT53_MIN'],
   $bigintToI53Checked: (num) => (num < INT53_MIN || num > INT53_MAX) ? NaN : Number(num),
 #endif
 });

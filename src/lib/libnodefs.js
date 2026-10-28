@@ -6,14 +6,13 @@
 
 addToLibrary({
 #if WASMFS
-  $NODEFS__deps: ['$stringToUTF8OnStack', 'wasmfs_create_node_backend'],
+  $NODEFS__deps: ['wasmfs_create_node_backend'],
   $NODEFS: {
     createBackend(opts) {
       return _wasmfs_create_node_backend(stringToUTF8OnStack(opts.root));
     }
   }
 #else
-  $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
