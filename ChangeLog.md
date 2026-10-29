@@ -71,6 +71,10 @@ See docs/process.md for more on how version tagging works.
   - `MIN_FIREFOX_VERSION`: 79 (Jul 2020) -> 92 (Sep 2021)
   - `MIN_SAFARI_VERSION`: 15.0 (Sep 2021) -> 15.4 (Mar 2022)
   (#28141)
+- In pthreads builds with `MAIN_MODULE`, workers no longer walk the main
+  module's whole function table, which created a JS function object for every
+  table entry in every worker.  The main thread now passes them the table slots
+  of the main module's exported functions.
 
 6.0.13 - 10/19/26
 -----------------
