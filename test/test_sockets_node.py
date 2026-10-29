@@ -287,7 +287,14 @@ class sockets_node(RunnerCore):
     # thread's accept() and recv() with a connection and data already pending
     # complete synchronously, delivering their results without a microtask.
     self.do_runf('sockets/test_tcp_blocking_join.c', 'done\n',
-                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPTHREAD_POOL_SIZE=1'])
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPTHREAD_POOL_SIZE=1', '-sEXIT_RUNTIME'])
+
+  @requires_jspi_node
+  def test_noderawsockets_tcp_blocking_join_jspi(self):
+    # Same under JSPI, where the main-thread wrapper must hand a proxied
+    # call's plain value back directly rather than through the async helper.
+    self.do_runf('sockets/test_tcp_blocking_join.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPTHREAD_POOL_SIZE=1', '-sEXIT_RUNTIME', '-sJSPI'])
 
   def test_noderawsockets_tcp_blocking_error(self):
     # A blocking recv() is woken by a connection error that lands after it
