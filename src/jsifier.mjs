@@ -538,10 +538,11 @@ function handleAsyncFunction(snippet, sig, proxied) {
     handleAsync = makeReturn64(handleAsync);
   }
   // When dispatching on behalf of a proxied caller (PROXY_SYNC_ASYNC), the
-  // caller awaits the returned promise, so return it directly rather than
-  // suspending the main thread.
+  // caller awaits the result, so return it directly rather than suspending
+  // the main thread: a plain value then completes the call synchronously,
+  // which the Promise of the JSPI wrapper would defer to a microtask.
   let proxiedDispatch = '';
-  if (ASYNCIFY == 1 && PTHREADS && proxied) {
+  if (PTHREADS && proxied) {
     proxiedDispatch = 'if (PThread.currentProxiedOperationCallerThread) return innerFunc();\n  ';
   }
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
