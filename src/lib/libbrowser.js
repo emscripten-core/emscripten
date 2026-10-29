@@ -226,7 +226,7 @@ var LibraryBrowser = {
         var canvasContainer = canvas.parentNode;
         if (getFullscreenElement() === canvasContainer) {
           canvas.exitFullscreen = Browser.exitFullscreen;
-          if (Browser.lockPointer) canvas.requestPointerLock();
+          if (Browser.lockPointer) canvas.requestPointerLock?.();
           Browser.isFullscreen = true;
           if (Browser.resizeCanvas) {
             Browser.setFullscreenCanvasSize();

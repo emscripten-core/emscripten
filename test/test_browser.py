@@ -2841,6 +2841,12 @@ Module["preRun"] = () => {
   def test_glfw3(self, args, opts):
     self.btest_exit('test_glfw3.c', cflags=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts)
 
+  @requires_graphics_hardware
+  def test_glfw3_no_pointer_lock(self):
+    # Browsers without the Pointer Lock API, such as Safari on iOS
+    create_file('pre.js', 'delete Document.prototype.exitPointerLock; delete Element.prototype.requestPointerLock;')
+    self.btest_exit('test_glfw3.c', cflags=['-sUSE_GLFW=3', '-lglfw', '-lGL', '-DCLIENT_API=GLFW_OPENGL_ES_API', '-sGL_ENABLE_GET_PROC_ADDRESS', '--pre-js', 'pre.js'])
+
   @parameterized({
     '': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
     'glfw3': (['-sUSE_GLFW=3', '-DUSE_GLFW=3'],),
