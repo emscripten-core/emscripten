@@ -237,6 +237,56 @@ var WasiLibrary = {
     }
     return FS.write(stream, view, 0, total, offset);
   },
+#if PTHREADS && !ASYNCIFY
+  // writev that waits where a blocking stream would block (a pthread awaits
+  // the proxied call), returning a SyncDeferred once it had to.
+  $doWritevBlocking: (stream, iov, iovcnt) => {
+    var buf, ptr, len;
+    if (iovcnt == 1) {
+      ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+      len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
+    } else {
+      len = 0;
+      for (var i = 0, p = iov; i < iovcnt; i++, p += {{{ C_STRUCTS.iovec.__size__ }}}) {
+        len += {{{ makeGetValue('p', C_STRUCTS.iovec.iov_len, '*') }}};
+      }
+      buf = new Uint8Array(len);
+      ptr = 0;
+      for (var i = 0; i < iovcnt; i++, iov += {{{ C_STRUCTS.iovec.__size__ }}}) {
+        var base = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+        var n = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
+        buf.set(HEAPU8.subarray(base, base + n), ptr);
+        ptr += n;
+      }
+      ptr = 0;
+    }
+    var total = 0, deferred;
+    function step() {
+      while (len) {
+        var curr;
+        try {
+          curr = FS.write(stream, buf ?? HEAP8, ptr, len);
+        } catch (e) {
+          if (e.errno == {{{ cDefs.EAGAIN }}} && !(stream.flags & {{{ cDefs.O_NONBLOCK }}})) {
+            deferred ??= new SyncDeferred();
+            waitStreamEvents(stream, {{{ cDefs.POLLOUT }}}, step);
+            return deferred;
+          }
+          if (total) break;
+          if (deferred) return deferred.reject(e);
+          throw e;
+        }
+        if (!curr) break;
+        total += curr;
+        ptr += curr;
+        len -= curr;
+      }
+      if (deferred) return deferred.resolve(total);
+      return total;
+    }
+    return step();
+  },
+#endif
 #else
   // MEMFS filesystem disabled lite handling of stdout and stderr:
   $printCharBuffers: [null, [], []], // 1 => stdout, 2 => stderr
@@ -257,6 +307,12 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
 
 #if SYSCALLS_REQUIRE_FILESYSTEM
+#if PTHREADS && !ASYNCIFY
+  // Waits where a blocking stream would block when proxied from a pthread
+  // (`sync` false). Not under ASYNCIFY, where 'auto' would make the import
+  // itself suspend and every printf from a callback cannot afford that.
+  fd_write__async: 'auto',
+#endif
 #elif (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM: () => {
     // flush anything remaining in the buffers during shutdown
@@ -270,10 +326,23 @@ var WasiLibrary = {
   fd_write__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
 #else
 #endif
-  fd_write: (fd, iov, iovcnt, pnum) => {
+  fd_write: (fd, iov, iovcnt, pnum, sync) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
+#if PTHREADS && !ASYNCIFY
+    var num = sync ? doWritev(stream, iov, iovcnt) : doWritevBlocking(stream, iov, iovcnt);
+    if (num instanceof SyncDeferred) {
+      return num.then((num) => {
+        {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
+        return 0;
+      }, (e) => {
+        if (e.name !== 'ErrnoError') throw e;
+        return e.errno;
+      });
+    }
+#else
     var num = doWritev(stream, iov, iovcnt);
+#endif
 #else
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var num = 0;

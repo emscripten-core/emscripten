@@ -326,7 +326,7 @@ var printChar = (stream, curr) => {
   }
 };
 
-var _fd_write = (fd, iov, iovcnt, pnum) => {
+var _fd_write = (fd, iov, iovcnt, pnum, sync) => {
   // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
   var num = 0;
   for (var i = 0; i < iovcnt; i++) {
