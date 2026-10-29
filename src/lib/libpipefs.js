@@ -7,8 +7,10 @@
 addToLibrary({
   $PIPEFS__postset: () => addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);'),
   $PIPEFS: {
-    BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer
     CAPACITY: 1024 * 64, // as on Linux
+    // A new pipe starts with a small buffer that doubles as data arrives, so
+    // the many mostly-empty pipes some programs create stay cheap.
+    INITIAL_SIZE: 1024 * 8,
     // Queued bytes above which a PIPE_BUF write no longer fits.
     THRESHOLD: 1024 * 64 - {{{ cDefs.PIPE_BUF }}},
 
@@ -19,9 +21,13 @@ addToLibrary({
     },
     createPipe() {
       var pipe = {
-        buckets: [],
+        // Ring buffer: `count` unread bytes starting at `head`, wrapping
+        // around the end of `buffer`.
+        buffer: new Uint8Array(PIPEFS.INITIAL_SIZE),
+        head: 0,
+        count: 0,
         // Open write ends. When it drops to 0 the reader sees EOF and poll must
-        // report POLLHUP (Linux semantics). Buckets are freed once both counts
+        // report POLLHUP (Linux semantics). The buffer is freed once both counts
         // reach 0.
         writerCount: 1,
         writeClosed: false,
@@ -31,12 +37,6 @@ addToLibrary({
         readClosed: false,
         timestamp: new Date(),
       };
-
-      pipe.buckets.push({
-        buffer: new Uint8Array(PIPEFS.BUCKET_BUFFER_SIZE),
-        offset: 0,
-        roffset: 0
-      });
 
       var rName = PIPEFS.nextname();
       var wName = PIPEFS.nextname();
@@ -74,9 +74,29 @@ addToLibrary({
       };
     },
     queuedBytes(pipe) {
-      var n = 0;
-      for (var bucket of pipe.buckets) n += bucket.offset - bucket.roffset;
-      return n;
+      return pipe.count;
+    },
+    // Grows the buffer (doubling, up to CAPACITY) until `needed` bytes fit,
+    // unwrapping the queued bytes to the start of the new buffer.
+    grow(pipe, needed) {
+#if ASSERTIONS
+      assert(needed <= PIPEFS.CAPACITY);
+#endif
+      var size = pipe.buffer.length;
+      while (size < needed) size *= 2;
+      var buffer = new Uint8Array(size);
+      PIPEFS.copyOut(pipe, buffer, 0, pipe.count);
+      pipe.buffer = buffer;
+      pipe.head = 0;
+    },
+    // Copies `length` queued bytes starting at `head` into `dest` at `offset`,
+    // in at most two pieces when the data wraps.
+    copyOut(pipe, dest, offset, length) {
+      var first = Math.min(length, pipe.buffer.length - pipe.head);
+      dest.set(pipe.buffer.subarray(pipe.head, pipe.head + first), offset);
+      if (first < length) {
+        dest.set(pipe.buffer.subarray(0, length - first), offset + first);
+      }
     },
     stream_ops: {
       getattr(stream) {
@@ -154,8 +174,6 @@ addToLibrary({
         assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
 #endif
 #endif
-        var data = buffer.subarray(offset, offset + length);
-
         if (length <= 0) {
           return 0;
         }
@@ -165,49 +183,18 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
         }
         var toRead = Math.min(currentLength, length);
-
-        var totalRead = toRead;
-        var toRemove = 0;
-
-        for (var bucket of pipe.buckets) {
-          var bucketSize = bucket.offset - bucket.roffset;
-
-          if (toRead <= bucketSize) {
-            var tmpSlice = bucket.buffer.subarray(bucket.roffset, bucket.offset);
-            if (toRead < bucketSize) {
-              tmpSlice = tmpSlice.subarray(0, toRead);
-              bucket.roffset += toRead;
-            } else {
-              toRemove++;
-            }
-            data.set(tmpSlice);
-            break;
-          } else {
-            var tmpSlice = bucket.buffer.subarray(bucket.roffset, bucket.offset);
-            data.set(tmpSlice);
-            data = data.subarray(tmpSlice.byteLength);
-            toRead -= tmpSlice.byteLength;
-            toRemove++;
-          }
-        }
-
-        if (toRemove && toRemove == pipe.buckets.length) {
-          // Do not generate excessive garbage in use cases such as
-          // write several bytes, read everything, write several bytes, read everything...
-          toRemove--;
-          pipe.buckets[toRemove].offset = 0;
-          pipe.buckets[toRemove].roffset = 0;
-        }
-
-        pipe.buckets.splice(0, toRemove);
+        PIPEFS.copyOut(pipe, buffer, offset, toRead);
+        pipe.count -= toRead;
+        // Restart at 0 once drained so the next write does not wrap.
+        pipe.head = pipe.count ? (pipe.head + toRead) % pipe.buffer.length : 0;
 
         // Wake POLLOUT waiters on the transition to writable: listeners only
         // notify on readiness changes, and a waiter only exists while the
         // pipe is above the threshold.
-        if (currentLength > PIPEFS.THRESHOLD && currentLength - totalRead <= PIPEFS.THRESHOLD) {
+        if (currentLength > PIPEFS.THRESHOLD && currentLength - toRead <= PIPEFS.THRESHOLD) {
           pipe.writeNode.notifyListeners({{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
         }
-        return totalRead;
+        return toRead;
       },
       write(stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
@@ -229,71 +216,29 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EPIPE }}});
         }
 
+        // Behave as if the write end is always non-blocking.
         // PIPE_BUF rule: a small write is all-or-nothing, a larger one takes
         // what fits.
-        if (stream.flags & {{{ cDefs.O_NONBLOCK }}}) {
-          var room = PIPEFS.CAPACITY - PIPEFS.queuedBytes(pipe);
-          if (room <= 0 || (dataLen <= {{{ cDefs.PIPE_BUF }}} && dataLen > room)) {
-            throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
-          }
-          if (dataLen > room) {
-            data = data.subarray(0, room);
-            dataLen = room;
-          }
+        var room = PIPEFS.CAPACITY - PIPEFS.queuedBytes(pipe);
+        if (room <= 0 || (dataLen <= {{{ cDefs.PIPE_BUF }}} && dataLen > room)) {
+          throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
         }
-
-        var currBucket = null;
-
-        if (pipe.buckets.length == 0) {
-          currBucket = {
-            buffer: new Uint8Array(PIPEFS.BUCKET_BUFFER_SIZE),
-            offset: 0,
-            roffset: 0
-          };
-          pipe.buckets.push(currBucket);
-        } else {
-          currBucket = pipe.buckets[pipe.buckets.length - 1];
+        if (dataLen > room) {
+          data = data.subarray(0, room);
+          dataLen = room;
         }
-
-#if ASSERTIONS
-        assert(currBucket.offset <= PIPEFS.BUCKET_BUFFER_SIZE);
-#endif
-
-        var freeBytesInCurrBuffer = PIPEFS.BUCKET_BUFFER_SIZE - currBucket.offset;
-        if (freeBytesInCurrBuffer >= dataLen) {
-          currBucket.buffer.set(data, currBucket.offset);
-          currBucket.offset += dataLen;
-          pipe.readNode.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
-          return dataLen;
-        } else if (freeBytesInCurrBuffer > 0) {
-          currBucket.buffer.set(data.subarray(0, freeBytesInCurrBuffer), currBucket.offset);
-          currBucket.offset += freeBytesInCurrBuffer;
-          data = data.subarray(freeBytesInCurrBuffer, data.byteLength);
+        if (pipe.count + dataLen > pipe.buffer.length) {
+          PIPEFS.grow(pipe, pipe.count + dataLen);
         }
-
-        var numBuckets = (data.byteLength / PIPEFS.BUCKET_BUFFER_SIZE) | 0;
-        var remElements = data.byteLength % PIPEFS.BUCKET_BUFFER_SIZE;
-
-        for (var i = 0; i < numBuckets; i++) {
-          var newBucket = {
-            buffer: new Uint8Array(PIPEFS.BUCKET_BUFFER_SIZE),
-            offset: PIPEFS.BUCKET_BUFFER_SIZE,
-            roffset: 0
-          };
-          pipe.buckets.push(newBucket);
-          newBucket.buffer.set(data.subarray(0, PIPEFS.BUCKET_BUFFER_SIZE));
-          data = data.subarray(PIPEFS.BUCKET_BUFFER_SIZE, data.byteLength);
+        // Write after the queued bytes, wrapping around the end of the buffer.
+        var size = pipe.buffer.length;
+        var tail = (pipe.head + pipe.count) % size;
+        var first = Math.min(dataLen, size - tail);
+        pipe.buffer.set(data.subarray(0, first), tail);
+        if (first < dataLen) {
+          pipe.buffer.set(data.subarray(first), 0);
         }
-
-        if (remElements > 0) {
-          var newBucket = {
-            buffer: new Uint8Array(PIPEFS.BUCKET_BUFFER_SIZE),
-            offset: data.byteLength,
-            roffset: 0
-          };
-          pipe.buckets.push(newBucket);
-          newBucket.buffer.set(data);
-        }
+        pipe.count += dataLen;
 
         pipe.readNode.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
         return dataLen;
@@ -314,7 +259,7 @@ addToLibrary({
           pipe.writeNode.notifyListeners({{{ cDefs.POLLERR }}} | {{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
         }
         if (!pipe.readerCount && !pipe.writerCount) {
-          pipe.buckets = null;
+          pipe.buffer = null;
         }
       }
     },
