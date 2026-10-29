@@ -1954,7 +1954,7 @@ FS.staticInit();`;
 for (let key in LibraryFS.$FS) {
   const alias = `$FS_${key}`;
   // Skip defining the alias if it already exists or if it's not an API function.
-  if (LibraryFS[alias] || key[0] !== key[0].toLowerCase()) {
+  if (LibraryFS[alias] || typeof LibraryFS.$FS[key] !== 'function' || key[0] !== key[0].toLowerCase()) {
     continue;
   }
   LibraryFS[alias] = `(...args) => FS.${key}(...args)`;
