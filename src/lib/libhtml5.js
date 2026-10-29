@@ -416,10 +416,16 @@ var LibraryHTML5 = {
   $findCanvasEventTarget: (target) => {
     if (typeof target === 'number') target = UTF8ToString(target);
     if (!target || target === '#canvas') {
-      if (typeof GL !== 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
+      if (typeof GL !== 'undefined' && GL.offscreenCanvases['canvas']) {
+        // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'],
+        // not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
+        return GL.offscreenCanvases['canvas'];
+      }
       return Module['canvas'];
     }
-    if (typeof GL !== 'undefined' && GL.offscreenCanvases[target]) return GL.offscreenCanvases[target];
+    if (typeof GL !== 'undefined' && GL.offscreenCanvases[target]) {
+      return GL.offscreenCanvases[target];
+    }
     return findEventTarget(target);
   },
 #endif
@@ -447,14 +453,17 @@ var LibraryHTML5 = {
   emscripten_set_keyup_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
     registerKeyEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_KEYUP }}}, 'keyup', targetThread),
 
-  // Outline access to function .getBoundingClientRect() since it is a long string. Closure compiler does not outline access to it by itself, but it can inline access if
+  // Outline access to function .getBoundingClientRect() since it is a long string.
+  // Closure compiler does not outline access to it by itself, but it can inline access if
   // there is only one caller to this function.
-  $getBoundingClientRect: (e) => specialHTMLTargets.indexOf(e) < 0 ? e.getBoundingClientRect() : {'left':0,'top':0},
+  $getBoundingClientRect: (e) => specialHTMLTargets.includes(e) ? {'left':0,'top':0} : e.getBoundingClientRect(),
 
-  // Copies mouse event data from the given JS mouse event 'e' to the specified Emscripten mouse event structure in the HEAP.
+  // Copies mouse event data from the given JS mouse event 'e' to the specified
+  // Emscripten mouse event structure in the HEAP.
   // eventStruct: the structure to populate.
   // e: The JS mouse event to read data from.
-  // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
+  // target: Specifies a target DOM element that will be used as the reference to
+  //         populate targetX and targetY parameters.
   $fillMouseEventData: (eventStruct, e, target) => {
 #if ASSERTIONS
     assert(eventStruct % 4 == 0);
@@ -484,7 +493,8 @@ var LibraryHTML5 = {
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = 0;
     }
 #endif
-    // Note: rect contains doubles (truncated to placate SAFE_HEAP, which is the same behaviour when writing to HEAP32 anyway)
+    // Note: rect contains doubles (truncated to placate SAFE_HEAP, which is the
+    // same behaviour when writing to HEAP32 anyway)
     var rect = getBoundingClientRect(target);
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - (rect.left | 0);
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - (rect.top  | 0);
@@ -515,7 +525,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target,
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-      allowsDeferredCalls: eventTypeString != 'mousemove' && eventTypeString != 'mouseenter' && eventTypeString != 'mouseleave', // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
+      // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
+      allowsDeferredCalls: eventTypeString != 'mousemove' && eventTypeString != 'mouseenter' && eventTypeString != 'mouseleave',
 #endif
       eventTypeString,
       eventTypeId,
@@ -653,7 +664,9 @@ var LibraryHTML5 = {
         // causing a new scroll, etc..
         return;
       }
-      var b = document.body; // Take document.body to a variable, Closure compiler does not outline access to it on its own.
+
+      // Take document.body to a variable, Closure compiler does not outline access to it on its own.
+      var b = document.body;
       if (!b) {
         // During a page unload 'body' can be null, with "Cannot read property 'clientWidth' of null" being thrown
         return;
@@ -928,7 +941,7 @@ var LibraryHTML5 = {
 
   emscripten_set_orientationchange_callback_on_thread__proxy: 'sync',
   emscripten_set_orientationchange_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (!window.screen || !screen.orientation) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (!window.screen?.orientation) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     return registerOrientationChangeEventCallback(screen.orientation, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}}, 'change', targetThread);
   },
 
@@ -948,26 +961,19 @@ var LibraryHTML5 = {
     if (allowedOrientations & 2) orientations.push('portrait-secondary');
     if (allowedOrientations & 4) orientations.push('landscape-primary');
     if (allowedOrientations & 8) orientations.push('landscape-secondary');
-    var succeeded;
     if (screen.lockOrientation) {
-      succeeded = screen.lockOrientation(orientations);
-    } else {
-      return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+      return screen.lockOrientation(orientations) ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_FAILED }}};
     }
-    if (succeeded) {
-      return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
-    }
-    return {{{ cDefs.EMSCRIPTEN_RESULT_FAILED }}};
+    return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
   },
 
   emscripten_unlock_orientation__proxy: 'sync',
   emscripten_unlock_orientation: () => {
     if (screen.unlockOrientation) {
       screen.unlockOrientation();
-    } else {
-      return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+      return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
     }
-    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+    return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
   },
 
   $fillFullscreenChangeEventData: (eventStruct) => {
@@ -1138,7 +1144,7 @@ var LibraryHTML5 = {
       var newWidth = (cssWidth * dpiScale)|0;
       var newHeight = (cssHeight * dpiScale)|0;
       setCanvasElementSize(target, newWidth, newHeight);
-      if (target.GLctxObject) target.GLctxObject.GLctx.viewport(0, 0, newWidth, newHeight);
+      target.GLctxObject?.GLctx.viewport(0, 0, newWidth, newHeight);
     }
     return restoreOldStyle;
   },
@@ -1178,9 +1184,11 @@ var LibraryHTML5 = {
         canvas.style.width = oldCssWidth;
         canvas.style.height = oldCssHeight;
         canvas.style.backgroundColor = oldBackgroundColor; // Chrome
-        // IE11 hack: assigning 'undefined' or an empty string to document.body.style.backgroundColor has no effect, so first assign back the default color
-        // before setting the undefined value. Setting undefined value is also important, or otherwise we would later treat that as something that the user
-        // had explicitly set so subsequent fullscreen transitions would not set background color properly.
+        // IE11 hack: assigning 'undefined' or an empty string to document.body.style.backgroundColor
+        // has no effect, so first assign back the default color before setting the undefined value.
+        // Setting undefined value is also important, or otherwise we would later treat that as
+        // something that the user had explicitly set so subsequent fullscreen transitions would not
+        // set background color properly.
         if (!oldDocumentBackgroundColor) document.body.style.backgroundColor = 'white';
         document.body.style.backgroundColor = oldDocumentBackgroundColor; // IE11
         canvas.style.paddingLeft = oldPaddingLeft; // Chrome, FF, Safari
@@ -1195,7 +1203,7 @@ var LibraryHTML5 = {
         document.documentElement.style.overflow = oldDocumentOverflow; // Chrome, Firefox
         document.body.scroll = oldDocumentScroll; // IE
         canvas.style.imageRendering = oldImageRendering;
-        if (canvas.GLctxObject) canvas.GLctxObject.GLctx.viewport(0, 0, oldWidth, oldHeight);
+        canvas.GLctxObject?.GLctx.viewport(0, 0, oldWidth, oldHeight);
 
         callCanvasResizedCallback(currentFullscreenStrategy);
       }
@@ -1269,7 +1277,7 @@ var LibraryHTML5 = {
 
     if (inPixelPerfectFullscreenMode) {
       setCanvasElementSize(canvas, w, h);
-      if (canvas.GLctxObject) canvas.GLctxObject.GLctx.viewport(0, 0, w, h);
+      canvas.GLctxObject?.GLctx.viewport(0, 0, w, h);
     }
 
     // Back to CSS pixels.
@@ -1863,8 +1871,9 @@ var LibraryHTML5 = {
   emscripten_sample_gamepad_data__proxy: 'sync',
   emscripten_sample_gamepad_data: () => {
     try {
-      if (navigator.getGamepads) return (JSEvents.lastGamepadState = navigator.getGamepads())
-        ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+      if (navigator.getGamepads) {
+        return (JSEvents.lastGamepadState = navigator.getGamepads()) ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+      }
     } catch(e) {
 #if ASSERTIONS
       err(`navigator.getGamepads() exists, but failed to execute with exception ${e}. Disabling Gamepad access.`);
@@ -1879,7 +1888,8 @@ var LibraryHTML5 = {
 #if ASSERTIONS
     assert(JSEvents.lastGamepadState, 'emscripten_get_num_gamepads() called before emscripten_sample_gamepad_data()');
 #endif
-    // N.B. Do not call emscripten_get_num_gamepads() unless having first called emscripten_sample_gamepad_data(), and that has returned EMSCRIPTEN_RESULT_SUCCESS.
+    // N.B. Do not call emscripten_get_num_gamepads() unless having first called
+    // emscripten_sample_gamepad_data(), and that has returned EMSCRIPTEN_RESULT_SUCCESS.
     // Otherwise the following line will throw an exception.
     return JSEvents.lastGamepadState.length;
   },
@@ -1932,8 +1942,9 @@ var LibraryHTML5 = {
   emscripten_set_beforeunload_callback_on_thread__proxy: 'sync',
   emscripten_set_beforeunload_callback_on_thread: (userData, callbackfunc, targetThread) => {
     if (typeof onbeforeunload === 'undefined') return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    // beforeunload callback can only be registered on the main browser thread, because the page will go away immediately after returning from the handler,
-    // and there is no time to start proxying it anywhere.
+    // beforeunload callback can only be registered on the main browser thread, because the page will
+    // go away immediately after returning from the handler, and there is no time to start proxying
+    // it anywhere.
     if (targetThread !== {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD }}}) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     return registerBeforeUnloadEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BEFOREUNLOAD }}}, 'beforeunload');
   },
@@ -2019,11 +2030,12 @@ var LibraryHTML5 = {
 
 #if OFFSCREENCANVAS_SUPPORT
     if (canvas.canvasSharedPtr) {
-      // N.B. We hold the canvasSharedPtr info structure as the authoritative source for specifying the size of a canvas
-      // since the actual canvas size changes are asynchronous if the canvas is owned by an OffscreenCanvas on another thread.
-      // Therefore when setting the size, eagerly set the size of the canvas on the calling thread here, though this thread
-      // might not be the one that actually ends up specifying the size, but the actual size change may be dispatched
-      // as an asynchronous event below.
+      // N.B. We hold the canvasSharedPtr info structure as the authoritative source for
+      // specifying the size of a canvas since the actual canvas size changes are asynchronous
+      // if the canvas is owned by an OffscreenCanvas on another thread.
+      // Therefore when setting the size, eagerly set the size of the canvas on the calling thread
+      // here, though this thread might not be the one that actually ends up specifying the
+      // size, but the actual size change may be dispatched as an asynchronous event below.
       {{{ makeSetValue('canvas.canvasSharedPtr', 0, 'width', 'i32') }}};
       {{{ makeSetValue('canvas.canvasSharedPtr', 4, 'height', 'i32') }}};
     }
@@ -2048,8 +2060,8 @@ var LibraryHTML5 = {
 #if GL_DEBUG
         dbg(`Automatically resizing GL viewport to cover whole render target ${width}x${height}`);
 #endif
-        // TODO: Add -sCANVAS_RESIZE_SETS_GL_VIEWPORT=0/1 option (default=1). This is commonly done and several graphics engines depend on this,
-        // but this can be quite disruptive.
+        // TODO: Add -sCANVAS_RESIZE_SETS_GL_VIEWPORT=0/1 option (default=1). This is commonly
+        // done and several graphics engines depend on this, but this can be quite disruptive.
         canvas.GLctxObject.GLctx.viewport(0, 0, width, height);
       }
 #if OFFSCREENCANVAS_SUPPORT
@@ -2074,10 +2086,7 @@ var LibraryHTML5 = {
   $setOffscreenCanvasSizeOnTargetThread__deps: ['_emscripten_set_offscreencanvas_size_on_thread'],
   $setOffscreenCanvasSizeOnTargetThread: (targetThread, targetCanvas, width, height) => {
     targetCanvas = targetCanvas ? UTF8ToString(targetCanvas) : '';
-    var targetCanvasPtr = 0;
-    if (targetCanvas) {
-      targetCanvasPtr = stringToNewUTF8(targetCanvas);
-    }
+    var targetCanvasPtr = targetCanvas ? stringToNewUTF8(targetCanvas) : 0;
     __emscripten_set_offscreencanvas_size_on_thread(targetThread, targetCanvasPtr, width, height);
   },
 #endif
@@ -2185,7 +2194,7 @@ var LibraryHTML5 = {
     var h = w + 4;
 
     var targetInt = stringToUTF8OnStack(target.id);
-    var ret = _emscripten_get_canvas_element_size(targetInt, w, h);
+    _emscripten_get_canvas_element_size(targetInt, w, h);
     var size = [{{{ makeGetValue('w', 0, 'i32')}}}, {{{ makeGetValue('h', 0, 'i32')}}}];
     stackRestore(sp);
     return size;
