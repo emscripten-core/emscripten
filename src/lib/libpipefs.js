@@ -80,6 +80,9 @@ addToLibrary({
     // Grows the buffer (doubling, up to CAPACITY) until `needed` bytes fit,
     // unwrapping the queued bytes to the start of the new buffer.
     grow(pipe, needed) {
+#if ASSERTIONS
+      assert(needed <= PIPEFS.CAPACITY);
+#endif
       var size = pipe.buffer.length;
       while (size < needed) size *= 2;
       var buffer = new Uint8Array(size);
