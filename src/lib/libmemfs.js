@@ -5,7 +5,6 @@
  */
 
 addToLibrary({
-  $MEMFS__deps: ['$FS', '$mmapAlloc'],
   $MEMFS: {
     ops_table: null,
     mount(mount) {

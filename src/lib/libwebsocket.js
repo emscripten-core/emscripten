@@ -5,10 +5,9 @@
  */
 
 var LibraryWebSocket = {
-  $webSockets__deps: ['$HandleAllocator'],
   $webSockets: 'new HandleAllocator();',
 
-  $WS__deps: ['$webSockets', 'malloc'],
+  $WS__deps: ['malloc'],
   $WS: {
     socketEvent: null,
     getSocket(socketId) {
@@ -26,7 +25,6 @@ var LibraryWebSocket = {
     },
   },
 
-  emscripten_websocket_get_ready_state__deps: ['$WS'],
   emscripten_websocket_get_ready_state__proxy: 'sync',
   emscripten_websocket_get_ready_state: (socketId, readyState) => {
     var socket = WS.getSocket(socketId);
@@ -41,7 +39,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_get_buffered_amount__deps: ['$WS'],
   emscripten_websocket_get_buffered_amount__proxy: 'sync',
   emscripten_websocket_get_buffered_amount: (socketId, bufferedAmount) => {
     var socket = WS.getSocket(socketId);
@@ -56,7 +53,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_get_extensions__deps: ['$WS', '$stringToUTF8'],
   emscripten_websocket_get_extensions__proxy: 'sync',
   emscripten_websocket_get_extensions: (socketId, extensions, extensionsLength) => {
     var socket = WS.getSocket(socketId);
@@ -71,7 +67,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_get_extensions_length__deps: ['$WS'],
   emscripten_websocket_get_extensions_length__proxy: 'sync',
   emscripten_websocket_get_extensions_length: (socketId, extensionsLength) => {
     var socket = WS.getSocket(socketId);
@@ -86,7 +81,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_get_protocol__deps: ['$WS', '$stringToUTF8'],
   emscripten_websocket_get_protocol__proxy: 'sync',
   emscripten_websocket_get_protocol: (socketId, protocol, protocolLength) => {
     var socket = WS.getSocket(socketId);
@@ -101,7 +95,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_get_protocol_length__deps: ['$WS'],
   emscripten_websocket_get_protocol_length__proxy: 'sync',
   emscripten_websocket_get_protocol_length: (socketId, protocolLength) => {
     var socket = WS.getSocket(socketId);
@@ -116,7 +109,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_get_url__deps: ['$WS', '$stringToUTF8'],
   emscripten_websocket_get_url__proxy: 'sync',
   emscripten_websocket_get_url: (socketId, url, urlLength) => {
     var socket = WS.getSocket(socketId);
@@ -131,7 +123,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_get_url_length__deps: ['$WS'],
   emscripten_websocket_get_url_length__proxy: 'sync',
   emscripten_websocket_get_url_length: (socketId, urlLength) => {
     var socket = WS.getSocket(socketId);
@@ -146,7 +137,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_set_onopen_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onopen_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onopen_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
 // TODO:
@@ -173,7 +163,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_set_onerror_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onerror_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onerror_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
     var socket = WS.getSocket(socketId);
@@ -197,7 +186,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_set_onclose_callback_on_thread__deps: ['$WS', '$stringToUTF8'],
   emscripten_websocket_set_onclose_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onclose_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
     var socket = WS.getSocket(socketId);
@@ -224,7 +212,7 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS', '$stringToNewUTF8', 'malloc', 'free'],
+  emscripten_websocket_set_onmessage_callback_on_thread__deps: ['malloc', 'free'],
   emscripten_websocket_set_onmessage_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onmessage_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
     var socket = WS.getSocket(socketId);
@@ -276,7 +264,6 @@ var LibraryWebSocket = {
   },
 
   emscripten_websocket_new__proxy: 'sync',
-  emscripten_websocket_new__deps: ['$webSockets'],
   emscripten_websocket_new: (createAttributes) => {
     if (!globalThis.WebSocket) {
 #if WEBSOCKET_DEBUG
@@ -308,7 +295,6 @@ var LibraryWebSocket = {
     return socketId;
   },
 
-  emscripten_websocket_send_utf8_text__deps: ['$WS'],
   emscripten_websocket_send_utf8_text__proxy: 'sync',
   emscripten_websocket_send_utf8_text: (socketId, textData) => {
     var socket = WS.getSocket(socketId);
@@ -331,7 +317,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_send_binary__deps: ['$WS'],
   emscripten_websocket_send_binary__proxy: 'sync',
   emscripten_websocket_send_binary: (socketId, binaryData, dataLength) => {
     var socket = WS.getSocket(socketId);
@@ -362,7 +347,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_close__deps: ['$WS'],
   emscripten_websocket_close__proxy: 'sync',
   emscripten_websocket_close: (socketId, code, reason) => {
     var socket = WS.getSocket(socketId);
@@ -388,7 +372,6 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  emscripten_websocket_delete__deps: ['$WS'],
   emscripten_websocket_delete__proxy: 'sync',
   emscripten_websocket_delete: (socketId) => {
     var socket = WS.getSocket(socketId);
@@ -410,7 +393,6 @@ var LibraryWebSocket = {
   emscripten_websocket_is_supported__proxy: 'sync',
   emscripten_websocket_is_supported: () => typeof WebSocket !== 'undefined',
 
-  emscripten_websocket_deinitialize__deps: ['$webSockets', 'emscripten_websocket_delete'],
   emscripten_websocket_deinitialize__proxy: 'sync',
   emscripten_websocket_deinitialize: () => {
 #if WEBSOCKET_DEBUG

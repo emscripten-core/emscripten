@@ -5,7 +5,6 @@
  */
 
 addToLibrary({
-  $PROXYFS__deps: ['$FS', '$PATH', '$ERRNO_CODES'],
   $PROXYFS: {
     mount(mount) {
       return PROXYFS.createNode(null, '/', mount.opts.fs.lstat(mount.opts.root).mode, 0);

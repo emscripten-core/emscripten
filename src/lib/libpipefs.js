@@ -6,7 +6,6 @@
 
 addToLibrary({
   $PIPEFS__postset: () => addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);'),
-  $PIPEFS__deps: ['$FS'],
   $PIPEFS: {
     CAPACITY: 1024 * 64, // as on Linux
     // A new pipe starts with a small buffer that doubles as data arrives, so
