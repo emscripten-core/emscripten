@@ -994,7 +994,7 @@ var LibraryGLFW = {
             case 0x00034001: { // GLFW_CURSOR_NORMAL
               win.inputModes[mode] = value;
               canvas.removeEventListener('click', GLFW.onClickRequestPointerLock, true);
-              document.exitPointerLock();
+              document.exitPointerLock?.();
               break;
             }
             case 0x00034002: { // GLFW_CURSOR_HIDDEN
@@ -1004,7 +1004,7 @@ var LibraryGLFW = {
             case 0x00034003: { // GLFW_CURSOR_DISABLED
               win.inputModes[mode] = value;
               canvas.addEventListener('click', GLFW.onClickRequestPointerLock, true);
-              canvas.requestPointerLock();
+              canvas.requestPointerLock?.();
               break;
             }
             default: {
@@ -1222,7 +1222,7 @@ var LibraryGLFW = {
         var canvasContainer = canvas.parentNode;
         if (getFullscreenElement() === canvasContainer) {
           canvas.exitFullscreen = Browser.exitFullscreen;
-          if (Browser.lockPointer) canvas.requestPointerLock();
+          if (Browser.lockPointer) canvas.requestPointerLock?.();
           Browser.isFullscreen = true;
           if (Browser.resizeCanvas) {
             Browser.setFullscreenCanvasSize();

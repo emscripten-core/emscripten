@@ -1742,13 +1742,13 @@ var LibrarySDL = {
     switch (toggle) {
       case 0: // SDL_DISABLE
         if (Browser.isFullscreen) { // only try to lock the pointer when in full screen mode
-          Browser.getCanvas().requestPointerLock();
+          Browser.getCanvas().requestPointerLock?.();
           return 0;
         }
         // else return SDL_ENABLE to indicate the failure
         return 1;
       case 1: // SDL_ENABLE
-        document.exitPointerLock();
+        document.exitPointerLock?.();
         return 1;
       case -1: // SDL_QUERY
         return !Browser.pointerLock;
