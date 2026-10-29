@@ -403,6 +403,20 @@ function sigToArgs(sig) {
   return args.join(',');
 }
 
+// The async variant of an 'auto' function's body, where it hands the result
+// over rather than returning it (see expandAsyncVariants in modules.mjs).
+function asyncVariantOf(symbol) {
+  return LibraryManager.library[symbol + '__async_variant'];
+}
+
+// Whether the body returns a value or a Promise as it can, told by a `sync`
+// argument: an 'auto' function, one with async variants (whether or not it
+// suspends itself), or such a variant.
+function isAutoBody(symbol) {
+  const lib = LibraryManager.library;
+  return lib[symbol + '__async'] == 'auto' || !!lib[symbol + '__async_variants'] || !!asyncVariantOf(symbol);
+}
+
 function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
   // Handle i64 parameters and return values.
   //
@@ -466,7 +480,7 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       // An 'auto' body may return a Promise even without ASYNCIFY (on a
       // pthread's behalf, which awaits it), which must not be cast but
       // resolve to the cast value.
-      const maybePromise = !isAsyncFunction && LibraryManager.library[symbol + '__async'] == 'auto';
+      const maybePromise = !isAsyncFunction && isAutoBody(symbol);
       const convert = (v) => maybePromise ?
         `(${v} instanceof Promise ? ${v}.then((v) => ${makeReturn64('v')}) : ${makeReturn64(v)})` :
         makeReturn64(await_ + v);
@@ -510,10 +524,11 @@ ${body};
 // An `__async: 'auto'` body returns a value or a Promise, as it can. A body
 // whose last parameter is named `sync` receives there whether it must complete
 // synchronously on this call, as a returned Promise could not be waited for.
-// That is never the case under ASYNCIFY/JSPI, nor on behalf of a sync-proxied
-// pthread caller, which awaits it; otherwise it is.
-function handleSyncArg(symbol, snippet, sig, proxyingMode) {
-  const sync = ASYNCIFY ? 'false' :
+// That is never the case for a function suspending under ASYNCIFY/JSPI or
+// whose caller receives a promise of the result, nor on behalf of a
+// sync-proxied pthread caller, which awaits it; otherwise it is.
+function handleSyncArg(symbol, snippet, sig, proxyingMode, canWait) {
+  const sync = canWait ? 'false' :
     PTHREADS && proxyingMode == 'sync' ? '!PThread.currentProxiedOperationCallerThread' : 'true';
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     const params = args.split(',').map((a) => a.trim()).filter((a) => a);
@@ -606,7 +621,8 @@ export async function runJSify(outputFile, symbolsOnly) {
   }
 
   for (const key of Object.keys(LibraryManager.library)) {
-    if (!isDecorator(key)) {
+    // Async variants are included only where used (see expandAsyncVariants).
+    if (!isDecorator(key) && !(INCLUDE_FULL_LIBRARY && !symbolsOnly && asyncVariantOf(key))) {
       if (INCLUDE_FULL_LIBRARY || EXPORTED_FUNCTIONS.has(mangleCSymbolName(key))) {
         symbolsNeeded.push(key);
       }
@@ -651,9 +667,13 @@ function(${args}) {
     }
 
     const sig = LibraryManager.library[symbol + '__sig'];
-    const isAsyncFunction = ASYNCIFY && LibraryManager.library[symbol + '__async'];
+    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+    const asyncVariant = asyncVariantOf(symbol);
+    const isAsyncFunction = ASYNCIFY && !asyncVariant && LibraryManager.library[symbol + '__async'];
 
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
+    const needsI64Handling = sig &&
+      ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')));
     if (i53abi) {
       if (!sig) {
         error(`JS library error: '__i53abi' decorator requires '__sig' decorator: '${symbol}'`);
@@ -662,20 +682,17 @@ function(${args}) {
         error(`JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`);
       }
     }
-    if (
-      sig &&
-      ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))
-    ) {
+    // A async variant's conversions wrap its final wrapper, below.
+    if (needsI64Handling && !asyncVariant) {
       snippet = handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction);
     }
 
-    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
-
-    if (LibraryManager.library[symbol + '__async'] == 'auto') {
-      snippet = handleSyncArg(symbol, snippet, sig, proxyingMode);
+    if (isAutoBody(symbol)) {
+      snippet = handleSyncArg(symbol, snippet, sig, proxyingMode, isAsyncFunction || asyncVariant);
     }
 
-    if (ASYNCIFY && isAsyncFunction == 'auto') {
+    // A async variant hands its Promise over rather than suspending on it.
+    if (!asyncVariant && isAsyncFunction == 'auto') {
       snippet = handleAsyncFunction(snippet, sig, proxyingMode == 'sync');
     }
 
@@ -691,20 +708,27 @@ function(${args}) {
             }
             let proxyMode = PROXY_ASYNC;
             if (proxyingMode === 'sync') {
-              const isAsyncFunction = LibraryManager.library[symbol + '__async'];
-              if (isAsyncFunction) {
+              // An 'auto' body may complete through a Promise on the pthread's
+              // behalf even where the function itself never suspends.
+              if (LibraryManager.library[symbol + '__async'] || isAutoBody(symbol)) {
                 proxyMode = PROXY_SYNC_ASYNC;
               } else {
                 proxyMode = PROXY_SYNC;
               }
             }
             const rtnType = sig?.[0];
-            const proxyFunc =
-              MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
+            let proxyFunc = MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
+            let modeArg = `, ${proxyMode}`;
+            if (asyncVariant == 'promise') {
+              // The body returns a value or a Promise; a pthread caller gets an
+              // em_promise_t of the main-thread result.
+              proxyFunc = 'proxyToMainThreadPromise';
+              modeArg = '';
+            }
             return `
 ${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${proxyMode}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0${modeArg}${args ? ', ' : ''}${args});
 ${body}
 }\n`;
           });
@@ -722,6 +746,31 @@ function(${args}) {
         }
         proxiedFunctionTable.push(mangled);
       }
+    }
+
+    if (asyncVariant == 'promise') {
+      // The result of the 'auto' body as an em_promise_t (addPromise of its
+      // value-or-Promise) on the calling thread; a rejection becomes NULL, as
+      // the body's own reason cannot reach C. This wraps outside the proxying:
+      // a pthread caller's em_promise_t comes from C as-is, and on the main
+      // thread running the body on a pthread's behalf
+      // (PThread.currentProxiedOperationCallerThread set) the bare result is
+      // what crosses back. A void body's undefined result is NULL.
+      snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+        if (!oneliner) body = `(${async_}() => {\n${body}\n})()`;
+        const proxied = PTHREADS && proxyingMode == 'sync';
+        return `\
+function(${args}) {
+  var r = ${body};
+  ${proxied ? 'if (ENVIRONMENT_IS_PTHREAD) return r;' : ''}
+  r = Promise.resolve(r).then((v) => v ?? 0);
+  ${proxied ? 'if (PThread.currentProxiedOperationCallerThread) return r;' : ''}
+  return addPromise(r.catch(() => { throw 0; }));
+}\n`;
+      });
+    }
+    if (needsI64Handling && asyncVariant) {
+      snippet = handleI64Signatures(symbol, snippet, sig, i53abi, false);
     }
 
     return snippet;
@@ -775,7 +824,7 @@ function(${args}) {
         deps.push('setTempRet0');
       }
 
-      const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+      const isAsyncFunction = LibraryManager.library[symbol + '__async'] && !asyncVariantOf(symbol);
       if (ASYNCIFY && isAsyncFunction) {
         asyncFuncs.push(symbol);
       }
