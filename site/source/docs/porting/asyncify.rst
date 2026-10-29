@@ -224,6 +224,8 @@ path for ``ASYNCIFY`` and a pthread, while returning the ``EAGAIN`` error when
 called synchronously.  As ``sync`` is always ``false`` under ``ASYNCIFY``/JSPI,
 the function must then be called from a stack that can suspend, as with any
 other async import (under JSPI, within one of the :ref:`JSPI_EXPORTS`).
+Returning a Promise when ``sync`` is ``true`` is an error under
+``ASSERTIONS``, as the result could not be waited for.
 
 ``__async: 'proxy'`` is for a function that must block when called from a
 pthread but can never be a suspending import.  ``write()`` on a pipe sits

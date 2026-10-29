@@ -525,9 +525,16 @@ function handleSyncArg(symbol, snippet, sig, proxyingMode, canWait) {
     }
     if (!oneliner) body = `{\n${body}\n}`;
     const outer = params.slice(0, -1).join(', ');
+    const call = `(${async_}(${args}) => ${body})(${outer}${outer ? ', ' : ''}${sync})`;
+    if (!ASSERTIONS || sync == 'false') {
+      return `function(${outer}) { return ${call}; }\n`;
+    }
+    // A Promise returned where the caller cannot wait would be coerced to 0.
     return `\
 function(${outer}) {
-  return (${async_}(${args}) => ${body})(${outer}${outer ? ', ' : ''}${sync});
+  var rtn = ${call};
+  assert(!(${sync} && rtn?.then), "'${symbol}' returned a Promise where the caller cannot wait (sync is true)");
+  return rtn;
 }\n`;
   });
 }
