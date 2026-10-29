@@ -116,7 +116,9 @@ var LibraryPThread = {
     // starting the next thread is faster.
     unusedWorkers: [],
     tlsInitFunctions: [],
+#if MAIN_MODULE
     tlsFreeFunctions: [],
+#endif
     // Maps pthread_t pointers to the workers on which they are running.  For
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.
