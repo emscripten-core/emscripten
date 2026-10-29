@@ -595,7 +595,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #if CROSS_ORIGIN_STORAGE
   // Cross-Origin Storage (COS) progressive enhancement.
   // https://github.com/WICG/cross-origin-storage
-  // Any error (not found, not allowed, network failure, …) falls through
+  // Any error (not found, not allowed, network failure, ...) falls through
   // to the standard Emscripten streaming path so the page always loads.
   if (globalThis.navigator?.crossOriginStorage?.getFileHandle) {
     var cosHash = Module['wasmHash'];
@@ -609,7 +609,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #endif
       return cosInstantiateStream(cosFile.stream(), imports);
     } catch {
-      // Any error (not found, not allowed, …) — fetch from the network and
+      // Any error (not found, not allowed, ...) - fetch from the network and
       // attempt to store in COS for future page loads.
       try {
         var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});

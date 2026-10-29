@@ -13197,6 +13197,20 @@ exec "$@"
     self.run_process([PYTHON, path_from_root('tools/maint/gen_sig_info.py'), '-o', 'out.js'])
     self.assertFilesMatch(path_from_root('src/lib/libsigs.js'), 'out.js')
 
+  def test_js_sources_latin1(self):
+    # If a script has any character outside Latin-1, V8 stores all of its
+    # source as UTF-16, which doubles the memory each worker uses for it.
+    # Unminified builds (e.g. --profiling) keep comments, so they must be
+    # Latin-1 too.  settings.js is not part of the output.
+    bad_lines = []
+    for f in sorted(glob.glob(path_from_root('src/**/*.*js'), recursive=True)):
+      if os.path.basename(f) == 'settings.js':
+        continue
+      for i, line in enumerate(read_file(f).splitlines(), 1):
+        if any(ord(c) > 0xff for c in line):
+          bad_lines.append(f'{f}:{i}: {line.strip()}')
+    self.assertEqual(bad_lines, [])
+
   @crossplatform
   def test_gen_native_sig_info(self):
     self.run_process([PYTHON, path_from_root('tools/maint/gen_native_sig_info.py'), '-o', 'out.py'])
