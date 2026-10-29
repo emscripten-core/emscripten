@@ -822,6 +822,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'autoResumeAudioContext',
   'getDynCaller',
   'dynCall',
+  'getWasmTableEntry',
   'handleException',
   'keepRuntimeAlive',
   'runtimeKeepalivePush',

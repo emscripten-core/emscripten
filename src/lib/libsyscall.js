@@ -5,12 +5,6 @@
  */
 
 var SyscallsLibrary = {
-  $SYSCALLS__deps: [
-#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-                   '$PATH',
-                   '$FS',
-#endif
-  ],
   $SYSCALLS: {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     currentUmask: 0o022,
@@ -136,9 +130,8 @@ var SyscallsLibrary = {
 #endif
 
   _mmap_js__i53abi: true,
-  _mmap_js__deps: ['$SYSCALLS',
+  _mmap_js__deps: [
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    '$FS',
     // The dependency of FS on `mmapAlloc` and `mmapAlloc` on
     // `emscripten_builtin_memalign` are not encoding as hard dependencies,
     // so we need to explicitly depend on them here to ensure a working
@@ -195,7 +188,6 @@ var SyscallsLibrary = {
     var old = SYSCALLS.getStreamFromFD(fd);
     return FS.dupStream(old).fd;
   },
-  __syscall_pipe2__deps: ['$PIPEFS'],
   __syscall_pipe2: (fdPtr, flags) => {
     if (fdPtr == 0) {
       throw new FS.ErrnoError({{{ cDefs.EFAULT }}});
@@ -218,9 +210,6 @@ var SyscallsLibrary = {
     return 0;
   },
 
-#if SYSCALLS_REQUIRE_FILESYSTEM
-  __syscall_ioctl__deps: ['$syscallGetVarargP'],
-#endif
   __syscall_ioctl: (fd, op, varargs) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -331,7 +320,6 @@ var SyscallsLibrary = {
 // When building with WASMFS the socket syscalls are implemented natively in
 // libwasmfs.a.
 #if PROXY_POSIX_SOCKETS == 0 && WASMFS == 0
-  $getSocketFromFD__deps: ['$SOCKFS', '$FS'],
   $getSocketFromFD: (fd) => {
     var socket = SOCKFS.getSocket(fd);
     if (!socket) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
@@ -340,11 +328,6 @@ var SyscallsLibrary = {
 #endif
     return socket;
   },
-  $getSocketAddress__deps: ['$readSockaddr', '$FS',
-#if !NODERAWSOCKETS
-    '$DNS',
-#endif
-  ],
   $getSocketAddress: (addrp, addrlen) => {
     var info = readSockaddr(addrp, addrlen);
     if (info.errno) throw new FS.ErrnoError(info.errno);
@@ -356,12 +339,10 @@ var SyscallsLibrary = {
 #endif
     return info;
   },
-  __syscall_socket__deps: ['$SOCKFS'],
   __syscall_socket: (domain, type, protocol, u1, u2, u3) => {
     var sock = SOCKFS.createSocket(domain, type, protocol);
     return sock.stream.fd;
   },
-  __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr'],
   __syscall_getsockname: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
 #if NODERAWSOCKETS
@@ -378,7 +359,6 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
-  __syscall_getpeername__deps: ['$getSocketFromFD', '$writeSockaddr'],
   __syscall_getpeername: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
 #if NODERAWSOCKETS
@@ -396,14 +376,12 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
-  __syscall_connect__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_connect: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
     var info = getSocketAddress(addr, len);
     sock.sock_ops.connect(sock, info.addr, info.port);
     return 0;
   },
-  __syscall_shutdown__deps: ['$getSocketFromFD'],
   __syscall_shutdown: (fd, how, u1, u2, u3, u4) => {
     var sock = getSocketFromFD(fd);
 #if NODERAWSOCKETS
@@ -412,7 +390,6 @@ var SyscallsLibrary = {
     return -{{{ cDefs.ENOSYS }}}; // unsupported feature
 #endif
   },
-  __syscall_accept4__deps: ['$getSocketFromFD', '$writeSockaddr'],
   __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
     var sock = getSocketFromFD(fd);
     var newsock = sock.sock_ops.accept(sock);
@@ -429,20 +406,17 @@ var SyscallsLibrary = {
     }
     return newsock.stream.fd;
   },
-  __syscall_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_bind: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
     var info = getSocketAddress(addr, len);
     sock.sock_ops.bind(sock, info.addr, info.port);
     return 0;
   },
-  __syscall_listen__deps: ['$getSocketFromFD'],
   __syscall_listen: (fd, backlog, u1, u2, u3, u4) => {
     var sock = getSocketFromFD(fd);
     sock.sock_ops.listen(sock, backlog);
     return 0;
   },
-  __syscall_recvfrom__deps: ['$getSocketFromFD', '$writeSockaddr'],
   __syscall_recvfrom: (fd, buf, len, flags, addr, alen) => {
     var sock = getSocketFromFD(fd);
     var msg = sock.sock_ops.recvmsg(sock, len, flags);
@@ -456,7 +430,6 @@ var SyscallsLibrary = {
     HEAPU8.set(msg.buffer, buf);
     return msg.buffer.byteLength;
   },
-  __syscall_sendto__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendto: (fd, buf, len, flags, addr, alen) => {
     var sock = getSocketFromFD(fd);
     if (!addr) {
@@ -467,7 +440,6 @@ var SyscallsLibrary = {
     // sendto an address
     return sock.sock_ops.sendmsg(sock, HEAP8, buf, len, dest.addr, dest.port);
   },
-  __syscall_getsockopt__deps: ['$getSocketFromFD'],
   __syscall_getsockopt: (fd, level, optname, optval, optlen, unused) => {
     var sock = getSocketFromFD(fd);
 #if NODERAWSOCKETS
@@ -490,7 +462,6 @@ var SyscallsLibrary = {
   // Defined in JS rather than as a weak native stub so the node:net backend can
   // provide it without a separate libstubs variation. Without that backend it
   // just reports the option as unknown.
-  __syscall_setsockopt__deps: ['$getSocketFromFD'],
   __syscall_setsockopt: (fd, level, optname, optval, optlen, unused) => {
 #if NODERAWSOCKETS
     var sock = getSocketFromFD(fd);
@@ -500,7 +471,6 @@ var SyscallsLibrary = {
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
 #endif
   },
-  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendmsg: (fd, message, flags, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
@@ -531,7 +501,6 @@ var SyscallsLibrary = {
     // write the buffer
     return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
   },
-  __syscall_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr'],
   __syscall_recvmsg: (fd, message, flags, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
@@ -611,7 +580,6 @@ var SyscallsLibrary = {
   // POLLERR/POLLHUP/POLLNVAL are output-only conditions reported regardless of
   // `events` (a bad fd reports POLLNVAL even if the caller didn't ask for it).
   $pollOne__internal: true,
-  $pollOne__deps: ['$FS'],
   $pollOne: (fd, events) => {
     var stream = FS.getStream(fd);
     if (!stream) return {{{ cDefs.POLLNVAL }}};
@@ -622,23 +590,13 @@ var SyscallsLibrary = {
   },
   __syscall_poll__proxy: 'sync',
   __syscall_poll__async: 'auto',
-  __syscall_poll__deps: ['$doPollSync',
+  __syscall_poll: (fds, nfds, timeout, sync) => {
 #if PTHREADS || ASYNCIFY
-    '$doPollAsync',
-#endif
-  ],
-  __syscall_poll: (fds, nfds, timeout) => {
-#if PTHREADS || ASYNCIFY
-#if PTHREADS
-    const isAsyncContext = PThread.currentProxiedOperationCallerThread;
-#else
-    const isAsyncContext = true;
-#endif
     // When proxied from a worker (PTHREADS) or able to suspend (ASYNCIFY/JSPI),
     // block on the wait-queue. This must run for every timeout (including zero):
     // a proxied syscall's return is awaited by the caller thread, so it has to
     // be a Promise even for a probe.
-    if (isAsyncContext) {
+    if (!sync) {
 #if RUNTIME_DEBUG
       dbg('async poll start');
 #endif
@@ -654,7 +612,6 @@ var SyscallsLibrary = {
   // Synchronous poll(): derive each fd in place, writing revents and returning
   // the ready count. Used by the non-suspending syscall paths.
   $doPollSync__internal: true,
-  $doPollSync__deps: ['$pollOne'],
   $doPollSync: (fds, nfds) => {
     var count = 0;
     for (var i = 0, pollfd = fds; i < nfds; i++, pollfd += {{{ C_STRUCTS.pollfd.__size__ }}}) {
@@ -673,7 +630,6 @@ var SyscallsLibrary = {
   // the trigger), resolving then or, for a positive `timeout`, once it elapses.
   // A negative `timeout` waits forever. Returns a Promise of the ready count.
   $doPollAsync__internal: true,
-  $doPollAsync__deps: ['$FS', '$pollOne'],
   $doPollAsync: (fds, nfds, timeout) => new Promise((resolve) => {
     var regs = [];
     var timer;
@@ -719,20 +675,17 @@ var SyscallsLibrary = {
   // __syscall_poll is a suspending import and traps when called from a stack
   // that wasn't entered through a promising export).
   __syscall_poll_nonblocking__proxy: 'sync',
-  __syscall_poll_nonblocking__deps: ['$doPollSync'],
   __syscall_poll_nonblocking: (fds, nfds) => {
     return doPollSync(fds, nfds);
   },
   // epoll: the entry points live here (like every other syscall); the heavy
   // lifting is in libepoll.js, which they call after resolving the epoll stream.
-  __syscall_epoll_create1__deps: ['$epollNewInstance'],
   __syscall_epoll_create1__proxy: 'sync',
   __syscall_epoll_create1: (flags) => {
     // EPOLL_CLOEXEC is accepted but a no-op (there is no exec).
     if (flags & ~{{{ cDefs.EPOLL_CLOEXEC }}}) return -{{{ cDefs.EINVAL }}};
     return epollNewInstance().fd;
   },
-  __syscall_epoll_ctl__deps: ['$FS', '$epollCtl'],
   __syscall_epoll_ctl__proxy: 'sync',
   __syscall_epoll_ctl: (epfd, op, fd, ev) => {
     var ep = FS.getStream(epfd);
@@ -741,12 +694,11 @@ var SyscallsLibrary = {
   },
   __syscall_epoll_pwait__proxy: 'sync',
   __syscall_epoll_pwait__async: 'auto',
-  __syscall_epoll_pwait__deps: ['$FS', '$epollPwait'],
-  __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => {
+  __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize, sync) => {
     var ep = FS.getStream(epfd);
     if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
     if (maxevents <= 0) return -{{{ cDefs.EINVAL }}};
-    return epollPwait(ep.shared, ev, maxevents, timeout);
+    return epollPwait(ep.shared, ev, maxevents, timeout, sync);
   },
   // libc routes zero-timeout epoll_wait()/epoll_pwait() calls here: a plain
   // import that never suspends, so probes stay callable from any context (under
@@ -754,14 +706,12 @@ var SyscallsLibrary = {
   // from a stack that wasn't entered through a promising export). Mirrors
   // __syscall_poll_nonblocking.
   __syscall_epoll_pwait_nonblocking__proxy: 'sync',
-  __syscall_epoll_pwait_nonblocking__deps: ['$FS', '$doEpollWait'],
   __syscall_epoll_pwait_nonblocking: (epfd, ev, maxevents) => {
     var ep = FS.getStream(epfd);
     if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
     if (maxevents <= 0) return -{{{ cDefs.EINVAL }}};
     return doEpollWait(ep.shared, ev, maxevents);
   },
-  __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
     if (!size) return -{{{ cDefs.EINVAL }}};
     var cwd = FS.cwd();
@@ -798,7 +748,6 @@ var SyscallsLibrary = {
     FS.fchown(fd, owner, group);
     return 0;
   },
-  __syscall_getdents64__deps: ['$stringToUTF8'],
   __syscall_getdents64: (fd, dirp, count) => {
     var stream = SYSCALLS.getStreamFromFD(fd)
     stream.getdents ||= FS.readdir(stream.path);
@@ -853,9 +802,6 @@ var SyscallsLibrary = {
     FS.llseek(stream, idx * struct_size, {{{ cDefs.SEEK_SET }}});
     return pos;
   },
-#if SYSCALLS_REQUIRE_FILESYSTEM
-  __syscall_fcntl64__deps: ['$syscallGetVarargP', '$syscallGetVarargI'],
-#endif
   __syscall_fcntl64: (fd, cmd, varargs) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -930,7 +876,6 @@ var SyscallsLibrary = {
     SYSCALLS.writeStatFs(buf, FS.statfsStream(stream));
     return 0;
   },
-  __syscall_openat__deps: ['$syscallGetVarargI'],
   __syscall_openat: (dirfd, path, flags, varargs) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -1026,7 +971,6 @@ var SyscallsLibrary = {
     FS.link(oldpath, newpath, flags);
     return 0;
   },
-  __syscall_readlinkat__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_readlinkat: (dirfd, path, buf, bufsize) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -1072,7 +1016,6 @@ var SyscallsLibrary = {
     }
     return 0;
   },
-  __syscall_utimensat__deps: ['$readI53FromI64'],
   __syscall_utimensat: (dirfd, path, times, flags) => {
     var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
     path = SYSCALLS.getStr(path);

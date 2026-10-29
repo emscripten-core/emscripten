@@ -25,15 +25,7 @@ assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
 
 var LibraryGLEmulation = {
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
-  $GLEmulation__deps: ['$GLImmediateSetup', 'glEnable', 'glDisable',
-    'glIsEnabled', 'glGetBooleanv', 'glGetIntegerv', 'glGetString',
-    'glCreateShader', 'glShaderSource', 'glCompileShader', 'glAttachShader',
-    'glDetachShader', 'glUseProgram', 'glDeleteProgram', 'glBindAttribLocation',
-    'glLinkProgram', 'glBindBuffer', 'glGetFloatv', 'glHint',
-    'glEnableVertexAttribArray', 'glDisableVertexAttribArray',
-    'glVertexAttribPointer', 'glActiveTexture', '$stringToNewUTF8',
-    '$ptrToString', '$getEmscriptenSupportedExtensions',
-  ],
+  $GLEmulation__deps: ['$GLImmediateSetup'],
   $GLEmulation__force: true,
   $GLEmulation__postset: `
     // Forward declare GL functions that are overridden by GLEmulation.
@@ -772,7 +764,6 @@ var LibraryGLEmulation = {
     },
   },
 
-  glDeleteObject__deps: ['glDeleteProgram', 'glDeleteShader'],
   glDeleteObject: (id) => {
     if (GL.programs[id]) {
       _glDeleteProgram(id);
@@ -784,7 +775,6 @@ var LibraryGLEmulation = {
   },
   glDeleteObjectARB: 'glDeleteObject',
 
-  glGetObjectParameteriv__deps: ['glGetProgramiv', 'glGetShaderiv'],
   glGetObjectParameteriv: (id, type, result) => {
     if (GL.programs[id]) {
       if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
@@ -813,7 +803,6 @@ var LibraryGLEmulation = {
   },
   glGetObjectParameterivARB: 'glGetObjectParameteriv',
 
-  glGetInfoLog__deps: ['glGetProgramInfoLog', 'glGetShaderInfoLog'],
   glGetInfoLog: (id, maxLength, length, infoLog) => {
     if (GL.programs[id]) {
       _glGetProgramInfoLog(id, maxLength, length, infoLog);
@@ -857,7 +846,6 @@ var LibraryGLEmulation = {
 #if !FULL_ES2
   $GLImmediate__postset: 'GLImmediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(() => GLImmediate.init());',
 #endif
-  $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation', '$webglBufferSubData'],
   $GLImmediate: {
     MapTreeLib: null,
     spawnMapTreeLib: () => {
@@ -3174,16 +3162,13 @@ var LibraryGLEmulation = {
     GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
   },
 
-  glVertex2fv__deps: ['glVertex2f'],
   glVertex2fv: (p) => _glVertex2f({{{ makeGetValue('p', '0', 'float') }}},
                                   {{{ makeGetValue('p', '4', 'float') }}}),
 
-  glVertex3fv__deps: ['glVertex3f'],
   glVertex3fv: (p) => _glVertex3f({{{ makeGetValue('p', '0', 'float') }}},
                                   {{{ makeGetValue('p', '4', 'float') }}},
                                   {{{ makeGetValue('p', '8', 'float') }}}),
 
-  glVertex4fv__deps: ['glVertex4f'],
   glVertex4fv: (p) => _glVertex4f({{{ makeGetValue('p', '0', 'float') }}},
                                   {{{ makeGetValue('p', '4', 'float') }}},
                                   {{{ makeGetValue('p', '8', 'float') }}},
@@ -3205,7 +3190,6 @@ var LibraryGLEmulation = {
   },
   glTexCoord2f: 'glTexCoord2i',
 
-  glTexCoord2fv__deps: ['glTexCoord2i'],
   glTexCoord2fv: (v) =>
     _glTexCoord2i({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}}),
 
@@ -3239,56 +3223,43 @@ var LibraryGLEmulation = {
 
   glColor4d: 'glColor4f',
 
-  glColor4ub__deps: ['glColor4f'],
   glColor4ub: (r, g, b, a) => _glColor4f((r&255)/255, (g&255)/255, (b&255)/255, (a&255)/255),
 
-  glColor4us__deps: ['glColor4f'],
   glColor4us: (r, g, b, a) => _glColor4f((r&65535)/65535, (g&65535)/65535, (b&65535)/65535, (a&65535)/65535),
 
-  glColor4ui__deps: ['glColor4f'],
   glColor4ui: (r, g, b, a) => _glColor4f((r>>>0)/4294967295, (g>>>0)/4294967295, (b>>>0)/4294967295, (a>>>0)/4294967295),
 
-  glColor3f__deps: ['glColor4f'],
   glColor3f: (r, g, b) => _glColor4f(r, g, b, 1),
 
   glColor3d: 'glColor3f',
 
-  glColor3ub__deps: ['glColor4ub'],
   glColor3ub: (r, g, b) => _glColor4ub(r, g, b, 255),
 
-  glColor3us__deps: ['glColor4us'],
   glColor3us: (r, g, b) => _glColor4us(r, g, b, 65535),
 
-  glColor3ui__deps: ['glColor4ui'],
   glColor3ui: (r, g, b) => _glColor4ui(r, g, b, 4294967295),
 
-  glColor3ubv__deps: ['glColor3ub'],
   glColor3ubv: (p) => _glColor3ub({{{ makeGetValue('p', '0', 'i8') }}},
                                   {{{ makeGetValue('p', '1', 'i8') }}},
                                   {{{ makeGetValue('p', '2', 'i8') }}}),
 
-  glColor3usv__deps: ['glColor3us'],
   glColor3usv: (p) => _glColor3us({{{ makeGetValue('p', '0', 'i16') }}},
                                   {{{ makeGetValue('p', '2', 'i16') }}},
                                   {{{ makeGetValue('p', '4', 'i16') }}}),
 
-  glColor3uiv__deps: ['glColor3ui'],
   glColor3uiv: (p) => _glColor3ui({{{ makeGetValue('p', '0', 'i32') }}},
                                   {{{ makeGetValue('p', '4', 'i32') }}},
                                   {{{ makeGetValue('p', '8', 'i32') }}}),
 
-  glColor3fv__deps: ['glColor3f'],
   glColor3fv: (p) => _glColor3f({{{ makeGetValue('p', '0', 'float') }}},
                                 {{{ makeGetValue('p', '4', 'float') }}},
                                 {{{ makeGetValue('p', '8', 'float') }}}),
 
-  glColor4fv__deps: ['glColor4f'],
   glColor4fv: (p) => _glColor4f({{{ makeGetValue('p', '0', 'float') }}},
                                 {{{ makeGetValue('p', '4', 'float') }}},
                                 {{{ makeGetValue('p', '8', 'float') }}},
                                 {{{ makeGetValue('p', '12', 'float') }}}),
 
-  glColor4ubv__deps: ['glColor4ub'],
   glColor4ubv: (p) => _glColor4ub({{{ makeGetValue('p', '0', 'i8') }}},
                                   {{{ makeGetValue('p', '1', 'i8') }}},
                                   {{{ makeGetValue('p', '2', 'i8') }}},
@@ -3321,11 +3292,9 @@ var LibraryGLEmulation = {
         break;
     }
   },
-  glFogi__deps: ['glFogf'],
   glFogi: (pname, param) => {
     return _glFogf(pname, param);
   },
-  glFogfv__deps: ['glFogf'],
   glFogfv: (pname, param) => { // partial support, TODO
     switch (pname) {
       case 0xB66: // GL_FOG_COLOR
@@ -3339,7 +3308,6 @@ var LibraryGLEmulation = {
         _glFogf(pname, {{{ makeGetValue('param', '0', 'float') }}}); break;
     }
   },
-  glFogiv__deps: ['glFogf'],
   glFogiv: (pname, param) => {
     switch (pname) {
       case 0xB66: // GL_FOG_COLOR
@@ -3398,7 +3366,6 @@ var LibraryGLEmulation = {
     GLImmediate.addRendererComponent(GLImmediate.NORMAL, 3, GLctx.FLOAT);
   },
 
-  glNormal3fv__deps: ['glNormal3f'],
   glNormal3fv: (p) => {
     _glNormal3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
   },
@@ -3406,7 +3373,6 @@ var LibraryGLEmulation = {
 
   // Additional non-GLES rendering calls
 
-  glDrawRangeElements__deps: ['glDrawElements'],
   glDrawRangeElements: (mode, start, end, count, type, indices) => {
     _glDrawElements(mode, count, type, indices, start, end);
   },
@@ -3544,7 +3510,6 @@ var LibraryGLEmulation = {
 
   // Vertex array object (VAO) support. TODO: when the WebGL extension is
   // popular, use that and remove this code and GL.vaos
-  $emulGlGenVertexArrays__deps: ['$GLEmulation'],
   $emulGlGenVertexArrays: (n, vaos) => {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GLEmulation.vaos);
@@ -3571,7 +3536,6 @@ var LibraryGLEmulation = {
     if (!vao) return 0;
     return 1;
   },
-  $emulGlBindVertexArray__deps: ['glBindBuffer', 'glEnableVertexAttribArray', 'glVertexAttribPointer', 'glEnableClientState'],
   $emulGlBindVertexArray: (vao) => {
     // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
     GLEmulation.currentVao = null; // make sure the commands we run here are not recorded
@@ -3933,7 +3897,6 @@ var LibraryGLEmulation = {
     return 1 /* GL_TRUE */;
   },
 
-  gluOrtho2D__deps: ['glOrtho'],
   gluOrtho2D: (left, right, bottom, top) => _glOrtho(left, right, bottom, top, -1, 1),
 };
 

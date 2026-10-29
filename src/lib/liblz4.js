@@ -6,7 +6,6 @@
 
 #if LZ4
 addToLibrary({
-  $LZ4__deps: ['$FS', '$preloadPlugins'],
   $LZ4: {
     DIR_MODE: {{{ cDefs.S_IFDIR | 0o777 }}},
     FILE_MODE: {{{ cDefs.S_IFREG | 0o777 }}},

@@ -72,8 +72,6 @@ addToLibrary({
   // The FS-using parts are split out into a separate object, so simple path
   // usage does not require the FS.
   $PATH_FS__deps: [
-    '$PATH',
-    '$FS',
 #if WASMFS
     // In WasmFS, FS.cwd() is implemented via a call into wasm, so we need to
     // add a dependency on that.

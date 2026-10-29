@@ -6,7 +6,13 @@
 from subprocess import PIPE
 
 from common import EMCC, RunnerCore, copy_asset, create_file, read_file, test_file
-from decorators import also_with_wasm2js, also_with_wasm64, parameterized, requires_node_25
+from decorators import (
+  also_with_wasm2js,
+  also_with_wasm64,
+  parameterized,
+  requires_node_25,
+  with_env_modify,
+)
 
 from tools.utils import delete_file
 
@@ -108,7 +114,6 @@ addToLibrary({
     create_file('lib.js', r'''
 addToLibrary({
   $doNotCall: (x) => {},
-  foo__deps: ['$doNotCall'],
   foo__proxy: 'sync',
   foo: () => doNotCall(() => {
     out('should never see this');
@@ -125,6 +130,72 @@ addToLibrary({
     }
     ''')
     self.do_runf('src.c', 'main\ndone\n', cflags=['-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
+
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY', '-DASYNC'],),
+    'jspi': (['-sJSPI', '-DASYNC'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_jslib_async_auto_sync(self, args):
+    # `answer(ms, value)` resolves to `value` after `ms` milliseconds
+    # (synchronously if `ms` is 0), or is -1 where the caller cannot wait.
+    if '-sJSPI' in args:
+      self.require_jspi()
+    if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    create_file('lib.js', r'''
+addToLibrary({
+  answer__sig: 'pip',
+  answer__async: 'auto',
+  answer__proxy: 'sync',
+  answer: (ms, value, sync) => {
+    if (!ms) return value;
+    if (sync) return -1;
+    return new Promise((resolve) => setTimeout(() => resolve(value), ms));
+  },
+  // No __sig: `sync` is found by name alone.
+  wait_ms__async: 'auto',
+  wait_ms__proxy: 'sync',
+  wait_ms: (ms, sync) => {
+    if (ms && !sync) return new Promise((resolve) => setTimeout(resolve, ms));
+  },
+});
+''')
+    create_file('src.c', r'''
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+
+intptr_t answer(int ms, intptr_t value);
+void wait_ms(int ms);
+
+int main() {
+  assert(answer(0, 7) == 7);
+#if defined(__EMSCRIPTEN_PTHREADS__) || defined(ASYNC)
+  assert(answer(5, 42) == 42);
+#else
+  assert(answer(5, 42) == -1);
+#endif
+  wait_ms(0);
+  wait_ms(5);
+  printf("done\n");
+  return 0;
+}
+''')
+    self.do_runf('src.c', 'done\n', cflags=args + ['-sEXIT_RUNTIME', '--js-library', 'lib.js'])
+
+  def test_jslib_async_auto_sync_arity(self):
+    create_file('lib.js', '''
+addToLibrary({
+  jslibfunc__sig: 'iii',
+  jslibfunc__async: 'auto',
+  jslibfunc: (x, sync) => x,
+});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
+                     "error: JS library error: 'jslibfunc' must take 'sync' as parameter 3, after the 2 of its '__sig'")
 
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
@@ -248,7 +319,6 @@ addToLibrary({
   def test_jslib_using_asm_lib(self):
     create_file('lib.js', r'''
 addToLibrary({
-  jslibfunc__deps: ['asmlibfunc'],
   jslibfunc: (x) => 2 * _asmlibfunc(x),
 
   asmlibfunc__asm: true,
@@ -285,7 +355,6 @@ int main() {
   def test_jslib_internal_deps(self):
     create_file('lib.js', r'''
 addToLibrary({
-  jslibfunc__deps: ['$callRuntimeCallbacks'],
   jslibfunc: (x) => {
     callRuntimeCallbacks();
   },
@@ -606,9 +675,7 @@ extraLibraryFuncs.push('jsfunc');
       addToLibrary({
         // Create a dependency cycle (foo -> $call_alias -> foo_alias -> foo)
         // to test that `var _foo_alias = _foo;` is still emitted after `_foo`.
-        $call_alias__deps: ['foo_alias'],
         $call_alias: () => _foo_alias(),
-        foo__deps: ['$call_alias'],
         foo: () => {
           if (!call_alias) return 0;
           return 42;
@@ -629,7 +696,6 @@ extraLibraryFuncs.push('jsfunc');
         call_native: () => _native_func(),
 
         // JS function that calls nativeAlias
-        call_native_alias__deps: ['$nativeAlias'],
         call_native_alias: () => nativeAlias(),
 
         // This is a JS-only symbol (i.e. no leading underscore) that
@@ -805,6 +871,7 @@ console.error('JSLIB: none of the above');
   # Tests that it is possible to hook into/override a symbol defined in a system library.
   def test_jslib_override_system_symbol(self):
     # This test verifies it is possible to override a symbol from WebGL library.
+    self.cflags += ['-Wno-js-compiler']
 
     # When WebGL is implicitly linked in, the implicit linking should happen before any user
     # --js-libraries, so that they can adjust the behavior afterwards.
@@ -827,11 +894,9 @@ console.error('JSLIB: none of the above');
       class ParentClass {}
       addToLibrary({
         $ParentClass: ParentClass,
-        $MyClass__deps: ['$ParentClass'],
         $MyClass: class extends ParentClass {
           constructor() { super(); this.x = 42; }
         },
-        log_class__deps: ['$MyClass'],
         log_class: () => {
           var i = new MyClass();
           out('MyClass: ' + i.x);
@@ -850,6 +915,68 @@ console.error('JSLIB: none of the above');
       }
     ''')
     self.do_runf('src.c', 'MyClass: 42', cflags=['--js-library', 'lib.js'])
+
+  def test_jslib_auto_deps(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $unusedHelper: () => 99,
+        $helper: () => 10,
+        $postsetHelper: () => { myObj.unusedHelper += 2; },
+        other_js_func: () => helper() + 20,
+        $myObj__postset: 'postsetHelper();',
+        $myObj: {
+          unusedHelper: 10,
+          getVal() {
+            return _other_js_func() + this.unusedHelper;
+          },
+        },
+        entry_func: () => {
+          out('val: ' + myObj.getVal());
+          out('done');
+        },
+      });
+    ''')
+    create_file('src.c', r'''
+      void entry_func(void);
+      int main() {
+        entry_func();
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'val: 42\ndone\n', cflags=['--js-library', 'lib.js'])
+    self.assertNotContained('unusedHelper =', read_file('src.js'))
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js', '-sVERBOSE'], stderr=PIPE).stderr
+    self.assertContained('auto-detected dependency: entry_func -> $myObj', err)
+    self.assertContained('auto-detected dependency: $myObj -> $postsetHelper', err)
+    self.assertContained('auto-detected dependency: $myObj -> other_js_func', err)
+    self.assertContained('auto-detected dependency: other_js_func -> $helper', err)
+
+    # Test warning when an explicit __deps entry duplicates an auto-detected dependency
+    create_file('redundant.js', r'''
+      addToLibrary({
+        $helper: () => 10,
+        entry_func__deps: ['$helper'],
+        entry_func: () => helper(),
+      });
+    ''')
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'redundant.js'], stderr=PIPE).stderr
+    self.assertNotContained('redundant __deps entry', err)
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'redundant.js', '-sSTRICT'], stderr=PIPE).stderr
+    self.assertContained('warning: entry_func: redundant __deps entry: $helper', err)
+
+  @with_env_modify({'EMCC_CHECK_DEPS': '1'})
+  def test_emcc_check_deps(self):
+    # Test EMCC_CHECK_DEPS debug mode catches local bindings shadowing library symbols
+    create_file('shadow.js', r'''
+      addToLibrary({
+        $foo: () => 10,
+        js_func: (foo) => foo,
+      });
+    ''')
+    # Shadowing in user libraries are ignored by default, unless -sSTRICT is enabled
+    self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'shadow.js', '-sINCLUDE_FULL_LIBRARY'])
+    self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'shadow.js', '-sINCLUDE_FULL_LIBRARY', '-sSTRICT'],
+                     "error: js_func: local binding 'foo' shadows library symbol '$foo'")
 
   # Tests that JS library functions containing multiline strings are not disturbed by e.g. inserting indentation into the output.
   @parameterized({

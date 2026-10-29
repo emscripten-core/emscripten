@@ -21,7 +21,6 @@ addToLibrary({
   __syscall_getgid32: () => 0,
   __syscall_getegid32: () => 0,
 #endif
-  __syscall_uname__deps: ['$stringToUTF8'],
   __syscall_uname: (buf) => {
     if (!buf) {
       return -{{{ cDefs.EFAULT }}};
