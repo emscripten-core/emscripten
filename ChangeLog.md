@@ -42,7 +42,7 @@ See docs/process.md for more on how version tagging works.
 - In pthreads builds with `MAIN_MODULE`, workers no longer walk the main
   module's whole function table, which created a JS function object for every
   table entry in every worker.  The main thread now passes them the table slots
-  of the main module's exported functions.
+  of the main module's exported functions. (#28105)
 
 6.0.13 - 10/19/26
 -----------------
