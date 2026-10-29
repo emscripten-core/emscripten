@@ -95,6 +95,9 @@ var LibraryPThread = {
     // starting the next thread is faster.
     unusedWorkers: [],
     tlsInitFunctions: [],
+#if MAIN_MODULE
+    tlsFreeFunctions: [],
+#endif
     // Maps pthread_t pointers to the workers on which they are running.  For
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.
@@ -678,6 +681,10 @@ var LibraryPThread = {
     // Register this function so that its gets called for each thread on
     // startup.
     PThread.tlsInitFunctions.push(tlsInitWrapper);
+    var tlsFreeFunc = moduleExports?.['_emscripten_tls_free'];
+    if (tlsFreeFunc) {
+      PThread.tlsFreeFunctions.push(tlsFreeFunc);
+    }
 
     // If the main thread is already running we also need to call this function
     // now.  If the main thread is not yet running this will happen when it
@@ -1190,6 +1197,8 @@ var LibraryPThread = {
     if (!ENVIRONMENT_IS_PTHREAD) markAsFinished(thread);
     else postMessage({ cmd: {{{ CMD_MARK_AS_FINISHED }}}, thread });
   },
+
+  _emscripten_thread_free_tls: () => PThread.tlsFreeFunctions.forEach((f) => f()),
 
   $markAsFinished: (pthread_ptr) => {
 #if PTHREADS_DEBUG

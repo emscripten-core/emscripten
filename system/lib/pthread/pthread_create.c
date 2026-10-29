@@ -366,6 +366,11 @@ void _emscripten_thread_exit(void* result) {
 
   __tl_unlock();
 
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+  // Free the TLS data of all loaded side modules.
+  _emscripten_thread_free_tls();
+#endif
+
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
   __set_thread_state(NULL, 0, 0, 1);
 

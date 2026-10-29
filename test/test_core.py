@@ -9443,6 +9443,28 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @requires_pthreads
+  def test_pthread_dylink_tls_free(self):
+    self.cflags += ['-Wno-experimental', '-pthread']
+    self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dylink_tls_free_side.c'))
+
+    self.prep_dlfcn_main()
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.do_runf('core/pthread/test_pthread_dylink_tls_free.c', 'done\n')
+
+  @needs_dylink
+  @requires_pthreads
+  def test_pthread_dylink_tls_free_robust(self):
+    self.cflags += ['-Wno-experimental', '-pthread']
+    self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dylink_tls_free_robust_side.c'))
+
+    self.prep_dlfcn_main()
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.do_runf('core/pthread/test_pthread_dylink_tls_free_robust.c', 'done\n')
+
+  @needs_dylink
+  @requires_pthreads
   def test_pthread_dylink_longjmp(self):
     self.cflags += ['-Wno-experimental', '-pthread']
     self.dylink_testf(test_file('core/pthread/test_pthread_dylink_longjmp.c'))
