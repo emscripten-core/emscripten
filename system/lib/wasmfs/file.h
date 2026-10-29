@@ -39,6 +39,14 @@ const backend_t NullBackend = nullptr;
 // Access mode, file creation and file status flags for open.
 using oflags_t = uint32_t;
 
+// Overflow and underflow behaviour are only defined for unsigned types.
+template<typename T> bool addWillOverFlow(T a, T b) {
+  if (a > 0 && b > std::numeric_limits<T>::max() - a) {
+    return true;
+  }
+  return false;
+}
+
 // An abstract representation of an underlying file. All `File` objects
 // correspond to underlying (real or conceptual) files in a file system managed
 // by some backend, but not all underlying files have a corresponding `File`
@@ -157,14 +165,27 @@ protected:
 
   // Return the accessed length or a negative error code. It is not an error to
   // access fewer bytes than requested. Will only be called on opened files.
-  // TODO: Allow backends to override the version of read with
-  // multiple iovecs to make it possible to implement pipes. See #16269.
-  virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) = 0;
-  virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) = 0;
+  // Backends may implement either these single-buffer methods or the iovec
+  // methods below.
+  virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) {
+    WASMFS_UNREACHABLE("read unimplemented");
+  }
+  virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) {
+    WASMFS_UNREACHABLE("write unimplemented");
+  }
 
-  // How much of a `len` byte write the file takes without blocking: a byte
-  // count, or -EAGAIN for none. Only pipes and the like have a limit.
-  virtual ssize_t writableBytes(size_t len) { return len; }
+  // Optional iovec-based read and write methods. All external accesses go
+  // through these methods, whose default implementations call the single-buffer
+  // read and write methods above for each iovec. Backends can also implement
+  // these directly without implementing the single-buffer methods above.
+  virtual ssize_t read(const __wasi_iovec_t* iovs,
+                       size_t iovs_len,
+                       off_t offset,
+                       oflags_t flags);
+  virtual ssize_t write(const __wasi_ciovec_t* iovs,
+                        size_t iovs_len,
+                        off_t offset,
+                        oflags_t flags);
 
   // Sets the size of the file to a specific size. If new space is allocated, it
   // should be zero-initialized. May be called on files that have not been
@@ -382,12 +403,25 @@ public:
   [[nodiscard]] int close() { return getFile()->close(); }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) {
-    return getFile()->read(buf, len, offset);
+    __wasi_iovec_t iov = {buf, len};
+    return read(&iov, 1, offset);
+  }
+  ssize_t read(const __wasi_iovec_t* iovs,
+               size_t iovs_len,
+               off_t offset,
+               oflags_t flags = 0) {
+    return getFile()->read(iovs, iovs_len, offset, flags);
   }
   ssize_t write(const uint8_t* buf, size_t len, off_t offset) {
-    return getFile()->write(buf, len, offset);
+    __wasi_ciovec_t iov = {buf, len};
+    return write(&iov, 1, offset);
   }
-  ssize_t writableBytes(size_t len) { return getFile()->writableBytes(len); }
+  ssize_t write(const __wasi_ciovec_t* iovs,
+                size_t iovs_len,
+                off_t offset,
+                oflags_t flags = 0) {
+    return getFile()->write(iovs, iovs_len, offset, flags);
+  }
 
   [[nodiscard]] int setSize(off_t size) { return getFile()->setSize(size); }
 
