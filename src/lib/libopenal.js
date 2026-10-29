@@ -11,7 +11,6 @@ var LibraryOpenAL = {
   // ** INTERNALS
   // ************************************************************************
 
-  $AL__deps: ['$MainLoop'],
   $AL: {
     // ------------------------------------------------------
     // -- Constants
@@ -1601,7 +1600,6 @@ var LibraryOpenAL = {
 
   // bufferSize is actually 'number of sample frames', so was renamed
   // bufferFrameCapacity here for clarity.
-  alcCaptureOpenDevice__deps: ['$autoResumeAudioContext'],
   alcCaptureOpenDevice__proxy: 'sync',
   alcCaptureOpenDevice: (pDeviceName, requestedSampleRate, format, bufferFrameCapacity) => {
 
@@ -2058,7 +2056,6 @@ var LibraryOpenAL = {
     return {{{ cDefs.ALC_TRUE }}};
   },
 
-  alcCreateContext__deps: ['$autoResumeAudioContext'],
   alcCreateContext__proxy: 'sync',
   alcCreateContext: (deviceId, pAttrList) => {
     if (!(deviceId in AL.deviceRefCounts)) {
@@ -2327,7 +2324,6 @@ var LibraryOpenAL = {
   },
 
   alcGetString__proxy: 'sync',
-  alcGetString__deps: ['$stringToNewUTF8'],
   alcGetString: (deviceId, param) => {
     if (AL.alcStringCache[param]) {
       return AL.alcStringCache[param];
@@ -2575,7 +2571,6 @@ var LibraryOpenAL = {
 
   emscripten_alcGetStringiSOFT__proxy: 'sync',
   emscripten_alcGetStringiSOFT__sig: 'iiii',
-  emscripten_alcGetStringiSOFT__deps: ['alcGetString', '$stringToNewUTF8'],
   emscripten_alcGetStringiSOFT: (deviceId, param, index) => {
     if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
@@ -2798,7 +2793,6 @@ var LibraryOpenAL = {
     }
   },
 
-  alDeleteSources__deps: ['alSourcei'],
   alDeleteSources__proxy: 'sync',
   alDeleteSources: (count, pSourceIds) => {
     if (!AL.currentCtx) {
@@ -2962,7 +2956,6 @@ var LibraryOpenAL = {
   },
 
   alGetString__proxy: 'sync',
-  alGetString__deps: ['$stringToNewUTF8'],
   alGetString: (param) => {
     if (AL.stringCache[param]) {
       return AL.stringCache[param];
@@ -4733,5 +4726,4 @@ var LibraryOpenAL = {
   }
 };
 
-autoAddDeps(LibraryOpenAL, '$AL');
 addToLibrary(LibraryOpenAL);

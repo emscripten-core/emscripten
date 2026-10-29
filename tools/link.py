@@ -785,7 +785,7 @@ def setup_cross_origin_storage():
 def add_required_heap_symbols():
   """Auto-include heap views and helper symbols required by certain build modes or runtime.
 
-  Because addImplicitDeps only scans library functions and user code (pre-js/post-js/EM_JS),
+  Because calcImplicitDeps only scans library functions and user code (pre-js/post-js/EM_JS),
   runtime scaffolding files (e.g., postamble.js, runtime_stack_check.js, memoryprofiler.js)
   that access linear memory directly must have their heap views explicitly declared here
   so they are emitted in the final JS bundle.
@@ -832,7 +832,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   apply_library_settings(linker_args)
 
   if options.shared and not settings.FAKE_DYLIBS:
-    default_setting('SIDE_MODULE', 1)
+    default_setting('SIDE_MODULE', 2)
 
   if not settings.SIDE_MODULE and not settings.FAKE_DYLIBS:
     options.dylibs = get_dylibs(linker_args)
@@ -1278,7 +1278,12 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       settings.INCLUDE_FULL_LIBRARY = 1
     # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
-    settings.REQUIRED_EXPORTS += ['__stack_pointer']
+    # `__stack_pointer` is exported for PIC side modules. `__heap_base` is used
+    # by `$getMemory` in `libdylink.js` (cannot be in `$getMemory__deps` because
+    # `wasm-ld` processes stub library dependencies before synthesizing optional
+    # symbols like `__heap_base`).
+    # See https://github.com/llvm/llvm-project/issues/180632
+    settings.REQUIRED_EXPORTS += ['__stack_pointer', '__heap_base']
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1

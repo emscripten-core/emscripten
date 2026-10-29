@@ -1,10 +1,8 @@
 if (!LibraryManager.library.glTexImage3D) throw 'This file should be getting processed after library_webgl2.js!';
 
 addToLibrary({
-	orig_glTexImage3D__deps: LibraryManager.library.glTexImage3D__deps || [],
 	orig_glTexImage3D: LibraryManager.library.glTexImage3D,
 
-	glTexImage3D__deps: ['orig_glTexImage3D'],
 	glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
 		_glTexImage3D.createdType = type;
 		// Check that the original function exists

@@ -168,7 +168,7 @@ Marking JS library functions as async
 If you mark a JS library function as async using the ``__async`` decorator then
 the compiler will take a care of all the details of using the ``Asyncify`` API
 for you.  The function will also automatically be included in
-:ref:`ASYNCIFY_IMPORTS`.  All you need to do is write normal async JS function
+:ref:`ASYNCIFY_IMPORTS`.  All you need to do is write a normal async JS function
 (either using the explict ``async`` JS keyword or returning a ``Promise``
 object).  For example:
 
@@ -199,6 +199,31 @@ resulting promise resolves.
 You can use ``__async: 1`` if you just want to include the function in
 :ref:`ASYNCIFY_IMPORTS` or ``__async: 'auto'`` if you also want the function to
 wrapper in ``Asyncify.handleAsync``.
+
+``__async: 'auto'`` allows the same function to work synchronously without
+``ASYNCIFY``.  A function whose last parameter is named ``sync`` is told there
+whether it must return synchronously.  This is ``false`` under
+``ASYNCIFY``/JSPI, and when called from a pthread with ``__proxy: 'sync'`` (the
+main thread awaits the result on its behalf); it is ``true`` otherwise, where a
+returned ``Promise`` could not be waited for:
+
+.. code-block:: js
+
+   addToLibrary({
+     lookup__sig: 'pp',
+     lookup__async: 'auto',
+     lookup__proxy: 'sync',
+     lookup: (name, sync) => {
+       if (sync) return -EAGAIN;
+       return fetchSomething(name);  // returns a Promise
+     },
+   });
+
+In the above example, the same ``lookup`` supports the async promise-returning
+path for ``ASYNCIFY`` and a pthread, while returning the ``EAGAIN`` error when
+called synchronously.  As ``sync`` is always ``false`` under ``ASYNCIFY``/JSPI,
+the function must then be called from a stack that can suspend, as with any
+other async import (under JSPI, within one of the :ref:`JSPI_EXPORTS`).
 
 
 Ways to use Asyncify APIs in older engines

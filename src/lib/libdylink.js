@@ -16,7 +16,6 @@ const UNDEFINED_ADDR = to64(-1);
 
 var LibraryDylink = {
 #if FILESYSTEM
-  $registerWasmPlugin__deps: ['$preloadPlugins'],
   $registerWasmPlugin: () => {
     // Use string keys here for public methods to avoid minification since the
     // plugin consumer also uses string keys.
@@ -40,13 +39,11 @@ var LibraryDylink = {
     preloadPlugins.push(wasmPlugin);
   },
 
-  $preloadedWasm__deps: ['$registerWasmPlugin'],
   $preloadedWasm__postset: `
     registerWasmPlugin();
     `,
   $preloadedWasm: {},
 
-  $replaceORIGIN__deps: ['$PATH'],
   $replaceORIGIN: (parentLibName, rpath) => {
     if (rpath.startsWith('$ORIGIN')) {
       // TODO: what to do if we only know the relative path of the file? It will return '.' here.
@@ -80,7 +77,7 @@ var LibraryDylink = {
   // generation time.
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
   $createInvokeFunction__internal: true,
-  $createInvokeFunction__deps: ['$dynCall', 'setThrew', '$stackSave', '$stackRestore'],
+  $createInvokeFunction__deps: ['setThrew'],
   $createInvokeFunction: (sig) => (ptr, ...args) => {
     var sp = stackSave();
     try {
@@ -108,12 +105,6 @@ var LibraryDylink = {
   // the canonical name of the symbol (in some cases modifying the symbol as
   // part of the loop process, so that actual symbol looked up has a different
   // name).
-  $resolveGlobalSymbol__deps: ['$isSymbolDefined',
-#if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
-    '$createNamedFunction',
-    '$createInvokeFunction',
-#endif
-  ],
   $resolveGlobalSymbol__internal: true,
   $resolveGlobalSymbol: (symName, direct = false) => {
     var sym;
@@ -159,7 +150,6 @@ var LibraryDylink = {
   // handler.  We abuse the `target` of the Proxy in order to pass the set of
   // weak imports to the handler.
   $GOTHandler__internal: true,
-  $GOTHandler__deps: ['$GOT'],
   $GOTHandler: {
     get(weakImports, symName) {
       var rtn = GOT[symName];
@@ -211,7 +201,6 @@ var LibraryDylink = {
   },
 
   $updateGOT__internal: true,
-  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction'],
   $updateGOT__docs: '/** @param {boolean=} replace */',
   $updateGOT: (exports, replace) => {
 #if DYLINK_DEBUG
@@ -279,7 +268,6 @@ var LibraryDylink = {
 
   // Applies relocations to exported things.
   $relocateExports__internal: true,
-  $relocateExports__deps: ['$isImmutableGlobal'],
   $relocateExports: (exports, memoryBase = 0) => {
 #if DYLINK_DEBUG
     dbg(`relocateExports memoryBase=${memoryBase} count=${Object.keys(exports).length}`);
@@ -310,7 +298,6 @@ var LibraryDylink = {
   },
 
   $reportUndefinedSymbols__internal: true,
-  $reportUndefinedSymbols__deps: ['$GOT', '$resolveGlobalSymbol'],
   $reportUndefinedSymbols: () => {
 #if DYLINK_DEBUG
     dbg('reportUndefinedSymbols');
@@ -356,7 +343,6 @@ var LibraryDylink = {
   },
 
   // dynamic linker/loader (a-la ld.so on ELF systems)
-  $LDSO__deps: ['$newDSO'],
   $LDSO: {
     // name -> dso [refcount, name, module, global]; Used by dlopen
     loadedLibsByName: {},
@@ -373,7 +359,7 @@ var LibraryDylink = {
   },
 
   $dlSetError__internal: true,
-  $dlSetError__deps: ['__dl_seterr', '$stringToUTF8OnStack', '$stackSave', '$stackRestore'],
+  $dlSetError__deps: ['__dl_seterr'],
   $dlSetError: (msg) => {
 #if DYLINK_DEBUG
     dbg('dlSetError:', msg);
@@ -393,7 +379,11 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['emscripten_get_sbrk_ptr', '__heap_base', '$alignMemory', 'calloc'],
+  // `__heap_base` is also used below, but is added via `REQUIRED_EXPORTS` in
+  // `link.py` rather than `__deps` because `wasm-ld` processes stub library
+  // dependencies before synthesizing optional symbols like `__heap_base`.
+  // See https://github.com/llvm/llvm-project/issues/180632
+  $getMemory__deps: ['emscripten_get_sbrk_ptr', 'calloc'],
   $getMemory: (size) => {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -432,7 +422,6 @@ var LibraryDylink = {
 
   // returns the side module metadata as an object
   // { memorySize, memoryAlign, tableSize, tableAlign, neededDynlibs}
-  $getDylinkMetadata__deps: ['$UTF8ArrayToString'],
   $getDylinkMetadata__internal: true,
   $getDylinkMetadata: (binary) => {
     var offset = 0;
@@ -575,7 +564,6 @@ var LibraryDylink = {
 #endif
 
   // Module.symbols <- libModule.symbols (flags.global handler)
-  $mergeLibSymbols__deps: ['$isSymbolDefined'],
   $mergeLibSymbols: (exports, libName) => {
 #if DYNCALLS || !WASM_BIGINT
     registerDynCallSymbols(exports);
@@ -626,7 +614,6 @@ var LibraryDylink = {
   },
 
 #if DYLINK_DEBUG
-  $dumpTable__deps: ['$wasmTable'],
   $dumpTable: () => {
     var len = wasmTable.length;
     for (var i = {{{ toIndexType(0) }}} ; i < len; i++) {
@@ -680,11 +667,6 @@ var LibraryDylink = {
     * @param {Object=} localScope
     * @param {number=} handle
     */`,
-  $loadWebAssemblyModule__deps: [
-    '$loadDynamicLibrary',
-    '$getDylinkMetadata',
-    '$instantiateModule',
-  ],
   $loadWebAssemblyModule: (binary, flags, libName, localScope, handle) => {
 #if DYLINK_DEBUG
     dbg('loadWebAssemblyModule:', libName, handle);
@@ -719,13 +701,6 @@ var LibraryDylink = {
   // Instantiates a side module after all its dependencies have been loaded.
   // Can be called both sync and async.
   $instantiateModule__internal: true,
-  $instantiateModule__deps: [
-    '$getMemory', '$updateGOT',
-    '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
-    '$alignMemory', '$updateTableMap',
-    '$wasmTable', '$addOnPostCtor',
-    '$addEmAsm', '$addEmJs',
-  ],
   $instantiateModule: (binary, metadata, flags, libName, localScope, handle) => {
 #if ASSERTIONS
     var originalTable = wasmTable;
@@ -1012,13 +987,7 @@ var LibraryDylink = {
 
 #if FILESYSTEM
   $findLibraryFS__deps: [
-    '$replaceORIGIN',
     '_emscripten_find_dylib',
-    '$withStackSave',
-    '$stackAlloc',
-    '$stringToUTF8OnStack',
-    '$FS',
-    '$PATH',
 #if WASMFS
     '_wasmfs_identify',
     '_wasmfs_read_file',
@@ -1078,17 +1047,6 @@ var LibraryDylink = {
   // If a library was already loaded, it is not loaded a second time. However
   // flags.global and flags.nodelete are handled every time a load request is made.
   // Once a library becomes 'global' or 'nodelete', it cannot be removed or unloaded.
-  $loadDynamicLibrary__deps: ['$LDSO', '$loadWebAssemblyModule',
-                              '$mergeLibSymbols', '$newDSO',
-                              '$asyncLoad',
-#if FILESYSTEM
-                              '$preloadedWasm',
-                              '$findLibraryFS',
-#endif
-#if DYNCALLS || !WASM_BIGINT
-                              '$registerDynCallSymbols',
-#endif
-  ],
   $loadDynamicLibrary__docs: `
     /**
      * @param {number=} handle
@@ -1234,7 +1192,6 @@ var LibraryDylink = {
   },
 
   $loadDylibs__internal: true,
-  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $loadDylibs: async () => {
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
@@ -1261,7 +1218,6 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  $dlopenInternal__deps: ['$dlSetError', '$PATH'],
   $dlopenInternal: (handle, jsflags) => {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
@@ -1298,7 +1254,6 @@ var LibraryDylink = {
     }
   },
 
-  _dlopen_js__deps: ['$dlopenInternal'],
   _dlopen_js__async: 'auto',
   _dlopen_js: (handle) =>
 #if ASYNCIFY
@@ -1308,7 +1263,6 @@ var LibraryDylink = {
 #endif
 
   // Async version of dlopen.
-  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
   _emscripten_dlopen_js: (handle, onsuccess, onerror, user_data) => {
     /** @param {Object=} e */
     function errorCallback(e) {
@@ -1347,7 +1301,6 @@ var LibraryDylink = {
   },
 
   // void* dlsym(void* handle, const char* symbol);
-  _dlsym_js__deps: ['$dlSetError', '$getFunctionAddress', '$addFunction'],
   _dlsym_js: (handle, symbol, symbolIndex) => {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html

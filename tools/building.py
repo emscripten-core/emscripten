@@ -28,7 +28,7 @@ from . import (
   utils,
   webassembly,
 )
-from .settings import settings
+from .settings import settings, user_settings
 from .shared import (
   CLANG_CC,
   CLANG_CXX,
@@ -237,7 +237,10 @@ def lld_flags_for_executable(external_symbols):
 
   if settings.SIDE_MODULE:
     cmd.append('-shared')
-    if not settings.LINKABLE:
+    # Unlike `-shared`, `-sSIDE_MODULE=2` disables `--export-dynamic` so that
+    # unexported symbols are DCE'd.  If both `-shared` and `-sSIDE_MODULE` are
+    # specified, `-sSIDE_MODULE` takes precedence.
+    if not settings.LINKABLE and (not cmdline.options.shared or 'SIDE_MODULE' in user_settings):
       cmd.append('--no-export-dynamic')
   else:
     if settings.LINKABLE:
@@ -315,7 +318,7 @@ def lld_flags(args):
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
-  if settings.LINKABLE and (settings.FAKE_DYLIBS or not settings.SIDE_MODULE):
+  if settings.LINKABLE:
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
 
@@ -332,11 +335,6 @@ def lld_flags(args):
 
   for a in llvm_backend_args():
     args += ['-mllvm', a]
-
-  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
-    args += ['-mllvm', '-exception-model=wasm']
-  elif not settings.DISABLE_EXCEPTION_CATCHING:
-    args += ['-mllvm', '-exception-model=emscripten']
 
   return args
 

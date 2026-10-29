@@ -15,7 +15,6 @@ const LibraryAutodebug = {
     dbg('get_i32 ' + [loc, index, value]);
     return value;
   },
-  $get_i64__deps: ['setTempRet0'],
   $get_i64: (loc, index, low, high) => {
     dbg('get_i64 ' + [loc, index, low, high]);
     _setTempRet0(high);
@@ -49,7 +48,6 @@ const LibraryAutodebug = {
     dbg('set_i32 ' + [loc, index, value]);
     return value;
   },
-  $set_i64__deps: ['setTempRet0'],
   $set_i64: (loc, index, low, high) => {
     dbg('set_i64 ' + [loc, index, low, high]);
     _setTempRet0(high);
@@ -87,7 +85,6 @@ const LibraryAutodebug = {
     dbg('load_val_i32 ' + [loc, value]);
     return value;
   },
-  $load_val_i64__deps: ['setTempRet0'],
   $load_val_i64: (loc, low, high) => {
     dbg('load_val_i64 ' + [loc, low, high]);
     _setTempRet0(high);
@@ -109,7 +106,6 @@ const LibraryAutodebug = {
     dbg('store_val_i32 ' + [loc, value]);
     return value;
   },
-  $store_val_i64__deps: ['setTempRet0'],
   $store_val_i64: (loc, low, high) => {
     dbg('store_val_i64 ' + [loc, low, high]);
     _setTempRet0(high);

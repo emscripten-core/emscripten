@@ -10,7 +10,6 @@
 
 var LibraryUnwind = {
 
-  _Unwind_Backtrace__deps: ['$getCallstack'],
   _Unwind_Backtrace: (func, arg) => {
     var trace = getCallstack();
     var parts = trace.split('\n');

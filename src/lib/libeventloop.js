@@ -15,7 +15,6 @@ LibraryJSEventLoop = {
   // rather than a JS object, and holds a runtime keepalive while pending.
   // Ids are sequential and, like setTimeout's, never zero; the native handle
   // is retained only while pending.
-  $safeSetTimeout__deps: ['$callUserCallback'],
   $safeSetTimeout__docs: '/** @param {number=} timeout */',
   $safeSetTimeout__postset: 'safeSetTimeout.pending = new Map(); safeSetTimeout.nextId = 1;',
   $safeSetTimeout: (func, timeout) => {
@@ -31,7 +30,6 @@ LibraryJSEventLoop = {
 
   // Clears a pending safeSetTimeout and releases its keepalive. No-op if the
   // timeout has already fired or been cleared.
-  $safeClearTimeout__deps: ['$safeSetTimeout'],
   $safeClearTimeout: (id) => {
     var handle = safeSetTimeout.pending.get(id);
     if (!handle) return;
@@ -52,7 +50,6 @@ LibraryJSEventLoop = {
     return id;
   },
 
-  $safeRequestAnimationFrame__deps: ['$MainLoop'],
   $safeRequestAnimationFrame: (func) => {
     {{{ runtimeKeepalivePush() }}}
     return MainLoop.requestAnimationFrame(() => {
@@ -71,7 +68,6 @@ LibraryJSEventLoop = {
     return true;
   },
 
-  $emSetImmediate__deps: ['$setImmediateWrapped', '$clearImmediateWrapped', '$emClearImmediate'],
   $emSetImmediate__postset: `
     if (globalThis.setImmediate) {
       emSetImmediate = setImmediateWrapped;
@@ -111,7 +107,6 @@ LibraryJSEventLoop = {
   $emClearImmediate__deps: ['$emSetImmediate'],
   $emClearImmediate: undefined,
 
-  emscripten_set_immediate__deps: ['$emSetImmediate', '$callUserCallback'],
   emscripten_set_immediate: (cb, userData) => {
     {{{ runtimeKeepalivePush(); }}}
     return emSetImmediate(() => {
@@ -120,14 +115,12 @@ LibraryJSEventLoop = {
     });
   },
 
-  emscripten_clear_immediate__deps: ['$emClearImmediate'],
   emscripten_clear_immediate: (id) => {
     if (emClearImmediate(id)) {
       {{{ runtimeKeepalivePop(); }}}
     }
   },
 
-  emscripten_set_immediate_loop__deps: ['$emSetImmediate', '$callUserCallback'],
   emscripten_set_immediate_loop: (cb, userData) => {
     function tick() {
       callUserCallback(() => {
@@ -142,13 +135,11 @@ LibraryJSEventLoop = {
     emSetImmediate(tick);
   },
 
-  emscripten_set_timeout__deps: ['$safeSetTimeout'],
   emscripten_set_timeout: (cb, msecs, userData) =>
     safeSetTimeout(() => {{{ makeDynCall('vp', 'cb') }}}(userData), msecs),
 
   emscripten_clear_timeout: '$safeClearTimeout',
 
-  emscripten_set_timeout_loop__deps: ['$callUserCallback', 'emscripten_get_now'],
   emscripten_set_timeout_loop: (cb, msecs, userData) => {
     function tick() {
       var t = _emscripten_get_now();
@@ -173,7 +164,6 @@ LibraryJSEventLoop = {
     return setTimeout(tick, 0);
   },
 
-  emscripten_set_interval__deps: ['$callUserCallback'],
   emscripten_set_interval: (cb, msecs, userData) => {
     {{{ runtimeKeepalivePush() }}}
     return setInterval(() => callUserCallback({{{ makeDynCall('vp', 'cb') }}}, userData), msecs);
@@ -184,7 +174,6 @@ LibraryJSEventLoop = {
     clearInterval(id);
   },
 
-  emscripten_async_call__deps: ['$safeSetTimeout', '$safeRequestAnimationFrame'],
   emscripten_async_call: (func, arg, millis) => {
     var wrapper = () => {{{ makeDynCall('vp', 'func') }}}(arg);
 
@@ -211,7 +200,6 @@ LibraryJSEventLoop = {
   },
 
   $MainLoop__internal: true,
-  $MainLoop__deps: ['$setMainLoop', '$callUserCallback', 'emscripten_set_main_loop_timing'],
   $MainLoop__postset: `
     Module['requestAnimationFrame'] = MainLoop.requestAnimationFrame;
     Module['pauseMainLoop'] = MainLoop.pause;
@@ -329,13 +317,11 @@ LibraryJSEventLoop = {
     },
   },
 
-  emscripten_get_main_loop_timing__deps: ['$MainLoop'],
   emscripten_get_main_loop_timing: (mode, value) => {
     if (mode) {{{ makeSetValue('mode', 0, 'MainLoop.timingMode', 'i32') }}};
     if (value) {{{ makeSetValue('value', 0, 'MainLoop.timingValue', 'i32') }}};
   },
 
-  emscripten_set_main_loop_timing__deps: ['$MainLoop'],
   emscripten_set_main_loop_timing: (mode, value) => {
     MainLoop.timingMode = mode;
     MainLoop.timingValue = value;
@@ -412,20 +398,12 @@ LibraryJSEventLoop = {
     return 0;
   },
 
-  emscripten_set_main_loop__deps: ['$setMainLoop'],
   emscripten_set_main_loop: (func, fps, simulateInfiniteLoop) => {
     var iterFunc = {{{ makeDynCall('v', 'func') }}};
     setMainLoop(iterFunc, fps, simulateInfiniteLoop);
   },
 
   $setMainLoop__internal: true,
-  $setMainLoop__deps: [
-    '$MainLoop',
-    'emscripten_set_main_loop_timing', 'emscripten_get_now',
-#if !MINIMAL_RUNTIME
-    '$maybeExit',
-#endif
-  ],
   $setMainLoop__docs: `
   /**
    * @param {number=} arg
@@ -526,25 +504,20 @@ LibraryJSEventLoop = {
     }
   },
 
-  emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
   emscripten_set_main_loop_arg: (func, arg, fps, simulateInfiniteLoop) => {
     var iterFunc = () => {{{ makeDynCall('vp', 'func') }}}(arg);
     setMainLoop(iterFunc, fps, simulateInfiniteLoop, arg);
   },
 
-  emscripten_cancel_main_loop__deps: ['$MainLoop'],
   emscripten_cancel_main_loop: () => {
     MainLoop.pause();
     MainLoop.func = null;
   },
 
-  emscripten_pause_main_loop__deps: ['$MainLoop'],
   emscripten_pause_main_loop: () => MainLoop.pause(),
 
-  emscripten_resume_main_loop__deps: ['$MainLoop'],
   emscripten_resume_main_loop: () => MainLoop.resume(),
 
-  _emscripten_push_main_loop_blocker__deps: ['$MainLoop'],
   _emscripten_push_main_loop_blocker: (func, arg, name) => {
     MainLoop.queue.push({ func: () => {
       {{{ makeDynCall('vp', 'func') }}}(arg);
@@ -552,7 +525,6 @@ LibraryJSEventLoop = {
     MainLoop.updateStatus();
   },
 
-  _emscripten_push_uncounted_main_loop_blocker__deps: ['$MainLoop'],
   _emscripten_push_uncounted_main_loop_blocker: (func, arg, name) => {
     MainLoop.queue.push({ func: () => {
       {{{ makeDynCall('vp', 'func') }}}(arg);
@@ -560,7 +532,6 @@ LibraryJSEventLoop = {
     MainLoop.updateStatus();
   },
 
-  emscripten_set_main_loop_expected_blockers__deps: ['$MainLoop'],
   emscripten_set_main_loop_expected_blockers: (num) => {
     MainLoop.expectedBlockers = num;
     MainLoop.remainingBlockers = num;
