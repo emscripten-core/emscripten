@@ -8,14 +8,16 @@
 
 typedef int (*touch_side_tls_type)(int);
 
+// Kept static so it does not clash with the side module's exported
+// touch_side_tls symbol under MAIN_MODULE.
 static touch_side_tls_type touch_side_tls;
 
-static void* thread_main(void* arg) {
+void* thread_main(void* arg) {
   assert(touch_side_tls(1) == 1);
   return NULL;
 }
 
-static void run_threads(int count) {
+void run_threads(int count) {
   for (int i = 0; i < count; i++) {
     pthread_t thread;
     pthread_create(&thread, NULL, thread_main, NULL);
@@ -29,14 +31,17 @@ int main() {
   touch_side_tls = (touch_side_tls_type)dlsym(handle, "touch_side_tls");
   assert(touch_side_tls);
 
+  // Each thread allocates the side module's 4 KiB TLS block on first access and
+  // must free it when it exits.  Without the fix the heap grows by one block
+  // per thread; with it, growth is bounded by the last thread's not-yet-
+  // reclaimed stack, far below NUM_THREADS blocks.  NUM_THREADS is large so a
+  // real leak clearly exceeds that fixed slack.
   run_threads(10);
   size_t before = mallinfo().uordblks;
   run_threads(NUM_THREADS);
   size_t after = mallinfo().uordblks;
-
-  // Each thread allocates the side module's 4 KiB TLS block, which must be
-  // freed when the thread exits.
   assert(after < before + NUM_THREADS * 4096 / 2);
+
   printf("done\n");
   return 0;
 }

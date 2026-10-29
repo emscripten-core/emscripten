@@ -116,10 +116,7 @@ var LibraryPThread = {
     // starting the next thread is faster.
     unusedWorkers: [],
     tlsInitFunctions: [],
-#if MAIN_MODULE
-    // The _emscripten_tls_free of each side module, run when a thread exits.
     tlsFreeFunctions: [],
-#endif
     // Maps pthread_t pointers to the workers on which they are running.  For
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.

@@ -367,8 +367,7 @@ void _emscripten_thread_exit(void* result) {
   __tl_unlock();
 
 #ifdef EMSCRIPTEN_DYNAMIC_LINKING
-  // Free side module TLS after cleanup, since robust mutexes may live in it.
-  // Keep the thread identity valid until the TLS blocks have been freed.
+  // Free the TLS data of all loaded side modules.
   _emscripten_thread_free_tls();
 #endif
 

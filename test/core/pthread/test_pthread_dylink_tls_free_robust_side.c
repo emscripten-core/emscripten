@@ -12,7 +12,6 @@ void* leave_locked(void) {
   assert(pthread_mutexattr_init(&attr) == 0);
   assert(pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST) == 0);
   assert(pthread_mutex_init(&tls.mutex, &attr) == 0);
-  assert(pthread_mutexattr_destroy(&attr) == 0);
   assert(pthread_mutex_lock(&tls.mutex) == 0);
 
   // Keep the following block allocated so that freeing TLS cannot merge it
