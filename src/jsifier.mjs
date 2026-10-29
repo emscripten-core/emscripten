@@ -512,7 +512,8 @@ ${body};
 // false, so only the directly proxied call acts on a pthread's behalf and
 // nothing it re-enters on the main thread does. The import entry stays a
 // function of the import's exact arity, which the engine's fast import call
-// needs. Each symbol maps to its import entry, emitted into wasmImports.
+// needs. Each symbol maps to the import entry declared beside it, which
+// wasmImports sends in its place.
 const callerBoundSync = new Set();
 const syncImportWrappers = {};
 
@@ -713,7 +714,7 @@ function(${args}) {
               callArgs = params.slice(0, -1).join(', ');
               const sep = callArgs ? ', ' : '';
               tableEntry = `(${callArgs}) => ${mangled}(${callArgs}${sep}false)`;
-              syncImportWrappers[symbol] = `(${callArgs}) => ${mangled}(${callArgs}${sep}true)`;
+              syncImportWrappers[symbol] = `function ${mangled}$import(${callArgs}) { return ${mangled}(${callArgs}${sep}true); }`;
             }
             let proxyMode = PROXY_ASYNC;
             if (proxyingMode === 'sync') {
@@ -1028,6 +1029,9 @@ function(${args}) {
           // Handle regular (non-arrow) functions
           contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
         }
+        if (symbol in syncImportWrappers) {
+          contentText += '\n' + syncImportWrappers[symbol];
+        }
       } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
         // In JS libraries
         //   foo: ';[code here verbatim]'
@@ -1210,7 +1214,7 @@ var proxiedFunctionTable = [
           nativeAliases,
           warnings: warningOccured(),
           asyncFuncs,
-          syncImportWrappers,
+          syncImports: Object.fromEntries(Object.keys(syncImportWrappers).map((s) => [s, `${mangleCSymbolName(s)}$import`])),
           libraryDefinitions: LibraryManager.libraryDefinitions,
           ATPRERUNS: ATPRERUNS.join('\n'),
           ATMODULES: ATMODULES.join('\n'),
