@@ -533,7 +533,7 @@ function handleSyncArg(symbol, snippet, sig, proxyingMode, canWait) {
     return `\
 function(${outer}) {
   var rtn = ${call};
-  assert(!(${sync} && rtn?.then), "'${symbol}' returned a Promise where the caller cannot wait (sync is true)");
+  assert(!(${sync == 'true' ? '' : sync + ' && '}rtn?.then), "'${symbol}' returned a Promise where the caller cannot wait (sync is true)");
   return rtn;
 }\n`;
   });
