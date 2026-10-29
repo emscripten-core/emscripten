@@ -482,7 +482,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   parts = [pre]
   parts += create_module(metadata, function_exports, other_exports,
-                         forwarded_json['librarySymbols'], forwarded_json['nativeAliases'])
+                         forwarded_json['librarySymbols'], forwarded_json['nativeAliases'],
+                         forwarded_json['syncImportWrappers'])
   parts.append(post)
   settings.ALIASES = list(forwarded_json['nativeAliases'].keys())
 
@@ -867,8 +868,9 @@ def add_standard_wasm_imports(send_items_map):
     send_items_map[s] = s
 
 
-def create_sending(metadata, library_symbols):
-  # Map of wasm imports to mangled/external/JS names
+def create_sending(metadata, library_symbols, import_wrappers):
+  # Map of wasm imports to mangled/external/JS names.  An entry in
+  # import_wrappers is sent as that wrapper expression instead.
   send_items_map = {name: name for name in metadata.invoke_funcs}
 
   for name in metadata.imports:
@@ -911,8 +913,9 @@ def create_sending(metadata, library_symbols):
     if not sorted_items:
       # With no JS->wasm imports emit no `export {}` at all rather than an empty one.
       return exports
-    elems = ',\n  '.join(f'{v} as {k}' for k, v in sorted_items)
-    exports += f"export {{\n  {elems}\n}};"
+    elems = ',\n  '.join(f'{v} as {k}' for k, v in sorted_items if k not in import_wrappers)
+    exports += f"export {{\n  {elems}\n}};\n"
+    exports += ''.join(f'export const {k} = {import_wrappers[k]};\n' for k, _ in sorted_items if k in import_wrappers)
     return exports
 
   prefix = ''
@@ -923,7 +926,9 @@ def create_sending(metadata, library_symbols):
 
   elems = []
   for k, v in sorted_items:
-    if k == v:
+    if k in import_wrappers:
+      elems.append(f'{prefix}{k}: {import_wrappers[k]}')
+    elif k == v:
       elems.append(f'{prefix}{k}')
     else:
       elems.append(f'{prefix}{k}: {v}')
@@ -1106,11 +1111,11 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
   return '\n'.join(receiving)
 
 
-def create_module(metadata, function_exports, other_exports, library_symbols, aliases):
+def create_module(metadata, function_exports, other_exports, library_symbols, aliases, import_wrappers):
   module = []
   module.append(create_receiving(function_exports, other_exports, library_symbols, aliases))
 
-  sending = create_sending(metadata, library_symbols)
+  sending = create_sending(metadata, library_symbols, import_wrappers)
   if settings.WASM_ESM_INTEGRATION:
     module.append(sending)
   elif settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):

@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <emscripten.h>
 #include <errno.h>
 #include <poll.h>
 #include <pthread.h>
@@ -20,7 +21,7 @@
 #define CHUNK 16384
 
 int p[2];
-size_t consumed;
+_Atomic size_t consumed;
 
 void consume(const unsigned char* buf, ssize_t n) {
   for (ssize_t i = 0; i < n; i++)
@@ -65,6 +66,42 @@ void* closer(void* arg) {
   return NULL;
 }
 
+// Runs on the main thread, re-entered from a pthread's proxied call: its
+// write is the main thread's, unbounded and not a pthread's wait.
+EMSCRIPTEN_KEEPALIVE int main_writer(int n) {
+  unsigned char* buf = malloc(n);
+  fill(buf, 0, n);
+  int rtn = write(p[1], buf, n);
+  free(buf);
+  return rtn;
+}
+
+void read_back(size_t n) {
+  unsigned char buf[CHUNK];
+  consumed = 0;
+  while (consumed < n) {
+    ssize_t got = read(p[0], buf, sizeof buf);
+    if (got < 0) {
+      assert(errno == EAGAIN);
+      usleep(1000);
+      continue;
+    }
+    consume(buf, got);
+  }
+}
+
+void* big_writer(void* arg) {
+  unsigned char* buf = malloc(BIG);
+  fill(buf, 0, BIG);
+  assert(write(p[1], buf, BIG) == BIG);
+  // Held to the capacity: the write completes only once the reader has taken
+  // the rest, whichever thread reads. It completes inside the read that frees
+  // the last room, before that chunk is counted.
+  assert(consumed >= BIG - CAPACITY - CHUNK);
+  free(buf);
+  return NULL;
+}
+
 void* run(void* arg) {
   assert(pipe(p) == 0);
   unsigned char* big = malloc(BIG);
@@ -83,6 +120,13 @@ void* run(void* arg) {
   assert(close(p[1]) == 0);
   assert(pthread_join(t, NULL) == 0);
   assert(consumed == TOTAL);
+  assert(close(p[0]) == 0);
+
+  assert(pipe(p) == 0);
+  assert(MAIN_THREAD_EM_ASM_INT({ return _main_writer($0); }, BIG) == BIG);
+  read_back(BIG);
+  assert(close(p[0]) == 0);
+  assert(close(p[1]) == 0);
   return NULL;
 }
 
@@ -92,6 +136,13 @@ int main() {
   pthread_t t;
   assert(pthread_create(&t, NULL, run, NULL) == 0);
   assert(pthread_join(t, NULL) == 0);
+
+  assert(pipe(p) == 0);
+  assert(pthread_create(&t, NULL, big_writer, NULL) == 0);
+  read_back(BIG);
+  assert(pthread_join(t, NULL) == 0);
+  assert(close(p[0]) == 0);
+  assert(close(p[1]) == 0);
   printf("done\n");
   return 0;
 }
