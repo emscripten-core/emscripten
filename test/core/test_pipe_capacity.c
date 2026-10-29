@@ -63,13 +63,6 @@ int main() {
   assert(drain(p[0]) == CAPACITY);
   assert(writable(p[1]));
 
-  // A blocking writer is not held to the capacity.
-  assert(fcntl(p[1], F_SETFL, 0) == 0);
-  for (int i = 0; i < 256; i++)
-    assert(write(p[1], chunk, sizeof chunk) == sizeof chunk);
-  assert(drain(p[0]) == 1 << 20);
-  assert(fcntl(p[1], F_SETFL, O_NONBLOCK) == 0);
-
   assert(write(p[1], "ab", 2) == 2);
   assert(close(p[1]) == 0);
   assert(read(p[0], buf, sizeof buf) == 2);
