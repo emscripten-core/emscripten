@@ -229,9 +229,10 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EPIPE }}});
         }
 
-        // PIPE_BUF rule: a small write is all-or-nothing, a larger one takes
-        // what fits.
-        if (stream.flags & {{{ cDefs.O_NONBLOCK }}}) {
+        // A blocking writer is held to the capacity only where fd_write can
+        // wait for the reader (a pthread's). PIPE_BUF rule: a small write is
+        // all-or-nothing, a larger one takes what fits.
+        if ({{{ PTHREADS && !ASYNCIFY ? 'PThread.currentProxiedOperationCallerThread || ' : '' }}}(stream.flags & {{{ cDefs.O_NONBLOCK }}})) {
           var room = PIPEFS.CAPACITY - PIPEFS.queuedBytes(pipe);
           if (room <= 0 || (dataLen <= {{{ cDefs.PIPE_BUF }}} && dataLen > room)) {
             throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});

@@ -13801,6 +13801,14 @@ void foo() {}
     # the callback every tick: documents the spin contract (use EPOLLET/unregister).
     self.do_runf('other/test_epoll_callback_level.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
+  @parameterized({
+    '': (['-sPROXY_TO_PTHREAD'],),
+    'main_joins': ([],),
+  })
+  def test_pipe_write_blocking(self, args):
+    self.do_runf('other/test_pipe_write_blocking.c', 'done\n',
+                 cflags=['-pthread', '-sEXIT_RUNTIME'] + args)
+
   def test_epoll_callback_coalesce(self):
     # A burst of edges before the loop turns (many writes, a run of socket
     # chunks) schedules one delivery task, not one per edge: on hosts where

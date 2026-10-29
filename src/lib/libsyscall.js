@@ -628,9 +628,12 @@ var SyscallsLibrary = {
   // ready and `timeout` is non-zero, register one waiter per fd on its node
   // wait-queue and re-derive the whole set on any wake (the wake flags are just
   // the trigger), resolving then or, for a positive `timeout`, once it elapses.
-  // A negative `timeout` waits forever. Returns a Promise of the ready count.
+  // A negative `timeout` waits forever. Returns a SyncDeferred of the ready
+  // count, since the wake may come from another pthread's proxied call while
+  // the main thread never turns its event loop.
   $doPollAsync__internal: true,
-  $doPollAsync: (fds, nfds, timeout) => new Promise((resolve) => {
+  $doPollAsync: (fds, nfds, timeout) => {
+    var deferred = new SyncDeferred();
     var regs = [];
     var timer;
     var done = false;
@@ -650,7 +653,7 @@ var SyscallsLibrary = {
       done = true;
       for (var r of regs) r.listeners.delete(r.entry);
       if (timer) clearTimeout(timer);
-      resolve(count);
+      deferred.resolve(count);
     }
     var count = derive();
     if (count || !timeout) {
@@ -667,7 +670,49 @@ var SyscallsLibrary = {
       }
       if (timeout > 0) timer = setTimeout(() => finish(0), timeout);
     }
-  }),
+    return deferred;
+  },
+  // Calls `cb` once poll() reports one of `events` on the stream, synchronously
+  // from the producer's notify.
+  $waitStreamEvents__internal: true,
+  $waitStreamEvents: (stream, events, cb) => {
+    var reg = stream.node.addListener(() => {
+      if (!pollOne(stream.fd, events)) return;
+      reg.listeners.delete(reg.entry);
+      cb();
+    });
+  },
+
+  // A result settled later but delivered synchronously, for a sync-proxied
+  // call that waits on a wait-queue. The pthread sits on a futex, and the
+  // main thread may be spinning in a blocking call of its own, servicing
+  // proxied calls but never turning its event loop, so a Promise's microtask
+  // could never reach it. Promise-shaped (then/resolve/reject, chaining) so
+  // the proxying completion takes either.
+  $SyncDeferred__internal: true,
+  $SyncDeferred: class SyncDeferred {
+    constructor() {
+      this.settle = null;
+      this.settled = null;
+    }
+    then(onFulfilled, onRejected) {
+      var next = new SyncDeferred();
+      var settle = (fulfilled, v) => {
+        try {
+          if (fulfilled) next.resolve(onFulfilled ? onFulfilled(v) : v);
+          else if (onRejected) next.resolve(onRejected(v));
+          else next.reject(v);
+        } catch (e) {
+          next.reject(e);
+        }
+      };
+      if (this.settled) settle(...this.settled);
+      else this.settle = settle;
+      return next;
+    }
+    resolve(v) { this.settle ? this.settle(true, v) : this.settled = [true, v]; }
+    reject(e) { this.settle ? this.settle(false, e) : this.settled = [false, e]; }
+  },
 #endif
   // libc routes zero-timeout poll() calls here: the same synchronous
   // readiness derivation as __syscall_poll, but as a plain import that never

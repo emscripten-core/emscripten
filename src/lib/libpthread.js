@@ -1079,8 +1079,14 @@ var LibraryPThread = {
     var coerceRtn = (rtn) => rtn;
 #endif
     if (ctx) {
-      // A PROXY_SYNC_ASYNC function may complete synchronously with a plain value.
-      Promise.resolve(rtn).then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn)));
+      // A plain value finishes the call at once, and a SyncDeferred when its
+      // wait-queue fires: this thread may be blocked on the caller, never
+      // reaching a microtask, which Promise.resolve would route either through.
+      if (rtn?.then) {
+        rtn.then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn)));
+      } else {
+        __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn));
+      }
       return;
     }
     rtn = coerceRtn(rtn);
