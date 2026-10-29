@@ -21,8 +21,10 @@ See docs/process.md for more on how version tagging works.
 6.0.14 (in development)
 -----------------------
 - Pipes now have a 64 KiB capacity: non-blocking writes to a full pipe fail
-  with `EAGAIN`, and (JS FS) blocking writes from a pthread wait for the reader.
-  On the main thread blocking writes remain unbounded. (#27831)
+  with `EAGAIN`, and (JS FS) blocking writes from a pthread wait for the reader,
+  as on Linux. A pthread (including `main` under `PROXY_TO_PTHREAD`) that writes
+  more than 64 KiB before anything reads the pipe now blocks where it previously
+  completed. On the main thread blocking writes remain unbounded. (#27831)
 - When compiling and linking in a single command, auxiliary compiler output
   files (such as `.dwo` files from `-gsplit-dwarf` or `.json` files from
   `-ftime-trace`) are now named `<output>-<input>.<ext>`, matching the behavior

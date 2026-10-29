@@ -507,19 +507,32 @@ ${body};
   });
 }
 
+// Symbols whose body keeps `sync` as its own trailing parameter, bound by its
+// two callers: the wasm import entry passes true and the proxied table entry
+// false, so only the directly proxied call acts on a pthread's behalf and
+// nothing it re-enters on the main thread does. The import entry stays a
+// function of the import's exact arity, which the engine's fast import call
+// needs. Each symbol maps to its import entry, emitted into wasmImports.
+const callerBoundSync = new Set();
+const syncImportWrappers = {};
+
 // An `__async: 'auto'` body returns a value or a Promise, as it can. A body
 // whose last parameter is named `sync` receives there whether it must complete
 // synchronously on this call, as a returned Promise could not be waited for.
 // That is never the case under ASYNCIFY/JSPI, nor on behalf of a sync-proxied
 // pthread caller, which awaits it; otherwise it is.
 function handleSyncArg(symbol, snippet, sig, proxyingMode) {
-  const sync = ASYNCIFY ? 'false' :
-    PTHREADS && proxyingMode == 'sync' ? '!PThread.currentProxiedOperationCallerThread' : 'true';
+  const fromCaller = !ASYNCIFY && PTHREADS && proxyingMode == 'sync';
+  const sync = ASYNCIFY ? 'false' : 'true';
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     const params = args.split(',').map((a) => a.trim()).filter((a) => a);
     if (params.at(-1) != 'sync') return snippet;
     if (sig && params.length != sig.length) {
       error(`JS library error: '${symbol}' must take 'sync' as parameter ${sig.length}, after the ${sig.length - 1} of its '__sig'`);
+      return snippet;
+    }
+    if (fromCaller) {
+      callerBoundSync.add(symbol);
       return snippet;
     }
     if (!oneliner) body = `{\n${body}\n}`;
@@ -531,26 +544,29 @@ function(${outer}) {
   });
 }
 
-function handleAsyncFunction(snippet, sig, proxied) {
+function handleAsyncFunction(symbol, snippet, sig, proxied) {
   const return64 = sig && (MEMORY64 && sig.startsWith('p') || sig.startsWith('j'))
   let handleAsync = 'Asyncify.handleAsync(innerFunc)'
   if (return64 && ASYNCIFY == 1) {
     handleAsync = makeReturn64(handleAsync);
   }
-  // When dispatching on behalf of a proxied caller (PROXY_SYNC_ASYNC), the
-  // caller awaits the result, so return it directly rather than suspending
-  // the main thread: a value or SyncDeferred then completes the call
-  // synchronously, which a Promise wrapper would defer to a microtask.
+  // On behalf of a proxied caller (PROXY_SYNC_ASYNC) the caller awaits the
+  // result, so return it directly rather than suspending the main thread: a
+  // value or SyncDeferred then completes the call synchronously, which a
+  // Promise wrapper would defer to a microtask.
   let proxiedDispatch = '';
+  let syncArg = '';
   if (PTHREADS && proxied) {
-    proxiedDispatch = 'if (PThread.currentProxiedOperationCallerThread) return innerFunc();\n  ';
+    callerBoundSync.add(symbol);
+    proxiedDispatch = 'if (!sync) return innerFunc();\n  ';
+    syncArg = 'sync';
   }
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     if (!oneliner) {
       body = `{\n${body}\n}`;
     }
     return `\
-function(${args}) {
+function(${args}${args && syncArg ? ', ' : ''}${syncArg}) {
   let innerFunc = ${async_} () => ${body};
   ${proxiedDispatch}return ${handleAsync};
 }\n`;
@@ -677,7 +693,7 @@ function(${args}) {
     }
 
     if (ASYNCIFY && isAsyncFunction == 'auto') {
-      snippet = handleAsyncFunction(snippet, sig, proxyingMode == 'sync');
+      snippet = handleAsyncFunction(symbol, snippet, sig, proxyingMode == 'sync');
     }
 
     if (proxyingMode) {
@@ -685,10 +701,19 @@ function(${args}) {
         error(`JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`);
       }
       if (SHARED_MEMORY && proxyingMode != 'none') {
+        let tableEntry = mangled;
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
             if (oneliner) {
               body = `return ${body}`;
+            }
+            let callArgs = args;
+            if (callerBoundSync.has(symbol)) {
+              const params = args.split(',').map((a) => a.trim()).filter((a) => a);
+              callArgs = params.slice(0, -1).join(', ');
+              const sep = callArgs ? ', ' : '';
+              tableEntry = `(${callArgs}) => ${mangled}(${callArgs}${sep}false)`;
+              syncImportWrappers[symbol] = `(${callArgs}) => ${mangled}(${callArgs}${sep}true)`;
             }
             let proxyMode = PROXY_ASYNC;
             if (proxyingMode === 'sync') {
@@ -705,7 +730,7 @@ function(${args}) {
             return `
 ${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${proxyMode}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${proxyMode}${callArgs ? ', ' : ''}${callArgs});
 ${body}
 }\n`;
           });
@@ -721,7 +746,7 @@ function(${args}) {
 }\n`,
           );
         }
-        proxiedFunctionTable.push(mangled);
+        proxiedFunctionTable.push(tableEntry);
       }
     }
 
@@ -1185,6 +1210,7 @@ var proxiedFunctionTable = [
           nativeAliases,
           warnings: warningOccured(),
           asyncFuncs,
+          syncImportWrappers,
           libraryDefinitions: LibraryManager.libraryDefinitions,
           ATPRERUNS: ATPRERUNS.join('\n'),
           ATMODULES: ATMODULES.join('\n'),

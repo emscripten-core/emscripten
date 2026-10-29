@@ -264,9 +264,11 @@ var WasiLibrary = {
     function step() {
       while (len) {
         var curr;
+        stream.canWait = true;
         try {
           curr = FS.write(stream, buf ?? HEAP8, ptr, len);
         } catch (e) {
+          stream.canWait = false;
           if (e.errno == {{{ cDefs.EAGAIN }}} && !(stream.flags & {{{ cDefs.O_NONBLOCK }}})) {
             deferred ??= new SyncDeferred();
             waitStreamEvents(stream, {{{ cDefs.POLLOUT }}}, step);
@@ -276,6 +278,7 @@ var WasiLibrary = {
           if (deferred) return deferred.reject(e);
           throw e;
         }
+        stream.canWait = false;
         if (!curr) break;
         total += curr;
         ptr += curr;
