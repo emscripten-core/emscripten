@@ -200,6 +200,24 @@ var LibraryDylink = {
     ;
   },
 
+#if PTHREADS
+  // Called on the main thread once the main module is instantiated.  Records
+  // which table slots hold the main module's exported functions, which new
+  // workers use in getFunctionAddress.
+  $recordMainModuleExportSlots__internal: true,
+  $recordMainModuleExportSlots: (exports) => {
+    mainModuleTableSize = {{{ from64Expr('wasmTable.length') }}};
+    mainModuleExportSlots = [];
+    for (var symName in exports) {
+      var value = exports[symName];
+      var slot = typeof value === 'function' && getFunctionAddress(value);
+      if (slot) {
+        mainModuleExportSlots.push(slot);
+      }
+    }
+  },
+#endif
+
   $updateGOT__internal: true,
   $updateGOT__docs: '/** @param {boolean=} replace */',
   $updateGOT: (exports, replace) => {

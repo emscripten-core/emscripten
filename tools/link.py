@@ -1278,6 +1278,8 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       settings.INCLUDE_FULL_LIBRARY = 1
     # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
+    if settings.PTHREADS:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$recordMainModuleExportSlots']
     # `__stack_pointer` is exported for PIC side modules. `__heap_base` is used
     # by `$getMemory` in `libdylink.js` (cannot be in `$getMemory__deps` because
     # `wasm-ld` processes stub library dependencies before synthesizing optional
