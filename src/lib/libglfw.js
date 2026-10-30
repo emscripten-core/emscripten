@@ -2086,7 +2086,7 @@ var LibraryGLFW = {
 
   glfwBroadcastCond: (cond) => abort('glfwBroadcastCond is not implemented.'),
 
-  glfwGetNumberOfProcessors: () => 1, // Threads are disabled anyway…
+  glfwGetNumberOfProcessors: () => 1, // Threads are disabled anyway...
 
   glfwReadImage: (name, img, flags) => abort('glfwReadImage is not implemented.'),
 

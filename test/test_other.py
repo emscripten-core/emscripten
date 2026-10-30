@@ -9614,9 +9614,14 @@ end
     'no_exception_throwing': (['-sDISABLE_EXCEPTION_THROWING'],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
     'embind': (['-lembind', '-sDEFAULT_TO_CXX'],),
+    'main_module': (['-sMAIN_MODULE=2', '-pthread', '-sCROSS_ORIGIN_STORAGE'],),
   })
   def test_full_js_library(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'] + args)
+    # V8 stores a Latin-1 string (every char <= 0xFF) as one byte per char, but
+    # a non-Latin-1 char switches the whole string to UTF-16, doubling the
+    # memory each worker spends on it.  Keep the generated JS within Latin-1.
+    read_file('a.out.js').encode('latin-1')
 
   def test_full_js_library_undefined(self):
     create_file('main.c', 'void foo(); int main() { foo(); return 0; }')
