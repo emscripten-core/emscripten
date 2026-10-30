@@ -15935,6 +15935,19 @@ addToLibrary({
     # Test with ASYNCIFY here to ensure that that wasmExports gets set to the wrapped version of the wasm exports.
     self.do_runf('test_manual_wasm_instantiate.c', cflags=['--pre-js=pre.js', '-sASYNCIFY', '-DASYNCIFY_ENABLED'])
 
+  @requires_node
+  def test_node_wasm_binary_not_copied(self):
+    # Under node, readAsync returns the Buffer from fs.readFileSync, which
+    # WebAssembly.instantiate accepts without copying it first.
+    create_file('pre.js', '''
+      var origInstantiate = WebAssembly.instantiate;
+      WebAssembly.instantiate = (binary, imports) => {
+        out('binary is a Buffer: ' + Buffer.isBuffer(binary));
+        return origInstantiate(binary, imports);
+      };
+      ''')
+    self.do_runf('hello_world.c', 'binary is a Buffer: true\nHello, world!\n', cflags=['--pre-js=pre.js'])
+
   def test_late_module_api_assignment(self):
     # When sync instantiation is used (or when async/await is used in MODULARIZE mode) certain
     # Module properties cannot be assigned in `--post-js` code because its too late by the time
