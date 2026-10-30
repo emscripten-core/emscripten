@@ -232,7 +232,7 @@ export function preprocess(filename) {
     assert(
       showStack.length == 0,
       `preprocessing error in file ${filename}, \
-no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`,
+no matching #endif found (${showStack.length} unmatched preprocessing directives on stack)`,
     );
     return ret;
   } finally {

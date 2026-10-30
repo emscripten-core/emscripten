@@ -352,6 +352,12 @@ int main() {
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'], 'lib.js:3: #else without matching #if')
 
+    create_file('lib.js', '''\
+// This is a library file
+#if 1
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'], 'no matching #endif found (1 unmatched preprocessing directives on stack)')
+
   def test_jslib_internal_deps(self):
     create_file('lib.js', r'''
 addToLibrary({
