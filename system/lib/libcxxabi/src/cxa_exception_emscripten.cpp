@@ -19,6 +19,7 @@
 #include "fallback_malloc.h"
 #include "private_typeinfo.h"
 #include "stdio.h"
+#include "stdlib.h"
 #include "assert.h"
 
 #ifdef __WASM_EXCEPTIONS__
