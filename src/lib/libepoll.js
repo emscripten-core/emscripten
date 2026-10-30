@@ -302,11 +302,8 @@ var EpollLibrary = {
   $epollPwait__internal: true,
   $epollPwait: (ep, ev, maxevents, timeout, sync) => {
 #if PTHREADS || ASYNCIFY
-    // Block on the epoll's own readiness - each registration's persistent
-    // listener wakes ep.node on a leaf edge - and re-derive on wake, settling
-    // the count or 0 after `timeout`. A SyncDeferred rather than a Promise:
-    // the wake may be another pthread's proxied call while the main thread
-    // never turns its event loop.
+    // Re-derives readiness on each wake of ep.node and settles a SyncDeferred
+    // with the count, or with 0 once `timeout` passes.
     if (!sync) {
       var deferred = new SyncDeferred();
       var n = doEpollWait(ep, ev, maxevents);

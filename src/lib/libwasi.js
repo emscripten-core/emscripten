@@ -238,8 +238,7 @@ var WasiLibrary = {
     return FS.write(stream, view, 0, total, offset);
   },
 #if PTHREADS && !ASYNCIFY
-  // writev that waits where a blocking stream would block (a pthread awaits
-  // the proxied call), returning a SyncDeferred once it had to.
+  // writev that waits on a blocking stream, giving a SyncDeferred if it must.
   $doWritevBlocking: (stream, iov, iovcnt) => {
     var buf, ptr, len;
     if (iovcnt == 1) {
@@ -311,9 +310,8 @@ var WasiLibrary = {
 
 #if SYSCALLS_REQUIRE_FILESYSTEM
 #if PTHREADS && !ASYNCIFY
-  // Waits where a blocking stream would block when proxied from a pthread
-  // (`sync` false). Not under ASYNCIFY, where 'auto' would make the import
-  // itself suspend and every printf from a callback cannot afford that.
+  // Not under ASYNCIFY, where 'auto' would make the import itself suspend,
+  // which a printf from a callback cannot afford.
   fd_write__async: 'auto',
 #endif
 #elif (!MINIMAL_RUNTIME || EXIT_RUNTIME)
