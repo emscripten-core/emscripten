@@ -17,6 +17,14 @@ executors:
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
+  linux-python:
+    # We need Python >= 3.12.
+    docker:
+      - image: cimg/python:3.13
+    environment:
+      LANG: "C.UTF-8"
+      EMCC_CORES: "4"
+      EMSDK_NOTTY: "1"
   linux-arm64:
     machine:
       image: ubuntu-2204:current
@@ -1058,18 +1066,13 @@ jobs:
     # CPython's test suite exercises a lot of libc/syscall behaviour that isn't
     # covered elsewhere, and emscripten releases have historically regressed
     # CPython.
-    executor: ubuntu-lts
+    #
+    # CPython's Platforms/emscripten build scripts need Python >= 3.12, hence
+    # the different executor.
+    executor: linux-python
     resource_class: large
     steps:
       - prepare-for-tests
-      - run:
-          name: Install Python for CPython build scripts
-          # CPython's Platforms/emscripten build scripts need Python >= 3.12
-          # but the CI image only has Python 3.10, so install a newer one via uv.
-          command: |
-            python3 -m pip install uv
-            uv python install 3.13
-            echo "export EMTEST_CPYTHON_PYTHON=$(uv python find 3.13)" >> $BASH_ENV
       - run:
           name: Build and test CPython
           no_output_timeout: 30m
