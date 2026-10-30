@@ -2,11 +2,11 @@ import {defineConfig} from 'rolldown';
 
 export default defineConfig({
   input: [
-    'tools/compiler.mjs',
-    'tools/preprocessor.mjs',
-    'tools/acorn-optimizer.mjs',
-    'tools/unsafe_optimizations.mjs',
-    'tools/lz4-compress.mjs',
+    'tools/compiler.ts',
+    'tools/preprocessor.ts',
+    'tools/acorn-optimizer.ts',
+    'tools/unsafe_optimizations.ts',
+    'tools/lz4-compress.ts',
   ],
   platform: 'node',
   output: {

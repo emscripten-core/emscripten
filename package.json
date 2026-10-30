@@ -23,7 +23,9 @@
   "scripts": {
     "build": "rolldown -c rolldown.config.mjs",
     "lint": "oxlint",
-    "fmt": "prettier --write '*.{mjs,mts,ts}' 'src/*.mjs' 'tools/*.mjs'",
-    "check": "prettier --check '*.{mjs,mts,ts}' 'src/*.mjs' 'tools/*.mjs'"
+    "gen-types": "node tools/maint/gen_settings_types.mjs",
+    "typecheck": "npm run gen-types && tsc",
+    "fmt": "prettier --write '*.{mjs,mts,ts}' 'src/*.ts' 'tools/*.ts' 'tools/maint/*.mjs'",
+    "check": "prettier --check '*.{mjs,mts,ts}' 'src/*.ts' 'tools/*.ts' 'tools/maint/*.mjs'"
   }
 }

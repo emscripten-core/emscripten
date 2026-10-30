@@ -86,6 +86,14 @@ We use the same LLVM-based style as for C/C++.  Sadly, `clang-format` doesn't
 always work well with our library code since it can use custom macros and
 pre-processor.  See [`.clang-format`][clang-format] for more details.
 
+### TypeScript Code
+
+Emscripten's JavaScript processing tools (`src/*.ts` and `tools/*.ts`) are
+written in TypeScript. Formatting is checked with `prettier` (`npm run fmt` /
+`npm run check`; see [`.prettierrc.yml`][prettierrc]), linting with `oxlint`
+(`npm run lint`; see [`oxlint.config.mts`][oxlint]), and static type checking
+with `tsc` (`npm run typecheck`; see [`tsconfig.json`][tsconfig]).
+
 ### Python Code
 
 We generally follow the pep8 standard with the major exception that we use 2
@@ -386,6 +394,9 @@ decide collectively to abandon the deprecation, or to delay it.
 [emsdk_tags]: https://github.com/emscripten-core/emsdk/tags
 [emscripten_tags]: https://github.com/emscripten-core/emscripten/tags
 [clang-format]: https://github.com/emscripten-core/emscripten/blob/main/.clang-format
+[prettierrc]: https://github.com/emscripten-core/emscripten/blob/main/.prettierrc.yml
+[oxlint]: https://github.com/emscripten-core/emscripten/blob/main/oxlint.config.mts
+[tsconfig]: https://github.com/emscripten-core/emscripten/blob/main/tsconfig.json
 [pyproject.toml]: https://github.com/emscripten-core/emscripten/blob/main/pyproject.toml
 [mypy]: https://github.com/emscripten-core/emscripten/blob/main/.mypy
 [update_website]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_website.py

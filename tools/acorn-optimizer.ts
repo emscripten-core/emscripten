@@ -7,6 +7,8 @@ import * as fs from 'node:fs';
 import assert from 'node:assert';
 import {parseArgs} from 'node:util';
 
+type AstNode = Record<string, any>;
+
 // Extend acorn to understand source-phase import syntax
 // (`import source foo from './bar.wasm'`) emitted under -sSOURCE_PHASE_IMPORTS.
 // The plugin annotates ImportDeclaration nodes with a `phase` field; terser
@@ -16,16 +18,16 @@ const parser = acorn.Parser.extend(importPhases());
 
 // Utilities
 
-function read(x) {
+function read(x: string): string {
   return fs.readFileSync(x, 'utf-8');
 }
 
-function assertAt(condition, node, message = '') {
+function assertAt(condition: unknown, node: AstNode, message = ''): asserts condition {
   if (!condition) {
     if (!process.env.EMCC_DEBUG_SAVE) {
       message += ' (use EMCC_DEBUG_SAVE=1 to preserve temporary inputs)';
     }
-    let err = new Error(message);
+    const err = new Error(message) as Error & {loc?: acorn.Position};
     err['loc'] = acorn.getLineInfo(input, node.start);
     throw err;
   }
@@ -34,13 +36,13 @@ function assertAt(condition, node, message = '') {
 // Visits and walks
 // (We don't use acorn-walk because it ignores x in 'x = y'.)
 
-function visitChildren(node, c) {
+function visitChildren(node: AstNode, c: (child: AstNode) => void): void {
   // emptyOut() and temporary ignoring may mark nodes as empty,
   // while they have properties with children we should ignore.
   if (node.type === 'EmptyStatement') {
     return;
   }
-  function maybeChild(child) {
+  function maybeChild(child: any): boolean {
     if (typeof child?.type === 'string') {
       c(child);
       return true;
@@ -60,7 +62,10 @@ function visitChildren(node, c) {
 
 // Simple post-order walk, calling properties on an object by node type,
 // if the type exists.
-function simpleWalk(node, cs) {
+function simpleWalk(
+  node: AstNode,
+  cs: Record<string, (node: AstNode, c?: (n: AstNode) => void) => void>,
+): void {
   visitChildren(node, (child) => simpleWalk(child, cs));
   if (node.type in cs) {
     cs[node.type](node);
@@ -70,7 +75,11 @@ function simpleWalk(node, cs) {
 // Full post-order walk, calling a single function for all types. If |pre| is
 // provided, it is called in pre-order (before children). If |pre| returns
 // `false`, the node and its children will be skipped.
-function fullWalk(node, c, pre) {
+function fullWalk(
+  node: AstNode,
+  c: (node: AstNode) => void,
+  pre?: (node: AstNode) => boolean | void,
+): void {
   if (pre?.(node) !== false) {
     visitChildren(node, (child) => fullWalk(child, c, pre));
     c(node);
@@ -79,8 +88,11 @@ function fullWalk(node, c, pre) {
 
 // Recursive post-order walk, calling properties on an object by node type,
 // if the type exists, and if so leaving recursion to that function.
-function recursiveWalk(node, cs) {
-  (function c(node) {
+function recursiveWalk(
+  node: AstNode,
+  cs: Record<string, (node: AstNode, c: (n: AstNode) => void) => void>,
+): void {
+  (function c(node: AstNode) {
     if (!(node.type in cs)) {
       visitChildren(node, (child) => recursiveWalk(child, cs));
     } else {
@@ -91,25 +103,29 @@ function recursiveWalk(node, cs) {
 
 // AST Utilities
 
-function emptyOut(node) {
+function emptyOut(node: AstNode): void {
   node.type = 'EmptyStatement';
 }
 
-function setLiteralValue(item, value) {
+function setLiteralValue(item: AstNode, value: any): void {
   item.value = value;
   item.raw = null;
 }
 
-function isLiteralString(node) {
+function isLiteralString(node: AstNode): boolean {
   return node.type === 'Literal' && typeof node.value === 'string';
 }
 
-function dump(node) {
+function dump(node: any): void {
   console.log(JSON.stringify(node, null, ' '));
 }
 
 // Traverse a pattern node (identifier, object/array pattern, etc) invoking onExpr on any nested expressions and onBoundIdent on any bound identifiers.
-function walkPattern(node, onExpr, onBoundIdent) {
+function walkPattern(
+  node: AstNode,
+  onExpr: (expr: AstNode) => void,
+  onBoundIdent: (name: string) => void,
+): void {
   recursiveWalk(node, {
     AssignmentPattern(node, c) {
       c(node.left);
@@ -127,7 +143,7 @@ function walkPattern(node, onExpr, onBoundIdent) {
   });
 }
 
-function hasSideEffects(node) {
+function hasSideEffects(node: AstNode): boolean {
   // Conservative analysis.
   let has = false;
   fullWalk(
@@ -214,11 +230,19 @@ function hasSideEffects(node) {
 // as they appear (like ArrowFunctionExpression). Instead, we do a conservative
 // analysis here.
 
-function JSDCE(ast, aggressive) {
-  function iteration() {
+interface ScopeData {
+  def: number;
+  use: number;
+  param: number;
+}
+
+type Scope = Map<string, ScopeData>;
+
+function JSDCE(ast: AstNode, aggressive = false): void {
+  function iteration(): number {
     let removed = 0;
-    const scopes = [new Map()]; // begin with empty toplevel scope
-    function ensureData(scope, name) {
+    const scopes: Scope[] = [new Map()]; // begin with empty toplevel scope
+    function ensureData(scope: Scope, name: string): ScopeData {
       let data = scope.get(name);
       if (!data) {
         data = {
@@ -230,7 +254,7 @@ function JSDCE(ast, aggressive) {
       }
       return data;
     }
-    function cleanUp(ast, names) {
+    function cleanUp(ast: AstNode, names: Set<string>): void {
       recursiveWalk(ast, {
         ForStatement(node, c) {
           visitChildren(node, c);
@@ -251,9 +275,9 @@ function JSDCE(ast, aggressive) {
         },
         VariableDeclaration(node, _c) {
           let removedHere = 0;
-          node.declarations = node.declarations.filter((node) => {
+          node.declarations = node.declarations.filter((node: AstNode) => {
             assert(node.type === 'VariableDeclarator');
-            let keep = node.init && hasSideEffects(node.init);
+            let keep = Boolean(node.init && hasSideEffects(node.init));
             walkPattern(
               node.id,
               (value) => {
@@ -291,12 +315,12 @@ function JSDCE(ast, aggressive) {
       });
     }
 
-    function handleFunction(node, c, defun) {
+    function handleFunction(node: AstNode, c: (n: AstNode) => void, defun = false): void {
       // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
       if (defun) {
-        ensureData(scopes.at(-1), node.id.name).def = 1;
+        ensureData(scopes.at(-1)!, node.id.name).def = 1;
       }
-      const scope = new Map();
+      const scope: Scope = new Map();
       scopes.push(scope);
       for (const param of node.params) {
         walkPattern(param, c, (name) => {
@@ -309,12 +333,12 @@ function JSDCE(ast, aggressive) {
       // we can ignore self-references, i.e., references to ourselves inside
       // ourselves, for named defined (defun) functions
       const ownName = defun ? node.id.name : '';
-      const names = new Set();
-      for (const [name, data] of scopes.pop()) {
+      const names = new Set<string>();
+      for (const [name, data] of scopes.pop()!) {
         if (name === ownName) continue;
         if (data.use && !data.def) {
           // this is used from a higher scope, propagate the use down
-          ensureData(scopes.at(-1), name).use = 1;
+          ensureData(scopes.at(-1)!, name).use = 1;
           continue;
         }
         if (data.def && !data.use && !data.param) {
@@ -328,7 +352,7 @@ function JSDCE(ast, aggressive) {
     recursiveWalk(ast, {
       VariableDeclarator(node, c) {
         walkPattern(node.id, c, (name) => {
-          ensureData(scopes.at(-1), name).def = 1;
+          ensureData(scopes.at(-1)!, name).def = 1;
         });
         if (node.init) c(node.init);
       },
@@ -357,40 +381,40 @@ function JSDCE(ast, aggressive) {
       },
       Identifier(node, _c) {
         const name = node.name;
-        ensureData(scopes.at(-1), name).use = 1;
+        ensureData(scopes.at(-1)!, name).use = 1;
       },
       ExportDefaultDeclaration(node, c) {
         const name = node.declaration.id.name;
-        ensureData(scopes.at(-1), name).use = 1;
+        ensureData(scopes.at(-1)!, name).use = 1;
         c(node.declaration);
       },
       ExportNamedDeclaration(node, c) {
         if (node.declaration) {
           if (node.declaration.type == 'FunctionDeclaration') {
             const name = node.declaration.id.name;
-            ensureData(scopes.at(-1), name).use = 1;
+            ensureData(scopes.at(-1)!, name).use = 1;
           } else {
             assert(node.declaration.type == 'VariableDeclaration');
             for (const decl of node.declaration.declarations) {
               const name = decl.id.name;
-              ensureData(scopes.at(-1), name).use = 1;
+              ensureData(scopes.at(-1)!, name).use = 1;
             }
           }
           c(node.declaration);
         } else {
           for (const specifier of node.specifiers) {
             const name = specifier.local.name;
-            ensureData(scopes.at(-1), name).use = 1;
+            ensureData(scopes.at(-1)!, name).use = 1;
           }
         }
       },
     });
 
     // toplevel
-    const scope = scopes.pop();
+    const scope = scopes.pop()!;
     assert(scopes.length === 0);
 
-    const names = new Set();
+    const names = new Set<string>();
     for (const [name, data] of scope) {
       if (data.def && !data.use) {
         assert(!data.param); // can't be
@@ -405,11 +429,11 @@ function JSDCE(ast, aggressive) {
 }
 
 // Aggressive JSDCE - multiple iterations
-function AJSDCE(ast) {
+function AJSDCE(ast: AstNode): void {
   JSDCE(ast, /* aggressive= */ true);
 }
 
-function isWasmImportsAssign(node) {
+function isWasmImportsAssign(node: AstNode): boolean {
   // var wasmImports = ..
   //   or
   // wasmImports = ..
@@ -429,7 +453,7 @@ function isWasmImportsAssign(node) {
   );
 }
 
-function getWasmImportsValue(node) {
+function getWasmImportsValue(node: AstNode): AstNode {
   if (node.declarations) {
     return node.declarations[0].init;
   } else {
@@ -440,7 +464,7 @@ function getWasmImportsValue(node) {
 // Under WASM_ESM_INTEGRATION the wasm exports are received as a native ES
 // import from the wasm module itself:
 //   import { malloc as _malloc, memory } from './a.out.wasm';
-function isImportFromWasm(node) {
+function isImportFromWasm(node: AstNode): boolean {
   return (
     node.type === 'ImportDeclaration' &&
     // Skip source/defer phase imports (e.g. `import source foo from './a.wasm'`
@@ -454,11 +478,11 @@ function isImportFromWasm(node) {
 
 // A sourceless `export { a as b, .. };` statement (not `export <decl>` and not
 // a re-export `export {..} from '..'`).
-function isExportSpecifierList(node) {
+function isExportSpecifierList(node: AstNode): boolean {
   return node.type === 'ExportNamedDeclaration' && !node.declaration && !node.source;
 }
 
-function isExportUse(node) {
+function isExportUse(node: AstNode): boolean {
   // Match usages of symbols on the `wasmExports` object. e.g:
   //   wasmExports['X']
   // `origExports` holds the unwrapped exports in applySignatureConversions.
@@ -470,11 +494,11 @@ function isExportUse(node) {
   );
 }
 
-function getExportOrModuleUseName(node) {
+function getExportOrModuleUseName(node: AstNode): string {
   return node.property.value;
 }
 
-function isModuleUse(node) {
+function isModuleUse(node: AstNode): boolean {
   return (
     node.type === 'MemberExpression' && // Module['X']
     node.object.type === 'Identifier' &&
@@ -484,12 +508,12 @@ function isModuleUse(node) {
 }
 
 // Apply import/export name changes (after minifying them)
-function applyImportAndExportNameChanges(ast) {
+function applyImportAndExportNameChanges(ast: AstNode): void {
   const mapping = extraInfo.mapping;
   fullWalk(ast, (node) => {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
-      assignedObject.properties.forEach((item) => {
+      assignedObject.properties.forEach((item: AstNode) => {
         if (mapping[item.key.name]) {
           item.key.name = mapping[item.key.name];
         }
@@ -520,7 +544,7 @@ function applyImportAndExportNameChanges(ast) {
       // export, e.g. `import { malloc as _malloc }` -> `import { a as _malloc }`.
       // Replace the imported slot (rather than mutate it in place) since for an
       // unaliased specifier acorn shares one node for both sides.
-      node.specifiers.forEach((spec) => {
+      node.specifiers.forEach((spec: AstNode) => {
         const newName = mapping[spec.imported.name];
         if (newName) {
           spec.imported = makeIdentifier(newName);
@@ -532,7 +556,7 @@ function applyImportAndExportNameChanges(ast) {
       // `export { _fd_write as a }`. Re-exports of wasm exports (`export {
       // _main }`) carry a JS-local name that is never in the mapping, so they
       // are left untouched.
-      node.specifiers.forEach((spec) => {
+      node.specifiers.forEach((spec: AstNode) => {
         const newName = mapping[spec.exported.name];
         if (newName) {
           spec.exported = makeIdentifier(newName);
@@ -544,7 +568,7 @@ function applyImportAndExportNameChanges(ast) {
 
 // A static dyncall is dynCall('vii', ..), which is actually static even
 // though we call dynCall() - we see the string signature statically.
-function isStaticDynCall(node) {
+function isStaticDynCall(node: AstNode): boolean {
   return (
     node.type === 'CallExpression' &&
     node.callee.type === 'Identifier' &&
@@ -553,7 +577,7 @@ function isStaticDynCall(node) {
   );
 }
 
-function getStaticDynCallName(node) {
+function getStaticDynCallName(node: AstNode): string {
   return 'dynCall_' + node.arguments[0].value;
 }
 
@@ -564,7 +588,7 @@ function getStaticDynCallName(node) {
 //   "dynCall_"
 // as that prefix means we may be constructing a dynamic dyncall name
 // (dynCall and embind's requireFunction do this internally).
-function isDynamicDynCall(node) {
+function isDynamicDynCall(node: AstNode): boolean {
   return (
     (node.type === 'CallExpression' &&
       node.callee.type === 'Identifier' &&
@@ -614,7 +638,17 @@ function isDynamicDynCall(node) {
 //     that should be fixed. Currently the main use case here does
 //     not require that. TODO FIXME
 //
-function emitDCEGraph(ast) {
+interface DCEGraphInfo {
+  name: string;
+  import?: [string, string];
+  export?: string;
+  root?: boolean;
+  reaches: Set<string> | string[];
+}
+
+type ActiveDCEGraphInfo = DCEGraphInfo & {reaches: Set<string>};
+
+function emitDCEGraph(ast: AstNode): void {
   // First pass: find the wasm imports and exports, and the toplevel
   // defuns, and save them on the side, removing them from the AST,
   // which makes the second pass simpler.
@@ -643,20 +677,20 @@ function emitDCEGraph(ast) {
   //   _malloc = wasmExports["malloc"];
   //   ..
   //  });
-  const imports = [];
-  const defuns = [];
-  const dynCallNames = [];
-  const nameToGraphName = new Map();
-  const modulePropertyToGraphName = new Map();
-  const exportNameToGraphName = new Map(); // identical to wasmExports['..'] nameToGraphName
+  const imports: [string, string][] = [];
+  const defuns: AstNode[] = [];
+  const dynCallNames: string[] = [];
+  const nameToGraphName = new Map<string, string>();
+  const modulePropertyToGraphName = new Map<string, string>();
+  const exportNameToGraphName = new Map<string, string>(); // identical to wasmExports['..'] nameToGraphName
   let foundWasmImportsAssign = false;
   let foundMinimalRuntimeExports = false;
   // Under WASM_ESM_INTEGRATION, JS names bound to wasm exports via an ES import
   // from the wasm module. Lets us tell a re-export of a wasm export apart from a
   // JS function that is itself exported to wasm (both are `export {..}`).
-  const wasmExportLocals = new Set();
+  const wasmExportLocals = new Set<string>();
 
-  function saveAsmExport(name, asmName) {
+  function saveAsmExport(name: string, asmName: string): void {
     // the asmName is what the wasm provides directly; the outside JS
     // name may be slightly different (extra "_" in wasm backend)
     const graphName = getGraphName(name, 'export');
@@ -680,7 +714,7 @@ function emitDCEGraph(ast) {
     (node) => {
       if (isWasmImportsAssign(node)) {
         const assignedObject = getWasmImportsValue(node);
-        assignedObject.properties.forEach((item) => {
+        assignedObject.properties.forEach((item: AstNode) => {
           let value = item.value;
           if (value.type === 'Literal' || value.type === 'FunctionExpression') {
             return; // if it's a numeric or function literal, nothing to do here
@@ -701,7 +735,7 @@ function emitDCEGraph(ast) {
         // WASM_ESM_INTEGRATION: wasm exports received as
         //   import { malloc as _malloc, memory } from './a.out.wasm';
         // Each binding is a wasm export, exactly like `var _x = wasmExports['x']`.
-        node.specifiers.forEach((spec) => {
+        node.specifiers.forEach((spec: AstNode) => {
           const jsName = spec.local.name; // JS-side name
           const asmName = spec.imported.name; // wasm-provided name
           const graphName = exportNameToGraphName.get(asmName);
@@ -732,11 +766,13 @@ function emitDCEGraph(ast) {
         // acorn represents with distinct local/exported nodes; bare specifiers
         // reuse a single node for both sides.
         const importEdges = node.specifiers.filter(
-          (spec) => spec.local !== spec.exported && !wasmExportLocals.has(spec.local.name),
+          (spec: AstNode) => spec.local !== spec.exported && !wasmExportLocals.has(spec.local.name),
         );
         if (importEdges.length) {
           // (a) `export { jsName as nativeName }` - jsName implements the import.
-          importEdges.forEach((spec) => imports.push([spec.local.name, spec.exported.name]));
+          importEdges.forEach((spec: AstNode) =>
+            imports.push([spec.local.name, spec.exported.name]),
+          );
           foundWasmImportsAssign = true;
           emptyOut(node); // does not root; second pass ignores it
         }
@@ -765,7 +801,7 @@ function emitDCEGraph(ast) {
               //  var x = Module['x'] = ?
               // which looks like a wasm export being received. confirm with the asm use
               let found = 0;
-              let asmName;
+              let asmName: string | undefined;
               fullWalk(value.right, (node) => {
                 if (isExportUse(node)) {
                   found++;
@@ -777,7 +813,7 @@ function emitDCEGraph(ast) {
                 // this is indeed an export
                 // the asmName is what the wasm provides directly; the outside JS
                 // name may be slightly different (extra "_" in wasm backend)
-                saveAsmExport(name, asmName);
+                saveAsmExport(name, asmName!);
                 emptyOut(node); // ignore this in the second pass; this does not root
                 return;
               }
@@ -795,7 +831,12 @@ function emitDCEGraph(ast) {
         // A variable declaration that has no initial values can be ignored in
         // the second pass, these are just declarations, not roots - an actual
         // use must be found in order to root.
-        if (!node.declarations.reduce((hasInit, decl) => hasInit || !!decl.init, false)) {
+        if (
+          !node.declarations.reduce(
+            (hasInit: boolean, decl: AstNode) => hasInit || !!decl.init,
+            false,
+          )
+        ) {
           emptyOut(node);
         }
       } else if (node.type === 'FunctionDeclaration') {
@@ -866,13 +907,13 @@ function emitDCEGraph(ast) {
 
   // Second pass: everything used in the toplevel scope is rooted;
   // things used in defun scopes create links
-  function getGraphName(name, what) {
+  function getGraphName(name: string, what: string): string {
     return 'emcc$' + what + '$' + name;
   }
-  const infos = new Map(); // the graph name of the item => info for it
+  const infos = new Map<string, DCEGraphInfo>(); // the graph name of the item => info for it
   for (const [jsName, nativeName] of imports) {
     const name = getGraphName(jsName, 'import');
-    const info = {
+    const info: ActiveDCEGraphInfo = {
       name: name,
       import: ['env', nativeName],
       reaches: new Set(),
@@ -892,10 +933,10 @@ function emitDCEGraph(ast) {
   }
   // a function that handles a node we visit, in either a defun or
   // the toplevel scope (in which case the second param is not provided)
-  function visitNode(node, defunInfo) {
+  function visitNode(node: AstNode, defunInfo: ActiveDCEGraphInfo | null): void {
     // TODO: scope awareness here. for now we just assume all uses are
     //       from the top scope, which might create more uses than needed
-    let reached;
+    let reached: string | string[] | undefined;
     if (node.type === 'Identifier') {
       reached = nameToGraphName.get(node.name);
     } else if (isModuleUse(node)) {
@@ -910,12 +951,12 @@ function emitDCEGraph(ast) {
       const name = getExportOrModuleUseName(node);
       const graphName = exportNameToGraphName.get(name);
       if (graphName) {
-        infos.get(graphName).root = true;
+        infos.get(graphName)!.root = true;
       }
       return;
     }
     if (reached) {
-      function addReach(reached) {
+      function addReach(reached: string): void {
         if (defunInfo) {
           defunInfo.reaches.add(reached); // defun reaches it
         } else {
@@ -940,7 +981,7 @@ function emitDCEGraph(ast) {
   }
   defuns.forEach((defun) => {
     const name = getGraphName(defun.id.name, 'defun');
-    const info = {
+    const info: ActiveDCEGraphInfo = {
       name: name,
       reaches: new Set(),
     };
@@ -963,18 +1004,18 @@ function emitDCEGraph(ast) {
 // exports from JS side, effectively disentangling the wasm and JS sides that
 // way (and we leave further DCE on the JS and wasm sides to their respective
 // optimizers, closure compiler and binaryen).
-function applyDCEGraphRemovals(ast) {
-  const unusedExports = new Set(extraInfo.unusedExports);
-  const unusedImports = new Set(extraInfo.unusedImports);
-  const foundUnusedImports = new Set();
-  const foundUnusedExports = new Set();
+function applyDCEGraphRemovals(ast: AstNode): void {
+  const unusedExports = new Set<string>(extraInfo.unusedExports);
+  const unusedImports = new Set<string>(extraInfo.unusedImports);
+  const foundUnusedImports = new Set<string>();
+  const foundUnusedExports = new Set<string>();
   trace('unusedExports:', unusedExports);
   trace('unusedImports:', unusedImports);
 
   fullWalk(ast, (node) => {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
-      assignedObject.properties = assignedObject.properties.filter((item) => {
+      assignedObject.properties = assignedObject.properties.filter((item: AstNode) => {
         const name = item.key.name;
         const value = item.value;
         if (unusedImports.has(name)) {
@@ -986,7 +1027,7 @@ function applyDCEGraphRemovals(ast) {
     } else if (isImportFromWasm(node)) {
       // WASM_ESM_INTEGRATION: drop unused wasm exports from
       //   import { malloc as _malloc, .. } from './a.out.wasm';
-      node.specifiers = node.specifiers.filter((spec) => {
+      node.specifiers = node.specifiers.filter((spec: AstNode) => {
         if (unusedExports.has(spec.imported.name)) {
           foundUnusedExports.add(spec.imported.name);
           return false;
@@ -996,7 +1037,7 @@ function applyDCEGraphRemovals(ast) {
     } else if (isExportSpecifierList(node)) {
       // WASM_ESM_INTEGRATION: drop unused wasm imports from
       //   export { _fd_write as fd_write, .. };
-      node.specifiers = node.specifiers.filter((spec) => {
+      node.specifiers = node.specifiers.filter((spec: AstNode) => {
         if (unusedImports.has(spec.exported.name)) {
           foundUnusedImports.add(spec.exported.name);
           return false;
@@ -1034,7 +1075,7 @@ function applyDCEGraphRemovals(ast) {
   }
 }
 
-function createLiteral(value) {
+function createLiteral(value: string | number): AstNode {
   return {
     type: 'Literal',
     value: value,
@@ -1042,14 +1083,14 @@ function createLiteral(value) {
   };
 }
 
-function makeIdentifier(name) {
+function makeIdentifier(name: string): AstNode {
   return {
     type: 'Identifier',
     name: name,
   };
 }
 
-function makeCallExpression(node, name, args) {
+function makeCallExpression(node: AstNode, name: string, args: AstNode[]): void {
   Object.assign(node, {
     type: 'CallExpression',
     callee: makeIdentifier(name),
@@ -1057,7 +1098,7 @@ function makeCallExpression(node, name, args) {
   });
 }
 
-function isEmscriptenHEAP(name) {
+function isEmscriptenHEAP(name: string): boolean {
   switch (name) {
     case 'HEAP8':
     case 'HEAPU8':
@@ -1077,7 +1118,7 @@ function isEmscriptenHEAP(name) {
   }
 }
 
-const littleEndianHelper = {
+const littleEndianHelper: Record<string, {width: number; load: string; store: string}> = {
   HEAP16: {width: 2, load: 'LE_HEAP_LOAD_I16', store: 'LE_HEAP_STORE_I16'},
   HEAPU16: {width: 2, load: 'LE_HEAP_LOAD_U16', store: 'LE_HEAP_STORE_U16'},
   HEAP32: {width: 4, load: 'LE_HEAP_LOAD_I32', store: 'LE_HEAP_STORE_I32'},
@@ -1090,7 +1131,7 @@ const littleEndianHelper = {
 
 // Replaces each HEAP access with function call that uses DataView to enforce
 // LE byte order for HEAP buffer
-function littleEndianHeap(ast) {
+function littleEndianHeap(ast: AstNode): void {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
       // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
@@ -1188,7 +1229,7 @@ function littleEndianHeap(ast) {
 // Instrument heap accesses to call growMemViews helper function, which allows
 // pthreads + memory growth to work (we check if the memory was grown on another thread
 // in each access), see #8365.
-function growableHeap(ast) {
+function growableHeap(ast: AstNode): void {
   recursiveWalk(ast, {
     ExportNamedDeclaration() {
       // Do not recurse export statements since we don't want to rewrite, for example, `export { HEAP32 }`
@@ -1230,7 +1271,7 @@ function growableHeap(ast) {
   });
 }
 
-function makeCallGrowMemViews() {
+function makeCallGrowMemViews(): AstNode {
   return {
     type: 'CallExpression',
     callee: {
@@ -1241,7 +1282,7 @@ function makeCallGrowMemViews() {
   };
 }
 
-function makeSequence(...expressions) {
+function makeSequence(...expressions: AstNode[]): AstNode {
   return {
     type: 'SequenceExpression',
     expressions,
@@ -1251,15 +1292,15 @@ function makeSequence(...expressions) {
 // Make all JS pointers unsigned. We do this by modifying things like
 // HEAP32[X >> 2] to HEAP32[X >>> 2]. We also need to handle the case of
 // HEAP32[X] and make that HEAP32[X >>> 0], things like subarray(), etc.
-function unsignPointers(ast) {
+function unsignPointers(ast: AstNode): void {
   // Aside from the standard emscripten HEAP*s, also identify just "HEAP"/"heap"
   // as representing a heap. This can be used in JS library code in order
   // to get this pass to fix it up.
-  function isHeap(name) {
+  function isHeap(name: string): boolean {
     return isEmscriptenHEAP(name) || name === 'heap' || name === 'HEAP';
   }
 
-  function unsign(node) {
+  function unsign(node: AstNode): AstNode {
     // The pointer is often a >> shift, which we can just turn into >>>
     if (node.type === 'BinaryExpression') {
       if (node.operator === '>>') {
@@ -1317,17 +1358,17 @@ function unsignPointers(ast) {
   });
 }
 
-function isHEAPAccess(node) {
+function isHEAPAccess(node: AstNode): string | false {
   return (
     node.type === 'MemberExpression' &&
     node.object.type === 'Identifier' &&
-    node.computed && // notice a[X] but not a.X
+    Boolean(node.computed) && // notice a[X] but not a.X
     isEmscriptenHEAP(node.object.name) &&
     node.object.name
   );
 }
 
-function isGrowHEAPAccess(node) {
+function isGrowHEAPAccess(node: AstNode): string | false {
   if (
     node.type !== 'MemberExpression' ||
     !node.computed // notice a[X] but not a.X
@@ -1346,7 +1387,7 @@ function isGrowHEAPAccess(node) {
   );
 }
 
-function asanifyTransform(node, action) {
+function asanifyTransform(node: AstNode, action: string): void {
   makeCallExpression(node.property, '_asan_js_check_index', [
     {...node.object},
     {...node.property},
@@ -1355,7 +1396,7 @@ function asanifyTransform(node, action) {
 }
 // Add ASan check to direct HEAP* loads/stores.
 // That lets ASan cover JS too.
-function asanify(ast) {
+function asanify(ast: AstNode): void {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
       if (node.id.type === 'Identifier' && node.id.name === 'establishStackSpace') {
@@ -1387,7 +1428,7 @@ function asanify(ast) {
   });
 }
 
-function multiply(value, by) {
+function multiply(value: AstNode, by: number): AstNode {
   return {
     type: 'BinaryExpression',
     left: value,
@@ -1396,7 +1437,7 @@ function multiply(value, by) {
   };
 }
 
-function safeHeapTransform(node, action) {
+function safeHeapTransform(node: AstNode, action: string): void {
   makeCallExpression(node.property, 'SAFE_HEAP_INDEX', [
     {...node.object},
     {...node.property},
@@ -1404,7 +1445,7 @@ function safeHeapTransform(node, action) {
   ]);
 }
 // Add SAFE_HEAP_INDEX check to heap access
-function safeHeap(ast) {
+function safeHeap(ast: AstNode): void {
   recursiveWalk(ast, {
     AssignmentExpression(node, c) {
       const target = node.left;
@@ -1452,11 +1493,11 @@ const RESERVED = new Set([
 const VALID_MIN_INITS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
 const VALID_MIN_LATERS = VALID_MIN_INITS + '0123456789';
 
-const minifiedNames = [];
+const minifiedNames: string[] = [];
 const minifiedState = [0];
 
 // Make sure the nth index in minifiedNames exists. Done 100% deterministically.
-function ensureMinifiedNames(n) {
+function ensureMinifiedNames(n: number): void {
   while (minifiedNames.length < n + 1) {
     // generate the current name
     let name = VALID_MIN_INITS[minifiedState[0]];
@@ -1478,7 +1519,7 @@ function ensureMinifiedNames(n) {
   }
 }
 
-function minifyLocals(ast) {
+function minifyLocals(ast: AstNode): void {
   // We are given a mapping of global names to their minified forms.
   assert(extraInfo?.globals);
 
@@ -1487,7 +1528,7 @@ function minifyLocals(ast) {
       continue;
     }
     // Find the list of local names, including params.
-    const localNames = new Set();
+    const localNames = new Set<string>();
     for (const param of fun.params) {
       localNames.add(param.name);
     }
@@ -1499,15 +1540,15 @@ function minifyLocals(ast) {
       },
     });
 
-    function isLocalName(name) {
+    function isLocalName(name: string): boolean {
       return localNames.has(name);
     }
 
     // Names old to new names.
-    const newNames = new Map();
+    const newNames = new Map<string, string>();
 
     // The names in use, that must not be collided with.
-    const usedNames = new Set();
+    const usedNames = new Set<string>();
 
     // Put the function name aside. We don't want to traverse it as it is not
     // in the scope of itself.
@@ -1544,7 +1585,7 @@ function minifyLocals(ast) {
     // purposes.
     let nextMinifiedName = 0;
 
-    function getNextMinifiedName() {
+    function getNextMinifiedName(): string {
       while (true) {
         ensureMinifiedNames(nextMinifiedName);
         const minified = minifiedNames[nextMinifiedName++];
@@ -1563,9 +1604,9 @@ function minifyLocals(ast) {
     }
 
     // Label minification is done in a separate namespace.
-    const labelNames = new Map();
+    const labelNames = new Map<string, string>();
     let nextMinifiedLabel = 0;
-    function getNextMinifiedLabel() {
+    function getNextMinifiedLabel(): string {
       ensureMinifiedNames(nextMinifiedLabel);
       return minifiedNames[nextMinifiedLabel++];
     }
@@ -1608,7 +1649,7 @@ function minifyLocals(ast) {
   }
 }
 
-function minifyGlobals(ast) {
+function minifyGlobals(ast: AstNode): void {
   // The input is in form
   //
   //   function instantiate(wasmImports, wasmMemory, wasmTable) {
@@ -1651,10 +1692,10 @@ function minifyGlobals(ast) {
   fun.id = null;
 
   // Find all the declarations.
-  const declared = new Set();
+  const declared = new Set<string>();
 
   // Some identifiers must be left as they are and not minified.
-  const ignore = new Set();
+  const ignore = new Set<AstNode>();
 
   simpleWalk(fun, {
     FunctionDeclaration(node) {
@@ -1689,19 +1730,20 @@ function minifyGlobals(ast) {
   // Minify the names.
   let nextMinifiedName = 0;
 
-  function getNewMinifiedName() {
+  function getNewMinifiedName(): string {
     ensureMinifiedNames(nextMinifiedName);
     return minifiedNames[nextMinifiedName++];
   }
 
-  const minified = new Map();
+  const minified = new Map<string, string>();
 
-  function minify(name) {
+  function minify(name: string): string {
     if (!minified.has(name)) {
       minified.set(name, getNewMinifiedName());
     }
-    assert(minified.get(name));
-    return minified.get(name);
+    const res = minified.get(name);
+    assert(res);
+    return res;
   }
 
   // Start with the declared things in the lowest indices. Things like HEAP8
@@ -1735,12 +1777,16 @@ function minifyGlobals(ast) {
 
 // Utilities
 
-function reattachComments(ast, commentsMap, parenSpans) {
-  const symbols = [];
+function reattachComments(
+  ast: AstNode,
+  commentsMap: Map<number, acorn.Comment[]>,
+  parenSpans: Set<string>,
+): void {
+  const symbols: AstNode[] = [];
 
   // Collect all code symbols
   ast.walk({
-    _visit(node, descend) {
+    _visit(node: AstNode, descend?: () => void) {
       if (node.start?.pos) {
         symbols.push(node);
         if (
@@ -1750,7 +1796,7 @@ function reattachComments(ast, commentsMap, parenSpans) {
         ) {
           node.needs_parens = () => false;
           const origCodegen = node._codegen;
-          node._codegen = (self, output) => {
+          node._codegen = (self: AstNode, output: AstNode) => {
             output.with_parens(() => origCodegen(self, output));
           };
         }
@@ -1820,7 +1866,7 @@ const {
   allowPositionals: true,
 });
 
-function trace(...args) {
+function trace(...args: unknown[]): void {
   if (verbose) {
     console.warn(...args);
   }
@@ -1831,24 +1877,24 @@ function trace(...args) {
 
 const input = read(infile);
 const extraInfoStart = input.lastIndexOf('// EXTRA_INFO:');
-let extraInfo = null;
+let extraInfo: Record<string, any> = null as any;
 if (extraInfoStart > 0) {
   extraInfo = JSON.parse(input.slice(extraInfoStart + 14));
 }
 // Collect all JS code comments to this map so that we can retain them in the
 // outputted code if --closureFriendly was requested.
-const sourceComments = new Map();
-const params = {
+const sourceComments = new Map<number, acorn.Comment[]>();
+const params: acorn.Options = {
   ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,
   allowImportExportEverywhere: exportES6,
 };
 if (closureFriendly) {
-  const currentComments = [];
+  const currentComments: acorn.Comment[] = [];
   Object.assign(params, {
     preserveParens: true,
-    onToken(token) {
+    onToken(token: acorn.Token) {
       if (currentComments.length) {
         // Associate comments with the start position of the next token.
         sourceComments.set(token.start, currentComments.slice());
@@ -1859,7 +1905,7 @@ if (closureFriendly) {
   });
 }
 
-const registry = {
+const registry: Record<string, (ast: AstNode) => void> = {
   JSDCE,
   AJSDCE,
   applyImportAndExportNameChanges,
@@ -1875,10 +1921,10 @@ const registry = {
   minifyGlobals,
 };
 
-let ast;
-const parenSpans = new Set();
+let ast: AstNode;
+const parenSpans = new Set<string>();
 try {
-  ast = parser.parse(input, params);
+  ast = parser.parse(input, params) as AstNode;
   if (closureFriendly) {
     // Unwrap ParenthesizedExpression nodes before running passes or converting
     // to a Terser AST, recording their spans so reattachComments can restore
@@ -1902,16 +1948,16 @@ try {
       }
     });
   }
-  for (let pass of passes) {
+  for (const pass of passes) {
     const resolvedPass = registry[pass];
     assert(resolvedPass, `unknown optimizer pass: ${pass}`);
     resolvedPass(ast);
   }
-} catch (err) {
+} catch (err: any) {
   if (err.loc) {
     err.message +=
       '\n' +
-      `${input.split(acorn.lineBreak)[err.loc.line - 1]}\n` +
+      `${input.split(/\r\n|[\n\r\u2028\u2029]/)[err.loc.line - 1]}\n` +
       `${' '.repeat(err.loc.column)}^ ${infile}:${err.loc.line}:${err.loc.column + 1}`;
   }
   throw err;
@@ -1927,19 +1973,19 @@ if (!noPrint) {
     shorthand: true, // Use object literal shorthand notation
   };
 
-  let output;
+  let output: string;
   if (closureFriendly) {
-    const {ast: terserAst} = minify_sync(ast, {
-      parse: {spidermonkey: true},
+    const {ast: terserAst} = minify_sync(ast as any, {
+      parse: {spidermonkey: true} as any,
       compress: false,
       mangle: false,
-      format: {ast: true, code: false},
-    });
+      format: {ast: true, code: false} as any,
+    }) as any;
     reattachComments(terserAst, sourceComments, parenSpans);
     output = terserAst.print_to_string(format);
   } else {
-    output = minify_sync(ast, {
-      parse: {spidermonkey: true},
+    output = minify_sync(ast as any, {
+      parse: {spidermonkey: true} as any,
       compress: compress
         ? {
             defaults: false,
@@ -1952,7 +1998,7 @@ if (!noPrint) {
         : false,
       mangle: false,
       format,
-    }).code;
+    }).code!;
   }
 
   output += '\n';

@@ -226,7 +226,7 @@ def generate_js_compiler_input_hash(symbols_only=False):
 
   files = glob.glob(utils.path_from_root('src/lib') + '/lib*.js')
   # Also, include the js compiler code itself, in case it gets locally modified.
-  files += glob.glob(utils.path_from_root('src/*.mjs'))
+  files += glob.glob(utils.path_from_root('src/*.ts'))
   files += settings.JS_LIBRARIES
   if not symbols_only:
     files += settings.PRE_JS_FILES

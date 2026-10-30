@@ -7,14 +7,14 @@ Building Emscripten from Source
 Building Emscripten yourself is an alternative to getting binaries using the
 emsdk.
 
-Emscripten itself is written in Python and JavaScript, so it has no native
+Emscripten itself is written in Python and TypeScript, so it has no native
 binaries to compile.  However, after checkout you will need to run the top
 level ``bootstrap.py`` script before the toolchain is usable.  This performs
 several setup steps:
 
 - Installing npm packages (``npm ci``).
-- Bundling the link-time JavaScript tools (``tools/*.mjs`` and ``src/*.mjs``)
-  into ``dist/`` using ``rolldown`` (``npm run build``).
+- Transpiling and bundling the TypeScript tools (``tools/*.ts`` and
+  ``src/*.ts``) into ``dist/`` using ``rolldown`` (``npm run build``).
 - Creating compiler entry points (e.g. ``.exe`` files on Windows).
 - Initializing git submodules and optionally installing git hooks.
 

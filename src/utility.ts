@@ -13,8 +13,8 @@ import * as fs from 'node:fs';
 import * as vm from 'node:vm';
 import assert from 'node:assert';
 
-export function dump(item) {
-  let funcData;
+export function dump(item: Record<string, any>): string {
+  let funcData: any;
   try {
     if (typeof item === 'object' && item != null && item.funcData) {
       funcData = item.funcData;
@@ -22,7 +22,7 @@ export function dump(item) {
     }
     return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
   } catch {
-    const ret = [];
+    const ret: string[] = [];
     for (const [i, j] of Object.entries(item)) {
       if (typeof j === 'string' || typeof j === 'number') {
         ret.push(`${i}: ${j}`);
@@ -38,21 +38,21 @@ export function dump(item) {
 
 let warnings = false;
 
-export function warningOccured() {
+export function warningOccured(): boolean {
   return warnings;
 }
 
-let currentFile = [];
+const currentFile: string[] = [];
 
-export function pushCurrentFile(f) {
+export function pushCurrentFile(f: string): void {
   currentFile.push(f);
 }
 
-export function popCurrentFile() {
+export function popCurrentFile(): void {
   currentFile.pop();
 }
 
-function errorPrefix(lineNo) {
+function errorPrefix(lineNo?: number): string {
   if (!currentFile.length) return '';
   const filename = currentFile.at(-1);
   if (lineNo) {
@@ -62,14 +62,14 @@ function errorPrefix(lineNo) {
   }
 }
 
-export function warn(msg, lineNo) {
+export function warn(msg: string, lineNo?: number): void {
   warnings = true;
   printErr(`warning: ${errorPrefix(lineNo)}${msg}`);
 }
 
-const seenWarnings = new Set();
+const seenWarnings = new Set<string>();
 
-export function warnOnce(msg) {
+export function warnOnce(msg: string): void {
   if (!seenWarnings.has(msg)) {
     seenWarnings.add(msg);
     warn(msg);
@@ -78,23 +78,33 @@ export function warnOnce(msg) {
 
 let abortExecution = false;
 
-export function errorOccured() {
+export function errorOccured(): boolean {
   return abortExecution;
 }
 
-export function error(msg, lineNo) {
+export function error(msg: string, lineNo?: number): void {
   abortExecution = true;
   process.exitCode = 1;
   printErr(`error: ${errorPrefix(lineNo)}${msg}`);
 }
 
-function range(size) {
+function range(size: number): number[] {
   return Array.from(Array(size).keys());
 }
 
-export const extraLibraryFuncs = [];
+export const extraLibraryFuncs: string[] = [];
 
-export function mergeInto(obj, other, options = null) {
+export interface MergeIntoOptions {
+  noOverride?: boolean;
+  checkSig?: boolean;
+  allowMissing?: boolean;
+}
+
+export function mergeInto(
+  obj: Record<string, any>,
+  other: Record<string, any>,
+  options: MergeIntoOptions | null = null,
+): Record<string, any> {
   if (options) {
     // check for unintended symbol redefinition
     if (options.noOverride) {
@@ -103,7 +113,7 @@ export function mergeInto(obj, other, options = null) {
           error(
             `Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`,
           );
-          return;
+          return obj;
         }
       }
     }
@@ -113,7 +123,7 @@ export function mergeInto(obj, other, options = null) {
       for (const [key, value] of Object.entries(other)) {
         if (typeof value === 'function' && !Object.hasOwn(other, key + '__sig')) {
           error(`__sig is missing for function: ${key}. Do not use checkSig if this is intended`);
-          return;
+          return obj;
         }
       }
     }
@@ -174,7 +184,7 @@ export function mergeInto(obj, other, options = null) {
         }
       } else {
         // General type checking for all other decorators
-        const decoratorTypes = {
+        const decoratorTypes: Record<string, string | string[]> = {
           __sig: 'string',
           __proxy: 'string',
           __asm: 'boolean',
@@ -207,7 +217,7 @@ export function mergeInto(obj, other, options = null) {
 
 // Symbols that start with '$' are not exported to the wasm module.
 // They are intended to be called exclusively by JS code.
-export function isJsOnlySymbol(symbol) {
+export function isJsOnlySymbol(symbol: string): boolean {
   return symbol[0] == '$';
 }
 
@@ -233,13 +243,13 @@ export const decoratorSuffixes = [
 
 const decoratorSuffixSet = new Set(decoratorSuffixes);
 
-export function isDecorator(ident) {
+export function isDecorator(ident: string): boolean {
   const index = ident.lastIndexOf('__');
   return index > 0 && decoratorSuffixSet.has(ident.slice(index));
 }
 
-export function defineConsts(consts) {
-  const rtn = {};
+export function defineConsts(consts: Record<string, any>): Record<string, any> {
+  const rtn: Record<string, any> = {};
   for (const [key, value] of Object.entries(consts)) {
     assert(isJsOnlySymbol(key), `expected JS-only symbol (starting with '$'): ${key}`);
     rtn[key] = value;
@@ -248,7 +258,7 @@ export function defineConsts(consts) {
   return rtn;
 }
 
-export function defineInternalConsts(consts) {
+export function defineInternalConsts(consts: Record<string, any>): Record<string, any> {
   const rtn = defineConsts(consts);
   for (const key of Object.keys(consts)) {
     rtn[key + '__internal'] = true;
@@ -256,7 +266,7 @@ export function defineInternalConsts(consts) {
   return rtn;
 }
 
-export function readFile(filename) {
+export function readFile(filename: fs.PathOrFileDescriptor): string {
   return fs.readFileSync(filename, 'utf8');
 }
 
@@ -268,74 +278,82 @@ export const srcDir =
 
 // Returns an absolute path for a file, resolving it relative to this script
 // (i.e. relative to the src/ directory).
-export function localFile(filename) {
+export function localFile(filename: string): string {
   assert(!path.isAbsolute(filename));
   return path.join(srcDir, filename);
 }
 
 // Helper function for JS library files that can be used to read files
 // relative to the src/ directory.
-function read(filename) {
+function read(filename: string): string {
   if (!path.isAbsolute(filename)) {
     filename = localFile(filename);
   }
   return readFile(filename);
 }
 
-export function printErr(...args) {
+export function printErr(...args: unknown[]): void {
   console.error(...args);
 }
 
-export function debugLog(...args) {
+export function debugLog(...args: unknown[]): void {
   if (VERBOSE) printErr(...args);
 }
 
-class Profiler {
-  ids = [];
+export interface Timer {
+  start(id: string): void;
+  stop(id: string): void;
+  terminate(): void;
+}
+
+class Profiler implements Timer {
+  ids: [string, number][] = [];
 
   constructor() {
     this.start('overall');
   }
 
-  log(msg) {
+  log(msg: string): void {
     const depth = this.ids.length;
     const indent = ' '.repeat(depth);
     printErr('[prof] ' + indent + msg);
   }
 
-  start(id) {
+  start(id: string): void {
     this.log(`-> ${id}`);
     const now = performance.now();
     this.ids.push([id, now]);
   }
 
-  stop(id) {
-    const [poppedId, startTime] = this.ids.pop();
+  stop(id: string): void {
+    const popped = this.ids.pop();
+    assert(popped);
+    const [poppedId, startTime] = popped;
     assert(id === poppedId);
     const now = performance.now();
     const duration = now - startTime;
     this.log(`<- ${id} [${duration.toFixed(1)} ms]`);
   }
 
-  terminate() {
+  terminate(): void {
     while (this.ids.length) {
-      const lastID = this.ids.at(-1)[0];
+      const lastID = this.ids.at(-1)![0];
       this.stop(lastID);
     }
   }
 }
 
-class NullProfiler {
-  start(_id) {}
-  stop(_id) {}
-  terminate() {}
+class NullProfiler implements Timer {
+  start(_id: string): void {}
+  stop(_id: string): void {}
+  terminate(): void {}
 }
 
 // Enable JS compiler profiling if EMPROFILE is "2".  This mode reports profile
 // data to stderr.
 const EMPROFILE = process.env.EMPROFILE == '2';
 
-export const timer = EMPROFILE ? new Profiler() : new NullProfiler();
+export const timer: Timer = EMPROFILE ? new Profiler() : new NullProfiler();
 
 if (EMPROFILE) {
   process.on('exit', () => timer.terminate());
@@ -346,16 +364,16 @@ if (EMPROFILE) {
  * global scope of the compiler itself which avoids exposing all of the compiler
  * internals to user JS library code.
  */
-export const compileTimeContext = vm.createContext({
+export const compileTimeContext: vm.Context = vm.createContext({
   process,
   console,
 });
 
 /**
- * A symbols to the macro context.
- * This will makes the symbols available to JS library code at build time.
+ * Add symbols to the macro context.
+ * This will make the symbols available to JS library code at build time.
  */
-export function addToCompileTimeContext(object) {
+export function addToCompileTimeContext(object: Record<string, any>): void {
   Object.assign(compileTimeContext, object);
 }
 
@@ -370,15 +388,15 @@ const setLikeSettings = [
   'WEAK_IMPORTS',
 ];
 
-const settingsCallbacks = [];
+const settingsCallbacks: (() => void)[] = [];
 let settingsLoaded = false;
 
-export function onSettingsLoaded(cb) {
+export function onSettingsLoaded(cb: () => void): void {
   assert(!settingsLoaded);
   settingsCallbacks.push(cb);
 }
 
-function setSettings(obj) {
+function setSettings(obj: Record<string, any>): void {
   // Certain settings are read in as lists, but we convert them to Set
   // within the compiler, for efficiency.
   for (const key of setLikeSettings) {
@@ -393,7 +411,7 @@ function setSettings(obj) {
   addToCompileTimeContext(obj);
 }
 
-export function applySettings(obj) {
+export function applySettings(obj: Record<string, any>): void {
   assert(!settingsLoaded);
   settingsLoaded = true;
   setSettings(obj);
@@ -402,22 +420,25 @@ export function applySettings(obj) {
   }
 }
 
-export function loadSettingsFile(f) {
+export function loadSettingsFile(f: string): Record<string, any> {
   timer.start('loadSettingsFile');
-  const settings = {};
+  const settings: Record<string, any> = {};
   vm.runInNewContext(readFile(f), settings, {filename: f});
   setSettings(settings);
   timer.stop('loadSettingsFile');
   return settings;
 }
 
-export function loadDefaultSettings() {
+export function loadDefaultSettings(): Record<string, any> {
   const rtn = loadSettingsFile(localFile('settings.js'));
   Object.assign(rtn, loadSettingsFile(localFile('settings_internal.js')));
   return rtn;
 }
 
-export function runInMacroContext(code, options) {
+export function runInMacroContext(
+  code: string,
+  options: vm.RunningScriptOptions & {filename: string},
+): any {
   compileTimeContext['__filename'] = options.filename;
   compileTimeContext['__dirname'] = path.dirname(options.filename);
   return vm.runInContext(code, compileTimeContext, options);
