@@ -7,6 +7,13 @@
 //'use strict';
 
 var LibraryOpenAL = {
+  ...defineInternalConsts({
+    $AL_QUEUE_INTERVAL: 25,
+    $AL_QUEUE_LOOKAHEAD: 100.0 / 1000.0,
+    $AL_DEVICE_NAME: 'Emscripten OpenAL',
+    $AL_CAPTURE_DEVICE_NAME: 'Emscripten OpenAL capture',
+  }),
+
   // ************************************************************************
   // ** INTERNALS
   // ************************************************************************
@@ -15,12 +22,6 @@ var LibraryOpenAL = {
     // ------------------------------------------------------
     // -- Constants
     // ------------------------------------------------------
-
-    QUEUE_INTERVAL: 25,
-    QUEUE_LOOKAHEAD: 100.0 / 1000.0,
-
-    DEVICE_NAME: 'Emscripten OpenAL',
-    CAPTURE_DEVICE_NAME: 'Emscripten OpenAL capture',
 
     ALC_EXTENSIONS: {
       // TODO: 'ALC_EXT_EFX': true,
@@ -127,7 +128,7 @@ var LibraryOpenAL = {
       }
 
       if (!lookahead) {
-        lookahead = AL.QUEUE_LOOKAHEAD;
+        lookahead = AL_QUEUE_LOOKAHEAD;
       }
       var lookaheadTime = currentTime + lookahead;
       var skipCount = 0;
@@ -1603,12 +1604,12 @@ var LibraryOpenAL = {
   alcCaptureOpenDevice__proxy: 'sync',
   alcCaptureOpenDevice: (pDeviceName, requestedSampleRate, format, bufferFrameCapacity) => {
 
-    var resolvedDeviceName = AL.CAPTURE_DEVICE_NAME;
+    var resolvedDeviceName = AL_CAPTURE_DEVICE_NAME;
 
     // NULL is a valid device name here (resolves to default);
     if (pDeviceName) {
       resolvedDeviceName = UTF8ToString(pDeviceName);
-      if (resolvedDeviceName !== AL.CAPTURE_DEVICE_NAME) {
+      if (resolvedDeviceName !== AL_CAPTURE_DEVICE_NAME) {
 #if OPENAL_DEBUG
         dbg(`alcCaptureOpenDevice() with invalid device name '${resolvedDeviceName}'`);
 #endif
@@ -2031,7 +2032,7 @@ var LibraryOpenAL = {
   alcOpenDevice: (pDeviceName) => {
     if (pDeviceName) {
       var name = UTF8ToString(pDeviceName);
-      if (name !== AL.DEVICE_NAME) {
+      if (name !== AL_DEVICE_NAME) {
         return 0;
       }
     }
@@ -2164,7 +2165,7 @@ var LibraryOpenAL = {
         up: [0.0, 0.0, 0.0]
       },
       sources: [],
-      interval: setInterval(() => AL.scheduleContextAudio(ctx), AL.QUEUE_INTERVAL),
+      interval: setInterval(() => AL.scheduleContextAudio(ctx), AL_QUEUE_INTERVAL),
       gain,
       distanceModel: 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */,
       speedOfSound: 343.3,
@@ -2351,24 +2352,24 @@ var LibraryOpenAL = {
       break;
     case 0x1004 /* ALC_DEFAULT_DEVICE_SPECIFIER */:
       if (globalThis.AudioContext) {
-        ret = AL.DEVICE_NAME;
+        ret = AL_DEVICE_NAME;
       } else {
         return 0;
       }
       break;
     case 0x1005 /* ALC_DEVICE_SPECIFIER */:
       if (globalThis.AudioContext) {
-        ret = AL.DEVICE_NAME + '\0';
+        ret = AL_DEVICE_NAME + '\0';
       } else {
         ret = '\0';
       }
       break;
     case 0x311 /* ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER */:
-      ret = AL.CAPTURE_DEVICE_NAME;
+      ret = AL_CAPTURE_DEVICE_NAME;
       break;
     case 0x310 /* ALC_CAPTURE_DEVICE_SPECIFIER */:
       if (!deviceId) {
-        ret = AL.CAPTURE_DEVICE_NAME + '\0';
+        ret = AL_CAPTURE_DEVICE_NAME + '\0';
       } else {
         var c = AL.requireValidCaptureDevice(deviceId, 'alcGetString');
         if (!c) {
@@ -2564,7 +2565,7 @@ var LibraryOpenAL = {
         continue;
       }
 
-      ctx.interval = setInterval(() => AL.scheduleContextAudio(ctx), AL.QUEUE_INTERVAL);
+      ctx.interval = setInterval(() => AL.scheduleContextAudio(ctx), AL_QUEUE_INTERVAL);
       ctx.audioCtx.resume();
     }
   },

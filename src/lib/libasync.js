@@ -20,6 +20,9 @@ addToLibrary({
   },
 
 #if ASYNCIFY
+  ...defineInternalConsts({
+    $ASYNCIFY_STACK_SIZE: ASYNCIFY_STACK_SIZE,
+  }),
   $Asyncify__force: true,
 #if ASYNCIFY == 1
   // Needed by allocateData and handleSleep respectively
@@ -187,7 +190,6 @@ addToLibrary({
       Disabled: 3,
     },
     state: 0,
-    StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
     currData: null,
     // The return value passed to wakeUp() in
     // Asyncify.handleSleep((wakeUp) => {...}) is stored here,
@@ -263,8 +265,8 @@ addToLibrary({
       // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
       // We also embed a stack in the same memory region here, right next to the structure.
       // This struct is also defined as asyncify_data_t in emscripten/fiber.h
-      var ptr = _malloc({{{ C_STRUCTS.asyncify_data_s.__size__ }}} + Asyncify.StackSize);
-      Asyncify.setDataHeader(ptr, ptr + {{{ C_STRUCTS.asyncify_data_s.__size__ }}}, Asyncify.StackSize);
+      var ptr = _malloc({{{ C_STRUCTS.asyncify_data_s.__size__ }}} + ASYNCIFY_STACK_SIZE);
+      Asyncify.setDataHeader(ptr, ptr + {{{ C_STRUCTS.asyncify_data_s.__size__ }}}, ASYNCIFY_STACK_SIZE);
       Asyncify.setDataRewindFunc(ptr);
       return ptr;
     },

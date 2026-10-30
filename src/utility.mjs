@@ -234,6 +234,7 @@ export function isDecorator(ident) {
 export function defineConsts(consts) {
   const rtn = {};
   for (const [key, value] of Object.entries(consts)) {
+    assert(isJsOnlySymbol(key), `expected JS-only symbol (starting with '$'): ${key}`);
     rtn[key] = value;
     rtn[key + '__const'] = true;
   }

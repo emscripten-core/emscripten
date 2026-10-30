@@ -5,7 +5,9 @@
  */
 
 var wasmFSNodeLibrary = {
-  $wasmfsNodeIsWindows: '!!globalThis.process?.platform.match(/^win/)',
+  ...defineInternalConsts({
+    $wasmfsNodeIsWindows: '=!!globalThis.process?.platform.match(/^win/)',
+  }),
 
   $wasmfsNodeConvertNodeCode: (e) => {
     var code = e.code;

@@ -1055,10 +1055,12 @@ addToLibrary({
           $UNUSED_CONST: 99,
         }),
         ...defineInternalConsts({
-          $CONST_C: 10,
+          $CONST_C: 4,
+          $CONST_STR: 'abc',
+          $CONST_EXPR: '=1 + 2',
           $UNUSED_INTERNAL_CONST: 99,
         }),
-        get_const_sum: () => CONST_A + CONST_B + CONST_C,
+        get_const_sum: () => CONST_A + CONST_B + CONST_C + CONST_STR.length + CONST_EXPR,
       });
     ''')
     create_file('src.c', r'''
@@ -1077,10 +1079,14 @@ addToLibrary({
       self.assertNotContained('const CONST_A', js)
       self.assertNotContained('const CONST_B', js)
       self.assertNotContained('const CONST_C', js)
+      self.assertNotContained('const CONST_STR', js)
+      self.assertNotContained('const CONST_EXPR', js)
     else:
       self.assertContained('const CONST_A = 10;', js)
       self.assertContained('const CONST_B = 22;', js)
-      self.assertContained('const CONST_C = 10;', js)
+      self.assertContained('const CONST_C = 4;', js)
+      self.assertContained('const CONST_STR = "abc";', js)
+      self.assertContained('const CONST_EXPR = 1 + 2;', js)
     self.assertNotContained('const UNUSED_CONST', js)
     self.assertNotContained('UNUSED_INTERNAL_CONST', js)
     self.assertNotContained("Module['CONST_A']", js)
@@ -1112,3 +1118,12 @@ addToLibrary({
     ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_undef', '--js-library', 'lib.js'],
                      "error: JS library error: '__const' decorator cannot be used with undefined symbols: '$bad_undef'")
+
+    create_file('lib.js', r'''
+      addToLibrary({
+        $bad_obj__const: true,
+        $bad_obj: { a: 42 },
+      });
+    ''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_obj', '--js-library', 'lib.js'],
+                     "error: JS library error: '__const' decorator cannot be used with objects: '$bad_obj'")
