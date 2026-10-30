@@ -4142,8 +4142,8 @@ Module["preRun"] = () => {
   # pthread by using OffscreenCanvas.
   @no_chrome('https://crbug.com/961765')
   # The non-chained version suffers from browser priority inversion deadlock problem: offscreenCanvas.getContext("webgl2") does not make progress in a pthread until main thread yields to event loop.
-  # The chained version of this test suffers from bug https://bugzil.la/1992576
-  @no_firefox('https://bugzil.la/1972240 (priority inversion deadlock) + https://bugzil.la/1992576 (chained OffscreenCanvas transfer)')
+  # The chained version of this test suffers from bug https://bugzil.la/1991282
+  @no_firefox('https://bugzil.la/1972240 (priority inversion deadlock) + https://bugzil.la/1991282 (chained OffscreenCanvas transfer)')
   @parameterized({
     '': ([],),
     # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING:
@@ -4335,7 +4335,7 @@ Module["preRun"] = () => {
     if is_firefox() and '-sOFFSCREENCANVAS_SUPPORT' in cmd and '-sPROXY_TO_PTHREAD' in cmd:
       # Firefox is unable to transfer the same OffscreenCanvas multiple times across Workers
       # (in a chained fashion, e.g. main thread -> proxy-to-pthread main thread -> back to main thread -> user pthread)
-      self.skipTest('https://bugzil.la/1992576')
+      self.skipTest('https://bugzil.la/1991282')
 
     print(str(cmd))
     self.btest_exit('test_webgl_resize_offscreencanvas_from_main_thread.c', cflags=cmd)
