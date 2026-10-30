@@ -46,7 +46,8 @@ addToLibrary({
     }
     for (const [key, value] of Object.entries(NODERAWFS_stream_funcs)) {
       FS[key] = _wrapNodeStreamFunc(value, FS[key]);
-    }`,
+    }
+    `,
   $NODERAWFS: {
     lookup(parent, name) {
 #if ASSERTIONS
