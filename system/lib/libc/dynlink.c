@@ -627,7 +627,12 @@ em_promise_t emscripten_dlopen_promise(const char* filename, int flags) {
 
 void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
   dbg("__dlsym dso:%p sym:%s", p, s);
-  if (p != RTLD_DEFAULT && p != RTLD_NEXT && __dl_invalid_handle(p)) {
+  // Emscripten does not yet support RTLD_NEXT
+  if (p == RTLD_NEXT) {
+    error("RTLD_NEXT is not supported");
+    return 0;
+  }
+  if (p != RTLD_DEFAULT && __dl_invalid_handle(p)) {
     return 0;
   }
   // The first "dso" is always the default one which is equivalent to
