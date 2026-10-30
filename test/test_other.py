@@ -9581,6 +9581,14 @@ end
   def test_full_js_library(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'] + args)
 
+  def test_full_js_library_latin1(self):
+    # If a script has any character outside Latin-1, V8 stores all of its
+    # source as UTF-16, which doubles the memory each worker uses for it.
+    # Unminified builds keep comments, so they must be Latin-1 too.
+    self.run_process([EMCC, test_file('hello_world.c'), '-sINCLUDE_FULL_LIBRARY', '-sMAIN_MODULE=2', '-pthread', '-sCROSS_ORIGIN_STORAGE'])
+    bad_lines = [line.strip() for line in read_file('a.out.js').splitlines() if any(ord(c) > 0xff for c in line)]
+    self.assertEqual(bad_lines, [])
+
   def test_full_js_library_undefined(self):
     create_file('main.c', 'void foo(); int main() { foo(); return 0; }')
     self.assert_fail([EMCC, 'main.c', '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'], 'undefined symbol: foo')
@@ -13196,20 +13204,6 @@ exec "$@"
     # rebaseline with --rebaseline.
     self.run_process([PYTHON, path_from_root('tools/maint/gen_sig_info.py'), '-o', 'out.js'])
     self.assertFilesMatch(path_from_root('src/lib/libsigs.js'), 'out.js')
-
-  def test_js_sources_latin1(self):
-    # If a script has any character outside Latin-1, V8 stores all of its
-    # source as UTF-16, which doubles the memory each worker uses for it.
-    # Unminified builds (e.g. --profiling) keep comments, so they must be
-    # Latin-1 too.  settings.js is not part of the output.
-    bad_lines = []
-    for f in sorted(glob.glob(path_from_root('src/**/*.*js'), recursive=True)):
-      if os.path.basename(f) == 'settings.js':
-        continue
-      for i, line in enumerate(read_file(f).splitlines(), 1):
-        if any(ord(c) > 0xff for c in line):
-          bad_lines.append(f'{f}:{i}: {line.strip()}')
-    self.assertEqual(bad_lines, [])
 
   @crossplatform
   def test_gen_native_sig_info(self):
