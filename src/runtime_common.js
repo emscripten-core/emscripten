@@ -64,10 +64,6 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 }
 #endif // (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 
-#if PTHREADS
-#include "runtime_pthread.js"
-#endif
-
 #if WASM_WORKERS
 #include "wasm_worker.js"
 #endif

@@ -188,6 +188,12 @@ function unexportedRuntimeSymbol(sym) {
 }
 
 #if WASM_WORKERS || PTHREADS
+#if PTHREADS
+// Unique ID of the current pthread worker (zero on non-pthread-workers
+// including the main thread).
+var workerID = 0;
+#endif
+
 /**
  * Override `err`/`out`/`dbg` to report thread / worker information
  */

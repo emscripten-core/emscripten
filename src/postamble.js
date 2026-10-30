@@ -6,6 +6,10 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if PTHREADS
+#include "runtime_pthread.js"
+#endif
+
 #if LOAD_SOURCE_MAP
 #include "source_map_support.js"
 #endif
