@@ -1727,7 +1727,7 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
-    '-std=c++23',
+    '-std=c++26',
     '-DLIBC_NAMESPACE=__llvm_libc',
   ]
 
