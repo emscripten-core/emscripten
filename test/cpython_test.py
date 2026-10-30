@@ -55,9 +55,9 @@ def node_path():
   return config.NODE_JS[0]
 
 
-def git_head(cpython_dir):
+def git_head(cwd):
   """Return the sha of HEAD, or None if the repo has no commits yet."""
-  proc = subprocess.run(['git', 'rev-parse', '--verify', '-q', 'HEAD'], cwd=cpython_dir,
+  proc = subprocess.run(['git', 'rev-parse', '--verify', '-q', 'HEAD'], cwd=cwd,
                         text=True, capture_output=True)
   return proc.stdout.strip() if proc.returncode == 0 else None
 
