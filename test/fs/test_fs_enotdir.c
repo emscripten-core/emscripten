@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include <string.h>
 
 int main() {
   {
@@ -13,12 +14,51 @@ int main() {
     assert(close(src_fd) == 0);
   }
   {
+    // POSIX: open("file/") must fail with ENOTDIR if file is a regular file.
+    assert(open("file/", O_RDONLY) == -1);
+    printf("open file/ %s\n", strerror(errno));
+    assert(errno == ENOTDIR);
+
+    assert(open("file/.", O_RDONLY) == -1);
+    printf("open file/. %s\n", strerror(errno));
+    assert(errno == ENOTDIR);
+
+    assert(open("file/..", O_RDONLY) == -1);
+    printf("open file/.. %s\n", strerror(errno));
+    assert(errno == ENOTDIR);
+
     assert(mkdir("file/blah", 0777) == -1);
+    printf("open file/blah %s\n", strerror(errno));
     assert(errno == ENOTDIR);
   }
   {
     assert(open("./does-not-exist/", O_CREAT, 0777) == -1);
+    printf("open ./does-not-exist/ %s\n", strerror(errno));
     assert(errno == EISDIR);
+  }
+  {
+    assert(mkdir("dir", 0777) == 0);
+    assert(symlink("dir", "link_to_dir") == 0);
+    assert(symlink("file", "link_to_file") == 0);
+
+    // link_to_dir/ should resolve to the directory.
+    int fd = open("link_to_dir/", O_RDONLY);
+    assert(fd >= 0);
+    close(fd);
+
+    // link_to_file/ should fail with ENOTDIR.
+    assert(open("link_to_file/", O_RDONLY) == -1);
+    assert(errno == ENOTDIR);
+
+    // lstat with trailing slash MUST follow the link.
+    struct stat st;
+    assert(lstat("link_to_dir/", &st) == 0);
+    assert(S_ISDIR(st.st_mode));
+
+    // open with O_NOFOLLOW and trailing slash MUST follow the link.
+    int fd2 = open("link_to_dir/", O_RDONLY | O_NOFOLLOW);
+    assert(fd2 >= 0);
+    close(fd2);
   }
   printf("done\n");
 }
