@@ -80,10 +80,10 @@ def find_build_python(explicit):
 
 
 def node_path():
-  node = config.NODE_JS
-  if isinstance(node, list):
-    node = node[0]
-  return node
+  # config.NODE_JS is always normalized to a list (see config.listify).
+  if not config.NODE_JS:
+    sys.exit('error: NODE_JS not set in emscripten config')
+  return config.NODE_JS[0]
 
 
 def git_head(cpython_dir):
@@ -175,18 +175,14 @@ def test(args):
     os.makedirs(os.path.dirname(junit_xml), exist_ok=True)
     test_args += ['--junit-xml', junit_xml]
   test_args += args.test_args
-  try:
-    step('run', '--test', '--', *test_args)
-  except subprocess.CalledProcessError as e:
-    return e.returncode
+  step('run', '--test', '--', *test_args)
   return 0
 
 
 def all_steps(args):
-  for step in (sync, build, test):
-    rtn = step(args)
-    if rtn:
-      return rtn
+  sync(args)
+  build(args)
+  test(args)
   return 0
 
 
@@ -239,7 +235,13 @@ def main(argv):
     'build': build,
     'test': test,
   }
-  return dispatch[args.subcommand](args)
+  try:
+    return dispatch[args.subcommand](args)
+  except subprocess.CalledProcessError as e:
+    # The failing command has already printed its own output; avoid a noisy
+    # traceback and just propagate its exit code.
+    print(f'error: command failed with exit code {e.returncode}: {" ".join(e.cmd)}', file=sys.stderr)
+    return e.returncode
 
 
 if __name__ == '__main__':
