@@ -1722,6 +1722,7 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     '-DLIBCXX_BUILDING_LIBCXXABI=1',
     '-D_LIBCPP_BUILDING_LIBRARY',
     '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+    '-D_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER',
     # TODO(sbc): clang recently introduced this new warning which is triggered
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
