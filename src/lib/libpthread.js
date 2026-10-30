@@ -1079,9 +1079,10 @@ var LibraryPThread = {
     var coerceRtn = (rtn) => rtn;
 #endif
     if (ctx) {
-      // A plain value finishes the call at once, and a SyncDeferred when its
-      // wait-queue fires: this thread may be blocked on the caller, never
-      // reaching a microtask, which Promise.resolve would route either through.
+      // The main thread may itself be blocked on the caller (e.g. in
+      // pthread_join), servicing proxied calls but never its event loop, so a
+      // microtask would never run. Finish a plain value at once, and a
+      // thenable (a SyncDeferred) when it settles.
       if (rtn?.then) {
         rtn.then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn)));
       } else {

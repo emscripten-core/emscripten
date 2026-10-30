@@ -13804,6 +13804,8 @@ void foo() {}
   @parameterized({
     '': (['-sPROXY_TO_PTHREAD'],),
     'main_joins': ([],),
+    # MAIN_MODULE=1 sends every library function to wasm by name as well.
+    'main_module': (['-sMAIN_MODULE', '-Wno-experimental'],),
   })
   def test_pipe_write_blocking(self, args):
     self.do_runf('other/test_pipe_write_blocking.c', 'done\n',

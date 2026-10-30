@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wasi/api.h>
 
 #define CAPACITY 65536
 #define TOTAL (1 << 20)
@@ -67,13 +68,16 @@ void* closer(void* arg) {
 }
 
 // Runs on the main thread, re-entered from a pthread's proxied call: its
-// write is the main thread's, unbounded and not a pthread's wait.
+// write is the main thread's, unbounded and not a pthread's wait. Calls the
+// import directly so a count it fails to store reads as 0.
 EMSCRIPTEN_KEEPALIVE int main_writer(int n) {
   unsigned char* buf = malloc(n);
   fill(buf, 0, n);
-  int rtn = write(p[1], buf, n);
+  __wasi_ciovec_t iov = {buf, n};
+  __wasi_size_t num = 0;
+  assert(__wasi_fd_write(p[1], &iov, 1, &num) == 0);
   free(buf);
-  return rtn;
+  return num;
 }
 
 void read_back(size_t n) {

@@ -508,14 +508,13 @@ ${body};
 }
 
 // Symbols whose body keeps `sync` as its own trailing parameter, bound by its
-// two callers: the wasm import entry passes true and the proxied table entry
-// false, so only the directly proxied call acts on a pthread's behalf and
-// nothing it re-enters on the main thread does. The import entry stays a
-// function of the import's exact arity, which the engine's fast import call
-// needs. Each symbol maps to the import entry declared beside it, which
-// wasmImports sends in its place.
+// two callers. The symbol's own name is a function of the import's exact
+// arity (which the engine's fast import call needs) that passes true, and the
+// proxied table entry passes false, so only the directly proxied call acts on
+// a pthread's behalf and nothing it re-enters on the main thread does. The
+// body is declared beside it as `<name>$sync`.
 const callerBoundSync = new Set();
-const syncImportWrappers = {};
+const syncBodies = {};
 
 // An `__async: 'auto'` body returns a value or a Promise, as it can. A body
 // whose last parameter is named `sync` receives there whether it must complete
@@ -713,8 +712,9 @@ function(${args}) {
               const params = args.split(',').map((a) => a.trim()).filter((a) => a);
               callArgs = params.slice(0, -1).join(', ');
               const sep = callArgs ? ', ' : '';
-              tableEntry = `(${callArgs}) => ${mangled}(${callArgs}${sep}false)`;
-              syncImportWrappers[symbol] = `function ${mangled}$import(${callArgs}) { return ${mangled}(${callArgs}${sep}true); }`;
+              tableEntry = `(${callArgs}) => ${mangled}$sync(${callArgs}${sep}false)`;
+              syncBodies[symbol] = `${async_}function ${mangled}$sync(${args}) {\n${body}\n}\n`;
+              body = `return ${mangled}$sync(${callArgs}${sep}true);`;
             }
             let proxyMode = PROXY_ASYNC;
             if (proxyingMode === 'sync') {
@@ -729,7 +729,7 @@ function(${args}) {
             const proxyFunc =
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             return `
-${async_}function(${args}) {
+${async_}function(${callArgs}) {
 if (ENVIRONMENT_IS_PTHREAD)
   return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${proxyMode}${callArgs ? ', ' : ''}${callArgs});
 ${body}
@@ -978,6 +978,7 @@ function(${args}) {
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         if (!isStub) {
           addImplicitDeps(snippet);
+          if (symbol in syncBodies) addImplicitDeps(syncBodies[symbol]);
         }
       }
 
@@ -1029,8 +1030,8 @@ function(${args}) {
           // Handle regular (non-arrow) functions
           contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
         }
-        if (symbol in syncImportWrappers) {
-          contentText += '\n' + syncImportWrappers[symbol];
+        if (symbol in syncBodies) {
+          contentText = syncBodies[symbol] + contentText;
         }
       } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
         // In JS libraries
@@ -1214,7 +1215,6 @@ var proxiedFunctionTable = [
           nativeAliases,
           warnings: warningOccured(),
           asyncFuncs,
-          syncImports: Object.fromEntries(Object.keys(syncImportWrappers).map((s) => [s, `${mangleCSymbolName(s)}$import`])),
           libraryDefinitions: LibraryManager.libraryDefinitions,
           ATPRERUNS: ATPRERUNS.join('\n'),
           ATMODULES: ATMODULES.join('\n'),
