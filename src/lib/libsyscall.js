@@ -628,9 +628,10 @@ var SyscallsLibrary = {
   // ready and `timeout` is non-zero, register one waiter per fd on its node
   // wait-queue and re-derive the whole set on any wake (the wake flags are just
   // the trigger), resolving then or, for a positive `timeout`, once it elapses.
-  // A negative `timeout` waits forever. Returns a Promise of the ready count.
+  // A negative `timeout` waits forever. Settles a SyncDeferred with the count.
   $doPollAsync__internal: true,
-  $doPollAsync: (fds, nfds, timeout) => new Promise((resolve) => {
+  $doPollAsync: (fds, nfds, timeout) => {
+    var deferred = new SyncDeferred();
     var regs = [];
     var timer;
     var done = false;
@@ -650,7 +651,7 @@ var SyscallsLibrary = {
       done = true;
       for (var r of regs) r.listeners.delete(r.entry);
       if (timer) clearTimeout(timer);
-      resolve(count);
+      deferred.resolve(count);
     }
     var count = derive();
     if (count || !timeout) {
@@ -667,7 +668,45 @@ var SyscallsLibrary = {
       }
       if (timeout > 0) timer = setTimeout(() => finish(0), timeout);
     }
-  }),
+    return deferred;
+  },
+  // Calls `cb` synchronously from the notify that makes `events` ready.
+  $waitStreamEvents__internal: true,
+  $waitStreamEvents: (stream, events, cb) => {
+    var reg = stream.node.addListener(() => {
+      if (!pollOne(stream.fd, events)) return;
+      reg.listeners.delete(reg.entry);
+      cb();
+    });
+  },
+
+  // A Promise-shaped result that settles synchronously. The main thread may be
+  // blocked servicing proxied calls without turning its event loop, where a
+  // Promise's microtask would never reach the waiting pthread.
+  $SyncDeferred__internal: true,
+  $SyncDeferred: class SyncDeferred {
+    constructor() {
+      this.settle = null;
+      this.settled = null;
+    }
+    then(onFulfilled, onRejected) {
+      var next = new SyncDeferred();
+      var settle = (fulfilled, v) => {
+        try {
+          if (fulfilled) next.resolve(onFulfilled ? onFulfilled(v) : v);
+          else if (onRejected) next.resolve(onRejected(v));
+          else next.reject(v);
+        } catch (e) {
+          next.reject(e);
+        }
+      };
+      if (this.settled) settle(...this.settled);
+      else this.settle = settle;
+      return next;
+    }
+    resolve(v) { this.settle ? this.settle(true, v) : this.settled = [true, v]; }
+    reject(e) { this.settle ? this.settle(false, e) : this.settled = [false, e]; }
+  },
 #endif
   // libc routes zero-timeout poll() calls here: the same synchronous
   // readiness derivation as __syscall_poll, but as a plain import that never

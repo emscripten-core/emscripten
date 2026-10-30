@@ -229,9 +229,9 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EPIPE }}});
         }
 
-        // PIPE_BUF rule: a small write is all-or-nothing, a larger one takes
-        // what fits.
-        if (stream.flags & {{{ cDefs.O_NONBLOCK }}}) {
+        // A blocking writer is capped only when fd_write marks it able to
+        // wait. A write up to PIPE_BUF is all-or-nothing, a larger one partial.
+        if ({{{ PTHREADS && !ASYNCIFY ? 'stream.canWait || ' : '' }}}(stream.flags & {{{ cDefs.O_NONBLOCK }}})) {
           var room = PIPEFS.CAPACITY - PIPEFS.queuedBytes(pipe);
           if (room <= 0 || (dataLen <= {{{ cDefs.PIPE_BUF }}} && dataLen > room)) {
             throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});

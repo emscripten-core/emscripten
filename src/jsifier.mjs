@@ -507,19 +507,29 @@ ${body};
   });
 }
 
+// A sync-proxied body taking `sync` becomes `<name>$sync`. The symbol keeps
+// the import's arity and passes true, and only the proxied table entry passes
+// false, so nothing the call re-enters on the main thread sees the pthread's.
+const callerBoundSync = new Set();
+const syncBodies = {};
+
 // An `__async: 'auto'` body returns a value or a Promise, as it can. A body
 // whose last parameter is named `sync` receives there whether it must complete
 // synchronously on this call, as a returned Promise could not be waited for.
 // That is never the case under ASYNCIFY/JSPI, nor on behalf of a sync-proxied
 // pthread caller, which awaits it; otherwise it is.
 function handleSyncArg(symbol, snippet, sig, proxyingMode) {
-  const sync = ASYNCIFY ? 'false' :
-    PTHREADS && proxyingMode == 'sync' ? '!PThread.currentProxiedOperationCallerThread' : 'true';
+  const fromCaller = !ASYNCIFY && PTHREADS && proxyingMode == 'sync';
+  const sync = ASYNCIFY ? 'false' : 'true';
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     const params = args.split(',').map((a) => a.trim()).filter((a) => a);
     if (params.at(-1) != 'sync') return snippet;
     if (sig && params.length != sig.length) {
       error(`JS library error: '${symbol}' must take 'sync' as parameter ${sig.length}, after the ${sig.length - 1} of its '__sig'`);
+      return snippet;
+    }
+    if (fromCaller) {
+      callerBoundSync.add(symbol);
       return snippet;
     }
     if (!oneliner) body = `{\n${body}\n}`;
@@ -531,25 +541,27 @@ function(${outer}) {
   });
 }
 
-function handleAsyncFunction(snippet, sig, proxied) {
+function handleAsyncFunction(symbol, snippet, sig, proxied) {
   const return64 = sig && (MEMORY64 && sig.startsWith('p') || sig.startsWith('j'))
   let handleAsync = 'Asyncify.handleAsync(innerFunc)'
   if (return64 && ASYNCIFY == 1) {
     handleAsync = makeReturn64(handleAsync);
   }
-  // When dispatching on behalf of a proxied caller (PROXY_SYNC_ASYNC), the
-  // caller awaits the returned promise, so return it directly rather than
-  // suspending the main thread.
+  // A proxied caller awaits the result itself, and a Promise wrapper would
+  // defer a synchronous completion to a microtask, so return it directly.
   let proxiedDispatch = '';
-  if (ASYNCIFY == 1 && PTHREADS && proxied) {
-    proxiedDispatch = 'if (PThread.currentProxiedOperationCallerThread) return innerFunc();\n  ';
+  let syncArg = '';
+  if (PTHREADS && proxied) {
+    callerBoundSync.add(symbol);
+    proxiedDispatch = 'if (!sync) return innerFunc();\n  ';
+    syncArg = 'sync';
   }
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     if (!oneliner) {
       body = `{\n${body}\n}`;
     }
     return `\
-function(${args}) {
+function(${args}${args && syncArg ? ', ' : ''}${syncArg}) {
   let innerFunc = ${async_} () => ${body};
   ${proxiedDispatch}return ${handleAsync};
 }\n`;
@@ -676,7 +688,7 @@ function(${args}) {
     }
 
     if (ASYNCIFY && isAsyncFunction == 'auto') {
-      snippet = handleAsyncFunction(snippet, sig, proxyingMode == 'sync');
+      snippet = handleAsyncFunction(symbol, snippet, sig, proxyingMode == 'sync');
     }
 
     if (proxyingMode) {
@@ -684,10 +696,20 @@ function(${args}) {
         error(`JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`);
       }
       if (SHARED_MEMORY && proxyingMode != 'none') {
+        let tableEntry = mangled;
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
             if (oneliner) {
               body = `return ${body}`;
+            }
+            let callArgs = args;
+            if (callerBoundSync.has(symbol)) {
+              const params = args.split(',').map((a) => a.trim()).filter((a) => a);
+              callArgs = params.slice(0, -1).join(', ');
+              const sep = callArgs ? ', ' : '';
+              tableEntry = `(${callArgs}) => ${mangled}$sync(${callArgs}${sep}false)`;
+              syncBodies[symbol] = `${async_}function ${mangled}$sync(${args}) {\n${body}\n}\n`;
+              body = `return ${mangled}$sync(${callArgs}${sep}true);`;
             }
             let proxyMode = PROXY_ASYNC;
             if (proxyingMode === 'sync') {
@@ -702,9 +724,9 @@ function(${args}) {
             const proxyFunc =
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             return `
-${async_}function(${args}) {
+${async_}function(${callArgs}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${proxyMode}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${proxyMode}${callArgs ? ', ' : ''}${callArgs});
 ${body}
 }\n`;
           });
@@ -720,7 +742,7 @@ function(${args}) {
 }\n`,
           );
         }
-        proxiedFunctionTable.push(mangled);
+        proxiedFunctionTable.push(tableEntry);
       }
     }
 
@@ -951,6 +973,7 @@ function(${args}) {
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         if (!isStub) {
           addImplicitDeps(snippet);
+          if (symbol in syncBodies) addImplicitDeps(syncBodies[symbol]);
         }
       }
 
@@ -1001,6 +1024,9 @@ function(${args}) {
         } else {
           // Handle regular (non-arrow) functions
           contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
+        }
+        if (symbol in syncBodies) {
+          contentText = syncBodies[symbol] + contentText;
         }
       } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
         // In JS libraries

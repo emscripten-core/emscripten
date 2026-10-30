@@ -641,13 +641,11 @@ static void run_js_func(void* arg) {
 
 static void run_js_func_with_ctx(em_proxying_ctx* ctx, void* arg) {
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
+  // arg is the caller's stack frame, which is gone once the JS call completes
+  // the proxy, so it is checked first.
+  assert(!f->owned);
   _emscripten_receive_on_main_thread_js(
     f->funcIndex, f->emAsmAddr, f->callingThread, f->bufSize, f->argBuffer, ctx, arg);
-
-  // run_js_func_with_ctx is always synchronously proxied and therefore arg
-  // should never be owned on the main thread (i.e. the argument here always
-  // exists on the stack of the calling thread, it's never copied/malloced).
-  assert(!f->owned);
 }
 
 void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result) {
