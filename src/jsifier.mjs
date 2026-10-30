@@ -507,12 +507,9 @@ ${body};
   });
 }
 
-// Symbols whose body keeps `sync` as its own trailing parameter, bound by its
-// two callers. The symbol's own name is a function of the import's exact
-// arity (which the engine's fast import call needs) that passes true, and the
-// proxied table entry passes false, so only the directly proxied call acts on
-// a pthread's behalf and nothing it re-enters on the main thread does. The
-// body is declared beside it as `<name>$sync`.
+// A sync-proxied body taking `sync` becomes `<name>$sync`. The symbol keeps
+// the import's arity and passes true, and only the proxied table entry passes
+// false, so nothing the call re-enters on the main thread sees the pthread's.
 const callerBoundSync = new Set();
 const syncBodies = {};
 
@@ -550,10 +547,8 @@ function handleAsyncFunction(symbol, snippet, sig, proxied) {
   if (return64 && ASYNCIFY == 1) {
     handleAsync = makeReturn64(handleAsync);
   }
-  // On behalf of a proxied caller (PROXY_SYNC_ASYNC) the caller awaits the
-  // result, so return it directly rather than suspending the main thread: a
-  // value or SyncDeferred then completes the call synchronously, which a
-  // Promise wrapper would defer to a microtask.
+  // A proxied caller awaits the result itself, and a Promise wrapper would
+  // defer a synchronous completion to a microtask, so return it directly.
   let proxiedDispatch = '';
   let syncArg = '';
   if (PTHREADS && proxied) {

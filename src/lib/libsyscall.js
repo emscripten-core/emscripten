@@ -628,9 +628,7 @@ var SyscallsLibrary = {
   // ready and `timeout` is non-zero, register one waiter per fd on its node
   // wait-queue and re-derive the whole set on any wake (the wake flags are just
   // the trigger), resolving then or, for a positive `timeout`, once it elapses.
-  // A negative `timeout` waits forever. Returns a SyncDeferred of the ready
-  // count, since the wake may come from another pthread's proxied call while
-  // the main thread never turns its event loop.
+  // A negative `timeout` waits forever. Settles a SyncDeferred with the count.
   $doPollAsync__internal: true,
   $doPollAsync: (fds, nfds, timeout) => {
     var deferred = new SyncDeferred();
@@ -672,8 +670,7 @@ var SyscallsLibrary = {
     }
     return deferred;
   },
-  // Calls `cb` once poll() reports one of `events` on the stream, synchronously
-  // from the producer's notify.
+  // Calls `cb` synchronously from the notify that makes `events` ready.
   $waitStreamEvents__internal: true,
   $waitStreamEvents: (stream, events, cb) => {
     var reg = stream.node.addListener(() => {
@@ -683,12 +680,9 @@ var SyscallsLibrary = {
     });
   },
 
-  // A result settled later but delivered synchronously, for a sync-proxied
-  // call that waits on a wait-queue. The pthread sits on a futex, and the
-  // main thread may be spinning in a blocking call of its own, servicing
-  // proxied calls but never turning its event loop, so a Promise's microtask
-  // could never reach it. Promise-shaped (then/resolve/reject, chaining) so
-  // the proxying completion takes either.
+  // A Promise-shaped result that settles synchronously. The main thread may be
+  // blocked servicing proxied calls without turning its event loop, where a
+  // Promise's microtask would never reach the waiting pthread.
   $SyncDeferred__internal: true,
   $SyncDeferred: class SyncDeferred {
     constructor() {

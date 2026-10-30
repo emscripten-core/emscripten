@@ -1079,10 +1079,8 @@ var LibraryPThread = {
     var coerceRtn = (rtn) => rtn;
 #endif
     if (ctx) {
-      // The main thread may itself be blocked on the caller (e.g. in
-      // pthread_join), servicing proxied calls but never its event loop, so a
-      // microtask would never run. Finish a plain value at once, and a
-      // thenable (a SyncDeferred) when it settles.
+      // The main thread may itself be blocked on the caller and never reach a
+      // microtask, so finish a value at once and a thenable when it settles.
       if (rtn?.then) {
         rtn.then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn)));
       } else {

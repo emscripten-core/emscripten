@@ -67,9 +67,8 @@ void* closer(void* arg) {
   return NULL;
 }
 
-// Runs on the main thread, re-entered from a pthread's proxied call: its
-// write is the main thread's, unbounded and not a pthread's wait. Calls the
-// import directly so a count it fails to store reads as 0.
+// The main thread's own write, re-entered from a proxied call, is not held.
+// Calls the import directly so an unstored count reads as 0.
 EMSCRIPTEN_KEEPALIVE int main_writer(int n) {
   unsigned char* buf = malloc(n);
   fill(buf, 0, n);
@@ -98,9 +97,8 @@ void* big_writer(void* arg) {
   unsigned char* buf = malloc(BIG);
   fill(buf, 0, BIG);
   assert(write(p[1], buf, BIG) == BIG);
-  // Held to the capacity: the write completes only once the reader has taken
-  // the rest, whichever thread reads. It completes inside the read that frees
-  // the last room, before that chunk is counted.
+  // Held whichever thread reads. It completes inside the read that frees the
+  // last room, before that chunk is counted.
   assert(consumed >= BIG - CAPACITY - CHUNK);
   free(buf);
   return NULL;
@@ -134,8 +132,7 @@ void* run(void* arg) {
   return NULL;
 }
 
-// The writer is a pthread either way; without PROXY_TO_PTHREAD main blocks in
-// pthread_join, servicing proxied calls but never its event loop.
+// Without PROXY_TO_PTHREAD main waits in pthread_join, off its event loop.
 int main() {
   pthread_t t;
   assert(pthread_create(&t, NULL, run, NULL) == 0);
