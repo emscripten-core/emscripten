@@ -16,6 +16,8 @@ import {
   readFile,
   timer,
 } from '../src/utility.mjs';
+import '../src/parseTools_legacy.mjs';
+import {runJSify} from '../src/jsifier.mjs';
 
 timer.start('startup')
 
@@ -73,22 +75,6 @@ assert(
   'JS compiler should only run on side modules if asyncify is used.',
 );
 
-// Load compiler code
-
-timer.start('dynamic imports')
-
-// We can't use static import statements here because several of these
-// file depend on having the settings defined in the global scope (which
-// we do dynamically above.
-await import('../src/modules.mjs');
-await import('../src/parseTools.mjs');
-if (!STRICT) {
-  await import('../src/parseTools_legacy.mjs');
-}
-const jsifier = await import('../src/jsifier.mjs');
-
-timer.stop('dynamic imports')
-
 timer.stop('startup')
 
 // ===============================
@@ -97,7 +83,7 @@ timer.stop('startup')
 
 try {
   timer.start('runJSify')
-  await jsifier.runJSify(values.output, symbolsOnly);
+  await runJSify(values.output, symbolsOnly);
   timer.stop('runJSify')
 } catch (err) {
   if (err.toString().includes('Aborting compilation due to previous errors')) {
