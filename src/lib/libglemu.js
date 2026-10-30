@@ -85,7 +85,7 @@ var LibraryGLEmulation = {
     materialAmbient: null,
     materialDiffuse: null,
     materialSpecular: null,
-    materialShininess: null,
+    materialShininess: 0,
     materialEmission: null,
 
     MAX_LIGHTS: 8,
@@ -166,7 +166,6 @@ var LibraryGLEmulation = {
       GLEmulation.materialAmbient = new Float32Array([0.2, 0.2, 0.2, 1.0]);
       GLEmulation.materialDiffuse = new Float32Array([0.8, 0.8, 0.8, 1.0]);
       GLEmulation.materialSpecular = new Float32Array([0.0, 0.0, 0.0, 1.0]);
-      GLEmulation.materialShininess = new Float32Array([0.0]);
       GLEmulation.materialEmission = new Float32Array([0.0, 0.0, 0.0, 1.0]);
 
       for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
@@ -2674,7 +2673,7 @@ var LibraryGLEmulation = {
             if (this.materialAmbientLocation) GLctx.uniform4fv(this.materialAmbientLocation, GLEmulation.materialAmbient);
             if (this.materialDiffuseLocation) GLctx.uniform4fv(this.materialDiffuseLocation, GLEmulation.materialDiffuse);
             if (this.materialSpecularLocation) GLctx.uniform4fv(this.materialSpecularLocation, GLEmulation.materialSpecular);
-            if (this.materialShininessLocation) GLctx.uniform1f(this.materialShininessLocation, GLEmulation.materialShininess[0]);
+            if (this.materialShininessLocation) GLctx.uniform1f(this.materialShininessLocation, GLEmulation.materialShininess);
             if (this.materialEmissionLocation) GLctx.uniform4fv(this.materialEmissionLocation, GLEmulation.materialEmission);
             for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
               if (this.lightAmbientLocation[lightId]) GLctx.uniform4fv(this.lightAmbientLocation[lightId], GLEmulation.lightAmbient[lightId]);
@@ -3798,7 +3797,7 @@ var LibraryGLEmulation = {
       GLEmulation.materialSpecular[2] = {{{ makeGetValue('param', '8', 'float') }}};
       GLEmulation.materialSpecular[3] = {{{ makeGetValue('param', '12', 'float') }}};
     } else if (pname == 0x1601) { // GL_SHININESS
-      GLEmulation.materialShininess[0] = {{{ makeGetValue('param', '0', 'float') }}};
+      GLEmulation.materialShininess = {{{ makeGetValue('param', '0', 'float') }}};
     } else {
       abort('glMaterialfv: TODO: ' + pname);
     }
