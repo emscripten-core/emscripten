@@ -482,8 +482,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   parts = [pre]
   parts += create_module(metadata, function_exports, other_exports,
-                         forwarded_json['librarySymbols'], forwarded_json['nativeAliases'],
-                         forwarded_json['syncImports'])
+                         forwarded_json['librarySymbols'], forwarded_json['nativeAliases'])
   parts.append(post)
   settings.ALIASES = list(forwarded_json['nativeAliases'].keys())
 
@@ -868,9 +867,8 @@ def add_standard_wasm_imports(send_items_map):
     send_items_map[s] = s
 
 
-def create_sending(metadata, library_symbols, sync_imports):
-  # Map of wasm imports to mangled/external/JS names.  A sync_imports entry
-  # names the import-side wrapper the jsifier declared for that symbol.
+def create_sending(metadata, library_symbols):
+  # Map of wasm imports to mangled/external/JS names
   send_items_map = {name: name for name in metadata.invoke_funcs}
 
   for name in metadata.imports:
@@ -880,7 +878,7 @@ def create_sending(metadata, library_symbols, sync_imports):
       if not settings.WASM_ESM_INTEGRATION:
         send_items_map[name] = name
     else:
-      send_items_map[name] = sync_imports.get(name) or asmjs_mangle(name)
+      send_items_map[name] = asmjs_mangle(name)
 
   add_standard_wasm_imports(send_items_map)
 
@@ -1108,11 +1106,11 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
   return '\n'.join(receiving)
 
 
-def create_module(metadata, function_exports, other_exports, library_symbols, aliases, sync_imports):
+def create_module(metadata, function_exports, other_exports, library_symbols, aliases):
   module = []
   module.append(create_receiving(function_exports, other_exports, library_symbols, aliases))
 
-  sending = create_sending(metadata, library_symbols, sync_imports)
+  sending = create_sending(metadata, library_symbols)
   if settings.WASM_ESM_INTEGRATION:
     module.append(sending)
   elif settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):
