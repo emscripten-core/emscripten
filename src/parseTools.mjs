@@ -245,23 +245,41 @@ function isNiceIdent(ident) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
-export const POINTER_SIZE = MEMORY64 ? 8 : 4;
-const POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
+export let POINTER_SIZE;
 const STACK_ALIGN = 16;
-const POINTER_BITS = POINTER_SIZE * 8;
-const POINTER_TYPE = `u${POINTER_BITS}`;
-const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
-const POINTER_SHIFT = MEMORY64 ? '3' : '2';
-const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
-const LONG_TYPE = `i${POINTER_BITS}`;
+let POINTER_TYPE;
 
-const SIZE_TYPE = POINTER_TYPE;
+// Delayed initialization that depends on settings loaded via `applySettings`.
+export function initParseTools() {
+  POINTER_SIZE = MEMORY64 ? 8 : 4;
+  const POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
+  const POINTER_BITS = POINTER_SIZE * 8;
+  POINTER_TYPE = `u${POINTER_BITS}`;
+  const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
+  const POINTER_SHIFT = MEMORY64 ? '3' : '2';
+  const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+  const LONG_TYPE = `i${POINTER_BITS}`;
+  const SIZE_TYPE = POINTER_TYPE;
 
-// Similar to POINTER_TYPE, but this is the actual wasm type that is
-// used in practice, while POINTER_TYPE is the more refined internal
-// type (that is unsigned, where as core wasm does not have unsigned
-// types).
-const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
+  // Similar to POINTER_TYPE, but this is the actual wasm type that is
+  // used in practice, while POINTER_TYPE is the more refined internal
+  // type (that is unsigned, where as core wasm does not have unsigned
+  // types).
+  const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
+
+  addToCompileTimeContext({
+    LONG_TYPE,
+    POINTER_HEAP,
+    POINTER_BITS,
+    POINTER_JS_TYPE,
+    POINTER_MAX,
+    POINTER_SHIFT,
+    POINTER_SIZE,
+    POINTER_TYPE,
+    POINTER_WASM_TYPE,
+    SIZE_TYPE,
+  });
+}
 
 function isPointerType(type) {
   return type.endsWith('*');
@@ -1235,16 +1253,6 @@ addToCompileTimeContext({
   ATMAINS,
   ATPOSTRUNS,
   FOUR_GB,
-  LONG_TYPE,
-  POINTER_HEAP,
-  POINTER_BITS,
-  POINTER_JS_TYPE,
-  POINTER_MAX,
-  POINTER_SHIFT,
-  POINTER_SIZE,
-  POINTER_TYPE,
-  POINTER_WASM_TYPE,
-  SIZE_TYPE,
   STACK_ALIGN,
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,

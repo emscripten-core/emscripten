@@ -16,6 +16,8 @@ import assert from 'node:assert';
 import {parseArgs} from 'node:util';
 
 import {readFile, loadDefaultSettings, applySettings} from '../src/utility.mjs';
+import {initParseTools, preprocess, processMacros} from '../src/parseTools.mjs';
+import {initModules} from '../src/modules.mjs';
 
 const options = {
   'expand-macros': {type: 'boolean'},
@@ -45,16 +47,13 @@ if (settingsFile == '-') {
 const userSettings = JSON.parse(readFile(settingsFile));
 applySettings(userSettings);
 
+initModules();
+initParseTools();
+
 const inputFile = positionals[1];
 
-// We can't use static import statements here because several of these
-// file depend on having the settings defined in the global scope (which
-// we do dynamically above.
-const parseTools = await import('../src/parseTools.mjs');
-await import('../src/modules.mjs');
-
-let output = parseTools.preprocess(inputFile);
+let output = preprocess(inputFile);
 if (values['expand-macros']) {
-  output = parseTools.processMacros(output, inputFile);
+  output = processMacros(output, inputFile);
 }
 process.stdout.write(output);

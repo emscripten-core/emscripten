@@ -391,12 +391,15 @@ function loadStructInfo(filename) {
   Object.assign(defines, temp.defines);
 }
 
-if (!BOOTSTRAPPING_STRUCT_INFO) {
-  // Load struct and define information.
-  if (MEMORY64) {
-    loadStructInfo(localFile('struct_info_generated_wasm64.json'));
-  } else {
-    loadStructInfo(localFile('struct_info_generated.json'));
+// Delayed initialization that depends on settings loaded via `applySettings`.
+export function initModules() {
+  if (!BOOTSTRAPPING_STRUCT_INFO) {
+    // Load struct and define information.
+    if (MEMORY64) {
+      loadStructInfo(localFile('struct_info_generated_wasm64.json'));
+    } else {
+      loadStructInfo(localFile('struct_info_generated.json'));
+    }
   }
 }
 
