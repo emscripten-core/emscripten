@@ -423,21 +423,18 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
     with open(temp, 'a', encoding='utf-8') as f:
       f.write('// EXTRA_INFO: ' + json.dumps(extra_info))
     filename = temp
-  cmd = [*config.NODE_JS, optimizer, filename, *passes]
+  args = [filename, *passes]
   if not worker_js:
     # Keep JS code comments intact through the acorn optimization pass so that
     # JSDoc comments will be carried over to a later Closure run.
     if settings.MAYBE_CLOSURE_COMPILER:
-      cmd += ['--closure-friendly']
+      args += ['--closure-friendly']
     if settings.EXPORT_ES6:
-      cmd += ['--export-es6']
+      args += ['--export-es6']
   if settings.VERBOSE:
-    cmd += ['--verbose']
+    args += ['--verbose']
   if return_output:
-    if shared.SKIP_SUBPROCS:
-      shared.print_compiler_stage(cmd)
-      return ''
-    return check_call(cmd, stdout=PIPE).stdout
+    return shared.run_js_tool(optimizer, args, stdout=PIPE)
 
   acorn_optimizer.counter += 1
   basename = utils.unsuffixed(original_filename)
@@ -445,12 +442,10 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
     basename = utils.unsuffixed(basename)
   output_file = basename + f'.jso{acorn_optimizer.counter}.js'
   shared.get_temp_files().note(output_file)
-  cmd += ['-o', output_file]
-  if shared.SKIP_SUBPROCS:
-    shared.print_compiler_stage(cmd)
-    return output_file
-  check_call(cmd)
-  save_intermediate(output_file, f'{passes[0]}.js')
+  args += ['-o', output_file]
+  shared.run_js_tool(optimizer, args)
+  if not shared.SKIP_SUBPROCS:
+    save_intermediate(output_file, f'{passes[0]}.js')
   return output_file
 
 

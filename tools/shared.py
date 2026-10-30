@@ -215,6 +215,8 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # ruff: ignore[mutabl
   implemented in javascript.
   """
   command = [*config.NODE_JS, *node_args, filename, *jsargs]
+  if not config.FROZEN_CACHE and 'NODE_COMPILE_CACHE' not in os.environ:
+    os.environ['NODE_COMPILE_CACHE'] = str(cache.get_path('node_compile_cache'))
   return check_call(command, **kw).stdout
 
 
