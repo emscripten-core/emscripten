@@ -32,15 +32,16 @@ int main (int argc, char *argv[]) {
   locale_t main_loc = do_test();
   locale_t child_loc;
 
-  if (emscripten_has_threading_support()) {
-    long id = 1;
-    pthread_t thread;
+  pthread_t thread;
+  int rtn;
 
-    pthread_create(&thread, NULL, thread_test, (void *)id);
+  rtn = pthread_create(&thread, NULL, thread_test, (void *)NULL);
+  printf("create: %d\n", rtn);
+  assert(!rtn);
+  rtn = pthread_join(thread, (void**)&child_loc);
+  assert(!rtn);
 
-    pthread_join(thread, (void**)&child_loc);
-    assert(main_loc == child_loc);
-  }
+  assert(main_loc == child_loc);
 
   return 0;
 }
