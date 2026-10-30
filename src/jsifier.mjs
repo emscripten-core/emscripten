@@ -466,7 +466,7 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       // An 'auto' body may return a Promise even without ASYNCIFY (on a
       // pthread's behalf, which awaits it), which must not be cast but
       // resolve to the cast value.
-      const maybePromise = !isAsyncFunction && LibraryManager.library[symbol + '__async'] == 'auto';
+      const maybePromise = !isAsyncFunction && ['auto', 'proxy'].includes(LibraryManager.library[symbol + '__async']);
       const convert = (v) => maybePromise ?
         `(${v} instanceof Promise ? ${v}.then((v) => ${makeReturn64('v')}) : ${makeReturn64(v)})` :
         makeReturn64(await_ + v);
@@ -507,13 +507,14 @@ ${body};
   });
 }
 
-// An `__async: 'auto'` body returns a value or a Promise, as it can. A body
-// whose last parameter is named `sync` receives there whether it must complete
-// synchronously on this call, as a returned Promise could not be waited for.
-// That is never the case under ASYNCIFY/JSPI, nor on behalf of a sync-proxied
-// pthread caller, which awaits it; otherwise it is.
-function handleSyncArg(symbol, snippet, sig, proxyingMode) {
-  const sync = ASYNCIFY ? 'false' :
+// An `__async: 'auto'` or `'proxy'` body returns a value or a Promise, as it
+// can. A body whose last parameter is named `sync` receives there whether it
+// must complete synchronously on this call, as a returned Promise could not be
+// waited for. That is never the case for an 'auto' function under
+// ASYNCIFY/JSPI, nor on behalf of a sync-proxied pthread caller, which awaits
+// it; otherwise it is.
+function handleSyncArg(symbol, snippet, sig, proxyingMode, canWait) {
+  const sync = canWait ? 'false' :
     PTHREADS && proxyingMode == 'sync' ? '!PThread.currentProxiedOperationCallerThread' : 'true';
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     const params = args.split(',').map((a) => a.trim()).filter((a) => a);
@@ -524,9 +525,16 @@ function handleSyncArg(symbol, snippet, sig, proxyingMode) {
     }
     if (!oneliner) body = `{\n${body}\n}`;
     const outer = params.slice(0, -1).join(', ');
+    const call = `(${async_}(${args}) => ${body})(${outer}${outer ? ', ' : ''}${sync})`;
+    if (!ASSERTIONS || sync == 'false') {
+      return `function(${outer}) { return ${call}; }\n`;
+    }
+    // A Promise returned where the caller cannot wait would be coerced to 0.
     return `\
 function(${outer}) {
-  return (${async_}(${args}) => ${body})(${outer}${outer ? ', ' : ''}${sync});
+  var rtn = ${call};
+  assert(!(${sync == 'true' ? '' : sync + ' && '}rtn?.then), "'${symbol}' returned a Promise where the caller cannot wait (sync is true)");
+  return rtn;
 }\n`;
   });
 }
@@ -651,7 +659,10 @@ function(${args}) {
     }
 
     const sig = LibraryManager.library[symbol + '__sig'];
-    const isAsyncFunction = ASYNCIFY && LibraryManager.library[symbol + '__async'];
+    const asyncMode = LibraryManager.library[symbol + '__async'];
+    // A 'proxy' function never suspends: a pthread's proxied call is its only
+    // asynchronous path, so it stays a plain import under ASYNCIFY/JSPI.
+    const isAsyncFunction = ASYNCIFY && asyncMode != 'proxy' && asyncMode;
 
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
     if (i53abi) {
@@ -671,8 +682,11 @@ function(${args}) {
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
 
-    if (LibraryManager.library[symbol + '__async'] == 'auto') {
-      snippet = handleSyncArg(symbol, snippet, sig, proxyingMode);
+    if (asyncMode == 'proxy' && proxyingMode != 'sync') {
+      error(`JS library error: '${symbol}' is '__async: 'proxy'' and requires '__proxy: 'sync''`);
+    }
+    if (asyncMode == 'auto' || asyncMode == 'proxy') {
+      snippet = handleSyncArg(symbol, snippet, sig, proxyingMode, isAsyncFunction);
     }
 
     if (ASYNCIFY && isAsyncFunction == 'auto') {
@@ -775,7 +789,8 @@ function(${args}) {
         deps.push('setTempRet0');
       }
 
-      const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+      const asyncMode = LibraryManager.library[symbol + '__async'];
+      const isAsyncFunction = asyncMode && asyncMode != 'proxy';
       if (ASYNCIFY && isAsyncFunction) {
         asyncFuncs.push(symbol);
       }
