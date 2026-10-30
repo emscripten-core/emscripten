@@ -71,7 +71,7 @@ from decorators import (
   with_all_sjlj,
 )
 
-from tools import ports, shared, utils
+from tools import building, ports, shared, utils
 from tools.feature_matrix import Feature
 from tools.link import binary_encode
 from tools.utils import WINDOWS, delete_dir, write_binary, write_file
@@ -4733,6 +4733,18 @@ Module["preRun"] = () => {
 
     self.run_browser('test.html', '/report_result?0')
 
+  # Tests that a SINGLE_FILE build loaded from a page whose charset is not UTF-8
+  # reports that, rather than failing to compile the mangled Wasm binary.
+  def test_single_file_not_utf8(self):
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-sSINGLE_FILE', '-sASSERTIONS'])
+
+    create_file('test.html', '''
+      <meta charset="windows-1252">
+      <script src="test.js"></script>
+    ''')
+
+    self.run_browser('test.html', 'this file was not read as UTF-8')
+
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     self.btest_exit('browser_test_hello_world.c', cflags=['-sSINGLE_FILE'], run_in_worker=True)
@@ -5657,10 +5669,13 @@ Module["preRun"] = () => {
     write_binary('data.tmp', test_data)
     binary_encoded = binary_encode('data.tmp')
 
+    # binaryDecode.js uses the preprocessor (and, with ASSERTIONS, assert()).
+    decode_js = building.read_and_preprocess(path_from_root('src/binaryDecode.js'))
     write_file('test.html', '''<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>
-''' + extra + '\n' + read_file(path_from_root('src/binaryDecode.js')) + '''
+''' + extra + '\n' + decode_js + '''
 var src = ''' + binary_encoded + ''';
-var u16 = new Uint16Array(binaryDecode(src).buffer);
+function assert(c, m) { if (!c) throw m; }
+var u16 = new Uint16Array(binaryDecode(src, src.length).buffer);
 for(var i = 0; i < 65536; ++i)
   if (u16[i] != i) throw i;
 console.log('OK');
