@@ -2,7 +2,7 @@
 declare var RuntimeExports: {
     FS_createPath: (...args: any[]) => any;
     FS_createDataFile: (...args: any[]) => any;
-    FS_preloadFile: (parent: any, name: any, url: any, canRead: any, canWrite: any, dontCreateFile: any, canOwn: any, preFinish: any) => Promise<void>;
+    FS_preloadFile: (parent: any, name: any, url: any, canRead?: undefined, canWrite?: undefined, dontCreateFile?: undefined, canOwn?: undefined, preFinish?: undefined) => Promise<void>;
     FS_unlink: (...args: any[]) => any;
     FS_createLazyFile: (...args: any[]) => any;
     FS_createDevice: (...args: any[]) => any;

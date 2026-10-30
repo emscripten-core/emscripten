@@ -145,7 +145,7 @@ var LibraryHTML5 = {
     // Removes all event handlers on the given DOM element of the given type.
     // Pass in eventTypeString == undefined/null to remove all event handlers
     // regardless of the type.
-    removeAllHandlersOnTarget: (target, eventTypeString) => {
+    removeAllHandlersOnTarget: (target, eventTypeString = undefined) => {
       for (var i = 0; i < JSEvents.eventHandlers.length; ++i) {
         if (JSEvents.eventHandlers[i].target == target &&
           (!eventTypeString || eventTypeString == JSEvents.eventHandlers[i].eventTypeString)) {
@@ -222,7 +222,7 @@ var LibraryHTML5 = {
     },
 
 #if PTHREADS
-    getTargetThreadForEventCallback(targetThread) {
+    getTargetThreadForEventCallback(targetThread = undefined) {
       switch (targetThread) {
         case {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD }}}:
           // The event callback for the current event should be called on the

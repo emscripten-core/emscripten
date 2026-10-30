@@ -338,7 +338,7 @@ var LibrarySDL = {
     translateRGBAToCSSRGBA: (r, g, b, a) =>
       'rgba(' + (r&0xff) + ',' + (g&0xff) + ',' + (b&0xff) + ',' + (a&0xff)/255 + ')',
 
-    makeSurface(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
+    makeSurface(width, height, flags, usePageCanvas, source = undefined, rmask = undefined, gmask = undefined, bmask = undefined, amask = undefined) {
       var is_SDL_HWSURFACE = flags & {{{ cDefs.SDL_HWSURFACE }}};
       var is_SDL_HWPALETTE = flags & {{{ cDefs.SDL_HWPALETTE }}};
       var is_SDL_OPENGL = flags & {{{ cDefs.SDL_OPENGL }}};
@@ -429,7 +429,7 @@ var LibrarySDL = {
 
     // Copy data from the C++-accessible storage to the canvas backing
     // for surface with HWPALETTE flag(8bpp depth)
-    copyIndexedColorData(surfData, rX, rY, rW, rH) {
+    copyIndexedColorData(surfData, rX = undefined, rY = undefined, rW = undefined, rH = undefined) {
       // HWPALETTE works with palette
       // set by SDL_SetColors
       if (!surfData.colors) {
@@ -2887,7 +2887,7 @@ var LibrarySDL = {
   Mix_PlayMusic: (id, loops) => {
     // Pause old music if it exists.
     if (SDL.music.audio) {
-      if (!SDL.music.audio.paused) err(`Music is already playing. ${SDL.music.source}`);
+      if (!SDL.music.audio.paused) err('Music is already playing.');
       SDL.music.audio.pause();
     }
     var info = SDL.audios[id];

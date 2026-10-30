@@ -9,7 +9,7 @@ addToLibrary({
     mount(mount) {
       return PROXYFS.createNode(null, '/', mount.opts.fs.lstat(mount.opts.root).mode, 0);
     },
-    createNode(parent, name, mode, dev) {
+    createNode(parent, name, mode, dev = undefined) {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }

@@ -637,7 +637,7 @@ var asyncLoad = async url => {
 
 var getUniqueRunDependency = id => id;
 
-var FS_preloadFile = async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
+var FS_preloadFile = async (parent, name, url, canRead = undefined, canWrite = undefined, dontCreateFile = undefined, canOwn = undefined, preFinish = undefined) => {
   // TODO we should allow people to just pass in a complete filename instead
   // of parent and name being that we just join them anyways
   var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
@@ -659,7 +659,7 @@ var FS_preloadFile = async (parent, name, url, canRead, canWrite, dontCreateFile
   }
 };
 
-var FS_createPreloadedFile = (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+var FS_createPreloadedFile = (parent, name, url, canRead = undefined, canWrite = undefined, onload = undefined, onerror = undefined, dontCreateFile = undefined, canOwn = undefined, preFinish = undefined) => {
   FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish).then(onload).catch(onerror);
 };
 

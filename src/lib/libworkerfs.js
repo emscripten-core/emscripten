@@ -56,7 +56,7 @@ addToLibrary({
       }
       return root;
     },
-    createNode(parent, name, mode, dev, contents, mtime) {
+    createNode(parent, name, mode, dev = undefined, contents = undefined, mtime = undefined) {
       var node = FS.createNode(parent, name, mode);
       node.mode = mode;
       node.node_ops = WORKERFS.node_ops;
