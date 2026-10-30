@@ -186,6 +186,7 @@ export function mergeInto(obj, other, options = null) {
           __i53abi: 'boolean',
           __export: 'boolean',
           __force: 'boolean',
+          __const: 'boolean',
         };
         const expected = decoratorTypes[decoratorName];
         if (type !== expected && !expected.includes(type)) {
@@ -223,10 +224,28 @@ export const decoratorSuffixes = [
   '__i53abi',
   '__export',
   '__force',
+  '__const',
 ];
 
 export function isDecorator(ident) {
   return decoratorSuffixes.some((suffix) => ident.endsWith(suffix));
+}
+
+export function defineConsts(consts) {
+  const rtn = {};
+  for (const [key, value] of Object.entries(consts)) {
+    rtn[key] = value;
+    rtn[key + '__const'] = true;
+  }
+  return rtn;
+}
+
+export function defineInternalConsts(consts) {
+  const rtn = defineConsts(consts);
+  for (const key of Object.keys(consts)) {
+    rtn[key + '__internal'] = true;
+  }
+  return rtn;
 }
 
 export function readFile(filename) {
@@ -385,6 +404,8 @@ export function runInMacroContext(code, options) {
 addToCompileTimeContext({
   assert,
   decoratorSuffixes,
+  defineConsts,
+  defineInternalConsts,
   error,
   isDecorator,
   isJsOnlySymbol,

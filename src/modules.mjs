@@ -30,6 +30,7 @@ import {preprocess, processMacros} from './parseTools.mjs';
 
 // List of symbols that were added from the library.
 export const librarySymbols = [];
+export const addedLibraryItems = {};
 // Library symbols exported via the `__export` decorator.
 export const extraExports = new Set();
 // Map of library symbols which are aliases for native symbols
@@ -438,14 +439,12 @@ function isInternalSymbol(ident) {
 }
 
 function getUnusedLibrarySymbols() {
-  const librarySymbolSet = new Set(librarySymbols);
   const missingSyms = new Set();
   for (const [ident, value] of Object.entries(LibraryManager.library)) {
     if (typeof value === 'function' || typeof value === 'number') {
       if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
-        const name = ident.slice(1);
-        if (!librarySymbolSet.has(name)) {
-          missingSyms.add(name);
+        if (!(ident in addedLibraryItems)) {
+          missingSyms.add(ident.slice(1));
         }
       }
     }

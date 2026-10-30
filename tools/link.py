@@ -485,6 +485,11 @@ def setup_pthreads():
     '$PThread',
     '$establishStackSpace',
     '$invokeEntryPoint',
+    '$CMD_LOAD',
+    '$CMD_LOADED',
+    '$CMD_CALL_HANDLER',
+    '$CMD_RUN',
+    '$CMD_CHECK_MAILBOX',
   ]
 
   if settings.MINIMAL_RUNTIME:
@@ -1594,6 +1599,8 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
   if settings.PTHREADS or settings.WASM_WORKERS:
     settings.IMPORTED_MEMORY = 1
+    if settings.ENVIRONMENT_MAY_BE_NODE and not settings.WASM_ESM_INTEGRATION:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$CMD_UNCAUGHT_EXN')
 
   set_initial_memory()
 

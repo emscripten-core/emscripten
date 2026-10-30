@@ -44,14 +44,13 @@ import {
   timer,
 } from './utility.mjs';
 import {
+  addedLibraryItems,
   extraExports,
   LibraryManager,
   librarySymbols,
   nativeAliases,
   shouldExportLibrarySymbol,
 } from './modules.mjs';
-
-const addedLibraryItems = {};
 
 // Debug-only mode (`EMCC_CHECK_DEPS=1` in the environment) that performs a full
 // AST parse on JS library items and reports an error if any local binding
@@ -606,7 +605,7 @@ export async function runJSify(outputFile, symbolsOnly) {
   }
 
   for (const key of Object.keys(LibraryManager.library)) {
-    if (!isDecorator(key)) {
+    if (!isDecorator(key) && !LibraryManager.library[key + '__const']) {
       if (INCLUDE_FULL_LIBRARY || EXPORTED_FUNCTIONS.has(mangleCSymbolName(key))) {
         symbolsNeeded.push(key);
       }
@@ -886,7 +885,10 @@ function(${args}) {
         snippet = new Function('...args', stubFunctionBody);
       }
 
-      librarySymbols.push(mangled);
+      const isConst = LibraryManager.library[symbol + '__const'];
+      if (!isConst) {
+        librarySymbols.push(mangled);
+      }
 
       if (!isStub && LibraryManager.library[symbol + '__export']) {
         extraExports.add(mangled);
@@ -957,7 +959,7 @@ function(${args}) {
       // Check for dependencies on `__internal` symbols from user libraries.
       if (isUserSymbol) {
         for (const dep of deps) {
-          if (LibraryManager.library[dep + '__internal']) {
+          if (LibraryManager.library[dep + '__internal'] && !LibraryManager.library[dep + '__user']) {
             warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
           }
         }
@@ -979,6 +981,9 @@ function(${args}) {
       }
       let contentText;
       if (isFunction) {
+        if (isConst) {
+          error(`JS library error: '__const' decorator cannot be used with functions: '${symbol}'`);
+        }
         // Emit the body of a JS library function.
         if ((USE_ASAN || USE_LSAN) && LibraryManager.library[symbol + '__noleakcheck']) {
           contentText = modifyJSFunction(
@@ -1003,6 +1008,9 @@ function(${args}) {
           contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
         }
       } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
+        if (isConst) {
+          error(`JS library error: '__const' decorator cannot be used with ';'-prefixed snippets: '${symbol}'`);
+        }
         // In JS libraries
         //   foo: ';[code here verbatim]'
         //  emits
@@ -1012,6 +1020,9 @@ function(${args}) {
           contentText += ';';
         }
       } else if (typeof snippet === 'undefined') {
+        if (isConst) {
+          error(`JS library error: '__const' decorator cannot be used with undefined symbols: '${symbol}'`);
+        }
         // For JS library functions that are simply aliases of native symbols,
         // we don't need to generate anything here.  Instead these get included
         // and exported alongside native symbols.
@@ -1029,14 +1040,15 @@ function(${args}) {
         if (typeof snippet === 'string' && snippet[0] == '=') {
           snippet = snippet.slice(1);
         }
-        contentText = `var ${mangled} = ${snippet};`;
+        const declType = isConst ? 'const' : 'var';
+        contentText = `${declType} ${mangled} = ${snippet};`;
       }
 
       if (CHECK_DEPS && (STRICT || !isUserSymbol) && !isStub && contentText) {
         checkShadowing(symbol, mangled, contentText);
       }
 
-      if (contentText && MODULARIZE == 'instance' && shouldExportLibrarySymbol(mangled) && !isStub) {
+      if (contentText && MODULARIZE == 'instance' && shouldExportLibrarySymbol(mangled) && !isStub && !isConst) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;

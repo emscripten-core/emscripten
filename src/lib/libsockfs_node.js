@@ -43,18 +43,17 @@
 // shared) wasm memory before being handed to node, so a SharedArrayBuffer heap
 // is safe.
 
-{{{
-// sock.state lifecycle, substituted as numbers at build time. A fresh socket
-// has an undefined (falsy) state until its first bind/connect.
-const SOCK_STATE_CONNECTING = 1;
-const SOCK_STATE_CONNECTED = 2;
-const SOCK_STATE_BOUND = 3;
-const SOCK_STATE_LISTEN = 4;
-const SOCK_STATE_CLOSED = 5;
-null;
-}}}
-
 var NodeSockFSLibrary = {
+  // sock.state lifecycle. A fresh socket has an undefined (falsy) state until
+  // its first bind/connect.
+  ...defineInternalConsts({
+    $SOCK_STATE_CONNECTING: 1,
+    $SOCK_STATE_CONNECTED: 2,
+    $SOCK_STATE_BOUND: 3,
+    $SOCK_STATE_LISTEN: 4,
+    $SOCK_STATE_CLOSED: 5,
+  }),
+
   // Node plumbing shared by the interface methods below.
   $nodeSockHelpers: {
     // node builtins, resolved once each. getBuiltinModule works in both
@@ -434,7 +433,7 @@ var NodeSockFSLibrary = {
       });
       conn.on('close', () => {
         sock.readClosed = true;
-        sock.state = {{{ SOCK_STATE_CLOSED }}};
+        sock.state = SOCK_STATE_CLOSED;
         SOCKFS.emit('close', sock.stream.fd);
       });
       // Backpressure relieved, so we are writable again.
@@ -445,7 +444,7 @@ var NodeSockFSLibrary = {
       conn.on('error', (e) => {
         sock.error = nodeSockHelpers.nodeErrToErrno(e);
         // Let a failed connect resolve so SO_ERROR can be read.
-        if (sock.state === {{{ SOCK_STATE_CONNECTING }}}) sock.state = {{{ SOCK_STATE_CONNECTED }}};
+        if (sock.state === SOCK_STATE_CONNECTING) sock.state = SOCK_STATE_CONNECTED;
         SOCKFS.emit('error', [sock.stream.fd, sock.error, (e && e.message) || 'socket error']);
       });
     },
@@ -475,7 +474,7 @@ var NodeSockFSLibrary = {
         // POLLERR|POLLHUP, plus writable so SO_ERROR can be read. POLLOUT|POLLERR
         // also satisfies epoll's is_write_closed() mapping.
         mask |= {{{ cDefs.POLLOUT }}} | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-      } else if (sock.connection && sock.state === {{{ SOCK_STATE_CONNECTED }}} && !sock.writeBlocked) {
+      } else if (sock.connection && sock.state === SOCK_STATE_CONNECTED && !sock.writeBlocked) {
         mask |= {{{ cDefs.POLLOUT }}};
       }
       // A peer FIN / read-side hangup (recv will see EOF) is POLLRDHUP. POLLHUP
@@ -483,7 +482,7 @@ var NodeSockFSLibrary = {
       // we locally shut down both directions (shutdown(SHUT_RDWR)), which Linux
       // epoll reports as a hangup even though the node connection is still live.
       if (sock.readClosed) mask |= {{{ cDefs.POLLRDHUP }}};
-      if (sock.state === {{{ SOCK_STATE_CLOSED }}} || (sock.readClosed && sock.writeShutdown)) {
+      if (sock.state === SOCK_STATE_CLOSED || (sock.readClosed && sock.writeShutdown)) {
         mask |= {{{ cDefs.POLLHUP }}};
       }
       return mask;
@@ -504,7 +503,7 @@ var NodeSockFSLibrary = {
       }
     },
     close(sock) {
-      sock.state = {{{ SOCK_STATE_CLOSED }}};
+      sock.state = SOCK_STATE_CLOSED;
       if (sock.udp) {
         try {
           if (sock.udpPublic) sock.udp.close();
@@ -562,7 +561,7 @@ var NodeSockFSLibrary = {
         // addr is a filesystem path (or an abstract '\0...' name). Bind
         // synchronously so EADDRINUSE surfaces here and getsockname() works.
         nodeSockHelpers.bindPipe(sock, addr);
-        sock.state = {{{ SOCK_STATE_BOUND }}};
+        sock.state = SOCK_STATE_BOUND;
         return;
       }
       if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
@@ -589,7 +588,7 @@ var NodeSockFSLibrary = {
           sock.saddr = uname.address;
           sock.sport = uname.port;
         }
-        sock.state = {{{ SOCK_STATE_BOUND }}};
+        sock.state = SOCK_STATE_BOUND;
         nodeSockHelpers.startUdpRecv(sock);
         return;
       }
@@ -597,21 +596,21 @@ var NodeSockFSLibrary = {
       // a bind(:0)) is known immediately, getsockname() needs no promotion, and a
       // conflict surfaces right here as EADDRINUSE.
       nodeSockHelpers.bindHandle(sock, addr, port);
-      sock.state = {{{ SOCK_STATE_BOUND }}};
+      sock.state = SOCK_STATE_BOUND;
     },
     connect(sock, addr, port) {
       if (sock.family === {{{ cDefs.AF_UNIX }}}) {
         if (sock.server) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
         if (sock.connection) {
-          throw new FS.ErrnoError(sock.state === {{{ SOCK_STATE_CONNECTING }}} ? {{{ cDefs.EALREADY }}} : {{{ cDefs.EISCONN }}});
+          throw new FS.ErrnoError(sock.state === SOCK_STATE_CONNECTING ? {{{ cDefs.EALREADY }}} : {{{ cDefs.EISCONN }}});
         }
         // addr is the peer path. node reports no name back, so record it as the
         // peer name ourselves; the local end is unnamed unless bind() named it.
         sock.daddr = addr;
-        sock.state = {{{ SOCK_STATE_CONNECTING }}};
+        sock.state = SOCK_STATE_CONNECTING;
         var uconn = new (nodeSockHelpers.getNet().Socket)({ allowHalfOpen: true });
         uconn.once('connect', () => {
-          sock.state = {{{ SOCK_STATE_CONNECTED }}};
+          sock.state = SOCK_STATE_CONNECTED;
           sock.saddr ??= '';
           try { uconn.resume(); } catch (e) {}
           SOCKFS.emit('open', sock.stream.fd);
@@ -651,11 +650,11 @@ var NodeSockFSLibrary = {
       }
       if (sock.server) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
       if (sock.connection) {
-        throw new FS.ErrnoError(sock.state === {{{ SOCK_STATE_CONNECTING }}} ? {{{ cDefs.EALREADY }}} : {{{ cDefs.EISCONN }}});
+        throw new FS.ErrnoError(sock.state === SOCK_STATE_CONNECTING ? {{{ cDefs.EALREADY }}} : {{{ cDefs.EISCONN }}});
       }
       sock.daddr = addr;
       sock.dport = port;
-      sock.state = {{{ SOCK_STATE_CONNECTING }}};
+      sock.state = SOCK_STATE_CONNECTING;
       var net = nodeSockHelpers.getNet();
       if (!sock.bound) {
         // The kernel assigns the ephemeral source port synchronously at
@@ -668,7 +667,7 @@ var NodeSockFSLibrary = {
       // honored by the kernel.
       var conn = new net.Socket({ handle: sock.bound, pauseOnCreate: true, allowHalfOpen: true });
       conn.once('connect', () => {
-        sock.state = {{{ SOCK_STATE_CONNECTED }}};
+        sock.state = SOCK_STATE_CONNECTED;
         sock.saddr = conn.localAddress;
         sock.sport = conn.localPort;
         sock.daddr = conn.remoteAddress || addr;
@@ -698,14 +697,14 @@ var NodeSockFSLibrary = {
         // bind is eager and synchronous (bindHandle), so the assigned port is
         // known and any conflict surfaces before we listen.
         nodeSockHelpers.bindHandle(sock, '0.0.0.0', 0);
-        sock.state = {{{ SOCK_STATE_BOUND }}};
+        sock.state = SOCK_STATE_BOUND;
       }
       var server = new (nodeSockHelpers.getNet().Server)({ pauseOnConnect: true, allowHalfOpen: true });
       sock.server = server;
-      sock.state = {{{ SOCK_STATE_LISTEN }}};
+      sock.state = SOCK_STATE_LISTEN;
       server.on('connection', (conn) => {
         var newsock = SOCKFS.createSocket(sock.family, sock.type, sock.protocol);
-        newsock.state = {{{ SOCK_STATE_CONNECTED }}};
+        newsock.state = SOCK_STATE_CONNECTED;
         if (isUnix) {
           // node reports no name for a pipe: the accepted socket's local name is
           // the listener's path, the peer is unnamed (the client rarely binds).
@@ -785,7 +784,7 @@ var NodeSockFSLibrary = {
         throw new FS.ErrnoError({{{ cDefs.EPIPE }}});
       }
       var conn = sock.connection;
-      if (!conn || sock.state === {{{ SOCK_STATE_CLOSED }}}) {
+      if (!conn || sock.state === SOCK_STATE_CLOSED) {
         throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
       }
       // Bound node's write buffer to its high-water mark: a non-blocking socket
@@ -1019,7 +1018,7 @@ var NodeSockFSLibrary = {
           // TCP_MAXSEG: node exposes no MSS, so report RFC 879's 536-byte default
           // before the handshake and the (large) loopback-negotiated value once
           // connected. Enough for callers that only compare pre/post-connect MSS.
-          case 2: val = (sock.state === {{{ SOCK_STATE_CONNECTED }}}) ? 65483 : 536; break;
+          case 2: val = (sock.state === SOCK_STATE_CONNECTED) ? 65483 : 536; break;
           case 1: val = sock.opts.noDelay ? 1 : 0; break;    // TCP_NODELAY
           case 4: val = sock.opts.keepAliveIdle || 0; break; // TCP_KEEPIDLE
           case 5: val = sock.opts.keepAliveIntvl || 0; break;// TCP_KEEPINTVL
