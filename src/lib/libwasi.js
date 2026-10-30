@@ -329,7 +329,7 @@ var WasiLibrary = {
   fd_write__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
 #else
 #endif
-  fd_write: (fd, iov, iovcnt, pnum, sync) => {
+  fd_write: (fd, iov, iovcnt, pnum{{{ SYSCALLS_REQUIRE_FILESYSTEM && PTHREADS && !ASYNCIFY ? ', sync' : '' }}}) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if PTHREADS && !ASYNCIFY

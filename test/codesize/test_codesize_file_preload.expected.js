@@ -3069,7 +3069,7 @@ var SYSCALLS = {
   return FS.write(stream, view, 0, total, offset);
 };
 
-function _fd_write(fd, iov, iovcnt, pnum, sync) {
+function _fd_write(fd, iov, iovcnt, pnum) {
   try {
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = doWritev(stream, iov, iovcnt);
