@@ -2368,7 +2368,13 @@ var LibraryGLEmulation = {
             }
 
             var fsSource = [
+              // GL 1.x fixed function computes in (at least) fp32, which
+              // mediump does not guarantee (it is fp16 on many mobile GPUs).
+              '#ifdef GL_FRAGMENT_PRECISION_HIGH',
+              'precision highp float;',
+              '#else',
               'precision mediump float;',
+              '#endif',
               texUnitVaryingList,
               texUnitUniformList,
               'varying vec4 v_color;',
