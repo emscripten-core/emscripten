@@ -39,6 +39,10 @@ See docs/process.md for more on how version tagging works.
   detected automatically by the compiler, so `__deps` is no longer required for
   direct JS-to-JS references (`__deps` is still supported for dependencies on
   compiled C/C++ symbols or indirect dependencies). (#27995)
+- In pthreads builds with `MAIN_MODULE`, workers no longer walk the main
+  module's whole function table, which created a JS function object for every
+  table entry in every worker.  The main thread now passes them the table slots
+  of the main module's exported functions. (#28105)
 
 6.0.13 - 10/19/26
 -----------------
