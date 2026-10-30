@@ -48,37 +48,6 @@ def run(cmd, **kwargs):
   print('+ ' + ' '.join(str(c) for c in cmd), flush=True)
   return subprocess.run([str(c) for c in cmd], check=True, **kwargs)
 
-
-def python_version(exe):
-  try:
-    out = subprocess.check_output(
-      [exe, '-c', 'import sys; print(sys.version_info[0], sys.version_info[1])'],
-      text=True, stderr=subprocess.DEVNULL)
-    major, minor = out.split()
-    return (int(major), int(minor))
-  except (OSError, subprocess.CalledProcessError, ValueError):
-    return None
-
-
-def find_build_python(explicit):
-  """Find a Python interpreter new enough to run CPython's build scripts.
-
-  Uses `--python` if given, else `EMTEST_CPYTHON_PYTHON` if set, else
-  `python3` from PATH.  Whichever is chosen must be >= MIN_BUILD_PYTHON.
-  """
-  minver = '%d.%d' % MIN_BUILD_PYTHON
-  candidate = explicit or os.environ.get('EMTEST_CPYTHON_PYTHON') or 'python3'
-  exe = shutil.which(candidate) or candidate
-  version = python_version(exe)
-  if not version or version < MIN_BUILD_PYTHON:
-    found = f'{version[0]}.{version[1]}' if version else 'not a working Python'
-    sys.exit(
-      f'error: {exe} is {found}; Python >= {minver} is needed to run the CPython build scripts.\n'
-      'Install one (e.g. `uv python install 3.13`) and pass `--python` or set EMTEST_CPYTHON_PYTHON.')
-  print(f'Using Python {version[0]}.{version[1]} at {exe} to drive the CPython build')
-  return exe
-
-
 def node_path():
   # config.NODE_JS is always normalized to a list (see config.listify).
   if not config.NODE_JS:
@@ -131,7 +100,6 @@ def build_env():
 
 def build_script_runner(args):
   """Return (cpython_dir, step) where step(*cmd) runs CPython's Platforms/emscripten script."""
-  build_python = find_build_python(args.python)
   cpython_dir = Path(args.cpython_dir)
   if not (cpython_dir / 'configure').exists():
     sys.exit(f'error: no CPython checkout at {cpython_dir}; run `{sys.argv[0]} sync` first')
@@ -141,7 +109,7 @@ def build_script_runner(args):
   env = build_env()
 
   def step(*cmd):
-    run([build_python, build_script, *cmd], cwd=cpython_dir, env=env)
+    run([sys.executable, build_script, *cmd], cwd=cpython_dir, env=env)
 
   return cpython_dir, step
 
@@ -187,6 +155,9 @@ def all_steps(args):
 
 
 def main(argv):
+  if sys.version_info < (3, 12):
+    sys.exit("Requires Python version >= 3.12.0")
+
   parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
   subparsers = parser.add_subparsers(dest='subcommand')
 
@@ -197,9 +168,6 @@ def main(argv):
   def add_sync_args(p):
     p.add_argument('--revision', default=CPYTHON_REVISION,
                    help=f'CPython git revision to sync to (default: {CPYTHON_REVISION})')
-
-  def add_build_script_args(p):
-    p.add_argument('--python', help='Python >= 3.12 used to run the CPython build scripts')
 
   def add_build_args(p):
     p.add_argument('--pydebug', action='store_true', help='Build CPython with --with-pydebug')
@@ -217,8 +185,6 @@ def main(argv):
     add_common_args(p)
   for p in (all_parser, sync_parser):
     add_sync_args(p)
-  for p in (all_parser, build_parser, test_parser):
-    add_build_script_args(p)
   for p in (all_parser, build_parser):
     add_build_args(p)
   for p in (all_parser, test_parser):
