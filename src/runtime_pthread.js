@@ -8,12 +8,6 @@
 // This code runs only on pthread web workers and handles pthread setup
 // and communication with the main thread via postMessage.
 
-#if ASSERTIONS
-// Unique ID of the current pthread worker (zero on non-pthread-workers
-// including the main thread).
-var workerID = 0;
-#endif
-
 #if MAIN_MODULE
 // Map of modules to be shared with new threads.  This gets populated by the
 // main thread and shared with all new workers via the initial `load` message.
