@@ -33,18 +33,21 @@ function makeMalloc(source, param) {
   return `_malloc(${param})`;
 }
 
-const Runtime = {
-  POINTER_SIZE,
-  QUANTUM_SIZE: POINTER_SIZE,
-};
-
 // Legacy name for runIfMainThread.
 const runOnMainThread = runIfMainThread;
 
-addToCompileTimeContext({
-  Runtime,
-  makeMalloc,
-  receiveI64ParamAsDouble,
-  receiveI64ParamAsI32s,
-  runOnMainThread,
-});
+// Delayed initialization that depends on `POINTER_SIZE` from `initParseTools`.
+export function initLegacyParseTools() {
+  const Runtime = {
+    POINTER_SIZE,
+    QUANTUM_SIZE: POINTER_SIZE,
+  };
+
+  addToCompileTimeContext({
+    Runtime,
+    makeMalloc,
+    receiveI64ParamAsDouble,
+    receiveI64ParamAsI32s,
+    runOnMainThread,
+  });
+}
