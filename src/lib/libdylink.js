@@ -10,11 +10,10 @@
 #error "library_dylink.js requires MAIN_MODULE"
 #endif
 
-{{{
-const UNDEFINED_ADDR = to64(-1);
-}}}
-
 var LibraryDylink = {
+  ...defineInternalConsts({
+    $UNDEFINED_ADDR: to64(-1),
+  }),
 #if FILESYSTEM
   $registerWasmPlugin: () => {
     // Use string keys here for public methods to avoid minification since the
@@ -157,7 +156,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG == 2
         dbg(`new GOT entry: ${symName}`);
 #endif
-        rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ UNDEFINED_ADDR }}});
+        rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, UNDEFINED_ADDR);
       }
       if (!weakImports.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
@@ -219,7 +218,7 @@ var LibraryDylink = {
       }
 #endif
 
-      var existingEntry = GOT[symName] && GOT[symName].value != {{{ UNDEFINED_ADDR }}};
+      var existingEntry = GOT[symName] && GOT[symName].value != UNDEFINED_ADDR;
       if (replace || !existingEntry) {
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName]?.value}`);
@@ -303,7 +302,7 @@ var LibraryDylink = {
     dbg('reportUndefinedSymbols');
 #endif
     for (var [symName, entry] of Object.entries(GOT)) {
-      if (entry.value == {{{ UNDEFINED_ADDR }}}) {
+      if (entry.value == UNDEFINED_ADDR) {
 #if DYLINK_DEBUG
         dbg(`undef GOT entry: ${symName}`);
 #endif

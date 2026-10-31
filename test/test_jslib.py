@@ -1038,3 +1038,77 @@ addToLibrary({
       js = read_file('main.js')
       self.assertEqual(js.count("Module['decoratedExport'] = decoratedExport;"), 1)
       self.assertEqual(js.count("Module['runtimeExport'] = runtimeExport;"), 1)
+
+  @parameterized({
+    '': ([],),
+    'full_export_all': (['-sINCLUDE_FULL_LIBRARY', '-sEXPORT_ALL'],),
+    'O3': (['-O3'],),
+    'closure': (['--closure=1'],),
+  })
+  def test_jslib_const(self, args):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $CONST_A__const: true,
+        $CONST_A: 10,
+        ...defineConsts({
+          $CONST_B: 22,
+          $UNUSED_CONST: 99,
+        }),
+        ...defineInternalConsts({
+          $CONST_C: 10,
+          $UNUSED_INTERNAL_CONST: 99,
+        }),
+        get_const_sum: () => CONST_A + CONST_B + CONST_C,
+      });
+    ''')
+    create_file('src.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      int get_const_sum(void);
+      int main() {
+        assert(get_const_sum() == 42);
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'done\n', cflags=['--js-library', 'lib.js'] + args)
+    js = read_file('src.js')
+    if '-O3' in args or '--closure=1' in args:
+      self.assertNotContained('const CONST_A', js)
+      self.assertNotContained('const CONST_B', js)
+      self.assertNotContained('const CONST_C', js)
+    else:
+      self.assertContained('const CONST_A = 10;', js)
+      self.assertContained('const CONST_B = 22;', js)
+      self.assertContained('const CONST_C = 10;', js)
+    self.assertNotContained('const UNUSED_CONST', js)
+    self.assertNotContained('UNUSED_INTERNAL_CONST', js)
+    self.assertNotContained("Module['CONST_A']", js)
+
+  def test_jslib_const_errors(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $bad_func__const: true,
+        $bad_func: () => 42,
+      });
+    ''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_func', '--js-library', 'lib.js'],
+                     "error: JS library error: '__const' decorator cannot be used with functions: '$bad_func'")
+
+    create_file('lib.js', r'''
+      addToLibrary({
+        $bad_semi__const: true,
+        $bad_semi: ';bad_semi = 42;',
+      });
+    ''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_semi', '--js-library', 'lib.js'],
+                     "error: JS library error: '__const' decorator cannot be used with ';'-prefixed snippets: '$bad_semi'")
+
+    create_file('lib.js', r'''
+      addToLibrary({
+        $bad_undef__const: true,
+        $bad_undef: undefined,
+      });
+    ''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_undef', '--js-library', 'lib.js'],
+                     "error: JS library error: '__const' decorator cannot be used with undefined symbols: '$bad_undef'")
