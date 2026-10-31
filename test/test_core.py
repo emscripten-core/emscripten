@@ -9449,7 +9449,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf('core/pthread/test_pthread_dylink_tls_free.c', 'done\n')
 
   @needs_dylink
