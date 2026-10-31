@@ -102,16 +102,12 @@ var LibraryTracing = {
         EmscriptenTrace.worker.postMessage({ 'cmd': 'post',
                                              'entry': entry });
       } else if (EmscriptenTrace.postEnabled && EmscriptenTrace.testingEnabled) {
-        try {
-          out(
-            'Tracing ' +
-              JSON.stringify(entry, (_, value) =>
-                typeof value === "bigint" ? value.toString() + "n" : value,
-              )
-          );
-        } catch (e) {
-          out('Tracing [Serialization Error]: ' + e.message);
-        }
+        out(
+          'Tracing ' +
+            JSON.stringify(entry, (_, value) =>
+              typeof value === "bigint" ? value.toString() + "n" : value,
+            )
+        );
       }
     },
 
