@@ -15,7 +15,7 @@ is a general purpose allocator with excellent [performance](#performance) charac
 Initially developed by Daan Leijen for the runtime systems of the
 [Koka](https://koka-lang.github.io) and [Lean](https://github.com/leanprover/lean) languages.
 
-Latest release   : `v3.6.0`  (2026-10-23) recommended.\
+Latest release   : `v3.6.1`  (2026-10-30) recommended.\
 Latest v2 release: `v2.5.2`  (2026-09-12) stable, legacy.\
 Latest v1 release: `v1.15.2` (2026-09-12) legacy.
 
@@ -27,7 +27,7 @@ without code changes, for example, on dynamically linked ELF-based systems (Linu
 It also includes a way to dynamically override the default allocator in [Windows](#override_on_windows).
 Notable aspects of the design include:
 
-- __small and consistent__: the library is about 10k LOC using simple and
+- __small and consistent__: the library is about 12k LOC using simple and
   consistent data structures. This makes it very suitable
   to integrate and adapt in other projects. For runtime systems it
   provides hooks for a monotonic _heartbeat_ and deferred freeing (for
@@ -90,6 +90,16 @@ New development is mostly on v3, while v1 and v2 are maintained with security an
 
 ### Releases
 
+* 2026-10-30, `v3.6.1`: (v3) Many small fixes for CPython integration (thank you @DinoV),
+  Emscripten fixes (#1455, thank you @kleisauke) and reduced memory usage on WASI and Emscripten,
+  C23 free_sized(_aligned) overrides (#1470), improved fork support (#1456),
+  fix armv5tej compilation (#1464), fix MSVC overrides for strdup family (#1460),
+  faster STL allocator trait (#1468),
+  always use a 2-level pagemap for security and simplicity.
+  Experimental support for CHERI platforms. Improved Rust bindings (thank you @OscarTHZhang and @Techcable).
+  Add `-DMI_SECURE=MINIMAL` as improved [security](#secure-mode) with minimal (~1%) performance impact which
+  puts guard pages around all mimalloc meta-data (but does not encode free lists).
+  Move all static variables into a [`mi_process_t`](include/mimalloc/heap/proces.h) struct (that is guarded).
 * 2026-10-23, `v3.6.0`: (v3) add initial [profiling](#profiling) hooks and default profiler, "always on"
   detailed statistics per size-bin, and always-on profiling. Initial rust bindings. Better support
   for large OS page sizes, support a quiescent state based reclamation interfacec (for CPython),
@@ -246,6 +256,22 @@ on Windows to build with the `clang-cl` compiler directly:
 ```
 > cmake ../.. -G "Visual Studio 17 2022" -T ClangCl
 ```
+
+## Emscripten
+
+You can build for WebAssembly with [Emscripten](https://emscripten.org) using `emcmake`.
+Add `-pthread` to the compiler flags for a multi-threaded build. The tests run under `node`:
+
+```
+> emcmake cmake ../.. -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-pthread
+> cmake --build .
+> ctest
+```
+
+When linking with mimalloc, use `-sALLOW_MEMORY_GROWTH` (as mimalloc reserves its arena memory up front; this is
+added automatically when linking with the CMake target or `pkg-config`), and `-pthread` if mimalloc was built with it.
+Mimalloc reads `MIMALLOC_` options from the program environment;
+under `node` you can pass the host environment with `-sNODE_HOST_ENV`, or otherwise set `ENV` in the JavaScript module.
 
 
 ## Single Source
@@ -409,20 +435,36 @@ OS will copy the entire 1GiB huge page (or 2MiB large page) which can cause the 
 
 ## Secure Mode
 
-_mimalloc_ can be build in secure mode by using the `-DMI_SECURE=ON` flags in `cmake`. This build enables various mitigations
-to make mimalloc more robust against exploits. In particular:
+_mimalloc_ can be build in secure mode by using the `-DMI_SECURE=OFF|MINIMAL|ON|FULL` flags in `cmake`. This build mode
+enables various mitigations to make mimalloc more robust against exploits.
+With `MINIMAL` only security mitigations are added that have minimal impact on performance (usually about 1 or 2%):
 
-- All internal mimalloc page meta-data is surrounded by guard pages (so a buffer overflow exploit cannot reach into the metadata).
+- (v3) All internal mimalloc meta data (including the page map and static data) is surrounded by guard pages
+  (so a buffer overflow/underflow exploit cannot reach into the allocator's meta data).
+  However, free lists are not encoded at this level, and a heap block overflow can still corrupt a free list.
+- (v3) The start address of OS allocated memory is randomized
+  (if possible), and mimalloc aborts on corrupted meta data detection.
+
+With `ON`, performance is impacted a bit more (usually less than 25%), but adds:
+
 - All free list pointers are
-  [encoded](https://github.com/microsoft/mimalloc/blob/783e3377f79ee82af43a0793910a9f2d01ac7863/include/mimalloc-internal.h#L396)
+  [encoded](include/mimalloc/alloc/page.h#L555)
   with per-page keys which is used both to prevent overwrites with a known pointer, as well as to detect heap corruption.
 - Double free's are detected (and ignored).
+- Padding is added at the end of each heap block to detect heap block overflows (once the block is freed).
+- Some use-after-free accesses are detected (if these modify the first word in the block).
 - The free lists are initialized in a random order and allocation randomly chooses between extension and reuse within a page to
   mitigate against attacks that rely on a predicable allocation order. Similarly, the larger heap blocks allocated by mimalloc
   from the OS are also address randomized.
+- (v3) All pointers passed to `mi_free` (and others) are validated, and pointers not originating from a mimalloc allocation
+  are ignored.
+
+The `FULL` mode also adds:
+
 - If using `-DMI_SECURE=FULL` there will also be guard pages at the end of each (64KiB) mimalloc page (thus interleaving
-  valid block data with inaccessible gaps). This setting is not recommended in general as it is more expensive and can lead to
-  reaching the maximum VMA limit on Linux systems if the heap gets too large.
+  valid block data with inaccessible gaps). This setting is not recommended in general as it is more expensive (and uses
+  more memory), and can also lead to reaching the maximum VMA limit on Linux systems if the heap gets too large.
+- Byte-precise heap block overflow check (once the block is freed).
 
 As always, evaluate with care as part of an overall security strategy as all of the above are mitigations but not guarantees.
 
@@ -431,7 +473,6 @@ As always, evaluate with care as part of an overall security strategy as all of 
 When _mimalloc_ is built using debug mode, (`-DCMAKE_BUILD_TYPE=Debug`) (or when using `-DMI_DEBUG=ON` explicitly),
 various checks are done at runtime to catch development errors.
 
-- Statistics are maintained in detail for each object size. They can be shown using `MIMALLOC_SHOW_STATS=1` at runtime.
 - All objects have padding at the end to detect (byte precise) heap block overflows.
 - Double free's, and freeing invalid heap pointers are detected.
 - Corrupted free-lists and some forms of use-after-free are detected.
@@ -449,7 +490,8 @@ many system calls. Therefore, there are various environment variables (and optio
 - `MIMALLOC_GUARDED_SAMPLE_RATE=N`: Set the sample rate to `N` (by default 0). This mode places a guard page
   behind a suitable object about every `N` requested bytes (per thread). Since the performance in guarded mode without placing
   guard pages is close to release mode, this can be used to enable guard pages even in production to catch latent
-  buffer overflow bugs. Set the sample rate to `1` to guard every object, and to `0` to place no guard pages at all.
+  buffer overflow bugs (for example, by setting it to `16KiB` or higher where the performance impact will be minimal).
+  Set the sample rate to `1` to guard every object, and to `0` to place no guard pages at all.
 
 - `MIMALLOC_GUARDED_SAMPLE_SEED=N`: Start sampling at `N` (by default random). Can be used to reproduce a buffer
   overflow if needed.
@@ -494,6 +536,12 @@ under your control or otherwise mixing of pointers from different heaps may occu
 Note: recently we also enabled static overloading on Windows. In that case you need
 to link with the static CRT _release_ runtime (`/MT`) and link with the static
 `mimalloc(-debug).obj` (to take precendence over the definitions in the CRT library).
+The debug CRT (`/MTd`) is not supported. The static override covers the `malloc` family,
+`_aligned_*`, `_expand`, `_msize`, `_strdup`, and `_wcsdup`.
+Unfortunately, some other CRT functions that return
+allocated memory, namely `_dupenv_s`, `_getcwd(NULL,..)`, `_fullpath(NULL,..)`, and `_tempnam`,
+still allocate from the CRT heap and cannot be freed with `free`. Use the dynamic override
+in that case (or the `mi_` equivalents like `mi_dupenv_s` where available).
 
 
 ## Dynamic override
