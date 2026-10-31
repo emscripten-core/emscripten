@@ -58,13 +58,11 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config) {
   config->has_virtual_reserve = false;
 }
 
-// Use the builtin allocator (dlmalloc by default) rather than requiring
-// the program to link with -sMALLOC=emmalloc.
-#include <emscripten/heap.h>  // emscripten_builtin_memalign, emscripten_builtin_free
+extern void emmalloc_free(void*);
 
 int _mi_prim_free(void* addr, size_t size) {
   MI_UNUSED(size);
-  emscripten_builtin_free(addr);
+  emmalloc_free(addr);
   return 0;
 }
 
@@ -73,9 +71,11 @@ int _mi_prim_free(void* addr, size_t size) {
 // Allocation
 //---------------------------------------------
 
+extern void* emmalloc_memalign(size_t alignment, size_t size);
+
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
 int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
-  MI_UNUSED(try_alignment); MI_UNUSED(allow_large); MI_UNUSED(commit); MI_UNUSED(hint_addr);
+  MI_UNUSED(allow_large); MI_UNUSED(commit); MI_UNUSED(hint_addr);
   *is_large = false;
   // todo: Track the highest address ever seen; first uses of it are zeroes.
   //       That assumes no one else uses sbrk but us (they could go up,
@@ -86,12 +86,8 @@ int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool comm
   if (try_alignment < MIN_EMMALLOC_ALIGN) {
     try_alignment = MIN_EMMALLOC_ALIGN;
   }
-  void* p = emscripten_builtin_memalign(try_alignment, size);
-  *addr = p;
-  if (p == 0) {
-    return ENOMEM;
-  }
-  return 0;
+  *addr = emmalloc_memalign(try_alignment, size);
+  return (*addr != NULL ? 0 : ENOMEM);
 }
 
 
