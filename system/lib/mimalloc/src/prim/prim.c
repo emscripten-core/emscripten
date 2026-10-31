@@ -5,7 +5,7 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 
-#include "mimalloc/heap/init.h"
+#include "mimalloc/heap/process.h"
 #include "mimalloc/prim.h"
 
 

@@ -32,7 +32,7 @@ See docs/process.md for more on how version tagging works.
 - The WasmFS OPFS backend now uses `readwrite-unsafe` access handles in
   pthreads builds, so `unlink` and `rename` fail with `EIO` on files open
   read-only. (#27937)
-- mimalloc was updated to 3.6.0. (#28026, #28068)
+- mimalloc was updated to 3.6.1. (#28026, #28068, #28121)
 - Restored `--whole-archive` behaviour when linking with `-sSIDE_MODULE=1`
   (fixing a regression from 6.0.0 where static archives were no longer included
   in full), while keeping native archive behaviour for `-shared`. (#28055)

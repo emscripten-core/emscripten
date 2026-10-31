@@ -9,7 +9,8 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include "mimalloc.h"
 #include "mimalloc/prim.h"
-#include "mimalloc/heap/init.h"
+#include "mimalloc/util/libc.h"
+#include "mimalloc/heap/process.h"
 
 #include <sched.h>   // sched_yield
 #include <unistd.h>  // getentropy
@@ -60,6 +61,7 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config) {
 extern void emmalloc_free(void*);
 
 int _mi_prim_free(void* addr, size_t size) {
+  MI_UNUSED(size);
   emmalloc_free(addr);
   return 0;
 }
@@ -116,8 +118,8 @@ int _mi_prim_reuse(void* addr, size_t size) {
   return 0;
 }
 
-int _mi_prim_protect(void* addr, size_t size, bool protect) {
-  MI_UNUSED(addr); MI_UNUSED(size); MI_UNUSED(protect);
+int _mi_prim_guard(void* addr, size_t size, bool set, bool is_committed) {
+  MI_UNUSED(addr); MI_UNUSED(size); MI_UNUSED(set); MI_UNUSED(is_committed);
   return 0;
 }
 
@@ -180,11 +182,23 @@ void _mi_prim_out_stderr( const char* msg) {
 // Environment
 //----------------------------------------------------------------
 
+// Under node, host environment variables are only visible when linking with `-sNODE_HOST_ENV=1`.
+// (Define `MI_NO_GETENV` to exclude this code)
+extern char** environ;
+
 int _mi_prim_getenv(const char* name, char* result, size_t result_size) {
-  // For code size reasons, do not support environ customization for now.
-  MI_UNUSED(name);
-  MI_UNUSED(result);
-  MI_UNUSED(result_size);
+  if (name==NULL) return -1;
+  const size_t len = _mi_strlen(name);
+  if (len == 0) return -1;
+  char** env = environ;
+  if (env == NULL) return -1;  // not yet initialized; try again later
+  for (int i = 0; i < 10000 && env[i] != NULL; i++) {
+    const char* s = env[i];
+    if (_mi_strnicmp(name, s, len) == 0 && s[len] == '=') { // case insensitive
+      if (!_mi_strlcpy(result, s + len + 1, result_size)) return -1;
+      return 1;
+    }
+  }
   return 0; // not found
 }
 
