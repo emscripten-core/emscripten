@@ -20,7 +20,6 @@ Python >= 3.12.
 
 import argparse
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -44,9 +43,16 @@ DEFAULT_CPYTHON_DIR = path_from_root('out', 'cpython')
 MIN_BUILD_PYTHON = (3, 12)
 
 
+IGNORED_TESTS = [
+  # Asserts that Emscripten version matches the one pinned by CPython
+  'test_libc_ver',
+]
+
+
 def run(cmd, **kwargs):
   print('+ ' + ' '.join(str(c) for c in cmd), flush=True)
   return subprocess.run([str(c) for c in cmd], check=True, **kwargs)
+
 
 def node_path():
   # config.NODE_JS is always normalized to a list (see config.listify).
@@ -138,6 +144,8 @@ def test(args):
 
   # `run --test` prepends the default test arguments from CPython's config.toml
   test_args = []
+  for t in IGNORED_TESTS:
+    test_args += ['-i', t]
   if args.junit_xml:
     junit_xml = os.path.abspath(args.junit_xml)
     os.makedirs(os.path.dirname(junit_xml), exist_ok=True)

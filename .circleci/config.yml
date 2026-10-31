@@ -1076,8 +1076,8 @@ jobs:
       - run:
           name: Build and test CPython
           no_output_timeout: 30m
-          command: ./test/cpython_test.py all --junit-xml out/test-results.xml
-      - upload-test-results
+          # TODO(hoodmane): Pass --junit-xml and add upload-test-results
+          command: ./test/cpython_test.py all
   test-browser-chrome:
     executor: ubuntu-lts
     environment:
