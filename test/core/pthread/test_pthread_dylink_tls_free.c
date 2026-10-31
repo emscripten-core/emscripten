@@ -33,9 +33,11 @@ int main() {
 
   // Each thread allocates the side module's 4 KiB TLS block on first access and
   // must free it when it exits.  Without the fix the heap grows by one block
-  // per thread; with it, growth is bounded by the last thread's not-yet-
-  // reclaimed stack, far below NUM_THREADS blocks.  NUM_THREADS is large so a
-  // real leak clearly exceeds that fixed slack.
+  // per thread.  This runs on the main runtime thread (no PROXY_TO_PTHREAD) so
+  // that pthread_join() frees the joined thread's own block (stack, TLS,
+  // pthread struct) synchronously.  From a pthread that free happens later on
+  // the main thread, which can fall several joins behind and make the
+  // measurement depend on timing.
   run_threads(10);
   size_t before = mallinfo().uordblks;
   run_threads(NUM_THREADS);
