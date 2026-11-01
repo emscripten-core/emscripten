@@ -1895,8 +1895,8 @@ class libmimalloc(MTLibrary):
     '-DMI_LIBC_MUSL',
     # enable use of `__builtin_thread_pointer()`
     '-DMI_USE_BUILTIN_THREAD_POINTER',
-    # always use the page map when free-ing a pointer, as we don't support
-    # large OS aligned allocations well
+    # always use the page map in `mi_free()`, as we don't support large
+    # aligned allocations well (needed for aligned page metadata)
     '-DMI_FREE_USE_PAGEMAP=1',
     # to reduce code size, disable environ customization, profiling and
     # nonessential stats

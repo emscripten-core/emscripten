@@ -1516,11 +1516,14 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$assignWasmExports']
 
-  if settings.ALLOW_MEMORY_GROWTH:
+  if settings.ALLOW_MEMORY_GROWTH or settings.MALLOC == 'mimalloc':
     # Setting ALLOW_MEMORY_GROWTH turns off ABORTING_MALLOC, as in that mode we default to
     # the behavior of trying to grow and returning 0 from malloc on failure, like
     # a standard system would. However, if the user sets the flag it
     # overrides that.
+    # Also default to non-aborting malloc behavior for -sMALLOC=mimalloc,
+    # so mimalloc can handle allocation failures from its underlying emmalloc
+    # allocator and fall back gracefully.
     default_setting('ABORTING_MALLOC', 0)
 
   if settings.EMBIND:
