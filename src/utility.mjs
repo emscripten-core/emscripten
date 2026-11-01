@@ -103,7 +103,7 @@ export function mergeInto(obj, other, options = null) {
     // check for unintended symbol redefinition
     if (options.noOverride) {
       for (const key of Object.keys(other)) {
-        if (obj.hasOwnProperty(key)) {
+        if (Object.hasOwn(obj, key)) {
           error(`Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`);
           return;
         }
@@ -113,7 +113,7 @@ export function mergeInto(obj, other, options = null) {
     // check if sig is missing for added functions
     if (options.checkSig) {
       for (const [key, value] of Object.entries(other)) {
-        if (typeof value === 'function' && !other.hasOwnProperty(key + '__sig')) {
+        if (typeof value === 'function' && !Object.hasOwn(other, key + '__sig')) {
           error(`__sig is missing for function: ${key}. Do not use checkSig if this is intended`);
           return;
         }
@@ -136,7 +136,7 @@ export function mergeInto(obj, other, options = null) {
   for (const key of Object.keys(other)) {
     if (isDecorator(key)) {
       if (key.endsWith('__sig')) {
-        if (obj.hasOwnProperty(key)) {
+        if (Object.hasOwn(obj, key)) {
           const oldsig = obj[key];
           const newsig = other[key];
           if (oldsig == newsig) {

@@ -3354,7 +3354,7 @@ var LibrarySDL = {
     var gamepad = SDL.getGamepad(deviceIndex);
     if (gamepad) {
       var name = gamepad.id;
-      if (SDL.joystickNamePool.hasOwnProperty(name)) {
+      if (hasOwn(SDL.joystickNamePool, name)) {
         return SDL.joystickNamePool[name];
       }
       return SDL.joystickNamePool[name] = stringToNewUTF8(name);
@@ -3375,7 +3375,7 @@ var LibrarySDL = {
   },
 
   SDL_JoystickOpened__proxy: 'sync',
-  SDL_JoystickOpened: (deviceIndex) => SDL.lastJoystickState.hasOwnProperty(deviceIndex+1) ? 1 : 0,
+  SDL_JoystickOpened: (deviceIndex) => hasOwn(SDL.lastJoystickState, deviceIndex+1) ? 1 : 0,
 
   // joystick pointers are simply the deviceIndex+1.
   SDL_JoystickIndex: (joystick) => joystick - 1,

@@ -78,7 +78,7 @@ export default [{
     'require-jsdoc': 'off',
     'arrow-body-style': ['error', 'as-needed'],
     'space-infix-ops': 'error',
-    'no-prototype-builtins': 'off',
+    'prefer-object-has-own': 'error',
 
     quotes: ['error', 'single', {
       avoidEscape: true,

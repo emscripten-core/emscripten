@@ -889,7 +889,7 @@ var LibraryGLFW = {
           if (entriesTree[fullpath].subpaths.length != 0) return;
           delete entriesTree[fullpath];
           let parentpath = fullpath.substring(0, fullpath.lastIndexOf('/'));
-          if (!entriesTree.hasOwnProperty(parentpath)) {
+          if (!hasOwn(entriesTree, parentpath)) {
             if (Object.keys(entriesTree).length == 0) finalize();
             return;
           }
@@ -905,7 +905,7 @@ var LibraryGLFW = {
           if (entry.isFile) {
             entry.file((f) => { filesQ.push({ file: f, path: pp }); markDone(fp, false); })
           } else if (entry.isDirectory) {
-            if (entriesTree.hasOwnProperty(pp)) entriesTree[pp].subpaths.push(fp);
+            if (hasOwn(entriesTree, pp)) entriesTree[pp].subpaths.push(fp);
             FS.createPath('/' + drop_dir + pp, entry.name);
             var reader = entry.createReader();
             var rRead = function (dirEntries) {

@@ -96,7 +96,7 @@ pre_c = ['''
 #include <emscripten.h>
 #include <stdlib.h>
 
-EM_JS_DEPS(webidl_binder, "$intArrayFromString,$UTF8ToString,$alignMemory,$addOnInit");
+EM_JS_DEPS(webidl_binder, "$intArrayFromString,$UTF8ToString,$alignMemory,$addOnInit,$hasOwn");
 ''']
 
 mid_c = ['''
@@ -669,7 +669,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,  # ru
         js_impl_methods.append(r'''  %s %s(%s) %s {
     %s (%s) %s({
       var self = Module['getCache'](Module['%s'])[$0];
-      if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
+      if (!hasOwn(self, '%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
       %sself['%s'](%s)%s;
     }, (ptrdiff_t)this%s);
   }''' % (c_return_type, func_name, dec_args, maybe_const,

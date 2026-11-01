@@ -109,7 +109,7 @@ legacyFuncs = {
   $getLiveInheritedInstances: () => {
     var rv = [];
     for (var k in registeredInstances) {
-      if (registeredInstances.hasOwnProperty(k)) {
+      if (hasOwn(registeredInstances, k)) {
         rv.push(registeredInstances[k]);
       }
     }
