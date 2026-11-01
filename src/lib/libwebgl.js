@@ -4200,7 +4200,7 @@ function renameSymbol(lib, oldName, newName) {
   delete lib[oldName];
   for (const suffix of decoratorSuffixes) {
     const oldDecorator = oldName + suffix;
-    if (lib.hasOwnProperty(oldDecorator)) {
+    if (Object.hasOwn(lib, oldDecorator)) {
       const newDecorator = newName + suffix;
       lib[newDecorator] = lib[oldDecorator];
       delete lib[oldDecorator];
@@ -4236,8 +4236,8 @@ function recordGLProcAddressGet(lib) {
   // are looked up in LibraryManager.library as well.
   for (const [sym, target] of Object.entries(lib)) {
     if (sym.startsWith('emscripten_gl') && typeof target === 'string' &&
-        (lib.hasOwnProperty('emscripten_' + target) ||
-         LibraryManager.library.hasOwnProperty('emscripten_' + target))) {
+        (Object.hasOwn(lib, 'emscripten_' + target) ||
+         Object.hasOwn(LibraryManager.library, 'emscripten_' + target))) {
       lib[sym] = 'emscripten_' + target;
     }
   }

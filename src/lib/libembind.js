@@ -60,7 +60,7 @@ var LibraryEmbind = {
       // Inject an overload resolver function that routes to the appropriate overload based on the number of arguments.
       proto[methodName] = function(...args) {
         // TODO This check can be removed in -O3 level "unsafe" optimizations.
-        if (!proto[methodName].overloadTable.hasOwnProperty(args.length)) {
+        if (!hasOwn(proto[methodName].overloadTable, args.length)) {
           throwBindingError(`Function '${humanName}' called with an invalid number of arguments (${args.length}) - expects one of (${proto[methodName].overloadTable})!`);
         }
         return proto[methodName].overloadTable[args.length].apply(this, args);
@@ -83,7 +83,7 @@ var LibraryEmbind = {
    actually registered, since it carries a slight performance penalty. */
   $exposePublicSymbol__docs: '/** @param {number=} numArguments */',
   $exposePublicSymbol: (name, value, numArguments) => {
-    if (Module.hasOwnProperty(name)) {
+    if (hasOwn(Module, name)) {
       if (undefined === numArguments || (undefined !== Module[name].overloadTable && undefined !== Module[name].overloadTable[numArguments])) {
         throwBindingError(`Cannot register public name '${name}' twice`);
       }
@@ -91,7 +91,7 @@ var LibraryEmbind = {
       // We are exposing a function with the same name as an existing function. Create an overload table and a function selector
       // that routes between the two.
       ensureOverloadTable(Module, name, name);
-      if (Module[name].overloadTable.hasOwnProperty(numArguments)) {
+      if (hasOwn(Module[name].overloadTable, numArguments)) {
         throwBindingError(`Cannot register multiple overloads of a function with the same number of arguments (${numArguments})!`);
       }
       // Add the new function into the overload table.
@@ -104,7 +104,7 @@ var LibraryEmbind = {
 
   $replacePublicSymbol__docs: '/** @param {number=} numArguments */',
   $replacePublicSymbol: (name, value, numArguments) => {
-    if (!Module.hasOwnProperty(name)) {
+    if (!hasOwn(Module, name)) {
       throwInternalError('Replacing nonexistent public symbol');
     }
     // If there's an overload table for this symbol, replace the symbol in the overload table instead.
@@ -144,7 +144,7 @@ var LibraryEmbind = {
 
   $registerInheritedInstance: (class_, ptr, instance) => {
     ptr = getBasestPointer(class_, ptr);
-    if (registeredInstances.hasOwnProperty(ptr)) {
+    if (hasOwn(registeredInstances, ptr)) {
         throwBindingError(`Tried to register registered instance: ${ptr}`);
     } else {
         registeredInstances[ptr] = instance;
@@ -153,7 +153,7 @@ var LibraryEmbind = {
 
   $unregisterInheritedInstance: (class_, ptr) => {
     ptr = getBasestPointer(class_, ptr);
-    if (registeredInstances.hasOwnProperty(ptr)) {
+    if (hasOwn(registeredInstances, ptr)) {
         delete registeredInstances[ptr];
     } else {
         throwBindingError(`Tried to unregister unregistered instance: ${ptr}`);
@@ -1972,7 +1972,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
 
         if (classType.registeredClass.__derivedClasses) {
           for (const derivedClass of classType.registeredClass.__derivedClasses) {
-            if (!derivedClass.constructor.hasOwnProperty(methodName)) {
+            if (!hasOwn(derivedClass.constructor, methodName)) {
               // TODO: Add support for overloads
               derivedClass.constructor[methodName] = func;
             }
