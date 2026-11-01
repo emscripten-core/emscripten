@@ -1307,27 +1307,22 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('dlsym_js:', symbol);
 #endif
-    var result;
-    var newSymIndex;
-
     var lib = LDSO.loadedLibsByHandle[handle];
 #if ASSERTIONS
     assert(lib, `Tried to dlsym() from an unopened handle: ${handle}`);
 #endif
-    newSymIndex = Object.keys(lib.exports).indexOf(symbol);
-    if (newSymIndex == -1 || lib.exports[symbol].stub) {
+    if (!Object.prototype.hasOwnProperty.call(lib.exports, symbol) || lib.exports[symbol].stub) {
       dlSetError(`Tried to lookup unknown symbol "${symbol}" in dynamic lib: ${lib.name}`)
       return 0;
     }
+    var exportName = symbol;
 #if !WASM_BIGINT
     var origSym = 'orig$' + symbol;
-    result = lib.exports[origSym];
-    if (result) {
-      newSymIndex = Object.keys(lib.exports).indexOf(origSym);
+    if (lib.exports[origSym]) {
+      exportName = origSym;
     }
-    else
 #endif
-    result = lib.exports[symbol];
+    var result = lib.exports[exportName];
 
     if (typeof result === 'function') {
 #if DYLINK_DEBUG
@@ -1355,7 +1350,10 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
         dbg('adding symbol to table:',  symbol);
 #endif
-        {{{ makeSetValue('symbolIndex', 0, 'newSymIndex', '*') }}};
+        // Other threads replay this insertion by the symbol's enumeration index
+        // (`_dlsym_catchup_js`). Computing it enumerates every export of the
+        // library, so only do so when a slot was actually allocated.
+        {{{ makeSetValue('symbolIndex', 0, 'Object.keys(lib.exports).indexOf(exportName)', '*') }}};
       }
     }
 #if DYLINK_DEBUG
