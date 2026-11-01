@@ -1351,8 +1351,8 @@ var LibraryDylink = {
         dbg('adding symbol to table:',  symbol);
 #endif
         // Other threads replay this insertion by the symbol's enumeration index
-        // (`_dlsym_catchup_js`). Computing it enumerates every export of the
-        // library, so only do so when a slot was actually allocated.
+        // (`_dlsym_catchup_js`).  Using `indexOf` here is O(N),
+        // so only do so when a slot was actually allocated.
         var newSymIndex = Object.keys(lib.exports).indexOf(exportName);
         {{{ makeSetValue('symbolIndex', 0, 'newSymIndex', '*') }}};
       }
