@@ -14663,6 +14663,13 @@ int main() {
                  cflags=['-O1', '--profiling-funcs'],
                  assert_returncode=NON_ZERO)
 
+  # BINARYEN_PASS_DEBUG validates after each binaryen pass, which catches
+  # invalid IR from the stack-check pass that STACK_OVERFLOW_CHECK=2 runs.
+  @with_env_modify({'BINARYEN_PASS_DEBUG': '1'})
+  def test_stack_overflow_check_pass_debug(self):
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
+    self.do_runf('hello_world.c', 'Hello, world!\n')
+
   @also_with_wasm64
   @parameterized({
     '': ([],),
