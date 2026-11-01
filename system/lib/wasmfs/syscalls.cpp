@@ -113,14 +113,23 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
 
   // A file opened for reading only (O_RDONLY) cannot be written. POSIX write(2)
   // returns EBADF when the file descriptor is not open for writing.
-  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_RDONLY) {
+  auto flags = lockedOpenFile.getFlags();
+  if ((flags & O_ACCMODE) == O_RDONLY) {
     return __WASI_ERRNO_BADF;
+  }
+
+  for (size_t i = 0; i < iovs_len; i++) {
+    // Check if buf_len specifies a positive length buffer but buf is a
+    // null pointer
+    if (!iovs[i].buf && iovs[i].buf_len > 0) {
+      return __WASI_ERRNO_INVAL;
+    }
   }
 
   auto lockedFile = file->locked();
 
   if (setOffset == OffsetHandling::OpenFileState) {
-    if (lockedOpenFile.getFlags() & O_APPEND) {
+    if (flags & O_APPEND) {
       off_t size = lockedFile.getSize();
       if (size < 0) {
         // Translate to WASI standard of positive return codes.
@@ -133,63 +142,16 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     }
   }
 
-  // A non-blocking write takes only what the file can take right now.
-  off_t budget = -1;
-  if (lockedOpenFile.getFlags() & O_NONBLOCK) {
-    size_t total = 0;
-    for (size_t i = 0; i < iovs_len; i++) {
-      total += iovs[i].buf_len;
-    }
-    budget = lockedFile.writableBytes(total);
-    if (budget < 0) {
-      return -budget;
-    }
+  auto result = lockedFile.write(iovs, iovs_len, offset, flags);
+  if (result < 0) {
+    return -result;
   }
-
-  size_t bytesWritten = 0;
-  for (size_t i = 0; i < iovs_len && budget != 0; i++) {
-    const uint8_t* buf = iovs[i].buf;
-    off_t len = iovs[i].buf_len;
-    if (budget > 0 && len > budget) {
-      len = budget;
-    }
-
-    // Check if buf_len specifies a positive length buffer but buf is a
-    // null pointer
-    if (!buf && len > 0) {
-      return __WASI_ERRNO_INVAL;
-    }
-
-    // Check if the sum of the buf_len values overflows an off_t (63 bits).
-    if (addWillOverFlow(offset, (__wasi_filesize_t)bytesWritten)) {
-      return __WASI_ERRNO_FBIG;
-    }
-
-    auto result = lockedFile.write(buf, len, offset + bytesWritten);
-    if (result < 0) {
-      // This individual write failed. Report the error unless we've already
-      // written some bytes, in which case report a successful short write.
-      if (bytesWritten > 0) {
-        break;
-      }
-      return -result;
-    }
-    // The write was successful.
-    bytesWritten += result;
-    if (budget > 0) {
-      budget -= result;
-    }
-    if (result < (off_t)iovs[i].buf_len) {
-      // The write was short, so stop here.
-      break;
-    }
-  }
-  *nwritten = bytesWritten;
+  *nwritten = result;
   if (setOffset == OffsetHandling::OpenFileState &&
       lockedOpenFile.getFile()->isSeekable()) {
-    lockedOpenFile.setPosition(offset + bytesWritten);
+    lockedOpenFile.setPosition(offset + result);
   }
-  if (bytesWritten) {
+  if (result) {
     lockedFile.updateMTime();
   }
   return __WASI_ERRNO_SUCCESS;
@@ -229,47 +191,29 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
 
   // A file opened for writing only (O_WRONLY) cannot be read. POSIX read(2)
   // returns EBADF when the file descriptor is not open for reading.
-  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
+  auto flags = lockedOpenFile.getFlags();
+  if ((flags & O_ACCMODE) == O_WRONLY) {
     return __WASI_ERRNO_BADF;
+  }
+
+  for (size_t i = 0; i < iovs_len; i++) {
+    // Check if buf_len specifies a positive length buffer but buf is a
+    // null pointer
+    if (!iovs[i].buf && iovs[i].buf_len > 0) {
+      return __WASI_ERRNO_INVAL;
+    }
   }
 
   auto lockedFile = file->locked();
 
-  size_t bytesRead = 0;
-  for (size_t i = 0; i < iovs_len; i++) {
-    uint8_t* buf = iovs[i].buf;
-    size_t len = iovs[i].buf_len;
-
-    if (!buf && len > 0) {
-      return __WASI_ERRNO_INVAL;
-    }
-
-    // TODO: Check for overflow when adding offset + bytesRead.
-    auto result = lockedFile.read(buf, len, offset + bytesRead);
-    if (result < 0) {
-      // This individual read failed. Report the error unless we've already read
-      // some bytes, in which case report a successful short read.
-      if (bytesRead > 0) {
-        break;
-      }
-      return -result;
-    }
-
-    // The read was successful.
-
-    // Backends must only return len or less.
-    assert(result <= len);
-
-    bytesRead += result;
-    if (result < len) {
-      // The read was short, so stop here.
-      break;
-    }
+  auto result = lockedFile.read(iovs, iovs_len, offset, flags);
+  if (result < 0) {
+    return -result;
   }
-  *nread = bytesRead;
+  *nread = result;
   if (setOffset == OffsetHandling::OpenFileState &&
       lockedOpenFile.getFile()->isSeekable()) {
-    lockedOpenFile.setPosition(offset + bytesRead);
+    lockedOpenFile.setPosition(offset + result);
   }
   return __WASI_ERRNO_SUCCESS;
 }
