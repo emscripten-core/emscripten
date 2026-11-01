@@ -47,6 +47,8 @@ _Static_assert(_Alignof(void*) == 4, "non-wasi data layout");
 extern "C" {
 #endif
 
+#include <features.h>
+
 // TODO: Encoding this in witx.
 #define __WASI_DIRCOOKIE_START (UINT64_C(0))
 typedef __SIZE_TYPE__ __wasi_size_t;
