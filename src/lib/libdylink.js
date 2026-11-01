@@ -1353,7 +1353,8 @@ var LibraryDylink = {
         // Other threads replay this insertion by the symbol's enumeration index
         // (`_dlsym_catchup_js`). Computing it enumerates every export of the
         // library, so only do so when a slot was actually allocated.
-        {{{ makeSetValue('symbolIndex', 0, 'Object.keys(lib.exports).indexOf(exportName)', '*') }}};
+        var newSymIndex = Object.keys(lib.exports).indexOf(exportName);
+        {{{ makeSetValue('symbolIndex', 0, 'newSymIndex', '*') }}};
       }
     }
 #if DYLINK_DEBUG
