@@ -802,7 +802,7 @@ function(${args}) {
       const postset = LibraryManager.library[postsetId];
 
       if (symbolsOnly) {
-        if (LibraryManager.library.hasOwnProperty(symbol)) {
+        if (Object.hasOwn(LibraryManager.library, symbol)) {
           let snippet = LibraryManager.library[symbol];
           if (!LibraryManager.isAlias(snippet)) {
             if (typeof snippet === 'object') {
@@ -831,7 +831,7 @@ function(${args}) {
       const mangled = mangleCSymbolName(symbol);
       let snippet = LibraryManager.library[symbol];
 
-      if (!LibraryManager.library.hasOwnProperty(symbol)) {
+      if (!Object.hasOwn(LibraryManager.library, symbol)) {
         const isWeakImport = WEAK_IMPORTS.has(symbol);
         if (!isDefined(symbol) && !isWeakImport) {
           if (PROXY_TO_PTHREAD && !MAIN_MODULE && symbol == '__main_argc_argv') {
