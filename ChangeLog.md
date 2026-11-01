@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- Split `libclang_rt.profile` out of `libclang_rt.builtins` so that it is only
+  linked when profiling or coverage flags (such as `-fprofile-instr-generate` or
+  `--coverage`) are enabled, avoiding unwanted `default.profraw` output at exit
+  in `MAIN_MODULE=1` builds. (#28123)
 - Pipes now have a 64 KiB capacity: non-blocking writes to a full pipe fail
   with `EAGAIN`. For now, blocking writes remain unbounded. (#27831)
 - When compiling and linking in a single command, auxiliary compiler output

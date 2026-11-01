@@ -32,6 +32,7 @@ MINIMAL_TASKS = [
   'libclang_rt.builtins-legacysjlj',
   'libclang_rt.builtins-wasmsjlj',
   'libclang_rt.builtins-ww',
+  'libclang_rt.profile',
   'libclang_rt.asan',
   'libclang_rt.asan-mt',
   'libclang_rt.lsan',
