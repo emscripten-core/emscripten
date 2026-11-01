@@ -95,6 +95,7 @@ class EmccOptions:
   post_link = False
   pre_js: list[str] = [] # before all js
   preload_files: list[str] = []
+  profile = False
   relocatable = False
   reproduce = os.getenv('EMCC_REPRODUCE')  # None by default.
   requested_debug = None
@@ -530,6 +531,15 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
       options.openmp = 1
       settings.PTHREADS = 1
       settings.USE_PTHREADS = 1
+    elif arg in {'-fprofile-generate', '-fcs-profile-generate', '-fprofile-instr-generate',
+                 '-fcreate-profile', '-fprofile-generate-cold-function-coverage',
+                 '-fprofile-arcs', '--coverage'} or arg.startswith((
+        '-fprofile-generate=', '-fcs-profile-generate=', '-fprofile-instr-generate=',
+        '-fprofile-generate-cold-function-coverage=')):
+      options.profile = True
+    elif arg in {'-fno-profile-generate', '-fno-profile-instr-generate', '-fno-profile-arcs',
+                 '--noprofilelib'}:
+      options.profile = False
     elif arg == '-pthread':
       settings.PTHREADS = 1
       # Also set the legacy setting name, in case use JS code depends on it.

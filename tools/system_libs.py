@@ -950,15 +950,18 @@ class AsanInstrumentedLibrary(Library):
     return super().get_default_variation(is_asan=settings.USE_ASAN, **kwargs)
 
 
-# Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
-class libclang_rt_builtins(MTLibrary, SjLjLibrary):
-  name = 'libclang_rt.builtins'
+class CompilerRTLibrary(Library):
+  cflags = ['-fno-builtin']
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
+
+# Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
+class libclang_rt_builtins(CompilerRTLibrary, MTLibrary, SjLjLibrary):
+  name = 'libclang_rt.builtins'
+
   cflags = [
-    '-fno-builtin',
     '-DNDEBUG',
     '-DCOMPILER_RT_HAS_ATOMICS=1',
     # TODO: Remove this if the emutls_key_created variable in emutls.c is
@@ -967,8 +970,7 @@ class libclang_rt_builtins(MTLibrary, SjLjLibrary):
     '-Wno-unused-but-set-variable',
   ]
   src_dir = 'system/lib/compiler-rt/lib/builtins'
-  profile_src_dir = 'system/lib/compiler-rt/lib/profile'
-  includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
+  includes = ['system/lib/libc']
   excludes = {
     # gcc_personality_v0.c depends on libunwind, which don't include by default.
     'gcc_personality_v0.c',
@@ -1000,16 +1002,6 @@ class libclang_rt_builtins(MTLibrary, SjLjLibrary):
     'truncxfhf2.c',
   }
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
-  src_files += glob_in_path(profile_src_dir, '*.c')
-  src_files += glob_in_path(
-      profile_src_dir,
-      '*.cpp',
-      excludes={
-        # These are only part of upstream's separate profile_rocm runtime.
-        'InstrProfilingPlatformROCm.cpp',
-        'InstrProfilingPlatformROCmHSA.cpp',
-      },
-  )
   src_files += files_in_path(
       path='system/lib/compiler-rt',
       filenames=[
@@ -1021,6 +1013,25 @@ class libclang_rt_builtins(MTLibrary, SjLjLibrary):
         '__c_longjmp.S',
         '__trap.c',
       ])
+
+
+class libclang_rt_profile(CompilerRTLibrary, MTLibrary):
+  name = 'libclang_rt.profile'
+  never_force = True
+
+  cflags = ['-DNDEBUG', '-DCOMPILER_RT_HAS_ATOMICS=1']
+  src_dir = 'system/lib/compiler-rt/lib/profile'
+  includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
+  src_files = glob_in_path(src_dir, '*.c')
+  src_files += glob_in_path(
+      src_dir,
+      '*.cpp',
+      excludes={
+        # These are only part of upstream's separate profile_rocm runtime.
+        'InstrProfilingPlatformROCm.cpp',
+        'InstrProfilingPlatformROCmHSA.cpp',
+      },
+  )
 
 
 class libnoexit(Library):
@@ -2148,13 +2159,6 @@ class libhtml5(Library):
   src_glob = '*.c'
 
 
-class CompilerRTLibrary(Library):
-  cflags = ['-fno-builtin']
-  # compiler_rt files can't currently be part of LTO although we are hoping to remove this
-  # restriction soon: https://reviews.llvm.org/D71738
-  force_object_files = True
-
-
 class libclang_rt_ubsan_minimal(CompilerRTLibrary, MTLibrary):
   name = 'libclang_rt.ubsan_minimal'
   never_force = True
@@ -2469,6 +2473,9 @@ def get_libs_to_link():
 
   if options.openmp:
     add_library('libopenmp')
+
+  if options.profile:
+    add_library('libclang_rt.profile')
 
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:

@@ -3366,15 +3366,17 @@ Var: 42
     if is_sanitizing(self.cflags):
       return
 
-    def get_data_exports(wasm):
-      wat = self.get_wasm_text(wasm)
+    wat = self.get_wasm_text('test_dlfcn_self.wasm')
+    self.assertNotContained('__llvm_profile', wat)
+
+    def get_data_exports(wat):
       lines = wat.splitlines()
       exports = [line for line in lines if line.strip().startswith('(export ')]
       data_exports = [exp for exp in exports if '(global ' in exp]
       data_exports = [d.split()[1].strip('"') for d in data_exports]
       return data_exports
 
-    data_exports = get_data_exports('test_dlfcn_self.wasm')
+    data_exports = get_data_exports(wat)
     # Certain exports are removed by wasm-emscripten-finalize, but this
     # tool is not run in all configurations, so ignore these exports.
     data_exports = [d for d in data_exports if d not in {'__start_em_asm', '__stop_em_asm'}]
