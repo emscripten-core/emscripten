@@ -554,7 +554,7 @@ var LibraryDylink = {
     for (var [sym, exp] of Object.entries(exports)) {
       if (sym.startsWith('dynCall_')) {
         var sig = sym.substring(8);
-        if (!dynCalls.hasOwnProperty(sig)) {
+        if (!hasOwn(dynCalls, sig)) {
           dynCalls[sig] = exp;
         }
       }
