@@ -6,9 +6,11 @@
 
 #if LZ4
 addToLibrary({
+  ...defineInternalConsts({
+    $LZ4_DIR_MODE: cDefs.S_IFDIR | 0o777,
+    $LZ4_FILE_MODE: cDefs.S_IFREG | 0o777,
+  }),
   $LZ4: {
-    DIR_MODE: {{{ cDefs.S_IFDIR | 0o777 }}},
-    FILE_MODE: {{{ cDefs.S_IFREG | 0o777 }}},
     CHUNK_SIZE: -1,
     codec: null,
     init() {
@@ -34,7 +36,7 @@ addToLibrary({
         var name = PATH.basename(file.filename);
         FS.createPath('', dir, true, true);
         var parent = FS.lookupPath(dir).node;
-        LZ4.createNode(parent, name, LZ4.FILE_MODE, 0, {
+        LZ4.createNode(parent, name, LZ4_FILE_MODE, 0, {
           compressedData,
           start: file.start,
           end: file.end,
@@ -68,8 +70,8 @@ addToLibrary({
       node.node_ops = LZ4.node_ops;
       node.stream_ops = LZ4.stream_ops;
       this.atime = this.mtime = this.ctime = (mtime || new Date).getTime();
-      assert(LZ4.FILE_MODE !== LZ4.DIR_MODE);
-      if (mode === LZ4.FILE_MODE) {
+      assert(LZ4_FILE_MODE !== LZ4_DIR_MODE);
+      if (mode === LZ4_FILE_MODE) {
         node.size = contents.end - contents.start;
         node.contents = contents;
       } else {

@@ -5,6 +5,9 @@
  */
 
 var LibraryFS = {
+  ...defineInternalConsts({
+    $FS_MAX_OPEN_FDS: 4096,
+  }),
 #if FORCE_FILESYSTEM
   // Include FS even when it is not referenced by compiled code.
   $FS__force: true,
@@ -501,9 +504,8 @@ FS.staticInit();`;
     //
     // streams
     //
-    MAX_OPEN_FDS: 4096,
     nextfd() {
-      for (var fd = 0; fd <= FS.MAX_OPEN_FDS; fd++) {
+      for (var fd = 0; fd <= FS_MAX_OPEN_FDS; fd++) {
         if (!FS.streams[fd]) {
           return fd;
         }

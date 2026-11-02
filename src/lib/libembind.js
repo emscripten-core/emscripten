@@ -2100,8 +2100,10 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     return Emval.toHandle(ctor);
   },
 
-  $char_0: '0'.charCodeAt(0),
-  $char_9: '9'.charCodeAt(0),
+  ...defineInternalConsts({
+    $char_0: '0'.charCodeAt(0),
+    $char_9: '9'.charCodeAt(0),
+  }),
   $makeLegalFunctionName: (name) => {
 #if ASSERTIONS
     assert(typeof name === 'string');

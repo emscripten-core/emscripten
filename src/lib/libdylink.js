@@ -12,7 +12,7 @@
 
 var LibraryDylink = {
   ...defineInternalConsts({
-    $UNDEFINED_ADDR: to64(-1),
+    $UNDEFINED_ADDR: MEMORY64 ? -1n : -1,
   }),
 #if FILESYSTEM
   $registerWasmPlugin: () => {

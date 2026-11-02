@@ -1480,7 +1480,7 @@ addToLibrary({
   // implementation is not :(
   ...defineInternalConsts({
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
-    $nowIsMonotonic: '!!globalThis.performance?.now;',
+    $nowIsMonotonic: '=!!globalThis.performance?.now',
 #else
     // Modern environment where performance.now() is supported
     $nowIsMonotonic: 1,
