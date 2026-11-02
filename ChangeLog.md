@@ -40,6 +40,10 @@ See docs/process.md for more on how version tagging works.
   detected automatically by the compiler, so `__deps` is no longer required for
   direct JS-to-JS references (`__deps` is still supported for dependencies on
   compiled C/C++ symbols or indirect dependencies). (#27995)
+- `dlsym` no longer enumerates every export of the library on each call, which
+  made a lookup in a main module with hundreds of thousands of exports take tens
+  of milliseconds; the index is only computed when a new table slot is
+  allocated.
 
 6.0.13 - 10/19/26
 -----------------
