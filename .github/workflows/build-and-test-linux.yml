@@ -145,7 +145,7 @@ jobs:
 
   test-core0:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     env:
       EMTEST_SKIP_NODE_25: "1"
     steps:
@@ -250,7 +250,7 @@ jobs:
 
   test-core3:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     env:
       EMTEST_SKIP_NODE_25: "1"
     steps:
@@ -762,7 +762,7 @@ jobs:
 
   test-browser-chrome-wasm64-4gb:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -788,7 +788,7 @@ jobs:
 
   test-other:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     env:
       EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_RUST: "1"
