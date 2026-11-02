@@ -184,12 +184,19 @@ weak pid_t vfork(void) {
   return -1;
 }
 
+// posix_spawn and posix_spawnp return an error number, they do not set errno.
 weak int posix_spawn(pid_t *pid, const char *path,
                        const posix_spawn_file_actions_t *file_actions,
                        const posix_spawnattr_t *attrp,
                        char *const argv[], char *const envp[]) {
-  errno = ENOSYS;
-  return -1;
+  return ENOSYS;
+}
+
+weak int posix_spawnp(pid_t *pid, const char *file,
+                        const posix_spawn_file_actions_t *file_actions,
+                        const posix_spawnattr_t *attrp,
+                        char *const argv[], char *const envp[]) {
+  return ENOSYS;
 }
 
 // ==========================================================================
