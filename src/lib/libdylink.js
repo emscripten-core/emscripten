@@ -1311,7 +1311,7 @@ var LibraryDylink = {
 #if ASSERTIONS
     assert(lib, `Tried to dlsym() from an unopened handle: ${handle}`);
 #endif
-    if (!Object.prototype.hasOwnProperty.call(lib.exports, symbol) || lib.exports[symbol].stub) {
+    if (!hasOwn(lib.exports, symbol) || lib.exports[symbol].stub) {
       dlSetError(`Tried to lookup unknown symbol "${symbol}" in dynamic lib: ${lib.name}`)
       return 0;
     }
