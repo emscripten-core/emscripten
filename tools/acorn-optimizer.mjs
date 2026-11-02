@@ -220,7 +220,7 @@ function JSDCE(ast, aggressive) {
     let removed = 0;
     const scopes = [{}]; // begin with empty toplevel scope
     function ensureData(scope, name) {
-      if (Object.prototype.hasOwnProperty.call(scope, name)) return scope[name];
+      if (Object.hasOwn(scope, name)) return scope[name];
       scope[name] = {
         def: 0,
         use: 0,
@@ -707,7 +707,7 @@ function emitDCEGraph(ast) {
         node.specifiers.forEach((spec) => {
           const jsName = spec.local.name; // JS-side name
           const asmName = spec.imported.name; // wasm-provided name
-          if (exportNameToGraphName.hasOwnProperty(asmName)) {
+          if (Object.hasOwn(exportNameToGraphName, asmName)) {
             // Another local already binds this wasm export (e.g. both `memory`
             // and `memory as wasmMemory`): point this local at the same node so
             // a use of either roots the one underlying export.
@@ -880,7 +880,7 @@ function emitDCEGraph(ast) {
       import: ['env', nativeName],
       reaches: new Set(),
     });
-    if (nameToGraphName.hasOwnProperty(jsName)) {
+    if (Object.hasOwn(nameToGraphName, jsName)) {
       info.reaches.add(nameToGraphName[jsName]);
     } // otherwise, it's a number, ignore
   }
@@ -900,12 +900,12 @@ function emitDCEGraph(ast) {
     let reached;
     if (node.type === 'Identifier') {
       const name = node.name;
-      if (nameToGraphName.hasOwnProperty(name)) {
+      if (Object.hasOwn(nameToGraphName, name)) {
         reached = nameToGraphName[name];
       }
     } else if (isModuleUse(node)) {
       const name = getExportOrModuleUseName(node);
-      if (modulePropertyToGraphName.hasOwnProperty(name)) {
+      if (Object.hasOwn(modulePropertyToGraphName, name)) {
         reached = modulePropertyToGraphName[name];
       }
     } else if (isStaticDynCall(node)) {
@@ -916,7 +916,7 @@ function emitDCEGraph(ast) {
     } else if (isExportUse(node)) {
       // any remaining asm uses are always rooted in any case
       const name = getExportOrModuleUseName(node);
-      if (exportNameToGraphName.hasOwnProperty(name)) {
+      if (Object.hasOwn(exportNameToGraphName, name)) {
         infos[exportNameToGraphName[name]].root = true;
       }
       return;
@@ -1602,7 +1602,7 @@ function minifyLocals(ast) {
 
     // Finally, the function name, after restoring it.
     fun.id = funId;
-    assert(extraInfo.globals.hasOwnProperty(fun.id.name));
+    assert(Object.hasOwn(extraInfo.globals, fun.id.name));
     fun.id.name = extraInfo.globals[fun.id.name];
   }
 }

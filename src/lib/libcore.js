@@ -1629,11 +1629,24 @@ addToLibrary({
     return readEmAsmArgsArray;
   },
 
+  $hasOwn__internal: true,
+#if MIN_FIREFOX_VERSION < 92 || MIN_CHROME_VERSION < 93 || MIN_SAFARI_VERSION < 150400
+  // https://caniuse.com/mdn-javascript_builtins_object_hasown
+  $hasOwn__docs: '/** @noinline */',
+  $hasOwn: (obj, prop) => Object.prototype.hasOwnProperty.call(obj, prop),
+#else
+  // Closure's built-in extern for `Object.hasOwn` is typed as
+  // `function(!Object, (string|symbol)): boolean`, which rejects nullable
+  // `Object` types (such as `Module`) and numeric property keys.
+  $hasOwn__docs: '/** @type {function(?, ?): boolean} */',
+  $hasOwn: 'Object.hasOwn',
+#endif
+
 #if HAVE_EM_ASM
   $runEmAsmFunction: (code, sigPtr, argbuf) => {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if ASSERTIONS
-    assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
+    assert(hasOwn(ASM_CONSTS, code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
     return ASM_CONSTS[code](...args);
   },
@@ -1666,7 +1679,7 @@ addToLibrary({
     }
 #endif
 #if ASSERTIONS
-    assert(ASM_CONSTS.hasOwnProperty(emAsmAddr), `No EM_ASM constant found at address ${emAsmAddr}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
+    assert(hasOwn(ASM_CONSTS, emAsmAddr), `No EM_ASM constant found at address ${emAsmAddr}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
     return ASM_CONSTS[emAsmAddr](...args);
   },
