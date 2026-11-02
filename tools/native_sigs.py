@@ -1304,6 +1304,7 @@ native_sigs = {
   'posix_spawnattr_setschedpolicy': '_p_',
   'posix_spawnattr_setsigdefault': '_pp',
   'posix_spawnattr_setsigmask': '_pp',
+  'posix_spawnp': '_pppppp',
   'pow10l': '_p__',
   'powl': '_p____',
   'ppoll': '_p_pp',
