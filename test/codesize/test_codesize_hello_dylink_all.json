@@ -1,7 +1,7 @@
 {
   "a.out.js": 272893,
-  "a.out.nodebug.wasm": 589443,
-  "total": 862336,
+  "a.out.nodebug.wasm": 589512,
+  "total": 862405,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -3180,6 +3180,7 @@
     "posix_spawnattr_setschedpolicy",
     "posix_spawnattr_setsigdefault",
     "posix_spawnattr_setsigmask",
+    "posix_spawnp",
     "pow",
     "pow10",
     "pow10f",
@@ -4960,6 +4961,7 @@
     "$posix_spawnattr_setpgroup",
     "$posix_spawnattr_setsigdefault",
     "$posix_spawnattr_setsigmask",
+    "$posix_spawnp",
     "$pow",
     "$powf",
     "$powl",

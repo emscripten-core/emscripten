@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <assert.h>
+#include <spawn.h>
 #include <sys/stat.h>
 
 
@@ -145,6 +146,14 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
   printf("pclose: %d", pclose(NULL));
+  printf(", errno: %d\n", errno);
+  errno = 0;
+  pid_t pid;
+  char *spawn_argv[] = {"ls", NULL};
+  printf("posix_spawn: %d", posix_spawn(&pid, "/bin/ls", NULL, NULL, spawn_argv, NULL));
+  printf(", errno: %d\n", errno);
+  errno = 0;
+  printf("posix_spawnp: %d", posix_spawnp(&pid, "ls", NULL, NULL, spawn_argv, NULL));
   printf(", errno: %d\n", errno);
   errno = 0;
 
