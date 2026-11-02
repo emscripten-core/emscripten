@@ -79,6 +79,11 @@ export default [{
     'arrow-body-style': ['error', 'as-needed'],
     'space-infix-ops': 'error',
     'prefer-object-has-own': 'error',
+    'prefer-exponentiation-operator': 'error',
+    'prefer-object-spread': 'error',
+    'prefer-rest-params': 'error',
+    'prefer-spread': 'error',
+    'logical-assignment-operators': ['error', 'always'],
 
     quotes: ['error', 'single', {
       avoidEscape: true,

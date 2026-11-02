@@ -3149,7 +3149,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
 #if GL_TRACK_ERRORS
       var bindingsType = 0x8872/*GL_MAX_TEXTURE_IMAGE_UNITS*/;
 #endif
-      if (bindingMatch[3] && bindingMatch[2].indexOf('sampler') != -1) {
+      if (bindingMatch[3] && bindingMatch[2].includes('sampler')) {
         samplerBindings[bindingMatch[3]] = [binding, arrayLength];
       } else {
 #if GL_TRACK_ERRORS

@@ -106,15 +106,7 @@ legacyFuncs = {
 #if EMBIND
   $getInheritedInstanceCount: () => Object.keys(registeredInstances).length,
 
-  $getLiveInheritedInstances: () => {
-    var rv = [];
-    for (var k in registeredInstances) {
-      if (hasOwn(registeredInstances, k)) {
-        rv.push(registeredInstances[k]);
-      }
-    }
-    return rv;
-  },
+  $getLiveInheritedInstances: () => Object.values(registeredInstances),
 #endif
 };
 
