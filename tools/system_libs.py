@@ -1203,7 +1203,7 @@ class libc(MuslInternalLibrary,
       'getauxval.c',
       'lookup_name.c',
       # 'process' exclusions
-      'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
+      'fork.c', 'vfork.c', 'posix_spawn.c', 'execve.c', 'waitid.c', 'system.c',
       '_Fork.c',
       # 'env' exclusions
       '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
