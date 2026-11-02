@@ -27,10 +27,13 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
+  'libemcc',
+  'libemcc-mt',
+  'libemcc-legacysjlj',
+  'libemcc-wasmsjlj',
+  'libemcc-ww',
   'libclang_rt.builtins',
   'libclang_rt.builtins-mt',
-  'libclang_rt.builtins-legacysjlj',
-  'libclang_rt.builtins-wasmsjlj',
   'libclang_rt.builtins-ww',
   'libclang_rt.profile',
   'libclang_rt.asan',
