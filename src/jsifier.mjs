@@ -641,7 +641,7 @@ export async function runJSify(outputFile, symbolsOnly) {
         }
         return `\
 function(${args}) {
-  dbg("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  dbg("[library call:${mangled}: " + Array.from(arguments, prettyPrint) + "]");
   ${run_func}
   dbg("  [     return:" + prettyPrint(ret));
   return ret;
