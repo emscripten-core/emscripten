@@ -22,7 +22,7 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - `posix_spawnp` is now stubbed, as `posix_spawn` is: calling it no longer
   aborts with `missing function: posix_spawnp`. Both now return `ENOSYS`, as
-  POSIX specifies, instead of returning -1 and setting `errno`.
+  POSIX specifies, instead of returning -1 and setting `errno`. (#28135)
 - Pipes now have a 64 KiB capacity: non-blocking writes to a full pipe fail
   with `EAGAIN`. For now, blocking writes remain unbounded. (#27831)
 - When compiling and linking in a single command, auxiliary compiler output
