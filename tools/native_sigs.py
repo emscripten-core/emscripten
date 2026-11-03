@@ -128,7 +128,6 @@ native_sigs = {
   '__do_des': '___pp__p',
   '__duplocale': 'pp',
   '__dynamic_cast': 'ppppp',
-  '__emutls_get_address': 'pp',
   '__enable_execute_stack': '_p',
   '__env_rm_add': '_pp',
   '__eprintf': '_pppp',

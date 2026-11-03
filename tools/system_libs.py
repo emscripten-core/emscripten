@@ -961,18 +961,14 @@ class CompilerRTLibrary(Library):
 class libclang_rt_builtins(CompilerRTLibrary, MTLibrary, SjLjLibrary):
   name = 'libclang_rt.builtins'
 
-  cflags = [
-    '-DNDEBUG',
-    # TODO: Remove this if the emutls_key_created variable in emutls.c is
-    # fixed or if the scope of the warning is modified again (see
-    # https://github.com/llvm/llvm-project/pull/178342)
-    '-Wno-unused-but-set-variable',
-  ]
+  cflags = ['-DNDEBUG']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   includes = ['system/lib/libc']
   excludes = {
     # gcc_personality_v0.c depends on libunwind, which don't include by default.
     'gcc_personality_v0.c',
+    # Emscripten uses native Wasm TLS rather than emulated TLS.
+    'emutls.c',
     # bfloat16
     'extendbfsf2.c',
     'truncdfbf2.c',
