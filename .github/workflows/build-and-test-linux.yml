@@ -68,7 +68,6 @@ jobs:
         with:
           version: ${{ steps.emsdk_version.outputs.version }}
           emsdk-version: main
-          actions-cache-folder: 'emsdk-install'
 
       - name: Set EM_CONFIG
         run: |
@@ -92,14 +91,13 @@ jobs:
       - name: Bootstrap
         run: ./bootstrap.py
 
-      - name: Build Hello world
-        run: |
-          ./emcc --clear-cache
-          ./test/runner test_hello_world core3.test_hello_world
+      - name: Clear cache
+        run: ./emcc --clear-cache
 
       - name: Build ALL
         run: |
           ./embuilder build ALL
+          ./test/runner test_hello_world
 
       - name: Build MINIMAL (LTO)
         run: |
@@ -125,7 +123,7 @@ jobs:
         run: rm -rf ~/cache/build
 
       - name: Archive persistent directories
-        run: tar -czvf ~/emscripten-cache.tar.gz -C ~/ .jsvu cache vms wasi-sdk
+        run: tar -czf ~/emscripten-cache.tar.gz -C ~/ .jsvu cache vms wasi-sdk
 
       - name: Persist workspace
         uses: actions/upload-artifact@v7.0.1
@@ -174,13 +172,6 @@ jobs:
 
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
-
-      - name: Reinstall V8
-        run: rm -rf $HOME/.jsvu
-        shell: bash
-
-      - name: Install V8
-        uses: ./.github/actions/install-v8
 
       - name: Install Node newest
         uses: ./.github/actions/install-node
@@ -372,13 +363,6 @@ jobs:
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
 
-      - name: Reinstall V8
-        run: rm -rf $HOME/.jsvu
-        shell: bash
-
-      - name: Install V8
-        uses: ./.github/actions/install-v8
-
       - name: Install Node newest
         uses: ./.github/actions/install-node
         with:
@@ -427,9 +411,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
 
-      - name: Install Basic Packages
-        uses: ./.github/actions/install-basic-packages
-
       - name: Read emsdk version
         id: emsdk_version
         run: echo "version=$(cat test/emsdk_version.txt)" >> $GITHUB_OUTPUT
@@ -476,9 +457,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
 
-      - name: Install Basic Packages
-        uses: ./.github/actions/install-basic-packages
-
       - name: Read emsdk version
         id: emsdk_version
         run: echo "version=$(cat test/emsdk_version.txt)" >> $GITHUB_OUTPUT
@@ -522,9 +500,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
-
-      - name: Install Basic Packages
-        uses: ./.github/actions/install-basic-packages
 
       - name: Read emsdk version
         id: emsdk_version
@@ -571,9 +546,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
 
-      - name: Install Basic Packages
-        uses: ./.github/actions/install-basic-packages
-
       - name: Read emsdk version
         id: emsdk_version
         run: echo "version=$(cat test/emsdk_version.txt)" >> $GITHUB_OUTPUT
@@ -618,9 +590,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
-
-      - name: Install Basic Packages
-        uses: ./.github/actions/install-basic-packages
 
       - name: Read emsdk version
         id: emsdk_version
@@ -721,9 +690,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
-
-      - name: Install Basic Packages
-        uses: ./.github/actions/install-basic-packages
 
       - name: Read emsdk version
         id: emsdk_version
@@ -878,9 +844,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
 
-      - name: Install Basic Packages
-        uses: ./.github/actions/install-basic-packages
-
       - name: Pip install
         run: python -m pip install -r requirements-dev.txt
         shell: bash
@@ -947,13 +910,6 @@ jobs:
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
 
-      - name: Reinstall V8
-        run: rm -rf $HOME/.jsvu
-        shell: bash
-
-      - name: Install V8
-        uses: ./.github/actions/install-v8
-
       - name: Install Node newest
         uses: ./.github/actions/install-node
         with:
@@ -970,11 +926,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
-
-      - name: Install Basic Packages
-        uses: ./.github/actions/install-basic-packages
-
-
 
       - name: Setup Node.js
         uses: actions/setup-node@v6.3.0

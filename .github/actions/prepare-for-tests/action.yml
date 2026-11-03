@@ -3,9 +3,6 @@ description: 'Prepares the environment for running Emscripten tests'
 runs:
   using: "composite"
   steps:
-    - name: Install Basic Packages
-      uses: ./.github/actions/install-basic-packages
-
     - name: Read emsdk version
       id: emsdk_version
       run: echo "version=$(cat test/emsdk_version.txt)" >> $GITHUB_OUTPUT
@@ -16,7 +13,6 @@ runs:
       with:
         version: ${{ steps.emsdk_version.outputs.version }}
         emsdk-version: main
-        actions-cache-folder: 'emsdk-install'
 
     - name: Attach workspace
       uses: actions/download-artifact@v8
@@ -26,11 +22,8 @@ runs:
 
     - name: Extract persistent directories
       run: |
-        tar -xzvf ~/emscripten-cache.tar.gz -C ~/
-        ls -l ~/
-        ls -l ~/cache || echo "no ~/cache dir"
+        tar -xzf ~/emscripten-cache.tar.gz -C ~/
         sed -i "s|\|.*|\|$EMSDK/upstream/bin|" ~/cache/sanity.txt
-
       shell: bash
 
     - name: Set EM_CONFIG
