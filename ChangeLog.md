@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- Remove support for the `EMCC_ONLY_FORCED_STDLIBS` environment variable, which
+  was deprecated in 2.0.14 (#13448). Use `-nostdlib` instead to avoid linking
+  standard libraries. (#28151)
 - Split `libclang_rt.profile` out of `libclang_rt.builtins` so that it is only
   linked when profiling or coverage flags (such as `-fprofile-instr-generate` or
   `--coverage`) are enabled, avoiding unwanted `default.profraw` output at exit

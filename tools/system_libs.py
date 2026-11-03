@@ -99,7 +99,6 @@ def clean_env():
               'EMCC_CFLAGS',
               'EMCC_AUTODEBUG',
               'EMCC_FORCE_STDLIBS',
-              'EMCC_ONLY_FORCED_STDLIBS',
               'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
@@ -961,18 +960,14 @@ class CompilerRTLibrary(Library):
 class libclang_rt_builtins(CompilerRTLibrary, MTLibrary, SjLjLibrary):
   name = 'libclang_rt.builtins'
 
-  cflags = [
-    '-DNDEBUG',
-    # TODO: Remove this if the emutls_key_created variable in emutls.c is
-    # fixed or if the scope of the warning is modified again (see
-    # https://github.com/llvm/llvm-project/pull/178342)
-    '-Wno-unused-but-set-variable',
-  ]
+  cflags = ['-DNDEBUG']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   includes = ['system/lib/libc']
   excludes = {
     # gcc_personality_v0.c depends on libunwind, which don't include by default.
     'gcc_personality_v0.c',
+    # Emscripten uses native Wasm TLS rather than emulated TLS.
+    'emutls.c',
     # bfloat16
     'extendbfsf2.c',
     'truncdfbf2.c',
@@ -2377,21 +2372,15 @@ def get_libs_to_link():
   # ones you want
   force_include = []
   force = os.environ.get('EMCC_FORCE_STDLIBS')
-  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This
-  # avoids spending time checking for unresolved symbols in your project files,
-  # which can speed up linking, but if you do not have the proper list of
-  # actually needed libraries, errors can occur.
-  only_forced = utils.get_env_bool('EMCC_ONLY_FORCED_STDLIBS')
-  if only_forced:
-    # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
-    # of the input files for reverse dependencies.
-    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries')
   if force == '1':
     force_include = [name for name, lib in system_libs_map.items() if not lib.never_force]
   elif force:
     force_include = force.split(',')
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
+
+  if utils.get_env_bool('EMCC_ONLY_FORCED_STDLIBS'):
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is no longer supported.  Use `-nostdlib` to avoid linking standard libraries')
 
   def add_library(libname, whole_archive=False):
     lib = system_libs_map[libname]
@@ -2453,12 +2442,6 @@ def get_libs_to_link():
 
     if sanitize:
       add_library('libclang_rt.sanitizer_common')
-
-  if only_forced:
-    add_library('libclang_rt.builtins')
-    add_sanitizer_libs()
-    add_forced_libs()
-    return libs_to_link
 
   if settings.AUTO_NATIVE_LIBRARIES:
     add_library('libGL')

@@ -2525,7 +2525,7 @@ function wrapSyscallFunction(x, library, isWasi) {
       post += 'SYSCALLS.varargs = undefined;\n';
     }
   }
-  pre += `dbg('syscall! ${x}: [' + Array.prototype.slice.call(arguments) + ']');\n`;
+  pre += `dbg('syscall! ${x}: [' + Array.from(arguments) + ']');\n`;
   pre += 'var canWarn = true;\n';
   pre += 'var ret = (() => {';
   post += '})();\n';
