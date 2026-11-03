@@ -316,7 +316,7 @@ var NodeSockFSLibrary = {
     // never called bind() auto-binds to an ephemeral port here so getsockname
     // reports the assigned local address.
     startUdpRecv(sock) {
-      if (!sock.udp || sock.udpReceiving) return;
+      if (!sock.udp || sock.udpBound) return;
       if (sock.udpPublic) {
         if (sock.sport === undefined) {
           var a = sock.udp.bindSync({ address: sock.family === {{{ cDefs.AF_INET6 }}} ? '::' : '0.0.0.0', port: 0 });
@@ -333,7 +333,7 @@ var NodeSockFSLibrary = {
           }
         }
       }
-      sock.udpReceiving = true;
+      sock.udpBound = true;
       // node only honors these once the socket is bound, so (re)apply any
       // options that were set earlier.
       nodeSockHelpers.applyUdpOptions(sock);
@@ -350,7 +350,7 @@ var NodeSockFSLibrary = {
     applyUdpOptions(sock) {
       var h = sock.udp;
       var o = sock.opts;
-      if (!h || !o || !sock.udpReceiving) return 0;
+      if (!h || !o || !sock.udpBound) return 0;
       var err = 0;
       // The public dgram setters throw on a bad value; the udp_wrap handle
       // setters instead return a negative libuv code. Capture both, and drop a
@@ -391,9 +391,7 @@ var NodeSockFSLibrary = {
       var key = group + '%' + (iface ?? '');
       if (add && m.has(key)) return {{{ cDefs.EADDRINUSE }}};
       if (!add && !m.has(key)) return {{{ cDefs.EADDRNOTAVAIL }}};
-      // udpReceiving means the handle is bound; joining an unbound one would
-      // make libuv auto-bind it to an ephemeral port.
-      if (sock.udpReceiving) {
+      if (sock.udpBound) {
         var err = nodeSockHelpers.udpMembership(sock, group, iface, add);
         if (err) return err;
       }
@@ -418,7 +416,7 @@ var NodeSockFSLibrary = {
     },
     // The live OS buffer size from a bound UDP socket, or undefined.
     udpBufferSize(sock, recv) {
-      if (!sock.udp || !sock.udpReceiving) return undefined;
+      if (!sock.udp || !sock.udpBound) return undefined;
       try {
         if (sock.udpPublic) return recv ? sock.udp.getRecvBufferSize() : sock.udp.getSendBufferSize();
         return sock.udp.bufferSize(0, recv, {});
@@ -673,10 +671,10 @@ var NodeSockFSLibrary = {
           var a = udp.address();
           sock.saddr = a.address;
           sock.sport = a.port;
-          var live = sock.udpReceiving;
-          sock.udpReceiving = true; // a bound dgram socket already receives
+          var wasBound = sock.udpBound;
+          sock.udpBound = true; // a bound dgram socket already receives
           nodeSockHelpers.applyUdpOptions(sock);
-          if (!live) nodeSockHelpers.applyMemberships(sock);
+          if (!wasBound) nodeSockHelpers.applyMemberships(sock);
           return;
         }
         // Older node has no synchronous dgram connect, so just record the peer
