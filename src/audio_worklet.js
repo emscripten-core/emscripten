@@ -44,7 +44,7 @@ function createWasmAudioWorkletProcessor() {
       // be full if we allocate all the available space) leaving room for a
       // single AudioSampleFrame as a minimum. There's an arbitrary maximum of
       // 64 frames, for the case where a multi-MB stack is passed.
-      this.outputViews = new Array(Math.min(((wwParams.stackSize - {{{ STACK_ALIGN }}}) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
+      this.outputViews = new Array(Math.min(((wwParams.stackSize - STACK_ALIGN) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
 #if ASSERTIONS
       assert(this.outputViews.length > 0, `AudioWorklet needs more stack allocating (at least ${this.bytesPerChannel})`);
 #endif
