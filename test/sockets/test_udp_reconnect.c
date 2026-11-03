@@ -131,11 +131,14 @@ void main_loop(void) {
   fd_set fdr;
   struct timeval tv = {0};
   FD_ZERO(&fdr);
+  int nfds = 0;
   for (int i = 0; i < CASES; i++) {
     FD_SET(client_fd[i], &fdr);
     FD_SET(peer_b_fd[i], &fdr);
+    if (client_fd[i] >= nfds) nfds = client_fd[i] + 1;
+    if (peer_b_fd[i] >= nfds) nfds = peer_b_fd[i] + 1;
   }
-  select(64, &fdr, NULL, NULL, &tv);
+  select(nfds, &fdr, NULL, NULL, &tv);
 
   bool all = true;
   for (int i = 0; i < CASES; i++) {
