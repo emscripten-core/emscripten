@@ -247,8 +247,8 @@ function isNiceIdent(ident) {
 }
 
 export let POINTER_SIZE;
+export let POINTER_TYPE;
 const STACK_ALIGN = 16;
-let POINTER_TYPE;
 
 onSettingsLoaded(() => {
   POINTER_SIZE = MEMORY64 ? 8 : 4;
@@ -256,8 +256,6 @@ onSettingsLoaded(() => {
   const POINTER_BITS = POINTER_SIZE * 8;
   POINTER_TYPE = `u${POINTER_BITS}`;
   const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
-  const POINTER_SHIFT = MEMORY64 ? '3' : '2';
-  const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
   const LONG_TYPE = `i${POINTER_BITS}`;
   const SIZE_TYPE = POINTER_TYPE;
 
@@ -269,13 +267,9 @@ onSettingsLoaded(() => {
 
   addToCompileTimeContext({
     LONG_TYPE,
-    POINTER_HEAP,
-    POINTER_BITS,
     POINTER_JS_TYPE,
     POINTER_MAX,
-    POINTER_SHIFT,
     POINTER_SIZE,
-    POINTER_TYPE,
     POINTER_WASM_TYPE,
     SIZE_TYPE,
   });
