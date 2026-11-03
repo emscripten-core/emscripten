@@ -12,7 +12,7 @@
 #include <errno.h>
 
 void *ThreadMain(void *arg) {
-  pthread_exit(NULL);
+  return NULL;
 }
 
 int main() {
