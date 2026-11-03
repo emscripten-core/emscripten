@@ -319,6 +319,12 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_udp_connect.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
+  def test_noderawsockets_udp_reconnect(self):
+    # Re-connecting a connected UDP socket keeps its local port, for both an
+    # explicit bind(:0) and an auto-bound socket.
+    self.do_runf('sockets/test_udp_reconnect.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
+
+  @also_with_proxy_to_pthread
   def test_noderawsockets_udp_sockopts(self):
     # UDP socket options: IP_MULTICAST_TTL/LOOP and their IPv6 counterparts
     # round-trip through set/getsockopt, with POSIX defaults readable before
