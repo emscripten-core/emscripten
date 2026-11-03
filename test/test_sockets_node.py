@@ -319,17 +319,11 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_udp_connect.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
-  def test_noderawsockets_udp_multicast_membership(self):
-    # IP_ADD_MEMBERSHIP/IP_DROP_MEMBERSHIP and the IPv6 equivalents reach the
-    # kernel, including a join made before bind().
-    self.do_runf('sockets/test_udp_multicast_membership.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
-
-  @also_with_proxy_to_pthread
   def test_noderawsockets_udp_sockopts(self):
     # UDP socket options: IP_MULTICAST_TTL/LOOP and their IPv6 counterparts
     # round-trip through set/getsockopt, with POSIX defaults readable before
     # any set, and SO_REUSEADDR/SO_REUSEPORT are applied at bind so sockets can
-    # share a port. EXIT_RUNTIME so the plain synchronous main()
+    # share a port, and multicast group joins reach the kernel. EXIT_RUNTIME so the plain synchronous main()
     # tears down the proxy worker on return (otherwise noExitRuntime keeps the
     # worker, and thus node, alive under PROXY_TO_PTHREAD).
     self.do_runf('sockets/test_udp_sockopts.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
