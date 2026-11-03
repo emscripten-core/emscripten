@@ -27,7 +27,12 @@ int main() {
 
   // Test opening a file and calling fstat.
   struct stat file;
+  errno = 0;
   int fd = open("/dev/stdout/", O_WRONLY);
+  assert(fd == -1);
+  assert(errno == ENOTDIR);
+
+  fd = open("/dev/stdout", O_WRONLY);
   assert(fd >= 0);
   assert(fstat(fd, &file) != -1);
 
@@ -48,7 +53,7 @@ int main() {
   close(fd);
 
   // Check to see if the previous inode number matches.
-  int newfd = open("/dev/stdout/", O_WRONLY);
+  int newfd = open("/dev/stdout", O_WRONLY);
   struct stat newFile;
   assert(newfd >= 0);
   assert(fstat(newfd, &newFile) != -1);
@@ -95,7 +100,10 @@ int main() {
 
   // Test calling stat without opening a file.
   struct stat statFile;
-  assert(stat("/dev/stdout/", &statFile) != -1);
+  errno = 0;
+  assert(stat("/dev/stdout/", &statFile) == -1);
+  assert(errno == ENOTDIR);
+  assert(stat("/dev/stdout", &statFile) != -1);
 
   assert(statFile.st_size == 0);
   assert((statFile.st_mode & S_IFMT) == S_IFCHR);

@@ -69,7 +69,7 @@ int _wasmfs_write_file(const char* pathname, const uint8_t* data, size_t data_si
   if (parsedParent.getError()) {
     return 0;
   }
-  auto& [parent, childNameView] = parsedParent.getParentChild();
+  auto& [parent, childNameView, hasTrailingSlash] = parsedParent.getParentChild();
   std::string childName(childNameView);
 
   std::shared_ptr<File> child;
@@ -77,6 +77,11 @@ int _wasmfs_write_file(const char* pathname, const uint8_t* data, size_t data_si
     auto lockedParent = parent->locked();
     child = lockedParent.getChild(childName);
     if (!child) {
+      // POSIX requires that a pathname with a trailing slash must refer to a
+      // directory. If it doesn't exist, we can't create it as a directory here.
+      if (hasTrailingSlash) {
+        return 0;
+      }
       // Lookup failed; try creating the file.
       child = lockedParent.insertDataFile(childName, 0777);
       if (!child) {
@@ -84,6 +89,12 @@ int _wasmfs_write_file(const char* pathname, const uint8_t* data, size_t data_si
         return 0;
       }
     }
+  }
+
+  // POSIX requires that a pathname with a trailing slash must refer to a
+  // directory.
+  if (hasTrailingSlash && !child->is<Directory>()) {
+    return 0;
   }
 
   auto dataFile = child->dynCast<DataFile>();
