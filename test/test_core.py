@@ -6312,6 +6312,7 @@ Module.onRuntimeInitialized = () => {
   def test_posixtime(self):
     self.do_core_test('test_posixtime.c')
 
+  @also_with_standalone_wasm()
   def test_uname(self):
     self.do_core_test('test_uname.c', regex=True)
 

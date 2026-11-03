@@ -4,10 +4,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <string.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 
 int main() {
@@ -60,5 +62,25 @@ int main() {
   // verifies that `raise` can be included in the build without any non-standard
   // imports being generated.
   raise(SIGCHLD);
+
+  // uname and credential syscalls link against the standalone stubs.
+  struct utsname u;
+  assert(uname(&u) == 0);
+  assert(strcmp(u.sysname, "Emscripten") == 0);
+  assert(strcmp(u.nodename, "emscripten") == 0);
+  assert(strcmp(u.version, "#1") == 0);
+#ifdef __wasm64__
+  assert(strcmp(u.machine, "wasm64") == 0);
+#else
+  assert(strcmp(u.machine, "wasm32") == 0);
+#endif
+  errno = 0;
+  assert(uname(NULL) == -1);
+  assert(errno == EFAULT);
+
+  assert(getuid() == 0);
+  assert(geteuid() == 0);
+  assert(getgid() == 0);
+  assert(getegid() == 0);
   return 0;
 }
