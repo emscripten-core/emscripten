@@ -1141,7 +1141,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # implies full stack overflow checks. However, we don't set this default in
     # PURE_WASI, or when we are linking without standard libraries because
     # STACK_OVERFLOW_CHECK depends on emscripten_stack_get_end which is defined
-    # in libcompiler-rt.
+    # in libemcc.
     if not settings.PURE_WASI and not options.nostdlib and not options.nodefaultlibs:
       default_setting('STACK_OVERFLOW_CHECK', max(settings.ASSERTIONS, settings.STACK_OVERFLOW_CHECK))
 
@@ -1394,7 +1394,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       'emscripten_stack_get_current',
       # We call this function during startup which caches the stack limits
       # in wasm globals allowing get_base/get_free to be super fast.
-      # See compiler-rt/stack_limits.S.
+      # See libemcc/stack_limits.S.
       'emscripten_stack_init',
     ]
 

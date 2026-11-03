@@ -956,11 +956,30 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-# Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
-class libclang_rt_builtins(CompilerRTLibrary, MTLibrary, SjLjLibrary):
-  name = 'libclang_rt.builtins'
+# Low-level Emscripten runtime library below libc (like libclang_rt.builtins,
+# but only linked into the main module rather than into each side module).
+# Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support.
+class libemcc(CompilerRTLibrary, MTLibrary, SjLjLibrary):
+  name = 'libemcc'
 
   cflags = ['-DNDEBUG']
+  src_dir = 'system/lib/libemcc'
+  includes = ['system/lib/libc']
+  src_files = [
+    'stack_ops.S',
+    'stack_limits.S',
+    'emscripten_setjmp.c',
+    'emscripten_exception_builtins.c',
+    'emscripten_tempret.s',
+    '__c_longjmp.S',
+    '__trap.c',
+  ]
+
+
+class libclang_rt_builtins(CompilerRTLibrary, MTLibrary):
+  name = 'libclang_rt.builtins'
+
+  cflags = ['-DNDEBUG', '-fvisibility=hidden']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   includes = ['system/lib/libc']
   excludes = {
@@ -996,17 +1015,6 @@ class libclang_rt_builtins(CompilerRTLibrary, MTLibrary, SjLjLibrary):
     'truncxfhf2.c',
   }
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
-  src_files += files_in_path(
-      path='system/lib/compiler-rt',
-      filenames=[
-        'stack_ops.S',
-        'stack_limits.S',
-        'emscripten_setjmp.c',
-        'emscripten_exception_builtins.c',
-        'emscripten_tempret.s',
-        '__c_longjmp.S',
-        '__trap.c',
-      ])
 
 
 class libclang_rt_profile(CompilerRTLibrary, MTLibrary):
@@ -2407,6 +2415,10 @@ def get_libs_to_link():
         add_library('crt1_proxy_main')
 
   if settings.SIDE_MODULE:
+    if not options.nodefaultlibs:
+      add_library('libclang_rt.builtins')
+      if options.profile:
+        add_library('libclang_rt.profile')
     return libs_to_link
 
   # We add the forced libs last so that any libraries that are added in the normal
@@ -2480,6 +2492,7 @@ def get_libs_to_link():
         utils.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
+  add_library('libemcc')
   add_library('libclang_rt.builtins')
   if settings.LINK_AS_CXX:
     add_library('libc++')
@@ -2529,8 +2542,14 @@ def calculate():
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
   # shouldn't add any extra `--no-whole-archive` or we will undo the intent of building.link_ldd.
+  # However, in SIDE_MODULE builds we never want system libraries (such as libclang_rt.builtins)
+  # to be linked with --whole-archive, so we prepend --no-whole-archive before them.
+  # See https://github.com/llvm/llvm-project/issues/238581
   if settings.LINKABLE or settings.SIDE_MODULE:
-    return [lib.get_link_flag() for lib, _ in libs_to_link]
+    ret = [lib.get_link_flag() for lib, _ in libs_to_link]
+    if settings.SIDE_MODULE and settings.LINKABLE and ret:
+      ret.insert(0, '--no-whole-archive')
+    return ret
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.

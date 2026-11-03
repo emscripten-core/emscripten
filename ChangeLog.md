@@ -23,6 +23,13 @@ See docs/process.md for more on how version tagging works.
 - Remove support for the `EMCC_ONLY_FORCED_STDLIBS` environment variable, which
   was deprecated in 2.0.14 (#13448). Use `-nostdlib` instead to avoid linking
   standard libraries. (#28151)
+- `libclang_rt.builtins` and `libclang_rt.profile` are now linked directly into
+  all side modules, matching upstream clang behaviour.  This means they are
+  no longer exported from the main module, reducing `MAIN_MODULE=1` code size.
+  A new system library, `libemcc`, now exists for the emscripten-specific code
+  that was previously included in `libclang_rt.builtins` but requires a single
+  program-wide definition.  If you build with `-nostdlib`, and explictly list
+  system libraries you would now need to include `-lemcc`. (#28142)
 - Split `libclang_rt.profile` out of `libclang_rt.builtins` so that it is only
   linked when profiling or coverage flags (such as `-fprofile-instr-generate` or
   `--coverage`) are enabled, avoiding unwanted `default.profraw` output at exit
