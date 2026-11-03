@@ -19,6 +19,7 @@ import {
   pushCurrentFile,
   popCurrentFile,
   addToCompileTimeContext,
+  onSettingsLoaded,
   runInMacroContext,
   mergeInto,
   localFile,
@@ -392,14 +393,16 @@ function loadStructInfo(filename) {
   Object.assign(defines, temp.defines);
 }
 
-if (!BOOTSTRAPPING_STRUCT_INFO) {
-  // Load struct and define information.
-  if (MEMORY64) {
-    loadStructInfo(localFile('struct_info_generated_wasm64.json'));
-  } else {
-    loadStructInfo(localFile('struct_info_generated.json'));
+onSettingsLoaded(() => {
+  if (!BOOTSTRAPPING_STRUCT_INFO) {
+    // Load struct and define information.
+    if (MEMORY64) {
+      loadStructInfo(localFile('struct_info_generated_wasm64.json'));
+    } else {
+      loadStructInfo(localFile('struct_info_generated.json'));
+    }
   }
-}
+});
 
 // Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
 // error messages.

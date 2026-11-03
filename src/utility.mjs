@@ -366,7 +366,15 @@ const setLikeSettings = [
   'WEAK_IMPORTS'
 ];
 
-export function applySettings(obj) {
+const settingsCallbacks = [];
+let settingsLoaded = false;
+
+export function onSettingsLoaded(cb) {
+  assert(!settingsLoaded);
+  settingsCallbacks.push(cb);
+}
+
+function setSettings(obj) {
   // Certain settings are read in as lists, but we convert them to Set
   // within the compiler, for efficiency.
   for (const key of setLikeSettings) {
@@ -381,11 +389,20 @@ export function applySettings(obj) {
   addToCompileTimeContext(obj);
 }
 
+export function applySettings(obj) {
+  assert(!settingsLoaded);
+  settingsLoaded = true;
+  setSettings(obj);
+  for (const cb of settingsCallbacks) {
+    cb();
+  }
+}
+
 export function loadSettingsFile(f) {
   timer.start('loadSettingsFile')
   const settings = {};
   vm.runInNewContext(readFile(f), settings, {filename: f});
-  applySettings(settings);
+  setSettings(settings);
   timer.stop('loadSettingsFile')
   return settings;
 }
