@@ -29,6 +29,23 @@ var LibraryEmbind = {
     // emval is passed into JS via an interface
   }`,
   $EmValOptionalType: '=Object.assign({optional: true}, EmValType);',
+  $EmValExpectedType: `{
+    name: 'std::expected',
+    fromWireType: (handle) => {
+      // Valid Emval handles are even indices into emval_handles (pairs of
+      // [value, refcount]), so bit 0 is used to tag an error handle.
+      var isError = handle & 1;
+      handle &= ~1;
+      var rv = Emval.toValue(handle);
+      __emval_decref(handle);
+      if (isError) {
+        throw rv;
+      }
+      return rv;
+    },
+    readValueFromPointer: readPointer,
+    destructorFunction: null,
+  }`,
 
   $throwUnboundTypeError: (message, types) => {
     var unboundTypes = [];
@@ -553,6 +570,10 @@ var LibraryEmbind = {
 
   _embind_register_optional: (rawOptionalType, rawType) => {
     registerType(rawOptionalType, EmValOptionalType);
+  },
+
+  _embind_register_expected: (rawExpectedType, rawValueType, rawErrorType) => {
+    registerType(rawExpectedType, EmValExpectedType);
   },
 
   _embind_register_memory_view: (rawType, dataTypeIndex, name) => {

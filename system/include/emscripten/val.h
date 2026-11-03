@@ -22,6 +22,9 @@
 #include <exception>
 #include <variant>
 #endif
+#if __cplusplus >= 202302L
+#include <expected>
+#endif
 
 namespace emscripten {
 
@@ -239,20 +242,21 @@ void writeGenericWireType(GenericWireType*& cursor, T wt) {
   ++cursor;
 }
 
+template<typename ReturnPolicy = rvp::default_tag>
 inline void writeGenericWireTypes(GenericWireType*&) {
 }
 
-template<typename First, typename... Rest>
+template<typename ReturnPolicy = rvp::default_tag, typename First, typename... Rest>
 EMSCRIPTEN_ALWAYS_INLINE void writeGenericWireTypes(GenericWireType*& cursor, First&& first, Rest&&... rest) {
-  writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first), rvp::default_tag{}));
-  writeGenericWireTypes(cursor, std::forward<Rest>(rest)...);
+  writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first), ReturnPolicy{}));
+  writeGenericWireTypes<ReturnPolicy>(cursor, std::forward<Rest>(rest)...);
 }
 
-template<typename... Args>
-struct WireTypePack {
-  WireTypePack(Args&&... args) {
+template<typename ReturnPolicy, typename... Args>
+struct WireTypePackWithPolicy {
+  WireTypePackWithPolicy(Args&&... args) {
     GenericWireType* cursor = elements.data();
-    writeGenericWireTypes(cursor, std::forward<Args>(args)...);
+    writeGenericWireTypes<ReturnPolicy>(cursor, std::forward<Args>(args)...);
   }
 
   operator EM_VAR_ARGS() const {
@@ -262,6 +266,9 @@ struct WireTypePack {
 private:
   std::array<GenericWireType, PackSize<Args...>::value> elements;
 };
+
+template<typename... Args>
+using WireTypePack = WireTypePackWithPolicy<rvp::default_tag, Args...>;
 
 } // end namespace internal
 
@@ -351,8 +358,9 @@ public:
   template<typename T, typename... Policies>
   explicit val(T&& value, Policies...) {
     using namespace internal;
+    using ReturnPolicy = typename GetReturnValuePolicy<T, Policies...>::tag;
 
-    new (this) val(internalCallWithPolicy<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, val>(nullptr, nullptr, std::forward<T>(value)));
+    new (this) val(internalCallWithPolicy<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, val, ReturnPolicy>(nullptr, nullptr, std::forward<T>(value)));
   }
 
   val() : val(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
@@ -595,7 +603,7 @@ private:
     );
   }
 
-  template<internal::EM_INVOKER_KIND Kind, typename Policy, typename Ret, typename... Args>
+  template<internal::EM_INVOKER_KIND Kind, typename Policy, typename Ret, typename ReturnPolicy = internal::rvp::default_tag, typename... Args>
   static Ret internalCallWithPolicy(EM_VAL handle, const char *methodName, Args&&... args) {
     using namespace internal;
 
@@ -604,7 +612,7 @@ private:
     static constexpr typename Policy::template ArgTypeList<Ret, Args...> argTypes;
     thread_local EM_INVOKER mc = _emval_create_invoker(argTypes.getCount(), argTypes.getTypes(), Kind);
 
-    WireTypePack<Args...> argv(std::forward<Args>(args)...);
+    WireTypePackWithPolicy<ReturnPolicy, Args...> argv(std::forward<Args>(args)...);
     EM_DESTRUCTORS destructors = nullptr;
 
     RetWire result;
@@ -835,6 +843,41 @@ struct name : public ::emscripten::val {                                       \
   explicit name(val const &other) : val(other) {}                              \
 };
 
+template<typename ExpectedType>
+struct expected_trait;
+
+#if __cplusplus >= 202302L
+template<typename T, typename E>
+struct expected_trait<std::expected<T, E>> {
+  using value_type = T;
+  using error_type = E;
+
+  static bool has_value(const std::expected<T, E>& v) {
+    return v.has_value();
+  }
+
+  static decltype(auto) get_value(std::expected<T, E>&& v) {
+    if constexpr (!std::is_void_v<T>) {
+      return *std::move(v);
+    }
+  }
+
+  static decltype(auto) get_value(const std::expected<T, E>& v) {
+    if constexpr (!std::is_void_v<T>) {
+      return *v;
+    }
+  }
+
+  static decltype(auto) get_error(std::expected<T, E>&& v) {
+    return std::move(v).error();
+  }
+
+  static decltype(auto) get_error(const std::expected<T, E>& v) {
+    return v.error();
+  }
+};
+#endif
+
 namespace internal {
 
 template<typename T>
@@ -883,6 +926,65 @@ struct BindingType<std::optional<T>> {
         }
         return optional.as<T>();
     }
+};
+
+template<typename T, typename = void>
+struct is_expected : std::false_type {};
+
+template<typename T>
+struct is_expected<T, std::void_t<typename expected_trait<T>::value_type,
+                                  typename expected_trait<T>::error_type>>
+    : std::true_type {};
+
+template<typename T>
+inline constexpr bool is_expected_v = is_expected<T>::value;
+
+template<typename ReturnPolicy>
+struct ExpectedValPolicy {
+  using type = allow_raw_pointers;
+};
+
+template<>
+struct ExpectedValPolicy<rvp::take_ownership> {
+  using type = return_value_policy::take_ownership;
+};
+
+template<>
+struct ExpectedValPolicy<rvp::reference> {
+  using type = return_value_policy::reference;
+};
+
+template<typename Policy = allow_raw_pointers, typename T>
+EM_VAL toEmval(T&& v) {
+  if constexpr (std::is_base_of_v<val, std::decay_t<T>>) {
+    return val(std::forward<T>(v)).release_ownership();
+  } else {
+    return val(std::forward<T>(v), Policy{}).release_ownership();
+  }
+}
+
+template<typename T>
+struct BindingType<T, typename std::enable_if<!std::is_const<T>::value &&
+                                              is_expected_v<T>>::type> {
+  using Trait = expected_trait<T>;
+  using ValueType = typename Trait::value_type;
+  using WireType = EM_VAL;
+
+  template<typename R, typename ReturnPolicy = rvp::default_tag>
+  static WireType toWireType(R&& v, ReturnPolicy = rvp::default_tag{}) {
+    using Policy = typename ExpectedValPolicy<ReturnPolicy>::type;
+    if (Trait::has_value(v)) {
+      if constexpr (std::is_void_v<ValueType>) {
+        return val::undefined().release_ownership();
+      } else {
+        return toEmval<Policy>(Trait::get_value(std::forward<R>(v)));
+      }
+    }
+    EM_VAL err_handle = toEmval(Trait::get_error(std::forward<R>(v)));
+    // Valid EM_VAL handles are even indices into emval_handles (pairs of
+    // [value, refcount]), so bit 0 is always 0 and can be used to tag errors.
+    return reinterpret_cast<WireType>(reinterpret_cast<uintptr_t>(err_handle) | 1);
+  }
 };
 
 }

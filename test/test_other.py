@@ -3716,6 +3716,25 @@ More info: https://emscripten.org
       self.require_wasm64()
     self.do_runf('embind/test_embind_trivial_value_stack.cpp', 'done\n', cflags=['-lembind', *extra_args])
 
+  @also_with_wasm64
+  @parameterized({
+    '': (),
+    'no_dynamic': ('-sDYNAMIC_EXECUTION=0',),
+    'aot_js': ('-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT'),
+  })
+  def test_embind_expected(self, *extra_args):
+    self.do_runf('embind/test_embind_expected.cpp', 'done\n', cflags=['-std=c++23', '-lembind', *extra_args])
+    # Test TS generation for the default case.
+    if not extra_args:
+      self.emcc(test_file('embind/test_embind_expected.cpp'), ['-std=c++23', '-lembind', '--emit-tsd', 'expected.d.ts'])
+      tsd = read_file('expected.d.ts')
+      self.assertContained('divide(_0: number, _1: number): number;', tsd)
+      self.assertContained('checkPositive(_0: number): void;', tsd)
+      self.assertContained('parseNum(_0: EmbindString): number;', tsd)
+      self.assertContained('new(_0: boolean, _1: number): Widget;', tsd)
+      self.assertContained('compute(_0: boolean): number;', tsd)
+      self.assertContained('readonly prop: number;', tsd)
+
   @requires_node_25
   def test_embind_resource_management(self):
     self.node_args.append('--js-explicit-resource-management')

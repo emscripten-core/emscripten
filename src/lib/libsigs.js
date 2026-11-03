@@ -310,6 +310,7 @@ sigs = {
   _embind_register_emval__sig: 'vp',
   _embind_register_enum__sig: 'vpppii',
   _embind_register_enum_value__sig: 'vppi',
+  _embind_register_expected__sig: 'vppp',
   _embind_register_float__sig: 'vppp',
   _embind_register_function__sig: 'vpippppii',
   _embind_register_integer__sig: 'vpppii',

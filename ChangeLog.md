@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.14 (in development)
 -----------------------
+- Added `register_expected` and `expected_trait` to Embind for binding
+  `std::expected<T, E>` and custom expected types as return values that either
+  unwrap the expected value or throw the unexpected error in JavaScript.
 - Remove support for the `EMCC_ONLY_FORCED_STDLIBS` environment variable, which
   was deprecated in 2.0.14 (#13448). Use `-nostdlib` instead to avoid linking
   standard libraries. (#28151)

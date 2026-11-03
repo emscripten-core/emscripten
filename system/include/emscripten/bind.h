@@ -267,6 +267,11 @@ void _embind_register_optional(
     TYPEID optionalType,
     TYPEID type);
 
+void _embind_register_expected(
+    TYPEID expectedType,
+    TYPEID valueType,
+    TYPEID errorType);
+
 void _embind_register_user_type(
     TYPEID type,
     const char* typeName);
@@ -1860,6 +1865,41 @@ void register_optional() {
         internal::TypeID<std::optional<T>>::get(),
         internal::TypeID<typename std::remove_pointer<T>::type>::get());
 }
+
+template<typename ExpectedOrValueType>
+void register_expected() {
+    using namespace internal;
+#if __cplusplus >= 202302L
+    if constexpr (!is_expected_v<ExpectedOrValueType>) {
+        register_expected<std::expected<ExpectedOrValueType, val>>();
+    } else
+#endif
+    {
+        static_assert(is_expected_v<ExpectedOrValueType>,
+            "Type must specialize emscripten::expected_trait (or use C++23 std::expected)");
+        if constexpr (is_expected_v<ExpectedOrValueType>) {
+            thread_local bool hasRun;
+            if (hasRun) {
+                return;
+            }
+            hasRun = true;
+            using Trait = expected_trait<ExpectedOrValueType>;
+            using ValueType = typename RawPointerTransformer<typename Trait::value_type, true>::type;
+            using ErrorType = typename RawPointerTransformer<typename Trait::error_type, true>::type;
+            _embind_register_expected(
+                TypeID<ExpectedOrValueType>::get(),
+                TypeID<ValueType>::get(),
+                TypeID<ErrorType>::get());
+        }
+    }
+}
+
+#if __cplusplus >= 202302L
+template<typename T, typename E>
+void register_expected() {
+    register_expected<std::expected<T, E>>();
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // VECTORS

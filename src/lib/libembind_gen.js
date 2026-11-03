@@ -54,6 +54,12 @@ var LibraryEmbind = {
       this.destructorType = 'none'; // Same as emval.
     }
   },
+  $ExpectedType: class {
+    constructor(type) {
+      this.type = type;
+      this.destructorType = 'none'; // Same as emval.
+    }
+  },
   $FunctionDefinition: class {
     hasPublicSymbol = true;
     constructor(name, returnType, argumentTypes, functionIndex, thisType = null, isNonnullReturn = false, isAsync = false) {
@@ -89,11 +95,14 @@ var LibraryEmbind = {
 
       out.push(argOut.join(', '));
       let returnType = this.returnType;
+      if (returnType instanceof ExpectedType) {
+        returnType = returnType.type;
+      }
       // Constructors can return a pointer, but it will be a non-null pointer.
       // Change the return type to the class type so the TS output doesn't
       // have `| null`.
-      if (this.isNonnullReturn && this.returnType instanceof PointerDefinition) {
-        returnType = this.returnType.classType;
+      if (this.isNonnullReturn && returnType instanceof PointerDefinition) {
+        returnType = returnType.classType;
       }
       returnType = nameMap(returnType, true);
       if (this.isAsync) {
@@ -455,6 +464,9 @@ var LibraryEmbind = {
       if (type instanceof OptionalType) {
         return `${this.typeToJsName(type.type, isFromWireType)} | undefined`;
       }
+      if (type instanceof ExpectedType) {
+        return this.typeToJsName(type.type, isFromWireType);
+      }
       return type.name;
     }
 
@@ -616,6 +628,11 @@ var LibraryEmbind = {
     whenDependentTypesAreResolved([rawOptionalType], [rawType], function(type) {
       type = type[0];
       return [new OptionalType(type)];
+    });
+  },
+  _embind_register_expected: (rawExpectedType, rawValueType, rawErrorType) => {
+    whenDependentTypesAreResolved([rawExpectedType], [rawValueType, rawErrorType], function(types) {
+      return [new ExpectedType(types[0])];
     });
   },
   _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
