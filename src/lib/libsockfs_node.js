@@ -391,15 +391,17 @@ var NodeSockFSLibrary = {
       var key = group + '%' + (iface ?? '');
       if (add && m.has(key)) return {{{ cDefs.EADDRINUSE }}};
       if (!add && !m.has(key)) return {{{ cDefs.EADDRNOTAVAIL }}};
+      // udpReceiving means the handle is bound; joining an unbound one would
+      // make libuv auto-bind it to an ephemeral port.
       if (sock.udpReceiving) {
-        var err = nodeSockHelpers.udpMembership(sock, add, group, iface);
+        var err = nodeSockHelpers.udpMembership(sock, group, iface, add);
         if (err) return err;
       }
       if (add) m.set(key, [group, iface]);
       else m.delete(key);
       return 0;
     },
-    udpMembership(sock, add, group, iface) {
+    udpMembership(sock, group, iface, add = true) {
       var h = sock.udp;
       try {
         var r = add ? h.addMembership(group, iface) : h.dropMembership(group, iface);
@@ -411,7 +413,7 @@ var NodeSockFSLibrary = {
     },
     applyMemberships(sock) {
       for (var [group, iface] of sock.memberships?.values() ?? []) {
-        nodeSockHelpers.udpMembership(sock, true, group, iface);
+        nodeSockHelpers.udpMembership(sock, group, iface);
       }
     },
     // The live OS buffer size from a bound UDP socket, or undefined.
@@ -978,7 +980,8 @@ var NodeSockFSLibrary = {
             // node selects the interface by name and has no index-to-name
             // lookup, so only the default interface (index 0) is supported.
             if ({{{ makeGetValue('optval', 16, 'i32') }}}) return -{{{ cDefs.ENODEV }}};
-            var group = inetNtop6([0, 4, 8, 12].map((o) => {{{ makeGetValue('optval', 'o', 'i32') }}}));
+            var src32 = {{{ getHeapOffset('optval', 'i32') }}};
+            var group = inetNtop6(HEAP32.subarray(src32, src32 + 4));
             return -nodeSockHelpers.setMembership(sock, optname === 20, group, undefined);
           }
         }
