@@ -9367,7 +9367,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # where we had a bug with long names + TextDecoder + pthreads + dylink
     very_long_name = 'very_very_very_very_very_very_very_very_very_long.so'
 
-    self.dylink_testf(main, so_name=very_long_name)
+    self.dylink_testf(main, so_name=very_long_name,
+                      main_cflags=['-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$addFunction,$getWasmTableEntry'])
 
   @needs_dylink
   @parameterized({

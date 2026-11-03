@@ -42,10 +42,9 @@ See docs/process.md for more on how version tagging works.
 - In pthreads builds with `MAIN_MODULE`, workers no longer walk the main
   module's whole function table, which created a JS function object for every
   table entry in every worker.  The main thread now passes them the table slots
-  of the main module's exported functions.  As a result, calling `addFunction`
-  in a worker on a main-module function that is not exported (for example one
-  obtained with `getWasmTableEntry`) now allocates a new table slot instead of
-  returning its existing address. (#28105)
+  of the main module's exported functions, and workers only walk the rest of
+  the main module's table if `addFunction` or `getFunctionAddress` is called on
+  some other function. (#28105)
 
 6.0.13 - 10/19/26
 -----------------

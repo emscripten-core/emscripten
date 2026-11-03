@@ -120,44 +120,74 @@ addToLibrary({
     }
   },
 
-  $getFunctionAddress: (func) => {
+#if MAIN_MODULE && PTHREADS
+  // Set in pthread workers while functionsInTableMap only has the main
+  // module's exported functions (see getFunctionAddress).
+  $mainModuleTablePartiallyMapped: false,
+
+  // Add the rest of the main module's table slots to functionsInTableMap.
+  // Walk backwards and keep existing entries so that, as in updateTableMap, a
+  // function in several slots maps to the highest one.
+  $mapRestOfMainModuleTable: () => {
+    for (var i = mainModuleTableSize - 1; i >= 0; i--) {
+      var item = getWasmTableEntry(i);
+      if (item && !functionsInTableMap.has(item)) {
+        functionsInTableMap.set(item, i);
+      }
+    }
+    mainModuleTablePartiallyMapped = false;
+  },
+#endif
+
+  /**
+   * Get the table index of a function, or 0 if it is not in the table.
+   * 'isDylinkSymbol' is internal: it is set when the function was resolved by
+   * the dynamic linker, so it is a module export or a JS function.
+   */
+  $getFunctionAddress__docs: '/** @param {boolean=} isDylinkSymbol */',
+  $getFunctionAddress: (func, isDylinkSymbol) => {
     // First, create the map if this is the first use.
     if (!functionsInTableMap) {
       functionsInTableMap = new WeakMap();
 #if MAIN_MODULE && PTHREADS
-      // Walking the main module's part of the table would create a JS wrapper
-      // for every function in it, in every worker.  The dynamic linker only
-      // looks up the main module's exported functions, so workers add just the
-      // slots of those, as recorded by the main thread.
-      // As a consequence, a main-module function that is in the table but not
-      // exported is not found here, so addFunction in a worker gives it a new
-      // slot rather than the address it has on the main thread (ASSERTIONS=2
-      // reports this in addFunction).
+      // Walking the whole table would create a JS wrapper for every function
+      // in it, in every worker.  Instead, start with the main module's
+      // exports, as recorded by the main thread, and add the rest on demand.
       if (ENVIRONMENT_IS_PTHREAD && mainModuleExportSlots) {
         for (var slot of mainModuleExportSlots) {
           functionsInTableMap.set(getWasmTableEntry(slot), slot);
         }
+        mainModuleTablePartiallyMapped = true;
         updateTableMap(mainModuleTableSize, {{{ from64Expr('wasmTable.length') }}} - mainModuleTableSize);
       } else
 #endif
       updateTableMap(0, {{{ from64Expr('wasmTable.length') }}});
     }
-    return functionsInTableMap.get(func) || 0;
+    var rtn = functionsInTableMap.get(func);
+#if MAIN_MODULE && PTHREADS
+    // Not found: this may be a main-module function that is not exported
+    // (e.g. one obtained with getWasmTableEntry).
+    if (!rtn && !isDylinkSymbol && mainModuleTablePartiallyMapped) {
+      mapRestOfMainModuleTable();
+      rtn = functionsInTableMap.get(func);
+    }
+#endif
+    return rtn || 0;
   },
 
   /**
    * Add a function to the table.
    * 'sig' parameter is required if the function being added is a JS function.
+   * 'isDylinkSymbol' is internal, see getFunctionAddress.
    */
-  $addFunction__docs: '/** @param {string=} sig */',
-
-  $addFunction: (func, sig) => {
+  $addFunction__docs: '/** @param {string=} sig @param {boolean=} isDylinkSymbol */',
+  $addFunction: (func, sig, isDylinkSymbol) => {
 #if ASSERTIONS
     assert(typeof func !== 'undefined');
 #endif // ASSERTIONS
     // Check if the function is already in the table, to ensure each function
     // gets a unique index.
-    var rtn = getFunctionAddress(func);
+    var rtn = getFunctionAddress(func, isDylinkSymbol);
     if (rtn) {
       return rtn;
     }
