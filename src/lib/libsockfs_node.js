@@ -695,9 +695,14 @@ var NodeSockFSLibrary = {
           // async errors (e.g. ICMP ECONNREFUSED) on the socket. connectSync
           // binds first if needed and throws synchronously.
           try {
-            if (sock.udpConnected) nodeSockHelpers.reconnectDgram(sock, addr, port);
-            else udp.connectSync(port, addr);
-          } catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
+            if (sock.udpConnected) {
+              nodeSockHelpers.reconnectDgram(sock, addr, port);
+            } else {
+              udp.connectSync(port, addr);
+            }
+          } catch (e) {
+            throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e));
+          }
           sock.udpConnected = true;
           var a = sock.udp.address();
           sock.saddr = a.address;
