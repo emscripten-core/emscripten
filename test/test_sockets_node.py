@@ -315,14 +315,9 @@ class sockets_node(RunnerCore):
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp_connect(self):
     # Connected UDP: sendto() with an address gives EISCONN, send() reaches the
-    # peer, and datagrams from a non-peer socket are filtered out.
+    # peer, datagrams from a non-peer socket are filtered out, and a re-connect
+    # keeps the local port.
     self.do_runf('sockets/test_udp_connect.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
-
-  @also_with_proxy_to_pthread
-  def test_noderawsockets_udp_reconnect(self):
-    # Re-connecting a connected UDP socket keeps its local port, for both an
-    # explicit bind(:0) and an auto-bound socket.
-    self.do_runf('sockets/test_udp_reconnect.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp_sockopts(self):
