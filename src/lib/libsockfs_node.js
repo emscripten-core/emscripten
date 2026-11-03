@@ -337,6 +337,7 @@ var NodeSockFSLibrary = {
       // node only honors these once the socket is bound, so (re)apply any
       // options that were set earlier.
       nodeSockHelpers.applyUdpOptions(sock);
+      nodeSockHelpers.applyMemberships(sock);
     },
     // Apply the buffered datagram options to a bound UDP socket, returning the
     // errno of the first rejected value (0 on success) so setsockopt can report
@@ -381,6 +382,37 @@ var NodeSockFSLibrary = {
         if (o.multicastLoop !== undefined) set(() => h.setMulticastLoopback(o.multicastLoop ? 1 : 0), 'multicastLoop');
       }
       return err;
+    },
+    // Multicast joins are tracked so that one made before bind() can be
+    // applied once the socket is bound (libuv would otherwise auto-bind it to
+    // an ephemeral port). Returns an errno, or 0.
+    setMembership(sock, add, group, iface) {
+      var m = sock.memberships ??= new Map();
+      var key = group + '%' + (iface ?? '');
+      if (add && m.has(key)) return {{{ cDefs.EADDRINUSE }}};
+      if (!add && !m.has(key)) return {{{ cDefs.EADDRNOTAVAIL }}};
+      if (sock.udpReceiving) {
+        var err = nodeSockHelpers.udpMembership(sock, add, group, iface);
+        if (err) return err;
+      }
+      if (add) m.set(key, [group, iface]);
+      else m.delete(key);
+      return 0;
+    },
+    udpMembership(sock, add, group, iface) {
+      var h = sock.udp;
+      try {
+        var r = add ? h.addMembership(group, iface) : h.dropMembership(group, iface);
+        if (typeof r === 'number' && r < 0) return nodeSockHelpers.codeToErrno(r);
+      } catch (e) {
+        return nodeSockHelpers.nodeErrToErrno(e);
+      }
+      return 0;
+    },
+    applyMemberships(sock) {
+      for (var [group, iface] of sock.memberships?.values() ?? []) {
+        nodeSockHelpers.udpMembership(sock, true, group, iface);
+      }
     },
     // The live OS buffer size from a bound UDP socket, or undefined.
     udpBufferSize(sock, recv) {
@@ -639,8 +671,10 @@ var NodeSockFSLibrary = {
           var a = udp.address();
           sock.saddr = a.address;
           sock.sport = a.port;
+          var live = sock.udpReceiving;
           sock.udpReceiving = true; // a bound dgram socket already receives
           nodeSockHelpers.applyUdpOptions(sock);
+          if (!live) nodeSockHelpers.applyMemberships(sock);
           return;
         }
         // Older node has no synchronous dgram connect, so just record the peer
@@ -911,6 +945,16 @@ var NodeSockFSLibrary = {
           case 34: // IP_MULTICAST_LOOP
             sock.opts.multicastLoop = !!val;
             return -nodeSockHelpers.applyUdpOptions(sock);
+          case 35: // IP_ADD_MEMBERSHIP (struct ip_mreq, or ip_mreqn)
+          case 36: { // IP_DROP_MEMBERSHIP
+            if (sock.type !== {{{ cDefs.SOCK_DGRAM }}}) return -{{{ cDefs.EPROTO }}};
+            if (optlen < 8) return -{{{ cDefs.EINVAL }}};
+            var iface = {{{ makeGetValue('optval', 4, 'i32') }}};
+            // node selects the interface by address only, so an ip_mreqn that
+            // names it by index alone cannot be honored.
+            if (!iface && optlen >= 12 && {{{ makeGetValue('optval', 8, 'i32') }}}) return -{{{ cDefs.ENODEV }}};
+            return -nodeSockHelpers.setMembership(sock, optname === 35, inetNtop4(val), iface ? inetNtop4(iface) : undefined);
+          }
         }
       } else if (level === {{{ cDefs.IPPROTO_IPV6 }}}) {
         switch (optname) {
@@ -927,6 +971,16 @@ var NodeSockFSLibrary = {
           case 19: // IPV6_MULTICAST_LOOP (same libuv setting as IP_MULTICAST_LOOP)
             sock.opts.multicastLoop = !!val;
             return -nodeSockHelpers.applyUdpOptions(sock);
+          case 20: // IPV6_JOIN_GROUP (struct ipv6_mreq)
+          case 21: { // IPV6_LEAVE_GROUP
+            if (sock.type !== {{{ cDefs.SOCK_DGRAM }}}) return -{{{ cDefs.EPROTO }}};
+            if (optlen < 20) return -{{{ cDefs.EINVAL }}};
+            // node selects the interface by name and has no index-to-name
+            // lookup, so only the default interface (index 0) is supported.
+            if ({{{ makeGetValue('optval', 16, 'i32') }}}) return -{{{ cDefs.ENODEV }}};
+            var group = inetNtop6([0, 4, 8, 12].map((o) => {{{ makeGetValue('optval', 'o', 'i32') }}}));
+            return -nodeSockHelpers.setMembership(sock, optname === 20, group, undefined);
+          }
         }
       } else if (level === {{{ cDefs.IPPROTO_TCP }}}) {
         switch (optname) {
