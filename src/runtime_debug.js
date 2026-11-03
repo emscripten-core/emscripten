@@ -275,8 +275,8 @@ function prettyPrint(arg) {
   if (arg.toString() == '[object HTMLImageElement]') {
     return arg + '\n\n';
   }
-  if (arg.byteLength) {
-    return '{' + Array.prototype.slice.call(arg, 0, Math.min(arg.length, 400)) + '}';
+  if (arg.subarray) {
+    return '{' + arg.subarray(0, 400) + '}';
   }
   if (typeof arg === 'function') {
     return '<function>';

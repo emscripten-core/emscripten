@@ -1051,7 +1051,7 @@ var MEMFS = {
             if (contents.subarray) {
               contents = contents.subarray(position, position + length);
             } else {
-              contents = Array.prototype.slice.call(contents, position, position + length);
+              contents = contents.slice(position, position + length);
             }
           }
           HEAP8.set(contents, ptr);
