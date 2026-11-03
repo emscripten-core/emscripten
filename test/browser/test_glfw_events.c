@@ -137,6 +137,27 @@ void on_error(int error, const char *msg) {
 }
 #endif
 
+void test_text_input() {
+  EM_ASM({
+    // Create input and textarea elements and add them to the DOM.
+    for (var tag of ['input', 'textarea']) {
+      var elem = document.createElement(tag);
+      document.body.appendChild(elem);
+
+      // When sent to an input or textarea element, backspace and tab are
+      // treated like any other key (not preventDefaulted).
+      assert(simulateKeyEvent('keydown', 65, 'KeyA', 'A', elem));
+      assert(simulateKeyEvent('keydown',  8, 'Backspace', 'Backspace', elem));
+      assert(simulateKeyEvent('keydown',  9, 'Tab', 'Tab', elem));
+    }
+
+    // When sent anywhere else, backspace and tab are preventDefaulted.
+    assert( simulateKeyEvent('keydown', 65, 'KeyA', 'A'));
+    assert(!simulateKeyEvent('keydown',  8, 'Backspace', 'Backspace'));
+    assert(!simulateKeyEvent('keydown',  9, 'Tab', 'Tab'));
+  });
+}
+
 int main() {
   EM_ASM({
     injectKeyEvent = (type, keyCode, options) => {
@@ -171,6 +192,8 @@ int main() {
   glfwSetScrollCallback(_mainWindow, on_mouse_wheel);
   glfwSetCharCallback(_mainWindow, on_char_callback);
 #endif
+
+  test_text_input();
 
   for (int p = 0; p < 2; ++p) { // 2 passes, with and without callbacks.
     printf("Running Test pass %d\n", p);
