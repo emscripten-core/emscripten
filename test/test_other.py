@@ -5732,51 +5732,15 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
     self.do_runf('fs/test_fs_dev_random.c', 'done\n')
 
   @parameterized({
-    'none': ({'EMCC_FORCE_STDLIBS': None}, False),
+    'all': ('1',),
     # forced libs is ok, they were there anyhow
-    'normal': ({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}, False),
+    'normal': ('libc,libc++abi,libc++',),
     # partial list, but ok since we grab them as needed
-    'partial': ({'EMCC_FORCE_STDLIBS': 'libc++'}, False),
-    # fail! not enough stdlibs
-    'partial_only': ({'EMCC_FORCE_STDLIBS': 'libc++,libc,libc++abi', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True),
-    # force all the needed stdlibs, so this works even though we ignore the input file
-    'full_only': ({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False),
+    'partial': ('libc++',),
   })
-  def test_only_force_stdlibs(self, env, fail):
-    cmd = [EMXX, test_file('hello_libcxx.cpp')]
-    with env_modify(env):
-      if fail:
-        self.assert_fail(cmd, 'undefined symbol: emscripten_builtin_memalign')
-      else:
-        err = self.run_process(cmd, stderr=PIPE).stderr
-        if 'EMCC_ONLY_FORCED_STDLIBS' in env:
-          self.assertContained('EMCC_ONLY_FORCED_STDLIBS is deprecated', err)
-        else:
-          self.assertContained('Hello, world!', self.run_js('a.out.js'))
-
-  def test_only_force_stdlibs_2(self):
-    create_file('src.cpp', r'''
-#include <iostream>
-#include <stdexcept>
-
-int main()
-{
-  try {
-    throw std::exception();
-    std::cout << "got here" << std::endl;
-  }
-  catch (const std::exception& ex) {
-    std::cout << "Caught exception: " << ex.what() << std::endl;
-  }
-}
-''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-      self.run_process([EMXX, 'src.cpp', '-sDISABLE_EXCEPTION_CATCHING=0'])
-    self.assertContained('Caught exception: std::exception', self.run_js('a.out.js'))
-
-  @with_env_modify({'EMCC_FORCE_STDLIBS': '1'})
-  def test_force_stdlibs(self):
-    self.do_runf_out_file('hello_world.c')
+  def test_force_stdlibs(self, force):
+    with env_modify({'EMCC_FORCE_STDLIBS': force}):
+      self.do_runf('hello_libcxx.cpp', 'Hello, world!')
 
   @also_with_standalone_wasm(impure=True)
   def test_time(self):
@@ -12554,7 +12518,7 @@ int main(void) {
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
     # Build again but with explicit system libraries
-    libs = ['-lc', '-lclang_rt.builtins']
+    libs = ['-lc', '-lemcc', '-lclang_rt.builtins']
     self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nolibc', '-lc'])
@@ -13231,7 +13195,7 @@ exec "$@"
     # EMCC_CFLAGS (or any of the other environment variables that might effect compilation or
     # linking) to effect the internal building and running of this code.
     # For example -O2 causes printf -> iprintf which will fail with undefined symbol iprintf.
-    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1'}):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
   def test_dylink_limited_exports(self):
@@ -13538,12 +13502,13 @@ kill -9 $$
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
-    libs = ['-lc', '-lclang_rt.builtins', '-lmalloc']
+    libs = ['-lc', '-lemcc', '-lclang_rt.builtins', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
     # Check that the linker was run with `-mt` variants because `-pthread` was passed.
     self.assertContained(' -lc-mt-debug ', err)
     self.assertContained(' -ldlmalloc-mt-debug ', err)
+    self.assertContained(' -lemcc-mt ', err)
     self.assertContained(' -lclang_rt.builtins-mt ', err)
 
   def test_explicit_gl_linking(self):

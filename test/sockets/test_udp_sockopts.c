@@ -10,7 +10,10 @@
  * default (TTL/HOPS 1, LOOP 1), and a set is observable by a subsequent get.
  * Then SO_REUSEADDR / SO_REUSEPORT, which take effect at bind: two sockets
  * with the option set may share a port, and a third without it is refused
- * with EADDRINUSE. Plain POSIX, also runs natively.
+ * with EADDRINUSE. Finally the set-only IP_ADD_MEMBERSHIP / IP_DROP_MEMBERSHIP
+ * and IPv6 equivalents reach the kernel: a duplicate join fails with
+ * EADDRINUSE, leaving an unjoined group with EADDRNOTAVAIL, and a join made
+ * before bind() is applied once bound. Plain POSIX, also runs natively.
  */
 
 #include <arpa/inet.h>
@@ -70,6 +73,58 @@ void check_reuse(int opt) {
   close(c);
 }
 
+int set4(int fd, int opt, const char* group) {
+  struct ip_mreq m = {0};
+  inet_pton(AF_INET, group, &m.imr_multiaddr);
+  inet_pton(AF_INET, "127.0.0.1", &m.imr_interface);
+  return setsockopt(fd, IPPROTO_IP, opt, &m, sizeof(m)) == 0 ? 0 : errno;
+}
+
+int set6(int fd, int opt, const char* group) {
+  struct ipv6_mreq m = {0};
+  inet_pton(AF_INET6, group, &m.ipv6mr_multiaddr);
+  return setsockopt(fd, IPPROTO_IPV6, opt, &m, sizeof(m)) == 0 ? 0 : errno;
+}
+
+void check_membership(void) {
+  int fd = socket(AF_INET, SOCK_DGRAM, 0);
+  assert(bind_any(fd, 0) == 0);
+  assert(set4(fd, IP_ADD_MEMBERSHIP, "227.1.1.100") == 0);
+  assert(set4(fd, IP_ADD_MEMBERSHIP, "227.1.1.101") == 0);
+  assert(set4(fd, IP_ADD_MEMBERSHIP, "227.1.1.100") == EADDRINUSE);
+  assert(set4(fd, IP_DROP_MEMBERSHIP, "227.1.1.100") == 0);
+  assert(set4(fd, IP_DROP_MEMBERSHIP, "227.1.1.100") == EADDRNOTAVAIL);
+
+  struct ip_mreq m;
+  socklen_t len = sizeof(m);
+  assert(getsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &m, &len) == -1);
+  assert(errno == ENOPROTOOPT);
+  assert(setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &m, 4) == -1);
+  assert(errno == EINVAL);
+  close(fd);
+
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+  assert(set4(fd, IP_ADD_MEMBERSHIP, "227.1.1.100") == 0);
+  assert(set4(fd, IP_ADD_MEMBERSHIP, "227.1.1.100") == EADDRINUSE);
+  assert(bind_any(fd, 0) == 0);
+  assert(set4(fd, IP_ADD_MEMBERSHIP, "227.1.1.100") == EADDRINUSE);
+  assert(set4(fd, IP_DROP_MEMBERSHIP, "227.1.1.100") == 0);
+  close(fd);
+
+  fd = socket(AF_INET6, SOCK_DGRAM, 0);
+  struct sockaddr_in6 sa6 = {.sin6_family = AF_INET6};
+  assert(bind(fd, (struct sockaddr*)&sa6, sizeof(sa6)) == 0);
+  int err = set6(fd, IPV6_JOIN_GROUP, "ff02::1:3");
+  // ENODEV: no IPv6 multicast route on this host (e.g. a container).
+  if (err != ENODEV) {
+    assert(err == 0);
+    assert(set6(fd, IPV6_JOIN_GROUP, "ff02::1:3") == EADDRINUSE);
+    assert(set6(fd, IPV6_LEAVE_GROUP, "ff02::1:3") == 0);
+    assert(set6(fd, IPV6_LEAVE_GROUP, "ff02::1:3") == EADDRNOTAVAIL);
+  }
+  close(fd);
+}
+
 int main(void) {
   int v4 = socket(AF_INET, SOCK_DGRAM, 0);
   assert(v4 >= 0);
@@ -124,6 +179,7 @@ int main(void) {
 
   check_reuse(SO_REUSEADDR);
   check_reuse(SO_REUSEPORT);
+  check_membership();
   printf("done\n");
   return 0;
 }

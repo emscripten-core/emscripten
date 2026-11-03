@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import {warn, addToCompileTimeContext} from './utility.mjs';
+import {warn, addToCompileTimeContext, onSettingsLoaded} from './utility.mjs';
 import {POINTER_SIZE, runIfMainThread} from './parseTools.mjs';
 
 // Replaced (at least internally) with receiveI64ParamAsI53 that does
@@ -33,18 +33,23 @@ function makeMalloc(source, param) {
   return `_malloc(${param})`;
 }
 
-const Runtime = {
-  POINTER_SIZE,
-  QUANTUM_SIZE: POINTER_SIZE,
-};
-
 // Legacy name for runIfMainThread.
 const runOnMainThread = runIfMainThread;
 
-addToCompileTimeContext({
-  Runtime,
-  makeMalloc,
-  receiveI64ParamAsDouble,
-  receiveI64ParamAsI32s,
-  runOnMainThread,
+onSettingsLoaded(() => {
+  if (STRICT) {
+    return;
+  }
+  const Runtime = {
+    POINTER_SIZE,
+    QUANTUM_SIZE: POINTER_SIZE,
+  };
+
+  addToCompileTimeContext({
+    Runtime,
+    makeMalloc,
+    receiveI64ParamAsDouble,
+    receiveI64ParamAsI32s,
+    runOnMainThread,
+  });
 });
