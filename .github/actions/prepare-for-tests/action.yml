@@ -6,10 +6,16 @@ runs:
     - name: Install Basic Packages
       uses: ./.github/actions/install-basic-packages
 
+    - name: Read emsdk version
+      id: emsdk_version
+      run: echo "version=$(cat test/emsdk_version.txt)" >> $GITHUB_OUTPUT
+      shell: bash
+
     - name: Install Emsdk
       uses: emscripten-core/setup-emsdk@v16
       with:
-        version: tot
+        version: ${{ steps.emsdk_version.outputs.version }}
+        emsdk-version: main
         actions-cache-folder: 'emsdk-install'
 
     - name: Attach workspace
@@ -23,9 +29,7 @@ runs:
         tar -xzvf ~/emscripten-cache.tar.gz -C ~/
         ls -l ~/
         ls -l ~/cache || echo "no ~/cache dir"
-        # TODO There has to be a better way to do this. Maybe use the setup-emsdk action's builtin support?
-        echo $GITHUB_WORKSPACE
-        sed -i "s|\|.*|\|$GITHUB_WORKSPACE/emsdk-install/emsdk-main/upstream/bin|" ~/cache/sanity.txt
+        sed -i "s|\|.*|\|$EMSDK/upstream/bin|" ~/cache/sanity.txt
 
       shell: bash
 
@@ -36,13 +40,13 @@ runs:
     - name: Setup cache config
       run: |
         echo "import os" >> $EMSDK/.emscripten
-        echo "CACHE = os.path.expanduser('~/cache')" >> $EMSDK/.emscripten
-        echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8')]" >> $EMSDK/.emscripten
+        echo "CACHE = '~/cache'" >> $EMSDK/.emscripten
+        echo "V8_ENGINE = '~/.jsvu/bin/v8'" >> $EMSDK/.emscripten
         echo "JS_ENGINES = [NODE_JS]" >> $EMSDK/.emscripten
-        echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> $EMSDK/.emscripten
+        echo "if os.path.exists(os.path.expanduser(V8_ENGINE)): JS_ENGINES.append(V8_ENGINE)" >> $EMSDK/.emscripten
         echo "WASM_ENGINES = []" >> $EMSDK/.emscripten
-        test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> $EMSDK/.emscripten || true
-        test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> $EMSDK/.emscripten || true
+        test -f ~/vms/wasmtime && echo "WASMTIME = '~/vms/wasmtime'; WASM_ENGINES.append(WASMTIME)" >> $EMSDK/.emscripten || true
+        test -f ~/vms/wasmer && echo "WASMER = '~/vms/wasmer'; WASM_ENGINES.append(WASMER)" >> $EMSDK/.emscripten || true
         test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $($EMSDK/upstream/bin/clang -print-resource-dir) || true
       shell: bash
 
@@ -51,5 +55,5 @@ runs:
       shell: bash
 
     - name: Bootstrap
-      run: ./bootstrap
+      run: ./bootstrap.py
       shell: bash
