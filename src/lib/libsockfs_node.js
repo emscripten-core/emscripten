@@ -333,6 +333,7 @@ var NodeSockFSLibrary = {
         }
         old.close();
         sock.udp = udp;
+        nodeSockHelpers.applyMemberships(sock);
         // The swapped-in socket bound an explicit nonzero port, which the
         // kernel keeps across a disconnect, so later re-connects need no swap.
         sock.udpPortLocked = true;
@@ -414,7 +415,8 @@ var NodeSockFSLibrary = {
     },
     // Multicast joins are tracked so that one made before bind() can be
     // applied once the socket is bound (libuv would otherwise auto-bind it to
-    // an ephemeral port). Returns an errno, or 0.
+    // an ephemeral port), and replayed on a socket swapped in by
+    // reconnectDgram. Returns an errno, or 0.
     setMembership(sock, add, group, iface) {
       var m = sock.memberships ??= new Map();
       var key = group + '%' + (iface ?? '');

@@ -7,6 +7,7 @@
  * POSIX connect() on a connected UDP socket replaces the peer and keeps the
  * local address, across repeated re-connects. Checked for an explicit
  * bind(127.0.0.1:0) and an auto-bound socket, in both directions of traffic.
+ * A multicast group joined before the re-connects is still joined after.
  */
 
 #include <arpa/inet.h>
@@ -69,6 +70,13 @@ void do_connect(int fd, struct sockaddr_in addr) {
   assert(connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == 0);
 }
 
+int membership(int fd, int opt) {
+  struct ip_mreq m = {0};
+  inet_pton(AF_INET, "227.1.1.100", &m.imr_multiaddr);
+  inet_pton(AF_INET, "127.0.0.1", &m.imr_interface);
+  return setsockopt(fd, IPPROTO_IP, opt, &m, sizeof(m));
+}
+
 void setup_case(int i, bool explicit_bind) {
   peer_a_fd[i] = bound_socket();
   peer_b_fd[i] = bound_socket();
@@ -86,6 +94,7 @@ void setup_case(int i, bool explicit_bind) {
   // A send forces the auto-bind on runtimes that defer it past connect().
   assert(send(client_fd[i], "to-a", 4, 0) == 4);
   struct sockaddr_in before = local_addr(client_fd[i]);
+  assert(membership(client_fd[i], IP_ADD_MEMBERSHIP) == 0);
 
   // Re-connect several times (A -> B -> A -> B): the first re-connect and the
   // ones after it must all keep the port.
@@ -98,6 +107,7 @@ void setup_case(int i, bool explicit_bind) {
            (unsigned)ntohs(before.sin_port), j + 1, (unsigned)ntohs(after.sin_port));
     assert(before.sin_port == after.sin_port);
   }
+  assert(membership(client_fd[i], IP_DROP_MEMBERSHIP) == 0);
 
   // Peer B only accepts datagrams from the client's original port.
   do_connect(peer_b_fd[i], loopback(ntohs(before.sin_port)));
