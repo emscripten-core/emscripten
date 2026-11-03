@@ -9,13 +9,13 @@
 
 int result = 0;
 
-static void *thread2_func(void *vptr_args) {
+void *thread2_func(void *vptr_args) {
   puts("c");
   result = 1;
   return NULL;
 }
 
-static void *thread_func(void *vptr_args) {
+void *thread_func(void *vptr_args) {
   pthread_t thread;
   puts("b");
   pthread_create(&thread, NULL, thread2_func, NULL);

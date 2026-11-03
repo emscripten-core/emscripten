@@ -12,7 +12,23 @@ hidden void __convert_scm_timestamps(struct msghdr *, socklen_t);
 
 int recvmmsg(int fd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags, struct timespec *timeout)
 {
-#if LONG_MAX > INT_MAX && !defined(__EMSCRIPTEN__)
+#ifdef __EMSCRIPTEN__
+	/* Emscripten has no recvmmsg syscall; emulate with recvmsg. */
+	int i;
+	if (timeout) {
+		errno = ENOSYS;
+		return -1;
+	}
+	if (vlen > IOV_MAX) vlen = IOV_MAX;
+	for (i=0; i<vlen; i++) {
+		ssize_t r = recvmsg(fd, &msgvec[i].msg_hdr, flags);
+		if (r < 0) return i ? i : -1;
+		msgvec[i].msg_len = r;
+		if (flags & MSG_WAITFORONE) flags |= MSG_DONTWAIT;
+	}
+	return i;
+#else
+#if LONG_MAX > INT_MAX
 	struct mmsghdr *mh = msgvec;
 	unsigned int i;
 	for (i = vlen; i; i--, mh++)
@@ -35,5 +51,6 @@ int recvmmsg(int fd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int fla
 	return __syscall_ret(r);
 #else
 	return syscall_cp(SYS_recvmmsg, fd, msgvec, vlen, flags, timeout);
+#endif
 #endif
 }

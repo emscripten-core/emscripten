@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <webgpu/webgpu.h>
 
-static WGPULimits adapter_supported_limits = {0};
+WGPULimits adapter_supported_limits = {0};
 
-static void assertLimitsCompatible(WGPULimits required_limits,
+void assertLimitsCompatible(WGPULimits required_limits,
                                    WGPULimits supported_limits) {
 #define ASSERT_LIMITS_COMPATIBLE(limitName)                                    \
   assert(required_limits.limitName == supported_limits.limitName)
@@ -43,7 +43,7 @@ static void assertLimitsCompatible(WGPULimits required_limits,
 #undef ASSERT_LIMITS_COMPATIBLE
 }
 
-static void on_device_request_ended(WGPURequestDeviceStatus status,
+void on_device_request_ended(WGPURequestDeviceStatus status,
                                     WGPUDevice device,
                                     WGPUStringView message,
                                     void* userdata1, void* userdata2) {
@@ -60,7 +60,7 @@ static void on_device_request_ended(WGPURequestDeviceStatus status,
   exit(0);
 }
 
-static void on_adapter_request_ended(WGPURequestAdapterStatus status,
+void on_adapter_request_ended(WGPURequestAdapterStatus status,
                                      WGPUAdapter adapter,
                                      WGPUStringView message,
                                      void* userdata1, void* userdata2) {

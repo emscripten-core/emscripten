@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utilities for manipulating WebAssembly binaries from python.
-"""
+"""Utilities for manipulating WebAssembly binaries from python."""
 
 import logging
 import os
@@ -151,6 +150,7 @@ class DylinkType(IntEnum):
   EXPORT_INFO = 3
   IMPORT_INFO = 4
   RUNTIME_PATH = 5
+  TARGET_ARCH = 6
 
 
 class TargetFeaturePrefix(IntEnum):
@@ -182,7 +182,7 @@ Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
 Import = namedtuple('Import', ['kind', 'module', 'field', 'type'])
 Export = namedtuple('Export', ['name', 'kind', 'index'])
 Global = namedtuple('Global', ['type', 'mutable', 'init'])
-Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info', 'runtime_paths'])
+Dylink = namedtuple('Dylink', ['arch', 'mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info', 'runtime_paths'])
 Table = namedtuple('Table', ['elem_type', 'limits'])
 FunctionBody = namedtuple('FunctionBody', ['offset', 'size'])
 Memory = namedtuple('Memory', ['limits'])
@@ -191,8 +191,11 @@ FuncType = namedtuple('FuncType', ['params', 'returns'])
 
 
 class Module:
-  """Extremely minimal wasm module reader.  Currently only used
-  for parsing the dylink section."""
+  """Extremely minimal wasm module reader.
+
+  Currently only used for parsing the dylink section.
+  """
+
   def __init__(self, filename):
     self.buf = None # Set this before FS calls below in case they throw.
     self.filename = filename
@@ -245,7 +248,7 @@ class Module:
 
   def read_init(self):
     code = []
-    while 1:
+    while True:
       opcode = OpCode(self.read_byte())
       args = []
       match opcode:
@@ -258,7 +261,7 @@ class Module:
         case OpCode.END | OpCode.I32_ADD | OpCode.I64_ADD:
           pass
         case _:
-          raise Exception('unexpected opcode %s' % opcode)
+          raise Exception(f'unexpected opcode {opcode}')
       code.append((opcode, args))
       if opcode == OpCode.END:
         break
@@ -274,7 +277,7 @@ class Module:
     self.buf.seek(count, os.SEEK_CUR)
 
   def sections(self):
-    """Generator that lazily returns sections from the wasm file."""
+    """Lazily yield sections from the wasm file."""
     offset = HEADER_SIZE
     while offset < self.size:
       self.seek(offset)
@@ -315,7 +318,7 @@ class Module:
     dylink_section = next(self.sections())
     assert dylink_section.type == SecType.CUSTOM
     self.seek(dylink_section.offset)
-    # section name
+    arch = None
     needed = []
     export_info = {}
     import_info = {}
@@ -373,6 +376,8 @@ class Module:
               rpath = self.read_string()
               runtime_paths.append(rpath)
               count -= 1
+          case DylinkType.TARGET_ARCH:
+            arch = self.read_string()
           case _:
             print(f'unknown subsection: {subsection_type}')
             # ignore unknown subsections
@@ -381,7 +386,7 @@ class Module:
     else:
       utils.exit_with_error('error parsing shared library')
 
-    return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info, import_info, runtime_paths)
+    return Dylink(arch, mem_size, mem_align, table_size, table_align, needed, export_info, import_info, runtime_paths)
 
   @memoize
   def get_exports(self):
@@ -659,3 +664,23 @@ def get_weak_imports(wasm_file):
       if flags & SYMBOL_BINDING_MASK == SYMBOL_BINDING_WEAK:
         weak_imports.append(symbol)
   return weak_imports
+
+
+def is_wasm(filename):
+  if not os.path.isfile(filename):
+    return False
+  with open(filename, 'rb') as f:
+    header = f.read(HEADER_SIZE)
+  return header == MAGIC + VERSION
+
+
+def is_wasm_dylib(filename):
+  """Detect wasm dynamic libraries by the presence of the "dylink" custom section."""
+  if not is_wasm(filename):
+    return False
+  with Module(filename) as module:
+    section = next(module.sections(), None)
+    if section and section.type == SecType.CUSTOM:
+      if section.name in {'dylink', 'dylink.0'}:
+        return True
+  return False

@@ -26,7 +26,8 @@ extern "C" {
 #define POLLRDHUP  0x2000
 #endif
 
-typedef unsigned long nfds_t;
+// XXX Emscripten: nfds_t is kept 32-bit even on wasm64.
+typedef unsigned int nfds_t;
 
 struct pollfd {
 	int fd;

@@ -12,11 +12,10 @@ addToLibrary({
   // Tries to handle an input byteArray using preload plugins. Returns true if
   // it was handled.
   $FS_handledByPreloadPlugin__internal: true,
-  $FS_handledByPreloadPlugin__deps: ['$preloadPlugins'],
   $FS_handledByPreloadPlugin: async (byteArray, fullname) => {
 #if LibraryManager.has('libbrowser.js')
     // Ensure plugins are ready.
-    if (typeof Browser != 'undefined') Browser.init();
+    if (typeof Browser !== 'undefined') Browser.init();
 #endif
 
     for (var plugin of preloadPlugins) {
@@ -33,8 +32,7 @@ addToLibrary({
   },
 
   // Legacy version of FS_preloadFile that uses callback rather than async
-  $FS_createPreloadedFile__deps: ['$FS_preloadFile'],
-  $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+  $FS_createPreloadedFile: (parent, name, url, canRead = undefined, canWrite = undefined, onload = undefined, onerror = undefined, dontCreateFile = undefined, canOwn = undefined, preFinish = undefined) => {
     FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish).then(onload).catch(onerror);
   },
 
@@ -50,16 +48,7 @@ addToLibrary({
   // You can also call this with a typed array instead of a url. It will then
   // do preloading for the Image/Audio part, as if the typed array were the
   // result of an XHR that you did manually.
-  $FS_preloadFile__deps: [
-    '$asyncLoad',
-    '$PATH_FS',
-    '$FS_createDataFile',
-    '$getUniqueRunDependency',
-    '$addRunDependency',
-    '$removeRunDependency',
-    '$FS_handledByPreloadPlugin',
-  ],
-  $FS_preloadFile: async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
+  $FS_preloadFile: async (parent, name, url, canRead = undefined, canWrite = undefined, dontCreateFile = undefined, canOwn = undefined, preFinish = undefined) => {
     // TODO we should allow people to just pass in a complete filename instead
     // of parent and name being that we just join them anyways
     var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
@@ -68,7 +57,7 @@ addToLibrary({
 
     try {
       var byteArray = url;
-      if (typeof url == 'string') {
+      if (typeof url === 'string') {
         byteArray = await asyncLoad(url);
       }
 
@@ -85,7 +74,7 @@ addToLibrary({
 
   // convert the 'r', 'r+', etc. to its corresponding set of O_* flags
   $FS_modeStringToFlags: (str) => {
-    if (typeof str != 'string') return str;
+    if (typeof str !== 'string') return str;
     var flagModes = {
       'r': {{{ cDefs.O_RDONLY }}},
       'r+': {{{ cDefs.O_RDWR }}},
@@ -95,7 +84,7 @@ addToLibrary({
       'a+': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
     };
     var flags = flagModes[str];
-    if (typeof flags == 'undefined') {
+    if (typeof flags === 'undefined') {
       throw new Error(`Unknown file open mode: ${str}`);
     }
     return flags;
@@ -108,7 +97,7 @@ addToLibrary({
   },
 
   $FS_fileDataToTypedArray: (data) => {
-    if (typeof data == 'string') {
+    if (typeof data === 'string') {
       data = intArrayFromString(data, true);
     }
     if (!data.subarray) {
@@ -123,10 +112,6 @@ addToLibrary({
   // a.) the next character represented as an integer
   // b.) undefined to signal that no data is currently available
   // c.) null to signal an EOF
-  $FS_stdin_getChar__deps: [
-    '$FS_stdin_getChar_buffer',
-    '$intArrayFromString',
-  ],
   $FS_stdin_getChar: () => {
     if (!FS_stdin_getChar_buffer.length) {
       var result = null;
@@ -137,17 +122,8 @@ addToLibrary({
         var buf = Buffer.alloc(BUFSIZE);
         var bytesRead = 0;
 
-        // For some reason we must suppress a closure warning here, even though
-        // fd definitely exists on process.stdin, and is even the proper way to
-        // get the fd of stdin,
-        // https://github.com/nodejs/help/issues/2136#issuecomment-523649904
-        // This started to happen after moving this logic out of library_tty.js,
-        // so it is related to the surrounding code in some unclear manner.
-        /** @suppress {missingProperties} */
-        var fd = process.stdin.fd;
-
         try {
-          bytesRead = fs.readSync(fd, buf, 0, BUFSIZE);
+          bytesRead = fs.readSync(process.stdin.fd, buf, 0, BUFSIZE);
         } catch(e) {
           // Cross-platform differences: on Windows, reading EOF throws an
           // exception, but on other OSes, reading EOF returns 0. Uniformize
@@ -157,7 +133,7 @@ addToLibrary({
         }
 
         if (bytesRead > 0) {
-          result = buf.slice(0, bytesRead).toString('utf-8');
+          result = buf.toString('utf-8', 0, bytesRead);
         }
       } else
 #endif
@@ -188,22 +164,11 @@ addToLibrary({
     return FS_stdin_getChar_buffer.shift();
   },
 
-  $FS_unlink__deps: ['$FS'],
   $FS_unlink: 'FS.unlink',
 
-  $FS_createPath__deps: ['$FS'],
   $FS_createPath: 'FS.createPath',
 
-  $FS_createDevice__deps: ['$FS'],
   $FS_createDevice: 'FS.createDevice',
 
-  $FS_readFile__deps: ['$FS'],
   $FS_readFile: 'FS.readFile',
 });
-
-// Normally only the FS things that the compiler sees are needed are included.
-// FORCE_FILESYSTEM makes us always include the FS object, which lets the user
-// call APIs on it from JS freely.
-if (FORCE_FILESYSTEM) {
-  extraLibraryFuncs.push('$FS');
-}

@@ -7,7 +7,7 @@
 // Tests that calling emscripten_terminate_all_wasm_workers() properly terminates
 // each child Wasm Worker of the calling thread.
 
-static volatile int worker_started = 0;
+volatile int worker_started = 0;
 
 void this_function_should_not_be_called(void *userData) {
   worker_started = -1;
@@ -34,8 +34,8 @@ void worker_main() {
   emscripten_set_timeout(this_function_should_not_be_called, 2000, 0);
 }
 
-char stack1[1024];
-char stack2[1024];
+char stack1[4096];
+char stack2[4096];
 
 int should_throw(void(*func)(emscripten_wasm_worker_t worker), emscripten_wasm_worker_t worker) {
   int threw = EM_ASM_INT({

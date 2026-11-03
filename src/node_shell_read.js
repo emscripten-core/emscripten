@@ -19,7 +19,7 @@ readAsync = async (filename, binary = true) => {
   filename = isFileURI(filename) ? new URL(filename) : filename;
   var ret = fs.readFileSync(filename, binary ? undefined : 'utf8');
 #if ASSERTIONS
-  assert(binary ? Buffer.isBuffer(ret) : typeof ret == 'string');
+  assert(binary ? Buffer.isBuffer(ret) : typeof ret === 'string');
 #endif
   return ret;
 };

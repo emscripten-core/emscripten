@@ -14,21 +14,21 @@
 // Stores/encodes the results of calling to cleanup handlers.
 int32_t cleanup_state = 1;
 
-static void cleanup_handler1(void *arg) {
+void cleanup_handler1(void *arg) {
   cleanup_state <<= 2;
   // Perform non-commutative arithmetic to a global var that encodes the cleanup stack order ops.
   cleanup_state *= (intptr_t)arg;
   printf("Called clean-up handler 1 with arg %p (state=%d)\n", arg, cleanup_state);
 }
 
-static void cleanup_handler2(void *arg) {
+void cleanup_handler2(void *arg) {
   cleanup_state <<= 3;
   // Perform non-commutative arithmetic to a global var that encodes the cleanup stack order ops.
   cleanup_state *= (intptr_t)arg;
   printf("Called clean-up handler 2 with arg %p (state=%d)\n", arg, cleanup_state);
 }
 
-static void *thread_start1(void *arg) {
+void *thread_start1(void *arg) {
   printf("thread_start1\n");
   pthread_cleanup_push(cleanup_handler1, (void*)(42 + (long)arg*100));
   pthread_cleanup_push(cleanup_handler2, (void*)(69 + (long)arg*100));
@@ -38,7 +38,7 @@ static void *thread_start1(void *arg) {
   pthread_exit(0);
 }
 
-static void *thread_start2(void *arg) {
+void *thread_start2(void *arg) {
   pthread_cleanup_push(cleanup_handler1, (void*)52);
   pthread_cleanup_push(cleanup_handler2, (void*)79);
   if (arg)
@@ -48,7 +48,7 @@ static void *thread_start2(void *arg) {
   return 0;
 }
 
-static void *thread_start3(void *arg) {
+void *thread_start3(void *arg) {
   pthread_cleanup_push(cleanup_handler1, (void*)62);
   pthread_cleanup_push(cleanup_handler2, (void*)89);
   for (;;) {

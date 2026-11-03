@@ -7,7 +7,7 @@
  * Declarations for internal-only JS library functions.
  *
  * All JS library functions must be declares in one header or anther in order
- * for `tools/gen_sig_info.py` to work.   This file contains declarations for
+ * for `tools/maint/gen_sig_info.py` to work.   This file contains declarations for
  * functions that are not declared in any other public or private header.
  */
 #ifndef __EMSCRIPTEN_INTERNAL_H__
@@ -38,17 +38,12 @@ _Noreturn void _abort_js(void);
 
 void setThrew(uintptr_t threw, int value);
 
-void* _emscripten_memcpy_bulkmem(void* __restrict__ dest,
-                                 const void* __restrict__ src,
-                                 size_t n);
-void* _emscripten_memset_bulkmem(void* ptr, char value, size_t n);
-
 void emscripten_notify_memory_growth(size_t memory_index);
 
 time_t _timegm_js(struct tm* tm);
 time_t _mktime_js(struct tm* tm);
-void _localtime_js(time_t t, struct tm* __restrict__ tm);
-void _gmtime_js(time_t t, struct tm* __restrict__ tm);
+int _localtime_js(time_t t, struct tm* __restrict__ tm);
+int _gmtime_js(time_t t, struct tm* __restrict__ tm);
 
 void _tzset_js(long* timezone, int* daylight, char* std_name, char* dst_name);
 
@@ -84,9 +79,9 @@ int _mmap_js(size_t length,
              int* allocated,
              void** addr);
 int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset);
+  void* addr, size_t length, int prot, int flags, int fd, off_t offset);
 int _msync_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset);
+  void* addr, size_t length, int prot, int flags, int fd, off_t offset);
 
 struct dso;
 
@@ -137,13 +132,11 @@ void emscripten_fetch_free(unsigned int);
 // to perform the wasm worker creation.
 bool _emscripten_create_wasm_worker(emscripten_wasm_worker_t wwID, void *stackLowestAddress, uint32_t stackSize, void* pthreadPtr);
 
-void _emscripten_create_audio_worklet(emscripten_wasm_worker_t wwID, EMSCRIPTEN_WEBAUDIO_T audioContext, void *stackLowestAddress, uint32_t stackSize, EmscriptenStartWebAudioWorkletCallback callback, void *userData2);
+void _emscripten_create_audio_worklet(emscripten_wasm_worker_t wwID, EMSCRIPTEN_WEBAUDIO_T audioContext, void *stackLowestAddress, uint32_t stackSize, void* pthreadPtr, EmscriptenStartWebAudioWorkletCallback callback, void *userData2);
 
 void __resumeException(void* exn);
 void __cxa_call_unexpected(void* exn);
 void llvm_eh_typeid_for(void* exn);
-
-uint32_t _emscripten_lookup_name(const char *name);
 
 int _emscripten_system(const char *command);
 
@@ -152,8 +145,6 @@ void _emscripten_log_formatted(int flags, const char* str);
 EmscriptenDeviceOrientationEvent* _emscripten_get_last_deviceorientation_event();
 EmscriptenDeviceMotionEvent* _emscripten_get_last_devicemotion_event();
 EmscriptenMouseEvent* _emscripten_get_last_mouse_event();
-
-int _poll_js(void* fds, int nfds, int timeout, void* ctx, void* arg);
 
 #ifdef __cplusplus
 }

@@ -77,5 +77,5 @@ int main() {
     }
   }
 
-  printf("OK.\n");
+  printf("done\n");
 }

@@ -87,8 +87,7 @@ int main() {
 
     endprotoent();
 
-    puts("success");
-
-    return EXIT_SUCCESS;
+    puts("done");
+    return 0;
 }
 

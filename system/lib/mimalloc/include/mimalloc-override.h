@@ -15,7 +15,7 @@ each source file in a project (but be careful when using external code to
 not accidentally mix pointers from different allocators).
 -----------------------------------------------------------------------------*/
 
-#include <mimalloc.h>
+#include "mimalloc.h"
 
 // Standard C allocation
 #define malloc(n)               mi_malloc(n)
@@ -54,6 +54,10 @@ not accidentally mix pointers from different allocators).
 #define aligned_alloc(a,n)      mi_aligned_alloc(a,n)
 #define posix_memalign(p,a,n)   mi_posix_memalign(p,a,n)
 #define _posix_memalign(p,a,n)  mi_posix_memalign(p,a,n)
+
+// C23
+#define free_sized(p,n)             mi_free_sized(p,n)
+#define free_aligned_sized(p,a,n)   mi_free_aligned_sized(p,a,n)
 
 // Microsoft aligned variants
 #define _aligned_malloc(n,a)                  mi_malloc_aligned(n,a)

@@ -2,6 +2,7 @@
     "defines": {
         "AF_INET": 2,
         "AF_INET6": 10,
+        "AF_UNIX": 1,
         "AF_UNSPEC": 0,
         "AI_ADDRCONFIG": 32,
         "AI_ALL": 16,
@@ -63,6 +64,7 @@
         "EADV": 122,
         "EAFNOSUPPORT": 5,
         "EAGAIN": 6,
+        "EAI_AGAIN": -3,
         "EAI_BADFLAGS": -1,
         "EAI_FAMILY": -6,
         "EAI_NONAME": -2,
@@ -132,6 +134,7 @@
         "EMSCRIPTEN_EVENT_BLUR": 12,
         "EMSCRIPTEN_EVENT_CANVASRESIZED": 37,
         "EMSCRIPTEN_EVENT_CLICK": 4,
+        "EMSCRIPTEN_EVENT_CONTEXTMENU": 39,
         "EMSCRIPTEN_EVENT_DBLCLICK": 7,
         "EMSCRIPTEN_EVENT_DEVICEMOTION": 17,
         "EMSCRIPTEN_EVENT_DEVICEORIENTATION": 16,
@@ -259,6 +262,19 @@
         "EPERM": 63,
         "EPFNOSUPPORT": 139,
         "EPIPE": 64,
+        "EPOLLERR": 8,
+        "EPOLLET": -2147483648,
+        "EPOLLEXCLUSIVE": 268435456,
+        "EPOLLHUP": 16,
+        "EPOLLIN": 1,
+        "EPOLLONESHOT": 1073741824,
+        "EPOLLOUT": 4,
+        "EPOLLRDNORM": 64,
+        "EPOLLWRNORM": 256,
+        "EPOLL_CLOEXEC": 524288,
+        "EPOLL_CTL_ADD": 1,
+        "EPOLL_CTL_DEL": 2,
+        "EPOLL_CTL_MOD": 3,
         "EPROTO": 65,
         "EPROTONOSUPPORT": 66,
         "EPROTOTYPE": 67,
@@ -307,8 +323,11 @@
         "IEXTEN": 32768,
         "IMAXBEL": 8192,
         "INADDR_LOOPBACK": 2130706433,
+        "IPPROTO_IP": 0,
+        "IPPROTO_IPV6": 41,
         "IPPROTO_TCP": 6,
         "IPPROTO_UDP": 17,
+        "IPV6_V6ONLY": 26,
         "ISIG": 1,
         "IUTF8": 16384,
         "IXON": 1024,
@@ -319,6 +338,7 @@
         "KMOD_RCTRL": 128,
         "KMOD_RSHIFT": 2,
         "MAP_PRIVATE": 2,
+        "MSG_PEEK": 2,
         "NCCS": 32,
         "NI_NAMEREQD": 8,
         "NI_NUMERICHOST": 1,
@@ -343,11 +363,13 @@
         "O_RDWR": 2,
         "O_TRUNC": 512,
         "O_WRONLY": 1,
+        "PIPE_BUF": 4096,
         "POLLERR": 8,
         "POLLHUP": 16,
         "POLLIN": 1,
         "POLLNVAL": 32,
         "POLLOUT": 4,
+        "POLLRDHUP": 8192,
         "POLLRDNORM": 64,
         "POLLWRNORM": 256,
         "PROT_WRITE": 2,
@@ -369,6 +391,7 @@
         "SDL_FINGERDOWN": 1792,
         "SDL_FINGERMOTION": 1794,
         "SDL_FINGERUP": 1793,
+        "SDL_FULLSCREEN": 8388608,
         "SDL_GL_ALPHA_SIZE": 3,
         "SDL_GL_DEPTH_SIZE": 6,
         "SDL_GL_MULTISAMPLEBUFFERS": 13,
@@ -413,7 +436,14 @@
         "SOCK_NONBLOCK": 2048,
         "SOCK_STREAM": 1,
         "SOL_SOCKET": 1,
+        "SO_ACCEPTCONN": 30,
+        "SO_DOMAIN": 39,
         "SO_ERROR": 4,
+        "SO_PROTOCOL": 38,
+        "SO_RCVTIMEO": 20,
+        "SO_REUSEPORT": 15,
+        "SO_SNDTIMEO": 21,
+        "SYMLOOP_MAX": 40,
         "S_IALLUGO": 4095,
         "S_IFBLK": 24576,
         "S_IFCHR": 8192,
@@ -693,6 +723,7 @@
             "alpha": 0,
             "antialias": 3,
             "depth": 1,
+            "desynchronized": 33,
             "enableExtensionsByDefault": 24,
             "explicitSwapControl": 25,
             "failIfMajorPerformanceCaveat": 12,
@@ -1010,6 +1041,11 @@
             "stack_ptr": 16,
             "user_data": 32
         },
+        "epoll_event": {
+            "__size__": 16,
+            "data": 8,
+            "events": 0
+        },
         "flock": {
             "__size__": 32,
             "l_type": 0
@@ -1021,6 +1057,9 @@
         },
         "msghdr": {
             "__size__": 56,
+            "msg_control": 32,
+            "msg_controllen": 40,
+            "msg_flags": 48,
             "msg_iov": 16,
             "msg_iovlen": 24,
             "msg_name": 0,
@@ -1039,11 +1078,11 @@
             "p_proto": 16
         },
         "pthread": {
-            "__size__": 224,
-            "profilerBlock": 184,
+            "__size__": 216,
+            "profilerBlock": 176,
             "stack": 80,
             "stack_size": 88,
-            "waiting_async": 212
+            "waiting_async": 204
         },
         "pthread_attr_t": {
             "__size__": 88,
@@ -1071,6 +1110,11 @@
             },
             "sin6_family": 0,
             "sin6_port": 2
+        },
+        "sockaddr_un": {
+            "__size__": 110,
+            "sun_family": 0,
+            "sun_path": 2
         },
         "stat": {
             "__size__": 104,
@@ -1132,6 +1176,11 @@
             "tv_nsec": 8,
             "tv_sec": 0
         },
+        "timeval": {
+            "__size__": 16,
+            "tv_sec": 0,
+            "tv_usec": 8
+        },
         "tm": {
             "__size__": 56,
             "tm_gmtoff": 40,
@@ -1144,6 +1193,15 @@
             "tm_wday": 24,
             "tm_yday": 28,
             "tm_year": 20
+        },
+        "utsname": {
+            "__size__": 390,
+            "domainname": 325,
+            "machine": 260,
+            "nodename": 65,
+            "release": 130,
+            "sysname": 0,
+            "version": 195
         }
     }
 }

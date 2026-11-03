@@ -4,8 +4,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Updates the arm_neon.h header taken from SIMDe
-(https://github.com/simd-everywhere/simde) in system/include/neon
+"""Updates the arm_neon.h header in system/include/neon.
+
+Taken from SIMDe (https://github.com/simd-everywhere/simde).
 """
 
 import os

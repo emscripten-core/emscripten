@@ -60,29 +60,6 @@
 
 #include "complex_impl.h"
 
-#define MAXNUM 1.0e308
-
-static const double DP1 = 3.14159265160560607910E0;
-static const double DP2 = 1.98418714791870343106E-9;
-static const double DP3 = 1.14423774522196636802E-17;
-
-static double _redupi(double x)
-{
-	double t;
-	long i;
-
-	t = x/M_PI;
-	if (t >= 0.0)
-		t += 0.5;
-	else
-		t -= 0.5;
-
-	i = t;  /* the multiple */
-	t = i;
-	t = ((x - t * DP1) - t * DP2) - t * DP3;
-	return t;
-}
-
 double complex catan(double complex z)
 {
 	double complex w;
@@ -95,7 +72,7 @@ double complex catan(double complex z)
 	a = 1.0 - x2 - (y * y);
 
 	t = 0.5 * atan2(2.0 * x, a);
-	w = _redupi(t);
+	w = t;
 
 	t = y - 1.0;
 	a = x2 + (t * t);

@@ -481,5 +481,5 @@ int main() {
 
   test_fs_utime();
 
-  puts("success");
+  puts("done");
 }

@@ -6,10 +6,11 @@
 
 #if LZ4
 addToLibrary({
-  $LZ4__deps: ['$FS', '$preloadPlugins', '$getUniqueRunDependency', '$addRunDependency', '$removeRunDependency'],
+  ...defineInternalConsts({
+    $LZ4_DIR_MODE: cDefs.S_IFDIR | 0o777,
+    $LZ4_FILE_MODE: cDefs.S_IFREG | 0o777,
+  }),
   $LZ4: {
-    DIR_MODE: {{{ cDefs.S_IFDIR | 0o777 }}},
-    FILE_MODE: {{{ cDefs.S_IFREG | 0o777 }}},
     CHUNK_SIZE: -1,
     codec: null,
     init() {
@@ -20,7 +21,7 @@ addToLibrary({
       })();
       LZ4.CHUNK_SIZE = LZ4.codec.CHUNK_SIZE;
     },
-    loadPackage(pack, preloadPlugin) {
+    async loadPackage(pack, preloadPlugin) {
       LZ4.init();
       var compressedData = pack['compressedData'] || LZ4.codec.compressPackage(pack['data']);
       assert(compressedData['cachedIndexes'].length === compressedData['cachedChunks'].length);
@@ -34,8 +35,8 @@ addToLibrary({
         var dir = PATH.dirname(file.filename);
         var name = PATH.basename(file.filename);
         FS.createPath('', dir, true, true);
-        var parent = FS.analyzePath(dir).object;
-        LZ4.createNode(parent, name, LZ4.FILE_MODE, 0, {
+        var parent = FS.lookupPath(dir).node;
+        LZ4.createNode(parent, name, LZ4_FILE_MODE, 0, {
           compressedData,
           start: file.start,
           end: file.end,
@@ -52,28 +53,25 @@ addToLibrary({
           var fullname = file.filename;
           for (var plugin of preloadPlugins) {
             if (plugin['canHandle'](fullname)) {
-              var dep = getUniqueRunDependency('fp ' + fullname);
-              addRunDependency(dep);
-              var finish = () => removeRunDependency(dep);
               var byteArray = FS.readFile(fullname);
 #if ASSERTIONS
               assert(plugin['handle'].constructor.name === 'AsyncFunction', 'Filesystem plugin handlers must be async functions (See #24914)')
 #endif
-              plugin['handle'](byteArray, fullname).then(finish).catch(finish);
+              await plugin['handle'](byteArray, fullname);
               break;
             }
           }
         }
       }
     },
-    createNode(parent, name, mode, dev, contents, mtime) {
+    createNode(parent, name, mode, dev = undefined, contents = undefined, mtime = undefined) {
       var node = FS.createNode(parent, name, mode);
       node.mode = mode;
       node.node_ops = LZ4.node_ops;
       node.stream_ops = LZ4.stream_ops;
       this.atime = this.mtime = this.ctime = (mtime || new Date).getTime();
-      assert(LZ4.FILE_MODE !== LZ4.DIR_MODE);
-      if (mode === LZ4.FILE_MODE) {
+      assert(LZ4_FILE_MODE !== LZ4_DIR_MODE);
+      if (mode === LZ4_FILE_MODE) {
         node.size = contents.end - contents.start;
         node.contents = contents;
       } else {

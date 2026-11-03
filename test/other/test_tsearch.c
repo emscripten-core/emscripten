@@ -6,11 +6,11 @@
 #include <time.h>
 #include <assert.h>
 
-static int tab[12];
+int tab[12];
 
-static int cnt = 0;
+int cnt = 0;
 
-static int compare(const void *pa, const void *pb) {
+int compare(const void *pa, const void *pb) {
     if (*(int *) pa < *(int *) pb)
         return -1;
     if (*(int *) pa > *(int *) pb)
@@ -18,7 +18,7 @@ static int compare(const void *pa, const void *pb) {
     return 0;
 }
 
-static void action(const void *nodep, VISIT which, int depth) {
+void action(const void *nodep, VISIT which, int depth) {
     int *datap;
 
     switch (which) {
@@ -39,7 +39,7 @@ static void action(const void *nodep, VISIT which, int depth) {
     }
 }
 
-static void free_node(void* nodep) {
+void free_node(void* nodep) {
     // no-op since we didn't allocate any per-node data
 }
 

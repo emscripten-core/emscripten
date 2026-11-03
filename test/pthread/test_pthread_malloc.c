@@ -12,7 +12,7 @@
 #define NUM_THREADS 8
 #define N 6
 
-static void *thread_start(void *arg) {
+void *thread_start(void *arg) {
   long n = (long)arg;
   long *mem[N] = {};
   for (long i = 0; i < N; ++i) {

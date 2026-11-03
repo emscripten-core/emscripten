@@ -39,8 +39,8 @@ void worker2_main() {
 #endif
 }
 
-char stack1[1024];
-char stack2[1024];
+char stack1[4096];
+char stack2[4096];
 
 int main() {
   emscripten_wasm_worker_t worker1 = emscripten_create_wasm_worker(stack1, sizeof(stack1));

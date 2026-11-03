@@ -1,21 +1,21 @@
-var d = Module, e, f = new TextDecoder, g, h;
+var c = Module, d, e = new TextDecoder, f, h;
 
-WebAssembly.instantiate(d.wasm, {
+WebAssembly.instantiate(c.wasm, {
     a: {
         a: a => {
-            var c = console, k = c.log;
+            var g = console, k = g.log;
             if (a) {
-                for (var b = a, l = e, m = b + void 0; l[b] && !(b >= m); ) ++b;
-                a = f.decode(e.subarray(a, b));
+                for (var b = a, l = d, m = b + NaN; l[b] && !(b >= m); ) ++b;
+                a = e.decode(d.subarray(a, b));
             } else a = "";
-            k.call(c, a);
+            k.call(g, a);
         }
     }
-}).then((a => {
+}).then(a => {
     a = a.instance.exports;
-    g = a.d;
+    f = a.d;
     h = a.b;
-    e = new Uint8Array(h.buffer);
+    d = new Uint8Array(h.buffer);
     a.c();
-    g();
-}));
+    f();
+});

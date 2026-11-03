@@ -13,11 +13,19 @@ addToLibrary({
   // so we cannot try to unconditionally initialize it in that build mode.
 #if TEXTDECODER == 2 && !AUDIO_WORKLET
   // TextDecoder constructor defaults to UTF-8
-  $UTF8Decoder: "new TextDecoder()",
+  $UTF8Decoder: 'new TextDecoder()',
 #else
-  $UTF8Decoder: "globalThis.TextDecoder && new TextDecoder()",
+  $UTF8Decoder: 'globalThis.TextDecoder && new TextDecoder()',
 #endif
 
+  $findStringEnd__docs: `
+  /**
+   * heapOrArray is either a regular array, or a JavaScript typed array view.
+   * @param {number} idx
+   * @param {number=} maxBytesToRead
+   * @param {boolean=} ignoreNul
+   * @return {number}
+   */`,
   $findStringEnd: (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
     var maxIdx = idx + maxBytesToRead;
     if (ignoreNul) return maxIdx;
@@ -41,12 +49,6 @@ addToLibrary({
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */`,
-  $UTF8ArrayToString__deps: [
-    '$UTF8Decoder', '$findStringEnd',
-#if ASSERTIONS
-    '$warnOnce',
-#endif
-  ],
   $UTF8ArrayToString: (heapOrArray, idx = 0, maxBytesToRead, ignoreNul) => {
 #if CAN_ADDRESS_2GB
     idx >>>= 0;
@@ -55,11 +57,11 @@ addToLibrary({
     var endPtr = findStringEnd(heapOrArray, idx, maxBytesToRead, ignoreNul);
 
 #if TEXTDECODER == 2
-    return UTF8Decoder.decode(heapOrArray.buffer ? {{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}} : new Uint8Array(heapOrArray.slice(idx, endPtr)));
+    return UTF8Decoder.decode(heapOrArray.buffer ? {{{ getHeapViewOrCopy('heapOrArray', 'idx', 'endPtr') }}} : new Uint8Array(heapOrArray.slice(idx, endPtr)));
 #else // TEXTDECODER == 2
     // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
     if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
-      return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}});
+      return UTF8Decoder.decode({{{ getHeapViewOrCopy('heapOrArray', 'idx', 'endPtr') }}});
     }
     var str = '';
     while (idx < endPtr) {
@@ -106,14 +108,9 @@ addToLibrary({
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */`,
-#if TEXTDECODER == 2
-  $UTF8ToString__deps: ['$UTF8Decoder', '$findStringEnd'],
-#else
-  $UTF8ToString__deps: ['$UTF8ArrayToString'],
-#endif
   $UTF8ToString: (ptr, maxBytesToRead, ignoreNul) => {
 #if ASSERTIONS
-    assert(typeof ptr == 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
+    assert(typeof ptr === 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
 #endif
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
@@ -121,7 +118,7 @@ addToLibrary({
 #if TEXTDECODER == 2
     if (!ptr) return '';
     var end = findStringEnd(HEAPU8, ptr, maxBytesToRead, ignoreNul);
-    return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'end') }}});
+    return UTF8Decoder.decode({{{ getHeapViewOrCopy('HEAPU8', 'ptr', 'end') }}});
 #else
     return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : '';
 #endif
@@ -149,9 +146,6 @@ addToLibrary({
    *                                   terminator.
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
-#if ASSERTIONS
-  $stringToUTF8Array__deps: ['$warnOnce'],
-#endif
   $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
 #if CAN_ADDRESS_2GB
     outIdx >>>= 0;
@@ -211,10 +205,9 @@ addToLibrary({
    *
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
-  $stringToUTF8__deps: ['$stringToUTF8Array'],
   $stringToUTF8: (str, outPtr, maxBytesToWrite) => {
 #if ASSERTIONS
-    assert(typeof maxBytesToWrite == 'number', 'stringToUTF8 requires a third parameter that specifies the length of the output buffer');
+    assert(typeof maxBytesToWrite === 'number', 'stringToUTF8 requires a third parameter that specifies the length of the output buffer');
 #endif
     return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
   },
@@ -229,26 +222,24 @@ addToLibrary({
   $lengthBytesUTF8: (str) => {
     var len = 0;
     for (var i = 0; i < str.length; ++i) {
-      // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code
-      // unit, not a Unicode code point of the character! So decode
-      // UTF16->UTF32->UTF8.
-      // See http://unicode.org/faq/utf_bom.html#utf16-3
-      var c = str.charCodeAt(i); // possibly a lead surrogate
-      if (c <= 0x7F) {
+      var u = str.codePointAt(i);
+      if (u <= 0x7F) {
         len++;
-      } else if (c <= 0x7FF) {
+      } else if (u <= 0x7FF) {
         len += 2;
-      } else if (c >= 0xD800 && c <= 0xDFFF) {
-        len += 4; ++i;
-      } else {
+      } else if (u <= 0xFFFF) {
         len += 3;
+      } else {
+        len += 4;
+        // Gotcha: if codePoint is over 0xFFFF, it is represented as a surrogate pair in UTF-16.
+        // We need to manually skip over the second code unit for correct iteration.
+        i++;
       }
     }
     return len;
   },
 
   $intArrayFromString__docs: '/** @type {function(string, boolean=, number=)} */',
-  $intArrayFromString__deps: ['$lengthBytesUTF8', '$stringToUTF8Array'],
   $intArrayFromString: (stringy, dontAddNull, length) => {
     var len = length > 0 ? length : lengthBytesUTF8(stringy)+1;
     var u8array = new Array(len);
@@ -310,7 +301,6 @@ addToLibrary({
   // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the
   // emscripten HEAP, returns a copy of that string as a Javascript String
   // object.
-  $UTF16ToString__deps: ['$UTF16Decoder', '$findStringEnd'],
   $UTF16ToString: (ptr, maxBytesToRead, ignoreNul) => {
 #if ASSERTIONS
     assert(ptr % 2 == 0, 'pointer passed to UTF16ToString must be 2-byte aligned');
@@ -322,7 +312,7 @@ addToLibrary({
     // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
     if (endIdx - idx > 16 && UTF16Decoder)
 #endif // TEXTDECODER != 2
-      return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU16', 'idx', 'endIdx') }}});
+      return UTF16Decoder.decode({{{ getHeapViewOrCopy('HEAPU16', 'idx', 'endIdx') }}});
 
 #if TEXTDECODER != 2
     // Fallback: decode without UTF16Decoder
@@ -356,16 +346,16 @@ addToLibrary({
   //                    terminator will be written and nothing else.
   //                    maxBytesToWrite<2 does not write any bytes to the
   //                    output, not even the null terminator.
+  //                    Backwards compatibility: if maxBytesToWrite is not
+  //                    specified, assume an unsafe unbounded write is allowed.
   // Returns the number of bytes written, EXCLUDING the null terminator.
-  $stringToUTF16: (str, outPtr, maxBytesToWrite) => {
+  $stringToUTF16: (str, outPtr, maxBytesToWrite = 0x7FFFFFFF) => {
 #if ASSERTIONS
     assert(outPtr % 2 == 0, 'pointer passed to stringToUTF16 must be 2-byte aligned');
 #endif
 #if ASSERTIONS
-    assert(typeof maxBytesToWrite == 'number', 'stringToUTF16 requires a third parameter that specifies the length of the output buffer');
+    assert(typeof maxBytesToWrite === 'number', 'stringToUTF16 requires a third parameter that specifies the length of the output buffer');
 #endif
-    // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
-    maxBytesToWrite ??= 0x7FFFFFFF;
     if (maxBytesToWrite < 2) return 0;
     maxBytesToWrite -= 2; // Null terminator.
     var startPtr = outPtr;
@@ -415,8 +405,10 @@ addToLibrary({
   //                    terminator will be written and nothing else.
   //                    maxBytesToWrite<4 does not write any bytes to the
   //                    output, not even the null terminator.
+  //                    Backwards compatibility: if maxBytesToWrite is not
+  //                    specified, assume an unsafe unbounded write is allowed.
   // Returns the number of bytes written, EXCLUDING the null terminator.
-  $stringToUTF32: (str, outPtr, maxBytesToWrite) => {
+  $stringToUTF32: (str, outPtr, maxBytesToWrite = 0x7FFFFFFF) => {
 #if CAN_ADDRESS_2GB
     outPtr >>>= 0;
 #endif
@@ -424,10 +416,8 @@ addToLibrary({
     assert(outPtr % 4 == 0, 'pointer passed to stringToUTF32 must be 4-byte aligned');
 #endif
 #if ASSERTIONS
-    assert(typeof maxBytesToWrite == 'number', 'stringToUTF32 requires a third parameter that specifies the length of the output buffer');
+    assert(typeof maxBytesToWrite === 'number', 'stringToUTF32 requires a third parameter that specifies the length of the output buffer');
 #endif
-    // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
-    maxBytesToWrite ??= 0x7FFFFFFF;
     if (maxBytesToWrite < 4) return 0;
     var startPtr = outPtr;
     var endPtr = startPtr + maxBytesToWrite - 4;
@@ -466,7 +456,7 @@ addToLibrary({
 
   // Allocate heap space for a JS string, and write it there.
   // It is the responsibility of the caller to free() that memory.
-  $stringToNewUTF8__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'malloc'],
+  $stringToNewUTF8__deps: ['malloc'],
   $stringToNewUTF8: (str) => {
     var size = lengthBytesUTF8(str) + 1;
     var ret = _malloc(size);
@@ -475,7 +465,6 @@ addToLibrary({
   },
 
   // Allocate stack space for a JS string, and write it there.
-  $stringToUTF8OnStack__deps: ['$lengthBytesUTF8', '$stringToUTF8', '$stackAlloc'],
   $stringToUTF8OnStack: (str) => {
     var size = lengthBytesUTF8(str) + 1;
     var ret = stackAlloc(size);

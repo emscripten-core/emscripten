@@ -22,7 +22,7 @@ addToLibrary({
   },
 
   // Finds the index of closing parens from the opening parens at arr[i].
-  // Used polymorphically for strings ("foo") and token arrays (['(', 'foo', ')']) as input.
+  // Used polymorphically for strings ('foo') and token arrays (['(', 'foo', ')']) as input.
   $find_closing_parens_index: (arr, i, opening='(', closing=')') => {
     for (var nesting = 0; i < arr.length; ++i) {
       if (arr[i] == opening) ++nesting;
@@ -35,7 +35,6 @@ addToLibrary({
   // Runs C preprocessor algorithm on the given string 'code'.
   // Supported preprocessor directives: #if, #ifdef, #ifndef, #else, #elif, #endif, #define and #undef.
   // predefs: Specifies a dictionary of { 'key1': function(arg0, arg1) {...}, 'key2': ... } of predefined preprocessing variables
-  $preprocess_c_code__deps: ['$find_closing_parens_index'],
   $preprocess_c_code: function(code, defs = {}) {
     var i = 0, // iterator over the input string
       len = code.length, // cache input length
@@ -65,7 +64,7 @@ addToLibrary({
     function classifyChar(str, idx) {
       var cc = str.charCodeAt(idx);
   #if ASSERTIONS
-      assert(!(cc > 127), "only 7-bit ASCII can be used in preprocessor #if/#ifdef/#define statements");
+      assert(!(cc > 127), 'only 7-bit ASCII can be used in preprocessor #if/#ifdef/#define statements');
   #endif
       if (cc > 32) {
         if (cc < 48) return 1; // an operator symbol, any of !"#$%&'()*+,-./
@@ -128,14 +127,9 @@ addToLibrary({
             var kind2 = classifyChar(str, j);
             if (kind2 != 2/*0-9*/ && kind2 != 3/*a-z*/) {
               var symbol = str.substring(i, j);
-#if MIN_FIREFOX_VERSION < 92
-              // Firefox only introduced Object.hasOwn() in Firefox 92.
-              if (defs.hasOwnProperty(symbol)) {
-#else
-              if (Object.hasOwn(defs, symbol)) {
-#endif
+              if (hasOwn(defs, symbol)) {
                 var pp = defs[symbol], expanded;
-                if (typeof pp == 'function') { // definition is a function?
+                if (typeof pp === 'function') { // definition is a function?
                   if (pp.length) { // Expanding a macro? (#define FOO(X) ...)
                     while (str[j] && isWhitespace(str, j)) ++j;
                     if (str[j] == '(') {
@@ -177,7 +171,7 @@ addToLibrary({
     function buildExprTree(tokens) {
       // Consume tokens array into a function tree until the tokens array is exhausted
       // to a single root node that evaluates it.
-      while (tokens.length > 1 || typeof tokens[0] != 'function') {
+      while (tokens.length > 1 || typeof tokens[0] !== 'function') {
         tokens = ((tokens) => {
           // Find the index 'i' of the operator we should evaluate next:
           var i, j, p, operatorAndPriority = -2;
@@ -209,20 +203,21 @@ addToLibrary({
           if (operatorAndPriority >= 0) {
             var left = buildExprTree(tokens.slice(0, i));
             var right = buildExprTree(tokens.slice(i+1));
-            switch(tokens[i]) {
-              case '&&': return [function() { return left() && right(); }];
-              case '||': return [function() { return left() || right(); }];
-              case '==': return [function() { return left() == right(); }];
-              case '!=': return [function() { return left() != right(); }];
-              case '<' : return [function() { return left() <  right(); }];
-              case '<=': return [function() { return left() <= right(); }];
-              case '>' : return [function() { return left() >  right(); }];
-              case '>=': return [function() { return left() >= right(); }];
-              case  '+': return [function() { return left()  + right(); }];
-              case  '-': return [function() { return left()  - right(); }];
-              case  '*': return [function() { return left()  * right(); }];
-              case  '/': return [function() { return Math.floor(left() / right()); }];
-            }
+            var opers = {
+              '&&': () => left() && right(),
+              '||': () => left() || right(),
+              '==': () => left() == right(),
+              '!=': () => left() != right(),
+              '<' : () => left() <  right(),
+              '<=': () => left() <= right(),
+              '>' : () => left() >  right(),
+              '>=': () => left() >= right(),
+               '+': () => left()  + right(),
+               '-': () => left()  - right(),
+               '*': () => left()  * right(),
+               '/': () => Math.floor(left() / right())
+            };
+            return [opers[tokens[i]]];
           }
           // else a number:
 #if ASSERTIONS

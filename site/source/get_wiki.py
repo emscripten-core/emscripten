@@ -38,13 +38,12 @@ mapped_wiki_inline_code['setValue(ptr, value, type)'] = ':js:func:`setValue(ptr,
 wiki_checkout = 'emscripten.wiki/'
 temp_set_of_codemarkup = set()
 logfile = open(logfilename, 'w', encoding='utf-8')
-# snapshot_version_information = '.. note:: This is a **snapshot** of the wiki: %s\n\n' % strftime("%a, %d %b %Y %H:%M", gmtime())
-snapshot_version_information = '.. note:: This article was migrated from the wiki (%s) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!\n\n' % time.strftime("%a, %d %b %Y %H:%M", time.gmtime())
+time_str = time.strftime("%a, %d %b %Y %H:%M", time.gmtime())
+snapshot_version_information = f'.. note:: This article was migrated from the wiki ({time_str}) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!\n\n'
 
 
 def CleanWiki():
-    """Delete the wiki clone directory and all contained files.
-    """
+    """Delete the wiki clone directory and all contained files."""
 
     def errorhandler(func, path, exc_info):
         # where  func is os.listdir, os.remove, or os.rmdir; path is the argument to that function that caused it to fail; and  exc_info is a tuple returned by  sys.exc_info()
@@ -62,9 +61,7 @@ def CleanWiki():
 
 
 def CloneWiki():
-    """
-    Clone the wiki into a temporary location (first cleaning)
-    """
+    """Clone the wiki into a temporary location (first cleaning)."""
     # Clean up existing repo
     CleanWiki()
 
@@ -76,16 +73,14 @@ def CloneWiki():
         pass
 
     # Clone
-    git_clone_command = 'git clone %s %s' % (wiki_repo, wiki_checkout)
+    git_clone_command = f'git clone {wiki_repo} {wiki_checkout}'
     print(git_clone_command)
     os.system(git_clone_command)
 
 
 def ConvertFilesToRst():
-    """
-    Add template to specified page object (wikitools)
-    """
-    indexfiletext = '============================\nWiki snapshot (ready-for-review)\n============================\n\n%s\n.. toctree::\n    :maxdepth: 2\n' % snapshot_version_information
+    """Add template to specified page object (wikitools)."""
+    indexfiletext = f'============================\nWiki snapshot (ready-for-review)\n============================\n\n{snapshot_version_information}\n.. toctree::\n    :maxdepth: 2\n'
     for file in os.listdir(wiki_checkout):
         if not file.endswith(".md"):
             continue
@@ -100,16 +95,16 @@ def ConvertFilesToRst():
         print(file)
         # get name of file
         filenamestripped = os.path.splitext(file)[0]
-        indexfiletext += '\n    %s' % filenamestripped
+        indexfiletext += f'\n    {filenamestripped}'
         outputfilename = output_dir + filenamestripped + '.rst'
 
-        command = 'pandoc -f markdown -t rst -o "%s" "%s"' % (outputfilename, inputfilename)
+        command = f'pandoc -f markdown -t rst -o "{outputfilename}" "{inputfilename}"'
         print(command)
         if os.system(command):
             sys.exit(1)
         title = filenamestripped.replace('-', ' ')
         # print title
-        logfile.write('title from filename: %s \n' % title)
+        logfile.write(f'title from filename: {title} \n')
         # add import message to title
         title += ' (wiki-import)'
         length = len(title)
@@ -118,7 +113,7 @@ def ConvertFilesToRst():
         for _ in range(length):
             headerbar += '='
         page_reference = filenamestripped
-        page_reference_link_text = '.. _%s:\n\n' % page_reference
+        page_reference_link_text = f'.. _{page_reference}:\n\n'
         titlebar = page_reference_link_text + headerbar + '\n' + title + '\n' + headerbar + '\n'
         textinfile = ''
         # Add titlebar to start of the file (from the filename)
@@ -141,13 +136,10 @@ def ConvertFilesToRst():
 
 
 def FixupConvertedRstFiles():
-    """Add template to specified page object (wikitools)
-    """
+    """Add template to specified page object (wikitools)."""
 
     def fixInternalWikiLinks(aOldText):
-        """
-        Fixes wiki links in [[linkname]] format by changing this to a document link in current directory.
-        """
+        """Fixes wiki links in [[linkname]] format by changing this to a document link in current directory."""
         def fixwikilinks(matchobj):
             # print 'matcobj0: %s' % matchobj.group(0)
             # print 'matcobj1: %s' % matchobj.group(1)
@@ -155,24 +147,22 @@ def FixupConvertedRstFiles():
             linktext = linktext.replace(' ', '-')
             # linktext = ':doc:`%s`' % linktext
             # use reference for linking as allows pages to be moved around
-            linktext = ':ref:`%s`' % linktext
+            linktext = f':ref:`{linktext}`'
             # print 'linkdoc: %s' % linktext
-            logfile.write('linkdoc: %s \n' % linktext)
+            logfile.write(f'linkdoc: {linktext} \n')
             return linktext
         # print 'fixing wiki links'
         return re.sub(r'\[\[(.+?)\]\]', fixwikilinks, aOldText)
 
     def fixWikiCodeMarkupToCodeLinks(aOldText):
-        """
-        Links "known" code objects if they are found in wiki markup.
-        """
+        """Links "known" code objects if they are found in wiki markup."""
         def fixcodemarkuplinks(matchobj):
             # print 'Inline code: %s' % matchobj.group(0)
             # print 'matcobj1: %s' % matchobj.group(1)
             temp_set_of_codemarkup.add(matchobj.group(0))
             linktext = matchobj.group(1)
             if linktext in mapped_wiki_inline_code:
-                logfile.write('Replace: %s \n' % mapped_wiki_inline_code[linktext])
+                logfile.write(f'Replace: {mapped_wiki_inline_code[linktext]} \n')
                 return mapped_wiki_inline_code[linktext]
 
             return matchobj.group(0) # linktext
@@ -200,23 +190,23 @@ def FixupConvertedRstFiles():
 
     logfile.write('\n\nCODE MARKUP THAT WONT BE LINKED (add entry to mapped_wiki_inline_code if one of these need to be linked. The tool get-api-items.py can be used to generate the list of the documented API items. \n')
     for item in temp_set_of_codemarkup:
-        logfile.write('%s\n' % item)
+        logfile.write(f'{item}\n')
 
 
 # parser options
 def main():
     parser = optparse.OptionParser(version="%prog 0.1.1", usage="Usage: %prog [options] version")
     parser.add_option("-c", "--clonewiki", action="store_true", default=False, dest="clonewiki", help="Clean and clone the latest wiki")
-    options, args = parser.parse_args()
+    options = parser.parse_args()[0]
 
-    print('Clone wiki: %s' % options.clonewiki)
+    print(f'Clone wiki: {options.clonewiki}')
     if options.clonewiki:
         CloneWiki()
         # input = raw_input('CHECK ALL files were cloned! (look for "error: unable to create file" )\n')
 
     ConvertFilesToRst()
     FixupConvertedRstFiles()
-    print('See LOG for details: %s ' % logfilename)
+    print(f'See LOG for details: {logfilename} ')
 
 
 if __name__ == '__main__':

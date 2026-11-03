@@ -23,7 +23,7 @@ Emscripten tools and dependencies
 In general a complete Emscripten environment requires the following tools. First test to see if they are already installed using the :ref:`instructions below <toolchain-test-which-dependencies-are-installed>`.
 
   - :term:`Node.js` (18.3.0 or above)
-  - :term:`Python` (3.8 or above)
+  - :term:`Python` (3.10 or above)
   - :term:`Java` (1.6.0_31 or later). Java is optional. It can be used to run the java version of term:`Closure Compiler`.
   - :term:`Git` client. Git is required if building tools from source.
   - :term:`LLVM` (LLVM, including clang and wasm-ld)
@@ -39,9 +39,9 @@ In general a complete Emscripten environment requires the following tools. First
 Compiler toolchain
 ------------------
 
-When building Emscripten from source code, whether "manually" or using the SDK, you will need a *compiler toolchain*:
+When building LLVM and Binaryen from source code, whether "manually" or using the SDK, you will need a *compiler toolchain*:
 
-- Windows: Install `Visual Studio 2017 <http://go.microsoft.com/?linkid=9709949>`_ and `cmake <http://www.cmake.org/cmake/resources/software.html>`_.
+- Windows: You will need `Visual Studio <https://visualstudio.microsoft.com/>`_ (2019 or above) and `cmake <http://www.cmake.org/cmake/resources/software.html>`_ (3.20 or above).
 
   .. note::
 
@@ -53,11 +53,11 @@ When building Emscripten from source code, whether "manually" or using the SDK, 
         emsdk activate mingw-4.6.2-32bit
 
 
-- Linux: Install *gcc* and *cmake*:
+- Linux: Install *gcc* (or *clang) and *cmake*:
 
   ::
 
-    #Install gcc
+    # Install gcc
     sudo apt-get install build-essential
     # Install cmake
     sudo apt-get install cmake

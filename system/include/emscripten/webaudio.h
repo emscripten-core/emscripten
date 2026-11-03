@@ -17,7 +17,15 @@
 extern "C" {
 #endif
 
+// A handle type that represents a JavaScript side object related to WebAudio.
+// Used to denote the AudioContext and Audio Nodes, especially the Audio Worklet
+// Node.
 typedef int EMSCRIPTEN_WEBAUDIO_T;
+
+// An outdated node type that represented an AudioWorklet node.
+// If you are using this type in your application, replace it with
+// EMSCRIPTEN_WEBAUDIO_T handle type instead.
+typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T __attribute__((deprecated("use EMSCRIPTEN_WEBAUDIO_T instead")));
 
 // Default render size of 128 frames
 #define AUDIO_CONTEXT_RENDER_SIZE_DEFAULT 0
@@ -108,8 +116,6 @@ int emscripten_audio_context_quantum_size(EMSCRIPTEN_WEBAUDIO_T audioContext);
 // Returns the sampling rate of the given Audio Context, e.g. 48000 or 44100 or similar.
 int emscripten_audio_context_sample_rate(EMSCRIPTEN_WEBAUDIO_T audioContext);
 
-typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
-
 typedef struct AudioSampleFrame
 {
 	// Number of audio channels to process (multiplied by samplesPerChannel gives the elements in data)
@@ -162,7 +168,8 @@ typedef struct EmscriptenAudioWorkletNodeCreateOptions
 
 // Instantiates the given AudioWorkletProcessor as an AudioWorkletNode, which continuously calls the specified processCallback() function on the browser's audio thread to perform audio processing.
 // userData4: A custom userdata pointer to pass to the callback function. This value will be passed on to the call to the given EmscriptenWorkletNodeProcessCallback callback function.
-EMSCRIPTEN_AUDIO_WORKLET_NODE_T emscripten_create_wasm_audio_worklet_node(EMSCRIPTEN_WEBAUDIO_T audioContext, const char *name, const EmscriptenAudioWorkletNodeCreateOptions *options, EmscriptenWorkletNodeProcessCallback processCallback, void *userData4);
+// Returns a handle to the created audio worklet node object.
+EMSCRIPTEN_WEBAUDIO_T emscripten_create_wasm_audio_worklet_node(EMSCRIPTEN_WEBAUDIO_T audioContext, const char *name, const EmscriptenAudioWorkletNodeCreateOptions *options, EmscriptenWorkletNodeProcessCallback processCallback, void *userData4);
 
 // Connects a node's output to a target, e.g., connect the worklet node to the context.
 // For outputIndex and inputIndex, see the AudioNode.connect() documentation (setting 0 as the default values)

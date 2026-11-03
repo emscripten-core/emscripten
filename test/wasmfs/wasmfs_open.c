@@ -108,5 +108,9 @@ int main() {
   int fd7 = open("", O_RDONLY);
   assert(errno == ENOENT);
 
+  // O_TRUNC has no effect on devices.
+  int fd_null = open("/dev/null", O_WRONLY | O_TRUNC);
+  assert(fd_null >= 0);
+
   return 0;
 }

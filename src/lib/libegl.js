@@ -15,16 +15,16 @@
  * value of 62006. (multiple creations silently return the same surface)
  */
 
-{{{
-// Magic ID for Emscripten 'default display' 
-const eglDefaultDisplay = 62000;
-// Magic ID for the only EGLConfig supported by Emscripten
-const eglDefaultConfig = 62002;
-// Magic ID for Emscripten EGLContext
-const eglDefaultContext = 62004;
-}}}
-
 var LibraryEGL = {
+  ...defineInternalConsts({
+    // Magic ID for Emscripten 'default display'
+    $eglDefaultDisplay: 62000,
+    // Magic ID for the only EGLConfig supported by Emscripten
+    $eglDefaultConfig: 62002,
+    // Magic ID for Emscripten EGLContext
+    $eglDefaultContext: 62004,
+  }),
+
   $EGL__deps: ['$Browser'],
   $EGL: {
     // This variable tracks the success status of the most recently invoked EGL function call.
@@ -48,7 +48,7 @@ var LibraryEGL = {
     },
 
     chooseConfig(display, attribList, config, config_size, numConfigs) {
-      if (display != {{{ eglDefaultDisplay }}}) {
+      if (display != eglDefaultDisplay) {
         EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
         return 0;
       }
@@ -90,7 +90,7 @@ var LibraryEGL = {
         {{{ makeSetValue('numConfigs', '0', '1', 'i32') }}}; // Total number of supported configs: 1.
       }
       if (config && config_size > 0) {
-        {{{ makeSetValue('config', '0', eglDefaultConfig /* Magic ID for the only EGLConfig supported by Emscripten */, '*') }}};
+        {{{ makeSetValue('config', '0', 'eglDefaultConfig' /* Magic ID for the only EGLConfig supported by Emscripten */, '*') }}};
       }
 
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
@@ -108,13 +108,13 @@ var LibraryEGL = {
     if (nativeDisplayType != 0 /* EGL_DEFAULT_DISPLAY */ && nativeDisplayType != 1 /* see library_xlib.js */) {
       return 0; // EGL_NO_DISPLAY
     }
-    return {{{ eglDefaultDisplay }}};
+    return eglDefaultDisplay;
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor);
   eglInitialize__proxy: 'sync',
   eglInitialize: (display, majorVersion, minorVersion) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
@@ -132,7 +132,7 @@ var LibraryEGL = {
   // EGLAPI EGLBoolean EGLAPIENTRY eglTerminate(EGLDisplay dpy);
   eglTerminate__proxy: 'sync',
   eglTerminate: (display) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
@@ -157,11 +157,11 @@ var LibraryEGL = {
   // EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config, EGLint attribute, EGLint *value);
   eglGetConfigAttrib__proxy: 'sync',
   eglGetConfigAttrib: (display, config, attribute, value) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if (config != {{{ eglDefaultConfig }}}) {
+    if (config != eglDefaultConfig) {
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0;
     }
@@ -197,7 +197,7 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '0x3038' /* EGL_NONE */, 'i32') }}};
       return 1;
     case 0x3028: // EGL_CONFIG_ID
-      {{{ makeSetValue('value', '0', eglDefaultConfig, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'eglDefaultConfig', 'i32') }}};
       return 1;
     case 0x3029: // EGL_LEVEL
       {{{ makeSetValue('value', '0', '0' /* Z order/depth layer for this level. Not applicable for Emscripten. */, 'i32') }}};
@@ -274,11 +274,11 @@ var LibraryEGL = {
   // EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy, EGLConfig config, EGLNativeWindowType win, const EGLint *attrib_list);
   eglCreateWindowSurface__proxy: 'sync',
   eglCreateWindowSurface: (display, config, win, attrib_list) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if (config != {{{ eglDefaultConfig }}}) {
+    if (config != eglDefaultConfig) {
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0;
     }
@@ -293,7 +293,7 @@ var LibraryEGL = {
   // EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay display, EGLSurface surface);
   eglDestroySurface__proxy: 'sync',
   eglDestroySurface: (display, surface) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
@@ -311,12 +311,11 @@ var LibraryEGL = {
     return 1; /* Magic ID for Emscripten 'default surface' */
   },
 
-  eglCreateContext__deps: ['$GL'],
 
   // EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_context, const EGLint *attrib_list);
   eglCreateContext__proxy: 'sync',
   eglCreateContext: (display, config, hmm, contextAttribs) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
@@ -368,23 +367,22 @@ var LibraryEGL = {
 
       // Note: This function only creates a context, but it shall not make it active.
       GL.makeContextCurrent(null);
-      return {{{ eglDefaultContext }}};
+      return eglDefaultContext;
     } else {
       EGL.setErrorCode(0x3009 /* EGL_BAD_MATCH */); // By the EGL 1.4 spec, an implementation that does not support GLES2 (WebGL in this case), this error code is set.
       return 0; /* EGL_NO_CONTEXT */
     }
   },
 
-  eglDestroyContext__deps: ['$GL'],
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext context);
   eglDestroyContext__proxy: 'sync',
   eglDestroyContext: (display, context) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if (context != {{{ eglDefaultContext }}}) {
+    if (context != eglDefaultContext) {
       EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
       return 0;
     }
@@ -400,7 +398,7 @@ var LibraryEGL = {
   // EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface, EGLint attribute, EGLint *value);
   eglQuerySurface__proxy: 'sync',
   eglQuerySurface: (display, surface, attribute, value) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
@@ -415,17 +413,17 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     switch (attribute) {
     case 0x3028: // EGL_CONFIG_ID
-      {{{ makeSetValue('value', '0', eglDefaultConfig, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'eglDefaultConfig', 'i32') }}};
         return 1;
     case 0x3058: // EGL_LARGEST_PBUFFER
       // Odd EGL API: If surface is not a pbuffer surface, 'value' should not be written to. It's not specified as an error, so true should(?) be returned.
       // Existing Android implementation seems to do so at least.
       return 1;
     case 0x3057: // EGL_WIDTH
-      {{{ makeSetValue('value', '0', "Browser.getCanvas().width", 'i32') }}};
+      {{{ makeSetValue('value', '0', 'Browser.getCanvas().width', 'i32') }}};
       return 1;
     case 0x3056: // EGL_HEIGHT
-      {{{ makeSetValue('value', '0', "Browser.getCanvas().height", 'i32') }}};
+      {{{ makeSetValue('value', '0', 'Browser.getCanvas().height', 'i32') }}};
       return 1;
     case 0x3090: // EGL_HORIZONTAL_RESOLUTION
       {{{ makeSetValue('value', '0', '-1' /* EGL_UNKNOWN */, 'i32') }}};
@@ -466,12 +464,12 @@ var LibraryEGL = {
   // EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx, EGLint attribute, EGLint *value);
   eglQueryContext__proxy: 'sync',
   eglQueryContext: (display, context, attribute, value) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
     //\todo An EGL_NOT_INITIALIZED error is generated if EGL is not initialized for dpy.
-    if (context != {{{ eglDefaultContext }}}) {
+    if (context != eglDefaultContext) {
       EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
       return 0;
     }
@@ -483,7 +481,7 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     switch (attribute) {
       case 0x3028: // EGL_CONFIG_ID
-        {{{ makeSetValue('value', '0', eglDefaultConfig, 'i32') }}};
+        {{{ makeSetValue('value', '0', 'eglDefaultConfig', 'i32') }}};
         return 1;
       case 0x3097: // EGL_CONTEXT_CLIENT_TYPE
         {{{ makeSetValue('value', '0', '0x30A0' /* EGL_OPENGL_ES_API */, 'i32') }}};
@@ -509,10 +507,9 @@ var LibraryEGL = {
   // EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name);
   // The allocated strings are cached and never freed.
   eglQueryString__noleakcheck: true,
-  eglQueryString__deps: ['$stringToNewUTF8'],
   eglQueryString__proxy: 'sync',
   eglQueryString: (display, name) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
@@ -521,10 +518,10 @@ var LibraryEGL = {
     if (EGL.stringCache[name]) return EGL.stringCache[name];
     var ret;
     switch (name) {
-      case 0x3053 /* EGL_VENDOR */: ret = stringToNewUTF8("Emscripten"); break;
-      case 0x3054 /* EGL_VERSION */: ret = stringToNewUTF8("1.4 Emscripten EGL"); break;
-      case 0x3055 /* EGL_EXTENSIONS */:  ret = stringToNewUTF8(""); break; // Currently not supporting any EGL extensions.
-      case 0x308D /* EGL_CLIENT_APIS */: ret = stringToNewUTF8("OpenGL_ES"); break;
+      case 0x3053 /* EGL_VENDOR */: ret = stringToNewUTF8('Emscripten'); break;
+      case 0x3054 /* EGL_VERSION */: ret = stringToNewUTF8('1.4 Emscripten EGL'); break;
+      case 0x3055 /* EGL_EXTENSIONS */:  ret = stringToNewUTF8(''); break; // Currently not supporting any EGL extensions.
+      case 0x308D /* EGL_CLIENT_APIS */: ret = stringToNewUTF8('OpenGL_ES'); break;
       default:
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;
@@ -571,10 +568,9 @@ var LibraryEGL = {
   eglWaitGL: 'eglWaitClient',
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval);
-  eglSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   eglSwapInterval__proxy: 'sync',
   eglSwapInterval: (display, interval) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
@@ -586,15 +582,14 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx);
-  eglMakeCurrent__deps: ['$GL'],
   eglMakeCurrent__proxy: 'sync',
   eglMakeCurrent: (display, draw, read, context) => {
-    if (display != {{{ eglDefaultDisplay }}}) {
+    if (display != eglDefaultDisplay) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0 /* EGL_FALSE */;
     }
     //\todo An EGL_NOT_INITIALIZED error is generated if EGL is not initialized for dpy.
-    if (context != 0 && context != {{{ eglDefaultContext }}}) {
+    if (context != 0 && context != eglDefaultContext) {
       EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
       return 0;
     }
@@ -631,10 +626,9 @@ var LibraryEGL = {
 
   // EGLAPI EGLDisplay EGLAPIENTRY eglGetCurrentDisplay(void);
   eglGetCurrentDisplay__proxy: 'sync',
-  eglGetCurrentDisplay: () => EGL.currentContext ? {{{ eglDefaultDisplay }}} : 0,
+  eglGetCurrentDisplay: () => EGL.currentContext ? eglDefaultDisplay : 0,
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
-  eglSwapBuffers__deps: ['$GLctx'],
   eglSwapBuffers__proxy: 'sync',
   eglSwapBuffers: (dpy, surface) => {
     if (!EGL.defaultDisplayInitialized) {
@@ -667,7 +661,5 @@ var LibraryEGL = {
     return 1 /* EGL_TRUE */;
   }
 };
-
-autoAddDeps(LibraryEGL, '$EGL');
 
 addToLibrary(LibraryEGL);

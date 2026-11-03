@@ -6,7 +6,7 @@
 using namespace emscripten;
 
 // Counters to track Value structs lifetimes.
-static int default_constructed = 0, copy_constructed = 0,
+int default_constructed = 0, copy_constructed = 0,
            move_constructed = 0, destructed = 0;
 
 struct Value {

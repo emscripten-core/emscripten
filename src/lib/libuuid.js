@@ -8,7 +8,6 @@
 
 addToLibrary({
   // Clear a 'compact' UUID.
-  uuid_clear__deps: ['$zeroMemory'],
   uuid_clear: (uu) => zeroMemory(uu, 16),
 
   // Compare whether or not two 'compact' UUIDs are the same.
@@ -24,7 +23,6 @@ addToLibrary({
   // Write a RFC4122 version 4 compliant UUID largely based on the method found in
   // http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
   // tweaked slightly in order to use the 'compact' UUID form used by libuuid.
-  uuid_generate__deps: ['$writeArrayToMemory', '$randomFill'],
   uuid_generate: (out) => {
     // void uuid_generate(uuid_t out);
     var uuid = new Uint8Array(16);
@@ -76,7 +74,6 @@ addToLibrary({
 
   // Convert a 'compact' form UUID to a string, if the upper parameter is supplied make the string upper case.
   uuid_unparse__docs: '/** @param {number|boolean=} upper */',
-  uuid_unparse__deps: ['$stringToUTF8'],
   uuid_unparse: (uu, out, upper) => {
     // void uuid_unparse(const uuid_t uu, char *out);
     var i = 0;
@@ -91,14 +88,12 @@ addToLibrary({
   },
 
   // Convert a 'compact' form UUID to a lower case string.
-  uuid_unparse_lower__deps: ['uuid_unparse'],
   uuid_unparse_lower: (uu, out) => {
     // void uuid_unparse_lower(const uuid_t uu, char *out);
     _uuid_unparse(uu, out);
   },
 
   // Convert a 'compact' form UUID to an upper case string.
-  uuid_unparse_upper__deps: ['uuid_unparse'],
   uuid_unparse_upper: (uu, out) => {
     // void uuid_unparse_upper(const uuid_t uu, char *out);
     _uuid_unparse(uu, out, true);

@@ -15,6 +15,6 @@ int main() {
 
   assert(open("filename", O_NOFOLLOW | O_RDONLY) >= 0);
 
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

@@ -24,6 +24,6 @@ int main() {
   assert(nread == byte_count);
   fclose(fp);
 
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

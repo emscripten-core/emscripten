@@ -69,7 +69,17 @@ public:
           kind = Access;
           break;
         case O_RDONLY:
-          // We only need read access, so open as a Blob
+#ifdef __EMSCRIPTEN_PTHREADS__
+          // Prefer an AccessHandle if it does not lock the file for other tabs.
+          proxy([&](auto ctx) {
+            _wasmfs_opfs_open_shared_access(ctx.ctx, fileID, &id);
+          });
+          if (id >= 0) {
+            kind = Access;
+            break;
+          }
+#endif
+          // We only need read access, so open as a Blob.
           proxy(
             [&](auto ctx) { _wasmfs_opfs_open_blob(ctx.ctx, fileID, &id); });
           if (id < 0) {

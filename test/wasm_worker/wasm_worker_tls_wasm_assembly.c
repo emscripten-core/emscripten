@@ -25,7 +25,7 @@ void worker_main() {
   emscripten_wasm_worker_post_function_v(0, main_thread_func);
 }
 
-char stack[1024];
+char stack[4096];
 
 int main() {
   assert(!emscripten_current_thread_is_wasm_worker());

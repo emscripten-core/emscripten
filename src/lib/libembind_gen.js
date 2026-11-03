@@ -54,7 +54,6 @@ var LibraryEmbind = {
       this.destructorType = 'none'; // Same as emval.
     }
   },
-  $FunctionDefinition__deps: ['$createJsInvoker', '$createJsInvokerSignature', '$emittedFunctions'],
   $FunctionDefinition: class {
     hasPublicSymbol = true;
     constructor(name, returnType, argumentTypes, functionIndex, thisType = null, isNonnullReturn = false, isAsync = false) {
@@ -132,6 +131,12 @@ var LibraryEmbind = {
           break;
         default:
           throw new Error(`Bad destructor type '${type.destructorType}'`);
+      }
+      if (type.argStackAlloc) {
+        // Trivial value types stack-allocate their argument temporaries;
+        // must mirror the runtime type object so the invoker signature and
+        // generated shape match (see createJsInvokerSignature).
+        ret.argStackAlloc = true;
       }
       return ret;
     }
@@ -311,7 +316,7 @@ var LibraryEmbind = {
         out.push('  value: T;\n}\n');
       }
       out.push(`export type ${this.name} = `);
-      if (this.items.length === 0) {
+      if (!this.items.length) {
         out.push('never/* Empty Enumerator */');
       } else {
         const outItems = [];
@@ -337,15 +342,17 @@ var LibraryEmbind = {
       out.push(`  ${this.name}: {`);
       const outItems = [];
       for (const [name, value] of this.items) {
+        // Quote keys that aren't valid JS identifiers.
+        const key = /^[a-zA-Z_$][\w$]*$/.test(name) ? name : `'${name}'`;
         switch (this.valueType) {
           case 'object':
-            outItems.push(`${name}: ${this.name}Value<${value}>`);
+            outItems.push(`${key}: ${this.name}Value<${value}>`);
             break;
           case 'number':
-            outItems.push(`${name}: ${value}`);
+            outItems.push(`${key}: ${value}`);
             break;
           case 'string':
-            outItems.push(`${name}: '${name}'`);
+            outItems.push(`${key}: '${name}'`);
             break;
         }
       }
@@ -354,12 +361,15 @@ var LibraryEmbind = {
     }
   },
   $ValueArrayDefinition: class {
-    constructor(typeId, name) {
+    constructor(typeId, name, isTrivial) {
       this.typeId = typeId;
       this.name = name;
       this.elementTypeIds = [];
       this.elements = [];
-      this.destructorType = 'function';
+      // Trivial types need no destructor call; their argument temporaries
+      // live in the invoker's stack frame.
+      this.destructorType = isTrivial ? 'none' : 'function';
+      this.argStackAlloc = !!isTrivial;
     }
 
     print(nameMap, out) {
@@ -373,13 +383,15 @@ var LibraryEmbind = {
     }
   },
   $ValueObjectDefinition: class {
-    constructor(typeId, name) {
+    constructor(typeId, name, isTrivial) {
       this.typeId = typeId;
       this.name = name;
       this.fieldTypeIds = [];
       this.fieldNames = [];
       this.fields = [];
-      this.destructorType = 'function';
+      // See ValueArrayDefinition: trivial types stack-allocate.
+      this.destructorType = isTrivial ? 'none' : 'function';
+      this.argStackAlloc = !!isTrivial;
     }
 
     print(nameMap, out) {
@@ -392,7 +404,6 @@ var LibraryEmbind = {
       out.push('\n};\n\n');
     }
   },
-  $TsPrinter__deps: ['$OptionalType', '$ClassDefinition'],
   $TsPrinter: class {
     constructor(definitions) {
       this.definitions = definitions;
@@ -516,20 +527,16 @@ var LibraryEmbind = {
     }
   },
 
-  $registerType__deps: ['$sharedRegisterType'],
   $registerType: function(rawType, registeredInstance, options = {}) {
     return sharedRegisterType(rawType, registeredInstance, options);
   },
-  $registerPrimitiveType__deps: ['$registerType', '$PrimitiveType'],
   $registerPrimitiveType: (id, name, destructorType) => {
     name = AsciiToString(name);
     registerType(id, new PrimitiveType(id, name, destructorType));
   },
-  $registerIntegerType__deps: ['$registerType', '$IntegerType'],
   $registerIntegerType: (id) => {
     registerType(id, new IntegerType(id));
   },
-  $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$AsciiToString', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName', '$PointerDefinition', '$ClassDefinition'],
   $createFunctionDefinition: (name, argCount, rawArgTypesAddr, functionIndex, hasThis, isNonnullReturn, isAsync, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = typeof name === 'string' ? name : AsciiToString(name);
@@ -573,38 +580,31 @@ var LibraryEmbind = {
     voidType.isVoid = true; // Match the marker property from the non-AOT mode.
     registerType(rawType, voidType);
   },
-  _embind_register_bool__deps: ['$registerPrimitiveType'],
   _embind_register_bool: (rawType, name, trueValue, falseValue) => {
     registerPrimitiveType(rawType, name, 'none');
   },
-  _embind_register_integer__deps: ['$registerIntegerType'],
   _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
     registerIntegerType(primitiveType, name);
   },
   _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
     registerPrimitiveType(primitiveType, name, 'none');
   },
-  _embind_register_float__deps: ['$registerPrimitiveType'],
   _embind_register_float: (rawType, name, size) => {
     registerPrimitiveType(rawType, name, 'none');
   },
-  _embind_register_std_string__deps: ['$registerPrimitiveType'],
   _embind_register_std_string: (rawType, name) => {
     registerPrimitiveType(rawType, name, 'function');
   },
   _embind_register_std_wstring: (rawType, charSize, name) => {
     registerPrimitiveType(rawType, name, 'function');
   },
-  _embind_register_emval__deps: ['$registerType', '$PrimitiveType'],
   _embind_register_emval: (rawType) => {
     registerType(rawType, new PrimitiveType(rawType, 'emscripten::val', 'none'));
   },
-  _embind_register_user_type__deps: ['$registerType', '$AsciiToString', '$UserType'],
   _embind_register_user_type: (rawType, name) => {
     name = AsciiToString(name);
     registerType(rawType, new UserType(rawType, name));
   },
-  _embind_register_user_type_definition__deps: ['$registerType', '$AsciiToString', '$UserTypeDefinition'],
   _embind_register_user_type_definition: (rawType, name, definition) => {
     name = AsciiToString(name);
     definition = AsciiToString(definition);
@@ -612,7 +612,6 @@ var LibraryEmbind = {
     registerType(rawType, userTypeDef);
     moduleDefinitions.push(userTypeDef);
   },
-  _embind_register_optional__deps: ['$OptionalType'],
   _embind_register_optional: (rawOptionalType, rawType) => {
     whenDependentTypesAreResolved([rawOptionalType], [rawType], function(type) {
       type = type[0];
@@ -622,13 +621,11 @@ var LibraryEmbind = {
   _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
     // TODO
   },
-  _embind_register_function__deps: ['$moduleDefinitions', '$createFunctionDefinition'],
   _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync, isNonnullReturn) => {
     createFunctionDefinition(name, argCount, rawArgTypesAddr, fn, false, isNonnullReturn, isAsync, (funcDef) => {
       moduleDefinitions.push(funcDef);
     });
   },
-  _embind_register_class__deps: ['$AsciiToString', '$ClassDefinition', '$whenDependentTypesAreResolved', '$moduleDefinitions', '$PointerDefinition'],
   _embind_register_class: function(rawType,
                                   rawPointerType,
                                   rawConstPointerType,
@@ -658,7 +655,6 @@ var LibraryEmbind = {
     );
 
   },
-  _embind_register_iterable__deps: ['$whenDependentTypesAreResolved'],
   _embind_register_iterable: (rawClassType, rawElementType, sizeMethodName, getMethodName) => {
     whenDependentTypesAreResolved([], [rawClassType, rawElementType], (types) => {
       const classType = types[0];
@@ -667,7 +663,6 @@ var LibraryEmbind = {
       return [];
     });
   },
-  _embind_register_class_constructor__deps: ['$whenDependentTypesAreResolved', '$createFunctionDefinition'],
   _embind_register_class_constructor: function(
     rawClassType,
     argCount,
@@ -684,7 +679,6 @@ var LibraryEmbind = {
       return [];
     });
   },
-  _embind_register_class_function__deps: ['$createFunctionDefinition'],
   _embind_register_class_function: function(rawClassType,
           methodName,
           argCount,
@@ -700,8 +694,6 @@ var LibraryEmbind = {
       classDef.methods.push(funcDef);
     });
   },
-  _embind_register_class_property__deps: [
-    '$AsciiToString', '$whenDependentTypesAreResolved', '$ClassProperty'],
   _embind_register_class_property: function(classType,
                                             fieldName,
                                             getterReturnType,
@@ -713,7 +705,7 @@ var LibraryEmbind = {
                                             setter,
                                             setterContext) {
     fieldName = AsciiToString(fieldName);
-    const readonly = setter === 0;
+    const readonly = !setter;
     if (!(readonly || getterReturnType === setterArgumentType)) {
       throw new error('Mismatched getter and setter types are not supported.');
     }
@@ -728,7 +720,6 @@ var LibraryEmbind = {
       return [];
     });
   },
-  _embind_register_class_class_function__deps: ['$createFunctionDefinition'],
   _embind_register_class_class_function: function(rawClassType,
                                                   methodName,
                                                   argCount,
@@ -746,8 +737,6 @@ var LibraryEmbind = {
       return [];
     });
   },
-  _embind_register_class_class_property__deps: [
-    '$AsciiToString', '$whenDependentTypesAreResolved', '$ClassProperty'],
   _embind_register_class_class_property: (rawClassType,
                                           fieldName,
                                           rawFieldType,
@@ -769,7 +758,6 @@ var LibraryEmbind = {
   },
   // Stub function. This is called when extending an object and not needed for TS generation.
   _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {},
-  _embind_register_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions', '$getEnumValueType'],
   _embind_register_enum: function(rawType, name, size, isSigned, rawValueType) {
     name = AsciiToString(name);
     const valueType = getEnumValueType(rawValueType);
@@ -777,13 +765,11 @@ var LibraryEmbind = {
     registerType(rawType, enumDef);
     moduleDefinitions.push(enumDef);
   },
-  _embind_register_enum_value__deps: ['$AsciiToString', '$requireRegisteredType'],
   _embind_register_enum_value: function(rawEnumType, name, enumValue) {
     name = AsciiToString(name);
     const enumDef = requireRegisteredType(rawEnumType, name);
     enumDef.items.push([name, enumValue]);
   },
-  _embind_register_constant__deps: ['$AsciiToString', '$ConstantDefinition', '$whenDependentTypesAreResolved', '$moduleDefinitions'],
   _embind_register_constant: function(name, typeId, value) {
     name = AsciiToString(name);
     whenDependentTypesAreResolved([], [typeId], function(types) {
@@ -792,21 +778,20 @@ var LibraryEmbind = {
       return [];
     });
   },
-  _embind_register_value_array__deps: [
-    '$AsciiToString', '$ValueArrayDefinition', '$tupleRegistrations'],
   _embind_register_value_array: function(
     rawType,
     name,
     constructorSignature,
     rawConstructor,
     destructorSignature,
-    rawDestructor
+    rawDestructor,
+    valueSize,
+    isTrivial
   ) {
     name = AsciiToString(name);
-    const valueArray = new ValueArrayDefinition(rawType, name);
+    const valueArray = new ValueArrayDefinition(rawType, name, isTrivial);
     tupleRegistrations[rawType] = valueArray;
   },
-  _embind_register_value_array_element__deps: ['$tupleRegistrations'],
   _embind_register_value_array_element: function(
     rawTupleType,
     getterReturnType,
@@ -825,7 +810,6 @@ var LibraryEmbind = {
 
     valueArray.elementTypeIds.push(getterReturnType);
   },
-  _embind_finalize_value_array__deps: ['$whenDependentTypesAreResolved', '$moduleDefinitions', '$tupleRegistrations'],
   _embind_finalize_value_array: function(rawTupleType) {
     const valueArray = tupleRegistrations[rawTupleType];
     delete tupleRegistrations[rawTupleType];
@@ -835,21 +819,20 @@ var LibraryEmbind = {
       return [valueArray];
     });
   },
-  _embind_register_value_object__deps: ['$AsciiToString', '$ValueObjectDefinition', '$structRegistrations'],
   _embind_register_value_object: function(
     rawType,
     name,
     constructorSignature,
     rawConstructor,
     destructorSignature,
-    rawDestructor
+    rawDestructor,
+    valueSize,
+    isTrivial
   ) {
     name = AsciiToString(name);
-    const valueObject = new ValueObjectDefinition(rawType, name);
+    const valueObject = new ValueObjectDefinition(rawType, name, isTrivial);
     structRegistrations[rawType] = valueObject;
   },
-  _embind_register_value_object_field__deps: [
-    '$AsciiToString', '$structRegistrations'],
   _embind_register_value_object_field: function(
     structType,
     fieldName,
@@ -870,7 +853,6 @@ var LibraryEmbind = {
     valueObject.fieldTypeIds.push(getterReturnType);
     valueObject.fieldNames.push(AsciiToString(fieldName));
   },
-  _embind_finalize_value_object__deps: ['$moduleDefinitions', '$whenDependentTypesAreResolved', '$structRegistrations'],
   _embind_finalize_value_object: function(structType) {
     const valueObject = structRegistrations[structType];
     delete structRegistrations[structType];
@@ -885,7 +867,6 @@ var LibraryEmbind = {
       return [valueObject];
     });
   },
-  _embind_register_smart_ptr__deps: ['$whenDependentTypesAreResolved'],
   _embind_register_smart_ptr: function(rawType,
                                        rawPointeeType,
                                        name,
@@ -904,14 +885,8 @@ var LibraryEmbind = {
     });
   },
 
-  $emitOutput__deps: ['$awaitingDependencies', '$throwBindingError', '$getTypeName', '$moduleDefinitions',
-#if EMBIND_AOT
-    '$JsPrinter',
-#else
-    '$TsPrinter',
-#endif
-  ],
   $emitOutput__postset: () => { addAtPostCtor('emitOutput()'); },
+  $emitOutput__force: true,
   $emitOutput: () => {
     for (const typeId in awaitingDependencies) {
       throwBindingError(`Missing binding for type: '${getTypeName(typeId)}' typeId: ${typeId}`);
@@ -933,7 +908,5 @@ var LibraryEmbind = {
   $setDelayFunction: () => { throw new Error('stub function should not be called'); },
   $PureVirtualError: () => { throw new Error('stub function should not be called'); },
 };
-
-extraLibraryFuncs.push('$emitOutput');
 
 addToLibrary(LibraryEmbind);

@@ -4,8 +4,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Check for clean checkout.  This is run after tests during CI to ensure
-we are not polluting the source checkout.
+"""Check for clean checkout.
+
+This is run after tests during CI to ensure we are not polluting the source checkout.
 """
 
 import os

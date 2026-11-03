@@ -16,6 +16,6 @@ int sem_post(sem_t *sem)
 		if (waiters <= 1)
 			new &= ~0x80000000;
 	} while (a_cas(sem->__val, val, new) != val);
-	if (val<0) __wake(sem->__val, waiters>1 ? 1 : -1, priv);
+	if (val<0 || waiters) __wake(sem->__val, waiters>1 ? 1 : -1, priv);
 	return 0;
 }

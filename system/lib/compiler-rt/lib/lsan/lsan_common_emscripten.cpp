@@ -123,7 +123,7 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
     return;
 
   Frontier *frontier = reinterpret_cast<Frontier *>(arg);
-  tid_t os_id = tctx->os_id;
+  ThreadID os_id = tctx->os_id;
 
   uptr stack_begin, stack_end, tls_begin, tls_end, cache_begin, cache_end;
   DTLS *dtls;
@@ -175,7 +175,7 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
 
 void ProcessThreads(SuspendedThreadsList const& suspended_threads,
                     Frontier* frontier,
-                    tid_t caller_tid,
+                    ThreadID caller_tid,
                     uptr caller_sp) {
   GetThreadRegistryLocked()->RunCallbackForEachThreadLocked(
     ProcessThreadsCallback, frontier);

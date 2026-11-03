@@ -90,10 +90,10 @@ int main() {
   pthread_join(signaler, NULL);
   emscripten_out("done");
 #else
-  emscripten_wasm_worker_t waiter = emscripten_malloc_wasm_worker(1024);
+  emscripten_wasm_worker_t waiter = emscripten_malloc_wasm_worker(4096);
   emscripten_wasm_worker_post_function_v(waiter, waiter_main);
 
-  emscripten_wasm_worker_t signaler = emscripten_malloc_wasm_worker(1024);
+  emscripten_wasm_worker_t signaler = emscripten_malloc_wasm_worker(4096);
   emscripten_wasm_worker_post_function_v(signaler, signaler_main);
 #endif
 }

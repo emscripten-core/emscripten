@@ -32,5 +32,5 @@ int main() {
   // We have allocated using emmalloc, so now emmalloc definitely reports usage.
   assert(emmalloc_dynamic_heap_size() >= initial + ONE_MB);
 
-  emscripten_console_log("success");
+  emscripten_console_log("done");
 }

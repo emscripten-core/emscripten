@@ -27,12 +27,7 @@ int main(int argc, char* argv[])
 	}
 
 	frequency = EM_ASM_INT({
-		var context;
-		try {
-		  context = new AudioContext();
-		} catch (e) {
-		  context = new webkitAudioContext(); // safari only
-		}
+		var context = new AudioContext();
 		return context.sampleRate;
 	});
 

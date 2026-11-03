@@ -18,10 +18,11 @@
 #include <unistd.h>
 #include <emscripten/eventloop.h>
 
+#define TIMEOUT_MS 300
 // It is possible for the node timers (such as setTimeout or Atomics.wait) to wake up
 // slightly earlier than requested. Because we measure times accurately using
-// clock_gettime, we give tests a 5 milliseconds error margin to avoid flaky timeouts.
-#define TIMEOUT_MARGIN_MS 5
+// clock_gettime, we give tests a 20 milliseconds error margin to avoid flaky timeouts.
+#define TIMEOUT_MARGIN_MS 20
 
 int64_t timespec_delta_ms(struct timespec* begin, struct timespec* end) {
   int64_t delta_sec = end->tv_sec - begin->tv_sec;
@@ -30,7 +31,7 @@ int64_t timespec_delta_ms(struct timespec* begin, struct timespec* end) {
   assert(delta_sec >= 0);
   assert(delta_nsec > -1000000000 && delta_nsec < 1000000000);
 
-  int64_t delta_ms = (delta_sec * 1000) + (delta_nsec / 1000000);
+  int64_t delta_ms = (delta_sec * 1000000000LL + delta_nsec) / 1000000;
   assert(delta_ms >= 0);
   return delta_ms;
 }
@@ -42,12 +43,12 @@ void test_timeout_without_fds() {
   struct timespec end = {0};
 
   clock_gettime(CLOCK_MONOTONIC, &begin);
-  assert(poll(NULL, 0, 1000) == 0);
+  assert(poll(NULL, 0, TIMEOUT_MS) == 0);
   clock_gettime(CLOCK_MONOTONIC, &end);
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= 1000 - TIMEOUT_MARGIN_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 }
 
 int pipe_shared[2];
@@ -72,15 +73,15 @@ void test_unblock_poll() {
     {pipe_a[0], POLLIN, 0},
     {pipe_shared[0], POLLIN, 0},
   };
-  emscripten_set_timeout(write_to_pipe, 1000, NULL);
   clock_gettime(CLOCK_MONOTONIC, &begin);
+  emscripten_set_timeout(write_to_pipe, TIMEOUT_MS, NULL);
   assert(poll(fds, 2, -1) == 1);
   clock_gettime(CLOCK_MONOTONIC, &end);
   assert(fds[1].revents & POLLIN);
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= 1000 - TIMEOUT_MARGIN_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 
   close(pipe_a[0]); close(pipe_a[1]);
   close(pipe_shared[0]); close(pipe_shared[1]);

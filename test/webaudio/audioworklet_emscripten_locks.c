@@ -190,7 +190,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T ctx, bool success, void* data) {
     .numberOfOutputs = 1,
     .outputChannelCounts = outputChannelCounts
   };
-  EMSCRIPTEN_AUDIO_WORKLET_NODE_T worklet = emscripten_create_wasm_audio_worklet_node(ctx, "locks-test", &opts, &process, data);
+  EMSCRIPTEN_WEBAUDIO_T worklet = emscripten_create_wasm_audio_worklet_node(ctx, "locks-test", &opts, &process, data);
   emscripten_audio_node_connect(worklet, ctx, 0, 0);
 }
 

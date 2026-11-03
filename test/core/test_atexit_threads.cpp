@@ -12,9 +12,9 @@ extern "C" {
   int __cxa_thread_atexit(void (*dtor)(void *), void *obj, void *dso_symbol);
 }
 
-static void cleanA() { printf("A\n"); }
-static void cleanB() { printf("B\n"); }
-static void cleanCarg(void* x) { printf("C %ld\n", (long)x); }
+void cleanA() { printf("A\n"); }
+void cleanB() { printf("B\n"); }
+void cleanCarg(void* x) { printf("C %ld\n", (long)x); }
 
 int main() {
   atexit(cleanA);

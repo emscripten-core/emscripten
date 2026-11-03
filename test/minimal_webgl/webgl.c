@@ -7,11 +7,11 @@
 void upload_unicode_char_to_texture(int unicodeChar, int charSize, int applyShadow);
 void load_texture_from_url(GLuint texture, const char *url, int *outWidth, int *outHeight);
 
-static EMSCRIPTEN_WEBGL_CONTEXT_HANDLE glContext;
-static GLuint quad, colorPos, matPos, solidColor;
-static float pixelWidth, pixelHeight;
+EMSCRIPTEN_WEBGL_CONTEXT_HANDLE glContext;
+GLuint quad, colorPos, matPos, solidColor;
+float pixelWidth, pixelHeight;
 
-static GLuint compile_shader(GLenum shaderType, const char *src)
+GLuint compile_shader(GLenum shaderType, const char *src)
 {
    GLuint shader = glCreateShader(shaderType);
    glShaderSource(shader, 1, &src, NULL);
@@ -19,7 +19,7 @@ static GLuint compile_shader(GLenum shaderType, const char *src)
    return shader;
 }
 
-static GLuint create_program(GLuint vertexShader, GLuint fragmentShader)
+GLuint create_program(GLuint vertexShader, GLuint fragmentShader)
 {
    GLuint program = glCreateProgram();
    glAttachShader(program, vertexShader);
@@ -30,7 +30,7 @@ static GLuint create_program(GLuint vertexShader, GLuint fragmentShader)
    return program;
 }
 
-static GLuint create_texture()
+GLuint create_texture()
 {
   GLuint texture;
   glGenTextures(1, &texture);
@@ -101,7 +101,7 @@ void init_webgl(int width, int height)
 
 typedef void (*tick_func)(double t, double dt);
 
-static bool tick(double time, void *userData)
+bool tick(double time, void *userData)
 {
   static double t0;
   double dt = time - t0;
@@ -117,7 +117,7 @@ void clear_screen(float r, float g, float b, float a)
   glClear(GL_COLOR_BUFFER_BIT);
 }
 
-static void fill_textured_rectangle(float x0, float y0, float x1, float y1, float r, float g, float b, float a, GLuint texture)
+void fill_textured_rectangle(float x0, float y0, float x1, float y1, float r, float g, float b, float a, GLuint texture)
 {
   float mat[16] = { (x1-x0)*pixelWidth, 0, 0, 0, 0, (y1-y0)*pixelHeight, 0, 0, 0, 0, 1, 0, x0*pixelWidth-1.f, y0*pixelHeight-1.f, 0, 1};
   glUniformMatrix4fv(matPos, 1, 0, mat);
@@ -141,9 +141,9 @@ typedef struct Texture
 } Texture;
 
 #define MAX_TEXTURES 256
-static Texture textures[MAX_TEXTURES] = {};
+Texture textures[MAX_TEXTURES] = {};
 
-static Texture *find_or_cache_url(const char *url)
+Texture *find_or_cache_url(const char *url)
 {
   for(int i = 0; i < MAX_TEXTURES; ++i) // Naive O(n) lookup for tiny code size
     if (!strcmp(textures[i].url, url))
@@ -175,8 +175,8 @@ typedef struct Glyph
 } Glyph;
 
 #define MAX_GLYPHS 256
-static Glyph glyphs[MAX_GLYPHS] = {};
-static Glyph *find_or_cache_character(unsigned int ch, int charSize, int shadow)
+Glyph glyphs[MAX_GLYPHS] = {};
+Glyph *find_or_cache_character(unsigned int ch, int charSize, int shadow)
 {
   for(int i = 0; i < MAX_TEXTURES; ++i) // Naive O(n) lookup for tiny code size
     if (glyphs[i].ch == ch && glyphs[i].charSize == charSize && glyphs[i].shadow == shadow)

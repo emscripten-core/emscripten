@@ -58,6 +58,7 @@ std::unique_ptr<Test> class_unique_ptr_returning_fn() {
 enum FirstEnum { kValueOne, kValueTwo, kValueThree };
 enum SecondEnum { kValueA, kValueB, kValueC };
 enum ThirdEnum { kValueAlpha, kValueBeta, kValueGamma };
+enum HyphenatedEnum { kHyphenA, kHyphenB };
 enum EmptyEnum {};
 
 FirstEnum enum_returning_fn() { return kValueOne; }
@@ -215,6 +216,9 @@ EMSCRIPTEN_BINDINGS(Test) {
       .value("kValueAlpha", ThirdEnum::kValueAlpha)
       .value("kValueBeta", ThirdEnum::kValueBeta)
       .value("kValueGamma", ThirdEnum::kValueGamma);
+  enum_<HyphenatedEnum>("HyphenatedEnum", enum_value_type::string)
+      .value("k-hyphen-a", HyphenatedEnum::kHyphenA)
+      .value("k-hyphen-b", HyphenatedEnum::kHyphenB);
   enum_<EmptyEnum>("EmptyEnum");
 
   function("enum_returning_fn", &enum_returning_fn);

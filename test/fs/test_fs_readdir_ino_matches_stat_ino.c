@@ -57,7 +57,7 @@ int main() {
   printf("stat    a_ino: %llu, b_ino: %llu\n", sta.st_ino, stb.st_ino);
   assert(a_ino == sta.st_ino);
   assert(b_ino == stb.st_ino);
-  printf("success\n");
   closedir(dirp);
+  printf("done\n");
   return 0;
 }

@@ -149,10 +149,10 @@ exception thrown``, this code will print ``MyException,My exception thrown``.
 true at ``-O0``.  At ``-O1`` or above, you can export it separately by
 ``-sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount``.
 
-If the stack pointer has been moved due to stack allocations within the Wasm
-function before an exception is thrown, you can use ``stackSave()`` and
-``stackRestore()`` to restore the stack pointer so that no stack memory is
-leaked.
+Emscripten does not automatically restore the shadow stack pointer during
+exception unwinding.  Therefore, whenever you catch an exception in JavaScript
+and intend to continue using the module, you should use ``stackSave()`` and
+``stackRestore()`` around the call to prevent stack memory from leaking.
 
 .. note:: If you catch a Wasm exception and do not rethrow it, you need to free
    the storage associated with the exception in JS using

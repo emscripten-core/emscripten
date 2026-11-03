@@ -8,15 +8,15 @@
 #include <stdio.h>
 #include <math.h>
 
-static float XXXf = -0.0f;
-static double XXXd = -0.0;
+float XXXf = -0.0f;
+double XXXd = -0.0;
 
 struct x {
   float f;
   double d;
 };
 
-static struct x xx[] = {
+struct x xx[] = {
   -0x0p+0,
   -0x0p+0,
 };

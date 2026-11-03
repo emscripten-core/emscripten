@@ -25,9 +25,9 @@
 #define emColor4ubv(x) glColor4ubv(x)
 #endif
 
-static GLboolean should_rotate = GL_TRUE;
+GLboolean should_rotate = GL_TRUE;
 
-static void quit_tutorial( int code )
+void quit_tutorial( int code )
 {
     /*
      * Quit SDL so we can release the fullscreen
@@ -40,7 +40,7 @@ static void quit_tutorial( int code )
     exit( code );
 }
 
-static void handle_key_down( SDL_keysym* keysym )
+void handle_key_down( SDL_keysym* keysym )
 {
     
     /*
@@ -64,7 +64,7 @@ static void handle_key_down( SDL_keysym* keysym )
     
 }
 
-static void process_events( void )
+void process_events( void )
 {
     /* Our SDL event placeholder. */
     SDL_Event event;
@@ -87,7 +87,7 @@ static void process_events( void )
     
 }
 
-static void draw_screen( void )
+void draw_screen( void )
 {
     /* Our angle of rotation. */
     static float angle = 0.0f;
@@ -251,7 +251,7 @@ static void draw_screen( void )
     SDL_GL_SwapBuffers( );
 }
 
-static void setup_opengl( int width, int height )
+void setup_opengl( int width, int height )
 {
     float ratio = (float) width / (float) height;
     

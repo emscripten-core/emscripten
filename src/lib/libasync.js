@@ -20,18 +20,14 @@ addToLibrary({
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
-#if ASSERTIONS
-    '$createNamedFunction',
-#endif
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepalivePush', '$runtimeKeepalivePop',
-#endif
+  ...defineInternalConsts({
+    $ASYNCIFY_STACK_SIZE: ASYNCIFY_STACK_SIZE,
+  }),
+  $Asyncify__force: true,
 #if ASYNCIFY == 1
-    // Needed by allocateData and handleSleep respectively
-    'malloc', 'free',
+  // Needed by allocateData and handleSleep respectively
+  $Asyncify__deps: ['malloc', 'free'],
 #endif
-  ],
 
   $Asyncify: {
     //
@@ -54,7 +50,7 @@ addToLibrary({
       var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
 
       for (let [x, original] of Object.entries(imports)) {
-        if (typeof original == 'function') {
+        if (typeof original === 'function') {
           let isAsyncifyImport = original.isAsync || importPattern.test(x);
 #if ASYNCIFY == 2
           // Wrap async imports with a suspending WebAssembly function.
@@ -97,7 +93,7 @@ addToLibrary({
           // them to the table.
           imports[x].sig = original.sig;
 #endif // MAIN_MODULE
-#endif // ASSERTIONS
+#endif // ASSERTIONS && ASYNCIFY != 2
         }
       }
     },
@@ -163,7 +159,7 @@ addToLibrary({
 #endif
       var ret = {};
       for (let [x, original] of Object.entries(exports)) {
-        if (typeof original == 'function') {
+        if (typeof original === 'function') {
  #if ASYNCIFY == 2
           // Wrap all exports with a promising WebAssembly function.
           let isAsyncifyExport = exportPattern.test(x);
@@ -194,7 +190,6 @@ addToLibrary({
       Disabled: 3,
     },
     state: 0,
-    StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
     currData: null,
     // The return value passed to wakeUp() in
     // Asyncify.handleSleep((wakeUp) => {...}) is stored here,
@@ -232,7 +227,7 @@ addToLibrary({
 #endif
       if (Asyncify.currData &&
           Asyncify.state === Asyncify.State.Unwinding &&
-          Asyncify.exportCallStack.length === 0) {
+          !Asyncify.exportCallStack.length) {
         // We just finished unwinding.
         // Be sure to set the state before calling any other functions to avoid
         // possible infinite recursion here (For example in debug pthread builds
@@ -245,7 +240,7 @@ addToLibrary({
         {{{ runtimeKeepalivePush(); }}}
         // Keep the runtime alive so that a re-wind can be done later.
         runAndAbortIfError(_asyncify_stop_unwind);
-        if (typeof Fibers != 'undefined') {
+        if (typeof Fibers !== 'undefined') {
           Fibers.trampoline();
         }
       }
@@ -270,8 +265,8 @@ addToLibrary({
       // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
       // We also embed a stack in the same memory region here, right next to the structure.
       // This struct is also defined as asyncify_data_t in emscripten/fiber.h
-      var ptr = _malloc({{{ C_STRUCTS.asyncify_data_s.__size__ }}} + Asyncify.StackSize);
-      Asyncify.setDataHeader(ptr, ptr + {{{ C_STRUCTS.asyncify_data_s.__size__ }}}, Asyncify.StackSize);
+      var ptr = _malloc({{{ C_STRUCTS.asyncify_data_s.__size__ }}} + ASYNCIFY_STACK_SIZE);
+      Asyncify.setDataHeader(ptr, ptr + {{{ C_STRUCTS.asyncify_data_s.__size__ }}}, ASYNCIFY_STACK_SIZE);
       Asyncify.setDataRewindFunc(ptr);
       return ptr;
     },
@@ -368,7 +363,7 @@ addToLibrary({
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
-          if (typeof MainLoop != 'undefined' && MainLoop.func) {
+          if (typeof MainLoop !== 'undefined' && MainLoop.func) {
             MainLoop.resume();
           }
           var asyncWasmReturnValue, isError = false;
@@ -416,7 +411,7 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
           dbg(`ASYNCIFY: start unwind ${Asyncify.currData}`);
 #endif
-          if (typeof MainLoop != 'undefined' && MainLoop.func) {
+          if (typeof MainLoop !== 'undefined' && MainLoop.func) {
             MainLoop.pause();
           }
           runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
@@ -431,7 +426,9 @@ addToLibrary({
         _free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
-        Asyncify.sleepCallbacks.forEach(callUserCallback);
+        for (var cb of Asyncify.sleepCallbacks) {
+          callUserCallback(cb);
+        }
       } else {
         abort(`invalid state: ${Asyncify.state}`);
       }
@@ -480,7 +477,7 @@ addToLibrary({
   emscripten_sleep__async: 'auto',
   emscripten_sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 
-  emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
+  emscripten_wget_data__deps: ['malloc'],
   emscripten_wget_data__async: 'auto',
   emscripten_wget_data: async (url, pbuffer, pnum, perror) => {
     /* no need for run dependency, this is async but will not do any prepare etc. step */
@@ -497,7 +494,6 @@ addToLibrary({
     }
   },
 
-  emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers__async: true,
   emscripten_scan_registers: (func) => {
     return Asyncify.handleSleep((wakeUp) => {
@@ -514,7 +510,7 @@ addToLibrary({
     });
   },
 
-  $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits', '$stackRestore'],
+  $Fibers__deps: ['emscripten_stack_set_limits'],
   $Fibers: {
     nextFiber: 0,
     trampolineRunning: false,
@@ -525,7 +521,7 @@ addToLibrary({
           var fiber = Fibers.nextFiber;
           Fibers.nextFiber = 0;
 #if ASYNCIFY_DEBUG >= 2
-          dbg("ASYNCIFY/FIBER: trampoline jump into fiber", fiber, new Error().stack);
+          dbg('ASYNCIFY/FIBER: trampoline jump into fiber', fiber, new Error().stack);
 #endif
           Fibers.finishContextSwitch(fiber);
         } while (Fibers.nextFiber);
@@ -548,7 +544,7 @@ addToLibrary({
 
       var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
 
-      if (entryPoint !== 0) {
+      if (entryPoint) {
 #if STACK_OVERFLOW_CHECK
         writeStackCookie();
 #endif
@@ -574,7 +570,6 @@ addToLibrary({
     },
   },
 
-  emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers", '$stackSave'],
   emscripten_fiber_swap__async: true,
   emscripten_fiber_swap: (oldFiber, newFiber) => {
     if (ABORT) return;
@@ -627,7 +622,3 @@ addToLibrary({
   },
 #endif // ASYNCIFY
 });
-
-if (ASYNCIFY) {
-  extraLibraryFuncs.push('$Asyncify');
-}

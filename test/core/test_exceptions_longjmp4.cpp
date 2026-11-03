@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <setjmp.h>
 
-static jmp_buf buf;
+jmp_buf buf;
 
 void foo() {
   throw 3;

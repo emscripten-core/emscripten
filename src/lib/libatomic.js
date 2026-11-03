@@ -23,7 +23,6 @@ addToLibrary({
   // This polyfill performs polling with setTimeout() to observe a change in the
   // target memory location.
   $waitAsyncPolyfilled: '=(!Atomics.waitAsync || (globalThis.navigator?.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91));',
-  $polyfillWaitAsync__deps: ['$waitAsyncPolyfilled'],
   $polyfillWaitAsync__postset: `if (waitAsyncPolyfilled) {
   let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
   function __Atomics_pollWaitAsyncAddresses() {
@@ -47,18 +46,13 @@ addToLibrary({
   #if ASSERTIONS && WASM_WORKERS
     if (!ENVIRONMENT_IS_WASM_WORKER) err('Current environment does not support Atomics.waitAsync(): polyfilling it, but this is going to be suboptimal.');
   #endif
-  /**
-   * @param {number=} maxWaitMilliseconds
-   */
   Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
     let val = Atomics.load(i32a, index);
     if (val != value) return { async: false, value: 'not-equal' };
     if (maxWaitMilliseconds <= 0) return { async: false, value: 'timed-out' };
     maxWaitMilliseconds = performance.now() + (maxWaitMilliseconds || Infinity);
-    let promiseResolve;
-    let promise = new Promise((resolve) => { promiseResolve = resolve; });
     if (!__Atomics_waitAsyncAddresses[0]) setTimeout(__Atomics_pollWaitAsyncAddresses, 10);
-    __Atomics_waitAsyncAddresses.push([i32a, index, value, maxWaitMilliseconds, promiseResolve]);
+    let promise = new Promise((resolve) => __Atomics_waitAsyncAddresses.push([i32a, index, value, maxWaitMilliseconds, resolve]));
     return { async: true, value: promise };
   };
 }`,
@@ -73,6 +67,25 @@ addToLibrary({
     // Any function using Atomics.waitAsync should depend on this.
   },
 
+#if ASYNCIFY
+  _emscripten_atomic_wait_promise__deps: ['$polyfillWaitAsync'],
+  _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
+    var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
+    if (wait.async) {
+      // In the async case return the promise ID.
+      var chainedPromise = wait.value.then((value) => atomicWaitStates.indexOf(value));
+      var id = addPromise(chainedPromise);
+      return id;
+    }
+    // In the synchronous case return the negative result code
+    return -atomicWaitStates.indexOf(wait.value);
+  },
+#else
+  _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_atomic_wait_suspending');
+  },
+#endif
+
   $atomicWaitStates__internal: true,
   $atomicWaitStates: ['ok', 'not-equal', 'timed-out'],
   $liveAtomicWaitAsyncs: {},
@@ -80,7 +93,7 @@ addToLibrary({
   $liveAtomicWaitAsyncCounter: 0,
   $liveAtomicWaitAsyncCounter__internal: true,
 
-  emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$polyfillWaitAsync', '$callUserCallback'],
+  emscripten_atomic_wait_async__deps: ['$polyfillWaitAsync'],
   emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (!wait.async) return atomicWaitStates.indexOf(wait.value);
@@ -96,13 +109,12 @@ addToLibrary({
       if (liveAtomicWaitAsyncs[counter]) {
         {{{ runtimeKeepalivePop() }}}
         delete liveAtomicWaitAsyncs[counter];
-        callUserCallback(() => {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(addr, val, atomicWaitStates.indexOf(value), userData));
+        callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, addr, val, atomicWaitStates.indexOf(value), userData);
       }
     });
     return -counter;
   },
 
-  emscripten_atomic_cancel_wait_async__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_wait_async: (waitToken) => {
 #if ASSERTIONS
     if (waitToken == {{{ cDefs.ATOMICS_WAIT_NOT_EQUAL }}}) {
@@ -129,7 +141,6 @@ addToLibrary({
     return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
   },
 
-  emscripten_atomic_cancel_all_wait_asyncs__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs: () => {
     let waitAsyncs = Object.values(liveAtomicWaitAsyncs);
     for (var address of waitAsyncs) {
@@ -139,7 +150,6 @@ addToLibrary({
     return waitAsyncs.length;
   },
 
-  emscripten_atomic_cancel_all_wait_asyncs_at_address__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs_at_address: (address) => {
     let numCancelled = 0;
     for (var [waitToken, waitAddress] of Object.entries(liveAtomicWaitAsyncs)) {

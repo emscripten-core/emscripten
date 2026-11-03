@@ -27,7 +27,7 @@ enum {
   TEST_CASE_MKDIR,
 };
 
-static void test_case_open(void) {
+void test_case_open(void) {
   switch (TEST_PHASE) {
     case 1: {
       int fd = open("/working1/file", O_RDWR | O_CREAT | O_EXCL, 0777);
@@ -46,7 +46,7 @@ static void test_case_open(void) {
   }
 }
 
-static void test_case_close(void) {
+void test_case_close(void) {
   switch (TEST_PHASE) {
     case 1: {
       int fd = open("/working1/file", O_RDWR | O_CREAT | O_EXCL, 0777);
@@ -74,7 +74,7 @@ static void test_case_close(void) {
   }
 }
 
-static void test_case_symlink(void) {
+void test_case_symlink(void) {
   switch (TEST_PHASE) {
     case 1: {
       int fd = open("/working1/file", O_RDWR | O_CREAT | O_EXCL, 0777);
@@ -115,7 +115,7 @@ static void test_case_symlink(void) {
   }
 }
 
-static void test_case_unlink(void) {
+void test_case_unlink(void) {
   switch (TEST_PHASE) {
     case 1: {
       int fd = open("/working1/file", O_RDWR | O_CREAT | O_EXCL, 0777);
@@ -139,7 +139,7 @@ static void test_case_unlink(void) {
   }
 }
 
-static void test_case_rename(void) {
+void test_case_rename(void) {
   switch (TEST_PHASE) {
     case 1: {
       int fd = open("/working1/file", O_RDWR | O_CREAT | O_EXCL, 0777);
@@ -165,7 +165,7 @@ static void test_case_rename(void) {
   }
 }
 
-static void test_case_mkdir(void) {
+void test_case_mkdir(void) {
   switch (TEST_PHASE) {
     case 1: {
       int res = mkdir("/working1/dir", 0777);

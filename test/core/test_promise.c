@@ -7,30 +7,28 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-static void do_exit(void* _) { emscripten_force_exit(0); }
+void do_exit(void* _) { emscripten_force_exit(0); }
 
 // Report an error and asynchronously schedule a runtime exit.
-static em_promise_result_t fail(void** result, void* data, void* value) {
+em_promise_result_t fail(void** result, void* data, void* value) {
   emscripten_console_logf("error! data: %ld", (uintptr_t)data);
   emscripten_async_call(do_exit, NULL, 0);
   return EM_PROMISE_REJECT;
 }
 
 // Used as a fulfillment handler. Report the success.
-static em_promise_result_t
-expect_success(void** result, void* data, void* value) {
+em_promise_result_t expect_success(void** result, void* data, void* value) {
   emscripten_console_logf("expected success: %ld", (uintptr_t)value);
   return EM_PROMISE_FULFILL;
 }
 
 // Used as an error handler. Report and drop the error.
-static em_promise_result_t
-expect_error(void** result, void* data, void* value) {
+em_promise_result_t expect_error(void** result, void* data, void* value) {
   emscripten_console_logf("expected error: %ld", (uintptr_t)value);
   return EM_PROMISE_FULFILL;
 }
 
-static em_promise_result_t test_create(void** result, void* data, void* value) {
+em_promise_result_t test_create(void** result, void* data, void* value) {
   emscripten_console_log("test_create");
   assert(data == (void*)1);
 
@@ -69,15 +67,14 @@ static em_promise_result_t test_create(void** result, void* data, void* value) {
   return EM_PROMISE_MATCH_RELEASE;
 }
 
-static void called_async(void* data) {
+void called_async(void* data) {
   emscripten_console_log("Hello from a callback");
   em_promise_t promise = data;
   emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
   emscripten_promise_destroy(promise);
 }
 
-static em_promise_result_t
-test_promisify(void** result, void* data, void* value) {
+em_promise_result_t test_promisify(void** result, void* data, void* value) {
   emscripten_console_log("test_promisify");
   assert(data == (void*)2);
 
@@ -89,8 +86,7 @@ test_promisify(void** result, void* data, void* value) {
   return EM_PROMISE_MATCH;
 }
 
-static em_promise_result_t
-throw_string(void** result, void* data, void* value) {
+em_promise_result_t throw_string(void** result, void* data, void* value) {
   // The stack pointer should not be corrupted even though we don't make it to
   // the function epilogue.
   volatile int big_frame[128];
@@ -99,7 +95,7 @@ throw_string(void** result, void* data, void* value) {
   return EM_PROMISE_FULFILL;
 }
 
-static em_promise_result_t throw_ptr(void** result, void* data, void* value) {
+em_promise_result_t throw_ptr(void** result, void* data, void* value) {
   // The stack pointer should not be corrupted even though we don't make it to
   // the function epilogue.
   volatile int big_frame[128];
@@ -112,8 +108,7 @@ static em_promise_result_t throw_ptr(void** result, void* data, void* value) {
   return EM_PROMISE_FULFILL;
 }
 
-static em_promise_result_t
-test_rejection(void** result, void* data, void* value) {
+em_promise_result_t test_rejection(void** result, void* data, void* value) {
   emscripten_console_log("test_rejection");
   assert(data == (void*)3);
 
@@ -158,8 +153,7 @@ typedef struct promise_all_state {
   void* expected_err;
 } promise_all_state;
 
-static em_promise_result_t
-check_promise_all_results(void** result, void* data, void* value) {
+em_promise_result_t check_promise_all_results(void** result, void* data, void* value) {
   promise_all_state* state = (promise_all_state*)data;
   assert(value == state->out);
   emscripten_console_log("promise_all results:");
@@ -171,8 +165,7 @@ check_promise_all_results(void** result, void* data, void* value) {
   return EM_PROMISE_FULFILL;
 }
 
-static em_promise_result_t
-check_promise_all_error(void** result, void* data, void* value) {
+em_promise_result_t check_promise_all_error(void** result, void* data, void* value) {
   promise_all_state* state = (promise_all_state*)data;
   emscripten_console_logf("promise_all error: %ld", (uintptr_t)value);
   assert(value == state->expected_err);
@@ -180,7 +173,7 @@ check_promise_all_error(void** result, void* data, void* value) {
   return EM_PROMISE_FULFILL;
 }
 
-static em_promise_result_t test_all(void** result, void* data, void* value) {
+em_promise_result_t test_all(void** result, void* data, void* value) {
   emscripten_console_log("test_all");
   assert(data == (void*)4);
 
@@ -255,7 +248,7 @@ typedef struct promise_all_settled_state {
   em_settled_result_t expected[3];
 } promise_all_settled_state;
 
-static em_promise_result_t
+em_promise_result_t
 check_promise_all_settled_results(void** result, void* data, void* value) {
   promise_all_settled_state* state = (promise_all_settled_state*)data;
   assert(value == state->out);
@@ -272,12 +265,12 @@ check_promise_all_settled_results(void** result, void* data, void* value) {
   return EM_PROMISE_FULFILL;
 }
 
-static em_promise_result_t check_null(void** result, void* data, void* value) {
+em_promise_result_t check_null(void** result, void* data, void* value) {
   assert(value == NULL);
   return EM_PROMISE_FULFILL;
 }
 
-static em_promise_result_t
+em_promise_result_t
 test_all_settled(void** result, void* data, void* value) {
   emscripten_console_log("test_all_settled");
   assert(data == (void*)5);
@@ -353,7 +346,7 @@ typedef struct promise_any_state {
   void* expected_err[3];
 } promise_any_state;
 
-static em_promise_result_t
+em_promise_result_t
 check_promise_any_result(void** result, void* data, void* value) {
   promise_any_state* state = (promise_any_state*)data;
   emscripten_console_logf("promise_any result: %ld", (uintptr_t)value);
@@ -362,7 +355,7 @@ check_promise_any_result(void** result, void* data, void* value) {
   return EM_PROMISE_FULFILL;
 }
 
-static em_promise_result_t
+em_promise_result_t
 check_promise_any_err(void** result, void* data, void* value) {
   promise_any_state* state = (promise_any_state*)data;
   assert(value == state->err);
@@ -375,7 +368,7 @@ check_promise_any_err(void** result, void* data, void* value) {
   return EM_PROMISE_FULFILL;
 }
 
-static em_promise_result_t test_any(void** result, void* data, void* value) {
+em_promise_result_t test_any(void** result, void* data, void* value) {
   emscripten_console_log("test_any");
   assert(data == (void*)6);
 
@@ -462,7 +455,7 @@ static em_promise_result_t test_any(void** result, void* data, void* value) {
   return EM_PROMISE_MATCH_RELEASE;
 }
 
-static em_promise_result_t test_race(void** result, void* data, void* value) {
+em_promise_result_t test_race(void** result, void* data, void* value) {
   emscripten_console_log("test_race");
   assert(data == (void*)7);
 
@@ -498,7 +491,37 @@ static em_promise_result_t test_race(void** result, void* data, void* value) {
   return EM_PROMISE_MATCH_RELEASE;
 }
 
-static em_promise_result_t finish(void** result, void* data, void* value) {
+em_promise_result_t test_null_handlers(void** result, void* data, void* value) {
+  emscripten_console_log("test_null_handlers");
+  assert(data == (void*)8);
+
+  em_promise_t fulfilled = emscripten_promise_create();
+  emscripten_promise_resolve(fulfilled, EM_PROMISE_FULFILL, (void*)42);
+  // Pass NULL as onFulfilled, it should just pass through the value.
+  em_promise_t next1 = emscripten_promise_then(fulfilled, NULL, fail, NULL);
+  em_promise_t next2 = emscripten_promise_then(next1, expect_success, fail, NULL);
+
+  em_promise_t rejected = emscripten_promise_create();
+  emscripten_promise_resolve(rejected, EM_PROMISE_REJECT, (void*)43);
+  // Pass NULL as onRejected, it should just pass through the error.
+  em_promise_t next3 = emscripten_promise_then(rejected, fail, NULL, NULL);
+  em_promise_t next4 = emscripten_promise_then(next3, fail, expect_error, NULL);
+
+  em_promise_t to_finish[2] = {next2, next4};
+  em_promise_t finish_test_null = emscripten_promise_all(to_finish, NULL, 2);
+
+  emscripten_promise_destroy(fulfilled);
+  emscripten_promise_destroy(next1);
+  emscripten_promise_destroy(next2);
+  emscripten_promise_destroy(rejected);
+  emscripten_promise_destroy(next3);
+  emscripten_promise_destroy(next4);
+
+  *result = finish_test_null;
+  return EM_PROMISE_MATCH_RELEASE;
+}
+
+em_promise_result_t finish(void** result, void* data, void* value) {
   emscripten_console_logf("finish");
 
   // We should not have leaked any handles.
@@ -514,7 +537,7 @@ static em_promise_result_t finish(void** result, void* data, void* value) {
   return EM_PROMISE_FULFILL;
 }
 
-static em_promise_result_t check_stack(void** result, void* data, void* value) {
+em_promise_result_t check_stack(void** result, void* data, void* value) {
   // Make sure the stack pointer is the same every time this is called.
   static uintptr_t expected_stack = 0;
   uintptr_t curr_stack = emscripten_stack_get_current();
@@ -547,8 +570,10 @@ int main() {
   em_promise_t test6 = emscripten_promise_then(test5, test_any, fail, (void*)6);
   em_promise_t test7 =
     emscripten_promise_then(test6, test_race, fail, (void*)7);
+  em_promise_t test8 =
+    emscripten_promise_then(test7, test_null_handlers, fail, (void*)8);
   em_promise_t assert_stack =
-    emscripten_promise_then(test7, check_stack, fail, NULL);
+    emscripten_promise_then(test8, check_stack, fail, NULL);
   em_promise_t end = emscripten_promise_then(assert_stack, finish, fail, NULL);
 
   emscripten_promise_resolve(start, EM_PROMISE_FULFILL, NULL);
@@ -562,6 +587,7 @@ int main() {
   emscripten_promise_destroy(test5);
   emscripten_promise_destroy(test6);
   emscripten_promise_destroy(test7);
+  emscripten_promise_destroy(test8);
   emscripten_promise_destroy(assert_stack);
   emscripten_promise_destroy(end);
 

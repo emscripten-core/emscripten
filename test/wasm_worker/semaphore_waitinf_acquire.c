@@ -106,11 +106,11 @@ int main() {
   }
   emscripten_out("done");
 #else
-  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
+  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(4096);
   emscripten_wasm_worker_post_function_v(worker, control_thread);
 
   for (int i = 0; i < NUM_THREADS; ++i) {
-    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
+    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(4096);
     emscripten_wasm_worker_post_function_v(worker, worker_main);
   }
 #endif

@@ -5,10 +5,15 @@
 
 from subprocess import PIPE
 
-from common import RunnerCore, copy_asset, create_file, read_file, test_file
-from decorators import also_with_wasm64, also_without_bigint, parameterized
+from common import EMCC, RunnerCore, copy_asset, create_file, read_file, test_file
+from decorators import (
+  also_with_wasm2js,
+  also_with_wasm64,
+  parameterized,
+  requires_node_25,
+  with_env_modify,
+)
 
-from tools.shared import EMCC
 from tools.utils import delete_file
 
 
@@ -99,7 +104,7 @@ addToLibrary({
 });
 ''')
 
-    self.do_run_in_out_file_test('hello_world.c', cflags=['--js-library', 'lib.js'])
+    self.do_runf_out_file('hello_world.c', cflags=['--js-library', 'lib.js'])
 
   def test_jslib_proxying(self):
     # Regression test for a bug we had where jsifier would find and use
@@ -109,7 +114,6 @@ addToLibrary({
     create_file('lib.js', r'''
 addToLibrary({
   $doNotCall: (x) => {},
-  foo__deps: ['$doNotCall'],
   foo__proxy: 'sync',
   foo: () => doNotCall(() => {
     out('should never see this');
@@ -126,6 +130,72 @@ addToLibrary({
     }
     ''')
     self.do_runf('src.c', 'main\ndone\n', cflags=['-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD', '--js-library', 'lib.js'])
+
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY', '-DASYNC'],),
+    'jspi': (['-sJSPI', '-DASYNC'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_jslib_async_auto_sync(self, args):
+    # `answer(ms, value)` resolves to `value` after `ms` milliseconds
+    # (synchronously if `ms` is 0), or is -1 where the caller cannot wait.
+    if '-sJSPI' in args:
+      self.require_jspi()
+    if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    create_file('lib.js', r'''
+addToLibrary({
+  answer__sig: 'pip',
+  answer__async: 'auto',
+  answer__proxy: 'sync',
+  answer: (ms, value, sync) => {
+    if (!ms) return value;
+    if (sync) return -1;
+    return new Promise((resolve) => setTimeout(() => resolve(value), ms));
+  },
+  // No __sig: `sync` is found by name alone.
+  wait_ms__async: 'auto',
+  wait_ms__proxy: 'sync',
+  wait_ms: (ms, sync) => {
+    if (ms && !sync) return new Promise((resolve) => setTimeout(resolve, ms));
+  },
+});
+''')
+    create_file('src.c', r'''
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+
+intptr_t answer(int ms, intptr_t value);
+void wait_ms(int ms);
+
+int main() {
+  assert(answer(0, 7) == 7);
+#if defined(__EMSCRIPTEN_PTHREADS__) || defined(ASYNC)
+  assert(answer(5, 42) == 42);
+#else
+  assert(answer(5, 42) == -1);
+#endif
+  wait_ms(0);
+  wait_ms(5);
+  printf("done\n");
+  return 0;
+}
+''')
+    self.do_runf('src.c', 'done\n', cflags=args + ['-sEXIT_RUNTIME', '--js-library', 'lib.js'])
+
+  def test_jslib_async_auto_sync_arity(self):
+    create_file('lib.js', '''
+addToLibrary({
+  jslibfunc__sig: 'iii',
+  jslibfunc__async: 'auto',
+  jslibfunc: (x, sync) => x,
+});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
+                     "error: JS library error: 'jslibfunc' must take 'sync' as parameter 3, after the 2 of its '__sig'")
 
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
@@ -164,10 +234,91 @@ int main() {
     self.do_runf('src.c', 'c calling: 12\njs calling: 10.',
                  cflags=['--js-library', 'lib.js', '-sEXPORTED_FUNCTIONS=_main,_jslibfunc'])
 
+  @parameterized({
+    '': ([],),
+    'optimized': (['-O3'],),
+    'esm_integration': (['-sWASM_ESM_INTEGRATION'],),
+    'esm_integration_optimized': (['-sWASM_ESM_INTEGRATION', '-O3'],),
+  })
+  @requires_node_25
+  def test_jslib_export_decorators_instance(self, args):
+    self.node_args += ['--no-warnings']
+    create_file('lib.js', '''\
+addToLibrary({
+  $dependencyExport__export: true,
+  $dependencyExport: () => 41,
+
+  $forceOnly__deps: ['$dependencyExport'],
+  $forceOnly__force: true,
+  $forceOnly__postset: 'globalThis.forceOnlyIncluded = true',
+  $forceOnly: () => {},
+
+  $forceExport__export: true,
+  $forceExport__force: true,
+  $forceExport: () => 42,
+
+  $unusedExport__export: true,
+  $unusedExport: () => 43,
+});
+''')
+    create_file('main.c', 'int main() { return 0; }')
+    self.run_process([EMCC, 'main.c', '-sMODULARIZE=instance', '-Wno-experimental',
+                      '--js-library', 'lib.js', '-o', 'mod.mjs'] + args + self.get_cflags())
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import init, * as exports from './mod.mjs';
+      await init();
+      assert.equal(exports.dependencyExport(), 41);
+      assert.equal(exports.forceExport(), 42);
+      assert.equal(exports.forceOnly, undefined);
+      assert.equal(exports.unusedExport, undefined);
+      assert(globalThis.forceOnlyIncluded);
+      console.log('ok');
+    ''')
+    self.assertContained('ok', self.run_js('runner.mjs'))
+
+  def test_jslib_export_decorators(self):
+    create_file('lib.js', '''\
+addToLibrary({
+  $dependencyExport__export: true,
+  $dependencyExport: () => 41,
+
+  $forceOnly__deps: ['$dependencyExport'],
+  $forceOnly__force: true,
+  $forceOnly__postset: "Module['forceOnlyIncluded'] = true",
+  $forceOnly: () => {},
+
+  $forceExport__export: true,
+  $forceExport__force: true,
+  $forceExport: () => 42,
+
+  $unusedExport__export: true,
+  $unusedExport: () => 43,
+});
+''')
+    create_file('post.js', '''
+      Module.onRuntimeInitialized = () => {
+        if (Module.dependencyExport() != 41) throw new Error('dependency export failed');
+        if (Module.forceExport() != 42) throw new Error('forced export failed');
+        const isExported = (name) => {
+          try {
+            return Module[name] !== undefined;
+          } catch {
+            return false;
+          }
+        };
+        if (isExported('forceOnly')) throw new Error('force-only symbol was exported');
+        if (isExported('unusedExport')) throw new Error('unused symbol was exported');
+        if (!Module.forceOnlyIncluded) throw new Error('force-only symbol was not included');
+        out('ok');
+      };
+    ''')
+    create_file('main.c', 'int main() { return 0; }')
+    self.do_runf('main.c', 'ok\n', cflags=['--js-library', 'lib.js', '--post-js', 'post.js'])
+
   def test_jslib_using_asm_lib(self):
     create_file('lib.js', r'''
 addToLibrary({
-  jslibfunc__deps: ['asmlibfunc'],
   jslibfunc: (x) => 2 * _asmlibfunc(x),
 
   asmlibfunc__asm: true,
@@ -201,10 +352,15 @@ int main() {
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'], 'lib.js:3: #else without matching #if')
 
+    create_file('lib.js', '''\
+// This is a library file
+#if 1
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'], 'no matching #endif found (1 unmatched preprocessing directives on stack)')
+
   def test_jslib_internal_deps(self):
     create_file('lib.js', r'''
 addToLibrary({
-  jslibfunc__deps: ['$callRuntimeCallbacks'],
   jslibfunc: (x) => {
     callRuntimeCallbacks();
   },
@@ -283,8 +439,17 @@ addToLibrary({
     self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'],
                      "lib.js: Decorator (jslibfunc__internal) has wrong type. Expected 'boolean' not 'string'")
 
+    create_file('lib.js', r'''
+addToLibrary({
+  jslibfunc__export: 'yes',
+  jslibfunc: (x) => {},
+});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'],
+                     "lib.js: Decorator (jslibfunc__export) has wrong type. Expected 'boolean' not 'string'")
+
   @also_with_wasm64
-  @also_without_bigint
+  @also_with_wasm2js
   def test_jslib_i53abi(self):
     create_file('lib.js', r'''
 addToLibrary({
@@ -506,7 +671,7 @@ extraLibraryFuncs.push('jsfunc');
     self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'foo.js'], 'foo.js:5: file not found: inc.js')
 
   @also_with_wasm64
-  @also_without_bigint
+  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'closure': (['--closure=1'],),
@@ -514,7 +679,13 @@ extraLibraryFuncs.push('jsfunc');
   def test_jslib_aliases(self, args):
     create_file('foo.js', '''
       addToLibrary({
-        foo: () => 42,
+        // Create a dependency cycle (foo -> $call_alias -> foo_alias -> foo)
+        // to test that `var _foo_alias = _foo;` is still emitted after `_foo`.
+        $call_alias: () => _foo_alias(),
+        foo: () => {
+          if (!call_alias) return 0;
+          return 42;
+        },
         foo__sig: 'i',
 
         foo_alias: 'foo',
@@ -531,7 +702,6 @@ extraLibraryFuncs.push('jsfunc');
         call_native: () => _native_func(),
 
         // JS function that calls nativeAlias
-        call_native_alias__deps: ['$nativeAlias'],
         call_native_alias: () => nativeAlias(),
 
         // This is a JS-only symbol (i.e. no leading underscore) that
@@ -707,14 +877,15 @@ console.error('JSLIB: none of the above');
   # Tests that it is possible to hook into/override a symbol defined in a system library.
   def test_jslib_override_system_symbol(self):
     # This test verifies it is possible to override a symbol from WebGL library.
+    self.cflags += ['-Wno-js-compiler']
 
     # When WebGL is implicitly linked in, the implicit linking should happen before any user
     # --js-libraries, so that they can adjust the behavior afterwards.
-    self.do_run_in_out_file_test('jslib/test_jslib_override_system_symbol.c', cflags=['--js-library', test_file('jslib/test_jslib_override_system_symbol.js'), '-sMAX_WEBGL_VERSION=2'])
+    self.do_runf_out_file('jslib/test_jslib_override_system_symbol.c', cflags=['--js-library', test_file('jslib/test_jslib_override_system_symbol.js'), '-sMAX_WEBGL_VERSION=2'])
 
     # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
     self.cflags += ['-sAUTO_JS_LIBRARIES=0', '-sMAX_WEBGL_VERSION=2', '-lwebgl.js', '--js-library', test_file('jslib/test_jslib_override_system_symbol.js')]
-    self.do_run_in_out_file_test('jslib/test_jslib_override_system_symbol.c')
+    self.do_runf_out_file('jslib/test_jslib_override_system_symbol.c')
 
   def test_jslib_version_check(self):
     create_file('libfoo.js', '''
@@ -729,11 +900,9 @@ console.error('JSLIB: none of the above');
       class ParentClass {}
       addToLibrary({
         $ParentClass: ParentClass,
-        $MyClass__deps: ['$ParentClass'],
         $MyClass: class extends ParentClass {
           constructor() { super(); this.x = 42; }
         },
-        log_class__deps: ['$MyClass'],
         log_class: () => {
           var i = new MyClass();
           out('MyClass: ' + i.x);
@@ -753,6 +922,68 @@ console.error('JSLIB: none of the above');
     ''')
     self.do_runf('src.c', 'MyClass: 42', cflags=['--js-library', 'lib.js'])
 
+  def test_jslib_auto_deps(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $unusedHelper: () => 99,
+        $helper: () => 10,
+        $postsetHelper: () => { myObj.unusedHelper += 2; },
+        other_js_func: () => helper() + 20,
+        $myObj__postset: 'postsetHelper();',
+        $myObj: {
+          unusedHelper: 10,
+          getVal() {
+            return _other_js_func() + this.unusedHelper;
+          },
+        },
+        entry_func: () => {
+          out('val: ' + myObj.getVal());
+          out('done');
+        },
+      });
+    ''')
+    create_file('src.c', r'''
+      void entry_func(void);
+      int main() {
+        entry_func();
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'val: 42\ndone\n', cflags=['--js-library', 'lib.js'])
+    self.assertNotContained('unusedHelper =', read_file('src.js'))
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'lib.js', '-sVERBOSE'], stderr=PIPE).stderr
+    self.assertContained('auto-detected dependency: entry_func -> $myObj', err)
+    self.assertContained('auto-detected dependency: $myObj -> $postsetHelper', err)
+    self.assertContained('auto-detected dependency: $myObj -> other_js_func', err)
+    self.assertContained('auto-detected dependency: other_js_func -> $helper', err)
+
+    # Test warning when an explicit __deps entry duplicates an auto-detected dependency
+    create_file('redundant.js', r'''
+      addToLibrary({
+        $helper: () => 10,
+        entry_func__deps: ['$helper'],
+        entry_func: () => helper(),
+      });
+    ''')
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'redundant.js'], stderr=PIPE).stderr
+    self.assertNotContained('redundant __deps entry', err)
+    err = self.run_process([EMCC, 'src.c', '--js-library', 'redundant.js', '-sSTRICT'], stderr=PIPE).stderr
+    self.assertContained('warning: entry_func: redundant __deps entry: $helper', err)
+
+  @with_env_modify({'EMCC_CHECK_DEPS': '1'})
+  def test_emcc_check_deps(self):
+    # Test EMCC_CHECK_DEPS debug mode catches local bindings shadowing library symbols
+    create_file('shadow.js', r'''
+      addToLibrary({
+        $foo: () => 10,
+        js_func: (foo) => foo,
+      });
+    ''')
+    # Shadowing in user libraries are ignored by default, unless -sSTRICT is enabled
+    self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'shadow.js', '-sINCLUDE_FULL_LIBRARY'])
+    self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'shadow.js', '-sINCLUDE_FULL_LIBRARY', '-sSTRICT'],
+                     "error: js_func: local binding 'foo' shadows library symbol '$foo'")
+
   # Tests that JS library functions containing multiline strings are not disturbed by e.g. inserting indentation into the output.
   @parameterized({
     '': ([],),
@@ -760,8 +991,139 @@ console.error('JSLIB: none of the above');
     'closure': (['--closure', '1'],),
   })
   def test_multiline_string(self, args):
-    self.do_run_in_out_file_test('jslib/test_multiline_string.c', cflags=['--js-library', test_file('jslib/test_multiline_string.js')] + args)
+    self.do_runf_out_file('jslib/test_multiline_string.c', cflags=['--js-library', test_file('jslib/test_multiline_string.js')] + args)
 
   def test_export(self):
     create_file('post.js', 'Module.myFunc();')
     self.do_runf('hello_world.c', 'myFunc included\nmyFunc called\n', cflags=['--js-library', test_file('jslib/test_export.js'), '--extern-post-js=post.js'])
+
+  @parameterized({
+    '': ([],),
+    'export_all': (['-sEXPORT_ALL'],),
+    'instance': (['-sMODULARIZE=instance', '-Wno-experimental'],),
+  })
+  def test_duplicate_jslib_exports(self, args):
+    create_file('lib.js', '''\
+addToLibrary({
+  $decoratedExport__export: true,
+  $decoratedExport: () => 41,
+  $runtimeExport: () => 42,
+});
+''')
+    create_file('main.c', 'int main() { return 0; }')
+    common_flags = ['--js-library', 'lib.js',
+                    '-sEXPORTED_RUNTIME_METHODS=decoratedExport,runtimeExport,HEAP32'] + args
+    if '-sMODULARIZE=instance' in args:
+      self.emcc('main.c', ['-o', 'mod.mjs'] + common_flags)
+      create_file('runner.mjs', '''
+        import { strict as assert } from 'assert';
+        import init, { decoratedExport, runtimeExport, HEAP32 } from './mod.mjs';
+        await init();
+        assert.equal(decoratedExport(), 41);
+        assert.equal(runtimeExport(), 42);
+        assert.equal(typeof HEAP32, 'object');
+        console.log('done');
+      ''')
+      self.assertContained('done\n', self.run_js('runner.mjs'))
+    else:
+      create_file('post.js', '''
+        Module.onRuntimeInitialized = () => {
+          assert(Module.decoratedExport() === 41);
+          assert(Module.runtimeExport() === 42);
+          assert(typeof Module.HEAP32 === 'object');
+          out('done');
+        };
+      ''')
+      self.do_runf('main.c', 'done\n', cflags=common_flags + ['--post-js=post.js'])
+      js = read_file('main.js')
+      self.assertEqual(js.count("Module['decoratedExport'] = decoratedExport;"), 1)
+      self.assertEqual(js.count("Module['runtimeExport'] = runtimeExport;"), 1)
+
+  @parameterized({
+    '': ([],),
+    'full_export_all': (['-sINCLUDE_FULL_LIBRARY', '-sEXPORT_ALL'],),
+    'O3': (['-O3'],),
+    'closure': (['--closure=1'],),
+  })
+  def test_jslib_const(self, args):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $CONST_A__const: true,
+        $CONST_A: 10,
+        ...defineConsts({
+          $CONST_B: 22,
+          $UNUSED_CONST: 99,
+        }),
+        ...defineInternalConsts({
+          $CONST_C: 4,
+          $CONST_STR: 'abc',
+          $CONST_EXPR: '=1 + 2',
+          $UNUSED_INTERNAL_CONST: 99,
+        }),
+        get_const_sum: () => CONST_A + CONST_B + CONST_C + CONST_STR.length + CONST_EXPR,
+      });
+    ''')
+    create_file('src.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      int get_const_sum(void);
+      int main() {
+        assert(get_const_sum() == 42);
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'done\n', cflags=['--js-library', 'lib.js'] + args)
+    js = read_file('src.js')
+    if '-O3' in args or '--closure=1' in args:
+      self.assertNotContained('const CONST_A', js)
+      self.assertNotContained('const CONST_B', js)
+      self.assertNotContained('const CONST_C', js)
+      self.assertNotContained('const CONST_STR', js)
+      self.assertNotContained('const CONST_EXPR', js)
+    else:
+      self.assertContained('const CONST_A = 10;', js)
+      self.assertContained('const CONST_B = 22;', js)
+      self.assertContained('const CONST_C = 4;', js)
+      self.assertContained('const CONST_STR = "abc";', js)
+      self.assertContained('const CONST_EXPR = 1 + 2;', js)
+    self.assertNotContained('const UNUSED_CONST', js)
+    self.assertNotContained('UNUSED_INTERNAL_CONST', js)
+    self.assertNotContained("Module['CONST_A']", js)
+
+  def test_jslib_const_errors(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $bad_func__const: true,
+        $bad_func: () => 42,
+      });
+    ''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_func', '--js-library', 'lib.js'],
+                     "error: JS library error: '__const' decorator cannot be used with functions: '$bad_func'")
+
+    create_file('lib.js', r'''
+      addToLibrary({
+        $bad_semi__const: true,
+        $bad_semi: ';bad_semi = 42;',
+      });
+    ''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_semi', '--js-library', 'lib.js'],
+                     "error: JS library error: '__const' decorator cannot be used with ';'-prefixed snippets: '$bad_semi'")
+
+    create_file('lib.js', r'''
+      addToLibrary({
+        $bad_undef__const: true,
+        $bad_undef: undefined,
+      });
+    ''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_undef', '--js-library', 'lib.js'],
+                     "error: JS library error: '__const' decorator cannot be used with undefined symbols: '$bad_undef'")
+
+    create_file('lib.js', r'''
+      addToLibrary({
+        $bad_obj__const: true,
+        $bad_obj: { a: 42 },
+      });
+    ''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_obj', '--js-library', 'lib.js'],
+                     "error: JS library error: '__const' decorator cannot be used with objects: '$bad_obj'")

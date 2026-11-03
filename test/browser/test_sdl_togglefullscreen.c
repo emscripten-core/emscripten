@@ -10,7 +10,7 @@
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
-static enum {
+enum {
     STATE_INITIAL,      /* Initial state, click needed to enter full screen */
     STATE_FS_REQ,       /* After click, expecting to enter full screen */
     STATE_FS,           /* Should remain in full screen */
@@ -27,12 +27,12 @@ SDL_Renderer *renderer = 0;
 SDL_Surface *screen = 0;
 #endif
 
-static void fail(const char *msg) {
+void fail(const char *msg) {
   printf("%s Test failed (state=%d).\n", msg, state);
   emscripten_force_exit(1);
 }
 
-static bool mouseup(int eventType,
+bool mouseup(int eventType,
                      const EmscriptenMouseEvent *keyEvent, void *userData) {
   if (eventType == EMSCRIPTEN_EVENT_MOUSEUP) {
     switch (state) {
@@ -62,7 +62,7 @@ static bool mouseup(int eventType,
   return 0;
 }
 
-static void render() {
+void render() {
 #if SDL_VERSION_ATLEAST(2,0,0)
   SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
   SDL_RenderClear(renderer);
@@ -75,7 +75,7 @@ static void render() {
 #endif
 }
 
-static void mainloop() {
+void mainloop() {
   render();
   int isInFullscreen = EM_ASM_INT(return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
 

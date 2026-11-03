@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 
 import * as acorn from 'acorn';
-import * as terser from '../third_party/terser/terser.js';
+import importPhases from 'acorn-import-phases';
+import {minify_sync} from 'terser';
 import * as fs from 'node:fs';
 import assert from 'node:assert';
 import {parseArgs} from 'node:util';
+
+// Extend acorn to understand source-phase import syntax
+// (`import source foo from './bar.wasm'`) emitted under -sSOURCE_PHASE_IMPORTS.
+// The plugin annotates ImportDeclaration nodes with a `phase` field; terser
+// carries this through from_mozilla_ast / to_mozilla_ast and emits it back on
+// output.
+const parser = acorn.Parser.extend(importPhases());
 
 // Utilities
 
@@ -212,7 +220,7 @@ function JSDCE(ast, aggressive) {
     let removed = 0;
     const scopes = [{}]; // begin with empty toplevel scope
     function ensureData(scope, name) {
-      if (Object.prototype.hasOwnProperty.call(scope, name)) return scope[name];
+      if (Object.hasOwn(scope, name)) return scope[name];
       scope[name] = {
         def: 0,
         use: 0,
@@ -430,14 +438,38 @@ function getWasmImportsValue(node) {
   }
 }
 
+// Under WASM_ESM_INTEGRATION the wasm exports are received as a native ES
+// import from the wasm module itself:
+//   import { malloc as _malloc, memory } from './a.out.wasm';
+function isImportFromWasm(node) {
+  return (
+    node.type === 'ImportDeclaration' &&
+    // Skip source/defer phase imports (e.g. `import source foo from './a.wasm'`
+    // under SOURCE_PHASE_IMPORTS), whose default specifier binds the module
+    // itself rather than wasm exports. Value-phase imports leave `phase` unset.
+    !node.phase &&
+    isLiteralString(node.source) &&
+    node.source.value.endsWith('.wasm')
+  );
+}
+
+// A sourceless `export { a as b, .. };` statement (not `export <decl>` and not
+// a re-export `export {..} from '..'`).
+function isExportSpecifierList(node) {
+  return (
+    node.type === 'ExportNamedDeclaration' && !node.declaration && !node.source
+  );
+}
+
 function isExportUse(node) {
   // Match usages of symbols on the `wasmExports` object. e.g:
   //   wasmExports['X']
+  // `origExports` holds the unwrapped exports in applySignatureConversions.
   return (
     node.type === 'MemberExpression' &&
     node.object.type === 'Identifier' &&
     isLiteralString(node.property) &&
-    node.object.name === 'wasmExports'
+    (node.object.name === 'wasmExports' || node.object.name === 'origExports')
   );
 }
 
@@ -486,6 +518,29 @@ function applyImportAndExportNameChanges(ast) {
       if (mapping[name]) {
         setLiteralValue(prop, mapping[name]);
       }
+    } else if (isImportFromWasm(node)) {
+      // WASM_ESM_INTEGRATION: rename the wasm-facing name of each received
+      // export, e.g. `import { malloc as _malloc }` -> `import { a as _malloc }`.
+      // Replace the imported slot (rather than mutate it in place) since for an
+      // unaliased specifier acorn shares one node for both sides.
+      node.specifiers.forEach((spec) => {
+        const newName = mapping[spec.imported.name];
+        if (newName) {
+          spec.imported = makeIdentifier(newName);
+        }
+      });
+    } else if (isExportSpecifierList(node)) {
+      // WASM_ESM_INTEGRATION: rename the wasm-facing name of each JS function
+      // sent to wasm, e.g. `export { _fd_write as fd_write }` ->
+      // `export { _fd_write as a }`. Re-exports of wasm exports (`export {
+      // _main }`) carry a JS-local name that is never in the mapping, so they
+      // are left untouched.
+      node.specifiers.forEach((spec) => {
+        const newName = mapping[spec.exported.name];
+        if (newName) {
+          spec.exported = makeIdentifier(newName);
+        }
+      });
     }
   });
 }
@@ -599,6 +654,10 @@ function emitDCEGraph(ast) {
   const exportNameToGraphName = {}; // identical to wasmExports['..'] nameToGraphName
   let foundWasmImportsAssign = false;
   let foundMinimalRuntimeExports = false;
+  // Under WASM_ESM_INTEGRATION, JS names bound to wasm exports via an ES import
+  // from the wasm module. Lets us tell a re-export of a wasm export apart from a
+  // JS function that is itself exported to wasm (both are `export {..}`).
+  const wasmExportLocals = new Set();
 
   function saveAsmExport(name, asmName) {
     // the asmName is what the wasm provides directly; the outside JS
@@ -641,6 +700,49 @@ function emitDCEGraph(ast) {
         });
         foundWasmImportsAssign = true;
         emptyOut(node); // ignore this in the second pass; this does not root
+      } else if (isImportFromWasm(node)) {
+        // WASM_ESM_INTEGRATION: wasm exports received as
+        //   import { malloc as _malloc, memory } from './a.out.wasm';
+        // Each binding is a wasm export, exactly like `var _x = wasmExports['x']`.
+        node.specifiers.forEach((spec) => {
+          const jsName = spec.local.name; // JS-side name
+          const asmName = spec.imported.name; // wasm-provided name
+          if (Object.hasOwn(exportNameToGraphName, asmName)) {
+            // Another local already binds this wasm export (e.g. both `memory`
+            // and `memory as wasmMemory`): point this local at the same node so
+            // a use of either roots the one underlying export.
+            nameToGraphName[jsName] = exportNameToGraphName[asmName];
+          } else {
+            saveAsmExport(jsName, asmName);
+          }
+          wasmExportLocals.add(jsName);
+        });
+        // This ES form stands in for the `wasmImports`/`wasmExports` idioms the
+        // non-ESM build emits, so it satisfies the sanity check below.
+        foundWasmImportsAssign = true;
+        // Drop from the second pass: the local bindings must not be seen as
+        // top-level uses (that would root every export and defeat DCE).
+        emptyOut(node);
+      } else if (isExportSpecifierList(node)) {
+        // Sourceless `export {..}` statements come in three forms:
+        //   (a) JS functions sent to wasm:  export { _fd_write as fd_write };
+        //   (b) re-exports of wasm exports: export { _main };
+        //   (c) runtime/library exports:    export { HEAP32, baz };
+        // Only (a) are wasm import edges (recorded and removed here). (b) and
+        // (c) are ordinary top-level uses left in place to root in the second
+        // pass. (a) is the only form written with an alias (`x as y`), which
+        // acorn represents with distinct local/exported nodes; bare specifiers
+        // reuse a single node for both sides.
+        const importEdges = node.specifiers.filter(
+          (spec) =>
+            spec.local !== spec.exported && !wasmExportLocals.has(spec.local.name),
+        );
+        if (importEdges.length) {
+          // (a) `export { jsName as nativeName }` - jsName implements the import.
+          importEdges.forEach((spec) => imports.push([spec.local.name, spec.exported.name]));
+          foundWasmImportsAssign = true;
+          emptyOut(node); // does not root; second pass ignores it
+        }
       } else if (node.type === 'AssignmentExpression') {
         const target = node.left;
         // Ignore assignment to the wasmExports object (as happens in
@@ -778,7 +880,7 @@ function emitDCEGraph(ast) {
       import: ['env', nativeName],
       reaches: new Set(),
     });
-    if (nameToGraphName.hasOwnProperty(jsName)) {
+    if (Object.hasOwn(nameToGraphName, jsName)) {
       info.reaches.add(nameToGraphName[jsName]);
     } // otherwise, it's a number, ignore
   }
@@ -798,12 +900,12 @@ function emitDCEGraph(ast) {
     let reached;
     if (node.type === 'Identifier') {
       const name = node.name;
-      if (nameToGraphName.hasOwnProperty(name)) {
+      if (Object.hasOwn(nameToGraphName, name)) {
         reached = nameToGraphName[name];
       }
     } else if (isModuleUse(node)) {
       const name = getExportOrModuleUseName(node);
-      if (modulePropertyToGraphName.hasOwnProperty(name)) {
+      if (Object.hasOwn(modulePropertyToGraphName, name)) {
         reached = modulePropertyToGraphName[name];
       }
     } else if (isStaticDynCall(node)) {
@@ -814,7 +916,7 @@ function emitDCEGraph(ast) {
     } else if (isExportUse(node)) {
       // any remaining asm uses are always rooted in any case
       const name = getExportOrModuleUseName(node);
-      if (exportNameToGraphName.hasOwnProperty(name)) {
+      if (Object.hasOwn(exportNameToGraphName, name)) {
         infos[exportNameToGraphName[name]].root = true;
       }
       return;
@@ -883,6 +985,26 @@ function applyDCEGraphRemovals(ast) {
         if (unusedImports.has(name)) {
           foundUnusedImports.add(name);
           return hasSideEffects(value);
+        }
+        return true;
+      });
+    } else if (isImportFromWasm(node)) {
+      // WASM_ESM_INTEGRATION: drop unused wasm exports from
+      //   import { malloc as _malloc, .. } from './a.out.wasm';
+      node.specifiers = node.specifiers.filter((spec) => {
+        if (unusedExports.has(spec.imported.name)) {
+          foundUnusedExports.add(spec.imported.name);
+          return false;
+        }
+        return true;
+      });
+    } else if (isExportSpecifierList(node)) {
+      // WASM_ESM_INTEGRATION: drop unused wasm imports from
+      //   export { _fd_write as fd_write, .. };
+      node.specifiers = node.specifiers.filter((spec) => {
+        if (unusedImports.has(spec.exported.name)) {
+          foundUnusedImports.add(spec.exported.name);
+          return false;
         }
         return true;
       });
@@ -1083,7 +1205,7 @@ function growableHeap(ast) {
       if (
         !(
           node.id.type === 'Identifier' &&
-          (node.id.name === 'growMemViews' || node.id.name === 'LE_HEAP_UPDATE')
+          (node.id.name === 'growMemViews' || node.id.name === 'updateMemoryViews' || node.id.name === 'LE_HEAP_UPDATE')
         )
       ) {
         c(node.body);
@@ -1128,11 +1250,8 @@ function makeCallGrowMemViews() {
 
 function makeSequence(...expressions) {
   return {
-    type: 'ParenthesizedExpression',
-    expression: {
-      type: 'SequenceExpression',
-      expressions,
-    }
+    type: 'SequenceExpression',
+    expressions,
   };
 }
 
@@ -1218,11 +1337,10 @@ function isHEAPAccess(node) {
 function isGrowHEAPAccess(node) {
   if (
     node.type !== 'MemberExpression' ||
-    !node.computed || // notice a[X] but not a.X
-    (node.object.type !== 'ParenthesizedExpression' && node.object.type !== 'SequenceExpression')
+    !node.computed // notice a[X] but not a.X
   )
     return false;
-  const obj = node.object.type === 'ParenthesizedExpression' ? node.object.expression : node.object;
+  const obj = node.object;
   return (
     obj.type === 'SequenceExpression' &&
     obj.expressions.length === 2 &&
@@ -1484,7 +1602,7 @@ function minifyLocals(ast) {
 
     // Finally, the function name, after restoring it.
     fun.id = funId;
-    assert(extraInfo.globals.hasOwnProperty(fun.id.name));
+    assert(Object.hasOwn(extraInfo.globals, fun.id.name));
     fun.id.name = extraInfo.globals[fun.id.name];
   }
 }
@@ -1619,17 +1737,29 @@ function minifyGlobals(ast) {
 
 // Utilities
 
-function reattachComments(ast, commentsMap) {
+function reattachComments(ast, commentsMap, parenSpans) {
   const symbols = [];
 
   // Collect all code symbols
-  ast.walk(
-    new terser.TreeWalker((node) => {
+  ast.walk({
+    _visit(node, descend) {
       if (node.start?.pos) {
         symbols.push(node);
+        if (
+          node.TYPE !== 'Toplevel' &&
+          node.TYPE !== 'SimpleStatement' &&
+          parenSpans.has(`${node.start.pos}:${node.end?.pos}`)
+        ) {
+          node.needs_parens = () => false;
+          const origCodegen = node._codegen;
+          node._codegen = (self, output) => {
+            output.with_parens(() => origCodegen(self, output));
+          };
+        }
       }
-    }),
-  );
+      descend?.call(node);
+    },
+  });
 
   // Sort them by ascending line number
   symbols.sort((a, b) => a.start.pos - b.start.pos);
@@ -1654,18 +1784,11 @@ function reattachComments(ast, commentsMap) {
     symbols[j].start.comments_before ??= [];
     for (const comment of comments) {
       trace('reattaching comment');
-      symbols[j].start.comments_before.push(
-        new terser.AST_Token(
-          comment.type == 'Line' ? 'comment1' : 'comment2',
-          comment.value,
-          undefined,
-          undefined,
-          false,
-          undefined,
-          undefined,
-          '0',
-        ),
-      );
+      symbols[j].start.comments_before.push({
+        type: comment.type == 'Line' ? 'comment1' : 'comment2',
+        value: comment.value,
+        nlb: false,
+      });
     }
   }
 }
@@ -1681,6 +1804,7 @@ const {
     verbose,
     'no-print': noPrint,
     'minify-whitespace': minifyWhitespace,
+    compress,
     outfile,
   },
   positionals: [infile, ...passes],
@@ -1691,6 +1815,7 @@ const {
     verbose: {type: 'boolean'},
     'no-print': {type: 'boolean'},
     'minify-whitespace': {type: 'boolean'},
+    compress: {type: 'boolean'},
     outfile: {type: 'string', short: 'o'},
   },
   allowPositionals: true,
@@ -1718,6 +1843,7 @@ const params = {
   ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,
+  allowImportExportEverywhere: exportES6,
 };
 if (closureFriendly) {
   const currentComments = [];
@@ -1749,8 +1875,27 @@ const registry = {
 };
 
 let ast;
+const parenSpans = new Set();
 try {
-  ast = acorn.parse(input, params);
+  ast = parser.parse(input, params);
+  if (closureFriendly) {
+    // Unwrap ParenthesizedExpression nodes before running passes or converting
+    // to a Terser AST, recording their spans so reattachComments can restore
+    // the parentheses (needed for Closure inline type-cast comments).
+    fullWalk(ast, (node) => {
+      if (node.type === 'ParenthesizedExpression') {
+        const {start, end, expression} = node;
+        if (sourceComments[expression.start]) {
+          sourceComments[start] ??= [];
+          sourceComments[start].push(...sourceComments[expression.start]);
+          delete sourceComments[expression.start];
+        }
+        delete node.expression;
+        Object.assign(node, expression, {start, end});
+        parenSpans.add(`${start}:${end}`);
+      }
+    });
+  }
   for (let pass of passes) {
     const resolvedPass = registry[pass];
     assert(resolvedPass, `unknown optimizer pass: ${pass}`);
@@ -1767,20 +1912,42 @@ try {
 }
 
 if (!noPrint) {
-  const terserAst = terser.AST_Node.from_mozilla_ast(ast);
-
-  if (closureFriendly) {
-    reattachComments(terserAst, sourceComments);
-  }
-
-  let output = terserAst.print_to_string({
+  const format = {
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 2,
     keep_quoted_props: closureFriendly, // for closure
     wrap_func_args: false, // don't add extra braces
     comments: true, // for closure as well
     shorthand: true, // Use object literal shorthand notation
-  });
+  };
+
+  let output;
+  if (closureFriendly) {
+    const {ast: terserAst} = minify_sync(ast, {
+      parse: {spidermonkey: true},
+      compress: false,
+      mangle: false,
+      format: {ast: true, code: false},
+    });
+    reattachComments(terserAst, sourceComments, parenSpans);
+    output = terserAst.print_to_string(format);
+  } else {
+    output = minify_sync(ast, {
+      parse: {spidermonkey: true},
+      compress: compress
+        ? {
+            defaults: false,
+            evaluate: true,
+            keep_fargs: false,
+            reduce_vars: true,
+            toplevel: true,
+            unused: true,
+          }
+        : false,
+      mangle: false,
+      format,
+    }).code;
+  }
 
   output += '\n';
   if (suffix) {

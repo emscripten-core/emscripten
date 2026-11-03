@@ -5,27 +5,45 @@
  */
 
 addToLibrary({
-  $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
+  ...defineInternalConsts({
+    $IDBFS_DB_VERSION: 21,
+    $IDBFS_DB_STORE_NAME: 'FILE_DATA',
+  }),
   $IDBFS__postset: () => addAtExit('IDBFS.quit();'),
   $IDBFS: {
     dbs: {},
     indexedDB: () => {
 #if ASSERTIONS
-      assert(typeof indexedDB != 'undefined', 'IDBFS used, but indexedDB not supported');
+      assert(typeof indexedDB !== 'undefined', 'IDBFS used, but indexedDB not supported');
 #endif
       return indexedDB;
     },
-    DB_VERSION: 21,
-    DB_STORE_NAME: 'FILE_DATA',
+
+    // When using the autopersistence mechanism, users can set
+    // IDBFS.onAutoPersistStateChanged callback to receive notification events
+    // for when persistence operations are in-flight. Use the following syntax:
+    /*
+    IDBFS.onAutoPersistStateChanged = autoPersistActive => {
+      if (autoPersistActive) {
+        console.log('IDBFS persistence operation has started.');
+      } else {
+        console.log('IDBFS persistence operation has finished.');
+      }
+    };
+    */
 
     // Queues a new VFS -> IDBFS synchronization operation
     queuePersist: (mount) => {
       function onPersistComplete() {
         if (mount.idbPersistState === 'again') startPersist(); // If a new sync request has appeared in between, kick off a new sync
-        else mount.idbPersistState = 0; // Otherwise reset sync state back to idle to wait for a new sync later
+        else {
+          mount.idbPersistState = 0; // Otherwise reset sync state back to idle to wait for a new sync later
+          IDBFS.onAutoPersistStateChanged?.(false);
+        }
       }
       function startPersist() {
         mount.idbPersistState = 'idb'; // Mark that we are currently running a sync operation
+        IDBFS.onAutoPersistStateChanged?.(true);
         IDBFS.syncfs(mount, /*populate:*/false, onPersistComplete);
       }
 
@@ -125,12 +143,12 @@ addToLibrary({
 
       var req;
       try {
-        req = IDBFS.indexedDB().open(name, IDBFS.DB_VERSION);
+        req = IDBFS.indexedDB().open(name, IDBFS_DB_VERSION);
       } catch (e) {
         return callback(e);
       }
       if (!req) {
-        return callback("Unable to connect to IndexedDB");
+        return callback('Unable to connect to IndexedDB');
       }
       req.onupgradeneeded = (e) => {
         var db = /** @type {IDBDatabase} */ (e.target.result);
@@ -138,10 +156,10 @@ addToLibrary({
 
         var fileStore;
 
-        if (db.objectStoreNames.contains(IDBFS.DB_STORE_NAME)) {
-          fileStore = transaction.objectStore(IDBFS.DB_STORE_NAME);
+        if (db.objectStoreNames.contains(IDBFS_DB_STORE_NAME)) {
+          fileStore = transaction.objectStore(IDBFS_DB_STORE_NAME);
         } else {
-          fileStore = db.createObjectStore(IDBFS.DB_STORE_NAME);
+          fileStore = db.createObjectStore(IDBFS_DB_STORE_NAME);
         }
 
         if (!fileStore.indexNames.contains('timestamp')) {
@@ -198,13 +216,13 @@ addToLibrary({
         if (err) return callback(err);
 
         try {
-          var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
+          var transaction = db.transaction([IDBFS_DB_STORE_NAME], 'readonly');
           transaction.onerror = (e) => {
             callback(e.target.error);
             e.preventDefault();
           };
 
-          var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
+          var store = transaction.objectStore(IDBFS_DB_STORE_NAME);
           var index = store.index('timestamp');
 
           index.openKeyCursor().onsuccess = (event) => {
@@ -337,8 +355,8 @@ addToLibrary({
 
       var errored = false;
       var db = src.type === 'remote' ? src.db : dst.db;
-      var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
-      var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
+      var transaction = db.transaction([IDBFS_DB_STORE_NAME], 'readwrite');
+      var store = transaction.objectStore(IDBFS_DB_STORE_NAME);
 
       function done(err) {
         if (err && !errored) {
@@ -389,5 +407,5 @@ addToLibrary({
 });
 
 if (WASMFS) {
-  error("using -lidbfs is not currently supported in WasmFS.");
+  error('using -lidbfs is not currently supported in WasmFS.');
 }

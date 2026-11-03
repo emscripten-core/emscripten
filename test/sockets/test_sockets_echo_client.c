@@ -93,6 +93,24 @@ void main_loop() {
     res = ioctl(server.fd, FIONREAD, &available);
     assert(res != -1);
     assert(available);
+
+    // Before consuming anything, MSG_PEEK must return the head of the queue
+    // without removing it: the same bytes stay available for the real recv
+    // below and the socket remains readable (FIONREAD unchanged).
+    char peeked[sizeof(int)];
+    int peeked_len = 0;
+    if (echo_read == 0 && !server.msg.length) {
+      res = recvfrom(server.fd, peeked, sizeof(peeked), MSG_PEEK, NULL, NULL);
+      if (res == -1) {
+        assert(errno == EAGAIN);
+        return;
+      }
+      assert(res > 0);
+      peeked_len = res;
+      int available2;
+      assert(ioctl(server.fd, FIONREAD, &available2) != -1);
+      assert(available2 == available);
+    }
 #endif
 
     res = do_msg_read(server.fd, &server.msg, echo_read, 0, NULL, NULL);
@@ -102,6 +120,16 @@ void main_loop() {
       perror("server closed");
       finish(EXIT_FAILURE);
     }
+
+#if !TEST_DGRAM
+    // do_msg_read consumed the length header; the bytes we peeked earlier must
+    // match the bytes actually delivered, proving the peek did not corrupt or
+    // reorder the stream.
+    if (peeked_len == sizeof(int) && server.msg.length) {
+      assert(memcmp(peeked, &server.msg.length, sizeof(int)) == 0);
+      printf("peek verified\n");
+    }
+#endif
 
     echo_read += res;
 

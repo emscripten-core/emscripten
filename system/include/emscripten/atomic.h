@@ -301,6 +301,13 @@ int emscripten_atomic_cancel_all_wait_asyncs(void);
 // address.  Returns the number of async waits canceled.
 int emscripten_atomic_cancel_all_wait_asyncs_at_address(void * _Nonnull addr);
 
+// Like emscripten_atomic_wait_async, but suspends the current Wasm executation
+// using JSPI/ASYNCIFY.
+// This function is not available unless linking with -sJSPI or -sASYNCIFY.
+ATOMICS_WAIT_TOKEN_T emscripten_atomic_wait_suspending(volatile void * _Nonnull addr,
+                                                       uint32_t value,
+                                                       double maxWaitMilliseconds);
+
 // Returns the value of the expression "Atomics.isLockFree(byteWidth)": true if
 // the given memory access width can be accessed atomically, and false
 // otherwise. Generally will return true on 1, 2 and 4 byte accesses. On 8 byte

@@ -10,43 +10,11 @@
  *
  * Any usage of symbols in this file will result in a `-Wdeprecated` warning.
  *
- * Symbol in this file should be removed after "enough time" has passed such
+ * Symbol in this file should be removed after 'enough time' has passed such
  * that all external users have been able to transition away.
  */
 
 legacyFuncs = {
-  $ALLOC_NORMAL: 0,  // Tries to use _malloc()
-  $ALLOC_STACK: 1,  // Lives for the duration of the current function call
-
-  /**
-   * allocate(): This function is no longer used by emscripten but is kept around to avoid
-   *             breaking external users.
-   *             You should normally not use allocate(), and instead allocate
-   *             memory using _malloc()/stackAlloc(), initialize it with
-   *             setValue(), and so forth.
-   * @param {(Uint8Array|Array<number>)} slab: An array of data.
-   * @param {number=} allocator : How to allocate memory, see ALLOC_*
-   */
-  $allocate__deps: ['$ALLOC_STACK', 'malloc', '$stackAlloc'],
-  $allocate: (slab, allocator) => {
-    var ret;
-  #if ASSERTIONS
-    assert(typeof allocator == 'number', 'allocate no longer takes a type argument')
-    assert(typeof slab != 'number', 'allocate no longer takes a number as arg0')
-  #endif
-
-    if (allocator == ALLOC_STACK) {
-      ret = stackAlloc(slab.length);
-    } else {
-      ret = _malloc(slab.length);
-    }
-
-    if (!slab.subarray && !slab.slice) {
-      slab = new Uint8Array(slab);
-    }
-    HEAPU8.set(slab, ret);
-    return ret;
-  },
 
   // Deprecated: This function should not be called because it is unsafe and
   // does not provide a maximum length limit of how many bytes it is allowed to
@@ -54,7 +22,6 @@ legacyFuncs = {
   // in a maximum length that can be used to be secure from out of bounds
   // writes.
   $writeStringToMemory__docs: '/** @deprecated @param {boolean=} dontAddNull */',
-  $writeStringToMemory__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   $writeStringToMemory: (string, buffer, dontAddNull) => {
     warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
 
@@ -83,13 +50,11 @@ legacyFuncs = {
     if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
   },
 
-  $allocateUTF8__deps: ['$stringToNewUTF8'],
   $allocateUTF8: (...args) => stringToNewUTF8(...args),
-  $allocateUTF8OnStack__deps: ['$stringToUTF8OnStack'],
   $allocateUTF8OnStack: (...args) => stringToUTF8OnStack(...args),
 
 #if LINK_AS_CXX
-  $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free', '$stringToUTF8OnStack'],
+  $demangle__deps: ['__cxa_demangle', 'free'],
   $demangle: (func) => {
     // If demangle has failed before, stop demangling any further function names
     // This avoids an infinite recursion with malloc()->abort()->stackTrace()->demangle()->malloc()->...
@@ -118,10 +83,11 @@ legacyFuncs = {
   },
 #endif
 
-  $stackTrace__deps: ['$jsStackTrace'],
   $stackTrace: () => {
     var js = jsStackTrace();
+#if expectToReceiveOnModule('extraStackTrace')
     if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
+#endif
     return js;
   },
 
@@ -135,8 +101,21 @@ legacyFuncs = {
   // to avoid breakage.)
   $jstoi_s: 'Number',
 
-  $getNativeTypeSize__deps: ['$POINTER_SIZE'],
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
+
+#if EMBIND
+  $getInheritedInstanceCount: () => Object.keys(registeredInstances).length,
+
+  $getLiveInheritedInstances: () => {
+    var rv = [];
+    for (var k in registeredInstances) {
+      if (hasOwn(registeredInstances, k)) {
+        rv.push(registeredInstances[k]);
+      }
+    }
+    return rv;
+  },
+#endif
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {

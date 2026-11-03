@@ -15,7 +15,7 @@ void changedir(const char *dir) {
   assert(rtn == 0);
 }
 
-static void create_file(const char *path) {
+void create_file(const char *path) {
   printf("creating: %s\n", path);
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0777);
   assert(fd >= 0);
@@ -43,5 +43,5 @@ int main() {
 
   assert(truncate("a/link/../x.txt", 0) == 0);
   assert(chmod("a/link/../x.txt", 0777) == 0);
-  printf("success\n");
+  printf("done\n");
 }

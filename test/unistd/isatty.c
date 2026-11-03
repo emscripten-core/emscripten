@@ -55,7 +55,6 @@ int main() {
   printf("/dev -> %d\n", isatty(fd));
   assert(isatty(fd) == 0);
 
-  puts("success");
-
-  return EXIT_SUCCESS;
+  puts("done");
+  return 0;
 }

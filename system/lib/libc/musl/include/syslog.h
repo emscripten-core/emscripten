@@ -18,7 +18,7 @@ extern "C" {
 
 #define LOG_PRIMASK 7
 #define LOG_PRI(p) ((p)&LOG_PRIMASK)
-#define	LOG_MAKEPRI(f, p) (((f)<<3)|(p))
+#define	LOG_MAKEPRI(f, p) ((f)|(p))
 
 #define LOG_MASK(p) (1<<(p))
 #define LOG_UPTO(p) ((1<<((p)+1))-1)

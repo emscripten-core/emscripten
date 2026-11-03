@@ -29,6 +29,12 @@ void setup() {
   fclose(f);
 
   assert(chmod("toread", 0444) == 0);
+
+  f = fopen("toopenreadonly", "w");
+  assert(f);
+  rtn = fwrite("abcdef", 6, 1, f);
+  assert(rtn == 1);
+  fclose(f);
 }
 
 int main() {
@@ -36,9 +42,11 @@ int main() {
 
   struct stat s;
   int f = open("towrite", O_WRONLY);
-  assert(f);
+  assert(f >= 0);
   int f2 = open("toread", O_RDONLY);
-  assert(f2);
+  assert(f2 >= 0);
+  int f3 = open("toopenreadonly", O_RDONLY);
+  assert(f3 >= 0);
 
   fstat(f, &s);
   printf("st_size: %lld\n", s.st_size);
@@ -123,6 +131,16 @@ int main() {
   assert(s.st_size == 6);
   memset(&s, 0, sizeof s);
   errno = 0;
+  printf("\n");
+
+  printf("truncate(open read-only, 42): %d\n", truncate("toopenreadonly", 42));
+  printf("errno: %s\n", strerror(errno));
+  fstat(f3, &s);
+  printf("st_size: %lld\n", s.st_size);
+  assert(s.st_size == 42);
+  memset(&s, 0, sizeof s);
+  errno = 0;
+  printf("\n");
 
 #if __wasm32__ || !defined(WASMFS) || defined(NODEFS) || defined(NODERAWFS)
   // These last two test don't run against the in-memory wasmfs filesystem

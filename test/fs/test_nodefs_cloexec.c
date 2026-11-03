@@ -16,6 +16,6 @@ int main(void) {
     FS.close(FS.open('test.txt', 'w'));
   );
   assert(open("test.txt", O_RDONLY | O_CLOEXEC) != -1);
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

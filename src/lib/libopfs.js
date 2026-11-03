@@ -14,5 +14,5 @@ addToLibrary({
 });
 
 if (!WASMFS) {
-  error("using -lopfs.js requires using WasmFS (-sWASMFS)");
+  error('using -lopfs.js requires using WasmFS (-sWASMFS)');
 }

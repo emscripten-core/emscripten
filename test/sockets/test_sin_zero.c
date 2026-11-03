@@ -36,7 +36,6 @@ int main() {
   }
   shutdown(s, SHUT_RDWR);
 
-  puts("success");
-
-  return EXIT_SUCCESS;
+  puts("done");
+  return 0;
 }

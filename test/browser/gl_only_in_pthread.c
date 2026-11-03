@@ -50,8 +50,9 @@ void *ThreadMain(void *arg)
   printf("%d %d %d %d\n", data[0], data[1], data[2], data[3]);
 #endif
 
-  emscripten_webgl_make_context_current(0);
+  assert(emscripten_webgl_get_current_context() == ctx);
   emscripten_webgl_destroy_context(ctx);
+  assert(emscripten_webgl_get_current_context() == 0);
   threadRunning = 0;
   printf("Thread quit\n");
   pthread_exit(0);

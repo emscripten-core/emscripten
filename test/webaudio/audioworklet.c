@@ -1,5 +1,10 @@
+#define _GNU_SOURCE // for gettid
+#include <emscripten/console.h>
 #include <emscripten/webaudio.h>
+#include <emscripten/threading.h>
 #include <assert.h>
+#include <errno.h>
+#include <time.h>
 #include <unistd.h>
 
 /* Steps to use Wasm-based AudioWorklets:
@@ -30,6 +35,9 @@ _Thread_local int testTlsVariable = 1;
 int lastTlsVariableValueInAudioThread = 1;
 #endif
 
+bool worklet_started = false;
+pid_t main_tid = 0;
+
 // This function will be called for every fixed-size buffer of audio samples to be processed.
 bool ProcessAudio(int numInputs,
                   const AudioSampleFrame* inputs,
@@ -38,12 +46,29 @@ bool ProcessAudio(int numInputs,
                   int numParams,
                   const AudioParamFrame* params,
                   void* userData) {
+  assert(!emscripten_is_main_browser_thread());
+  assert(emscripten_current_thread_is_audio_worklet());
+  if (!worklet_started) {
+    worklet_started = true;
+    pid_t worklet_tid = gettid();
+    emscripten_outf("worklet thread tid: %d\n", worklet_tid);
+    assert(worklet_tid && worklet_tid > main_tid);
+#ifdef __EMSCRIPTEN_PTHREADS__
+    emscripten_outf("worklet thread pthread_self: %p\n", pthread_self());
+    assert(pthread_self());
+#endif
+    // CLOCK_MONOTONIC is not available inside an AudioWorklet (where
+    // performance.now() is not supported).
+    struct timespec ts;
+    assert(clock_getres(CLOCK_MONOTONIC, &ts) == -1);
+    assert(errno == ENOSYS);
+  }
+
 #ifdef TEST_AND_EXIT
   // Only running in the test harness, see main_thread_tls_access()
   assert(testTlsVariable == lastTlsVariableValueInAudioThread);
   ++testTlsVariable;
   lastTlsVariableValueInAudioThread = testTlsVariable;
-  assert(emscripten_current_thread_is_audio_worklet());
 #endif
 
   // Verify that getentropy fails gracefully (i.e. returns non-zero) when called
@@ -114,7 +139,7 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
   };
 
   // Instantiate the noise-generator Audio Worklet Processor.
-  EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "noise-generator", &options, &ProcessAudio, 0);
+  EMSCRIPTEN_WEBAUDIO_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "noise-generator", &options, &ProcessAudio, 0);
   // Connect the audio worklet node to the graph.
   emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);
 
@@ -146,7 +171,20 @@ void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool s
 uint8_t wasmAudioWorkletStack[4096];
 
 int main() {
+  assert(emscripten_is_main_browser_thread());
   assert(!emscripten_current_thread_is_audio_worklet());
+  main_tid = gettid();
+  emscripten_outf("main thread tid: %d\n", main_tid);
+  emscripten_outf("wasmAudioWorkletStack: %p\n", wasmAudioWorkletStack);
+  assert(main_tid);
+#ifdef __EMSCRIPTEN_PTHREADS__
+  emscripten_outf("main thread pthread_self: %p\n", pthread_self());
+  assert(pthread_self());
+#endif
+  struct timespec ts;
+  assert(clock_getres(CLOCK_MONOTONIC, &ts) == 0);
+  assert(ts.tv_sec == 0);
+  assert(ts.tv_nsec == 1000);
 
   // Create an audio context
   context = emscripten_create_audio_context(0 /* use default constructor options */);

@@ -3,10 +3,6 @@ addToLibrary({
   // entries here that contain typed arrays.
   $wasmFS$JSMemoryFiles: {},
 
-  _wasmfs_create_js_file_backend_js__deps: [
-    '$wasmFS$backends',
-    '$wasmFS$JSMemoryFiles',
-  ],
   _wasmfs_create_js_file_backend_js: (backend) => {
     wasmFS$backends[backend] = {
       allocFile: (file) => {
@@ -44,7 +40,7 @@ addToLibrary({
         HEAPU8.set(fileData.subarray(offset, offset + length), buffer);
         return length;
       },
-      getSize: (file) => wasmFS$JSMemoryFiles[file]?.length || 0,
+      getSize: (file) => wasmFS$JSMemoryFiles[file]?.length ?? 0,
       setSize: (file, size) => {
         // Allocate a new array of the proper size, and copy as much data as
         // possible.

@@ -100,8 +100,8 @@ int Init ()
    return GL_TRUE;
 }
 
-static const int kNegativeTest = 0;
-static const int kPositiveTest = 1;
+const int kNegativeTest = 0;
+const int kPositiveTest = 1;
 
 ///
 // Draw a triangle using the shader pair created in Init()

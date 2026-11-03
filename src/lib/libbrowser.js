@@ -6,13 +6,11 @@
 
 // Utilities for browser environments
 var LibraryBrowser = {
+  $workerHandles__internal: true,
+  $workerHandles: 'new HandleAllocator();',
+
   $Browser__deps: [
-    '$callUserCallback',
-    '$getFullscreenElement',
-    '$safeSetTimeout',
-    '$warnOnce',
 #if FILESYSTEM
-    '$preloadPlugins',
 #if MAIN_MODULE
     '$preloadedWasm',
 #endif
@@ -24,7 +22,6 @@ var LibraryBrowser = {
     isFullscreen: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
-    workers: [],
     preloadedImages: {},
     preloadedAudios: {},
 
@@ -94,18 +91,18 @@ var LibraryBrowser = {
           var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
           var url = URL.createObjectURL(b); // XXX we never revoke this!
           var audio = new Audio();
-          audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
+          audio.addEventListener('canplaythrough', () => finish(audio)); // use addEventListener due to chromium bug 124926
           audio.onerror = (event) => {
             if (done) return;
             err(`warning: browser could not fully decode audio ${name}, trying slower base64 approach`);
             function encode64(data) {
               var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-              var PAD = '=';
+              const PAD = '=';
               var ret = '';
               var leftchar = 0;
               var leftbits = 0;
-              for (var i = 0; i < data.length; i++) {
-                leftchar = (leftchar << 8) | data[i];
+              for (var byte of data) {
+                leftchar = (leftchar << 8) | byte;
                 leftbits += 8;
                 while (leftbits >= 6) {
                   var curr = (leftchar >> (leftbits-6)) & 0x3f;
@@ -129,7 +126,7 @@ var LibraryBrowser = {
           // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
           safeSetTimeout(() => {
             finish(audio); // try to use it even though it is not necessarily ready to play
-          }, 10000);
+          }, 10_000);
         });
       };
       preloadPlugins.push(audioPlugin);
@@ -146,16 +143,18 @@ var LibraryBrowser = {
         // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
         // Module['forcedAspectRatio'] = 4 / 3;
 
-        document.addEventListener('pointerlockchange', pointerLockChange, false);
+        document.addEventListener('pointerlockchange', pointerLockChange);
 
+#if expectToReceiveOnModule('elementPointerLock')
         if (Module['elementPointerLock']) {
-          canvas.addEventListener("click", (ev) => {
+          canvas.addEventListener('click', (ev) => {
             if (!Browser.pointerLock && Browser.getCanvas().requestPointerLock) {
               Browser.getCanvas().requestPointerLock();
               ev.preventDefault();
             }
-          }, false);
+          });
         }
+#endif
       }
     },
 
@@ -172,7 +171,7 @@ var LibraryBrowser = {
 #if MIN_WEBGL_VERSION >= 2
           majorVersion: 2,
 #elif MAX_WEBGL_VERSION >= 2 // libbrowser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
-          majorVersion: (typeof WebGL2RenderingContext != 'undefined') ? 2 : 1,
+          majorVersion: (typeof WebGL2RenderingContext !== 'undefined') ? 2 : 1,
 #else
           majorVersion: 1,
 #endif
@@ -187,7 +186,7 @@ var LibraryBrowser = {
         // This check of existence of GL is here to satisfy Closure compiler, which yells if variable GL is referenced below but GL object is not
         // actually compiled in because application is not doing any GL operations. TODO: Ideally if GL is not being used, this function
         // Browser.createContext() should not even be emitted.
-        if (typeof GL != 'undefined') {
+        if (typeof GL !== 'undefined') {
           contextHandle = GL.createContext(canvas, contextAttributes);
           if (contextHandle) {
             ctx = GL.getContext(contextHandle).GLctx;
@@ -201,7 +200,7 @@ var LibraryBrowser = {
 
       if (setInModule) {
 #if ASSERTIONS
-        if (!useWebGL) assert(typeof GLctx == 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
+        if (!useWebGL) assert(typeof GLctx === 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
 #endif
         Module['ctx'] = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
@@ -218,8 +217,8 @@ var LibraryBrowser = {
     requestFullscreen(lockPointer, resizeCanvas) {
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
-      if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
-      if (typeof Browser.resizeCanvas == 'undefined') Browser.resizeCanvas = false;
+      if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
+      if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
 
       var canvas = Browser.getCanvas();
       function fullscreenChange() {
@@ -227,7 +226,7 @@ var LibraryBrowser = {
         var canvasContainer = canvas.parentNode;
         if (getFullscreenElement() === canvasContainer) {
           canvas.exitFullscreen = Browser.exitFullscreen;
-          if (Browser.lockPointer) canvas.requestPointerLock();
+          if (Browser.lockPointer) canvas.requestPointerLock?.();
           Browser.isFullscreen = true;
           if (Browser.resizeCanvas) {
             Browser.setFullscreenCanvasSize();
@@ -245,64 +244,52 @@ var LibraryBrowser = {
             Browser.updateCanvasDimensions(canvas);
           }
         }
+#if expectToReceiveOnModule('onFullScreen')
         Module['onFullScreen']?.(Browser.isFullscreen);
         Module['onFullscreen']?.(Browser.isFullscreen);
+#endif
       }
 
       if (!Browser.fullscreenHandlersInstalled) {
         Browser.fullscreenHandlersInstalled = true;
-        document.addEventListener('fullscreenchange', fullscreenChange, false);
-        document.addEventListener('mozfullscreenchange', fullscreenChange, false);
-        document.addEventListener('webkitfullscreenchange', fullscreenChange, false);
-        document.addEventListener('MSFullscreenChange', fullscreenChange, false);
+        document.addEventListener('fullscreenchange', fullscreenChange);
+#if MIN_SAFARI_VERSION < 160400
+        document.addEventListener('webkitfullscreenchange', fullscreenChange);
+#endif
       }
 
       // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
-      var canvasContainer = document.createElement("div");
+      var canvasContainer = document.createElement('div');
       canvas.parentNode.insertBefore(canvasContainer, canvas);
       canvasContainer.appendChild(canvas);
 
       // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
-      canvasContainer.requestFullscreen = canvasContainer['requestFullscreen'] ||
-                                          canvasContainer['mozRequestFullScreen'] ||
-                                          canvasContainer['msRequestFullscreen'] ||
-                                         (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) : null) ||
-                                         (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) : null);
+#if MIN_SAFARI_VERSION < 160400
+      // Safari didn't support Element.requestFullscreen until 16.4
+      // See: https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen
+      /** @suppress {checkTypes} */
+      canvasContainer.requestFullscreen ??= (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element.ALLOW_KEYBOARD_INPUT) : null) ??
+                                            (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element.ALLOW_KEYBOARD_INPUT) : null);
 
+#endif
       canvasContainer.requestFullscreen();
     },
 
-#if ASSERTIONS
-    requestFullScreen() {
-      abort('Module.requestFullScreen has been replaced by Module.requestFullscreen (without a capital S)');
-    },
-#endif
-
     exitFullscreen() {
       // This is workaround for chrome. Trying to exit from fullscreen
-      // not in fullscreen state will cause "TypeError: Document not active"
+      // not in fullscreen state will cause 'TypeError: Document not active'
       // in chrome. See https://github.com/emscripten-core/emscripten/pull/8236
       if (!Browser.isFullscreen) {
         return false;
       }
 
-      var CFS = document['exitFullscreen'] ||
-                document['cancelFullScreen'] ||
-                document['mozCancelFullScreen'] ||
-                document['msExitFullscreen'] ||
-                document['webkitCancelFullScreen'] ||
-          (() => {});
+#if MIN_SAFARI_VERSION < 160400
+      var CFS = document.exitFullscreen ?? document['webkitCancelFullScreen'];
       CFS.apply(document, []);
+#else
+      document.exitFullscreen();
+#endif
       return true;
-    },
-
-    // abort and pause-aware versions TODO: build main loop on top of this?
-
-    safeSetTimeout(func, timeout) {
-      // Legacy function, this is used by the SDL2 port so we need to keep it
-      // around at least until that is updated.
-      // See https://github.com/libsdl-org/SDL/pull/6304
-      return safeSetTimeout(func, timeout);
     },
 
     getMimetype(name) {
@@ -315,27 +302,6 @@ var LibraryBrowser = {
         'wav': 'audio/wav',
         'mp3': 'audio/mpeg'
       }[name.slice(name.lastIndexOf('.')+1)];
-    },
-
-    getUserMedia(func) {
-      window.getUserMedia ||= navigator['getUserMedia'] ||
-                              navigator['mozGetUserMedia'];
-      window.getUserMedia(func);
-    },
-
-
-    getMovementX(event) {
-      return event['movementX'] ||
-             event['mozMovementX'] ||
-             event['webkitMovementX'] ||
-             0;
-    },
-
-    getMovementY(event) {
-      return event['movementY'] ||
-             event['mozMovementY'] ||
-             event['webkitMovementY'] ||
-             0;
     },
 
     // Browsers specify wheel direction according to the page CSS pixel Y direction:
@@ -418,19 +384,13 @@ var LibraryBrowser = {
       Browser.mouseY = y;
     },
 
-    // Unpack a "mouse" event, handling SDL touch paths and pointerlock compatibility stuff.
+    // Unpack a 'mouse' event, handling SDL touch paths and pointerlock compatibility stuff.
     calculateMouseEvent(event) { // event should be mousemove, mousedown or mouseup
       if (Browser.pointerLock) {
         // When the pointer is locked, calculate the coordinates
         // based on the movement of the mouse.
-        // Workaround for Firefox bug 764498
-        if (event.type != 'mousemove' &&
-            ('mozMovementX' in event)) {
-          Browser.mouseMovementX = Browser.mouseMovementY = 0;
-        } else {
-          Browser.mouseMovementX = Browser.getMovementX(event);
-          Browser.mouseMovementY = Browser.getMovementY(event);
-        }
+        Browser.mouseMovementX = event.movementX;
+        Browser.mouseMovementY = event.movementY;
 
         // add the mouse delta to the current absolute mouse position
         Browser.mouseX += Browser.mouseMovementX;
@@ -439,7 +399,7 @@ var LibraryBrowser = {
         if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
           var touch = event.touch;
           if (touch === undefined) {
-            return; // the "touch" property is only defined in SDL
+            return; // the 'touch' property is only defined in SDL
 
           }
           var coords = Browser.calculateMouseCoords(touch.pageX, touch.pageY);
@@ -467,19 +427,17 @@ var LibraryBrowser = {
       Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height));
     },
 
-    setCanvasSize(width, height, noUpdates) {
+    setCanvasSize(width, height, noUpdates = undefined) {
       var canvas = Browser.getCanvas();
       Browser.updateCanvasDimensions(canvas, width, height);
       if (!noUpdates) Browser.updateResizeListeners();
     },
 
-    windowedWidth: 0,
-    windowedHeight: 0,
     setFullscreenCanvasSize() {
       // check if SDL is available
-      if (typeof SDL != "undefined") {
+      if (typeof SDL !== 'undefined') {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
-        flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
+        flags = flags | {{{ cDefs.SDL_FULLSCREEN }}};
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
       Browser.updateCanvasDimensions(Browser.getCanvas());
@@ -488,16 +446,16 @@ var LibraryBrowser = {
 
     setWindowedCanvasSize() {
       // check if SDL is available
-      if (typeof SDL != "undefined") {
+      if (typeof SDL !== 'undefined') {
         var flags = {{{ makeGetValue('SDL.screen', '0', 'u32') }}};
-        flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
+        flags = flags & ~{{{ cDefs.SDL_FULLSCREEN }}};
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
       Browser.updateCanvasDimensions(Browser.getCanvas());
       Browser.updateResizeListeners();
     },
 
-    updateCanvasDimensions(canvas, wNative, hNative) {
+    updateCanvasDimensions(canvas, wNative = undefined, hNative = undefined) {
       if (wNative && hNative) {
         canvas.widthNative = wNative;
         canvas.heightNative = hNative;
@@ -507,6 +465,7 @@ var LibraryBrowser = {
       }
       var w = wNative;
       var h = hNative;
+#if expectToReceiveOnModule('forcedAspectRatio')
       if (Module['forcedAspectRatio'] > 0) {
         if (w/h < Module['forcedAspectRatio']) {
           w = Math.round(h * Module['forcedAspectRatio']);
@@ -514,7 +473,8 @@ var LibraryBrowser = {
           h = Math.round(w / Module['forcedAspectRatio']);
         }
       }
-      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen != 'undefined')) {
+#endif
+      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen !== 'undefined')) {
          var factor = Math.min(screen.width / w, screen.height / h);
          w = Math.round(w * factor);
          h = Math.round(h * factor);
@@ -522,20 +482,20 @@ var LibraryBrowser = {
       if (Browser.resizeCanvas) {
         if (canvas.width  != w) canvas.width  = w;
         if (canvas.height != h) canvas.height = h;
-        if (typeof canvas.style != 'undefined') {
-          canvas.style.removeProperty( "width");
-          canvas.style.removeProperty("height");
+        if (typeof canvas.style !== 'undefined') {
+          canvas.style.removeProperty( 'width');
+          canvas.style.removeProperty('height');
         }
       } else {
         if (canvas.width  != wNative) canvas.width  = wNative;
         if (canvas.height != hNative) canvas.height = hNative;
-        if (typeof canvas.style != 'undefined') {
+        if (typeof canvas.style !== 'undefined') {
           if (w != wNative || h != hNative) {
-            canvas.style.setProperty( "width", w + "px", "important");
-            canvas.style.setProperty("height", h + "px", "important");
+            canvas.style.setProperty( 'width', w + 'px', 'important');
+            canvas.style.setProperty('height', h + 'px', 'important');
           } else {
-            canvas.style.removeProperty( "width");
-            canvas.style.removeProperty("height");
+            canvas.style.removeProperty( 'width');
+            canvas.style.removeProperty('height');
           }
         }
       }
@@ -543,29 +503,30 @@ var LibraryBrowser = {
   },
 
   $requestFullscreen: 'Browser.requestFullscreen',
-#if ASSERTIONS
-  $requestFullScreen: 'Browser.requestFullScreen',
-#endif
   $setCanvasSize: 'Browser.setCanvasSize',
-  $getUserMedia: 'Browser.getUserMedia',
   $createContext: 'Browser.createContext',
 
-  emscripten_run_preload_plugins__deps: ['$PATH'],
+  // Explicit dependency on `$Browser` is needed here because the preload
+  // plugins themselves are registered in `Browser.init`.
+  emscripten_run_preload_plugins__deps: ['$Browser'],
   emscripten_run_preload_plugins__proxy: 'sync',
   emscripten_run_preload_plugins: (file, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
     var _file = UTF8ToString(file);
-    var data = FS.analyzePath(_file);
-    if (!data.exists) return -1;
-    // Here we assume data.object.contents is a TypedArray.
+    var contents;
+    try {
+      contents = FS.readFile(_file);
+    } catch (e) {
+      return -1;
+    }
 #if ASSERTIONS
-    assert(data.object.contents.subarray, 'unexpected file content')
+    assert(contents.subarray, 'unexpected file content');
 #endif
     FS.createPreloadedFile(
       PATH.dirname(_file),
       PATH.basename(_file),
-      data.object.contents, /*canRead=*/true, /*canWrite=*/true,
+      contents, /*canRead=*/true, /*canWrite=*/true,
       () => {
         {{{ runtimeKeepalivePop() }}}
         if (onload) {{{ makeDynCall('vp', 'onload') }}}(file);
@@ -582,7 +543,6 @@ var LibraryBrowser = {
   $Browser_asyncPrepareDataCounter: 0,
 
   emscripten_run_preload_plugins_data__proxy: 'sync',
-  emscripten_run_preload_plugins_data__deps: ['$stringToNewUTF8', '$Browser_asyncPrepareDataCounter'],
   emscripten_run_preload_plugins_data: (data, size, suffix, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
@@ -592,7 +552,7 @@ var LibraryBrowser = {
     FS.createPreloadedFile(
       '/',
       name,
-      {{{ makeHEAPView('U8', 'data', 'data + size') }}},
+      HEAPU8.subarray(data, data + size),
       true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
@@ -607,14 +567,12 @@ var LibraryBrowser = {
   },
 
   // Callable from pthread, executes in pthread context.
-  emscripten_async_run_script__deps: ['emscripten_run_script', '$safeSetTimeout'],
   emscripten_async_run_script: (script, millis) => {
     // TODO: cache these to avoid generating garbage
     safeSetTimeout(() => _emscripten_run_script(script), millis);
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
-  emscripten_async_load_script__deps: ['$UTF8ToString'],
   emscripten_async_load_script: async (url, onload, onerror) => {
     url = UTF8ToString(url);
 #if PTHREADS
@@ -625,19 +583,14 @@ var LibraryBrowser = {
     }
 #endif
 #if ASSERTIONS
-    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
+    assert(!runDependencies, 'async_load_script must be run when no other dependencies are active');
 #endif
     {{{ runtimeKeepalivePush() }}}
 
     var loadDone = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onload) {
-        var onloadCallback = () => callUserCallback({{{ makeDynCall('v', 'onload') }}});
-        if (runDependencies > 0) {
-          dependenciesFulfilled = onloadCallback;
-        } else {
-          onloadCallback();
-        }
+        resolveRunDependencies().then(() => callUserCallback({{{ makeDynCall('v', 'onload') }}}));
       }
     }
 
@@ -669,9 +622,10 @@ var LibraryBrowser = {
     document.body.appendChild(script);
   },
 
+  emscripten_get_window_title__deps: ['malloc'],
   emscripten_get_window_title__proxy: 'sync',
   emscripten_get_window_title: () => {
-    var buflen = 256;
+    const buflen = 256;
 
     if (!_emscripten_get_window_title.buffer) {
       _emscripten_get_window_title.buffer = _malloc(buflen);
@@ -717,20 +671,21 @@ var LibraryBrowser = {
 
   // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
   emscripten_create_worker__proxy: 'sync',
-  emscripten_create_worker__deps: ['$UTF8ToString', 'realloc'],
+  emscripten_create_worker__deps: ['realloc'],
   emscripten_create_worker: (url) => {
     url = UTF8ToString(url);
-    var id = Browser.workers.length;
+    var worker = new Worker(url);
     var info = {
-      worker: new Worker(url),
+      worker,
       callbacks: [],
       awaited: 0,
       buffer: 0,
     };
-    info.worker.onmessage = (msg) => {
+    var id = workerHandles.allocate(info);
+    worker.onmessage = (msg) => {
       if (ABORT) return;
-      var info = Browser.workers[id];
-      if (!info) return; // worker was destroyed meanwhile
+      if (!workerHandles.has(id)) return; // worker was destroyed meanwhile
+      var info = workerHandles.get(id);
       var callbackId = msg.data['callbackId'];
       var callbackInfo = info.callbacks[callbackId];
       if (!callbackInfo) return; // no callback or callback removed meanwhile
@@ -750,23 +705,22 @@ var LibraryBrowser = {
         callbackInfo.func(0, 0, callbackInfo.arg);
       }
     };
-    Browser.workers.push(info);
     return id;
   },
 
   emscripten_destroy_worker__deps: ['free'],
   emscripten_destroy_worker__proxy: 'sync',
   emscripten_destroy_worker: (id) => {
-    var info = Browser.workers[id];
+    var info = workerHandles.get(id);
     info.worker.terminate();
     _free(info.buffer);
-    Browser.workers[id] = null;
+    workerHandles.free(id);
   },
 
   emscripten_call_worker__proxy: 'sync',
   emscripten_call_worker: (id, funcName, data, size, callback, arg) => {
     funcName = UTF8ToString(funcName);
-    var info = Browser.workers[id];
+    var info = workerHandles.get(id);
     var callbackId = -1;
     if (callback) {
       // If we are waiting for a response from the worker we need to keep
@@ -784,7 +738,7 @@ var LibraryBrowser = {
     var transferObject = {
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+      'data': data ? HEAPU8.slice(data, data + size) : 0
     };
     if (data) {
       info.worker.postMessage(transferObject, [transferObject.data.buffer]);
@@ -800,7 +754,7 @@ var LibraryBrowser = {
     var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': false,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+      'data': data ? HEAPU8.slice(data, data + size) : 0
     };
     if (data) {
       postMessage(transferObject, [transferObject.data.buffer]);
@@ -816,7 +770,7 @@ var LibraryBrowser = {
     var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': true,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+      'data': data ? HEAPU8.slice(data, data + size) : 0
     };
     if (data) {
       postMessage(transferObject, [transferObject.data.buffer]);
@@ -828,24 +782,23 @@ var LibraryBrowser = {
 
   emscripten_get_worker_queue_size__proxy: 'sync',
   emscripten_get_worker_queue_size: (id) => {
-    var info = Browser.workers[id];
-    if (!info) return -1;
+    if (!workerHandles.has(id)) return -1;
+    var info = workerHandles.get(id);
     return info.awaited;
   },
 
-  emscripten_get_preloaded_image_data__deps: ['$getPreloadedImageData', '$UTF8ToString'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
   emscripten_get_preloaded_image_data: (path, w, h) => getPreloadedImageData(UTF8ToString(path), w, h),
 
   $getPreloadedImageData__internal: true,
-  $getPreloadedImageData__data: ['$PATH_FS', 'malloc'],
+  $getPreloadedImageData__deps: ['malloc'],
   $getPreloadedImageData: (path, w, h) => {
     path = PATH_FS.resolve(path);
 
     var canvas = /** @type {HTMLCanvasElement} */(Browser.preloadedImages[path]);
     if (!canvas) return 0;
 
-    var ctx = canvas.getContext("2d");
+    var ctx = canvas.getContext('2d');
     var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
     var buf = _malloc(canvas.width * canvas.height * 4);
 
@@ -857,7 +810,7 @@ var LibraryBrowser = {
   },
 
 #if !WASMFS // WasmFS implements this in wasm
-  emscripten_get_preloaded_image_data_from_FILE__deps: ['$getPreloadedImageData', 'fileno'],
+  emscripten_get_preloaded_image_data_from_FILE__deps: ['fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
   emscripten_get_preloaded_image_data_from_FILE: (file, w, h) => {
     var fd = _fileno(file);
@@ -870,7 +823,5 @@ var LibraryBrowser = {
   }
 #endif
 };
-
-autoAddDeps(LibraryBrowser, '$Browser');
 
 addToLibrary(LibraryBrowser);

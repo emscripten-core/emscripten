@@ -55,7 +55,7 @@ struct DummyForPointer {
   DummyForPointer(const int v) : value(v) {}
 };
 
-static DummyForPointer emval_pointer_dummy(42);
+DummyForPointer emval_pointer_dummy(42);
 
 val emval_test_instance_pointer() {
   DummyForPointer* p = &emval_pointer_dummy;
@@ -228,10 +228,27 @@ void force_memory_growth() {
   assert(val::global("oldheap")["byteLength"].as<size_t>() == old_size);
   emscripten_resize_heap(old_size + EMSCRIPTEN_PAGE_SIZE);
   assert(emscripten_get_heap_size() > old_size);
-  // HEAP8 on the module should now be rebound, and our oldheap should be
-  // detached
+  // HEAP8 on the module should always be correct after the resize.
+  // Our oldheap reference may be detached, depending on whether the
+  // buffer is resizable.
   assert(val::module_property("HEAP8")["byteLength"].as<size_t>() > old_size);
-  assert(val::global("oldheap")["byteLength"].as<size_t>() == 0);
+
+  val oldheap = val::global("oldheap");
+  val buffer = oldheap["buffer"];
+  bool growable = false;
+  if (!buffer.isUndefined()) {
+    if (!buffer["resizable"].isUndefined()) {
+      growable = buffer["resizable"].as<bool>();
+    } else if (!buffer["growable"].isUndefined()) {
+      growable = buffer["growable"].as<bool>();
+    }
+  }
+
+  if (growable) {
+    assert(oldheap["byteLength"].as<size_t>() == emscripten_get_heap_size());
+  } else {
+    assert(oldheap["byteLength"].as<size_t>() == 0);
+  }
 }
 
 std::string emval_test_take_and_return_const_char_star(const char* str) {
@@ -1103,8 +1120,8 @@ bool emval_test_is_shared_ptr_null(std::shared_ptr<ValHolder> p) {
   return !p;
 }
 
-static SmallClass smallClass;
-static BigClass bigClass;
+SmallClass smallClass;
+BigClass bigClass;
 
 SmallClass embind_test_return_small_class_instance() {
   return smallClass;
@@ -1266,7 +1283,7 @@ void embind_attempt_to_modify_smart_pointer_when_passed_by_value(std::shared_ptr
   p->name = "Changed";
 }
 
-static std::shared_ptr<Base> savedBasePointer;
+std::shared_ptr<Base> savedBasePointer;
 
 void embind_save_smart_base_pointer(std::shared_ptr<Base> p) {
   savedBasePointer = p;
@@ -1617,7 +1634,7 @@ constexpr size_t getElementCount(T (&)[sizeOfArray]) {
   return sizeOfArray;
 }
 
-static void callWithMemoryView(val v) {
+void callWithMemoryView(val v) {
   // static so the JS test can read the memory after callTakeMemoryView runs
   static unsigned char data[] = {0, 1, 2, 3, 4, 5, 6, 7};
   v(typed_memory_view(getElementCount(data), data));
@@ -1870,7 +1887,7 @@ std::string unsigned_long_to_string(unsigned long val) {
 }
 
 // test loading unsigned value from memory
-static unsigned char uchar;
+unsigned char uchar;
 void store_unsigned_char(unsigned char arg) {
   uchar = arg;
 }
@@ -1879,7 +1896,7 @@ unsigned char load_unsigned_char() {
   return uchar;
 }
 
-static unsigned short ushort;
+unsigned short ushort;
 void store_unsigned_short(unsigned short arg) {
   ushort = arg;
 }
@@ -1888,7 +1905,7 @@ unsigned short load_unsigned_short() {
   return ushort;
 }
 
-static unsigned int uint;
+unsigned int uint;
 void store_unsigned_int(unsigned int arg) {
   uint = arg;
 }
@@ -1897,7 +1914,7 @@ unsigned int load_unsigned_int() {
   return uint;
 }
 
-static unsigned long ulong;
+unsigned long ulong;
 void store_unsigned_long(unsigned long arg) {
   ulong = arg;
 }

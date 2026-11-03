@@ -7,7 +7,7 @@
 #include <threads.h>
 #include <pthread.h>
 
-static void cleanup (void* arg) {
+void cleanup (void* arg) {
   printf("cleanup: %ld\n", (intptr_t)arg);
 }
 
@@ -50,6 +50,8 @@ void test_pthreads() {
   printf("test_pthreads\n");
   int rtn;
   int res;
+
+  printf("__builtin_thread_pointer non-null: %d\n", __builtin_thread_pointer() != NULL);
 
   // pthread_atfork should silently succeed.
   CHECK_SUCCESS(pthread_atfork(NULL, NULL, NULL));

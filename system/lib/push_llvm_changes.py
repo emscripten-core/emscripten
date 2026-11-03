@@ -9,10 +9,9 @@
 # and update_libcxxabi.py which copy changes from the upstream llvm
 # into emscripten.
 
-import glob
 import os
-import sys
 import shutil
+import sys
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
 emscripten_root = os.path.dirname(os.path.dirname(script_dir))

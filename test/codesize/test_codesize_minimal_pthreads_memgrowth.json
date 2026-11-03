@@ -1,10 +1,10 @@
 {
-  "a.out.js": 7726,
-  "a.out.js.gz": 3779,
-  "a.out.nodebug.wasm": 19052,
-  "a.out.nodebug.wasm.gz": 8797,
-  "total": 26778,
-  "total_gz": 12576,
+  "a.out.js": 7319,
+  "a.out.js.gz": 3625,
+  "a.out.nodebug.wasm": 19140,
+  "a.out.nodebug.wasm.gz": 8820,
+  "total": 26459,
+  "total_gz": 12445,
   "sent": [
     "a (memory)",
     "b (exit)",
@@ -62,7 +62,6 @@
   "funcs": [
     "$__errno_location",
     "$__memcpy",
-    "$__memset",
     "$__pthread_getspecific",
     "$__pthread_mutex_lock",
     "$__pthread_mutex_trylock",
@@ -134,6 +133,7 @@
     "$emscripten_proxy_sync_with_ctx",
     "$emscripten_stack_get_current",
     "$emscripten_stack_set_limits",
+    "$emscripten_thread_mailbox_unref",
     "$free_ctx",
     "$get_or_add_tasks_for_thread",
     "$get_tasks_for_thread",

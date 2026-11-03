@@ -5,10 +5,9 @@
  */
 
 addToLibrary({
-  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags', '$NODERAWFS_stream_funcs'],
   $NODERAWFS__postset: `
     if (!ENVIRONMENT_IS_NODE) {
-      throw new Error("NODERAWFS is currently only supported on Node.js environment.")
+      throw new Error('NODERAWFS is currently only supported on Node.js environment.')
     }
     var nodeTTY = require('node:tty');
     function _wrapNodeError(func) {
@@ -65,10 +64,15 @@ addToLibrary({
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams() {
-      FS.createStream({ nfd: 0, position: 0, path: '/dev/stdin', flags: 0, seekable: false }, 0);
-      var paths = [,'/dev/stdout', '/dev/stderr'];
-      for (var i = 1; i < 3; i++) {
-        FS.createStream({ nfd: i, position: 0, path: paths[i], flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, seekable: false }, i);
+      var paths = ['/dev/stdin', '/dev/stdout', '/dev/stderr'];
+      for (var i = 0; i < 3; i++) {
+        // Like open() below, give the stream a node carrying the identity of
+        // whatever the inherited descriptor refers to (tty, pipe, file, ...):
+        // every stream has a node.
+        var st = fs.fstatSync(i);
+        var node = { id: st.ino, mode: st.mode, node_ops: NODERAWFS, path: paths[i] };
+        var flags = i ? {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}} : 0;
+        FS.createStream({ nfd: i, position: 0, path: paths[i], flags, node }, i);
       }
     },
     // generic function for all node creation
@@ -83,12 +87,20 @@ addToLibrary({
     },
     mkdir(...args) { fs.mkdirSync(...args); },
     symlink(...args) { fs.symlinkSync(...args); },
+    link(oldpath, newpath, flags) {
+      // AT_SYMLINK_FOLLOW (0x400): dereference oldpath if it is a symlink,
+      // since node's link(2) links to the symlink itself by default.
+      if (flags & 0x400) {
+        oldpath = fs.realpathSync(oldpath);
+      }
+      fs.linkSync(oldpath, newpath);
+    },
     rename(...args) { fs.renameSync(...args); },
     rmdir(...args) { fs.rmdirSync(...args); },
     readdir(...args) { return ['.', '..'].concat(fs.readdirSync(...args)); },
     unlink(...args) { fs.unlinkSync(...args); },
     readlink(...args) { return fs.readlinkSync(...args); },
-    stat(path, dontFollow) {
+    stat(path, dontFollow = false) {
       var stat = dontFollow ? fs.lstatSync(path) : fs.statSync(path);
       if (NODEFS.isWindows) {
         // Windows does not report the 'x' permission bit, so propagate read
@@ -99,6 +111,12 @@ addToLibrary({
     },
     fstat(fd) {
       var stream = FS.getStreamChecked(fd);
+      // Virtual streams (pipes, sockets) have no backing node fd; defer to their
+      // own getattr rather than node's fs.fstatSync.
+      var getattr = stream.stream_ops?.getattr ?? stream.node.node_ops?.getattr;
+      if (getattr) {
+        return getattr(stream.stream_ops?.getattr ? stream : stream.node);
+      }
       return fs.fstatSync(stream.nfd);
     },
     statfs(path) {
@@ -114,7 +132,7 @@ addToLibrary({
     statfsStream(stream) {
       return FS.statfs(stream.path);
     },
-    chmod(path, mode, dontFollow) {
+    chmod(path, mode, dontFollow = false) {
       mode &= {{{ cDefs.S_IALLUGO }}};
       if (NODEFS.isWindows) {
         // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
@@ -152,16 +170,20 @@ addToLibrary({
       var stream = FS.getStreamChecked(fd);
       fs.ftruncateSync(stream.nfd, len);
     },
-    utime(path, atime, mtime) {
+    utime(path, atime, mtime, dontFollow = false) {
       // null here for atime or mtime means UTIME_OMIT was passed.  Since node
       // doesn't support this concept we need to first find the existing
       // timestamps in order to preserve them.
       if ((atime === null) || (mtime === null)) {
-        var st = fs.statSync(path);
-        atime ||= st.atimeMs;
-        mtime ||= st.mtimeMs;
+        var st = dontFollow ? fs.lstatSync(path) : fs.statSync(path);
+        atime ??= st.atimeMs;
+        mtime ??= st.mtimeMs;
       }
-      fs.utimesSync(path, atime/1000, mtime/1000);
+      if (dontFollow) {
+        fs.lutimesSync(path, atime/1000, mtime/1000);
+      } else {
+        fs.utimesSync(path, atime/1000, mtime/1000);
+      }
     },
     open(path, flags, mode) {
       flags = FS_modeStringToFlags(flags);
@@ -183,7 +205,10 @@ addToLibrary({
       if (!stream.stream_ops) {
         rtn.shared.refcnt ??= 0;
         rtn.shared.refcnt++;
-        rtn.tty = nodeTTY.isatty(rtn.nfd);
+        if (nodeTTY.isatty(rtn.nfd)) {
+          rtn.tty = { ops: TTY.default_tty_ops };
+          rtn.seekable = false;
+        }
       }
       return rtn;
     },
@@ -221,7 +246,7 @@ addToLibrary({
       return position;
     },
     read(stream, buffer, offset, length, position) {
-      var seeking = typeof position != 'undefined';
+      var seeking = typeof position !== 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
       var bytesRead = fs.readSync(stream.nfd, buffer, offset, length, position);
       // update position marker when non-seeking
@@ -233,7 +258,7 @@ addToLibrary({
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, {{{ cDefs.SEEK_END }}});
       }
-      var seeking = typeof position != 'undefined';
+      var seeking = typeof position !== 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
       var bytesWritten = fs.writeSync(stream.nfd, buffer, offset, length, position);
       // update position marker when non-seeking

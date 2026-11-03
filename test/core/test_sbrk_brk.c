@@ -89,5 +89,5 @@ int main() {
       assert(data[i][j] == (uint8_t)i);
   }
   printf("brk at end: %p.\n", sbrk(0));
-  printf("success\n");
+  printf("done\n");
 }

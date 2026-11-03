@@ -56,7 +56,7 @@ void* thread_main(void* arg) {
   return NULL;
 }
 #else
-char stack[1024];
+char stack[4096];
 #endif
 
 int main() {

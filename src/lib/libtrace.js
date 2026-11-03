@@ -6,10 +6,6 @@
 
 var LibraryTracing = {
   $EmscriptenTrace__deps: [
-    '$traceConfigure', 'emscripten_trace_configure_for_google_wtf',
-    '$traceEnterContext', 'emscripten_trace_exit_context',
-    '$traceLogMessage', '$traceMark',
-    'emscripten_get_now',
     '$jsStackTrace'
   ],
   $EmscriptenTrace__postset: 'EmscriptenTrace.init()',
@@ -75,7 +71,7 @@ var LibraryTracing = {
       EmscriptenTrace.worker.addEventListener('error', (e) => {
         out('TRACE WORKER ERROR:');
         out(e);
-      }, false);
+      });
       EmscriptenTrace.worker.postMessage({ 'cmd': 'configure',
                                            'data_version': EmscriptenTrace.DATA_VERSION,
                                            'session_id': session_id,
@@ -186,7 +182,7 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
-                            "MARK", message]);
+                            'MARK', message]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
       window['wtf'].trace.mark(message);
@@ -197,7 +193,7 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
-                            "MARK", UTF8ToString(message)]);
+                            'MARK', UTF8ToString(message)]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
       window['wtf'].trace.mark(UTF8ToString(message));
@@ -279,7 +275,7 @@ var LibraryTracing = {
 
   emscripten_trace_report_off_heap_data: () => {
     function openal_audiodata_size() {
-      if (typeof AL == 'undefined' || !AL.currentContext) {
+      if (typeof AL === 'undefined' || !AL.currentContext) {
         return 0;
       }
       var totalMemory = 0;
@@ -381,5 +377,4 @@ var LibraryTracing = {
   },
 };
 
-autoAddDeps(LibraryTracing, '$EmscriptenTrace');
 addToLibrary(LibraryTracing);

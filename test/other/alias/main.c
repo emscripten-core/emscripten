@@ -33,6 +33,6 @@ int main() {
     return 1;
   }
   dlclose(handle);
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

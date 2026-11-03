@@ -206,6 +206,8 @@ int main() {
     // glfwWaitEvents();
 
     assert(glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    assert(glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL);
 
     // XXX: not implemented
     // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);

@@ -5,11 +5,6 @@
  */
 
 addToLibrary({
-  $TTY__deps: [
-    '$FS',
-    '$UTF8ArrayToString',
-    '$FS_stdin_getChar'
-  ],
 #if !MINIMAL_RUNTIME
   $TTY__postset: () => {
     addAtInit('TTY.init();');
@@ -71,12 +66,15 @@ addToLibrary({
           } catch (e) {
             throw new FS.ErrnoError({{{ cDefs.EIO }}});
           }
-          if (result === undefined && bytesRead === 0) {
+          if (result === undefined && !bytesRead) {
             throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
           }
           if (result === null || result === undefined) break;
           bytesRead++;
           buffer[offset+i] = result;
+          // We currently only support canonical mode (ICANON), where
+          // read(2) returns as soon as a line delimiter is read.
+          if (result === {{{ charCode('\n') }}}) break;
         }
         if (bytesRead) {
           stream.node.atime = Date.now();

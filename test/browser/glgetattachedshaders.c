@@ -10,12 +10,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void die(const char *msg) {
+void die(const char *msg) {
   printf("%s\n", msg);
   abort();
 }
 
-static void create_context(void) {
+void create_context(void) {
   EGLint num_config;
   EGLContext g_egl_ctx;
   EGLDisplay g_egl_dpy;

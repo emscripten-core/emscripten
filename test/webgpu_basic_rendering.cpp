@@ -24,7 +24,7 @@ EM_JS_DEPS(deps, "$keepRuntimeAlive");
 
 // Keeps track of whether async tests are still alive to make sure they finish
 // before exit. This tests that keepalives exist where they should.
-static int sScopeCount = 0;
+int sScopeCount = 0;
 class ScopedCounter {
     public:
         ScopedCounter(const ScopedCounter&&) { Increment(); }
@@ -45,9 +45,9 @@ void RegisterCheckScopesAtExit() {
     });
 }
 
-static const wgpu::Instance instance = wgpuCreateInstance(nullptr);
+const wgpu::Instance instance = wgpuCreateInstance(nullptr);
 
-static const char shaderCode[] = R"(
+const char shaderCode[] = R"(
     @vertex
     fn main_v(@builtin(vertex_index) idx: u32) -> @builtin(position) vec4<f32> {
         var pos = array<vec2<f32>, 3>(
@@ -61,11 +61,11 @@ static const char shaderCode[] = R"(
     }
 )";
 
-static wgpu::Adapter adapter;
-static wgpu::Device device;
-static wgpu::Queue queue;
-static wgpu::Buffer readbackBuffer;
-static wgpu::RenderPipeline pipeline;
+wgpu::Adapter adapter;
+wgpu::Device device;
+wgpu::Queue queue;
+wgpu::Buffer readbackBuffer;
+wgpu::RenderPipeline pipeline;
 
 void GetDevice(void (*callback)()) {
     instance.RequestAdapter(nullptr, wgpu::CallbackMode::AllowSpontaneous, [=](wgpu::RequestAdapterStatus status, wgpu::Adapter a, wgpu::StringView message) {

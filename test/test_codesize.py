@@ -7,7 +7,6 @@ import json
 import math
 import os
 import re
-import shlex
 
 import common
 from common import (
@@ -20,7 +19,25 @@ from common import (
 )
 from decorators import parameterized, requires_pthreads
 
-from tools import building, shared
+from tools import building, diagnostics, shared, utils
+from tools.maint import sync_deps
+
+
+def get_llvm_revision():
+  proc = shared.check_call([shared.CLANG_CC, '--target=wasm32', '--version'], stdout=shared.PIPE)
+  m = re.search(r'\(\S+\s+([0-9a-f]{7,40})\)', proc.stdout)
+  if not m:
+    utils.exit_with_error(f'unable to parse llvm revision from clang version: {proc.stdout}')
+  return m.group(1)
+
+
+def get_binaryen_revision():
+  bindir = building.get_binaryen_bin()
+  version = building.get_binaryen_version(bindir)
+  m = re.search(r'\(version_\d+-\d+-g([0-9a-f]+)\)', version)
+  if not m:
+    utils.exit_with_error(f'unable to parse binaryen revision from wasm-opt version: {version}')
+  return m.group(1)
 
 
 def deminify_syms(names, minification_map):
@@ -34,6 +51,32 @@ def deminify_syms(names, minification_map):
 
 
 class codesize(RunnerCore):
+  checked_versions = False
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    # Check versions here in `__init__` (which runs in the main process during
+    # test loading) rather than `setUpClass` (which runs in each worker process
+    # when using the parallel test runner).
+    if not codesize.checked_versions:
+      codesize.checked_versions = True
+      revisions = sync_deps.get_deps_revisions()
+      expected_llvm = revisions['llvm_project_revision']
+      expected_binaryen = revisions['binaryen_revision']
+
+      doc_url = 'https://emscripten.org/docs/contributing/developers_guide.html#setting-up'
+      actual_llvm = get_llvm_revision()
+      if not expected_llvm.startswith(actual_llvm):
+        diagnostics.warn('Running codesize tests requires a specific LLVM version. '
+                         f'The current revision ({actual_llvm}) does not match test/emsdk_version.txt ({expected_llvm})\n'
+                         f'See {doc_url} for how to get the correct versions installed.')
+
+      actual_binaryen = get_binaryen_revision()
+      if not expected_binaryen.startswith(actual_binaryen):
+        diagnostics.warn('Running codesize tests requires a specific Binaryen version. '
+                         f'The current revision ({actual_binaryen}) does not match test/emsdk_version.txt ({expected_binaryen})\n'
+                         f'See {doc_url} for how to get the correct versions installed.')
+
   @parameterized({
     'audio_worklet': ('audio_worklet', False, True),
     'hello_world_wasm': ('hello_world', False, True),
@@ -120,7 +163,6 @@ class codesize(RunnerCore):
       outputs = ['a.html']
 
     args = [compiler_for(sources[0]), '-o', 'a.html'] + args + sources
-    print(shlex.join(args))
     self.run_process(args)
 
     # For certain tests, don't just check the output size but check
@@ -133,13 +175,13 @@ class codesize(RunnerCore):
     # Note that we do not compare the full wasm output since that is
     # even more fragile and can change with LLVM updates.
     if compare_js_output:
-      js_out = test_file('codesize', test_name + '.expected.js')
+      expected_js = test_file('codesize', test_name + '.expected.js')
       terser = shared.get_npm_cmd('terser')
       # N.b. this requires node in PATH, it does not run against NODE from
       # Emscripten config file. If you have this line fail, make sure 'node' is
       # visible in PATH.
       self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'], env=shared.env_with_node_in_path())
-      self.assertFileContents(js_out, read_file('pretty.js'))
+      self.assertFilesMatch(expected_js, 'pretty.js')
 
     self.check_output_sizes(*outputs)
 
@@ -222,45 +264,85 @@ class codesize(RunnerCore):
 
     self.check_output_sizes('hello_world.js', 'hello_world.wasm', 'no_asserts.js', 'no_asserts.wasm', 'strict.js', 'strict.wasm')
 
+  def test_no_closure_code_size(self):
+    # Track the size of -Os/-Oz builds without Closure Compiler (which is off
+    # by default).
+    # Run with `--rebaseline` when this test fails.
+    self.build('hello_world.c', cflags=['-Os', '--output-eol=linux'])
+    self.build('hello_world.c', cflags=['-Oz', '--output-eol=linux', '-sENVIRONMENT=web'], output_basename='web')
+    self.build('hello_world.c', cflags=['-Oz', '--output-eol=linux', '-sSTRICT'], output_basename='strict')
+    self.build('codesize/files.cpp', cflags=['-Oz', '--output-eol=linux', '-sNO_WASMFS'], output_basename='files')
+
+    self.check_output_sizes('hello_world.js', 'hello_world.wasm', 'web.js', 'web.wasm', 'strict.js', 'strict.wasm', 'files.js', 'files.wasm')
+
   def run_codesize_test(self, filename, cflags, check_funcs=True, check_full_js=False, skip_gz=False):
     # in -Os, -Oz, we remove imports wasm doesn't need
-    print('Running codesize test: %s:' % filename, cflags, check_funcs, check_full_js)
+    print(f'Running codesize test: {filename}:', cflags, check_funcs, check_full_js)
     filename = test_file('codesize', filename)
     expected_basename = test_file('codesize', self.id().split('.')[-1])
 
-    # Run once without closure and parse output to find wasmImports
-    build_cmd = [compiler_for(filename), filename, '--output-eol=linux', '--emit-minification-map=minify.map'] + cflags + self.get_cflags()
+    # Under WASM_ESM_INTEGRATION the wasm<->JS boundary uses native ES
+    # import/export syntax and the JS glue lives in a separate support module.
+    esm = any(a.startswith('-sWASM_ESM_INTEGRATION') for a in cflags)
+    outfile = 'a.out.mjs' if esm else 'a.out.js'
+    js_file = 'a.out.support.mjs' if esm else outfile
+
+    # Run once without closure or terser minification and parse output to find the JS->wasm imports.
+    build_cmd = [compiler_for(filename), filename, '-o', outfile, '--output-eol=linux', '--emit-minification-map=minify.map'] + cflags + self.get_cflags()
     self.run_process(build_cmd + ['-g2'])
     # find the imports we send from JS
     # TODO(sbc): Find a way to do that that doesn't depend on internal details of
     # the generated code.
-    js = read_file('a.out.js')
+    js = read_file(js_file)
     if check_full_js:
       # Ignore absolute filenames in the generated code (they are likely /tmp files)
       js = re.sub(r'^// include: .*[/\\].*$', '// include: <FILENAME REPLACED>', js, flags=re.MULTILINE)
       js = re.sub(r'^// end include: .*[/\\].*$', '// end include: <FILENAME REPLACED>', js, flags=re.MULTILINE)
       self.assertFileContents(expected_basename + '.expected.js', js)
-    start = js.find('wasmImports = ')
-    self.assertNotEqual(start, -1)
-    end = js.find('}', start)
-    self.assertNotEqual(end, -1)
-    start = js.find('{', start)
-    self.assertNotEqual(start, -1)
-    relevant = js[start + 2:end - 1]
-    relevant = relevant.replace(' ', '').replace('"', '').replace("'", '')
-    relevant = relevant.replace('/**@export*/', '')
-    relevant = relevant.split(',')
-    sent = [x.split(':')[0].strip() for x in relevant]
-    sent = [x for x in sent if x]
+    if esm:
+      # The functions provided to wasm are emitted as `export { js as wasm }`
+      # specifiers under the "Export JS functions to the wasm module" comment.
+      # An empty set emits no export statement at all.
+      marker = js.find('Export JS functions to the wasm module')
+      self.assertNotEqual(marker, -1)
+      start = js.find('export', marker)
+      reexport = js.find('Re-export imported wasm functions', marker)
+      sent = []
+      if start != -1 and (reexport == -1 or start < reexport):
+        end = js.find('}', start)
+        self.assertNotEqual(end, -1)
+        start = js.find('{', start)
+        for specifier in js[start + 1:end].split(','):
+          specifier = specifier.strip()
+          if specifier:
+            # keep the wasm-facing (minified) name after `as`
+            sent.append(specifier.rsplit(' as ', 1)[-1].strip())
+    else:
+      start = js.find('wasmImports = ')
+      self.assertNotEqual(start, -1)
+      end = js.find('}', start)
+      self.assertNotEqual(end, -1)
+      start = js.find('{', start)
+      self.assertNotEqual(start, -1)
+      relevant = js[start + 2:end - 1]
+      relevant = relevant.replace(' ', '').replace('"', '').replace("'", '')
+      relevant = relevant.replace('/**@export*/', '')
+      relevant = relevant.split(',')
+      sent = [x.split(':')[0].strip() for x in relevant]
+      sent = [x for x in sent if x]
     # Deminify the sent list, if minification occurred
     if os.path.exists('minify.map'):
       sent = deminify_syms(sent, 'minify.map')
       os.remove('minify.map')
     sent.sort()
 
-    self.run_process(build_cmd + ['--profiling-funcs', '--closure=1'])
+    # closure is not yet compatible with the WASM_ESM_INTEGRATION module glue.
+    closure_args = [] if (esm or '--closure=0' in cflags) else ['--closure=1']
+    self.run_process(build_cmd + ['--profiling-funcs'] + closure_args)
 
-    outputs = ['a.out.js']
+    outputs = [outfile]
+    if esm:
+      outputs.append(js_file)
     info = {'sent': sent}
 
     if '-sSINGLE_FILE' not in cflags:
@@ -272,7 +354,9 @@ class codesize(RunnerCore):
       # Deminify the imports/export lists, if minification occurred
       if os.path.exists('minify.map'):
         exports = deminify_syms(exports, 'minify.map')
-        imports = [i.split('.', 1)[1] for i in imports]
+        # Under ESM integration the import module is the support module path
+        # (which itself contains dots), so take the field after the last dot.
+        imports = [i.rsplit('.', 1)[1] for i in imports]
         imports = deminify_syms(imports, 'minify.map')
 
       imports.sort()
@@ -303,16 +387,19 @@ class codesize(RunnerCore):
     'O1': (['-O1'],),
     'O2': (['-O2'],),
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'],), # noqa
-    'Os': (['-Os'],), # noqa
-    'Oz': (['-Oz'],), # noqa
+    'O3': (['-O3'],),
+    'Os': (['-Os'],),
+    'Oz': (['-Oz'],),
     'Os_mr': (['-Os', '-sMINIMAL_RUNTIME'],),
     # EVAL_CTORS also removes the __wasm_call_ctors function
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'],),
-    '64': (['-Oz', '-sMEMORY64'],),
+    '64': (['-Oz', '-m64'],),
     # WasmFS should not be fully linked into a minimal program.
     'wasmfs': (['-Oz', '-sWASMFS'],),
     'esm': (['-Oz', '-sEXPORT_ES6'],),
+    # a program with no JS->wasm imports emits no `export {}` statement in the
+    # support module, exercising that metadce edge of the ES module boundary.
+    'esm_integration': (['-Oz', '-sWASM_ESM_INTEGRATION', '-Wno-experimental'],),
   })
   def test_codesize_minimal(self, args, check_full_js=False):
     self.set_setting('STRICT')
@@ -328,11 +415,11 @@ class codesize(RunnerCore):
     self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'] + args)
 
   @parameterized({
-    'noexcept': (['-O2'],), # noqa
+    'noexcept': (['-O2'],),
     # exceptions increases code size significantly
-    'except':   (['-O2', '-fexceptions'],), # noqa
+    'except':   (['-O2', '-fexceptions'],),
     # exceptions does not pull in demangling by default, which increases code size
-    'mangle':   (['-O2', '-fexceptions', '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-Wno-deprecated'],), # noqa
+    'mangle':   (['-O2', '-fexceptions', '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-Wno-deprecated'],),
     # Wasm EH's code size increase is smaller than that of Emscripten EH
     'except_wasm': (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],),
     'except_wasm_legacy': (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'],),
@@ -363,13 +450,16 @@ class codesize(RunnerCore):
     # larger for wasm backend.
     # This test seems to produce different results under gzip on macOS and Windows machines
     # so skip the gzip size reporting here.
-    'dylink_all': (['-O3', '-sMAIN_MODULE'], {'skip_gz': True}),
+    'dylink_all': (['-O3', '-sMAIN_MODULE', '-sFULL_ES3'], {'skip_gz': True}),
     'dylink': (['-O3', '-sMAIN_MODULE=2'],),
     # WasmFS should not be fully linked into a hello world program.
     'wasmfs': (['-O3', '-sWASMFS'],),
     'single_file': (['-O3', '-sSINGLE_FILE'],),
+    # metadce must understand the native ES import/export module boundary and
+    # prune unused imports/exports from it. See #27217.
+    'esm_integration': (['-O3', '-sWASM_ESM_INTEGRATION', '-Wno-experimental'],),
   })
-  def test_codesize_hello(self, args, kwargs={}): # noqa
+  def test_codesize_hello(self, args, kwargs={}): # ruff: ignore[mutable-argument-default]
     self.run_codesize_test('hello_world.c', args, **kwargs)
 
   @parameterized({
@@ -386,7 +476,7 @@ class codesize(RunnerCore):
     'O3_grow_standalone': ('mem.c', ['-O3', '-sALLOW_MEMORY_GROWTH', '-sSTANDALONE_WASM']),
     # without argc/argv, no support code for them is emitted, even with lto
     'O3_standalone_narg_flto':
-                          ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM', '-flto']),         # noqa
+                          ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM', '-flto']),
   })
   def test_codesize_mem(self, filename, args):
     self.run_codesize_test(filename, args)
@@ -400,8 +490,8 @@ class codesize(RunnerCore):
     self.run_codesize_test('libcxxabi_message.cpp', args)
 
   @parameterized({
-    'js_fs':  (['-O3', '-sNO_WASMFS'],), # noqa
-    'wasmfs': (['-O3', '-sWASMFS'],), # noqa
+    'js_fs':  (['-O3', '-sNO_WASMFS'],),
+    'wasmfs': (['-O3', '-sWASMFS'],),
   })
   def test_codesize_files(self, args):
     self.run_codesize_test('files.cpp', args)
@@ -411,8 +501,7 @@ class codesize(RunnerCore):
     self.run_codesize_test('hello_world.c', cflags=['-sSTRICT', '-O3', '--preload-file=somefile.txt'], check_full_js=True)
 
   def test_small_js_flags(self):
-    self.emcc('browser_test_hello_world.c', ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
-    self.check_output_sizes('a.out.js')
+    self.run_codesize_test('hello_world.c',  ['-O3', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'], check_full_js=True)
 
   # This test verifies that gzipped binary-encoded a SINGLE_FILE build results in a smaller size
   # than gzipped base64-encoded version.

@@ -28,14 +28,14 @@
 
 // Use barriers to make each thread synchronize their execution points, to
 // maximize the possibility of seeing race conditions if those might occur.
-static pthread_barrier_t barrierWaitToAlloc;
-static pthread_barrier_t barrierWaitToVerify;
-static pthread_barrier_t barrierWaitToFree;
+pthread_barrier_t barrierWaitToAlloc;
+pthread_barrier_t barrierWaitToVerify;
+pthread_barrier_t barrierWaitToFree;
 
 // Use a mutex for logging.
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void *thread_start(void *arg) {
+void *thread_start(void *arg) {
 #if DEBUG
   pthread_mutex_lock( &mutex );
   printf("thread started, will try %d allocations of size %d\n", NUM_ALLOCATIONS, ALLOCATION_SIZE);

@@ -96,7 +96,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 
 // Grabs the known worklet parameter and fades in or out (depending on whether
 // it's already fading up or down, we reverse the fade direction).
-EM_JS(void, doFade, (EMSCRIPTEN_AUDIO_WORKLET_NODE_T workletID), {
+EM_JS(void, doFade, (EMSCRIPTEN_WEBAUDIO_T workletID), {
   var worklet = emscriptenGetAudioObject(workletID);
   if (worklet) {
     // Emscripten's API creates these from a C array, indexing them instead of a
@@ -131,7 +131,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
     .numberOfOutputs = 1,
     .outputChannelCounts = outputChannelCounts
   };
-  EMSCRIPTEN_AUDIO_WORKLET_NODE_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
+  EMSCRIPTEN_WEBAUDIO_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
   emscripten_audio_node_connect(worklet, context, 0, 0);
 
   // Create the two stereo source nodes and connect them to the two inputs

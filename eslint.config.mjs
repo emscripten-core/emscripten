@@ -25,7 +25,6 @@ export default [{
     '**/cache/',
     '**/third_party/',
     '**/test/',
-    'src/polyfill/',
     'src/lib/',
     'src/binaryDecode.js',
     'src/build_as_worker.js',
@@ -79,7 +78,7 @@ export default [{
     'require-jsdoc': 'off',
     'arrow-body-style': ['error', 'as-needed'],
     'space-infix-ops': 'error',
-    'no-prototype-builtins': 'off',
+    'prefer-object-has-own': 'error',
 
     quotes: ['error', 'single', {
       avoidEscape: true,

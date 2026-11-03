@@ -26,6 +26,9 @@ typedef struct {
 #include <cstdio>
 #include <time.h>
 #include <math.h>
+#include <limits>
+
+#define MAX_CLOCK_T std::numeric_limits<clock_t>::max()
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -63,7 +66,7 @@ result_t measure(clock_t *times) {
 }
 
 b2World *world;
-clock_t *times, minn = CLOCKS_PER_SEC * 1000 * 100, maxx = -1;
+clock_t *times, minn = MAX_CLOCK_T, maxx = -1;
 b2Body* topBody;
 int32 frameCounter = 0;
 

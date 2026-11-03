@@ -14,5 +14,5 @@ int main() {
   EM_ASM_INT({ out($0); }, &x);
   EM_ASM_INT({ out($0); }, &y);
   assert(x == y);
-  EM_ASM({ out('success'); });
+  EM_ASM({ out('done'); });
 }

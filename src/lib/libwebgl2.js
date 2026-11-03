@@ -5,7 +5,6 @@
  */
 
 var LibraryWebGL2 = {
-  glGetStringi__deps: ['$webglGetExtensions', '$stringToNewUTF8'],
   glGetStringi: (name, index) => {
     if (GL.currentContext.version < 2) {
       GL.recordError(0x502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
@@ -43,7 +42,6 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetInteger64v__deps: ['$emscriptenWebGLGet'],
   glGetInteger64v: (name_, p) => {
     emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_J }}});
   },
@@ -90,7 +88,6 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetBufferParameteri64v__deps: ['$writeI53ToI64'],
   glGetBufferParameteri64v: (target, value, data) => {
 #if GL_TRACK_ERRORS
     if (!data) {
@@ -125,7 +122,6 @@ var LibraryWebGL2 = {
 #endif
   },
 
-  glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
   glInvalidateFramebuffer: (target, numAttachments, attachments) => {
 #if GL_ASSERTIONS
     assert(numAttachments < tempFixedLengthArray.length, `Invalid count of numAttachments=${numAttachments} passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)`);
@@ -138,7 +134,6 @@ var LibraryWebGL2 = {
     GLctx.invalidateFramebuffer(target, list);
   },
 
-  glInvalidateSubFramebuffer__deps: ['$tempFixedLengthArray'],
   glInvalidateSubFramebuffer: (target, numAttachments, attachments, x, y, width, height) => {
 #if GL_ASSERTIONS
     assert(numAttachments < tempFixedLengthArray.length, `Invalid count of numAttachments=${numAttachments} passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)`);
@@ -151,11 +146,6 @@ var LibraryWebGL2 = {
     GLctx.invalidateSubFramebuffer(target, list, x, y, width, height);
   },
 
-  glTexImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
-#if !WEBGL_USE_GARBAGE_FREE_APIS
-    '$emscriptenWebGLGetTexPixelData',
-#endif
-  ],
   glTexImage3D: (target, level, internalFormat, width, height, depth, border, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixels);
@@ -164,7 +154,7 @@ var LibraryWebGL2 = {
 #if WEBGL_USE_GARBAGE_FREE_APIS
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, heap, toTypedArrayIndex(pixels, heap));
 #else
-      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels, internalFormat);
+      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels);
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixelData);
 #endif
     } else {
@@ -172,13 +162,17 @@ var LibraryWebGL2 = {
     }
   },
 
-  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex'],
   glTexSubImage3D: (target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
+#if WEBGL_USE_GARBAGE_FREE_APIS
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, toTypedArrayIndex(pixels, heap));
+#else
+      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels);
+      GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixelData);
+#endif
     } else {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
@@ -249,7 +243,7 @@ var LibraryWebGL2 = {
     var query = GL.queries[id];
     var param = GLctx.getQueryParameter(query, pname);
     var ret;
-    if (typeof param == 'boolean') {
+    if (typeof param === 'boolean') {
       ret = param ? 1 : 0;
     } else {
       ret = param;
@@ -410,7 +404,6 @@ var LibraryWebGL2 = {
     if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
 
-  $emscriptenWebGLGetIndexed__deps: ['$writeI53ToI64'],
   $emscriptenWebGLGetIndexed: (target, index, data, type) => {
 #if GL_TRACK_ERRORS
     if (!data) {
@@ -474,11 +467,9 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetIntegeri_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetIntegeri_v: (target, index, data) =>
     emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}),
 
-  glGetInteger64i_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetInteger64i_v: (target, index, data) =>
     emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_J }}}),
 
@@ -677,9 +668,6 @@ var LibraryWebGL2 = {
     GL.syncs[id] = null;
   },
 
-#if !WASM_BIGINT
-  glClientWaitSync__deps: ['$convertI32PairToI53'],
-#endif
   glClientWaitSync: (sync, flags, {{{ defineI64Param('timeout') }}}) => {
     // WebGL2 vs GLES3 differences: in GLES3, the timeout parameter is a uint64, where 0xFFFFFFFFFFFFFFFFULL means GL_TIMEOUT_IGNORED.
     // In JS, there's no 64-bit value types, so instead timeout is taken to be signed, and GL_TIMEOUT_IGNORED is given value -1.
@@ -689,9 +677,6 @@ var LibraryWebGL2 = {
     return GLctx.clientWaitSync(GL.syncs[sync], flags, timeout);
   },
 
-#if !WASM_BIGINT
-  glWaitSync__deps: ['$convertI32PairToI53'],
-#endif
   glWaitSync: (sync, flags, {{{ defineI64Param('timeout') }}}) => {
     // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
     {{{ receiveI64ParamAsI53Unchecked('timeout'); }}}
@@ -728,7 +713,6 @@ var LibraryWebGL2 = {
 
   glIsSync: (sync) => GLctx.isSync(GL.syncs[sync]),
 
-  glGetUniformuiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformuiv: (program, location, params) =>
     emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}),
 
@@ -739,7 +723,6 @@ var LibraryWebGL2 = {
     return GLctx.getFragDataLocation(GL.programs[program], UTF8ToString(name));
   },
 
-  glGetVertexAttribIiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribIiv: (index, pname, params) => {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4iv(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
@@ -748,10 +731,8 @@ var LibraryWebGL2 = {
 
   // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4uiv(),
   // otherwise the results are undefined. (GLES3 spec 6.1.12)
-  glGetVertexAttribIuiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribIuiv: 'glGetVertexAttribIiv',
 
-  glUniform1ui__deps: ['$webglGetUniformLocation'],
   glUniform1ui: (location, v0) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1ui', 'location');
@@ -759,7 +740,6 @@ var LibraryWebGL2 = {
     GLctx.uniform1ui(webglGetUniformLocation(location), v0);
   },
 
-  glUniform2ui__deps: ['$webglGetUniformLocation'],
   glUniform2ui: (location, v0, v1) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2ui', 'location');
@@ -767,7 +747,6 @@ var LibraryWebGL2 = {
     GLctx.uniform2ui(webglGetUniformLocation(location), v0, v1);
   },
 
-  glUniform3ui__deps: ['$webglGetUniformLocation'],
   glUniform3ui: (location, v0, v1, v2) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3ui', 'location');
@@ -775,7 +754,6 @@ var LibraryWebGL2 = {
     GLctx.uniform3ui(webglGetUniformLocation(location), v0, v1, v2);
   },
 
-  glUniform4ui__deps: ['$webglGetUniformLocation'],
   glUniform4ui: (location, v0, v1, v2, v3) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4ui', 'location');
@@ -783,7 +761,6 @@ var LibraryWebGL2 = {
     GLctx.uniform4ui(webglGetUniformLocation(location), v0, v1, v2, v3);
   },
 
-  glUniform1uiv__deps: ['$webglGetUniformLocation'],
   glUniform1uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1uiv', 'location');
@@ -792,7 +769,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniform1uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count);
   },
 
-  glUniform2uiv__deps: ['$webglGetUniformLocation'],
   glUniform2uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2uiv', 'location');
@@ -801,7 +777,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniform2uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*2);
   },
 
-  glUniform3uiv__deps: ['$webglGetUniformLocation'],
   glUniform3uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3uiv', 'location');
@@ -810,7 +785,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniform3uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*3);
   },
 
-  glUniform4uiv__deps: ['$webglGetUniformLocation'],
   glUniform4uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4uiv', 'location');
@@ -819,7 +793,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniform4uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*4);
   },
 
-  glUniformMatrix2x3fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix2x3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x3fv', 'location');
@@ -828,7 +801,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix2x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*6);
   },
 
-  glUniformMatrix3x2fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix3x2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x2fv', 'location');
@@ -837,7 +809,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix3x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*6);
   },
 
-  glUniformMatrix2x4fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix2x4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x4fv', 'location');
@@ -846,7 +817,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix2x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*8);
   },
 
-  glUniformMatrix4x2fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix4x2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x2fv', 'location');
@@ -855,7 +825,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix4x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*8);
   },
 
-  glUniformMatrix3x4fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix3x4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x4fv', 'location');
@@ -864,7 +833,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix3x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*12);
   },
 
-  glUniformMatrix4x3fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix4x3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x3fv', 'location');
@@ -892,21 +860,21 @@ var LibraryWebGL2 = {
   glProgramParameteri: (program, pname, value) => {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-    err("GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 
   glGetProgramBinary: (program, bufSize, length, binaryFormat, binary) => {
     GL.recordError(0x502/*GL_INVALID_OPERATION*/);
 #if GL_ASSERTIONS
-    err("GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 
   glProgramBinary: (program, binaryFormat, binary, length) => {
     GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-    err("GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 
@@ -930,7 +898,7 @@ var LibraryWebGL2 = {
       cb.stride = stride;
       cb.ptr = ptr;
       cb.clientside = true;
-      cb.vertexAttribPointerAdaptor = function(index, size, type, normalized, stride, ptr) {
+      cb.vertexAttribPointerAdaptor = /** @this {WebGLRenderingContext} */ function(index, size, type, normalized, stride, ptr) {
         this.vertexAttribIPointer(index, size, type, stride, ptr);
       };
       return;
@@ -945,7 +913,6 @@ var LibraryWebGL2 = {
 
 #if !LEGACY_GL_EMULATION
   // Defined in library_glemu.js when LEGACY_GL_EMULATION is set
-  glDrawRangeElements__deps: ['glDrawElements'],
   glDrawRangeElements: (mode, start, end, count, type, indices) => {
     // TODO: This should be a trivial pass-through function registered at the bottom of this page as
     // glFuncs[6][1] += ' drawRangeElements';
@@ -972,7 +939,6 @@ var LibraryWebGL2 = {
     // Closure is expected to be allowed to minify the '.dibvbi' property, so not accessing it quoted.
     !!(ctx.dibvbi = ctx.getExtension('WEBGL_draw_instanced_base_vertex_base_instance')),
 
-  emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance__deps: ['$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance'],
   emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: (ctx) =>
     webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx),
 
@@ -1016,7 +982,6 @@ var LibraryWebGL2 = {
     return !!(ctx.mdibvbi = ctx.getExtension('WEBGL_multi_draw_instanced_base_vertex_base_instance'));
   },
 
-  emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance__deps: ['$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance'],
   emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: (ctx) =>
     webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx),
 };
@@ -1038,7 +1003,7 @@ var webgl2PassthroughFuncs = [
 
 // If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in
 // WebGL 1), then WebGL2 library should not be linked in as well.
-if (typeof createGLPassthroughFunctions == 'undefined') {
+if (typeof createGLPassthroughFunctions === 'undefined') {
   error('In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL');
 }
 

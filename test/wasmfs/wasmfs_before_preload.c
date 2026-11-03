@@ -10,7 +10,7 @@
 #include <emscripten/wasmfs.h>
 #include <stdio.h>
 
-static backend_t my_js_file_backend;
+backend_t my_js_file_backend;
 
 void wasmfs_before_preload(void) {
   emscripten_console_log("before_preload");
@@ -37,5 +37,5 @@ int main() {
     wasmfs_get_backend_by_path("/js_backend_files/file.dat");
   assert(file_backend == my_js_file_backend);
 
-  emscripten_console_log("success");
+  emscripten_console_log("done");
 }

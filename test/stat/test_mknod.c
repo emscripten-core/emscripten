@@ -83,7 +83,7 @@ void test() {
   assert(err);
   assert(errno == EEXIST);
 
-  puts("success");
+  puts("done");
 }
 
 int main() {

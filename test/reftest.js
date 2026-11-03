@@ -89,29 +89,4 @@ function doReftest() {
   img.src = 'expected.png';
 };
 
-function setupRefTest() {
-  Module['postRun'] = doReftest;
-
-  if (typeof WebGLClient !== 'undefined') {
-    // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
-    var realRAF = window.requestAnimationFrame;
-    /** @suppress{checkTypes} */
-    window.requestAnimationFrame = (func) => {
-      return realRAF(() => {
-        func();
-        realRAF(doReftest);
-      });
-    };
-
-    // trigger reftest from canvas render too, for workers not doing GL
-    var realWOM = worker.onmessage;
-    worker.onmessage = (event) => {
-      realWOM(event);
-      if (event.data.target === 'canvas' && event.data.op === 'render') {
-        realRAF(doReftest);
-      }
-    };
-  }
-}
-
-setupRefTest();
+Module['postRun'] = doReftest;

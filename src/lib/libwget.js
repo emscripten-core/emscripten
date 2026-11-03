@@ -17,11 +17,7 @@ var LibraryWget = {
   },
 
   emscripten_async_wget__deps: [
-    '$PATH_FS', '$callUserCallback', '$Browser',
-    '$withStackSave', '$stringToUTF8OnStack',
-    '$FS_mkdirTree',
-    '$FS_preloadFile',
-    '$FS_unlink',
+    '$Browser',
   ],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget: (url, file, onload, onerror) => {
@@ -54,7 +50,7 @@ var LibraryWget = {
     ).then(() => doCallback(onload)).catch(() => doCallback(onerror));
   },
 
-  emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callUserCallback'],
+  emscripten_async_wget_data__deps: ['malloc', 'free'],
   emscripten_async_wget_data__proxy: 'sync',
   emscripten_async_wget_data: async (url, userdata, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
@@ -71,14 +67,11 @@ var LibraryWget = {
     } catch (e) {
       if (onerror) {
         {{{ runtimeKeepalivePop() }}}
-        callUserCallback(() => {
-          {{{ makeDynCall('vp', 'onerror') }}}(userdata);
-        });
+        callUserCallback({{{ makeDynCall('vp', 'onerror') }}}, userdata);
       }
     }
   },
 
-  emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$stackRestore', '$stringToUTF8OnStack'],
   emscripten_async_wget2__proxy: 'sync',
   emscripten_async_wget2: (url, file, request, param, userdata, onload, onerror, onprogress) => {
     {{{ runtimeKeepalivePush() }}}
@@ -143,9 +136,9 @@ var LibraryWget = {
       delete wget.wgetRequests[handle];
     };
 
-    if (_request == "POST") {
+    if (_request == 'POST') {
       // Send the proper header information along with the request
-      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
       http.send(_param);
     } else {
       http.send(null);
@@ -156,7 +149,7 @@ var LibraryWget = {
     return handle;
   },
 
-  emscripten_async_wget2_data__deps: ['$wget', 'malloc', 'free', '$stringToUTF8OnStack'],
+  emscripten_async_wget2_data__deps: ['malloc', 'free'],
   emscripten_async_wget2_data__proxy: 'sync',
   emscripten_async_wget2_data: (url, request, param, userdata, free, onload, onerror, onprogress) => {
     var _url = UTF8ToString(url);
@@ -183,7 +176,7 @@ var LibraryWget = {
 
     // LOAD
     http.onload = (e) => {
-      if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.slice(0, 4).toLowerCase() != "http")) {
+      if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.slice(0, 4).toLowerCase() != 'http')) {
         var byteArray = new Uint8Array(/** @type{ArrayBuffer} */(http.response));
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
@@ -211,9 +204,9 @@ var LibraryWget = {
       delete wget.wgetRequests[handle];
     };
 
-    if (_request == "POST") {
+    if (_request == 'POST') {
       // Send the proper header information along with the request
-      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
       http.send(_param);
     } else {
       http.send(null);
@@ -224,7 +217,6 @@ var LibraryWget = {
     return handle;
   },
 
-  emscripten_async_wget2_abort__deps: ['$wget'],
   emscripten_async_wget2_abort__proxy: 'sync',
   emscripten_async_wget2_abort: (handle) => {
     var http = wget.wgetRequests[handle];

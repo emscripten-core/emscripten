@@ -20,7 +20,7 @@ _Atomic
 #endif
 int sharedVar = 0;
 
-static void *thread_start(void *arg) { // thread: just flip the shared flag and quit.
+void *thread_start(void *arg) { // thread: just flip the shared flag and quit.
   sharedVar = 1;
   pthread_exit(0);
 }

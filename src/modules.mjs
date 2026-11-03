@@ -30,6 +30,9 @@ import {preprocess, processMacros} from './parseTools.mjs';
 
 // List of symbols that were added from the library.
 export const librarySymbols = [];
+export const addedLibraryItems = {};
+// Library symbols exported via the `__export` decorator.
+export const extraExports = new Set();
 // Map of library symbols which are aliases for native symbols
 // e.g. `wasmTable` -> `__indirect_function_table`
 export const nativeAliases = {};
@@ -59,6 +62,7 @@ function calculateLibraries() {
     'libwasi.js',
     'libeventloop.js',
     'libpromise.js',
+    'libsyscall_shared.js',
   ];
 
   if (LINK_AS_CXX) {
@@ -67,6 +71,10 @@ function calculateLibraries() {
     } else {
       libraries.push('libexceptions.js');
     }
+  }
+
+  if (!WASM_EXCEPTIONS) {
+    libraries.push('libunwind.js');
   }
 
   if (!MINIMAL_RUNTIME) {
@@ -113,7 +121,12 @@ function calculateLibraries() {
         'libtty.js',
         'libpipefs.js', // ok to include it by default since it's only used if the syscall is used
         'libsockfs.js', // ok to include it by default since it's only used if the syscall is used
+        'libepoll.js', // ok to include it by default since it's only used if the syscall is used
       );
+
+      if (NODERAWSOCKETS) {
+        libraries.push('libsockfs_node.js');
+      }
 
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
@@ -280,7 +293,7 @@ export const LibraryManager = {
   },
 
   isAlias(entry) {
-    return (typeof entry == 'string' && entry[0] != '=' && (this.library.hasOwnProperty(entry) || WASM_EXPORTS.has(entry)));
+    return (typeof entry === 'string' && entry[0] != '=' && (Object.hasOwn(this.library, entry) || WASM_EXPORTS.has(entry)));
   },
 
   /**
@@ -426,14 +439,12 @@ function isInternalSymbol(ident) {
 }
 
 function getUnusedLibrarySymbols() {
-  const librarySymbolSet = new Set(librarySymbols);
   const missingSyms = new Set();
   for (const [ident, value] of Object.entries(LibraryManager.library)) {
     if (typeof value === 'function' || typeof value === 'number') {
       if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
-        const name = ident.slice(1);
-        if (!librarySymbolSet.has(name)) {
-          missingSyms.add(name);
+        if (!(ident in addedLibraryItems)) {
+          missingSyms.add(ident.slice(1));
         }
       }
     }
@@ -458,6 +469,10 @@ function addMissingLibraryStubs(unusedLibSymbols) {
   return rtn;
 }
 
+export function shouldExportLibrarySymbol(name) {
+  return EXPORT_ALL || EXPORTED_FUNCTIONS.has(name) || extraExports.has(name);
+}
+
 function exportSymbol(name) {
   // In MODULARIZE=instance mode symbols are exported by being included in
   // an export { foo, bar } list so we build up the simple list of names
@@ -469,6 +484,8 @@ function exportSymbol(name) {
 
 // export parts of the JS runtime that the user asked for
 function exportRuntimeSymbols() {
+  const librarySymbolSet = new Set(librarySymbols);
+
   // optionally export something.
   function shouldExport(name) {
     // Native exports are not available to be exported initially.  Instead,
@@ -476,15 +493,17 @@ function exportRuntimeSymbols() {
     if (nativeAliases[name]) {
       return false;
     }
-    // If requested to be exported, export it.
-    if (EXPORTED_RUNTIME_METHODS.has(name)) {
-      // Unless we are in MODULARIZE=instance mode then HEAP objects are
-      // exported separately in updateMemoryViews
-      if (MODULARIZE == 'instance' || !name.startsWith('HEAP')) {
-        return true;
-      }
+    // Unless we are in MODULARIZE=instance mode then HEAP objects are
+    // exported separately in updateMemoryViews
+    if (MODULARIZE != 'instance' && name.startsWith('HEAP')) {
+      return false;
     }
-    return false;
+    // Symbols already exported via `exportLibrarySymbols` (or at declaration
+    // time in MODULARIZE=instance mode) should not be exported again here.
+    if (librarySymbolSet.has(name) && shouldExportLibrarySymbol(name)) {
+      return false;
+    }
+    return EXPORTED_RUNTIME_METHODS.has(name);
   }
 
   // All possible runtime elements that can be exported
@@ -570,7 +589,7 @@ function exportRuntimeSymbols() {
     for (const name of runtimeElements) {
       if (
         !EXPORTED_RUNTIME_METHODS.has(name) &&
-        !EXPORTED_FUNCTIONS.has(name) &&
+        !shouldExportLibrarySymbol(name) &&
         !unusedLibSymbols.has(name)
       ) {
         unexported.push(name);
@@ -597,7 +616,7 @@ function exportLibrarySymbols() {
   assert(MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
-    if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) && !nativeAliases[ident]) {
+    if (shouldExportLibrarySymbol(ident) && !nativeAliases[ident] && !ident.startsWith('HEAP')) {
       results.push(exportSymbol(ident));
     }
   }
@@ -617,6 +636,7 @@ addToCompileTimeContext({
   loadStructInfo,
   LibraryManager,
   librarySymbols,
+  extraExports,
   addToLibrary,
   cDefs,
   cDefine,

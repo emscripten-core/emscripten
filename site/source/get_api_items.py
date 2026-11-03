@@ -22,12 +22,11 @@ api_reference_directory = './docs/api_reference/'
 # if you change here, change everywhere.
 api_item_filename = 'api_items.py'
 
-api_reference_items = {}
+api_reference_items: dict[str, str] = {}
 
 
 def parseFiles():
-    """Parse api-reference files to extract the code items.
-    """
+    """Parse api-reference files to extract the code items."""
 
     def addapiitems(matchobj):
         # print 'matcobj0: %s' % matchobj.group(0)
@@ -52,11 +51,11 @@ def parseFiles():
         # print data_type
         # print api_item
 
-        api_reference_items[api_item] = ':%s:%s:`%s`' % (lang, data_type, api_item)
+        api_reference_items[api_item] = f':{lang}:{data_type}:`{api_item}`'
         # Add additional index for functions declared as func() rather than just func
         if data_type == 'func':
             api_item_index = api_item + '()'
-            api_reference_items[api_item_index] = ':%s:%s:`%s`' % (lang, data_type, api_item)
+            api_reference_items[api_item_index] = f':{lang}:{data_type}:`{api_item}`'
 
         # print api_reference_items[api_item]
 
@@ -72,15 +71,14 @@ def parseFiles():
 
 
 def exportItems():
-    """Export the API items into form for use in another script.
-    """
+    """Export the API items into form for use in another script."""
     with open(api_item_filename, 'w', encoding='utf-8') as infile:
         # write function lead in
         infile.write("# Auto-generated file (see get_api_items.py)\n\ndef get_mapped_items():\n    mapped_wiki_inline_code = dict()\n")
 
         for key, value in sorted(api_reference_items.items()):
             # Write out each API item to add
-            infile.write("    mapped_wiki_inline_code['%s'] = '%s'\n" % (key, value))
+            infile.write(f"    mapped_wiki_inline_code['{key}'] = '{value}'\n")
 
         # write the return function
         infile.write("    return mapped_wiki_inline_code\n")
@@ -89,7 +87,7 @@ def exportItems():
 def main():
     parser = optparse.OptionParser(usage="Usage: %prog [options] version")
     parser.add_option("-s", "--siteapi", dest="siteapi", default="http://www.developer.nokia.com/Community/Wiki/api.php", help="Location of API")
-    (options, args) = parser.parse_args()
+    _options, _args = parser.parse_args()
     # print 'Site: %s' % options.siteapi
     parseFiles()
     exportItems()

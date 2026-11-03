@@ -34,7 +34,12 @@ const char *inet_ntop(int af, const void *restrict a0, char *restrict s, socklen
 		for (i=best=0, max=2; buf[i]; i++) {
 			if (i && buf[i] != ':') continue;
 			j = strspn(buf+i, ":0");
-			if (j>max) best=i, max=j;
+			/* The leading sequence of zeros (best==0) is
+			 * disadvantaged compared to sequences elsewhere
+			 * as it doesn't have a leading colon. One extra
+			 * character is required for another sequence to
+			 * beat it fairly. */
+			if (j>max+(best==0)) best=i, max=j;
 		}
 		if (max>3) {
 			buf[best] = buf[best+1] = ':';

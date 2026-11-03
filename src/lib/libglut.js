@@ -5,7 +5,6 @@
  */
 
 var LibraryGLUT = {
-  $GLUT__deps: ['$Browser', '$getFullscreenElement', 'glutPostRedisplay'],
   $GLUT: {
     initTime: null,
     idleFunc: null,
@@ -24,8 +23,6 @@ var LibraryGLUT = {
     initWindowHeight: 256,
     initDisplayMode: 0x0000 /*GLUT_RGBA*/ | 0x0002 /*GLUT_DOUBLE*/ | 0x0010 /*GLUT_DEPTH*/,
     // Set when going fullscreen
-    windowX: 0,
-    windowY: 0,
     windowWidth: 0,
     windowHeight: 0,
     requestedAnimationFrame: false,
@@ -207,16 +204,16 @@ var LibraryGLUT = {
 
       var touches = event.changedTouches,
           main = touches[0],
-          type = "";
+          type = '';
 
       switch (event.type) {
-        case "touchstart": type = "mousedown"; break;
-        case "touchmove": type = "mousemove"; break;
-        case "touchend": type = "mouseup"; break;
+        case 'touchstart': type = 'mousedown'; break;
+        case 'touchmove': type = 'mousemove'; break;
+        case 'touchend': type = 'mouseup'; break;
         default: return;
       }
 
-      var simulatedEvent = document.createEvent("MouseEvent");
+      var simulatedEvent = document.createEvent('MouseEvent');
       simulatedEvent.initMouseEvent(type, true, true, window, 1,
                                     main.screenX, main.screenY,
                                     main.clientX, main.clientY, false,
@@ -279,21 +276,22 @@ var LibraryGLUT = {
       var width;
       var height;
       if (getFullscreenElement()) {
-        width = screen["width"];
-        height = screen["height"];
+        width = screen['width'];
+        height = screen['height'];
       } else {
         width = GLUT.windowWidth;
         height = GLUT.windowHeight;
         // TODO set position
         document.removeEventListener('fullscreenchange', GLUT.onFullscreenEventChange, true);
-        document.removeEventListener('mozfullscreenchange', GLUT.onFullscreenEventChange, true);
+#if MIN_SAFARI_VERSION < 160400
         document.removeEventListener('webkitfullscreenchange', GLUT.onFullscreenEventChange, true);
+#endif
       }
       Browser.setCanvasSize(width, height, true); // N.B. GLUT.reshapeFunc is also registered as a canvas resize callback.
                                                   // Just call it once here.
       /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
       if (GLUT.reshapeFunc) {
-        // out("GLUT.reshapeFunc (from FS): " + width + ", " + height);
+        // out('GLUT.reshapeFunc (from FS): ' + width + ', ' + height);
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
       _glutPostRedisplay();
@@ -310,7 +308,6 @@ var LibraryGLUT = {
   glutGetModifiers__proxy: 'sync',
   glutGetModifiers: () => GLUT.modifiers,
 
-  glutInit__deps: ['$Browser', '$addOnExit'],
   glutInit__proxy: 'sync',
   glutInit: (argcp, argv) => {
     // Ignore arguments
@@ -370,9 +367,6 @@ var LibraryGLUT = {
       window.removeEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
 
       window.removeEventListener('resize', GLUT.onResize, true);
-
-      var canvas = Browser.getCanvas();
-      canvas.width = canvas.height = 1;
     });
   },
 
@@ -421,12 +415,11 @@ var LibraryGLUT = {
         return GLctx.getContextAttributes().antialias ? 1 : 0;
 
       default:
-        abort("glutGet(" + type + ") not implemented yet");
+        abort(`glutGet(${type}) not implemented yet`);
     }
   },
 
   glutIdleFunc__proxy: 'sync',
-  glutIdleFunc__deps: ['$safeSetTimeout'],
   glutIdleFunc: (func) => {
     function callback() {
       if (GLUT.idleFunc) {
@@ -441,7 +434,6 @@ var LibraryGLUT = {
   },
 
   glutTimerFunc__proxy: 'sync',
-  glutTimerFunc__deps: ['$safeSetTimeout'],
   glutTimerFunc: (msec, func, value) =>
     safeSetTimeout(() => {{{ makeDynCall('vi', 'func') }}}(value), msec),
 
@@ -561,13 +553,12 @@ var LibraryGLUT = {
         cursorStyle = 'none';
         break;
       default:
-        abort("glutSetCursor: Unknown cursor type: " + cursor);
+        abort('glutSetCursor: Unknown cursor type: ' + cursor);
     }
     Browser.getCanvas().style.cursor = cursorStyle;
   },
 
   glutCreateWindow__proxy: 'sync',
-  glutCreateWindow__deps: ['$Browser'],
   glutCreateWindow: (name) => {
     var contextAttributes = {
       antialias: ((GLUT.initDisplayMode & 0x0080 /*GLUT_MULTISAMPLE*/) != 0),
@@ -586,14 +577,12 @@ var LibraryGLUT = {
   },
 
   glutDestroyWindow__proxy: 'sync',
-  glutDestroyWindow__deps: ['$Browser'],
   glutDestroyWindow: (name) => {
     delete Module['ctx'];
     return 1;
   },
 
   glutReshapeWindow__proxy: 'sync',
-  glutReshapeWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutReshapeWindow: (width, height) => {
     Browser.exitFullscreen();
     Browser.setCanvasSize(width, height, true); // N.B. GLUT.reshapeFunc is also registered as a canvas resize callback.
@@ -605,7 +594,6 @@ var LibraryGLUT = {
   },
 
   glutPositionWindow__proxy: 'sync',
-  glutPositionWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutPositionWindow: (x, y) => {
     Browser.exitFullscreen();
     /* TODO */
@@ -613,16 +601,14 @@ var LibraryGLUT = {
   },
 
   glutFullScreen__proxy: 'sync',
-  glutFullScreen__deps: ['$GLUT'],
   glutFullScreen: () => {
-    GLUT.windowX = 0; // TODO
-    GLUT.windowY = 0; // TODO
     var canvas = Browser.getCanvas();
     GLUT.windowWidth = canvas.width;
     GLUT.windowHeight = canvas.height;
     document.addEventListener('fullscreenchange', GLUT.onFullscreenEventChange, true);
-    document.addEventListener('mozfullscreenchange', GLUT.onFullscreenEventChange, true);
+#if MIN_SAFARI_VERSION < 160400
     document.addEventListener('webkitfullscreenchange', GLUT.onFullscreenEventChange, true);
+#endif
     Browser.requestFullscreen(/*lockPointer=*/false, /*resizeCanvas=*/false);
   },
 
@@ -633,7 +619,6 @@ var LibraryGLUT = {
   glutSwapBuffers: () => {},
 
   glutPostRedisplay__proxy: 'sync',
-  glutPostRedisplay__deps: ['$MainLoop'],
   glutPostRedisplay: () => {
     if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
       GLUT.requestedAnimationFrame = true;
@@ -645,7 +630,6 @@ var LibraryGLUT = {
   },
 
   glutMainLoop__proxy: 'sync',
-  glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
   glutMainLoop: () => {
     // Do an initial resize, since there's no window resize event on startup
     GLUT.onResize();
@@ -655,5 +639,4 @@ var LibraryGLUT = {
 
 };
 
-autoAddDeps(LibraryGLUT, '$GLUT');
 addToLibrary(LibraryGLUT);

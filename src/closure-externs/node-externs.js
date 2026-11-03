@@ -93,14 +93,6 @@ Buffer.alloc = function(size, fill, encoding) {};
 Buffer.isBuffer = function(obj) {};
 
 /**
- * @param {number=} start
- * @param {number=} end
- * @return {Buffer}
- * @nosideeffects
- */
-Buffer.prototype.slice = function(start, end) {};
-
-/**
  * @param {string=} encoding
  * @param {number=} start
  * @param {number=} end
@@ -130,6 +122,22 @@ fs.Stats.prototype.ctimeMs;
  * @type {number}
  */
 fs.Stats.prototype.blksize;
+
+/**
+ * @const
+ */
+fs.constants = {
+  O_APPEND: 0,
+  O_CREAT: 0,
+  O_EXCL: 0,
+  O_NOCTTY: 0,
+  O_RDONLY: 0,
+  O_RDWR: 0,
+  O_SYNC: 0,
+  O_TRUNC: 0,
+  O_WRONLY: 0,
+  O_NOFOLLOW: 0,
+};
 
 /**
  * @param {string} p
@@ -166,3 +174,8 @@ worker_threads.Worker;
 worker_threads.workerData;
 
 worker_threads.parentPort;
+
+/**
+ * @type {number}
+ */
+process.stdin.fd;

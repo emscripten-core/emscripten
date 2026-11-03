@@ -41,7 +41,12 @@ if (!globalThis.WebAssembly) {
 
 // Wasm globals
 
-#if SHARED_MEMORY
+#if SOURCE_PHASE_IMPORTS && MODULARIZE == 'instance'
+// In MODULARIZE=instance mode the output is itself an ES module (it is not
+// wrapped by modularize.js), so the source phase import is emitted here at
+// module scope, next to where wasmModule is used.
+import source wasmModule from './{{{ WASM_BINARY_FILE }}}';
+#elif SHARED_MEMORY
 // For sending to workers.
 var wasmModule;
 #endif // SHARED_MEMORY
@@ -117,11 +122,10 @@ function preRun() {
   assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
 #endif
 #if expectToReceiveOnModule('preRun')
-  if (Module['preRun']) {
-    if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
-    while (Module['preRun'].length) {
-      addOnPreRun(Module['preRun'].shift());
-    }
+  var preRun = Module['preRun'];
+  if (preRun) {
+    if (typeof preRun === 'function') preRun = [preRun];
+    onPreRuns.push(...preRun);
   }
 #if ASSERTIONS
   consumedModuleProp('preRun');
@@ -144,7 +148,7 @@ function initRuntime() {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return startWorker();
+  if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -176,24 +180,29 @@ function initRuntime() {
 #if RUNTIME_DEBUG
   dbg('done ATPOSTCTORS');
 #endif
-}
 
-#if HAS_MAIN
-function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  <<< ATMAINS >>>
 }
-#endif
 
 #if EXIT_RUNTIME
+
+#if ASSERTIONS
+var runtimeExiting = false;
+#endif
+
 function exitRuntime() {
 #if RUNTIME_DEBUG
   dbg('exitRuntime');
 #endif
 #if ASSERTIONS
   assert(!runtimeExited);
+  assert(!runtimeExiting, 'Re-entrant call to exitRuntime()! This can happen if an atexit() registered callback throws an exception.');
+  runtimeExiting = true;
+#if PTHREADS || WASM_WORKERS
+  assert(!{{{ ENVIRONMENT_IS_WORKER_THREAD() }}}, 'exitRuntime() should only be called from the main thread');
+#endif
 #endif
 #if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
@@ -202,7 +211,6 @@ function exitRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
@@ -218,14 +226,12 @@ function postRun() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 
 #if expectToReceiveOnModule('postRun')
-  if (Module['postRun']) {
-    if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
-    while (Module['postRun'].length) {
-      addOnPostRun(Module['postRun'].shift());
-    }
+  var postRun = Module['postRun'];
+  if (postRun) {
+    if (typeof postRun === 'function') postRun = [postRun];
+    onPostRuns.push(...postRun);
   }
 #if ASSERTIONS
   consumedModuleProp('postRun');
@@ -266,11 +272,6 @@ function abort(what) {
   // a trap or not based on a hidden field within the object. So at the moment
   // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
   // allows this in the wasm spec.
-
-  // Suppress closure compiler warning here. Closure compiler's builtin extern
-  // definition for WebAssembly.RuntimeError claims it takes no arguments even
-  // though it can.
-  // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
 #if WASM_EXCEPTIONS == 1
   // See above, in the meantime, we resort to wasm code for trapping.
   //
@@ -286,16 +287,7 @@ function abort(what) {
     ___trap();
   }
 #endif
-  /** @suppress {checkTypes} */
-  var e = new WebAssembly.RuntimeError(what);
-
-#if MODULARIZE
-  readyPromiseReject?.(e);
-#endif
-  // Throw the error whether or not MODULARIZE is set because abort is used
-  // in code paths apart from instantiation where an exception is expected
-  // to be thrown when abort is called.
-  throw e;
+  throw new WebAssembly.RuntimeError(what);
 }
 
 #if ASSERTIONS && !('$FS' in addedLibraryItems)
@@ -323,17 +315,16 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
 
 #if ASSERTIONS
-function createExportWrapper(name, nargs) {
+function createExportWrapper(name, func, nargs) {
+  assert(func);
   return (...args) => {
     assert(runtimeInitialized, `native function \`${name}\` called before runtime initialization`);
 #if EXIT_RUNTIME
     assert(!runtimeExited, `native function \`${name}\` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)`);
 #endif
-    var f = wasmExports[name];
-    assert(f, `exported native function \`${name}\` not found`);
     // Only assert for too many arguments. Too few can be valid since the missing arguments will be zero filled.
     assert(args.length <= nargs, `native function \`${name}\` called with ${args.length} args but expects ${nargs}`);
-    return f(...args);
+    return func(...args);
   };
 }
 #endif
@@ -385,7 +376,7 @@ function instrumentWasmExportsWithAbort(exports) {
   var instExports = {};
   for (var name in exports) {
     var original = exports[name];
-    if (typeof original == 'function') {
+    if (typeof original === 'function') {
       instExports[name] = makeAbortWrapper(original);
     } else {
       instExports[name] = original;
@@ -427,7 +418,7 @@ function getWasmBinary(file) {}
 
 function findWasmBinary() {
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
-  return binaryDecode("<<< WASM_BINARY_DATA >>>");
+  return binaryDecode("<<< WASM_BINARY_DATA >>>", "<<< WASM_BINARY_SIZE >>>");
 #elif SINGLE_FILE
   return base64Decode('<<< WASM_BINARY_DATA >>>');
 #elif AUDIO_WORKLET || !EXPORT_ES6 // For an Audio Worklet, we cannot use `new URL()`.
@@ -489,8 +480,8 @@ async function getWasmBinary(binaryFile) {
   if (!wasmBinary) {
     // Fetch the binary using readAsync
     try {
-      var response = await readAsync(binaryFile);
-      return new Uint8Array(response);
+      // Await so a rejection is caught and falls back to getBinarySync.
+      return await readAsync(binaryFile);
     } catch {
       // Fall back to getBinarySync below;
     }
@@ -543,40 +534,8 @@ var splitModuleProxyHandler = {
 
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
 function instantiateSync(file, info) {
-  var module;
   var binary = getBinarySync(file);
-#if NODE_CODE_CACHING
-  if (ENVIRONMENT_IS_NODE) {
-    var v8 = require('node:v8');
-    // Include the V8 version in the cache name, so that we don't try to
-    // load cached code from another version, which fails silently (it seems
-    // to load ok, but we do actually recompile the binary every time).
-    var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
-    cachedCodeFile = locateFile(cachedCodeFile);
-    var hasCached = fs.existsSync(cachedCodeFile);
-    if (hasCached) {
-#if RUNTIME_DEBUG
-      dbg('NODE_CODE_CACHING: loading module');
-#endif
-      try {
-        module = v8.deserialize(fs.readFileSync(cachedCodeFile));
-      } catch (e) {
-        err(`NODE_CODE_CACHING: failed to deserialize, bad cache file? (${cachedCodeFile})`);
-        // Save the new compiled code when we have it.
-        hasCached = false;
-      }
-    }
-  }
-  module ||= new WebAssembly.Module(binary);
-  if (ENVIRONMENT_IS_NODE && !hasCached) {
-#if RUNTIME_DEBUG
-    dbg('NODE_CODE_CACHING: saving module');
-#endif
-    fs.writeFileSync(cachedCodeFile, v8.serialize(module));
-  }
-#else // NODE_CODE_CACHING
-  module = new WebAssembly.Module(binary);
-#endif // NODE_CODE_CACHING
+  var module = new WebAssembly.Module(binary);
   var instance = new WebAssembly.Instance(module, info);
   return [instance, module];
 }
@@ -608,7 +567,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 #endif
 #endif // WASM == 2
 
-#if ASSERTIONS
+#if ASSERTIONS && !SINGLE_FILE
     // Warn on some common problems.
     if (isFileURI(binaryFile)) {
       err(`warning: Loading from a file URI (${binaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`);
@@ -618,24 +577,97 @@ async function instantiateArrayBuffer(binaryFile, imports) {
   }
 }
 
+#if CROSS_ORIGIN_STORAGE
+// Stream Wasm bytes into the compiler. A fixed `application/wasm` type is
+// used rather than any server-supplied MIME type: on a cache hit the bytes
+// were hash-verified when written into COS, and on a cache miss the store
+// branch is already consuming the body, so the standard path's re-download
+// fallback for a bad MIME type is not available. A wrong file still fails
+// compilation and falls through to the standard path.
+function cosInstantiateStream(stream, imports) {
+  var response = new Response(stream, { headers: { 'Content-Type': 'application/wasm' } });
+  return WebAssembly.instantiateStreaming(response, imports);
+}
+#endif
+
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
-  if (!binary
-#if MIN_SAFARI_VERSION < 150000
-      // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-      && WebAssembly.instantiateStreaming
+#if CROSS_ORIGIN_STORAGE
+  // Cross-Origin Storage (COS) progressive enhancement.
+  // https://github.com/WICG/cross-origin-storage
+  // Any error (not found, not allowed, network failure, ...) falls through
+  // to the standard Emscripten streaming path so the page always loads.
+  if (globalThis.navigator?.crossOriginStorage?.getFileHandle) {
+    var cosHash = Module['wasmHash'];
+    try {
+      var cosHandle = await navigator.crossOriginStorage.getFileHandle(cosHash);
+      // Cache hit. getFile() resolves to a lazy File reference; no bytes are
+      // read until the stream is consumed by the compiler below.
+      var cosFile = await cosHandle.getFile();
+#if expectToReceiveOnModule('onCOSCacheHit')
+      Module['onCOSCacheHit']?.(cosHash.value);
 #endif
+      return cosInstantiateStream(cosFile.stream(), imports);
+    } catch {
+      // Any error (not found, not allowed, ...) - fetch from the network and
+      // attempt to store in COS for future page loads.
+      try {
+        var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
+        if (!networkResponse.ok) {
+          throw new Error(`HTTP ${networkResponse.status}`);
+        }
+#if expectToReceiveOnModule('onCOSCacheMiss')
+        Module['onCOSCacheMiss']?.(cosHash.value, binaryFile);
+#endif
+        // Split the body so that one branch feeds streaming compilation while
+        // the other is written into COS in the background. This keeps the
+        // download/compile overlap of the standard instantiateStreaming()
+        // path instead of waiting for the whole file to arrive first.
+        var [compileStream, storeStream] = networkResponse.body.tee();
+        // Fire-and-forget store; never block instantiation on the write.
+        // pipeTo() closes the writable, and COS verifies the hash on close.
+        (async () => {
+          try {
+            var writeHandle = await navigator.crossOriginStorage.getFileHandle(
+              cosHash,
+#if CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*'
+              { create: true, origins: '*' },
+#elif CROSS_ORIGIN_STORAGE_ORIGINS.length
+              { create: true, origins: {{{ JSON.stringify(CROSS_ORIGIN_STORAGE_ORIGINS) }}} },
+#else
+              { create: true },
+#endif
+            );
+            var writable = await writeHandle.createWritable();
+            await storeStream.pipeTo(writable);
+#if expectToReceiveOnModule('onCOSStore')
+            Module['onCOSStore']?.(cosHash.value);
+#endif
+          } catch (storeErr) {
+            err(`COS store failed: ${storeErr}`);
+            // Release the tee branch so the body is not buffered indefinitely
+            // on behalf of a writer that will never consume it.
+            storeStream.cancel().catch(() => {});
+          }
+        })();
+        return cosInstantiateStream(compileStream, imports);
+      } catch (fetchErr) {
+        // Network fetch failed; fall through to the standard path below.
+        err(`COS fallback fetch failed: ${fetchErr}`);
+      }
+      // Fall through to the standard streaming path below.
+    }
+  }
+#endif // CROSS_ORIGIN_STORAGE
+  if (!binary
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
       && !isFileURI(binaryFile)
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
-      // Avoid instantiateStreaming() on Node.js environment for now, as while
-      // Node.js v18.1.0 implements it, it does not have a full fetch()
-      // implementation yet.
-      //
-      // Reference:
-      //   https://github.com/emscripten-core/emscripten/pull/16917
+      // Avoid using instantiateStreaming() on Node.js since the `fetch()` API
+      // does not support `file://` URLs.
+      // See: https://github.com/emscripten-core/emscripten/pull/16917
       && !ENVIRONMENT_IS_NODE
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -655,11 +687,11 @@ async function instantiateAsync(binary, binaryFile, imports) {
       // fall back of instantiateArrayBuffer below
     };
   }
-#endif
+#endif // !SINGLE_FILE
   return instantiateArrayBuffer(binaryFile, imports);
 }
 #endif // WASM_ASYNC_COMPILATION
-#endif // SOURCE_PHASE_IMPORTS
+#endif // !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 
 #if !WASM_ESM_INTEGRATION
 function getWasmImports() {
@@ -709,8 +741,11 @@ function getWasmImports() {
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
-  /** @param {WebAssembly.Module=} module*/
-  function receiveInstance(instance, module) {
+#if SHARED_MEMORY || MAIN_MODULE
+  {{{ asyncIf(MAIN_MODULE) }}}function receiveInstance(instance, module) {
+#else
+  {{{ asyncIf(MAIN_MODULE) }}}function receiveInstance(instance) {
+#endif
 #if RUNTIME_DEBUG
     dbg('receiveInstance')
 #endif
@@ -770,33 +805,27 @@ function getWasmImports() {
     Module['wasmExports'] = wasmExports;
 #endif
 
+#if !IMPORTED_MEMORY
+    updateMemoryViews();
+#endif
+
 #if MAIN_MODULE
 #if '$LDSO' in addedLibraryItems
     LDSO.init();
 #endif
-    loadDylibs();
+    await loadDylibs();
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
     instrumentWasmTableWithAbort();
 #endif
 
-#if !IMPORTED_MEMORY
-    updateMemoryViews();
-#endif
-
 #if PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
 #endif
-#if WASM_ASYNC_COMPILATION && !MODULARIZE
-    removeRunDependency('wasm-instantiate');
-#endif
     return wasmExports;
   }
-#if WASM_ASYNC_COMPILATION && !MODULARIZE
-  addRunDependency('wasm-instantiate');
-#endif
 
   // Prefer streaming instantiation if available.
 #if WASM_ASYNC_COMPILATION
@@ -825,6 +854,12 @@ function getWasmImports() {
 
   var info = getWasmImports();
 
+#if CROSS_ORIGIN_STORAGE
+  // Expose the build-time hash so that custom Module['instantiateWasm']
+  // callbacks can implement their own COS-aware loading path.
+  Module['wasmHash'] = { algorithm: 'SHA-256', value: '<<< WASM_HASH_VALUE >>>' };
+#endif
+
 #if expectToReceiveOnModule('instantiateWasm')
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to
@@ -832,18 +867,21 @@ function getWasmImports() {
   // performing.
   // Also pthreads and wasm workers initialize the wasm instance through this
   // path.
-  if (Module['instantiateWasm']) {
-    return new Promise((resolve, reject) => {
+  var instantiateWasm = Module['instantiateWasm'];
+  if (instantiateWasm) {
+    return new Promise((resolve) => {
 #if ASSERTIONS
       try {
 #endif
-        Module['instantiateWasm'](info, (inst, mod) => {
-          resolve(receiveInstance(inst, mod));
-        });
+#if SHARED_MEMORY || MAIN_MODULE
+        instantiateWasm(info, (inst, mod) => resolve(receiveInstance(inst, mod)));
+#else
+        instantiateWasm(info, (inst) => resolve(receiveInstance(inst)));
+#endif
 #if ASSERTIONS
       } catch(e) {
         err(`Module.instantiateWasm callback failed with error: ${e}`);
-        reject(e);
+        throw e;
       }
 #endif
     });
@@ -864,7 +902,7 @@ function getWasmImports() {
 
 #if SOURCE_PHASE_IMPORTS
   var instance = await WebAssembly.instantiate(wasmModule, info);
-  var exports = receiveInstantiationResult({instance, 'module':wasmModule});
+  var exports = {{{ awaitIf(MAIN_MODULE) }}}receiveInstantiationResult({instance, 'module':wasmModule});
   return exports;
 #else
   wasmBinaryFile ??= findWasmBinary();
@@ -873,11 +911,11 @@ function getWasmImports() {
   dbg('asynchronously preparing wasm');
 #endif
   var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
-  var exports = receiveInstantiationResult(result);
+  var exports = {{{ awaitIf(MAIN_MODULE) }}}receiveInstantiationResult(result);
   return exports;
 #else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);
-#if PTHREADS || MAIN_MODULE
+#if SHARED_MEMORY || MAIN_MODULE
   return receiveInstance(result[0], result[1]);
 #else
   // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,

@@ -4,7 +4,6 @@ addToLibrary({
   // Because it accesses the DOM, it must be called on the main thread.
   getDomElementContents__proxy: 'sync',
   getDomElementContents__sig: 'pp',
-  getDomElementContents__deps: ['$stringToNewUTF8'],
   getDomElementContents: function(domElementSelector) {
     var selector = UTF8ToString(domElementSelector);
     var text = document.querySelector(selector).innerHTML;

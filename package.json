@@ -1,28 +1,27 @@
 {
   "private": true,
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/eslintrc": "^3.3.7",
     "@eslint/js": "^10.0.1",
-    "es-check": "^9.5.4",
-    "eslint": "^10.0.0",
+    "es-check": "^9.8.1",
+    "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.3.0",
-    "prettier": "^3.8.1",
-    "rollup": "^4.57.1",
-    "source-map": "0.7.6",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.1",
-    "webpack": "^5.105.2",
-    "webpack-cli": "^6.0.1",
-    "ws": "^8.19.0"
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "rollup": "^4.66.0",
+    "source-map": "0.8.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "webpack": "^5.112.2",
+    "webpack-cli": "^7.2.3",
+    "ws": "^8.22.0"
   },
   "dependencies": {
-    "@babel/cli": "^7.28.6",
-    "@babel/core": "^7.29.0",
-    "@babel/preset-env": "^7.29.0",
-    "acorn": "^8.15.0",
-    "google-closure-compiler": "20240317.0.0",
-    "html-minifier-terser": "7.2.0"
+    "acorn": "^8.19.0",
+    "acorn-import-phases": "^1.0.4",
+    "google-closure-compiler": "20261007.0.0",
+    "html-minifier-terser": "7.2.0",
+    "terser": "^5.51.2"
   },
   "scripts": {
     "lint": "eslint .",

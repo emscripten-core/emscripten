@@ -64,7 +64,7 @@ void test() {
   assert(s.st_atime == t.actime);
   assert(s.st_mtime == t.modtime);
 
-  puts("success");
+  puts("done");
 }
 
 int main() {

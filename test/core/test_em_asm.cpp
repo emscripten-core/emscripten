@@ -3,7 +3,9 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <emscripten.h>
+#include <math.h>
 #include <stdio.h>
 
 EM_JS_DEPS(deps, "$UTF8ToString");
@@ -40,9 +42,19 @@ int main() {
   printf("  EM_ASM_INT returned: %d\n", EM_ASM_INT({ out("no args returning int"); return 12; }));
   printf("  EM_ASM_DOUBLE returned: %f\n", EM_ASM_DOUBLE({ out("no args returning double"); return 12.25; }));
 
+  // Test omitted return statement (returns `undefined` in JS).
+  assert(EM_ASM_({}) == 0);
+  assert(EM_ASM_INT({}) == 0);
+  assert(EM_ASM_INT_V({}) == 0);
+  assert(EM_ASM_ARGS({}, 0) == 0);
+  assert(MAIN_THREAD_EM_ASM_INT({}) == 0);
+  assert(isnan(EM_ASM_DOUBLE({})));
+  assert(isnan(EM_ASM_DOUBLE_V({})));
+  assert(isnan(MAIN_THREAD_EM_ASM_DOUBLE({})));
+
 #define TEST() \
-  FUNC({ out("  takes ints: " + $0);}, 5); \
-  FUNC({ out("  takes doubles: " + $0);}, 5.0675); \
+  FUNC({ out("  takes ints: " + $0); return 0; }, 5); \
+  FUNC({ out("  takes doubles: " + $0); return 0; }, 5.0675); \
   FUNC({ out("  takes strings: " + UTF8ToString($0)); return 7.75; }, "string arg"); \
   FUNC({ out("  takes multiple ints: " + $0 + ", " + $1); return 6; }, 5, 7); \
   FUNC({ out("  mixed arg types: " + $0 + ", " + UTF8ToString($1) + ", " + $2); return 8.125; }, 3, "hello", 4.75); \

@@ -111,6 +111,12 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_ISDIR;
   }
 
+  // A file opened for reading only (O_RDONLY) cannot be written. POSIX write(2)
+  // returns EBADF when the file descriptor is not open for writing.
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_RDONLY) {
+    return __WASI_ERRNO_BADF;
+  }
+
   auto lockedFile = file->locked();
 
   if (setOffset == OffsetHandling::OpenFileState) {
@@ -127,12 +133,26 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     }
   }
 
-  // TODO: Check open file access mode for write permissions.
+  // A non-blocking write takes only what the file can take right now.
+  off_t budget = -1;
+  if (lockedOpenFile.getFlags() & O_NONBLOCK) {
+    size_t total = 0;
+    for (size_t i = 0; i < iovs_len; i++) {
+      total += iovs[i].buf_len;
+    }
+    budget = lockedFile.writableBytes(total);
+    if (budget < 0) {
+      return -budget;
+    }
+  }
 
   size_t bytesWritten = 0;
-  for (size_t i = 0; i < iovs_len; i++) {
+  for (size_t i = 0; i < iovs_len && budget != 0; i++) {
     const uint8_t* buf = iovs[i].buf;
     off_t len = iovs[i].buf_len;
+    if (budget > 0 && len > budget) {
+      len = budget;
+    }
 
     // Check if buf_len specifies a positive length buffer but buf is a
     // null pointer
@@ -156,7 +176,10 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     }
     // The write was successful.
     bytesWritten += result;
-    if (result < len) {
+    if (budget > 0) {
+      budget -= result;
+    }
+    if (result < (off_t)iovs[i].buf_len) {
       // The write was short, so stop here.
       break;
     }
@@ -197,13 +220,17 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  // TODO: Check open file access mode for read permissions.
-
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
+  }
+
+  // A file opened for writing only (O_WRONLY) cannot be read. POSIX read(2)
+  // returns EBADF when the file descriptor is not open for reading.
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
+    return __WASI_ERRNO_BADF;
   }
 
   auto lockedFile = file->locked();
@@ -321,7 +348,8 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
 
 int __syscall_fdatasync(int fd) {
   // TODO: Optimize this to avoid unnecessarily flushing unnecessary metadata.
-  return __wasi_fd_sync(fd);
+  // Translate from WASI positive error codes to negative error codes.
+  return -__wasi_fd_sync(fd);
 }
 
 backend_t wasmfs_get_backend_by_fd(int fd) {
@@ -351,13 +379,16 @@ static timespec ms_to_timespec(double ms) {
   return ts;
 }
 
-int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
+int __syscall_newfstatat(int dirfd,
+                         const char* path,
+                         struct stat* buf,
+                         int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  auto parsed = path::getFileAt(dirfd, path, flags);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -365,48 +396,47 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
 
   // Extract the information from the file.
   auto lockedFile = file->locked();
-  auto buffer = (struct stat*)buf;
 
   off_t size = lockedFile.getSize();
   if (size < 0) {
     return size;
   }
-  buffer->st_size = size;
+  buf->st_size = size;
 
   // ATTN: hard-coded constant values are copied from the existing JS file
   // system. Specific values were chosen to match existing library_fs.js
   // values.
   // ID of device containing file: Hardcode 1 for now, no meaning at the
   // moment for Emscripten.
-  buffer->st_dev = 1;
-  buffer->st_mode = lockedFile.getMode();
-  buffer->st_ino = file->getIno();
+  buf->st_dev = 1;
+  buf->st_mode = lockedFile.getMode();
+  buf->st_ino = file->getIno();
   // The number of hard links is 1 since they are unsupported.
-  buffer->st_nlink = 1;
-  buffer->st_uid = 0;
-  buffer->st_gid = 0;
+  buf->st_nlink = 1;
+  buf->st_uid = 0;
+  buf->st_gid = 0;
   // Device ID (if special file) No meaning right now for Emscripten.
-  buffer->st_rdev = 0;
+  buf->st_rdev = 0;
   // The syscall docs state this is hardcoded to # of 512 byte blocks.
-  buffer->st_blocks = (buffer->st_size + 511) / 512;
+  buf->st_blocks = (buf->st_size + 511) / 512;
   // Specifies the preferred blocksize for efficient disk I/O.
-  buffer->st_blksize = 4096;
-  buffer->st_atim = ms_to_timespec(lockedFile.getATime());
-  buffer->st_mtim = ms_to_timespec(lockedFile.getMTime());
-  buffer->st_ctim = ms_to_timespec(lockedFile.getCTime());
+  buf->st_blksize = 4096;
+  buf->st_atim = ms_to_timespec(lockedFile.getATime());
+  buf->st_mtim = ms_to_timespec(lockedFile.getMTime());
+  buf->st_ctim = ms_to_timespec(lockedFile.getCTime());
   return __WASI_ERRNO_SUCCESS;
 }
 
-int __syscall_stat64(intptr_t path, intptr_t buf) {
+int __syscall_stat64(const char* path, struct stat* buf) {
   return __syscall_newfstatat(AT_FDCWD, path, buf, 0);
 }
 
-int __syscall_lstat64(intptr_t path, intptr_t buf) {
+int __syscall_lstat64(const char* path, struct stat* buf) {
   return __syscall_newfstatat(AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
 }
 
-int __syscall_fstat64(int fd, intptr_t buf) {
-  return __syscall_newfstatat(fd, (intptr_t) "", buf, AT_EMPTY_PATH);
+int __syscall_fstat64(int fd, struct stat* buf) {
+  return __syscall_newfstatat(fd, "", buf, AT_EMPTY_PATH);
 }
 
 // When calling doOpen(), we may request an FD be returned, or we may not need
@@ -539,6 +569,15 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -ENOTDIR;
   }
 
+  if (flags & O_TRUNC) {
+    if (!child->is<DataFile>()) {
+      return -EISDIR;
+    }
+    if ((fileMode & WASMFS_PERM_WRITE) == 0) {
+      return -EACCES;
+    }
+  }
+
   // Note that we open the file before truncating it because some backends may
   // truncate opened files more efficiently (e.g. OPFS).
   std::shared_ptr<OpenFileState> openFile;
@@ -547,16 +586,13 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return err;
   }
 
-  // If O_TRUNC, truncate the file if possible.
-  if (flags & O_TRUNC) {
-    if (!child->is<DataFile>()) {
-      return -EISDIR;
+  // Ignore truncation if it is a device or FIFO
+  if ((flags & O_TRUNC) && S_ISREG(fileMode)) {
+    auto lockedFile = child->cast<DataFile>()->locked();
+    if (auto err = lockedFile.setSize(0)) {
+      (void)lockedFile.close();
+      return err;
     }
-    if ((fileMode & WASMFS_PERM_WRITE) == 0) {
-      return -EACCES;
-    }
-    // Try to truncate the file, continuing silently if we cannot.
-    (void)child->cast<DataFile>()->locked().setSize(0);
   }
 
   return wasmFS.getFileTable().locked().addEntry(openFile);
@@ -564,25 +600,25 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 
 // This function is exposed to users and allows users to create a file in a
 // specific backend. An fd to an open file is returned.
-int wasmfs_create_file(char* pathname, mode_t mode, backend_t backend) {
+int wasmfs_create_file(const char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
   return doOpen(
-    path::parseParent((char*)pathname), O_CREAT | O_EXCL, mode, backend);
+    path::parseParent(pathname), O_CREAT | O_EXCL | O_RDWR, mode, backend);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
+int __syscall_openat(int dirfd, const char* path, int flags, ...) {
   mode_t mode = 0;
   va_list v1;
   va_start(v1, flags);
   mode = va_arg(v1, int);
   va_end(v1);
 
-  return doOpen(path::parseParent((char*)path, dirfd), flags, mode);
+  return doOpen(path::parseParent(path, dirfd), flags, mode);
 }
 
-int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
+int __syscall_mknodat(int dirfd, const char* path, mode_t mode, dev_t dev) {
   assert(dev == 0); // TODO: support special devices
   if (mode & S_IFDIR) {
     return -EINVAL;
@@ -590,7 +626,7 @@ int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
   if (mode & S_IFIFO) {
     return -EPERM;
   }
-  return doOpen(path::parseParent((char*)path, dirfd),
+  return doOpen(path::parseParent(path, dirfd),
                 O_CREAT | O_EXCL,
                 mode,
                 NullBackend,
@@ -598,7 +634,7 @@ int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
 }
 
 static int
-doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
+doMkdir(path::ParsedParent parsed, mode_t mode, backend_t backend = NullBackend) {
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -656,18 +692,18 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
 
 // This function is exposed to users and allows users to specify a particular
 // backend that a directory should be created within.
-int wasmfs_create_directory(char* path, int mode, backend_t backend) {
+int wasmfs_create_directory(char* path, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doMkdir(0, 0, 0)), int>,
                 "unexpected conversion from result of doMkdir to int");
   return doMkdir(path::parseParent(path), mode, backend);
 }
 
 // TODO: Test this.
-int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
-  return doMkdir(path::parseParent((char*)path, dirfd), mode);
+int __syscall_mkdirat(int dirfd, const char* path, mode_t mode) {
+  return doMkdir(path::parseParent(path, dirfd), mode);
 }
 
-int __syscall_umask(int mask) {
+mode_t __syscall_umask(mode_t mask) {
   mode_t old = wasmFS.getUmask();
   wasmFS.setUmask(mask);
   return old;
@@ -727,8 +763,8 @@ static int doChdir(std::shared_ptr<File>& file) {
   return 0;
 }
 
-int __syscall_chdir(intptr_t path) {
-  auto parsed = path::parseFile((char*)path);
+int __syscall_chdir(const char* path) {
+  auto parsed = path::parseFile(path);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -743,7 +779,7 @@ int __syscall_fchdir(int fd) {
   return doChdir(openFile->locked().getFile());
 }
 
-int __syscall_getcwd(intptr_t buf, size_t size) {
+int __syscall_getcwd(char* buf, size_t size) {
   // Check if buf points to a bad address.
   if (!buf && size > 0) {
     return -EFAULT;
@@ -785,7 +821,7 @@ int __syscall_getcwd(intptr_t buf, size_t size) {
   }
 
   // Return value is a null-terminated c string.
-  strcpy((char*)buf, result.c_str());
+  strcpy(buf, result.c_str());
 
   return len;
 }
@@ -809,7 +845,7 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
+int __syscall_unlinkat(int dirfd, const char* path, int flags) {
   if (flags & ~AT_REMOVEDIR) {
     // TODO: Test this case.
     return -EINVAL;
@@ -818,7 +854,7 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
   // this case from the case of `parseParent` returning (root, '.') when parsing
   // "/", so we need to find the invalid "/." manually.
   if (flags == AT_REMOVEDIR) {
-    std::string_view p((char*)path);
+    std::string_view p(path);
     // Ignore trailing '/'.
     while (!p.empty() && p.back() == '/') {
       p.remove_suffix(1);
@@ -827,7 +863,7 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
       return -EINVAL;
     }
   }
-  auto parsed = path::parseParent((char*)path, dirfd);
+  auto parsed = path::parseParent(path, dirfd);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -868,7 +904,7 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
   return lockedParent.removeChild(childName);
 }
 
-int __syscall_rmdir(intptr_t path) {
+int __syscall_rmdir(const char* path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
@@ -905,7 +941,7 @@ int wasmfs_unmount(const char* path) {
   return lockedParent.removeChild(childName);
 }
 
-int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
+int __syscall_getdents64(int fd, void* dirp, size_t count) {
   dirent* result = (dirent*)dirp;
 
   // Check if the result buffer is too small.
@@ -974,9 +1010,9 @@ int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
 
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_renameat(int olddirfd,
-                       intptr_t oldpath,
+                       const char* oldpath,
                        int newdirfd,
-                       intptr_t newpath) {
+                       const char* newpath) {
   // Rename is the only syscall that needs to (or is allowed to) acquire locks
   // on two directories at once. It requires locks on both the old and new
   // parent directories to ensure that the moved file can be atomically removed
@@ -989,7 +1025,7 @@ int __syscall_renameat(int olddirfd,
   std::lock_guard<std::mutex> renameLock(renameMutex);
 
   // Get the old directory.
-  auto parsedOld = path::parseParent((char*)oldpath, olddirfd);
+  auto parsedOld = path::parseParent(oldpath, olddirfd);
   if (auto err = parsedOld.getError()) {
     return err;
   }
@@ -997,7 +1033,7 @@ int __syscall_renameat(int olddirfd,
   std::string oldFileName(oldFileNameView);
 
   // Get the new directory.
-  auto parsedNew = path::parseParent((char*)newpath, newdirfd);
+  auto parsedNew = path::parseParent(newpath, newdirfd);
   if (auto err = parsedNew.getError()) {
     return err;
   }
@@ -1078,8 +1114,10 @@ int __syscall_renameat(int olddirfd,
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
-  auto parsed = path::parseParent((char*)linkpath, newdirfd);
+int __syscall_symlinkat(const char* target,
+                        int newdirfd,
+                        const char* linkpath) {
+  auto parsed = path::parseParent(linkpath, newdirfd);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1092,7 +1130,7 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   if (lockedParent.getChild(childName)) {
     return -EEXIST;
   }
-  if (!lockedParent.insertSymlink(childName, (char*)target)) {
+  if (!lockedParent.insertSymlink(childName, target)) {
     return -EPERM;
   }
   return 0;
@@ -1100,11 +1138,11 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
 
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_readlinkat(int dirfd,
-                         intptr_t path,
-                         intptr_t buf,
+                         const char* path,
+                         char* buf,
                          size_t bufsize) {
   // TODO: Handle empty paths.
-  auto parsed = path::parseFile((char*)path, dirfd, path::NoFollowLinks);
+  auto parsed = path::parseFile(path, dirfd, path::NoFollowLinks);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1114,7 +1152,7 @@ int __syscall_readlinkat(int dirfd,
   }
   const auto& target = link->getTarget();
   auto bytes = std::min((size_t)bufsize, target.size());
-  memcpy((char*)buf, target.c_str(), bytes);
+  memcpy(buf, target.c_str(), bytes);
   return bytes;
 }
 
@@ -1125,13 +1163,14 @@ static double timespec_to_ms(timespec ts) {
   if (ts.tv_nsec == UTIME_NOW) {
     return emscripten_date_now();
   }
-  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec / (1000 * 1000));
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
-  const char* path = (const char*)path_;
-  const struct timespec* times = (const struct timespec*)times_;
+int __syscall_utimensat(int dirfd,
+                        const char* path,
+                        const struct timespec times[2],
+                        int flags) {
   if (flags & ~AT_SYMLINK_NOFOLLOW) {
     // TODO: Test this case.
     return -EINVAL;
@@ -1144,7 +1183,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   // https://man7.org/linux/man-pages/man2/utimensat.2.html
   //
   // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::getFileAt(dirFD, path, flags | AT_EMPTY_PATH);
+  auto parsed = path::getFileAt(dirfd, path, flags | AT_EMPTY_PATH);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1172,12 +1211,12 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_fchmodat2(int dirfd, intptr_t path, int mode, int flags) {
+int __syscall_fchmodat2(int dirfd, const char* path, mode_t mode, int flags) {
   if (flags & ~AT_SYMLINK_NOFOLLOW) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  auto parsed = path::getFileAt(dirfd, path, flags);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1188,11 +1227,11 @@ int __syscall_fchmodat2(int dirfd, intptr_t path, int mode, int flags) {
   return 0;
 }
 
-int __syscall_chmod(intptr_t path, int mode) {
+int __syscall_chmod(const char* path, mode_t mode) {
   return __syscall_fchmodat2(AT_FDCWD, path, mode, 0);
 }
 
-int __syscall_fchmod(int fd, int mode) {
+int __syscall_fchmod(int fd, mode_t mode) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1204,13 +1243,13 @@ int __syscall_fchmod(int fd, int mode) {
 }
 
 int __syscall_fchownat(
-  int dirfd, intptr_t path, int owner, int group, int flags) {
+  int dirfd, const char* path, uid_t owner, gid_t group, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
     return -EINVAL;
   }
-  auto parsed = path::getFileAt(dirfd, (char*)path, flags);
+  auto parsed = path::getFileAt(dirfd, path, flags);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1220,12 +1259,12 @@ int __syscall_fchownat(
   return 0;
 }
 
-int __syscall_fchown32(int fd, int owner, int group) {
-  return __syscall_fchownat(fd, (intptr_t) "", owner, group, AT_EMPTY_PATH);
+int __syscall_fchown32(int fd, uid_t owner, gid_t group) {
+  return __syscall_fchownat(fd, "", owner, group, AT_EMPTY_PATH);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
+int __syscall_faccessat(int dirfd, const char* path, int amode, int flags) {
   // The input must be F_OK (check for existence) or a combination of [RWX]_OK
   // flags.
   if (amode != F_OK && (amode & ~(R_OK | W_OK | X_OK))) {
@@ -1237,7 +1276,7 @@ int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags) {
   }
 
   // TODO: Handle AT_SYMLINK_NOFOLLOW once we traverse symlinks correctly.
-  auto parsed = path::parseFile((char*)path, dirfd);
+  auto parsed = path::parseFile(path, dirfd);
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -1279,12 +1318,12 @@ static int doTruncate(std::shared_ptr<File>& file, off_t size) {
   return ret;
 }
 
-int __syscall_truncate64(intptr_t path, off_t size) {
-  auto parsed = path::parseFile((char*)path);
+int __syscall_truncate64(const char* path, off_t length) {
+  auto parsed = path::parseFile(path);
   if (auto err = parsed.getError()) {
     return err;
   }
-  return doTruncate(parsed.getFile(), size);
+  return doTruncate(parsed.getFile(), length);
 }
 
 int __syscall_ftruncate64(int fd, off_t size) {
@@ -1353,15 +1392,25 @@ int __syscall_ioctl(int fd, int request, ...) {
       // TTY operations that we do nothing for anyhow can just be ignored.
       return 0;
     }
+    case TIOCGPGRP: {
+      // Set argp to 0 just like in JS FS
+      *static_cast<int*>(argp) = 0;
+      return 0;
+    }
     default: {
       return -EINVAL; // not supported
     }
   }
 }
 
-int __syscall_pipe2(intptr_t fd, int flags) {
+int __syscall_pipe2(int fd[2], int flags) {
   auto* fds = (__wasi_fd_t*)fd;
-  if (flags && flags != O_CLOEXEC) {
+  
+  if (!fds) {
+    return -EFAULT;
+  }
+
+  if (flags & ~(O_CLOEXEC | O_NONBLOCK)) {
     return -ENOTSUP;
   }
 
@@ -1373,9 +1422,11 @@ int __syscall_pipe2(intptr_t fd, int flags) {
   auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
   auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
+  oflags_t nonBlock = flags & O_NONBLOCK;
+
   std::shared_ptr<OpenFileState> openReader, openWriter;
-  (void)OpenFileState::create(reader, O_RDONLY, openReader);
-  (void)OpenFileState::create(writer, O_WRONLY, openWriter);
+  (void)OpenFileState::create(reader, O_RDONLY | nonBlock, openReader);
+  (void)OpenFileState::create(writer, O_WRONLY | nonBlock, openWriter);
 
   auto fileTable = wasmFS.getFileTable().locked();
   fds[0] = fileTable.addEntry(openReader);
@@ -1384,9 +1435,7 @@ int __syscall_pipe2(intptr_t fd, int flags) {
   return 0;
 }
 
-// int poll(struct pollfd* fds, nfds_t nfds, int timeout);
-int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
-  struct pollfd* fds = (struct pollfd*)fds_;
+int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
   auto fileTable = wasmFS.getFileTable().locked();
 
   // Process the list of FDs and compute their revents masks. Count the number
@@ -1404,27 +1453,11 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
     auto mask = POLLNVAL;
     auto openFile = fileTable.getEntry(fd);
     if (openFile) {
-      mask = 0;
       auto flags = openFile->locked().getFlags();
-      auto accessMode = flags & O_ACCMODE;
-      auto readBit = pollfd->events & POLLOUT;
-      if (readBit && (accessMode == O_WRONLY || accessMode == O_RDWR)) {
-        mask |= readBit;
-      }
-      auto writeBit = pollfd->events & POLLIN;
-      if (writeBit && (accessMode == O_RDONLY || accessMode == O_RDWR)) {
-        // If there is data in the file, then there is also the ability to read.
-        // TODO: Does this need to consider the position as well? That is, if
-        // the position is at the end, we can't read from the current position
-        // at least. If we update this, make sure the size isn't an error!
-        if (openFile->locked().getFile()->locked().getSize() > 0) {
-          mask |= writeBit;
-        }
-      }
-      // TODO: get mask from File dynamically using a poll() hook?
+      auto file = openFile->locked().getFile();
+      // POLLERR and POLLHUP are reported whether or not they were requested.
+      mask = file->locked().poll(flags) & (pollfd->events | POLLERR | POLLHUP);
     }
-    // TODO: set the state based on the state of the other end of the pipe, for
-    //       pipes (POLLERR | POLLHUP)
     if (mask) {
       nonzero++;
     }
@@ -1436,6 +1469,12 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
   return nonzero;
 }
 
+// libc routes zero-timeout poll() calls here (see musl's poll.c). WasmFS's
+// __syscall_poll never blocks, so the zero-timeout probe is the same call.
+int __syscall_poll_nonblocking(struct pollfd* fds, nfds_t nfds) {
+  return __syscall_poll(fds, nfds, 0);
+}
+
 int __syscall_fallocate(int fd, int mode, off_t offset, off_t len) {
   assert(mode == 0); // TODO, but other modes were never supported in the old FS
 
@@ -1445,7 +1484,12 @@ int __syscall_fallocate(int fd, int mode, off_t offset, off_t len) {
     return -EBADF;
   }
 
-  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  auto file = openFile->locked().getFile();
+  if (!file->isSeekable()) {
+    return -ESPIPE;
+  }
+
+  auto dataFile = file->dynCast<DataFile>();
   // TODO: support for symlinks.
   if (!dataFile) {
     return -ENODEV;
@@ -1563,36 +1607,35 @@ doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   }
 
   // NOTE: None of the constants here are true. We're just returning safe and
-  //       sane values, that match the long-existing JS FS behavior (except for
-  //       the inode number, where we can do better).
+  //       sane values, that match the long-existing JS FS behavior.
   buf->f_type = 0;
   buf->f_bsize = 4096;
   buf->f_frsize = 4096;
   buf->f_blocks = 1000000;
   buf->f_bfree = 500000;
   buf->f_bavail = 500000;
-  buf->f_files = file->getIno();
-  buf->f_ffree = 1000000;
-  buf->f_fsid = {0, 0};
+  buf->f_files = 1000000;
+  buf->f_ffree = 500000;
+  buf->f_fsid = {42, 0};
   buf->f_flags = ST_NOSUID;
   buf->f_namelen = 255;
   return 0;
 }
 
-int __syscall_statfs64(intptr_t path, size_t size, intptr_t buf) {
-  auto parsed = path::parseFile((char*)path);
+int __syscall_statfs64(const char* path, size_t size, struct statfs* buf) {
+  auto parsed = path::parseFile(path);
   if (auto err = parsed.getError()) {
     return err;
   }
-  return doStatFS(parsed.getFile(), size, (struct statfs*)buf);
+  return doStatFS(parsed.getFile(), size, buf);
 }
 
-int __syscall_fstatfs64(int fd, size_t size, intptr_t buf) {
+int __syscall_fstatfs64(int fd, size_t size, struct statfs* buf) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
   }
-  return doStatFS(openFile->locked().getFile(), size, (struct statfs*)buf);
+  return doStatFS(openFile->locked().getFile(), size, buf);
 }
 
 int _mmap_js(size_t length,
@@ -1690,7 +1733,7 @@ int _mmap_js(size_t length,
 }
 
 int _msync_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  void* addr, size_t length, int prot, int flags, int fd, off_t offset) {
   // TODO: This is not correct! Mappings should be associated with files, not
   // fds. Only need to sync if shared and writes are allowed.
   int mapType = flags & MAP_TYPE;
@@ -1706,7 +1749,7 @@ int _msync_js(
 }
 
 int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  void* addr, size_t length, int prot, int flags, int fd, off_t offset) {
   // TODO: This is not correct! Mappings should be associated with files, not
   // fds.
   // TODO: Syncing should probably be handled in __syscall_munmap instead.
@@ -1716,80 +1759,164 @@ int _munmap_js(
 // Stubs (at least for now)
 
 int __syscall_accept4(int sockfd,
-                      intptr_t addr,
-                      intptr_t addrlen,
+                      struct sockaddr* addr,
+                      socklen_t* len,
                       int flags,
-                      int dummy1,
-                      int dummy2) {
+                      int unused1,
+                      int unused2) {
   return -ENOSYS;
 }
 
-int __syscall_bind(
-  int sockfd, intptr_t addr, size_t alen, int dummy, int dummy2, int dummy3) {
+int __syscall_bind(int sockfd,
+                   const struct sockaddr* addr,
+                   socklen_t len,
+                   int unused1,
+                   int unused2,
+                   int unused3) {
   return -ENOSYS;
 }
 
-int __syscall_connect(
-  int sockfd, intptr_t addr, size_t len, int dummy, int dummy2, int dummy3) {
+int __syscall_connect(int sockfd,
+                      const struct sockaddr* addr,
+                      socklen_t len,
+                      int unused1,
+                      int unused2,
+                      int unused3) {
   return -ENOSYS;
 }
 
 int __syscall_socket(
-  int domain, int type, int protocol, int dummy1, int dummy2, int dummy3) {
+  int domain, int type, int protocol, int unused1, int unused2, int unused3) {
   return -ENOSYS;
 }
 
 int __syscall_listen(
-  int sockfd, int backlog, int dummy1, int dummy2, int dummy3, int dummy4) {
+  int sockfd, int backlog, int unused1, int unused2, int unused3, int unused4) {
   return -ENOSYS;
 }
 
 int __syscall_getsockopt(int sockfd,
                          int level,
                          int optname,
-                         intptr_t optval,
-                         intptr_t optlen,
-                         int dummy) {
+                         void* optval,
+                         socklen_t* optlen,
+                         int unused) {
   return -ENOSYS;
 }
 
-int __syscall_getsockname(
-  int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3) {
+int __syscall_setsockopt(int sockfd,
+                         int level,
+                         int optname,
+                         const void* optval,
+                         socklen_t optlen,
+                         int unused) {
   return -ENOSYS;
 }
 
-int __syscall_getpeername(
-  int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3) {
+int __syscall_shutdown(int sockfd,
+                       int how,
+                       int unused1,
+                       int unused2,
+                       int unused3,
+                       int unused4) {
   return -ENOSYS;
 }
 
-int __syscall_sendto(
-  int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, size_t alen) {
+int __syscall_getsockname(int sockfd,
+                          struct sockaddr* addr,
+                          socklen_t* len,
+                          int unused1,
+                          int unused2,
+                          int unused3) {
   return -ENOSYS;
 }
 
-int __syscall_sendmsg(
-  int sockfd, intptr_t msg, int flags, intptr_t addr, size_t alen, int dummy) {
+int __syscall_getpeername(int sockfd,
+                          struct sockaddr* addr,
+                          socklen_t* len,
+                          int unused1,
+                          int unused2,
+                          int unused3) {
+  return -ENOSYS;
+}
+
+int __syscall_sendto(int sockfd,
+                     const void* buf,
+                     size_t len,
+                     int flags,
+                     const struct sockaddr* addr,
+                     socklen_t alen) {
+  return -ENOSYS;
+}
+
+int __syscall_sendmsg(int sockfd,
+                      const struct msghdr* msg,
+                      int flags,
+                      int unused1,
+                      int unused2,
+                      int unused3) {
   return -ENOSYS;
 }
 
 int __syscall_recvfrom(int sockfd,
-                       intptr_t msg,
+                       void* buf,
                        size_t len,
                        int flags,
-                       intptr_t addr,
-                       intptr_t alen) {
+                       struct sockaddr* addr,
+                       socklen_t* alen) {
   return -ENOSYS;
 }
 
-int __syscall_recvmsg(
-  int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3) {
+int __syscall_recvmsg(int sockfd,
+                      struct msghdr* msg,
+                      int flags,
+                      int unused1,
+                      int unused2,
+                      int unused3) {
   return -ENOSYS;
 }
 
-int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
+int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  if (!openFile->locked().getFile()->isSeekable()) {
+    return -ESPIPE;
+  }
   // Advice is currently ignored. TODO some backends might use it
   return 0;
+}
+
+int __syscall_linkat(int olddirfd,
+                     const char* oldpath,
+                     int newdirfd,
+                     const char* newpath,
+                     int flags) {
+  // Hardlinks are not supported in WASMFS.
+  return -EMLINK;
+}
+
+// epoll is implemented in the legacy (non-WASMFS) JS syscall layer only.
+int __syscall_epoll_create1(int flags) { return -ENOSYS; }
+
+int __syscall_epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
+  return -ENOSYS;
+}
+
+int __syscall_epoll_pwait(int epfd,
+                          struct epoll_event* ev,
+                          int maxevents,
+                          int timeout,
+                          const sigset_t* sigmask,
+                          size_t sigsetsize) {
+  return -ENOSYS;
+}
+
+int __syscall_epoll_pwait_nonblocking(int epfd,
+                                      struct epoll_event* ev,
+                                      int maxevents) {
+  return -ENOSYS;
 }
 
 } // extern "C"

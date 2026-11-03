@@ -1,7 +1,7 @@
 #include <setjmp.h>
 #include <stdio.h>
 
-static jmp_buf buf;
+jmp_buf buf;
 
 void a() { printf("a\n"); }
 void b() { printf("b\n"); }

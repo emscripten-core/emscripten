@@ -11,12 +11,12 @@
 #include <assert.h>
 #include <emscripten.h>
 
-static Mix_Chunk *sound = NULL;
-static Mix_Chunk *noiseLoop = NULL;
-static Mix_Music *music = NULL;
+Mix_Chunk *sound = NULL;
+Mix_Chunk *noiseLoop = NULL;
+Mix_Music *music = NULL;
 
-static int soundChannel = 0;
-static int noiseLoopChannel = 0;
+int soundChannel = 0;
+int noiseLoopChannel = 0;
 
 void one_iter() {
   static int frames = 0;

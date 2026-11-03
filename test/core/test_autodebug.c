@@ -14,6 +14,6 @@ int main() {
   double d = printf("some numbers: %d %f\n", 42, 2.18281828);
   uint64_t j = printf("some  more: %lld %lf\n", 1337ll, 3.14159);
   printf("counts: %lld %lf\n", j, d);
-  puts("success");
+  puts("done");
   return 0;
 }

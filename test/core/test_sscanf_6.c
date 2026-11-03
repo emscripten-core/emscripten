@@ -9,8 +9,7 @@
 #include <string.h>
 int main() {
   const char *date = "18.07.2013w";
-  char c[10];
-  memset(c, 0, 10);
+  char c[10] = {0};
   int y, m, d, i;
   i = sscanf(date, "%d.%d.%4d%c", &d, &m, &y, c);
   printf("date: %s; day %2d, month %2d, year %4d, extra: %c, %d\n", date, d, m,

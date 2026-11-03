@@ -8,10 +8,10 @@
 // it itself depends on the struct info information.
 
 #if !BOOTSTRAPPING_STRUCT_INFO
-assert(false, "libbootstrap.js only designed for use with BOOTSTRAPPING_STRUCT_INFO")
+assert(false, 'libbootstrap.js only designed for use with BOOTSTRAPPING_STRUCT_INFO')
 #endif
 
-assert(Object.keys(LibraryManager.library).length === 0);
+assert(!Object.keys(LibraryManager.library).length);
 addToLibrary({
   $callRuntimeCallbacks: () => {},
 
@@ -38,7 +38,6 @@ addToLibrary({
     }
   },
 
-  $exitJS__deps: ['$ExitStatus'],
   $exitJS: (code) => quit_(code, new ExitStatus(code)),
 
   $handleException: (e) => {
@@ -57,7 +56,7 @@ addToLibrary({
       var ptr = {{{ makeGetValue('iov', 0, '*') }}};
       var len = {{{ makeGetValue('iov', POINTER_SIZE, '*') }}};
       iov += {{{ POINTER_SIZE }}} * 2;
-      process.stdout.write(HEAPU8.subarray(ptr, ptr + len));
+      fs.writeSync(fd, HEAPU8, ptr, len);
       num += len;
     }
     {{{ makeSetValue('pnum', 0, 'num', '*') }}};

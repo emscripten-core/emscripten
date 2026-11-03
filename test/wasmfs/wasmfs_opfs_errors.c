@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -22,7 +21,7 @@ const char* file = "/opfs/data";
 //   1: success
 //   2: other error
 
-static int try_open(int flags) {
+int try_open(int flags) {
   int fd = open(file, flags);
   if (fd >= 0) {
     int err = close(fd);
@@ -147,8 +146,6 @@ void report_result(int result) {
 #ifdef REPORT_RESULT
   REPORT_RESULT(result);
 #else
-  if (result != 0) {
-    abort();
-  }
+  emscripten_force_exit(result);
 #endif
 }

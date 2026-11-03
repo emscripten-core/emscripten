@@ -23,6 +23,19 @@ void test_already_fulfilled() {
   emscripten_promise_destroy(p);
 }
 
+void test_already_fulfilled_unchecked() {
+  // Test waiting on an already fulfilled promise.
+  em_promise_t p = emscripten_promise_create();
+  emscripten_promise_resolve(p, EM_PROMISE_FULFILL, (void*)42);
+
+  printf("waiting on promise (unchecked): %p\n", p);
+  void* res = emscripten_promise_await_unchecked(p);
+  printf(".. done wait: %ld\n", (intptr_t)res);
+
+  assert(res == (void*)42);
+  emscripten_promise_destroy(p);
+}
+
 void test_not_yet_fulfilled() {
   em_promise_t p = emscripten_promise_create();
   emscripten_async_call(fulfill_from_timeout, p, 0);
@@ -33,6 +46,18 @@ void test_not_yet_fulfilled() {
 
   assert(res.result == EM_PROMISE_FULFILL);
   assert(res.value == (void*)43);
+  emscripten_promise_destroy(p);
+}
+
+void test_not_yet_fulfilled_unchecked() {
+  em_promise_t p = emscripten_promise_create();
+  emscripten_async_call(fulfill_from_timeout, p, 0);
+
+  printf("waiting on promise (unchecked): %p\n", p);
+  void* res = emscripten_promise_await_unchecked(p);
+  printf(".. done wait: %ld\n", (intptr_t)res);
+
+  assert(res == (void*)43);
   emscripten_promise_destroy(p);
 }
 
@@ -53,7 +78,9 @@ int main() {
   printf("main\n");
 
   test_already_fulfilled();
+  test_already_fulfilled_unchecked();
   test_not_yet_fulfilled();
+  test_not_yet_fulfilled_unchecked();
   test_rejected();
 
   printf("main done\n");

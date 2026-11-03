@@ -67,6 +67,6 @@ int main() {
   assert((st.st_mode & 0777) == 0700);
   rmdir("umask_test_dir");
 
-  puts("success");
+  puts("done");
   return EXIT_SUCCESS;
 }

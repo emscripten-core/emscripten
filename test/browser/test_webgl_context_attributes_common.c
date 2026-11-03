@@ -16,25 +16,25 @@
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
-static const int WINDOWS_SIZE = 500;
+const int WINDOWS_SIZE = 500;
 
-static GLfloat vertices[] = { 0.0f,  250.f, 0.0f,
+GLfloat vertices[] = { 0.0f,  250.f, 0.0f,
                              -250.f, -250.f, 0.0f,
                               250.f, -250.f, 0.0f };
 
-static GLfloat vertices2[] = { 0.0f,  250.f, -1.0f,
+GLfloat vertices2[] = { 0.0f,  250.f, -1.0f,
                               -250.f, -250.f, -1.0f,
                                250.f, -250.f, -1.0f };
 
-static GLuint shaderProgram = 0;
-static GLuint verticesVBO = 0;
-static GLuint verticesVBO2 = 0;
+GLuint shaderProgram = 0;
+GLuint verticesVBO = 0;
+GLuint verticesVBO2 = 0;
 
-static unsigned char backgroundColor[4] = {255, 255, 255, 255};
-static unsigned char triangleColor[4] = {255, 0, 0, 255};
-static unsigned char triangleColor2[4] = {0, 255, 0, 255};
+unsigned char backgroundColor[4] = {255, 255, 255, 255};
+unsigned char triangleColor[4] = {255, 0, 0, 255};
+unsigned char triangleColor2[4] = {0, 255, 0, 255};
 
-static char vertexShaderSrc[] =
+char vertexShaderSrc[] =
     "precision highp float;"
     "precision highp int;"
 
@@ -51,7 +51,7 @@ static char vertexShaderSrc[] =
     "}"
     ;
 
-static char fragmentShaderSrc[] =
+char fragmentShaderSrc[] =
     "precision highp float;"
     "precision highp int;"
 
@@ -62,14 +62,14 @@ static char fragmentShaderSrc[] =
     "}"
     ;
 
-static GLuint createShader(const char *source, int type) {
+GLuint createShader(const char *source, int type) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, (const GLchar**)(&source), NULL);
     glCompileShader(shader);
     return shader;
 }
 
-static GLuint createShaderProgram(const char *vertexShaderSrc, const char *fragmentShaderSrc) {
+GLuint createShaderProgram(const char *vertexShaderSrc, const char *fragmentShaderSrc) {
     GLuint program = glCreateProgram();
     glAttachShader(program, createShader(vertexShaderSrc, GL_VERTEX_SHADER));
     glAttachShader(program, createShader(fragmentShaderSrc, GL_FRAGMENT_SHADER));
@@ -91,7 +91,7 @@ void ortho(float  left,  float  right,  float  bottom,  float  top,  float  near
     projMatrix[3*4+3] = 1.0f;
 }
 
-static void initGlObjects() {
+void initGlObjects() {
     glGenBuffers(1, &verticesVBO);
     glBindBuffer(GL_ARRAY_BUFFER, verticesVBO);
     glBufferData(GL_ARRAY_BUFFER, 9*sizeof(float), vertices, GL_STATIC_DRAW);
@@ -105,7 +105,7 @@ static void initGlObjects() {
     shaderProgram = createShaderProgram(vertexShaderSrc, fragmentShaderSrc);
 }
 
-static void drawTriangle(GLuint verticesVBO, unsigned char r, unsigned char g, unsigned char b, unsigned char a) {
+void drawTriangle(GLuint verticesVBO, unsigned char r, unsigned char g, unsigned char b, unsigned char a) {
     glUseProgram(shaderProgram);
     GLuint posLoc = glGetAttribLocation(shaderProgram, "a_position");
     GLuint mvpLoc = glGetUniformLocation(shaderProgram, "u_mvpMatrix");
@@ -130,7 +130,7 @@ static void drawTriangle(GLuint verticesVBO, unsigned char r, unsigned char g, u
 // Draw a red triangle on a white background. If antialiasing is disabled, resulting pixels
 // will only have white and red colors. If antialiasing is enabled, there will be pixels
 // whose color is different from red and white.
-static bool testAntiAliasing(bool activated) {
+bool testAntiAliasing(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, backgroundColor[3]/255.f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -164,7 +164,7 @@ static bool testAntiAliasing(bool activated) {
 // Draw a red triangle with depth equals to 0 then a green triangle whose depth equals -1.
 // If there is an attached depth buffer, the resulting image will be a red triangle. If not,
 // the resulting image will be a green triangle.
-static bool testDepth(bool activated) {
+bool testDepth(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, backgroundColor[3]/255.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -197,7 +197,7 @@ static bool testDepth(bool activated) {
 // Then draw a green triangle whose stencil ref value is 0xFF.
 // If there is an attached stencil buffer, the resulting image will be a red triangle. If not,
 // the resulting image will be a green triangle.
-static bool testStencil(bool activated) {
+bool testStencil(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, backgroundColor[3]/255.f);
     glClearStencil(0xFF);
@@ -228,7 +228,7 @@ static bool testStencil(bool activated) {
 
 // Clear to a color with alpha = 0. If alpha is enabled then all pixels will have alpha = 0.
 // If alpha is disabled then pixels will have alpha of 255
-static bool testAlpha(bool activated) {
+bool testAlpha(bool activated) {
     glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
     glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -256,17 +256,17 @@ static bool testAlpha(bool activated) {
     return (activated && hasAlpha) || (!activated && !hasAlpha);
 }
 
-static bool antiAliasingActivated = false;
-static bool depthActivated = false;
-static bool stencilActivated = false;
-static bool alphaActivated = false;
+bool antiAliasingActivated = false;
+bool depthActivated = false;
+bool stencilActivated = false;
+bool alphaActivated = false;
 
-static bool resultAA = 0;
-static bool resultDepth = 0;
-static bool resultStencil = 0;
-static bool resultAlpha = 0;
+bool resultAA = 0;
+bool resultDepth = 0;
+bool resultStencil = 0;
+bool resultAlpha = 0;
 
-static void draw() {
+void draw() {
   if (!resultAA) resultAA = testAntiAliasing(antiAliasingActivated);
   assert(resultAA);
 
@@ -287,7 +287,7 @@ extern int webglAlphaSupported(void);
 
 // Check attributes support in the WebGL implementation (see test_webgl_context_attributes function in test_browser.py)
 // Tests will succeed if they are not.
-static void checkContextAttributesSupport() {
+void checkContextAttributesSupport() {
   if (!webglAntialiasSupported()) {
     resultAA = true;
     emscripten_err("warning: no antialiasing");

@@ -30,5 +30,5 @@ int main() {
   rc = emscripten_futex_wake(NULL, 1);
   assert(rc == -EINVAL/*-EFAULT*/);
 
-  printf("OK\n");
+  printf("done\n");
 }

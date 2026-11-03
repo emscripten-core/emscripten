@@ -21,5 +21,6 @@ int main() {
   res = ftruncate(fd, 10);
   assert(res == 0);
 
-  printf("success\n");
+  printf("done\n");
+  return 0;
 }

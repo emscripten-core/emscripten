@@ -6,36 +6,35 @@
 
 addToLibrary({
 #if WASMFS
-  $NODEFS__deps: ['$stringToUTF8OnStack', 'wasmfs_create_node_backend'],
+  $NODEFS__deps: ['wasmfs_create_node_backend'],
   $NODEFS: {
     createBackend(opts) {
       return _wasmfs_create_node_backend(stringToUTF8OnStack(opts.root));
     }
   }
 #else
-  $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
     staticInit() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
-      var flags = process.binding("constants")["fs"];
+      var flags = fs.constants;
       NODEFS.flagsForNodeMap = {
-        "{{{ cDefs.O_APPEND }}}": flags["O_APPEND"],
-        "{{{ cDefs.O_CREAT }}}": flags["O_CREAT"],
-        "{{{ cDefs.O_EXCL }}}": flags["O_EXCL"],
-        "{{{ cDefs.O_NOCTTY }}}": flags["O_NOCTTY"],
-        "{{{ cDefs.O_RDONLY }}}": flags["O_RDONLY"],
-        "{{{ cDefs.O_RDWR }}}": flags["O_RDWR"],
-        "{{{ cDefs.O_DSYNC }}}": flags["O_SYNC"],
-        "{{{ cDefs.O_TRUNC }}}": flags["O_TRUNC"],
-        "{{{ cDefs.O_WRONLY }}}": flags["O_WRONLY"],
-        "{{{ cDefs.O_NOFOLLOW }}}": flags["O_NOFOLLOW"],
+        {{{ cDefs.O_APPEND }}}: flags.O_APPEND,
+        {{{ cDefs.O_CREAT }}}: flags.O_CREAT,
+        {{{ cDefs.O_EXCL }}}: flags.O_EXCL,
+        {{{ cDefs.O_NOCTTY }}}: flags.O_NOCTTY,
+        {{{ cDefs.O_RDONLY }}}: flags.O_RDONLY,
+        {{{ cDefs.O_RDWR }}}: flags.O_RDWR,
+        {{{ cDefs.O_DSYNC }}}: flags.O_SYNC,
+        {{{ cDefs.O_TRUNC }}}: flags.O_TRUNC,
+        {{{ cDefs.O_WRONLY }}}: flags.O_WRONLY,
+        {{{ cDefs.O_NOFOLLOW }}}: flags.O_NOFOLLOW,
       };
 #if ASSERTIONS
       // The 0 define must match on both sides, as otherwise we would not
       // know to add it.
-      assert(NODEFS.flagsForNodeMap["0"] === 0);
+      assert(NODEFS.flagsForNodeMap[0] === 0);
 #endif
     },
     convertNodeCode(e) {
@@ -62,7 +61,7 @@ addToLibrary({
 #endif
       return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
     },
-    createNode(parent, name, mode, dev) {
+    createNode(parent, name, mode, dev = undefined) {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
@@ -112,7 +111,7 @@ addToLibrary({
       }
       return newFlags;
     },
-    getattr(func, node) {
+    doGetAttr(func, node) {
       var stat = NODEFS.tryFSOperation(func);
       if (NODEFS.isWindows) {
         // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake
@@ -145,13 +144,13 @@ addToLibrary({
       };
     },
     // Common code for both node and stream setattr
-    // For node getattr:
+    // For node setattr:
     //  - arg is a native path
     //  - chmod, utimes, truncate are fs.chmodSync,  fs.utimesSync,  fs.truncateSync
-    // For stream getattr:
+    // For stream setattr:
     //  - arg is a native file descriptor
     //  - chmod, utimes, truncate are fs.fchmodSync, fs.futimesSync, fs.ftruncateSync
-    setattr(arg, node, attr, chmod, utimes, truncate, stat) {
+    doSetAttr(arg, node, attr, chmod, utimes, truncate, stat) {
       NODEFS.tryFSOperation(() => {
         if (attr.mode !== undefined) {
           var mode = attr.mode;
@@ -164,15 +163,20 @@ addToLibrary({
           // update the common node structure mode as well
           node.mode = attr.mode;
         }
-        if (typeof (attr.atime ?? attr.mtime) === "number") {
+        if (typeof (attr.atime ?? attr.mtime) === 'number') {
           // Unfortunately, we have to stat the current value if we don't want
           // to change it. On top of that, since the times don't round trip
           // this will only keep the value nearly unchanged not exactly
           // unchanged. See:
           // https://github.com/nodejs/node/issues/56492
-          var atime = new Date(attr.atime ?? stat(arg).atime);
-          var mtime = new Date(attr.mtime ?? stat(arg).mtime);
-          utimes(arg, atime, mtime);
+          var atime = attr.atime;
+          var mtime = attr.mtime;
+          if (atime == null || mtime == null) {
+            var st = stat(arg);
+            atime ??= st.atimeMs;
+            mtime ??= st.mtimeMs;
+          }
+          utimes(arg, atime / 1000, mtime / 1000);
         }
         if (attr.size !== undefined) {
           truncate(arg, attr.size);
@@ -182,21 +186,25 @@ addToLibrary({
     node_ops: {
       getattr(node) {
         var path = NODEFS.realPath(node);
-        return NODEFS.getattr(() => fs.lstatSync(path), node);
+        return NODEFS.doGetAttr(() => fs.lstatSync(path), node);
       },
       setattr(node, attr) {
         var path = NODEFS.realPath(node);
         if (attr.mode != null && attr.dontFollow) {
           throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
         }
-        NODEFS.setattr(path, node, attr, fs.chmodSync, fs.utimesSync, fs.truncateSync, fs.lstatSync);
+        // `dontFollow` (AT_SYMLINK_NOFOLLOW): use lutimes so the symlink's own
+        // timestamps are set without the host resolving it, which would
+        // otherwise escape the NODEFS mount root.
+        var utimes = attr.dontFollow ? fs.lutimesSync : fs.utimesSync;
+        NODEFS.doSetAttr(path, node, attr, fs.chmodSync, utimes, fs.truncateSync, fs.lstatSync);
       },
       lookup(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
         var mode = NODEFS.getMode(path);
         return NODEFS.createNode(parent, name, mode);
       },
-      mknod(parent, name, mode, dev) {
+      mknod(parent, name, mode, dev = undefined) {
         var node = NODEFS.createNode(parent, name, mode, dev);
         // create the backing node for this in the fs root as well
         var path = NODEFS.realPath(node);
@@ -212,9 +220,6 @@ addToLibrary({
       rename(oldNode, newDir, newName) {
         var oldPath = NODEFS.realPath(oldNode);
         var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
-        try {
-          FS.unlink(newPath);
-        } catch(e) {}
         NODEFS.tryFSOperation(() => fs.renameSync(oldPath, newPath));
         oldNode.name = newName;
       },
@@ -248,10 +253,10 @@ addToLibrary({
     },
     stream_ops: {
       getattr(stream) {
-        return NODEFS.getattr(() => fs.fstatSync(stream.nfd), stream.node);
+        return NODEFS.doGetAttr(() => fs.fstatSync(stream.nfd), stream.node);
       },
       setattr(stream, attr) {
-        NODEFS.setattr(stream.nfd, stream.node, attr, fs.fchmodSync, fs.futimesSync, fs.ftruncateSync, fs.fstatSync);
+        NODEFS.doSetAttr(stream.nfd, stream.node, attr, fs.fchmodSync, fs.futimesSync, fs.ftruncateSync, fs.fstatSync);
       },
       open(stream) {
         var path = NODEFS.realPath(stream.node);
@@ -262,7 +267,7 @@ addToLibrary({
       },
       close(stream) {
         NODEFS.tryFSOperation(() => {
-          if (stream.nfd && --stream.shared.refcount === 0) {
+          if (stream.nfd && !--stream.shared.refcount) {
             fs.closeSync(stream.nfd);
           }
         });
@@ -310,7 +315,7 @@ addToLibrary({
         return { ptr, allocated: true };
       },
       msync(stream, buffer, offset, length, mmapFlags) {
-        NODEFS.stream_ops.write(stream, buffer, 0, length, offset, false);
+        NODEFS.stream_ops.write(stream, buffer, 0, length, offset);
         // should we check if bytesWritten and length are the same?
         return 0;
       }

@@ -23,7 +23,7 @@ void worker_main() {
   emscripten_wasm_worker_post_function_v(0, main_thread_func);
 }
 
-char stack[1024];
+char stack[4096];
 
 int main() {
   emscripten_outf("%d", tls);

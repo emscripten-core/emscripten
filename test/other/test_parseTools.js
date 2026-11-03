@@ -1,7 +1,6 @@
 // Tests for JS library compile time helpers defined in parseTools.js
 
 addToLibrary({
-  test_receiveI64ParamAsI53__deps: i53ConversionDeps,
   test_receiveI64ParamAsI53: function({{{ defineI64Param('arg1') }}},
                                       {{{ defineI64Param('arg2') }}}) {
     out('\ntest_receiveI64ParamAsI53:');
@@ -25,7 +24,6 @@ addToLibrary({
     return 0;
   },
 
-  test_makeGetValue__deps: ['$readI53FromI64', '$readI53FromU64'],
   test_makeGetValue: function(ptr) {
     out('\ntest_makeGetValue:');
     let val;
@@ -84,7 +82,6 @@ addToLibrary({
     assert(val == 0xedcba988);
   },
 
-  test_makeSetValue__deps: ['$writeI53ToI64'],
   test_makeSetValue: function(ptr) {
     out('\ntest_makeSetValue:');
     _clearI64(ptr);

@@ -202,7 +202,7 @@ void internal__exit(int exitcode) {
   _exit(exitcode);
 }
 
-tid_t GetTid() {
+ThreadID GetTid() {
   return gettid();
 }
 

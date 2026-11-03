@@ -34,3 +34,8 @@ st_size: 6
 open(readonly, O_TRUNC)
 errno: Permission denied
 st_size: 6
+
+truncate(open read-only, 42): 0
+errno: Success
+st_size: 42
+

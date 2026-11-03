@@ -12,8 +12,6 @@ addToLibrary({
   // that fetch it behaves just like JSFile (and it reuses the code from there).
 
   _wasmfs_create_fetch_backend_js__deps: [
-    '$wasmFS$backends',
-    '$wasmFS$JSMemoryRanges',
     '_wasmfs_fetch_get_file_url',
     '_wasmfs_fetch_get_chunk_size',
   ],

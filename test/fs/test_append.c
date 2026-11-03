@@ -26,6 +26,6 @@ int main (int argc, char *argv[])
    assert(len == 13);
    fclose(fp);
 
-   puts("success");
+   puts("done");
    return 0;
 }

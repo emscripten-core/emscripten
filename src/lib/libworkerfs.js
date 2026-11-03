@@ -10,15 +10,16 @@
 
 
 addToLibrary({
-  $WORKERFS__deps: ['$FS'],
+  ...defineInternalConsts({
+    $WORKERFS_DIR_MODE: cDefs.S_IFDIR | 0o777,
+    $WORKERFS_FILE_MODE: cDefs.S_IFREG | 0o777,
+  }),
   $WORKERFS: {
-    DIR_MODE: {{{ cDefs.S_IFDIR | 0o777 }}},
-    FILE_MODE: {{{ cDefs.S_IFREG | 0o777 }}},
     reader: null,
     mount(mount) {
       assert(ENVIRONMENT_IS_WORKER);
       WORKERFS.reader ??= new FileReaderSync();
-      var root = WORKERFS.createNode(null, '/', WORKERFS.DIR_MODE, 0);
+      var root = WORKERFS.createNode(null, '/', WORKERFS_DIR_MODE, 0);
       var createdParents = {};
       function ensureParent(path) {
         // return the parent node, creating subdirs as necessary
@@ -33,7 +34,7 @@ addToLibrary({
           // are just their corresponding parts within their given path,
           // rather than incremental aggregates which include their parent's
           // directories.
-          createdParents[curr] ||= WORKERFS.createNode(parent, parts[i], WORKERFS.DIR_MODE, 0);
+          createdParents[curr] ||= WORKERFS.createNode(parent, parts[i], WORKERFS_DIR_MODE, 0);
           parent = createdParents[curr];
         }
         return parent;
@@ -43,28 +44,28 @@ addToLibrary({
         return parts[parts.length-1];
       }
       // We also accept FileList here
-      for (var file of (mount.opts["files"] || [])) {
-        WORKERFS.createNode(ensureParent(file.name), base(file.name), WORKERFS.FILE_MODE, 0, file, file.lastModifiedDate);
+      for (var file of (mount.opts['files'] || [])) {
+        WORKERFS.createNode(ensureParent(file.name), base(file.name), WORKERFS_FILE_MODE, 0, file, file.lastModifiedDate);
       }
-      for (var obj of (mount.opts["blobs"] || [])) {
-        WORKERFS.createNode(ensureParent(obj["name"]), base(obj["name"]), WORKERFS.FILE_MODE, 0, obj["data"]);
+      for (var obj of (mount.opts['blobs'] || [])) {
+        WORKERFS.createNode(ensureParent(obj['name']), base(obj['name']), WORKERFS_FILE_MODE, 0, obj['data']);
       }
-      for (var pack of (mount.opts["packages"] || [])) {
+      for (var pack of (mount.opts['packages'] || [])) {
         for (var file of pack['metadata'].files) {
           var name = file.filename.slice(1); // remove initial slash
-          WORKERFS.createNode(ensureParent(name), base(name), WORKERFS.FILE_MODE, 0, pack['blob'].slice(file.start, file.end));
+          WORKERFS.createNode(ensureParent(name), base(name), WORKERFS_FILE_MODE, 0, pack['blob'].slice(file.start, file.end));
         }
       }
       return root;
     },
-    createNode(parent, name, mode, dev, contents, mtime) {
+    createNode(parent, name, mode, dev = undefined, contents = undefined, mtime = undefined) {
       var node = FS.createNode(parent, name, mode);
       node.mode = mode;
       node.node_ops = WORKERFS.node_ops;
       node.stream_ops = WORKERFS.stream_ops;
       node.atime = node.mtime = node.ctime = (mtime || new Date).getTime();
-      assert(WORKERFS.FILE_MODE !== WORKERFS.DIR_MODE);
-      if (mode === WORKERFS.FILE_MODE) {
+      assert(WORKERFS_FILE_MODE !== WORKERFS_DIR_MODE);
+      if (mode === WORKERFS_FILE_MODE) {
         node.size = contents.size;
         node.contents = contents;
       } else {
@@ -95,7 +96,7 @@ addToLibrary({
         };
       },
       setattr(node, attr) {
-        for (const key of ["mode", "atime", "mtime", "ctime"]) {
+        for (const key of ['mode', 'atime', 'mtime', 'ctime']) {
           if (attr[key] != null) {
             node[key] = attr[key];
           }
@@ -157,5 +158,5 @@ addToLibrary({
 });
 
 if (WASMFS) {
-  error("using -lworkerfs is not currently supported in WasmFS.");
+  error('using -lworkerfs is not currently supported in WasmFS.');
 }

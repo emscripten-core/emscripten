@@ -21,6 +21,8 @@ public:
   virtual std::shared_ptr<Directory> createDirectory(mode_t mode) = 0;
   virtual std::shared_ptr<Symlink> createSymlink(std::string target) = 0;
 
+  virtual void populateRoot(Directory::Handle& lockedRoot) {}
+
   virtual ~Backend() = default;
 };
 

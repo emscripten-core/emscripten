@@ -1,9 +1,11 @@
 #ifdef __EMSCRIPTEN__
-#include <math.h>
+#include <assert.h> // for assert
+#include <math.h> // for INFINITY
 #endif
 
 #include "pthread_impl.h"
 
+#ifndef __EMSCRIPTEN__
 static int pshared_barrier_wait(pthread_barrier_t *b)
 {
 	int limit = (b->_b_limit & INT_MAX) + 1;
@@ -52,6 +54,7 @@ static int pshared_barrier_wait(pthread_barrier_t *b)
 
 	return ret;
 }
+#endif
 
 struct instance
 {
@@ -69,8 +72,13 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 	/* Trivial case: count was set at 1 */
 	if (!limit) return PTHREAD_BARRIER_SERIAL_THREAD;
 
+#ifdef __EMSCRIPTEN__
+	/* No support for process-shared barriers under emscripten */
+	assert(limit >= 0);
+#else
 	/* Process-shared barriers require a separate, inefficient wait */
 	if (limit < 0) return pshared_barrier_wait(b);
+#endif
 
 	/* Otherwise we need a lock on the barrier object */
 	while (a_swap(&b->_b_lock, 1))
@@ -87,26 +95,14 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 		while (spins-- && !inst->finished)
 			a_spin();
 		a_inc(&inst->finished);
+		while (inst->finished == 1) {
 #ifdef __EMSCRIPTEN__
-		int is_runtime_thread = emscripten_is_main_runtime_thread();
-		while (inst->finished == 1) {
-			if (is_runtime_thread) {
-				int e;
-				do {
-					// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
-					e = emscripten_futex_wait(&inst->finished, 1, 1);
-				} while (e == -ETIMEDOUT);
-			} else {
-				// Can wait in one go.
-				emscripten_futex_wait(&inst->finished, 1, INFINITY);
-			}
-		}
+			emscripten_futex_wait(&inst->finished, 1, INFINITY);
 #else
-		while (inst->finished == 1) {
 			__syscall(SYS_futex,&inst->finished,FUTEX_WAIT|FUTEX_PRIVATE,1,0) != -ENOSYS
 			|| __syscall(SYS_futex,&inst->finished,FUTEX_WAIT,1,0);
-		}
 #endif
+		}
 		return PTHREAD_BARRIER_SERIAL_THREAD;
 	}
 

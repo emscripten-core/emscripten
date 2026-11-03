@@ -248,6 +248,8 @@ int main(int argc, char *argv[])
 
     glAttachShader(program, vs);
     glAttachShader(program, fs);
+    glBindAttribLocation(program, 0, "a_position");
+    glBindAttribLocation(program, 1, "a_texCoord0");
     glLinkProgram(program);
     glGetProgramiv(program, GL_LINK_STATUS, &ok);
     assert(ok);
@@ -279,11 +281,9 @@ int main(int argc, char *argv[])
       glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, data);
     }
 
-    glBindAttribLocation(program, 0, "a_position");
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);
     glEnableVertexAttribArray(0);
 
-    glBindAttribLocation(program, 1, "a_texCoord0");
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 32, (void*)16);
     glEnableVertexAttribArray(1);
 

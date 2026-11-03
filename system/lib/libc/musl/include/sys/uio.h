@@ -46,6 +46,7 @@ ssize_t pwritev2 (int, const struct iovec *, int, off_t, int);
 #define RWF_SYNC 0x00000004
 #define RWF_NOWAIT 0x00000008
 #define RWF_APPEND 0x00000010
+#define RWF_NOAPPEND 0x00000020
 #endif
 
 #ifdef __cplusplus

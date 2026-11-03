@@ -76,7 +76,7 @@ void test_finished() {
 #endif
 }
 
-char stack[1024];
+char stack[4096];
 
 int main() {
   assert(!emscripten_current_thread_is_wasm_worker());

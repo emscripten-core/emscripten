@@ -13,12 +13,12 @@
 
 typedef struct tm TimeStruct;
 
-static void formatTM(TimeStruct const tm, char* buffer) {
+void formatTM(TimeStruct const tm, char* buffer) {
   sprintf(buffer, "%04d-%02d-%02dT%02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1,
     tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
-static bool isTimeStructEqual(const TimeStruct LHS, const TimeStruct RHS) {
+bool isTimeStructEqual(const TimeStruct LHS, const TimeStruct RHS) {
   return LHS.tm_year == RHS.tm_year && LHS.tm_mon == RHS.tm_mon && LHS.tm_mday == RHS.tm_mday &&
          LHS.tm_hour == RHS.tm_hour && LHS.tm_min == RHS.tm_min && LHS.tm_sec == RHS.tm_sec;
 }

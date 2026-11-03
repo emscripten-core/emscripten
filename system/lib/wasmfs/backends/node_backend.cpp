@@ -34,6 +34,8 @@ public:
 
   bool isOpen() { return openCount > 0; }
 
+  bool isWritable() { return openFlags == O_RDWR || openFlags == O_WRONLY; }
+
   // Attempt to open the file with the given flags, returning 0 on success or an
   // error code.
   int open(oflags_t flags) {
@@ -123,7 +125,8 @@ private:
   }
 
   int setSize(off_t size) override {
-    if (state.isOpen()) {
+    // ftruncate fails on read-only fds.
+    if (state.isOpen() && state.isWritable()) {
       return -_wasmfs_node_ftruncate(state.getFD(), size);
     }
     return -_wasmfs_node_truncate(state.path.c_str(), size);

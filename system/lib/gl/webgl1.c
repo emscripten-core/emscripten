@@ -78,9 +78,9 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *targ
     (attributes->proxyContextToMainThread == EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK && !emscripten_supports_offscreencanvas())) {
     EmscriptenWebGLContextAttributes attrs = *attributes;
     attrs.renderViaOffscreenBackBuffer = true;
-    return (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)emscripten_sync_run_in_main_runtime_thread_ptr(EM_FUNC_SIG_PPP, &emscripten_webgl_do_create_context, target, &attrs);
+    return (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)emscripten_sync_run_in_main_runtime_thread_ptr(EM_FUNC_SIG_PPP, &_emscripten_webgl_do_create_context, target, &attrs);
   } else {
-    return emscripten_webgl_do_create_context(target, attributes);
+    return _emscripten_webgl_do_create_context(target, attributes);
   }
 }
 
@@ -90,14 +90,14 @@ EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT
     return EMSCRIPTEN_RESULT_SUCCESS;
 
   if (context && GetOwningThread(context) == pthread_self()) {
-    EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current_calling_thread(context);
+    EMSCRIPTEN_RESULT r = _emscripten_webgl_make_context_current_calling_thread(context);
     if (r == EMSCRIPTEN_RESULT_SUCCESS) {
       pthread_setspecific(currentActiveWebGLContext, (void*)context);
       pthread_setspecific(currentThreadOwnsItsWebGLContext, (void*)1);
     }
     return r;
   } else {
-    EMSCRIPTEN_RESULT r = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_IP, &emscripten_webgl_make_context_current_calling_thread, context);
+    EMSCRIPTEN_RESULT r = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_IP, &_emscripten_webgl_make_context_current_calling_thread, context);
     if (r == EMSCRIPTEN_RESULT_SUCCESS) {
       pthread_setspecific(currentActiveWebGLContext, (void*)context);
       pthread_setspecific(currentThreadOwnsItsWebGLContext, (void*)0);
@@ -114,9 +114,16 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context(void) {
 EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void) {
   GL_FUNCTION_TRACE();
   if (pthread_getspecific(currentThreadOwnsItsWebGLContext))
-    return emscripten_webgl_do_commit_frame();
+    return _emscripten_webgl_do_commit_frame();
   else
-    return (EMSCRIPTEN_RESULT)emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_I, &emscripten_webgl_do_commit_frame);
+    return (EMSCRIPTEN_RESULT)emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_I, &_emscripten_webgl_do_commit_frame);
+}
+
+EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context) {
+  GL_FUNCTION_TRACE();
+  if (emscripten_webgl_get_current_context() == context)
+    emscripten_webgl_make_context_current(0);
+  return _emscripten_webgl_do_destroy_context(context);
 }
 
 static void *memdup(const void *ptr, size_t sz) {

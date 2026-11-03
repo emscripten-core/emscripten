@@ -1,8 +1,8 @@
 
 8 bits
 
-atomic<int>.is_lock_free(): true
-atomic<int> value: 5
+is_lock_free: true
+value: 5
 store/load 0: 0
 store/load 1: 1
 store/load 2: 2
@@ -57,8 +57,8 @@ operator^=: ff
 
 16 bits
 
-atomic<int>.is_lock_free(): true
-atomic<int> value: 5
+is_lock_free: true
+value: 5
 store/load 0: 0
 store/load 1: 1
 store/load 2: 2
@@ -113,8 +113,8 @@ operator^=: ffff
 
 32 bits
 
-atomic<int>.is_lock_free(): true
-atomic<int> value: 5
+is_lock_free: true
+value: 5
 store/load 0: 0
 store/load 1: 1
 store/load 2: 2
@@ -169,8 +169,8 @@ operator^=: ffffffff
 
 64 bits
 
-atomic<int>.is_lock_free(): ok
-atomic<int> value: 5
+is_lock_free: true
+value: 5
 store/load 0: 0
 store/load 1: 1
 store/load 2: 2
@@ -222,5 +222,11 @@ operator-=: 5
 operator|=: ffffffffffffffff
 operator&=: f0f0f0f0f0f0f0f0
 operator^=: ffffffffffffffff
+
+128 bits
+
+is_lock_free: false
+exchange: 1:2 -> 3:4
+
 atomic_flag: false
 done.
