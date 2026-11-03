@@ -32,7 +32,7 @@ See docs/process.md for more on how version tagging works.
   of `clang`. Previously, `.dwo` files were named `<input>.dwo` and other
   auxiliary files were written to the temporary directory. (#28045)
 - libcxx, libcxxabi, libunwind and compiler-rt were updated to LLVM 23.1.3.
-  (#28011, #28014, #28108, #28148)
+  (#28011, #28014, #28108, #28149)
 - The WasmFS OPFS backend now uses `readwrite-unsafe` access handles in
   pthreads builds, so `unlink` and `rename` fail with `EIO` on files open
   read-only. (#27937)
