@@ -9349,7 +9349,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @requires_pthreads
-  def test_pthread_dylink(self):
+  @parameterized({
+    '': (False,),
+    # ASSERTIONS=2 makes addFunction check that every function in the table
+    # is also in functionsInTableMap, which catches missing export slots in
+    # workers.
+    'assertions2': (True,),
+  })
+  def test_pthread_dylink(self, assertions2):
+    if assertions2:
+      self.set_setting('ASSERTIONS', 2)
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink.c')
 
