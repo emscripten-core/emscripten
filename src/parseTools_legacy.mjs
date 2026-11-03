@@ -4,8 +4,26 @@
  * SPDX-License-Identifier: MIT
  */
 
+import {cDefs} from './modules.mjs';
 import {warn, addToCompileTimeContext, onSettingsLoaded} from './utility.mjs';
 import {POINTER_SIZE, runIfMainThread} from './parseTools.mjs';
+
+// Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
+function buildStringArray(array) {
+  warn('use of legacy parseTools function: buildStringArray');
+  if (array.length > 0) {
+    return "['" + array.join("','") + "']";
+  } else {
+    return '[]';
+  }
+}
+
+// Legacy function that existed solely to give error message.  These are now
+// provided by the cDefs proxy object.
+function cDefine(key) {
+  warn('use of legacy parseTools function: cDefine');
+  return cDefs[key];
+}
 
 // Replaced (at least internally) with receiveI64ParamAsI53 that does
 // bounds checking.
@@ -47,6 +65,8 @@ onSettingsLoaded(() => {
 
   addToCompileTimeContext({
     Runtime,
+    buildStringArray,
+    cDefine,
     makeMalloc,
     receiveI64ParamAsDouble,
     receiveI64ParamAsI32s,
