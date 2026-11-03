@@ -244,7 +244,10 @@ class Ports:
           if ext in {'.c', '.cpp'} and not any((excluded in f) for excluded in exclude_files):
             srcs.append(os.path.join(root, f))
 
-    cflags = [*system_libs.get_base_cflags(build_dir), '-O2', '-I' + src_dir, *flags]
+    # External ports (e.g. emdawnwebgpu, contrib.glfw3) build pinned upstream
+    # releases that may rely on transitive libc++ includes removed in LLVM 23
+    # (https://github.com/llvm/llvm-project/pull/195509).
+    cflags = [*system_libs.get_base_cflags(build_dir), '-O2', '-D_LIBCPP_KEEP_TRANSITIVE_INCLUDES_LLVM23', '-I' + src_dir, *flags]
     for include in includes:
       cflags.append('-I' + include)
 
