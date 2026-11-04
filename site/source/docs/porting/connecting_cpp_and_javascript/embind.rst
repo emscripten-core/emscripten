@@ -1167,7 +1167,7 @@ Out of the box, *embind* provides converters for many standard C++ types:
 
 For convenience, *embind* provides factory functions to register
 ``std::vector<T, class Allocator=std::allocator<T>>`` (:cpp:func:`register_vector`), ``std::map<K, V, class Compare=std::less<K>, class Allocator=std::allocator<std::pair<const K, V>>>``
-(:cpp:func:`register_map`), and ``std::optional<T>`` (:cpp:func:`register_optional`) types:
+(:cpp:func:`register_map`), ``std::optional<T>`` (:cpp:func:`register_optional`), and ``std::expected<T, E>`` (:cpp:func:`register_expected`) types:
 
 .. code:: cpp
 
@@ -1175,6 +1175,8 @@ For convenience, *embind* provides factory functions to register
         register_vector<int>("VectorInt");
         register_map<int,int>("MapIntInt");
         register_optional<std::string>();
+        register_expected<int>(); // defaults error type to emscripten::val
+        register_expected<int, std::string>();
     }
 
 A full example is shown below:
@@ -1185,6 +1187,7 @@ A full example is shown below:
     #include <string>
     #include <vector>
     #include <optional>
+    #include <expected>
 
     using namespace emscripten;
 
@@ -1203,16 +1206,25 @@ A full example is shown below:
       return "hello";
     }
 
+    std::expected<int, val> returnExpectedData(bool ok) {
+      if (ok) {
+        return 42;
+      }
+      return std::unexpected(val::global("Error").new_(std::string("failed")));
+    }
+
     EMSCRIPTEN_BINDINGS(module) {
       function("returnVectorData", &returnVectorData);
       function("returnMapData", &returnMapData);
       function("returnOptionalData", &returnOptionalData);
+      function("returnExpectedData", &returnExpectedData);
 
-      // register bindings for std::vector<int>, std::map<int, std::string>, and
-      // std::optional<std::string>.
+      // register bindings for std::vector<int>, std::map<int, std::string>,
+      // std::optional<std::string>, and std::expected<int, val>.
       register_vector<int>("vector<int>");
       register_map<int, std::string>("map<int, string>");
       register_optional<std::string>();
+      register_expected<int>();
     }
 
 
@@ -1267,6 +1279,19 @@ The following JavaScript can be used to interact with the above C++.
     if (optional !== undefined) {
         console.log(optional);
     }
+
+    // Expected values return the unwrapped value or throw the error.
+    console.log(Module['returnExpectedData'](true)); // 42
+    try {
+        Module['returnExpectedData'](false);
+    } catch (e) {
+        console.error(e); // Error: failed
+    }
+
+Custom expected or result types (for example, in C++17 or C++20 codebases) can
+also be registered with :cpp:func:`register_expected` by specializing
+``emscripten::expected_trait`` with ``value_type``, ``error_type``,
+``has_value``, ``get_value``, and ``get_error``.
 
 
 TypeScript Definitions

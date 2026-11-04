@@ -1428,6 +1428,186 @@ struct StructWithOptionalProperty {
 };
 void embind_test_optional_property(const StructWithOptionalProperty &arg) {
 }
+
+template<typename T, typename E = val>
+struct CustomExpected {
+  std::optional<T> value;
+  std::optional<E> error;
+
+  static CustomExpected ok(T v) {
+    CustomExpected res;
+    res.value.emplace(std::move(v));
+    return res;
+  }
+
+  static CustomExpected err(E e) {
+    CustomExpected res;
+    res.error.emplace(std::move(e));
+    return res;
+  }
+};
+
+template<typename E>
+struct CustomExpected<void, E> {
+  bool ok_ = false;
+  std::optional<E> error;
+
+  static CustomExpected ok() {
+    CustomExpected res;
+    res.ok_ = true;
+    return res;
+  }
+
+  static CustomExpected err(E e) {
+    CustomExpected res;
+    res.ok_ = false;
+    res.error.emplace(std::move(e));
+    return res;
+  }
+};
+
+namespace emscripten {
+template<typename T, typename E>
+struct expected_trait<CustomExpected<T, E>> {
+  using value_type = T;
+  using error_type = E;
+
+  static bool has_value(const CustomExpected<T, E>& v) {
+    if constexpr (std::is_void_v<T>) {
+      return v.ok_;
+    } else {
+      return v.value.has_value();
+    }
+  }
+
+  static decltype(auto) get_value(CustomExpected<T, E>&& v) {
+    if constexpr (!std::is_void_v<T>) {
+      return *std::move(v.value);
+    }
+  }
+
+  static decltype(auto) get_value(const CustomExpected<T, E>& v) {
+    if constexpr (!std::is_void_v<T>) {
+      return *v.value;
+    }
+  }
+
+  static decltype(auto) get_error(CustomExpected<T, E>&& v) {
+    return *std::move(v.error);
+  }
+
+  static decltype(auto) get_error(const CustomExpected<T, E>& v) {
+    return *v.error;
+  }
+};
+} // namespace emscripten
+
+CustomExpected<int> embind_test_return_expected_int(bool succeed) {
+  if (succeed) {
+    return CustomExpected<int>::ok(42);
+  }
+  return CustomExpected<int>::err(val::global("Error").new_(std::string("int error")));
+}
+
+CustomExpected<void> embind_test_return_expected_void(bool succeed) {
+  if (succeed) {
+    return CustomExpected<void>::ok();
+  }
+  return CustomExpected<void>::err(val::global("Error").new_(std::string("void error")));
+}
+
+CustomExpected<std::string, std::string> embind_test_return_expected_string(bool succeed) {
+  if (succeed) {
+    return CustomExpected<std::string, std::string>::ok("hello");
+  }
+  return CustomExpected<std::string, std::string>::err("string error");
+}
+
+CustomExpected<SmallClass> embind_test_return_expected_small_class(bool succeed) {
+  if (succeed) {
+    return CustomExpected<SmallClass>::ok(SmallClass());
+  }
+  return CustomExpected<SmallClass>::err(val::global("Error").new_(std::string("small class error")));
+}
+
+CustomExpected<SmallClass*> embind_test_return_expected_small_class_pointer(bool succeed) {
+  if (succeed) {
+    return CustomExpected<SmallClass*>::ok(new SmallClass());
+  }
+  return CustomExpected<SmallClass*>::err(val::global("Error").new_(std::string("pointer error")));
+}
+
+CustomExpected<std::unique_ptr<SmallClass>> embind_test_return_expected_unique_ptr(bool succeed) {
+  if (succeed) {
+    return CustomExpected<std::unique_ptr<SmallClass>>::ok(std::make_unique<SmallClass>());
+  }
+  return CustomExpected<std::unique_ptr<SmallClass>>::err(val::global("Error").new_(std::string("unique_ptr error")));
+}
+
+class ExpectedMoveOnly {
+public:
+  explicit ExpectedMoveOnly(int x) : x_(x) {}
+  ExpectedMoveOnly(const ExpectedMoveOnly&) = delete;
+  ExpectedMoveOnly(ExpectedMoveOnly&&) = default;
+  int getX() const { return x_; }
+private:
+  int x_;
+};
+
+CustomExpected<ExpectedMoveOnly> embind_test_return_expected_move_only(bool succeed) {
+  if (succeed) {
+    return CustomExpected<ExpectedMoveOnly>::ok(ExpectedMoveOnly(99));
+  }
+  return CustomExpected<ExpectedMoveOnly>::err(val::global("Error").new_(std::string("move_only error")));
+}
+
+CustomExpected<int> embind_test_expected_cleanup(std::string arg, SmallClass by_val, val on_destroy) {
+  struct RaiiGuard {
+    std::string arg;
+    int member;
+    val cb;
+    ~RaiiGuard() {
+      cb(arg, member);
+    }
+  } guard{arg, by_val.member, on_destroy};
+  return CustomExpected<int>::err(val::global("Error").new_(std::string("cleanup error")));
+}
+
+class ExpectedClass {
+public:
+  explicit ExpectedClass(int x) : x_(x) {}
+
+  static CustomExpected<ExpectedClass*> create(bool succeed, int x) {
+    if (succeed) {
+      return CustomExpected<ExpectedClass*>::ok(new ExpectedClass(x));
+    }
+    return CustomExpected<ExpectedClass*>::err(val::global("Error").new_(std::string("ctor error")));
+  }
+
+  CustomExpected<int> getValue(bool succeed) const {
+    if (succeed) {
+      return CustomExpected<int>::ok(x_);
+    }
+    return CustomExpected<int>::err(val::global("Error").new_(std::string("method error")));
+  }
+
+  static CustomExpected<int> staticGetValue(bool succeed, int x) {
+    if (succeed) {
+      return CustomExpected<int>::ok(x * 2);
+    }
+    return CustomExpected<int>::err(val::global("Error").new_(std::string("static method error")));
+  }
+
+  CustomExpected<int> getProp() const {
+    if (x_ >= 0) {
+      return CustomExpected<int>::ok(x_);
+    }
+    return CustomExpected<int>::err(val::global("Error").new_(std::string("prop error")));
+  }
+
+private:
+  int x_;
+};
 #endif
 
 val embind_test_getglobal() {
@@ -2487,6 +2667,30 @@ EMSCRIPTEN_BINDINGS(tests) {
       .field("y", &StructWithOptionalProperty::y)
   ;
   function("embind_test_optional_property", &embind_test_optional_property);
+
+  register_expected<CustomExpected<int>>();
+  register_expected<CustomExpected<void>>();
+  register_expected<CustomExpected<std::string, std::string>>();
+  register_expected<CustomExpected<SmallClass>>();
+  register_expected<CustomExpected<SmallClass*>>();
+  register_expected<CustomExpected<std::unique_ptr<SmallClass>>>();
+  register_expected<CustomExpected<ExpectedMoveOnly>>();
+  register_expected<CustomExpected<ExpectedClass*>>();
+  class_<ExpectedMoveOnly>("ExpectedMoveOnly")
+      .function("getX", &ExpectedMoveOnly::getX);
+  function("embind_test_return_expected_int", &embind_test_return_expected_int);
+  function("embind_test_return_expected_void", &embind_test_return_expected_void);
+  function("embind_test_return_expected_string", &embind_test_return_expected_string);
+  function("embind_test_return_expected_small_class", &embind_test_return_expected_small_class);
+  function("embind_test_return_expected_small_class_pointer", &embind_test_return_expected_small_class_pointer);
+  function("embind_test_return_expected_unique_ptr", &embind_test_return_expected_unique_ptr);
+  function("embind_test_return_expected_move_only", &embind_test_return_expected_move_only, return_value_policy::take_ownership());
+  function("embind_test_expected_cleanup", &embind_test_expected_cleanup);
+  class_<ExpectedClass>("ExpectedClass")
+      .constructor(&ExpectedClass::create)
+      .function("getValue", &ExpectedClass::getValue)
+      .class_function("staticGetValue", &ExpectedClass::staticGetValue)
+      .property("prop", &ExpectedClass::getProp);
 #endif
 
   register_map<std::string, int>("StringIntMap");

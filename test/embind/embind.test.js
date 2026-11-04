@@ -1347,6 +1347,142 @@ module({
         });
     });
 
+    BaseFixture.extend("expected", function() {
+        if (!("embind_test_return_expected_int" in cm)) {
+            return;
+        }
+        test("expected works with returning int or throwing Error", function() {
+            assert.equal(0, cm.count_emval_handles());
+            assert.equal(42, cm.embind_test_return_expected_int(true));
+            var err = assert.throws(Error, function() {
+                cm.embind_test_return_expected_int(false);
+            });
+            assert.equal("int error", err.message);
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("expected works with returning void or throwing Error", function() {
+            assert.equal(0, cm.count_emval_handles());
+            assert.equal(undefined, cm.embind_test_return_expected_void(true));
+            var err = assert.throws(Error, function() {
+                cm.embind_test_return_expected_void(false);
+            });
+            assert.equal("void error", err.message);
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("expected works with non-val error type (std::string)", function() {
+            assert.equal(0, cm.count_emval_handles());
+            assert.equal("hello", cm.embind_test_return_expected_string(true));
+            var caught;
+            try {
+                cm.embind_test_return_expected_string(false);
+            } catch (e) {
+                caught = e;
+            }
+            assert.equal("string error", caught);
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("expected works with returning SmallClass by value", function() {
+            assert.equal(0, cm.count_emval_handles());
+            var sc = cm.embind_test_return_expected_small_class(true);
+            assert.equal(7, sc.member);
+            sc.delete();
+            var err = assert.throws(Error, function() {
+                cm.embind_test_return_expected_small_class(false);
+            });
+            assert.equal("small class error", err.message);
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("expected works with returning SmallClass pointer", function() {
+            assert.equal(0, cm.count_emval_handles());
+            var sc = cm.embind_test_return_expected_small_class_pointer(true);
+            assert.equal(7, sc.member);
+            sc.delete();
+            var err = assert.throws(Error, function() {
+                cm.embind_test_return_expected_small_class_pointer(false);
+            });
+            assert.equal("pointer error", err.message);
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("expected works with returning unique_ptr", function() {
+            assert.equal(0, cm.count_emval_handles());
+            var sc = cm.embind_test_return_expected_unique_ptr(true);
+            assert.equal(7, sc.member);
+            sc.delete();
+            var err = assert.throws(Error, function() {
+                cm.embind_test_return_expected_unique_ptr(false);
+            });
+            assert.equal("unique_ptr error", err.message);
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("expected works with move-only class and take_ownership policy", function() {
+            assert.equal(0, cm.count_emval_handles());
+            var mo = cm.embind_test_return_expected_move_only(true);
+            assert.equal(99, mo.getX());
+            mo.delete();
+            var err = assert.throws(Error, function() {
+                cm.embind_test_return_expected_move_only(false);
+            });
+            assert.equal("move_only error", err.message);
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("expected runs C++ and JS destructors before throwing in JS", function() {
+            assert.equal(0, cm.count_emval_handles());
+            var destroyedArg = null;
+            var destroyedMember = null;
+            var small = new cm.SmallClass();
+            var err = assert.throws(Error, function() {
+                cm.embind_test_expected_cleanup("test_arg", small, function(arg, member) {
+                    destroyedArg = arg;
+                    destroyedMember = member;
+                });
+            });
+            small.delete();
+            assert.equal("cleanup error", err.message);
+            assert.equal("test_arg", destroyedArg);
+            assert.equal(7, destroyedMember);
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("expected works with class constructor, method, static method, and property", function() {
+            assert.equal(0, cm.count_emval_handles());
+            var ctorErr = assert.throws(Error, function() {
+                new cm.ExpectedClass(false, 10);
+            });
+            assert.equal("ctor error", ctorErr.message);
+
+            var inst = new cm.ExpectedClass(true, 10);
+            assert.equal(10, inst.getValue(true));
+            var methodErr = assert.throws(Error, function() {
+                inst.getValue(false);
+            });
+            assert.equal("method error", methodErr.message);
+
+            assert.equal(20, cm.ExpectedClass.staticGetValue(true, 10));
+            var staticErr = assert.throws(Error, function() {
+                cm.ExpectedClass.staticGetValue(false, 10);
+            });
+            assert.equal("static method error", staticErr.message);
+
+            assert.equal(10, inst.prop);
+            inst.delete();
+
+            var negInst = new cm.ExpectedClass(true, -1);
+            var propErr = assert.throws(Error, function() {
+                return negInst.prop;
+            });
+            assert.equal("prop error", propErr.message);
+            negInst.delete();
+            assert.equal(0, cm.count_emval_handles());
+        });
+    });
+
     BaseFixture.extend("functors", function() {
         test("can get and call function ptrs", function() {
             var ptr = cm.emval_test_get_function_ptr();
