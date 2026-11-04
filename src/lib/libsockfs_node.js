@@ -313,16 +313,17 @@ var NodeSockFSLibrary = {
       });
       return socket;
     },
-    // node and libuv refuse to connect an already-connected socket, and the
-    // disconnect in between (connect(AF_UNSPEC)) releases a port the user did
-    // not bind as nonzero, so the next connect would auto-bind a new one.
-    // Instead, move to a fresh socket bound to the old port (and to the address
-    // the user bound, so an unlocked address stays unlocked).
+    // node and libuv refuse to connect an already-connected socket, and on
+    // Linux the disconnect in between (connect(AF_UNSPEC)) releases a port the
+    // user did not bind as nonzero, so the next connect would auto-bind a new
+    // one. BSD kernels keep the port. When it was released, move to a fresh
+    // socket bound to the old port (and to the address the user bound, so an
+    // unlocked address stays unlocked).
     reconnectDgram(sock, addr, port) {
       var old = sock.udp;
       old.disconnect();
       sock.udpConnected = false;
-      if (!sock.udpPortLocked) {
+      if (old.address().port !== sock.sport) {
         var udp = nodeSockHelpers.createDgramSocket(sock);
         var wild = sock.family === {{{ cDefs.AF_INET6 }}} ? '::' : '0.0.0.0';
         try {
@@ -334,9 +335,6 @@ var NodeSockFSLibrary = {
         old.close();
         sock.udp = udp;
         nodeSockHelpers.applyMemberships(sock);
-        // The swapped-in socket bound an explicit nonzero port, which the
-        // kernel keeps across a disconnect, so later re-connects need no swap.
-        sock.udpPortLocked = true;
       }
       sock.udp.connectSync(port, addr);
     },
@@ -638,7 +636,6 @@ var NodeSockFSLibrary = {
           sock.saddr = a.address;
           sock.sport = a.port;
           sock.udpBindAddr = addr;
-          sock.udpPortLocked = port !== 0;
         } else {
           var o = sock.opts ?? {};
           var uc = nodeSockHelpers.udpWrap.constants;
