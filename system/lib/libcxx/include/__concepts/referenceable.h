@@ -6,20 +6,25 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef _LIBCPP___TYPE_TRAITS_DEPENDENT_TYPE_H
-#define _LIBCPP___TYPE_TRAITS_DEPENDENT_TYPE_H
+#ifndef _LIBCPP___TYPE_TRAITS_IS_REFERENCEABLE_H
+#define _LIBCPP___TYPE_TRAITS_IS_REFERENCEABLE_H
 
 #include <__config>
+#include <__type_traits/void_t.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
 #endif
 
+#if _LIBCPP_STD_VER >= 20
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-template <class _Tp, bool>
-struct __dependent_type : public _Tp {};
+template <class _Tp>
+concept __referenceable = requires { typename __void_t<_Tp&>; };
 
 _LIBCPP_END_NAMESPACE_STD
 
-#endif // _LIBCPP___TYPE_TRAITS_DEPENDENT_TYPE_H
+#endif
+
+#endif // _LIBCPP___TYPE_TRAITS_IS_REFERENCEABLE_H

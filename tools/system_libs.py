@@ -1650,6 +1650,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
     '-Oz',
     '-D_LIBCXXABI_USE_FUTEX',
     '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCPP_AVAILABILITY_MINIMUM_HEADER_VERSION=23',
     '-D_LIBCXXABI_BUILDING_LIBRARY',
     '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
     '-std=c++23',
@@ -1724,12 +1725,14 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     '-Oz',
     '-DLIBCXX_BUILDING_LIBCXXABI=1',
     '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCPP_AVAILABILITY_MINIMUM_HEADER_VERSION=23',
     '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+    '-D_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER',
     # TODO(sbc): clang recently introduced this new warning which is triggered
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
-    '-std=c++23',
+    '-std=c++26',
     '-DLIBC_NAMESPACE=__llvm_libc',
   ]
 
