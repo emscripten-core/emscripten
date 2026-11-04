@@ -389,19 +389,21 @@ var NodeSockFSLibrary = {
     setMembership(sock, add, group, iface) {
       var m = sock.memberships ??= new Map();
       var key = group + '%' + (iface ?? '');
-      // A leave that names no interface drops the group from whichever
-      // interface joined it, as the kernel does.
-      if (!add && iface === undefined && !m.has(key)) {
+      if (add && m.has(key)) return {{{ cDefs.EADDRINUSE }}};
+      if (!add && !m.has(key)) {
+        // Which join a leave naming no interface matches is the kernel's call:
+        // Linux only looks on the interface the group routes to, BSD anywhere.
+        if (iface !== undefined || !sock.udpBound) return {{{ cDefs.EADDRNOTAVAIL }}};
+        var err = nodeSockHelpers.udpMembership(sock, group, undefined, false);
+        if (err) return err;
         for (var [k, v] of m) {
           if (v[0] === group) {
-            key = k;
-            iface = v[1];
+            m.delete(k);
             break;
           }
         }
+        return 0;
       }
-      if (add && m.has(key)) return {{{ cDefs.EADDRINUSE }}};
-      if (!add && !m.has(key)) return {{{ cDefs.EADDRNOTAVAIL }}};
       if (sock.udpBound) {
         var err = nodeSockHelpers.udpMembership(sock, group, iface, add);
         if (err) return err;
@@ -965,13 +967,13 @@ var NodeSockFSLibrary = {
           case 36: { // IP_DROP_MEMBERSHIP
             if (sock.type !== {{{ cDefs.SOCK_DGRAM }}}) return -{{{ cDefs.EPROTO }}};
             if (optlen < 8) return -{{{ cDefs.EINVAL }}};
+            // The kernel's first check, needed here as a join before bind()
+            // reaches the kernel only later.
+            if (optname === 35 && ({{{ makeGetValue('optval', 0, 'u8') }}} & 0xf0) !== 0xe0) return -{{{ cDefs.EINVAL }}}; // 224.0.0.0/4
             var iface = {{{ makeGetValue('optval', 4, 'i32') }}};
             // node selects the interface by address only, so an ip_mreqn that
             // names it by index alone cannot be honored.
             if (!iface && optlen >= 12 && {{{ makeGetValue('optval', 8, 'i32') }}}) return -{{{ cDefs.ENODEV }}};
-            // The kernel's first check, needed here as a join before bind()
-            // reaches the kernel only later.
-            if (optname === 35 && (val & 0xf0) !== 0xe0) return -{{{ cDefs.EINVAL }}}; // 224.0.0.0/4
             return -nodeSockHelpers.setMembership(sock, optname === 35, inetNtop4(val), iface ? inetNtop4(iface) : undefined);
           }
         }
@@ -994,11 +996,11 @@ var NodeSockFSLibrary = {
           case 21: { // IPV6_LEAVE_GROUP
             if (sock.type !== {{{ cDefs.SOCK_DGRAM }}}) return -{{{ cDefs.EPROTO }}};
             if (optlen < 20) return -{{{ cDefs.EINVAL }}};
+            // As for IP_ADD_MEMBERSHIP above, though here a leave is refused too.
+            if ({{{ makeGetValue('optval', 0, 'u8') }}} !== 0xff) return -{{{ cDefs.EINVAL }}}; // ff00::/8
             // node selects the interface by name and has no index-to-name
             // lookup, so only the default interface (index 0) is supported.
             if ({{{ makeGetValue('optval', 16, 'i32') }}}) return -{{{ cDefs.ENODEV }}};
-            // As for IP_ADD_MEMBERSHIP above.
-            if (optname === 20 && {{{ makeGetValue('optval', 0, 'u8') }}} !== 0xff) return -{{{ cDefs.EINVAL }}}; // ff00::/8
             var src32 = {{{ getHeapOffset('optval', 'i32') }}};
             var group = inetNtop6(HEAP32.subarray(src32, src32 + 4));
             return -nodeSockHelpers.setMembership(sock, optname === 20, group, undefined);

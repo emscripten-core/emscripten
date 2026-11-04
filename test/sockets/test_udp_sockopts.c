@@ -13,9 +13,9 @@
  * with EADDRINUSE. Finally the set-only IP_ADD_MEMBERSHIP / IP_DROP_MEMBERSHIP
  * and IPv6 equivalents reach the kernel: a duplicate join fails with
  * EADDRINUSE, leaving an unjoined group with EADDRNOTAVAIL, a join made before
- * bind() is applied once bound, a leave that names no interface finds the
- * group, and a join the kernel rejects leaves nothing behind. Plain POSIX, also
- * runs natively.
+ * bind() is applied once bound, a leave that names no interface gets the
+ * kernel's answer, and a join the kernel rejects leaves nothing behind. Plain
+ * POSIX, also runs natively.
  */
 
 #include <arpa/inet.h>
@@ -119,20 +119,33 @@ void check_membership(void) {
   assert(set4(fd, IP_DROP_MEMBERSHIP, "227.1.1.100") == 0);
   close(fd);
 
-  // A leave that names no interface matches a join on a specific one.
+  // Which join a leave naming no interface matches is up to the kernel: on BSD
+  // any, on Linux only one on the interface the group routes to (ENODEV if there
+  // is no route). Either way the join stays held exactly when the leave failed.
   fd = socket(AF_INET, SOCK_DGRAM, 0);
   assert(bind_any(fd, 0) == 0);
   assert(set4(fd, IP_ADD_MEMBERSHIP, "227.1.1.100") == 0);
-  assert(set4_on(fd, IP_DROP_MEMBERSHIP, "227.1.1.100", NULL) == 0);
-  assert(set4_on(fd, IP_DROP_MEMBERSHIP, "227.1.1.100", NULL) == EADDRNOTAVAIL);
+  int left = set4_on(fd, IP_DROP_MEMBERSHIP, "227.1.1.100", NULL);
+  assert(left == 0 || left == EADDRNOTAVAIL || left == ENODEV);
+  assert(set4(fd, IP_DROP_MEMBERSHIP, "227.1.1.100") == (left ? 0 : EADDRNOTAVAIL));
   close(fd);
 
-  // A non-multicast group is refused even before bind().
+  // A non-multicast group is refused even before bind(), and ahead of any
+  // interface check. IPv6 refuses a leave of one too.
   fd = socket(AF_INET, SOCK_DGRAM, 0);
   assert(set4(fd, IP_ADD_MEMBERSHIP, "10.0.0.1") == EINVAL);
+  struct ip_mreqn mn = {.imr_ifindex = 9999};
+  inet_pton(AF_INET, "10.0.0.1", &mn.imr_multiaddr);
+  assert(setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mn, sizeof(mn)) == -1);
+  assert(errno == EINVAL);
   close(fd);
   fd = socket(AF_INET6, SOCK_DGRAM, 0);
   assert(set6(fd, IPV6_JOIN_GROUP, "::1") == EINVAL);
+  assert(set6(fd, IPV6_LEAVE_GROUP, "::1") == EINVAL);
+  struct ipv6_mreq m6 = {.ipv6mr_interface = 9999};
+  inet_pton(AF_INET6, "::1", &m6.ipv6mr_multiaddr);
+  assert(setsockopt(fd, IPPROTO_IPV6, IPV6_JOIN_GROUP, &m6, sizeof(m6)) == -1);
+  assert(errno == EINVAL);
   close(fd);
 
   // A join on an interface address no host has (192.0.2.0/24 is reserved for
