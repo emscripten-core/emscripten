@@ -245,11 +245,6 @@ class Ports:
             srcs.append(os.path.join(root, f))
 
     cflags = [*system_libs.get_base_cflags(build_dir), '-O2', '-I' + src_dir, *flags]
-    # emdawnwebgpu, contrib.glfw3, and cocos2d currently don't build without
-    # -D_LIBCPP_KEEP_TRANSITIVE_INCLUDES_LLVM23 after LLVM 23 removed transitive
-    # includes (https://github.com/llvm/llvm-project/pull/195509).
-    # TODO Update these ports and remove this flag.
-    cflags += ['-D_LIBCPP_KEEP_TRANSITIVE_INCLUDES_LLVM23']
 
     for include in includes:
       cflags.append('-I' + include)
@@ -300,7 +295,7 @@ class Ports:
 
   @staticmethod
   def fetch_project(name, url, sha512hash=None):
-    # To compute the sha512 hash, run `curl URL | sha512sum`.
+    # To compute the sha512 hash, run `curl -sSfL URL | sha512sum`.
     fullname = Ports.get_dir(name)
 
     if name not in Ports.name_cache: # only mention each port once in log
