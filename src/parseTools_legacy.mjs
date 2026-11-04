@@ -5,7 +5,7 @@
  */
 
 import {warn, addToCompileTimeContext, onSettingsLoaded} from './utility.mjs';
-import {POINTER_SIZE, runIfMainThread} from './parseTools.mjs';
+import {POINTER_SIZE, POINTER_TYPE, runIfMainThread} from './parseTools.mjs';
 
 // Replaced (at least internally) with receiveI64ParamAsI53 that does
 // bounds checking.
@@ -45,7 +45,15 @@ onSettingsLoaded(() => {
     QUANTUM_SIZE: POINTER_SIZE,
   };
 
+  const POINTER_BITS = POINTER_SIZE * 8;
+  const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+  const POINTER_SHIFT = MEMORY64 ? '3' : '2';
+
   addToCompileTimeContext({
+    POINTER_BITS,
+    POINTER_HEAP,
+    POINTER_SHIFT,
+    POINTER_TYPE,
     Runtime,
     makeMalloc,
     receiveI64ParamAsDouble,
