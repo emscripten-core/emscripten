@@ -4722,10 +4722,10 @@ res64 - external 64\n''', header='''\
 
   @with_dylink_reversed
   @parameterized({
-    'libcxx': ('libc,libc++,libmalloc,libc++abi,libclang_rt.builtins',),
+    'libcxx': ('libc,libc++,libmalloc,libc++abi,libemcc,libclang_rt.builtins',),
     'all': ('1',),
-    'missing': ('libc,libmalloc,libc++abi,libclang_rt.builtins', False, False, False),
-    'missing_assertions': ('libc,libmalloc,libc++abi,libclang_rt.builtins', False, False, True),
+    'missing': ('libc,libmalloc,libc++abi,libemcc,libclang_rt.builtins', False, False, False),
+    'missing_assertions': ('libc,libmalloc,libc++abi,libemcc,libclang_rt.builtins', False, False, True),
   })
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_dylink_syslibs(self, syslibs, expect_pass=True, with_reversed=True, assertions=True):
