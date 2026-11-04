@@ -88,9 +88,9 @@ addToLibrary({
     mkdir(...args) { fs.mkdirSync(...args); },
     symlink(...args) { fs.symlinkSync(...args); },
     link(oldpath, newpath, flags) {
-      // AT_SYMLINK_FOLLOW (0x400): dereference oldpath if it is a symlink,
+      // AT_SYMLINK_FOLLOW: dereference oldpath if it is a symlink,
       // since node's link(2) links to the symlink itself by default.
-      if (flags & 0x400) {
+      if (flags & AT_SYMLINK_FOLLOW) {
         oldpath = fs.realpathSync(oldpath);
       }
       fs.linkSync(oldpath, newpath);
@@ -125,7 +125,7 @@ addToLibrary({
       var defaults = {
         fsid: 42,
         flags: 2,
-        namelen: 255,
+        namelen: NAME_MAX,
       }
       return Object.assign(defaults, fs.statfsSync(path));
     },
@@ -187,7 +187,7 @@ addToLibrary({
     },
     open(path, flags, mode) {
       flags = FS_modeStringToFlags(flags);
-      var pathTruncated = path.split('/').map((s) => s.slice(0, 255)).join('/');
+      var pathTruncated = path.split('/').map((s) => s.slice(0, NAME_MAX)).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);
       if (flags & O_DIRECTORY && !st.isDirectory()) {

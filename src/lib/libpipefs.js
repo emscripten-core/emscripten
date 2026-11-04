@@ -16,7 +16,7 @@ addToLibrary({
     mount(mount) {
       // Do not pollute the real root directory or its child nodes with pipes
       // Looks like it is OK to create another pseudo-root node not linked to the FS.root hierarchy this way
-      return FS.createNode(null, '/', S_IFDIR | 0o777, 0);
+      return FS.createNode(null, '/', S_IFDIR | S_IRWXUGO, 0);
     },
     createPipe() {
       var pipe = {
@@ -86,7 +86,7 @@ addToLibrary({
         return {
           dev: 14,
           ino: node.id,
-          mode: 0o10600,
+          mode: S_IFIFO | S_IRUSR | S_IWUSR,
           nlink: 1,
           uid: 0,
           gid: 0,

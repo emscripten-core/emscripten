@@ -152,13 +152,13 @@ var LibraryPThread = {
 
     threadStatusToString(threadStatus) {
       switch (threadStatus) {
-        case 0: return 'not yet started';
-        case 1: return 'running';
-        case 2: return 'sleeping';
-        case 3: return 'waiting for a futex';
-        case 4: return 'waiting for a mutex';
-        case 5: return 'waiting for a proxied operation';
-        case 6: return 'finished execution';
+        case EM_THREAD_STATUS_NOTSTARTED: return 'not yet started';
+        case EM_THREAD_STATUS_RUNNING: return 'running';
+        case EM_THREAD_STATUS_SLEEPING: return 'sleeping';
+        case EM_THREAD_STATUS_WAITFUTEX: return 'waiting for a futex';
+        case EM_THREAD_STATUS_WAITMUTEX: return 'waiting for a mutex';
+        case EM_THREAD_STATUS_WAITPROXY: return 'waiting for a proxied operation';
+        case EM_THREAD_STATUS_FINISHED: return 'finished execution';
         default: return 'unknown (corrupt?!)';
       }
     },

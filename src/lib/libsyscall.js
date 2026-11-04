@@ -796,7 +796,7 @@ var SyscallsLibrary = {
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, '(idx + 1) * struct_size', 'i64') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
-      stringToUTF8(name, dirp + pos + {{{ C_STRUCTS.dirent.d_name }}}, 256);
+      stringToUTF8(name, dirp + pos + {{{ C_STRUCTS.dirent.d_name }}}, NAME_MAX + 1);
       pos += struct_size;
     }
     FS.llseek(stream, idx * struct_size, SEEK_SET);

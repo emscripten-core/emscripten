@@ -1017,9 +1017,9 @@ var LibraryDylink = {
     }
     var rpathResolved = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
     return withStackSave(() => {
-      // In dylink.c we use: `char buf[2*NAME_MAX+2];` and NAME_MAX is 255.
-      // So we use the same size here.
-      const bufSize = 2*255 + 2;
+      // In dylink.c we use: `char buf[2*NAME_MAX+2];`, so we use the same size
+      // here.
+      const bufSize = 2*NAME_MAX + 2;
       var buf = stackAlloc(bufSize);
       var rpathC = stringToUTF8OnStack(rpathResolved.join(':'));
       var libNameC = stringToUTF8OnStack(libName);

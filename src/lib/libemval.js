@@ -53,18 +53,17 @@ var LibraryEmVal = {
           throwBindingError(`Cannot use deleted val. handle = ${handle}`);
       }
   #if ASSERTIONS
-      // handle 2 is supposed to be `undefined`.
-      assert(handle === 2 || emval_handles[handle] !== undefined && handle % 2 === 0, `invalid handle: ${handle}`);
+      assert(handle === {{{ cDefs['internal::_EMVAL_UNDEFINED'] }}} || emval_handles[handle] !== undefined && handle % 2 === 0, `invalid handle: ${handle}`);
   #endif
       return emval_handles[handle];
     },
 
     toHandle: (value) => {
       switch (value) {
-        case undefined: return 2;
-        case null: return 4;
-        case true: return 6;
-        case false: return 8;
+        case undefined: return {{{ cDefs['internal::_EMVAL_UNDEFINED'] }}};
+        case null: return {{{ cDefs['internal::_EMVAL_NULL'] }}};
+        case true: return {{{ cDefs['internal::_EMVAL_TRUE'] }}};
+        case false: return {{{ cDefs['internal::_EMVAL_FALSE'] }}};
         default:{
           const handle = emval_freelist.pop() || emval_handles.length;
           emval_handles[handle] = value;

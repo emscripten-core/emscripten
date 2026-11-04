@@ -26,43 +26,43 @@ var LibraryGLEW = {
     extensions: null,
 
     error: {
-      0:null, // GLEW_OK || GLEW_NO_ERROR
-      1:null, // GLEW_ERROR_NO_GL_VERSION
-      2:null, // GLEW_ERROR_GL_VERSION_10_ONLY
-      3:null, // GLEW_ERROR_GLX_VERSION_11_ONLY
+      [cDefs.GLEW_OK]: null, // GLEW_OK || GLEW_NO_ERROR
+      [cDefs.GLEW_ERROR_NO_GL_VERSION]: null,
+      [cDefs.GLEW_ERROR_GL_VERSION_10_ONLY]: null,
+      [cDefs.GLEW_ERROR_GLX_VERSION_11_ONLY]: null,
 
-      4:null, // GLEW_ERROR_NOT_GLES_VERSION
-      5:null, // GLEW_ERROR_GLES_VERSION
-      6:null, // GLEW_ERROR_NO_EGL_VERSION
-      7:null, // GLEW_ERROR_EGL_VERSION_10_ONLY
+      [cDefs.GLEW_ERROR_NOT_GLES_VERSION]: null,
+      [cDefs.GLEW_ERROR_GLES_VERSION]: null,
+      [cDefs.GLEW_ERROR_NO_EGL_VERSION]: null,
+      [cDefs.GLEW_ERROR_EGL_VERSION_10_ONLY]: null,
 
-      8:null, // Unknown error
+      8: null, // Unknown error
     },
 
     version: {
-      1:null, // GLEW_VERSION
-      2:null, // GLEW_VERSION_MAJOR
-      3:null, // GLEW_VERSION_MINOR
-      4:null, // GLEW_VERSION_MICRO
+      [cDefs.GLEW_VERSION]: null,
+      [cDefs.GLEW_VERSION_MAJOR]: null,
+      [cDefs.GLEW_VERSION_MINOR]: null,
+      [cDefs.GLEW_VERSION_MICRO]: null,
     },
 
     errorStringConstantFromCode(error) {
       if (GLEW.isLinaroFork) {
         switch (error) {
-          case 4:return 'OpenGL ES lib expected, found OpenGL lib'; // GLEW_ERROR_NOT_GLES_VERSION
-          case 5:return 'OpenGL lib expected, found OpenGL ES lib'; // GLEW_ERROR_GLES_VERSION
-          case 6:return 'Missing EGL version'; // GLEW_ERROR_NO_EGL_VERSION
-          case 7:return 'EGL 1.1 and up are supported'; // GLEW_ERROR_EGL_VERSION_10_ONLY
-          default:break;
+          case GLEW_ERROR_NOT_GLES_VERSION: return 'OpenGL ES lib expected, found OpenGL lib';
+          case GLEW_ERROR_GLES_VERSION: return 'OpenGL lib expected, found OpenGL ES lib';
+          case GLEW_ERROR_NO_EGL_VERSION: return 'Missing EGL version';
+          case GLEW_ERROR_EGL_VERSION_10_ONLY: return 'EGL 1.1 and up are supported';
+          default: break;
         }
       }
 
       switch (error) {
-        case 0:return 'No error'; // GLEW_OK || GLEW_NO_ERROR
-        case 1:return 'Missing GL version'; // GLEW_ERROR_NO_GL_VERSION
-        case 2:return 'GL 1.1 and up are supported'; // GLEW_ERROR_GL_VERSION_10_ONLY
-        case 3:return 'GLX 1.2 and up are supported'; // GLEW_ERROR_GLX_VERSION_11_ONLY
-        default:return null;
+        case GLEW_OK: return 'No error'; // GLEW_OK || GLEW_NO_ERROR
+        case GLEW_ERROR_NO_GL_VERSION: return 'Missing GL version';
+        case GLEW_ERROR_GL_VERSION_10_ONLY: return 'GL 1.1 and up are supported';
+        case GLEW_ERROR_GLX_VERSION_11_ONLY: return 'GLX 1.2 and up are supported';
+        default: return null;
       }
     },
 
@@ -80,11 +80,11 @@ var LibraryGLEW = {
 
     versionStringConstantFromCode(name) {
       switch (name) {
-        case 1:return '1.10.0'; // GLEW_VERSION
-        case 2:return '1'; // GLEW_VERSION_MAJOR
-        case 3:return '10'; // GLEW_VERSION_MINOR
-        case 4:return '0'; // GLEW_VERSION_MICRO
-        default:return null;
+        case GLEW_VERSION: return '1.10.0';
+        case GLEW_VERSION_MAJOR: return '1';
+        case GLEW_VERSION_MINOR: return '10';
+        case GLEW_VERSION_MICRO: return '0';
+        default: return null;
       }
     },
 

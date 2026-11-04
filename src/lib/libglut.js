@@ -21,7 +21,7 @@ var LibraryGLUT = {
     modifiers: 0,
     initWindowWidth: 256,
     initWindowHeight: 256,
-    initDisplayMode: 0x0000 /*GLUT_RGBA*/ | 0x0002 /*GLUT_DOUBLE*/ | 0x0010 /*GLUT_DEPTH*/,
+    initDisplayMode: cDefs.GLUT_RGBA | cDefs.GLUT_DOUBLE | cDefs.GLUT_DEPTH,
     // Set when going fullscreen
     windowWidth: 0,
     windowHeight: 0,
@@ -30,11 +30,11 @@ var LibraryGLUT = {
     saveModifiers: (event) => {
       GLUT.modifiers = 0;
       if (event['shiftKey'])
-        GLUT.modifiers += 1; /* GLUT_ACTIVE_SHIFT */
+        GLUT.modifiers += GLUT_ACTIVE_SHIFT;
       if (event['ctrlKey'])
-        GLUT.modifiers += 2; /* GLUT_ACTIVE_CTRL */
+        GLUT.modifiers += GLUT_ACTIVE_CTRL;
       if (event['altKey'])
-        GLUT.modifiers += 4; /* GLUT_ACTIVE_ALT */
+        GLUT.modifiers += GLUT_ACTIVE_ALT;
     },
 
     onMousemove: (event) => {
@@ -66,27 +66,27 @@ var LibraryGLUT = {
           case 8:  key = 120 /* backspace */; break;
           case 46: key = 111 /* delete */; break;
 
-          case 0x70 /*DOM_VK_F1*/: key = 1 /* GLUT_KEY_F1 */; break;
-          case 0x71 /*DOM_VK_F2*/: key = 2 /* GLUT_KEY_F2 */; break;
-          case 0x72 /*DOM_VK_F3*/: key = 3 /* GLUT_KEY_F3 */; break;
-          case 0x73 /*DOM_VK_F4*/: key = 4 /* GLUT_KEY_F4 */; break;
-          case 0x74 /*DOM_VK_F5*/: key = 5 /* GLUT_KEY_F5 */; break;
-          case 0x75 /*DOM_VK_F6*/: key = 6 /* GLUT_KEY_F6 */; break;
-          case 0x76 /*DOM_VK_F7*/: key = 7 /* GLUT_KEY_F7 */; break;
-          case 0x77 /*DOM_VK_F8*/: key = 8 /* GLUT_KEY_F8 */; break;
-          case 0x78 /*DOM_VK_F9*/: key = 9 /* GLUT_KEY_F9 */; break;
-          case 0x79 /*DOM_VK_F10*/: key = 10 /* GLUT_KEY_F10 */; break;
-          case 0x7a /*DOM_VK_F11*/: key = 11 /* GLUT_KEY_F11 */; break;
-          case 0x7b /*DOM_VK_F12*/: key = 12 /* GLUT_KEY_F12 */; break;
-          case 0x25 /*DOM_VK_LEFT*/: key = 100 /* GLUT_KEY_LEFT */; break;
-          case 0x26 /*DOM_VK_UP*/: key = 101 /* GLUT_KEY_UP */; break;
-          case 0x27 /*DOM_VK_RIGHT*/: key = 102 /* GLUT_KEY_RIGHT */; break;
-          case 0x28 /*DOM_VK_DOWN*/: key = 103 /* GLUT_KEY_DOWN */; break;
-          case 0x21 /*DOM_VK_PAGE_UP*/: key = 104 /* GLUT_KEY_PAGE_UP */; break;
-          case 0x22 /*DOM_VK_PAGE_DOWN*/: key = 105 /* GLUT_KEY_PAGE_DOWN */; break;
-          case 0x24 /*DOM_VK_HOME*/: key = 106 /* GLUT_KEY_HOME */; break;
-          case 0x23 /*DOM_VK_END*/: key = 107 /* GLUT_KEY_END */; break;
-          case 0x2d /*DOM_VK_INSERT*/: key = 108 /* GLUT_KEY_INSERT */; break;
+          case 0x70 /*DOM_VK_F1*/: key = GLUT_KEY_F1; break;
+          case 0x71 /*DOM_VK_F2*/: key = GLUT_KEY_F2; break;
+          case 0x72 /*DOM_VK_F3*/: key = GLUT_KEY_F3; break;
+          case 0x73 /*DOM_VK_F4*/: key = GLUT_KEY_F4; break;
+          case 0x74 /*DOM_VK_F5*/: key = GLUT_KEY_F5; break;
+          case 0x75 /*DOM_VK_F6*/: key = GLUT_KEY_F6; break;
+          case 0x76 /*DOM_VK_F7*/: key = GLUT_KEY_F7; break;
+          case 0x77 /*DOM_VK_F8*/: key = GLUT_KEY_F8; break;
+          case 0x78 /*DOM_VK_F9*/: key = GLUT_KEY_F9; break;
+          case 0x79 /*DOM_VK_F10*/: key = GLUT_KEY_F10; break;
+          case 0x7a /*DOM_VK_F11*/: key = GLUT_KEY_F11; break;
+          case 0x7b /*DOM_VK_F12*/: key = GLUT_KEY_F12; break;
+          case 0x25 /*DOM_VK_LEFT*/: key = GLUT_KEY_LEFT; break;
+          case 0x26 /*DOM_VK_UP*/: key = GLUT_KEY_UP; break;
+          case 0x27 /*DOM_VK_RIGHT*/: key = GLUT_KEY_RIGHT; break;
+          case 0x28 /*DOM_VK_DOWN*/: key = GLUT_KEY_DOWN; break;
+          case 0x21 /*DOM_VK_PAGE_UP*/: key = GLUT_KEY_PAGE_UP; break;
+          case 0x22 /*DOM_VK_PAGE_DOWN*/: key = GLUT_KEY_PAGE_DOWN; break;
+          case 0x24 /*DOM_VK_HOME*/: key = GLUT_KEY_HOME; break;
+          case 0x23 /*DOM_VK_END*/: key = GLUT_KEY_END; break;
+          case 0x2d /*DOM_VK_INSERT*/: key = GLUT_KEY_INSERT; break;
 
           case 16   /*DOM_VK_SHIFT*/:
           case 0x05 /*DOM_VK_LEFT_SHIFT*/:
@@ -234,7 +234,7 @@ var LibraryGLUT = {
         } catch (e) {}
         event.preventDefault();
         GLUT.saveModifiers(event);
-        {{{ makeDynCall('viiii', 'GLUT.mouseFunc') }}}(event['button'], 0/*GLUT_DOWN*/, Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('viiii', 'GLUT.mouseFunc') }}}(event['button'], GLUT_DOWN, Browser.mouseX, Browser.mouseY);
       }
     },
 
@@ -246,7 +246,7 @@ var LibraryGLUT = {
       if (GLUT.mouseFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        {{{ makeDynCall('viiii', 'GLUT.mouseFunc') }}}(event['button'], 1/*GLUT_UP*/, Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('viiii', 'GLUT.mouseFunc') }}}(event['button'], GLUT_UP, Browser.mouseX, Browser.mouseY);
       }
     },
 
@@ -266,7 +266,7 @@ var LibraryGLUT = {
       if (GLUT.mouseFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        {{{ makeDynCall('viiii', 'GLUT.mouseFunc') }}}(button, 0/*GLUT_DOWN*/, Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('viiii', 'GLUT.mouseFunc') }}}(button, GLUT_DOWN, Browser.mouseX, Browser.mouseY);
       }
     },
 
@@ -382,36 +382,36 @@ var LibraryGLUT = {
 
   glutGet: (type) => {
     switch (type) {
-      case 100: /* GLUT_WINDOW_X */
+      case GLUT_WINDOW_X:
         return 0; /* TODO */
-      case 101: /* GLUT_WINDOW_Y */
+      case GLUT_WINDOW_Y:
         return 0; /* TODO */
-      case 102: /* GLUT_WINDOW_WIDTH */
+      case GLUT_WINDOW_WIDTH:
         return Browser.getCanvas().width;
-      case 103: /* GLUT_WINDOW_HEIGHT */
+      case GLUT_WINDOW_HEIGHT:
         return Browser.getCanvas().height;
-      case 200: /* GLUT_SCREEN_WIDTH */
+      case GLUT_SCREEN_WIDTH:
         return Browser.getCanvas().width;
-      case 201: /* GLUT_SCREEN_HEIGHT */
+      case GLUT_SCREEN_HEIGHT:
         return Browser.getCanvas().height;
-      case 500: /* GLUT_INIT_WINDOW_X */
+      case GLUT_INIT_WINDOW_X:
         return 0; /* TODO */
-      case 501: /* GLUT_INIT_WINDOW_Y */
+      case GLUT_INIT_WINDOW_Y:
         return 0; /* TODO */
-      case 502: /* GLUT_INIT_WINDOW_WIDTH */
+      case GLUT_INIT_WINDOW_WIDTH:
         return GLUT.initWindowWidth;
-      case 503: /* GLUT_INIT_WINDOW_HEIGHT */
+      case GLUT_INIT_WINDOW_HEIGHT:
         return GLUT.initWindowHeight;
-      case 700: /* GLUT_ELAPSED_TIME */
+      case GLUT_ELAPSED_TIME:
         var now = Date.now();
         return now - GLUT.initTime;
-      case 0x0069: /* GLUT_WINDOW_STENCIL_SIZE */
+      case GLUT_WINDOW_STENCIL_SIZE:
         return GLctx.getContextAttributes().stencil ? 8 : 0;
-      case 0x006A: /* GLUT_WINDOW_DEPTH_SIZE */
+      case GLUT_WINDOW_DEPTH_SIZE:
         return GLctx.getContextAttributes().depth ? 8 : 0;
-      case 0x006E: /* GLUT_WINDOW_ALPHA_SIZE */
+      case GLUT_WINDOW_ALPHA_SIZE:
         return GLctx.getContextAttributes().alpha ? 8 : 0;
-      case 0x0078: /* GLUT_WINDOW_NUM_SAMPLES */
+      case GLUT_WINDOW_NUM_SAMPLES:
         return GLctx.getContextAttributes().antialias ? 1 : 0;
 
       default:
@@ -486,70 +486,70 @@ var LibraryGLUT = {
   glutSetCursor: (cursor) => {
     var cursorStyle = 'auto';
     switch (cursor) {
-      case 0x0000: /* GLUT_CURSOR_RIGHT_ARROW */
+      case GLUT_CURSOR_RIGHT_ARROW:
         // No equivalent css cursor style, fallback to 'auto'
         break;
-      case 0x0001: /* GLUT_CURSOR_LEFT_ARROW */
+      case GLUT_CURSOR_LEFT_ARROW:
         // No equivalent css cursor style, fallback to 'auto'
         break;
-      case 0x0002: /* GLUT_CURSOR_INFO */
+      case GLUT_CURSOR_INFO:
         cursorStyle = 'pointer';
         break;
-      case 0x0003: /* GLUT_CURSOR_DESTROY */
+      case GLUT_CURSOR_DESTROY:
         // No equivalent css cursor style, fallback to 'auto'
         break;
-      case 0x0004: /* GLUT_CURSOR_HELP */
+      case GLUT_CURSOR_HELP:
         cursorStyle = 'help';
         break;
-      case 0x0005: /* GLUT_CURSOR_CYCLE */
+      case GLUT_CURSOR_CYCLE:
         // No equivalent css cursor style, fallback to 'auto'
         break;
-      case 0x0006: /* GLUT_CURSOR_SPRAY */
+      case GLUT_CURSOR_SPRAY:
         // No equivalent css cursor style, fallback to 'auto'
         break;
-      case 0x0007: /* GLUT_CURSOR_WAIT */
+      case GLUT_CURSOR_WAIT:
         cursorStyle = 'wait';
         break;
-      case 0x0008: /* GLUT_CURSOR_TEXT */
+      case GLUT_CURSOR_TEXT:
         cursorStyle = 'text';
         break;
-      case 0x0009: /* GLUT_CURSOR_CROSSHAIR */
-      case 0x0066: /* GLUT_CURSOR_FULL_CROSSHAIR */
+      case GLUT_CURSOR_CROSSHAIR:
+      case GLUT_CURSOR_FULL_CROSSHAIR:
         cursorStyle = 'crosshair';
         break;
-      case 0x000A: /* GLUT_CURSOR_UP_DOWN */
+      case GLUT_CURSOR_UP_DOWN:
         cursorStyle = 'ns-resize';
         break;
-      case 0x000B: /* GLUT_CURSOR_LEFT_RIGHT */
+      case GLUT_CURSOR_LEFT_RIGHT:
         cursorStyle = 'ew-resize';
         break;
-      case 0x000C: /* GLUT_CURSOR_TOP_SIDE */
+      case GLUT_CURSOR_TOP_SIDE:
         cursorStyle = 'n-resize';
         break;
-      case 0x000D: /* GLUT_CURSOR_BOTTOM_SIDE */
+      case GLUT_CURSOR_BOTTOM_SIDE:
         cursorStyle = 's-resize';
         break;
-      case 0x000E: /* GLUT_CURSOR_LEFT_SIDE */
+      case GLUT_CURSOR_LEFT_SIDE:
         cursorStyle = 'w-resize';
         break;
-      case 0x000F: /* GLUT_CURSOR_RIGHT_SIDE */
+      case GLUT_CURSOR_RIGHT_SIDE:
         cursorStyle = 'e-resize';
         break;
-      case 0x0010: /* GLUT_CURSOR_TOP_LEFT_CORNER */
+      case GLUT_CURSOR_TOP_LEFT_CORNER:
         cursorStyle = 'nw-resize';
         break;
-      case 0x0011: /* GLUT_CURSOR_TOP_RIGHT_CORNER */
+      case GLUT_CURSOR_TOP_RIGHT_CORNER:
         cursorStyle = 'ne-resize';
         break;
-      case 0x0012: /* GLUT_CURSOR_BOTTOM_RIGHT_CORNER */
+      case GLUT_CURSOR_BOTTOM_RIGHT_CORNER:
         cursorStyle = 'se-resize';
         break;
-      case 0x0013: /* GLUT_CURSOR_BOTTOM_LEFT_CORNER */
+      case GLUT_CURSOR_BOTTOM_LEFT_CORNER:
         cursorStyle = 'sw-resize';
         break;
-      case 0x0064: /* GLUT_CURSOR_INHERIT */
+      case GLUT_CURSOR_INHERIT:
         break;
-      case 0x0065: /* GLUT_CURSOR_NONE */
+      case GLUT_CURSOR_NONE:
         cursorStyle = 'none';
         break;
       default:
@@ -561,10 +561,10 @@ var LibraryGLUT = {
   glutCreateWindow__proxy: 'sync',
   glutCreateWindow: (name) => {
     var contextAttributes = {
-      antialias: ((GLUT.initDisplayMode & 0x0080 /*GLUT_MULTISAMPLE*/) != 0),
-      depth: ((GLUT.initDisplayMode & 0x0010 /*GLUT_DEPTH*/) != 0),
-      stencil: ((GLUT.initDisplayMode & 0x0020 /*GLUT_STENCIL*/) != 0),
-      alpha: ((GLUT.initDisplayMode & 0x0008 /*GLUT_ALPHA*/) != 0)
+      antialias: ((GLUT.initDisplayMode & GLUT_MULTISAMPLE) != 0),
+      depth: ((GLUT.initDisplayMode & GLUT_DEPTH) != 0),
+      stencil: ((GLUT.initDisplayMode & GLUT_STENCIL) != 0),
+      alpha: ((GLUT.initDisplayMode & GLUT_ALPHA) != 0)
     };
 #if OFFSCREEN_FRAMEBUFFER
     // TODO: Make glutCreateWindow explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
