@@ -284,9 +284,7 @@ var LibraryDylink = {
       // which are relative to `memoryBase`.
 #if SHRINK_LEVEL < 2
       // `immutableGlobals`, when known, saves probing each global.
-      var immutable = immutableGlobals
-        ? immutableGlobals.has(name)
-        : isImmutableGlobal(value);
+      var immutable = immutableGlobals?.has(name) ?? isImmutableGlobal(value);
 #else
       var immutable = isImmutableGlobal(value);
 #endif
@@ -475,6 +473,7 @@ var LibraryDylink = {
     // This saves relocateExports from probing each exported global with
     // isImmutableGlobal, which throws for every immutable one.  Returns
     // undefined if it finds something it doesn't handle.
+    // This can be removed if we get https://github.com/WebAssembly/js-types.
     function getImmutableGlobals() {
       // The mutability of each global, imported globals first.
       var mutable = [];
@@ -503,6 +502,8 @@ var LibraryDylink = {
         var size = getLEB();
         var sectionEnd = offset + size;
         if (id === 2) { // import
+          // Export indices include imported globals before defined globals,
+          // so parse the imports to keep the global indices lined up.
           for (var count = getLEB(); count--;) {
             skipString();
             skipString();
