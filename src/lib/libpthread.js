@@ -909,8 +909,11 @@ var LibraryPThread = {
     // Register for each of the transferred canvases that the new thread now
     // owns the OffscreenCanvas.
     for (var canvas of Object.values(offscreenCanvases)) {
-      // pthread ptr to the thread that owns this canvas.
-      {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', '*') }}};
+      // pthread ptr to the thread that owns this canvas. A record forwarded from
+      // GL.offscreenCanvases has no shared block.
+      if (canvas.canvasSharedPtr) {
+        {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', '*') }}};
+      }
     }
 #endif
 
