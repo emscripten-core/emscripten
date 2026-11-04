@@ -9400,6 +9400,28 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @requires_pthreads
+  def test_pthread_dlopen_file_data(self):
+    self.cflags += ['-Wno-experimental', '-pthread', '-DSIDE_DATA_SIZE=8388608']
+    # Initialize the entire array so it occupies space in both the side module
+    # file and linear memory, rather than being zero-filled BSS.
+    create_file('side.c', '''
+      char side_data[SIDE_DATA_SIZE] = {[0 ... SIDE_DATA_SIZE - 1] = 1};
+      int side_fn(int x) { return x + side_data[x]; }
+    ''')
+    self.build_dlfcn_lib('side.c')
+    # Embed it under a path that doesn't exist on the host, so that threads
+    # can't read it from there either under node.
+    self.cflags += ['--embed-file', 'libside.so@/lib/libside.so']
+    self.prep_dlfcn_main()
+    self.set_setting('EXIT_RUNTIME')
+    # One worker each for the running, later and nested threads.
+    self.set_setting('PTHREAD_POOL_SIZE', 3)
+    if not self.get_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '64mb')
+    self.do_runf('core/pthread/test_pthread_dlopen_file_data.c', 'done\n')
+
+  @needs_dylink
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
     # In other suites, this test is flaky.. but in Wasm64 suite, it is failing

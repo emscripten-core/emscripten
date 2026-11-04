@@ -330,7 +330,7 @@ sigs = {
   _emscripten_create_audio_worklet__sig: 'viipippp',
   _emscripten_create_wasm_worker__sig: 'iipip',
   _emscripten_dlopen_js__sig: 'vpppp',
-  _emscripten_dlsync_threads__sig: 'v',
+  _emscripten_dlsync_threads__sig: 'i',
   _emscripten_fetch_get_response_headers__sig: 'pipp',
   _emscripten_fetch_get_response_headers_length__sig: 'pi',
   _emscripten_fs_load_embedded_files__sig: 'vp',

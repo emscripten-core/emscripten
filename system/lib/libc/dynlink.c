@@ -156,12 +156,20 @@ static void load_library_done(struct dso* p) {
   new_dlevent(p, -1);
 #ifdef _REENTRANT
   // Block until all other threads have loaded this module.
-  _emscripten_dlsync_threads();
+  bool synced = _emscripten_dlsync_threads();
+  // When the main runtime thread loaded the module and every running thread
+  // has now loaded it too, nothing needs the file data any more: threads
+  // started from now on get the compiled module from `sharedModules` (see
+  // spawnThread).  Otherwise keep it: when another thread loaded the module
+  // the main thread catches up asynchronously, so a thread spawned meanwhile
+  // may still read it, and a thread that failed to load it may retry.
+  // TODO: Find a way to free this data in all cases.
+  if (synced && emscripten_is_main_runtime_thread()) {
+    free(p->file_data);
+    p->file_data = NULL;
+    p->file_data_size = 0;
+  }
 #endif
-  // TODO: figure out some way to tell when its safe to free p->file_data.  Its
-  // not safe to do here because some threads could have been asleep then when
-  // the "dlsync" occurred and those threads will synchronize when they wake,
-  // which could be an arbitrarily long time in the future.
 }
 
 static struct dso* load_library_start(const char* name, int flags) {
@@ -177,8 +185,9 @@ static struct dso* load_library_start(const char* name, int flags) {
   strcpy(p->name, name);
 
   // If the file exists in the filesystem, load it here into linear memory which
-  // makes the data available to JS, and to other threads.  This data gets
-  // free'd later once all threads have loaded the DSO.
+  // makes the data available to JS, and to other threads.  load_library_done
+  // frees it once all threads have loaded the DSO, when it can tell that they
+  // have.
   struct stat statbuf;
   if (stat(name, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
     int fd = open(name, O_RDONLY);
@@ -192,6 +201,7 @@ static struct dso* load_library_start(const char* name, int flags) {
             p->file_data_size = size;
           } else {
             free(p->file_data);
+            p->file_data = NULL;
           }
         }
       }
@@ -324,7 +334,7 @@ static void do_thread_sync(void* arg) {
 
 static void do_thread_sync_out(void* arg) {
   dbg("do_thread_sync_out");
-  int* result = (int*)arg;
+  bool* result = arg;
   *result = _emscripten_dlsync_self();
 }
 
@@ -407,15 +417,17 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
   return rtn;
 }
 
-int _emscripten_proxy_dlsync(pthread_t target_thread) {
+// Returns false if the target thread failed to load the modules.  A thread
+// that has exited doesn't need them, so that counts as success.
+bool _emscripten_proxy_dlsync(pthread_t target_thread) {
   assert(emscripten_is_main_runtime_thread());
   if (!_dlopen_proxying_queue) {
     _dlopen_proxying_queue = em_proxying_queue_create();
   }
-  int result;
+  bool result;
   if (!emscripten_proxy_sync(
         _dlopen_proxying_queue, target_thread, do_thread_sync_out, &result)) {
-    return 0;
+    return true;
   }
   return result;
 }
@@ -438,6 +450,7 @@ static void dlopen_onerror(struct dso* dso, void* user_data) {
   dbg("dlopen_js_onerror: dso=%p", dso);
   do_write_unlock();
   data->onerror(data->user_data);
+  free(dso->file_data);
   free(dso);
   free(data);
 }
@@ -543,6 +556,7 @@ static struct dso* _dlopen(const char* file, int flags) {
   void* success = _dlopen_js(p);
   if (!success) {
     dbg("dlopen_js: failed: %p", p);
+    free(p->file_data);
     free(p);
     p = NULL;
     goto end;
