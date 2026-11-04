@@ -34,7 +34,7 @@ CPYTHON_REPO = 'https://github.com/python/cpython.git'
 
 # The CPython revision to test.  This must be recent enough to not rely on
 # `FS.filesystems`.  Once CPython 3.16.0a2 comes out we can switch to a tag.
-CPYTHON_REVISION = '13ca348ddee6db1b5f2216c293295ed3c04200f5'
+CPYTHON_REVISION = '069aac92c8c40e53b6931a4d31029c5c7bef0c15'
 
 DEFAULT_CPYTHON_DIR = path_from_root('out', 'cpython')
 
@@ -96,9 +96,6 @@ def build_env():
   """
   env = os.environ.copy()
   env['PATH'] = path_from_root() + os.pathsep + env.get('PATH', '')
-  # The CPython build scripts can install their own emsdk if this is set;
-  # we always want to use the local emscripten.
-  env.pop('EMSDK_CACHE', None)
   if config.EM_CONFIG:
     env['EM_CONFIG'] = config.EM_CONFIG
   return env
