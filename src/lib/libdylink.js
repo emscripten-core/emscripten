@@ -199,6 +199,24 @@ var LibraryDylink = {
     ;
   },
 
+#if PTHREADS
+  // Called on the main thread once the main module is instantiated.  Records
+  // which table slots hold the main module's exported functions, which new
+  // workers use in getFunctionAddress.
+  $recordMainModuleExportSlots__internal: true,
+  $recordMainModuleExportSlots: (exports) => {
+    mainModuleTableSize = {{{ from64Expr('wasmTable.length') }}};
+    mainModuleExportSlots = [];
+    for (var symName in exports) {
+      var value = exports[symName];
+      var slot = typeof value === 'function' && getFunctionAddress(value);
+      if (slot) {
+        mainModuleExportSlots.push(slot);
+      }
+    }
+  },
+#endif
+
   $updateGOT__internal: true,
   $updateGOT__docs: '/** @param {boolean=} replace */',
   $updateGOT: (exports, replace) => {
@@ -225,7 +243,7 @@ var LibraryDylink = {
 #endif
         var newValue;
         if (typeof value === 'function') {
-          newValue = {{{ to64('addFunction(value)') }}};
+          newValue = {{{ to64('addFunction(value, undefined, /*isDylinkSymbol=*/true)') }}};
         } else if (typeof value.value === {{{ POINTER_JS_TYPE }}}) {
           newValue = value;
         } else {
@@ -323,7 +341,7 @@ var LibraryDylink = {
 #endif
         if (typeof value === 'function') {
           /** @suppress {checkTypes} */
-          entry.value = {{{ to64('addFunction(value, value.sig)') }}};
+          entry.value = {{{ to64('addFunction(value, value.sig, /*isDylinkSymbol=*/true)') }}};
 #if DYLINK_DEBUG == 2
           dbg(`assigning table entry for : ${symName} -> ${entry.value}`);
 #endif
@@ -1292,7 +1310,7 @@ var LibraryDylink = {
     var symDict = lib.exports;
     var symName = Object.keys(symDict)[symbolIndex];
     var sym = symDict[symName];
-    var result = addFunction(sym, sym.sig);
+    var result = addFunction(sym, sym.sig, /*isDylinkSymbol=*/true);
 #if DYLINK_DEBUG
     dbg(`_dlsym_catchup: result=${result}`);
 #endif
@@ -1335,7 +1353,7 @@ var LibraryDylink = {
         result = result.orig;
       }
 #endif
-      var addr = getFunctionAddress(result);
+      var addr = getFunctionAddress(result, /*isDylinkSymbol=*/true);
       if (addr) {
 #if DYLINK_DEBUG
         dbg('symbol already exists in table:', symbol);
@@ -1346,7 +1364,7 @@ var LibraryDylink = {
         // function the second argument will not be needed.  If it's a JS
         // function we rely on the `sig` attribute being set based on the
         // `<func>__sig` specified in library JS file.
-        result = addFunction(result, result.sig);
+        result = addFunction(result, result.sig, /*isDylinkSymbol=*/true);
 #if DYLINK_DEBUG
         dbg('adding symbol to table:',  symbol);
 #endif

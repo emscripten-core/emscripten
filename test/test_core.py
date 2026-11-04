@@ -9353,7 +9353,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @requires_pthreads
-  def test_pthread_dylink(self):
+  @parameterized({
+    '': (False,),
+    # ASSERTIONS=2 makes addFunction check that every function in the table
+    # is also in functionsInTableMap, which catches missing export slots in
+    # workers.
+    'assertions2': (True,),
+  })
+  def test_pthread_dylink(self, assertions2):
+    if assertions2:
+      self.set_setting('ASSERTIONS', 2)
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink.c')
 
@@ -9362,7 +9371,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # where we had a bug with long names + TextDecoder + pthreads + dylink
     very_long_name = 'very_very_very_very_very_very_very_very_very_long.so'
 
-    self.dylink_testf(main, so_name=very_long_name)
+    self.dylink_testf(main, so_name=very_long_name,
+                      main_cflags=['-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$addFunction,$getWasmTableEntry'])
 
   @needs_dylink
   @parameterized({

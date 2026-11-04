@@ -798,6 +798,11 @@ function getWasmImports() {
     assignWasmExports(wasmExports);
 
 #if MAIN_MODULE
+#if PTHREADS
+    if (!ENVIRONMENT_IS_PTHREAD) {
+      recordMainModuleExportSlots(origExports);
+    }
+#endif
     updateGOT(origExports);
 #endif
 
