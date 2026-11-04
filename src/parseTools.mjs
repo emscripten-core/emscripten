@@ -997,15 +997,6 @@ function makeRemovedFSAssert(fsName) {
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
-// Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
-function buildStringArray(array) {
-  if (array.length > 0) {
-    return "['" + array.join("','") + "']";
-  } else {
-    return '[]';
-  }
-}
-
 function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
@@ -1160,13 +1151,6 @@ function getEntryFunction() {
   return `_${entryFunction}`;
 }
 
-function formattedMinNodeVersion() {
-  var major = MIN_NODE_VERSION / 10_000;
-  var minor = (MIN_NODE_VERSION / 100) % 100;
-  var rev = MIN_NODE_VERSION % 100;
-  return `v${major}.${minor}.${rev}`;
-}
-
 function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
@@ -1261,11 +1245,9 @@ addToCompileTimeContext({
   addAtPostRun,
   asyncIf,
   awaitIf,
-  buildStringArray,
   charCode,
   defineI64Param,
   expectToReceiveOnModule,
-  formattedMinNodeVersion,
   from64,
   from64Expr,
   getEntryFunction,

@@ -429,13 +429,7 @@ const C_DEFINES = new Proxy(defines, {
 });
 
 // shorter alias for C_DEFINES
-const cDefs = C_DEFINES;
-
-// Legacy function that existed solely to give error message.  These are now
-// provided by the cDefs proxy object above.
-function cDefine(key) {
-  return cDefs[key];
-}
+export const cDefs = C_DEFINES;
 
 function isInternalSymbol(ident) {
   return ident + '__internal' in LibraryManager.library;
@@ -642,7 +636,6 @@ addToCompileTimeContext({
   extraExports,
   addToLibrary,
   cDefs,
-  cDefine,
   C_STRUCTS,
   C_DEFINES,
 });
