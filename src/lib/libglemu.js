@@ -157,15 +157,15 @@ var LibraryGLEmulation = {
 
       // XXX some of the capabilities we don't support may lead to incorrect rendering, if we do not emulate them in shaders
       var validCapabilities = {
-        0xB44: 1, // GL_CULL_FACE
-        0xBE2: 1, // GL_BLEND
-        0xBD0: 1, // GL_DITHER,
-        0xB90: 1, // GL_STENCIL_TEST
-        0xB71: 1, // GL_DEPTH_TEST
-        0xC11: 1, // GL_SCISSOR_TEST
-        0x8037: 1, // GL_POLYGON_OFFSET_FILL
-        0x809E: 1, // GL_SAMPLE_ALPHA_TO_COVERAGE
-        0x80A0: 1  // GL_SAMPLE_COVERAGE
+        [GL_CULL_FACE]: 1,
+        [GL_BLEND]: 1,
+        [GL_DITHER]: 1,
+        [GL_STENCIL_TEST]: 1,
+        [GL_DEPTH_TEST]: 1,
+        [GL_SCISSOR_TEST]: 1,
+        [GL_POLYGON_OFFSET_FILL]: 1,
+        [GL_SAMPLE_ALPHA_TO_COVERAGE]: 1,
+        [GL_SAMPLE_COVERAGE]: 1,
       };
 
       var orig_glEnable = _glEnable;
@@ -205,7 +205,7 @@ var LibraryGLEmulation = {
             GLEmulation.alphaTestEnabled = true;
           }
           return;
-        } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
+        } else if (cap == GL_TEXTURE_2D) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glEnableClientState
           /* Actually, let's not, for now. (This sounds exceedingly broken)
@@ -255,7 +255,7 @@ var LibraryGLEmulation = {
             GLEmulation.alphaTestEnabled = false;
           }
           return;
-        } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
+        } else if (cap == GL_TEXTURE_2D) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glDisableClientState
           /* Actually, let's not, for now. (This sounds exceedingly broken)
@@ -718,7 +718,7 @@ var LibraryGLEmulation = {
     getAttributeFromCapability(cap) {
       var attrib = null;
       switch (cap) {
-        case 0xDE1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
+        case GL_TEXTURE_2D: // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
 #if ASSERTIONS
           abort('GL_TEXTURE_2D is not a spec-defined capability for gl{Enable,Disable}ClientState.');
 #endif
@@ -949,74 +949,6 @@ var LibraryGLEmulation = {
 
     TexEnvJIT: null,
     spawnTexEnvJIT: () => {
-      // GL defs:
-      const GL_TEXTURE0 = 0x84C0;
-      const GL_TEXTURE_1D = 0xDE0;
-      const GL_TEXTURE_2D = 0xDE1;
-      const GL_TEXTURE_3D = 0x806f;
-      const GL_TEXTURE_CUBE_MAP = 0x8513;
-      const GL_TEXTURE_ENV = 0x2300;
-      const GL_TEXTURE_ENV_MODE = 0x2200;
-      const GL_TEXTURE_ENV_COLOR = 0x2201;
-      const GL_TEXTURE_CUBE_MAP_POSITIVE_X = 0x8515;
-      const GL_TEXTURE_CUBE_MAP_NEGATIVE_X = 0x8516;
-      const GL_TEXTURE_CUBE_MAP_POSITIVE_Y = 0x8517;
-      const GL_TEXTURE_CUBE_MAP_NEGATIVE_Y = 0x8518;
-      const GL_TEXTURE_CUBE_MAP_POSITIVE_Z = 0x8519;
-      const GL_TEXTURE_CUBE_MAP_NEGATIVE_Z = 0x851A;
-
-      const GL_SRC0_RGB = 0x8580;
-      const GL_SRC1_RGB = 0x8581;
-      const GL_SRC2_RGB = 0x8582;
-
-      const GL_SRC0_ALPHA = 0x8588;
-      const GL_SRC1_ALPHA = 0x8589;
-      const GL_SRC2_ALPHA = 0x858A;
-
-      const GL_OPERAND0_RGB = 0x8590;
-      const GL_OPERAND1_RGB = 0x8591;
-      const GL_OPERAND2_RGB = 0x8592;
-
-      const GL_OPERAND0_ALPHA = 0x8598;
-      const GL_OPERAND1_ALPHA = 0x8599;
-      const GL_OPERAND2_ALPHA = 0x859A;
-
-      const GL_COMBINE_RGB = 0x8571;
-      const GL_COMBINE_ALPHA = 0x8572;
-
-      const GL_RGB_SCALE = 0x8573;
-      const GL_ALPHA_SCALE = 0xD1C;
-
-      // env.mode
-      const GL_ADD      = 0x104;
-      const GL_BLEND    = 0xBE2;
-      const GL_REPLACE  = 0x1E01;
-      const GL_MODULATE = 0x2100;
-      const GL_DECAL    = 0x2101;
-      const GL_COMBINE  = 0x8570;
-
-      // env.color/alphaCombiner
-      //const GL_ADD         = 0x104;
-      //const GL_REPLACE     = 0x1E01;
-      //const GL_MODULATE    = 0x2100;
-      const GL_SUBTRACT    = 0x84E7;
-      const GL_INTERPOLATE = 0x8575;
-
-      // env.color/alphaSrc
-      const GL_TEXTURE       = 0x1702;
-      const GL_CONSTANT      = 0x8576;
-      const GL_PRIMARY_COLOR = 0x8577;
-      const GL_PREVIOUS      = 0x8578;
-
-      // env.color/alphaOp
-      const GL_SRC_COLOR           = 0x300;
-      const GL_ONE_MINUS_SRC_COLOR = 0x301;
-      const GL_SRC_ALPHA           = 0x302;
-      const GL_ONE_MINUS_SRC_ALPHA = 0x303;
-
-      const GL_RGB  = 0x1907;
-      const GL_RGBA = 0x1908;
-
       // Our defs:
       var TEXENVJIT_NAMESPACE_PREFIX = 'tej_';
       // Not actually constant, as they can be changed between JIT passes:
@@ -1167,28 +1099,28 @@ var LibraryGLEmulation = {
         // Map GLenums to small values to efficiently pack the enums to bits for tighter access.
         this.traverseKey = {
           // mode
-          0x1E01 /* GL_REPLACE */: 0,
-          0x2100 /* GL_MODULATE */: 1,
-          0x104 /* GL_ADD */: 2,
-          0xBE2 /* GL_BLEND */: 3,
-          0x2101 /* GL_DECAL */: 4,
-          0x8570 /* GL_COMBINE */: 5,
+          [GL_REPLACE]: 0,
+          [GL_MODULATE]: 1,
+          [GL_ADD]: 2,
+          [GL_BLEND]: 3,
+          [GL_DECAL]: 4,
+          [GL_COMBINE]: 5,
 
           // additional color and alpha combiners
-          0x84E7 /* GL_SUBTRACT */: 3,
-          0x8575 /* GL_INTERPOLATE */: 4,
+          [GL_SUBTRACT]: 3,
+          [GL_INTERPOLATE]: 4,
 
           // color and alpha src
-          0x1702 /* GL_TEXTURE */: 0,
-          0x8576 /* GL_CONSTANT */: 1,
-          0x8577 /* GL_PRIMARY_COLOR */: 2,
-          0x8578 /* GL_PREVIOUS */: 3,
+          [GL_TEXTURE]: 0,
+          [GL_CONSTANT]: 1,
+          [GL_PRIMARY_COLOR]: 2,
+          [GL_PREVIOUS]: 3,
 
           // color and alpha op
-          0x300 /* GL_SRC_COLOR */: 0,
-          0x301 /* GL_ONE_MINUS_SRC_COLOR */: 1,
-          0x302 /* GL_SRC_ALPHA */: 2,
-          0x303 /* GL_ONE_MINUS_SRC_ALPHA */: 3
+          [GL_SRC_COLOR]: 0,
+          [GL_ONE_MINUS_SRC_COLOR]: 1,
+          [GL_SRC_ALPHA]: 2,
+          [GL_ONE_MINUS_SRC_ALPHA]: 3,
         };
 
         // The tuple (key0,key1,key2) uniquely identifies the state of the variables in CTexEnv.
@@ -3411,7 +3343,7 @@ var LibraryGLEmulation = {
   },
 
   glClientActiveTexture: (texture) => {
-    GLImmediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
+    GLImmediate.clientActiveTexture = texture - GL_TEXTURE0;
   },
 
   // Replace some functions with immediate-mode aware versions. If there are no
@@ -3531,7 +3463,7 @@ var LibraryGLEmulation = {
       GLImmediate.currentMatrix = 0/*m*/;
     } else if (mode == 0x1701 /* GL_PROJECTION */) {
       GLImmediate.currentMatrix = 1/*p*/;
-    } else if (mode == 0x1702) { // GL_TEXTURE
+    } else if (mode == GL_TEXTURE) {
       GLImmediate.useTextureMatrix = true;
       GLImmediate.currentMatrix = 2/*t*/ + GLImmediate.TexEnvJIT.getActiveTexture();
     } else {
@@ -3816,7 +3748,7 @@ var LibraryGLEmulation = {
     GLImmediate.matrixLib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
         outVec, inVec);
     if (inVec[3] == 0.0) {
-      return 0 /* GL_FALSE */;
+      return GL_FALSE;
     }
     inVec[0] /= inVec[3];
     inVec[1] /= inVec[3];
@@ -3833,7 +3765,7 @@ var LibraryGLEmulation = {
     {{{ makeSetValue('winY', '0', 'inVec[1]', 'double') }}};
     {{{ makeSetValue('winZ', '0', 'inVec[2]', 'double') }}};
 
-    return 1 /* GL_TRUE */;
+    return GL_TRUE;
   },
 
   gluUnProject: (winX, winY, winZ, model, proj, view, objX, objY, objZ) => {
@@ -3843,14 +3775,14 @@ var LibraryGLEmulation = {
         {{{ makeHEAPView('32', 'view', 'view+' + (4*4)) }}});
 
     if (result === null) {
-      return 0 /* GL_FALSE */;
+      return GL_FALSE;
     }
 
     {{{ makeSetValue('objX', '0', 'result[0]', 'double') }}};
     {{{ makeSetValue('objY', '0', 'result[1]', 'double') }}};
     {{{ makeSetValue('objZ', '0', 'result[2]', 'double') }}};
 
-    return 1 /* GL_TRUE */;
+    return GL_TRUE;
   },
 
   gluOrtho2D: (left, right, bottom, top) => _glOrtho(left, right, bottom, top, -1, 1),

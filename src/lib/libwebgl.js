@@ -786,7 +786,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
 #if GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
       const disableHalfFloatExtensionIfBroken = (ctx) => {
         var t = ctx.createTexture();
-        ctx.bindTexture(0xDE1/*GL_TEXTURE_2D*/, t);
+        ctx.bindTexture(GL_TEXTURE_2D, t);
         for (var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
         var ext = ctx.getExtension('OES_texture_half_float');
         if (!ext) return; // no half-float extension - nothing needed to fix.
@@ -795,9 +795,9 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
         // useless.
         // See https://webkit.org/b/183321, https://webkit.org/b/169999,
         // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
-        ctx.texImage2D(0xDE1/*GL_TEXTURE_2D*/, 0, 0x1908/*GL_RGBA*/, 1, 1, 0, 0x1908/*GL_RGBA*/, 0x8d61/*HALF_FLOAT_OES*/, new Uint16Array(4));
+        ctx.texImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, 0x8d61/*HALF_FLOAT_OES*/, new Uint16Array(4));
         var broken = ctx.getError();
-        ctx.bindTexture(0xDE1/*GL_TEXTURE_2D*/, null);
+        ctx.bindTexture(GL_TEXTURE_2D, null);
         ctx.deleteTexture(t);
         if (broken) {
           ctx.realGetSupportedExtensions = ctx.getSupportedExtensions;
@@ -849,14 +849,14 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       // Size them up correctly (use the same mechanism when resizing on demand)
       GL.resizeOffscreenFramebuffer(context);
 
-      gl.bindTexture(0xDE1 /*GL_TEXTURE_2D*/, context.defaultColorTarget);
-      gl.texParameteri(0xDE1 /*GL_TEXTURE_2D*/, 0x2801 /*GL_TEXTURE_MIN_FILTER*/, 0x2600 /*GL_NEAREST*/);
-      gl.texParameteri(0xDE1 /*GL_TEXTURE_2D*/, 0x2800 /*GL_TEXTURE_MAG_FILTER*/, 0x2600 /*GL_NEAREST*/);
-      gl.texParameteri(0xDE1 /*GL_TEXTURE_2D*/, 0x2802 /*GL_TEXTURE_WRAP_S*/, 0x812F /*GL_CLAMP_TO_EDGE*/);
-      gl.texParameteri(0xDE1 /*GL_TEXTURE_2D*/, 0x2803 /*GL_TEXTURE_WRAP_T*/, 0x812F /*GL_CLAMP_TO_EDGE*/);
-      gl.texImage2D(0xDE1 /*GL_TEXTURE_2D*/, 0, 0x1908 /*GL_RGBA*/, gl.canvas.width, gl.canvas.height, 0, 0x1908 /*GL_RGBA*/, 0x1401 /*GL_UNSIGNED_BYTE*/, null);
-      gl.framebufferTexture2D(0x8D40 /*GL_FRAMEBUFFER*/, 0x8CE0 /*GL_COLOR_ATTACHMENT0*/, 0xDE1 /*GL_TEXTURE_2D*/, context.defaultColorTarget, 0);
-      gl.bindTexture(0xDE1 /*GL_TEXTURE_2D*/, null);
+      gl.bindTexture(GL_TEXTURE_2D, context.defaultColorTarget);
+      gl.texParameteri(GL_TEXTURE_2D, 0x2801 /*GL_TEXTURE_MIN_FILTER*/, 0x2600 /*GL_NEAREST*/);
+      gl.texParameteri(GL_TEXTURE_2D, 0x2800 /*GL_TEXTURE_MAG_FILTER*/, 0x2600 /*GL_NEAREST*/);
+      gl.texParameteri(GL_TEXTURE_2D, 0x2802 /*GL_TEXTURE_WRAP_S*/, 0x812F /*GL_CLAMP_TO_EDGE*/);
+      gl.texParameteri(GL_TEXTURE_2D, 0x2803 /*GL_TEXTURE_WRAP_T*/, 0x812F /*GL_CLAMP_TO_EDGE*/);
+      gl.texImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gl.canvas.width, gl.canvas.height, 0, GL_RGBA, 0x1401 /*GL_UNSIGNED_BYTE*/, null);
+      gl.framebufferTexture2D(0x8D40 /*GL_FRAMEBUFFER*/, 0x8CE0 /*GL_COLOR_ATTACHMENT0*/, GL_TEXTURE_2D, context.defaultColorTarget, 0);
+      gl.bindTexture(GL_TEXTURE_2D, null);
 
       // Create depth render target to the FBO
       var depthTarget = gl.createRenderbuffer();
@@ -918,9 +918,9 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       // Resize color buffer
       if (context.defaultColorTarget) {
         var prevTextureBinding = gl.getParameter(0x8069 /*GL_TEXTURE_BINDING_2D*/);
-        gl.bindTexture(0xDE1 /*GL_TEXTURE_2D*/, context.defaultColorTarget);
-        gl.texImage2D(0xDE1 /*GL_TEXTURE_2D*/, 0, 0x1908 /*GL_RGBA*/, gl.drawingBufferWidth, gl.drawingBufferHeight, 0, 0x1908 /*GL_RGBA*/, 0x1401 /*GL_UNSIGNED_BYTE*/, null);
-        gl.bindTexture(0xDE1 /*GL_TEXTURE_2D*/, prevTextureBinding);
+        gl.bindTexture(GL_TEXTURE_2D, context.defaultColorTarget);
+        gl.texImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gl.drawingBufferWidth, gl.drawingBufferHeight, 0, GL_RGBA, 0x1401 /*GL_UNSIGNED_BYTE*/, null);
+        gl.bindTexture(GL_TEXTURE_2D, prevTextureBinding);
       }
 
       // Resize depth buffer
@@ -936,8 +936,8 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     blitOffscreenFramebuffer: (context) => {
       var gl = context.GLctx;
 
-      var prevScissorTest = gl.getParameter(0xC11 /*GL_SCISSOR_TEST*/);
-      if (prevScissorTest) gl.disable(0xC11 /*GL_SCISSOR_TEST*/);
+      var prevScissorTest = gl.getParameter(GL_SCISSOR_TEST);
+      if (prevScissorTest) gl.disable(GL_SCISSOR_TEST);
 
       var prevFbo = gl.getParameter(0x8CA6 /*GL_FRAMEBUFFER_BINDING*/);
 
@@ -966,22 +966,22 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
         gl.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, context.blitVB);
 
         var prevActiveTexture = gl.getParameter(0x84E0 /*GL_ACTIVE_TEXTURE*/);
-        gl.activeTexture(0x84C0 /*GL_TEXTURE0*/);
+        gl.activeTexture(GL_TEXTURE0);
 
         var prevTextureBinding = gl.getParameter(0x8069 /*GL_TEXTURE_BINDING_2D*/);
-        gl.bindTexture(0xDE1 /*GL_TEXTURE_2D*/, context.defaultColorTarget);
+        gl.bindTexture(GL_TEXTURE_2D, context.defaultColorTarget);
 
-        var prevBlend = gl.getParameter(0xBE2 /*GL_BLEND*/);
-        if (prevBlend) gl.disable(0xBE2 /*GL_BLEND*/);
+        var prevBlend = gl.getParameter(GL_BLEND);
+        if (prevBlend) gl.disable(GL_BLEND);
 
-        var prevCullFace = gl.getParameter(0xB44 /*GL_CULL_FACE*/);
-        if (prevCullFace) gl.disable(0xB44 /*GL_CULL_FACE*/);
+        var prevCullFace = gl.getParameter(GL_CULL_FACE);
+        if (prevCullFace) gl.disable(GL_CULL_FACE);
 
-        var prevDepthTest = gl.getParameter(0xB71 /*GL_DEPTH_TEST*/);
-        if (prevDepthTest) gl.disable(0xB71 /*GL_DEPTH_TEST*/);
+        var prevDepthTest = gl.getParameter(GL_DEPTH_TEST);
+        if (prevDepthTest) gl.disable(GL_DEPTH_TEST);
 
-        var prevStencilTest = gl.getParameter(0xB90 /*GL_STENCIL_TEST*/);
-        if (prevStencilTest) gl.disable(0xB90 /*GL_STENCIL_TEST*/);
+        var prevStencilTest = gl.getParameter(GL_STENCIL_TEST);
+        if (prevStencilTest) gl.disable(GL_STENCIL_TEST);
 
         function draw() {
           gl.vertexAttribPointer(context.blitPosLoc, 2, 0x1406 /*GL_FLOAT*/, false, 0, 0);
@@ -1038,18 +1038,18 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
                                  prevVertexAttribPointer.offset);
         }
 
-        if (prevStencilTest) gl.enable(0xB90 /*GL_STENCIL_TEST*/);
-        if (prevDepthTest) gl.enable(0xB71 /*GL_DEPTH_TEST*/);
-        if (prevCullFace) gl.enable(0xB44 /*GL_CULL_FACE*/);
-        if (prevBlend) gl.enable(0xBE2 /*GL_BLEND*/);
+        if (prevStencilTest) gl.enable(GL_STENCIL_TEST);
+        if (prevDepthTest) gl.enable(GL_DEPTH_TEST);
+        if (prevCullFace) gl.enable(GL_CULL_FACE);
+        if (prevBlend) gl.enable(GL_BLEND);
 
-        gl.bindTexture(0xDE1 /*GL_TEXTURE_2D*/, prevTextureBinding);
+        gl.bindTexture(GL_TEXTURE_2D, prevTextureBinding);
         gl.activeTexture(prevActiveTexture);
         gl.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, prevVB);
         gl.useProgram(prevProgram);
       }
       gl.bindFramebuffer(0x8D40 /*GL_FRAMEBUFFER*/, prevFbo);
-      if (prevScissorTest) gl.enable(0xC11 /*GL_SCISSOR_TEST*/);
+      if (prevScissorTest) gl.enable(GL_SCISSOR_TEST);
     },
 #endif
 
@@ -1590,34 +1590,34 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     // size value (1) from the list, which is assumed by formats not on the
     // list.
     var colorChannels = {
-      // 0x1902 /* GL_DEPTH_COMPONENT */ - 0x1902: 1,
-      // 0x1906 /* GL_ALPHA */ - 0x1902: 1,
-      {{{ 0x1907 /* GL_RGB */ - 0x1902 }}}: 3,
-      {{{ 0x1908 /* GL_RGBA */ - 0x1902 }}}: 4,
-      // 0x1909 /* GL_LUMINANCE */ - 0x1902: 1,
-      {{{ 0x190A /*GL_LUMINANCE_ALPHA*/ - 0x1902 }}}: 2,
-      {{{ 0x8C40 /*(GL_SRGB_EXT)*/ - 0x1902 }}}: 3,
-      {{{ 0x8C42 /*(GL_SRGB_ALPHA_EXT*/ - 0x1902 }}}: 4,
+      // [GL_DEPTH_COMPONENT - GL_DEPTH_COMPONENT]: 1,
+      // [GL_ALPHA - GL_DEPTH_COMPONENT]: 1,
+      [GL_RGB - GL_DEPTH_COMPONENT]: 3,
+      [GL_RGBA - GL_DEPTH_COMPONENT]: 4,
+      // [GL_LUMINANCE - GL_DEPTH_COMPONENT]: 1,
+      [GL_LUMINANCE_ALPHA - GL_DEPTH_COMPONENT]: 2,
+      [GL_SRGB_EXT - GL_DEPTH_COMPONENT]: 3,
+      [GL_SRGB_ALPHA_EXT - GL_DEPTH_COMPONENT]: 4,
 #if MAX_WEBGL_VERSION >= 2
-      // 0x1903 /* GL_RED */ - 0x1902: 1,
-      {{{ 0x8227 /*GL_RG*/ - 0x1902 }}}: 2,
-      {{{ 0x8228 /*GL_RG_INTEGER*/ - 0x1902 }}}: 2,
-      // 0x8D94 /* GL_RED_INTEGER */ - 0x1902: 1,
-      {{{ 0x8D98 /*GL_RGB_INTEGER*/ - 0x1902 }}}: 3,
-      {{{ 0x8D99 /*GL_RGBA_INTEGER*/ - 0x1902 }}}: 4
+      // [GL_RED - GL_DEPTH_COMPONENT]: 1,
+      [GL_RG - GL_DEPTH_COMPONENT]: 2,
+      [GL_RG_INTEGER - GL_DEPTH_COMPONENT]: 2,
+      // [GL_RED_INTEGER - GL_DEPTH_COMPONENT]: 1,
+      [GL_RGB_INTEGER - GL_DEPTH_COMPONENT]: 3,
+      [GL_RGBA_INTEGER - GL_DEPTH_COMPONENT]: 4,
 #endif
     };
 #if GL_ASSERTIONS
-    if (!colorChannels[format - 0x1902]
-      && format != 0x1902 /* GL_DEPTH_COMPONENT */
-      && format != 0x1906 /* GL_ALPHA */
-      && format != 0x1909 /* GL_LUMINANCE */
-      && format != 0x1903 /* GL_RED */
-      && format != 0x8D94 /* GL_RED_INTEGER */) {
+    if (!colorChannels[format - GL_DEPTH_COMPONENT]
+      && format != GL_DEPTH_COMPONENT
+      && format != GL_ALPHA
+      && format != GL_LUMINANCE
+      && format != GL_RED
+      && format != GL_RED_INTEGER) {
       err(`Invalid format=${ptrToString(format)} passed to function colorChannelsInGlTextureFormat()!`);
     }
 #endif
-    return colorChannels[format - 0x1902]||1;
+    return colorChannels[format - GL_DEPTH_COMPONENT]||1;
   },
 
   $emscriptenWebGLGetTexPixelData: (type, format, width, height, pixels) => {
@@ -1637,19 +1637,19 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       // WebGL 1 unsized texture internalFormats are no longer supported in
       // WebGL 2, so patch those format enums to the ones that are present in
       // WebGL 2.
-      if (format == 0x1902/*GL_DEPTH_COMPONENT*/ && internalFormat == 0x1902/*GL_DEPTH_COMPONENT*/ && type == 0x1405/*GL_UNSIGNED_INT*/) {
+      if (format == GL_DEPTH_COMPONENT && internalFormat == GL_DEPTH_COMPONENT && type == 0x1405/*GL_UNSIGNED_INT*/) {
         internalFormat = 0x81A6 /*GL_DEPTH_COMPONENT24*/;
       }
       if (type == 0x8d61/*GL_HALF_FLOAT_OES*/) {
         type = 0x140B /*GL_HALF_FLOAT*/;
-        if (format == 0x1908/*GL_RGBA*/ && internalFormat == 0x1908/*GL_RGBA*/) {
+        if (format == GL_RGBA && internalFormat == GL_RGBA) {
           internalFormat = 0x881A/*GL_RGBA16F*/;
         }
       }
       if (internalFormat == 0x84f9 /*GL_DEPTH_STENCIL*/) {
         internalFormat = 0x88F0 /*GL_DEPTH24_STENCIL8*/;
       }
-      if (internalFormat == 0x1908 /*GL_RGBA*/ && type == 0x1406 /*GL_FLOAT*/) {
+      if (internalFormat == GL_RGBA && type == 0x1406 /*GL_FLOAT*/) {
         internalFormat = 0x8814 /*GL_RGBA32F*/;
       }
     }

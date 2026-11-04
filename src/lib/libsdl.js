@@ -70,25 +70,25 @@ var LibrarySDL = {
 
     // all possible GL attributes, with their default value
     glAttributes: {
-      0: 3,    /* SDL_GL_RED_SIZE */
-      1: 3,    /* SDL_GL_GREEN_SIZE */
-      2: 2,    /* SDL_GL_BLUE_SIZE */
-      3: 0,    /* SDL_GL_ALPHA_SIZE */
-      4: 0,    /* SDL_GL_BUFFER_SIZE */
-      5: 1,    /* SDL_GL_DOUBLEBUFFER */
-      6: 16,   /* SDL_GL_DEPTH_SIZE */
-      7: 0,    /* SDL_GL_STENCIL_SIZE */
-      8: 0,    /* SDL_GL_ACCUM_RED_SIZE */
-      9: 0,    /* SDL_GL_ACCUM_GREEN_SIZE */
-      10: 0,   /* SDL_GL_ACCUM_BLUE_SIZE */
-      11: 0,   /* SDL_GL_ACCUM_ALPHA_SIZE */
-      12: 0,   /* SDL_GL_STEREO */
-      13: 0,   /* SDL_GL_MULTISAMPLEBUFFERS */
-      14: 0,   /* SDL_GL_MULTISAMPLESAMPLES */
-      15: 1,   /* SDL_GL_ACCELERATED_VISUAL */
-      16: 0,   /* SDL_GL_RETAINED_BACKING */
-      17: 0,   /* SDL_GL_CONTEXT_MAJOR_VERSION */
-      18: 0    /* SDL_GL_CONTEXT_MINOR_VERSION */
+      [cDefs.SDL_GL_RED_SIZE]: 3,
+      [cDefs.SDL_GL_GREEN_SIZE]: 3,
+      [cDefs.SDL_GL_BLUE_SIZE]: 2,
+      [cDefs.SDL_GL_ALPHA_SIZE]: 0,
+      [cDefs.SDL_GL_BUFFER_SIZE]: 0,
+      [cDefs.SDL_GL_DOUBLEBUFFER]: 1,
+      [cDefs.SDL_GL_DEPTH_SIZE]: 16,
+      [cDefs.SDL_GL_STENCIL_SIZE]: 0,
+      [cDefs.SDL_GL_ACCUM_RED_SIZE]: 0,
+      [cDefs.SDL_GL_ACCUM_GREEN_SIZE]: 0,
+      [cDefs.SDL_GL_ACCUM_BLUE_SIZE]: 0,
+      [cDefs.SDL_GL_ACCUM_ALPHA_SIZE]: 0,
+      [cDefs.SDL_GL_STEREO]: 0,
+      [cDefs.SDL_GL_MULTISAMPLEBUFFERS]: 0,
+      [cDefs.SDL_GL_MULTISAMPLESAMPLES]: 0,
+      [cDefs.SDL_GL_ACCELERATED_VISUAL]: 1,
+      [cDefs.SDL_GL_RETAINED_BACKING]: 0,
+      [cDefs.SDL_GL_CONTEXT_MAJOR_VERSION]: 0,
+      [cDefs.SDL_GL_CONTEXT_MINOR_VERSION]: 0,
     },
 
     keyboardState: null,
@@ -137,7 +137,7 @@ var LibrarySDL = {
       40: 81 | 1<<10, // down arrow
       44: 316, // print screen
       45: 73 | 1<<10, // insert
-      46: 127, // SDLK_DEL == '\177'
+      46: cDefs.SDLK_DELETE,
 
       91: 227 | 1<<10, // windows key or super key on linux (doesn't work on Mac)
       93: 101 | 1<<10, // application
@@ -1087,9 +1087,9 @@ var LibrarySDL = {
 
     setGetVolume(info, volume) {
       if (!info) return 0;
-      var ret = info.volume * 128; // MIX_MAX_VOLUME
+      var ret = info.volume * MIX_MAX_VOLUME;
       if (volume != -1) {
-        info.volume = Math.min(Math.max(volume, 0), 128) / 128;
+        info.volume = Math.min(Math.max(volume, 0), MIX_MAX_VOLUME) / MIX_MAX_VOLUME;
         if (info.audio) {
           try {
             info.audio.volume = info.volume; // For <audio> element
@@ -1216,7 +1216,7 @@ var LibrarySDL = {
 
     // Joystick helper methods and state
 
-    joystickEventState: 1, // SDL_ENABLE
+    joystickEventState: cDefs.SDL_ENABLE,
     lastJoystickState: {}, // Map from SDL_Joystick* to their last known state. Required to determine if a change has occurred.
     // Maps Joystick names to pointers. Allows us to avoid reallocating memory for
     // joystick names each time this function is called.
@@ -1740,17 +1740,17 @@ var LibrarySDL = {
   SDL_ShowCursor__proxy: 'sync',
   SDL_ShowCursor: (toggle) => {
     switch (toggle) {
-      case 0: // SDL_DISABLE
+      case SDL_DISABLE:
         if (Browser.isFullscreen) { // only try to lock the pointer when in full screen mode
           Browser.getCanvas().requestPointerLock?.();
-          return 0;
+          return SDL_DISABLE;
         }
         // else return SDL_ENABLE to indicate the failure
-        return 1;
-      case 1: // SDL_ENABLE
+        return SDL_ENABLE;
+      case SDL_ENABLE:
         document.exitPointerLock?.();
-        return 1;
-      case -1: // SDL_QUERY
+        return SDL_ENABLE;
+      case SDL_QUERY:
         return !Browser.pointerLock;
       default:
         err(`SDL_ShowCursor called with unknown toggle parameter value: ${toggle}`);
@@ -1958,7 +1958,7 @@ var LibrarySDL = {
   SDL_PeepEvents__proxy: 'sync',
   SDL_PeepEvents: (events, requestedEventCount, action, from, to) => {
     switch (action) {
-      case 2: { // SDL_GETEVENT
+      case SDL_GETEVENT: {
         // We only handle 1 event right now
 #if ASSERTIONS
         assert(requestedEventCount == 1);
@@ -2559,7 +2559,7 @@ var LibrarySDL = {
 
   Mix_Init: (flags) => {
     if (!flags) return 0;
-    return 8; /* MIX_INIT_OGG */
+    return MIX_INIT_OGG;
   },
   Mix_Quit: () => {},
 
@@ -2838,7 +2838,7 @@ var LibrarySDL = {
     return channel;
   },
 
-  Mix_FadingChannel: (channel) => 0, // MIX_NO_FADING, TODO
+  Mix_FadingChannel: (channel) => MIX_NO_FADING, // TODO
 
   Mix_HaltChannel__proxy: 'sync',
   Mix_HaltChannel: (channel) => {

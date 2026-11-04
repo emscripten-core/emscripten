@@ -195,7 +195,7 @@ var LibraryWebAudio = {
 #if ASSERTIONS || WEBAUDIO_DEBUG
       dbg(`_emscripten_create_audio_worklet() addModule() failed!`);
 #endif
-      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
+      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, EM_FALSE, userData);
     };
 
     // Does browser not support AudioWorklets?
@@ -260,7 +260,7 @@ var LibraryWebAudio = {
 #endif
       });
       audioWorklet.port.onmessage = _emAudioDispatchProcessorCallback;
-      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
+      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, EM_TRUE, userData);
     }).catch(audioWorkletCreationFailed);
   },
 
