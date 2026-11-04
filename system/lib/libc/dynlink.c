@@ -163,6 +163,7 @@ static void load_library_done(struct dso* p) {
   // spawnThread).  Otherwise keep it: when another thread loaded the module
   // the main thread catches up asynchronously, so a thread spawned meanwhile
   // may still read it, and a thread that failed to load it may retry.
+  // TODO: Find a way to free this data in all cases.
   if (synced && emscripten_is_main_runtime_thread()) {
     free(p->file_data);
     p->file_data = NULL;
@@ -333,7 +334,7 @@ static void do_thread_sync(void* arg) {
 
 static void do_thread_sync_out(void* arg) {
   dbg("do_thread_sync_out");
-  int* result = (int*)arg;
+  bool* result = arg;
   *result = _emscripten_dlsync_self();
 }
 
@@ -418,15 +419,15 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
 
 // Returns false if the target thread failed to load the modules.  A thread
 // that has exited doesn't need them, so that counts as success.
-int _emscripten_proxy_dlsync(pthread_t target_thread) {
+bool _emscripten_proxy_dlsync(pthread_t target_thread) {
   assert(emscripten_is_main_runtime_thread());
   if (!_dlopen_proxying_queue) {
     _dlopen_proxying_queue = em_proxying_queue_create();
   }
-  int result;
+  bool result;
   if (!emscripten_proxy_sync(
         _dlopen_proxying_queue, target_thread, do_thread_sync_out, &result)) {
-    return 1;
+    return true;
   }
   return result;
 }

@@ -9401,15 +9401,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @requires_pthreads
   def test_pthread_dlopen_file_data(self):
-    self.cflags += ['-Wno-experimental', '-pthread']
-    create_file('side.c', 'int side_fn(int x) { return x + 1; }')
+    self.cflags += ['-Wno-experimental', '-pthread', '-DSIDE_DATA_SIZE=8388608']
+    # Initialize the entire array so it occupies space in both the side module
+    # file and linear memory, rather than being zero-filled BSS.
+    create_file('side.c', '''
+      char side_data[SIDE_DATA_SIZE] = {[0 ... SIDE_DATA_SIZE - 1] = 1};
+      int side_fn(int x) { return x + side_data[x]; }
+    ''')
     self.build_dlfcn_lib('side.c')
-    # Pad the side module with an 8MB custom section so that the copy dlopen
-    # makes of it is easy to see in the heap.
-    name = b'padding'
-    payload = webassembly.to_leb(len(name)) + name + b'\0' * (8 * 1024 * 1024)
-    with open('libside.so', 'ab') as f:
-      f.write(b'\0' + webassembly.to_leb(len(payload)) + payload)
     # Embed it under a path that doesn't exist on the host, so that threads
     # can't read it from there either under node.
     self.cflags += ['--embed-file', 'libside.so@/lib/libside.so']

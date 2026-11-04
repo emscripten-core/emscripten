@@ -1275,7 +1275,10 @@ var LibraryPThread = {
     if (callingThread) {
       // Threads spawned while this runs may not see the new modules in
       // `sharedModules`, so don't report that every thread is in sync.
-      return dlsyncThreadsAsync().then(() => 0);
+      return (async () => {
+        await dlsyncThreadsAsync();
+        return 0;
+      })();
     }
     var synced = 1;
     for (const ptr of Object.keys(PThread.pthreads)) {
