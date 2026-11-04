@@ -12,8 +12,10 @@
  * with the option set may share a port, and a third without it is refused
  * with EADDRINUSE. Finally the set-only IP_ADD_MEMBERSHIP / IP_DROP_MEMBERSHIP
  * and IPv6 equivalents reach the kernel: a duplicate join fails with
- * EADDRINUSE, leaving an unjoined group with EADDRNOTAVAIL, and a join made
- * before bind() is applied once bound. Plain POSIX, also runs natively.
+ * EADDRINUSE, leaving an unjoined group with EADDRNOTAVAIL, a join made before
+ * bind() is applied once bound, a leave that names no interface finds the
+ * group, and a join the kernel rejects leaves nothing behind. Plain POSIX, also
+ * runs natively.
  */
 
 #include <arpa/inet.h>
@@ -73,11 +75,17 @@ void check_reuse(int opt) {
   close(c);
 }
 
-int set4(int fd, int opt, const char* group) {
+int set4_on(int fd, int opt, const char* group, const char* iface) {
   struct ip_mreq m = {0};
   inet_pton(AF_INET, group, &m.imr_multiaddr);
-  inet_pton(AF_INET, "127.0.0.1", &m.imr_interface);
+  if (iface) {
+    inet_pton(AF_INET, iface, &m.imr_interface);
+  }
   return setsockopt(fd, IPPROTO_IP, opt, &m, sizeof(m)) == 0 ? 0 : errno;
+}
+
+int set4(int fd, int opt, const char* group) {
+  return set4_on(fd, opt, group, "127.0.0.1");
 }
 
 int set6(int fd, int opt, const char* group) {
@@ -109,6 +117,32 @@ void check_membership(void) {
   assert(bind_any(fd, 0) == 0);
   assert(set4(fd, IP_ADD_MEMBERSHIP, "227.1.1.100") == EADDRINUSE);
   assert(set4(fd, IP_DROP_MEMBERSHIP, "227.1.1.100") == 0);
+  close(fd);
+
+  // A leave that names no interface matches a join on a specific one.
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+  assert(bind_any(fd, 0) == 0);
+  assert(set4(fd, IP_ADD_MEMBERSHIP, "227.1.1.100") == 0);
+  assert(set4_on(fd, IP_DROP_MEMBERSHIP, "227.1.1.100", NULL) == 0);
+  assert(set4_on(fd, IP_DROP_MEMBERSHIP, "227.1.1.100", NULL) == EADDRNOTAVAIL);
+  close(fd);
+
+  // A non-multicast group is refused even before bind().
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+  assert(set4(fd, IP_ADD_MEMBERSHIP, "10.0.0.1") == EINVAL);
+  close(fd);
+  fd = socket(AF_INET6, SOCK_DGRAM, 0);
+  assert(set6(fd, IPV6_JOIN_GROUP, "::1") == EINVAL);
+  close(fd);
+
+  // A join on an interface address no host has (192.0.2.0/24 is reserved for
+  // documentation) can only fail once bound, but must not count as joined. The
+  // error itself differs between kernels.
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+  set4_on(fd, IP_ADD_MEMBERSHIP, "227.1.1.100", "192.0.2.1");
+  assert(bind_any(fd, 0) == 0);
+  int rejected = set4_on(fd, IP_ADD_MEMBERSHIP, "227.1.1.100", "192.0.2.1");
+  assert(rejected != 0 && rejected != EADDRINUSE);
   close(fd);
 
   fd = socket(AF_INET6, SOCK_DGRAM, 0);

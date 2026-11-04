@@ -389,6 +389,17 @@ var NodeSockFSLibrary = {
     setMembership(sock, add, group, iface) {
       var m = sock.memberships ??= new Map();
       var key = group + '%' + (iface ?? '');
+      // A leave that names no interface drops the group from whichever
+      // interface joined it, as the kernel does.
+      if (!add && iface === undefined && !m.has(key)) {
+        for (var [k, v] of m) {
+          if (v[0] === group) {
+            key = k;
+            iface = v[1];
+            break;
+          }
+        }
+      }
       if (add && m.has(key)) return {{{ cDefs.EADDRINUSE }}};
       if (!add && !m.has(key)) return {{{ cDefs.EADDRNOTAVAIL }}};
       if (sock.udpBound) {
@@ -410,8 +421,13 @@ var NodeSockFSLibrary = {
       return 0;
     },
     applyMemberships(sock) {
-      for (var [group, iface] of sock.memberships?.values() ?? []) {
-        nodeSockHelpers.udpMembership(sock, group, iface);
+      // A join made before bind() returned 0 without reaching the kernel. If the
+      // kernel rejects it now, forget it, so a later join gets the real error
+      // rather than looking like a duplicate.
+      for (var [key, [group, iface]] of sock.memberships ?? []) {
+        if (nodeSockHelpers.udpMembership(sock, group, iface)) {
+          sock.memberships.delete(key);
+        }
       }
     },
     // The live OS buffer size from a bound UDP socket, or undefined.
@@ -953,6 +969,9 @@ var NodeSockFSLibrary = {
             // node selects the interface by address only, so an ip_mreqn that
             // names it by index alone cannot be honored.
             if (!iface && optlen >= 12 && {{{ makeGetValue('optval', 8, 'i32') }}}) return -{{{ cDefs.ENODEV }}};
+            // The kernel's first check, needed here as a join before bind()
+            // reaches the kernel only later.
+            if (optname === 35 && (val & 0xf0) !== 0xe0) return -{{{ cDefs.EINVAL }}}; // 224.0.0.0/4
             return -nodeSockHelpers.setMembership(sock, optname === 35, inetNtop4(val), iface ? inetNtop4(iface) : undefined);
           }
         }
@@ -978,6 +997,8 @@ var NodeSockFSLibrary = {
             // node selects the interface by name and has no index-to-name
             // lookup, so only the default interface (index 0) is supported.
             if ({{{ makeGetValue('optval', 16, 'i32') }}}) return -{{{ cDefs.ENODEV }}};
+            // As for IP_ADD_MEMBERSHIP above.
+            if (optname === 20 && {{{ makeGetValue('optval', 0, 'u8') }}} !== 0xff) return -{{{ cDefs.EINVAL }}}; // ff00::/8
             var src32 = {{{ getHeapOffset('optval', 'i32') }}};
             var group = inetNtop6(HEAP32.subarray(src32, src32 + 4));
             return -nodeSockHelpers.setMembership(sock, optname === 20, group, undefined);
