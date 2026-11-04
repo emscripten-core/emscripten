@@ -212,11 +212,10 @@ var LibraryDylink = {
   // that the main module itself imports exist at this point, so these are the
   // only ones we need to fill in.
   $initMainModuleGOT__internal: true,
-  $initMainModuleGOT__deps: ['$GOT', '$mainModuleExports', '$addMainModuleGOTEntry'],
   $initMainModuleGOT: (exports) => {
     mainModuleExports = exports;
     for (var [symName, entry] of Object.entries(GOT)) {
-      if (entry.value == {{{ UNDEFINED_ADDR }}}) {
+      if (entry.value == UNDEFINED_ADDR) {
         addMainModuleGOTEntry(symName);
       }
     }
@@ -229,7 +228,6 @@ var LibraryDylink = {
   // exports on startup.  In particular this means that the main module's
   // definition of a symbol takes precedence over any side module definition.
   $addMainModuleGOTEntry__internal: true,
-  $addMainModuleGOTEntry__deps: ['$mainModuleExports', '$updateGOT'],
   $addMainModuleGOTEntry: (symName) => {
 #if !WASM_BIGINT
     // Prefer the version of the symbol without i64 legalization (see updateGOT).
