@@ -96,8 +96,6 @@ def build_env():
   """
   env = os.environ.copy()
   env['PATH'] = path_from_root() + os.pathsep + env.get('PATH', '')
-  if config.EM_CONFIG:
-    env['EM_CONFIG'] = config.EM_CONFIG
   return env
 
 

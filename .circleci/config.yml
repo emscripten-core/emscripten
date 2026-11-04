@@ -1074,10 +1074,15 @@ jobs:
     steps:
       - prepare-for-tests
       - run:
-          name: Build and test CPython
+          name: Sync and build CPython
+          command: |
+            ./test/cpython_test.py sync
+            ./test/cpython_test.py build
+      - run:
+          name: Test CPython
           no_output_timeout: 30m
           # TODO(hoodmane): Pass --junit-xml and add upload-test-results
-          command: ./test/cpython_test.py all
+          command: ./test/cpython_test.py test
   test-browser-chrome:
     executor: ubuntu-lts
     environment:
