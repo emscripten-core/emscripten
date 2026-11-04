@@ -49,10 +49,13 @@ int main() {
   assert(h);
   size_t growth = mallinfo().uordblks - used;
   printf("heap growth: %zuKB\n", growth >> 10);
+  // The sanitizer runtimes replace mallinfo with one that always returns zeros.
+#if !__has_feature(address_sanitizer) && !__has_feature(leak_sanitizer)
   // Allow the side module's data allocation and loader overhead, but not a
   // second copy of the array retained in the module's file data.
   assert(growth >= SIDE_DATA_SIZE);
   assert(growth < SIDE_DATA_SIZE + (1 << 20));
+#endif
   // Threads that load the module from now on can't fall back to the file.
   unlink("/lib/libside.so");
 
