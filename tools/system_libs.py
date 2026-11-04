@@ -2433,10 +2433,6 @@ def get_libs_to_link():
         utils.exit_with_error('invalid forced library: %s', forced)
       add_library(forced)
 
-  if options.nodefaultlibs:
-    add_forced_libs()
-    return libs_to_link
-
   sanitize = settings.USE_LSAN or settings.USE_ASAN or settings.UBSAN_RUNTIME
 
   def add_sanitizer_libs():
@@ -2457,6 +2453,11 @@ def get_libs_to_link():
 
     if sanitize:
       add_library('libclang_rt.sanitizer_common')
+
+  if options.nodefaultlibs:
+    add_sanitizer_libs()
+    add_forced_libs()
+    return libs_to_link
 
   if settings.AUTO_NATIVE_LIBRARIES:
     add_library('libGL')
