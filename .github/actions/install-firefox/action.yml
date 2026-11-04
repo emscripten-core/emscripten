@@ -11,7 +11,8 @@ runs:
 
     - name: Add dependencies
       run: |
+        echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | sudo debconf-set-selections
         sudo apt-get update -y
-        sudo apt-get install -q -y pulseaudio libgtk-3-bin
+        sudo apt-get install -q -y pulseaudio libgtk-3-bin ttf-mscorefonts-installer
         pulseaudio --start
       shell: bash

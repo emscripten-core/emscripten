@@ -26,8 +26,10 @@ runs:
         sed -i "s|\|.*|\|$EMSDK/upstream/bin|" ~/cache/sanity.txt
       shell: bash
 
-    - name: Set EM_CONFIG
-      run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+    - name: Set EM_CONFIG and PATH
+      run: |
+        echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        echo "$(dirname "$EMSDK_NODE")" >> $GITHUB_PATH
       shell: bash
 
     - name: Setup cache config

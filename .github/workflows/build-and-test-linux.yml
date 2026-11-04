@@ -818,10 +818,20 @@ jobs:
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
 
-      - name: Install Scons
+      - name: Install Rust target and wasm-bindgen
+        run: |
+          rustup target add wasm32-unknown-emscripten
+          mkdir -p ${HOME}/.cargo/bin
+          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+          WB=wasm-bindgen-0.2.128-x86_64-unknown-linux-musl
+          curl -sSfL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.128/$WB.tar.gz | tar xz -C /tmp
+          mv /tmp/$WB/wasm-bindgen ${HOME}/.cargo/bin/
+        shell: bash
+
+      - name: Install Scons and ccache
         run: |
           sudo apt-get update
-          sudo apt-get install -y scons
+          sudo apt-get install -y scons ccache
         shell: bash
 
       - name: Run misc tests

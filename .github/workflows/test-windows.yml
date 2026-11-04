@@ -28,7 +28,6 @@ jobs:
       EMTEST_SKIP_PKG_CONFIG: "1"
       EMTEST_SKIP_MESON: "1"
       EMTEST_BROWSER: "0"
-      EMSDK_PYTHON: python
 
     steps:
       - name: Checkout repo
@@ -67,10 +66,10 @@ jobs:
         shell: pwsh
 
       - name: Pip install
-        run: python -m pip install -r requirements-dev.txt
+        run: '& $env:EMSDK_PYTHON -m pip install -r requirements-dev.txt'
 
       - name: Bootstrap
-        run: python bootstrap.py
+        run: '& $env:EMSDK_PYTHON bootstrap.py'
 
       - name: Crossplatform tests
         run: .\test\runner.exe --crossplatform-only
@@ -84,4 +83,4 @@ jobs:
       - name: Check clean
         run: |
           git checkout tools/pylauncher
-          python test/check_clean.py
+          & $env:EMSDK_PYTHON test/check_clean.py
