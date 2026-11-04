@@ -247,8 +247,8 @@ function isNiceIdent(ident) {
 }
 
 export let POINTER_SIZE;
+export let POINTER_TYPE;
 const STACK_ALIGN = 16;
-let POINTER_TYPE;
 
 onSettingsLoaded(() => {
   POINTER_SIZE = MEMORY64 ? 8 : 4;
@@ -256,8 +256,6 @@ onSettingsLoaded(() => {
   const POINTER_BITS = POINTER_SIZE * 8;
   POINTER_TYPE = `u${POINTER_BITS}`;
   const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
-  const POINTER_SHIFT = MEMORY64 ? '3' : '2';
-  const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
   const LONG_TYPE = `i${POINTER_BITS}`;
   const SIZE_TYPE = POINTER_TYPE;
 
@@ -269,13 +267,9 @@ onSettingsLoaded(() => {
 
   addToCompileTimeContext({
     LONG_TYPE,
-    POINTER_HEAP,
-    POINTER_BITS,
     POINTER_JS_TYPE,
     POINTER_MAX,
-    POINTER_SHIFT,
     POINTER_SIZE,
-    POINTER_TYPE,
     POINTER_WASM_TYPE,
     SIZE_TYPE,
   });
@@ -1003,15 +997,6 @@ function makeRemovedFSAssert(fsName) {
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
-// Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
-function buildStringArray(array) {
-  if (array.length > 0) {
-    return "['" + array.join("','") + "']";
-  } else {
-    return '[]';
-  }
-}
-
 function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
@@ -1166,13 +1151,6 @@ function getEntryFunction() {
   return `_${entryFunction}`;
 }
 
-function formattedMinNodeVersion() {
-  var major = MIN_NODE_VERSION / 10_000;
-  var minor = (MIN_NODE_VERSION / 100) % 100;
-  var rev = MIN_NODE_VERSION % 100;
-  return `v${major}.${minor}.${rev}`;
-}
-
 function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
@@ -1267,11 +1245,9 @@ addToCompileTimeContext({
   addAtPostRun,
   asyncIf,
   awaitIf,
-  buildStringArray,
   charCode,
   defineI64Param,
   expectToReceiveOnModule,
-  formattedMinNodeVersion,
   from64,
   from64Expr,
   getEntryFunction,
