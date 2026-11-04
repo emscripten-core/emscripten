@@ -18,8 +18,8 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.14 (in development)
------------------------
+7.0.0 (in development)
+----------------------
 - Remove support for the `EMCC_ONLY_FORCED_STDLIBS` environment variable, which
   was deprecated in 2.0.14 (#13448). Use `-nostdlib` instead to avoid linking
   standard libraries. (#28151)
