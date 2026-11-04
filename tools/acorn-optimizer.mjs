@@ -330,15 +330,12 @@ function JSDCE(ast, aggressive) {
         });
         if (node.init) c(node.init);
       },
-      ObjectExpression(node, c) {
-        // ignore the property identifiers
-        node.properties.forEach((node) => {
-          if (node.value) {
-            c(node.value);
-          } else if (node.argument) {
-            c(node.argument);
-          }
-        });
+      Property(node, c) {
+        // Ignore a property identifier ({X: 1}), but notice {[X]: 1} (computed props).
+        if (node.computed) {
+          c(node.key);
+        }
+        c(node.value);
       },
       MemberExpression(node, c) {
         c(node.object);
