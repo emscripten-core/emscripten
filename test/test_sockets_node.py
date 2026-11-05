@@ -186,7 +186,7 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_tcp_server.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
   @parameterized({
-    'close': ([],),
+    '': ([],),
     'shutdown': (['-DSHUTDOWN'],),
   })
   def test_noderawsockets_close_flush(self, args):
