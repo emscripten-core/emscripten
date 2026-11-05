@@ -159,7 +159,7 @@ var LibraryBrowser = {
     },
 
     createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
-      if (useWebGL && Module['ctx'] && canvas == Browser.getCanvas()) return Module['ctx']; // no need to recreate GL context if it's already been created for this canvas.
+      if (useWebGL && {{{ makeReadModuleCtx() }}} && canvas == Browser.getCanvas()) return {{{ makeReadModuleCtx() }}}; // no need to recreate GL context if it's already been created for this canvas.
 
       var ctx;
       var contextHandle;

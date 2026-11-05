@@ -1212,6 +1212,11 @@ function pthreadDetection() {
   }
 }
 
+// See $readModuleCtx. Only ASSERTIONS builds have the hook it goes around.
+function makeReadModuleCtx() {
+  return ASSERTIONS ? 'readModuleCtx()' : "Module['ctx']";
+}
+
 function makeExportAliases() {
   var res = ''
   for (const [alias, ex] of Object.entries(nativeAliases)) {
@@ -1265,6 +1270,7 @@ addToCompileTimeContext({
   makeModuleReceive,
   makeModuleReceiveExpr,
   makeModuleReceiveWithVar,
+  makeReadModuleCtx,
   makeRemovedFSAssert,
   makeRetainedCompilerSettings,
   makeReturn64,
