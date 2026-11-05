@@ -21,7 +21,6 @@ class interactive(BrowserCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    cls.browser_timeout = 60
     print()
     print('Running the interactive tests. Make sure the browser allows popups from localhost.')
     print()
