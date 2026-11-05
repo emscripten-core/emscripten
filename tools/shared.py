@@ -578,6 +578,7 @@ def is_internal_global(name):
   internal_start_stop_symbols = {'__start_em_asm', '__stop_em_asm',
                                  '__start_em_js', '__stop_em_js',
                                  '__start_em_lib_deps', '__stop_em_lib_deps',
+                                 '__start_em_embind', '__stop_em_embind',
                                  '__em_lib_deps'}
   internal_prefixes = ('__em_js__', '__em_lib_deps')
   return name in internal_start_stop_symbols or name.startswith(internal_prefixes)

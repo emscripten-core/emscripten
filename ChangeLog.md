@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 7.0.0 (in development)
 ----------------------
+- Embind now generates JavaScript invoker functions at link time instead of
+  using `new Function` at runtime. This improves startup time, makes
+  `-sDYNAMIC_EXECUTION=0` bindings just as fast as `-sDYNAMIC_EXECUTION=1`
+  without needing `-sEMBIND_AOT`.
 - Remove support for the `EMCC_ONLY_FORCED_STDLIBS` environment variable, which
   was deprecated in 2.0.14 (#13448). Use `-nostdlib` instead to avoid linking
   standard libraries. (#28151)
