@@ -446,7 +446,10 @@ var NodeSockFSLibrary = {
     // Forward a connected node socket's events onto sock.
     wireConnection(sock, conn) {
       sock.connection = conn;
-      conn.on('data', (buf) => {
+      // A connection closed while it flushes is no longer the fd's, whose
+      // number may be reused.
+      var on = (event, handler) => conn.on(event, (arg) => sock.connection === conn && handler(arg));
+      on('data', (buf) => {
         var data = new Uint8Array(buf.length);
         data.set(buf);
         sock.recv_queue.push({ addr: sock.daddr, port: sock.dport, data });
@@ -459,21 +462,21 @@ var NodeSockFSLibrary = {
         SOCKFS.emit('message', sock.stream.fd);
       });
       // A peer FIN surfaces as EOF to the reader.
-      conn.on('end', () => {
+      on('end', () => {
         sock.readClosed = true;
         SOCKFS.emit('message', sock.stream.fd);
       });
-      conn.on('close', () => {
+      on('close', () => {
         sock.readClosed = true;
         sock.state = SOCK_STATE_CLOSED;
         SOCKFS.emit('close', sock.stream.fd);
       });
       // Backpressure relieved, so we are writable again.
-      conn.on('drain', () => {
+      on('drain', () => {
         sock.writeBlocked = false;
         SOCKFS.emit('open', sock.stream.fd);
       });
-      conn.on('error', (e) => {
+      on('error', (e) => {
         sock.error = nodeSockHelpers.nodeErrToErrno(e);
         // Let a failed connect resolve so SO_ERROR can be read.
         if (sock.state === SOCK_STATE_CONNECTING) sock.state = SOCK_STATE_CONNECTED;
@@ -506,7 +509,7 @@ var NodeSockFSLibrary = {
         // POLLERR|POLLHUP, plus writable so SO_ERROR can be read. POLLOUT|POLLERR
         // also satisfies epoll's is_write_closed() mapping.
         mask |= {{{ cDefs.POLLOUT }}} | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-      } else if (sock.connection && sock.state === SOCK_STATE_CONNECTED && !sock.writeBlocked) {
+      } else if (sock.connection && sock.state === SOCK_STATE_CONNECTED && !sock.writeBlocked && !sock.flushing) {
         mask |= {{{ cDefs.POLLOUT }}};
       }
       // A peer FIN / read-side hangup (recv will see EOF) is POLLRDHUP. POLLHUP
@@ -535,6 +538,7 @@ var NodeSockFSLibrary = {
       }
     },
     close(sock) {
+      var connecting = sock.state === SOCK_STATE_CONNECTING;
       sock.state = SOCK_STATE_CLOSED;
       if (sock.udp) {
         try {
@@ -557,8 +561,15 @@ var NodeSockFSLibrary = {
           conn.end();
           var timer = setTimeout(() => conn.destroy(), linger.linger * 1000);
           timer.unref?.();
-        } else {
+        } else if (connecting || conn.destroyed || conn.writableFinished) {
           conn.destroy();
+        } else {
+          // Like a kernel close: data already accepted by send() is still
+          // delivered, then the FIN. Unref'd: a peer that never reads must not
+          // hold the process.
+          conn.once('finish', () => conn.destroy());
+          if (!conn.writableEnded) conn.end();
+          conn.unref?.();
         }
         sock.connection = null;
       }
@@ -577,10 +588,18 @@ var NodeSockFSLibrary = {
         // No more reads: subsequent recv returns EOF.
         sock.readClosed = true;
       }
-      if (how === 1 || how === 2) {
+      if ((how === 1 || how === 2) && !sock.writeShutdown) {
         // Half-close the write side (sends FIN); later sends fail with EPIPE.
+        // Queued data is flushed first, and until then the socket is not
+        // writable, so POLLOUT signals that the shutdown has completed.
+        var conn = sock.connection;
         sock.writeShutdown = true;
-        sock.connection.end();
+        sock.flushing = true;
+        conn.once('finish', () => {
+          sock.flushing = false;
+          if (sock.connection === conn) SOCKFS.emit('open', sock.stream.fd);
+        });
+        conn.end();
       }
       SOCKFS.emit('message', sock.stream.fd);
       return 0;
