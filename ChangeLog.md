@@ -18,8 +18,8 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.14 (in development)
------------------------
+7.0.0 (in development)
+----------------------
 - Remove support for the `EMCC_ONLY_FORCED_STDLIBS` environment variable, which
   was deprecated in 2.0.14 (#13448). Use `-nostdlib` instead to avoid linking
   standard libraries. (#28151)
@@ -54,6 +54,11 @@ See docs/process.md for more on how version tagging works.
   detected automatically by the compiler, so `__deps` is no longer required for
   direct JS-to-JS references (`__deps` is still supported for dependencies on
   compiled C/C++ symbols or indirect dependencies). (#27995)
+- The default minimum browser versions targeted by Emscripten were increased:
+  - `MIN_CHROME_VERSION`: 85 (Aug 2020) -> 93 (Aug 2021)
+  - `MIN_FIREFOX_VERSION`: 79 (Jul 2020) -> 92 (Sep 2021)
+  - `MIN_SAFARI_VERSION`: 15.0 (Sep 2021) -> 15.4 (Mar 2022)
+  (#28141)
 
 6.0.13 - 10/19/26
 -----------------

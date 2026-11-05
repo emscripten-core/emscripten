@@ -13709,6 +13709,30 @@ void foo() {}
   def test_emscripten_main_loop_and_blocker(self):
     self.do_runf('test_emscripten_main_loop_and_blocker.c')
 
+  def test_emscripten_main_loop_blocker_status(self):
+    # While counted blockers run, the status shows how many are done.
+    create_file('pre.js', 'Module.setStatus = (s) => out(`status: ${s}`);')
+    create_file('main.c', r'''
+      #include <stdlib.h>
+      #include <emscripten.h>
+
+      void blocker(void* arg) {}
+
+      void looper() {
+        emscripten_cancel_main_loop();
+        exit(0);
+      }
+
+      int main() {
+        emscripten_set_main_loop_expected_blockers(2);
+        emscripten_push_main_loop_blocker(blocker, NULL);
+        emscripten_push_main_loop_blocker(blocker, NULL);
+        emscripten_set_main_loop(looper, 0, 0);
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', 'status: Please wait... (1/2)\n', cflags=['--pre-js', 'pre.js'])
+
   def test_emscripten_main_loop_settimeout(self):
     self.do_runf('test_emscripten_main_loop_settimeout.c')
 

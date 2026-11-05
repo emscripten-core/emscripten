@@ -60,7 +60,7 @@ var LibraryEmbind = {
       // Inject an overload resolver function that routes to the appropriate overload based on the number of arguments.
       proto[methodName] = function(...args) {
         // TODO This check can be removed in -O3 level "unsafe" optimizations.
-        if (!hasOwn(proto[methodName].overloadTable, args.length)) {
+        if (!proto[methodName].overloadTable[args.length]) {
           throwBindingError(`Function '${humanName}' called with an invalid number of arguments (${args.length}) - expects one of (${proto[methodName].overloadTable})!`);
         }
         return proto[methodName].overloadTable[args.length].apply(this, args);
@@ -91,7 +91,7 @@ var LibraryEmbind = {
       // We are exposing a function with the same name as an existing function. Create an overload table and a function selector
       // that routes between the two.
       ensureOverloadTable(Module, name, name);
-      if (hasOwn(Module[name].overloadTable, numArguments)) {
+      if (Module[name].overloadTable[numArguments]) {
         throwBindingError(`Cannot register multiple overloads of a function with the same number of arguments (${numArguments})!`);
       }
       // Add the new function into the overload table.
@@ -144,7 +144,7 @@ var LibraryEmbind = {
 
   $registerInheritedInstance: (class_, ptr, instance) => {
     ptr = getBasestPointer(class_, ptr);
-    if (hasOwn(registeredInstances, ptr)) {
+    if (registeredInstances[ptr]) {
         throwBindingError(`Tried to register registered instance: ${ptr}`);
     } else {
         registeredInstances[ptr] = instance;
@@ -153,7 +153,7 @@ var LibraryEmbind = {
 
   $unregisterInheritedInstance: (class_, ptr) => {
     ptr = getBasestPointer(class_, ptr);
-    if (hasOwn(registeredInstances, ptr)) {
+    if (registeredInstances[ptr]) {
         delete registeredInstances[ptr];
     } else {
         throwBindingError(`Tried to unregister unregistered instance: ${ptr}`);
@@ -169,13 +169,13 @@ var LibraryEmbind = {
   $registeredPointers: {},
 
   $registerType__docs: '/** @param {Object=} options */',
-  $registerType: function(rawType, registeredInstance, options = {}) {
-    return sharedRegisterType(rawType, registeredInstance, options);
+  $registerType: function(typeID, registeredInstance, options = {}) {
+    return sharedRegisterType(typeID, registeredInstance, options);
   },
 
-  _embind_register_void: (rawType, name) => {
+  _embind_register_void: (typeID, name) => {
     name = AsciiToString(name);
-    registerType(rawType, {
+    registerType(typeID, {
       isVoid: true, // void return values can be optimized out sometimes
       name,
       fromWireType: () => undefined,
@@ -185,9 +185,9 @@ var LibraryEmbind = {
   },
 
   _embind_register_bool__docs: '/** @suppress {globalThis} */',
-  _embind_register_bool: (rawType, name, trueValue, falseValue) => {
+  _embind_register_bool: (typeID, name, trueValue, falseValue) => {
     name = AsciiToString(name);
-    registerType(rawType, {
+    registerType(typeID, {
       name,
       fromWireType: function(wt) {
         // ambiguous emscripten ABI: sometimes return values are
@@ -269,7 +269,7 @@ var LibraryEmbind = {
   _embind_register_integer__docs: '/** @suppress {globalThis} */',
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
-  _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
+  _embind_register_integer: (typeID, name, size, minRange, maxRange) => {
     name = AsciiToString(name);
 
     const isUnsignedType = minRange === 0;
@@ -281,7 +281,7 @@ var LibraryEmbind = {
       maxRange = fromWireType(maxRange);
     }
 
-    registerType(primitiveType, {
+    registerType(typeID, {
       name,
       fromWireType: fromWireType,
       toWireType: (destructors, value) => {
@@ -302,7 +302,7 @@ var LibraryEmbind = {
 
 #if WASM_BIGINT
   _embind_register_bigint__docs: '/** @suppress {globalThis} */',
-  _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
+  _embind_register_bigint: (typeID, name, size, minRange, maxRange) => {
     name = AsciiToString(name);
 
     const isUnsignedType = minRange === 0n;
@@ -324,7 +324,7 @@ var LibraryEmbind = {
       maxRange = fromWireType(maxRange);
     }
 
-    registerType(primitiveType, {
+    registerType(typeID, {
       name,
       fromWireType: fromWireType,
       toWireType: (destructors, value) => {
@@ -345,12 +345,12 @@ var LibraryEmbind = {
   },
 #else
   _embind_register_bigint__deps: [],
-  _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {},
+  _embind_register_bigint: (typeID, name, size, minRange, maxRange) => {},
 #endif
 
-  _embind_register_float: (rawType, name, size) => {
+  _embind_register_float: (typeID, name, size) => {
     name = AsciiToString(name);
-    registerType(rawType, {
+    registerType(typeID, {
       name,
       fromWireType: (value) => value,
       toWireType: (destructors, value) => {
@@ -414,11 +414,11 @@ var LibraryEmbind = {
   _embind_register_std_string__deps: [
     'malloc', 'free'
   ],
-  _embind_register_std_string: (rawType, name) => {
+  _embind_register_std_string: (typeID, name) => {
     name = AsciiToString(name);
     const stdStringIsUTF8 = {{{ EMBIND_STD_STRING_IS_UTF8 }}};
 
-    registerType(rawType, {
+    registerType(typeID, {
       name,
       // For some method names we use string keys here since they are part of
       // the public/external API and/or used by the runtime-generated code.
@@ -491,7 +491,7 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_std_wstring: (rawType, charSize, name) => {
+  _embind_register_std_wstring: (typeID, charSize, name) => {
     name = AsciiToString(name);
     var decodeString, encodeString, lengthBytesUTF;
     if (charSize === 2) {
@@ -506,7 +506,7 @@ var LibraryEmbind = {
       encodeString = stringToUTF32;
       lengthBytesUTF = lengthBytesUTF32;
     }
-    registerType(rawType, {
+    registerType(typeID, {
       name,
       fromWireType: (value) => {
         // Code mostly taken from _embind_register_std_string fromWireType
@@ -541,21 +541,21 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_emval: (rawType) => registerType(rawType, EmValType),
+  _embind_register_emval: (typeID) => registerType(typeID, EmValType),
 
-  _embind_register_user_type: (rawType, name) => {
-    __embind_register_emval(rawType);
+  _embind_register_user_type: (typeID, name) => {
+    __embind_register_emval(typeID);
   },
 
-  _embind_register_user_type_definition: (rawType, name, definition) => {
-    __embind_register_emval(rawType);
+  _embind_register_user_type_definition: (typeID, name, definition) => {
+    __embind_register_emval(typeID);
   },
 
-  _embind_register_optional: (rawOptionalType, rawType) => {
-    registerType(rawOptionalType, EmValOptionalType);
+  _embind_register_optional: (optionalTypeID, typeID) => {
+    registerType(optionalTypeID, EmValOptionalType);
   },
 
-  _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
+  _embind_register_memory_view: (typeID, dataTypeIndex, name) => {
     var typeMapping = [
       Int8Array,
       Uint8Array,
@@ -580,7 +580,7 @@ var LibraryEmbind = {
     }
 
     name = AsciiToString(name);
-    registerType(rawType, {
+    registerType(typeID, {
       name,
       fromWireType: decodeMemoryView,
       readValueFromPointer: decodeMemoryView,
@@ -806,17 +806,17 @@ var LibraryEmbind = {
   },
 
   _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync, isNonnullReturn) => {
-    var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+    var argTypeIDs = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = AsciiToString(name);
     name = getFunctionName(name);
 
     rawInvoker = embind__requireFunction(signature, rawInvoker, isAsync);
 
     exposePublicSymbol(name, function() {
-      throwUnboundTypeError(`Cannot call ${name} due to unbound types`, argTypes);
+      throwUnboundTypeError(`Cannot call ${name} due to unbound types`, argTypeIDs);
     }, argCount - 1);
 
-    whenDependentTypesAreResolved([], argTypes, (argTypes) => {
+    whenDependentTypesAreResolved([], argTypeIDs, (argTypes) => {
       var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
       replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn, isAsync), argCount - 1);
       return [];
@@ -824,7 +824,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_value_array: (
-    rawType,
+    typeID,
     name,
     constructorSignature,
     rawConstructor,
@@ -833,7 +833,7 @@ var LibraryEmbind = {
     valueSize,
     isTrivial
   ) => {
-    tupleRegistrations[rawType] = {
+    tupleRegistrations[typeID] = {
       name: AsciiToString(name),
       rawConstructor: embind__requireFunction(constructorSignature, rawConstructor),
       rawDestructor: embind__requireFunction(destructorSignature, rawDestructor),
@@ -844,40 +844,40 @@ var LibraryEmbind = {
   },
 
   _embind_register_value_array_element: (
-    rawTupleType,
-    getterReturnType,
+    tupleTypeID,
+    getterReturnTypeID,
     getterSignature,
     getter,
     getterContext,
-    setterArgumentType,
+    setterArgumentTypeID,
     setterSignature,
     setter,
     setterContext
   ) => {
-    tupleRegistrations[rawTupleType].elements.push({
-      getterReturnType,
+    tupleRegistrations[tupleTypeID].elements.push({
+      getterReturnTypeID,
       getter: embind__requireFunction(getterSignature, getter),
       getterContext,
-      setterArgumentType,
+      setterArgumentTypeID,
       setter: embind__requireFunction(setterSignature, setter),
       setterContext,
     });
   },
 
-  _embind_finalize_value_array: (rawTupleType) => {
-    var reg = tupleRegistrations[rawTupleType];
-    delete tupleRegistrations[rawTupleType];
+  _embind_finalize_value_array: (tupleTypeID) => {
+    var reg = tupleRegistrations[tupleTypeID];
+    delete tupleRegistrations[tupleTypeID];
     var elements = reg.elements;
     var elementsLength = elements.length;
-    var elementTypes = elements.map((elt) => elt.getterReturnType).
-                concat(elements.map((elt) => elt.setterArgumentType));
+    var elementTypeIDs = elements.map((elt) => elt.getterReturnTypeID).
+                concat(elements.map((elt) => elt.setterArgumentTypeID));
 
     var rawConstructor = reg.rawConstructor;
     var rawDestructor = reg.rawDestructor;
     var valueSize = reg.valueSize;
     var isTrivial = reg.isTrivial;
 
-    whenDependentTypesAreResolved([rawTupleType], elementTypes, (elementTypes) => {
+    whenDependentTypesAreResolved([tupleTypeID], elementTypeIDs, (elementTypes) => {
       for (const [i, elt] of elements.entries()) {
         const getterReturnType = elementTypes[i];
         const getter = elt.getter;
@@ -947,7 +947,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_value_object: (
-    rawType,
+    typeID,
     name,
     constructorSignature,
     rawConstructor,
@@ -956,7 +956,7 @@ var LibraryEmbind = {
     valueSize,
     isTrivial
   ) => {
-    structRegistrations[rawType] = {
+    structRegistrations[typeID] = {
       name: AsciiToString(name),
       rawConstructor: embind__requireFunction(constructorSignature, rawConstructor),
       rawDestructor: embind__requireFunction(destructorSignature, rawDestructor),
@@ -967,40 +967,40 @@ var LibraryEmbind = {
   },
 
   _embind_register_value_object_field: (
-    structType,
+    structTypeID,
     fieldName,
-    getterReturnType,
+    getterReturnTypeID,
     getterSignature,
     getter,
     getterContext,
-    setterArgumentType,
+    setterArgumentTypeID,
     setterSignature,
     setter,
     setterContext
   ) => {
-    structRegistrations[structType].fields.push({
+    structRegistrations[structTypeID].fields.push({
       fieldName: AsciiToString(fieldName),
-      getterReturnType,
+      getterReturnTypeID,
       getter: embind__requireFunction(getterSignature, getter),
       getterContext,
-      setterArgumentType,
+      setterArgumentTypeID,
       setter: embind__requireFunction(setterSignature, setter),
       setterContext,
     });
   },
 
-  _embind_finalize_value_object: (structType) => {
-    var reg = structRegistrations[structType];
-    delete structRegistrations[structType];
+  _embind_finalize_value_object: (structTypeID) => {
+    var reg = structRegistrations[structTypeID];
+    delete structRegistrations[structTypeID];
 
     var rawConstructor = reg.rawConstructor;
     var rawDestructor = reg.rawDestructor;
     var valueSize = reg.valueSize;
     var isTrivial = reg.isTrivial;
     var fieldRecords = reg.fields;
-    var fieldTypes = fieldRecords.map((field) => field.getterReturnType).
-              concat(fieldRecords.map((field) => field.setterArgumentType));
-    whenDependentTypesAreResolved([structType], fieldTypes, (fieldTypes) => {
+    var fieldTypeIDs = fieldRecords.map((field) => field.getterReturnTypeID).
+              concat(fieldRecords.map((field) => field.setterArgumentTypeID));
+    whenDependentTypesAreResolved([structTypeID], fieldTypeIDs, (fieldTypes) => {
       var fields = {};
       for (var [i, field] of fieldRecords.entries()) {
         const getterReturnType = fieldTypes[i];
@@ -1591,10 +1591,10 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     };
   },
 
-  _embind_register_class: (rawType,
-                           rawPointerType,
-                           rawConstPointerType,
-                           baseClassRawType,
+  _embind_register_class: (typeID,
+                           pointerTypeID,
+                           constPointerTypeID,
+                           baseClassTypeID,
                            getActualTypeSignature,
                            getActualType,
                            upcastSignature,
@@ -1612,19 +1612,19 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     var legalFunctionName = makeLegalFunctionName(name);
 
     exposePublicSymbol(legalFunctionName, function() {
-      // this code cannot run if baseClassRawType is zero
-      throwUnboundTypeError(`Cannot construct ${name} due to unbound types`, [baseClassRawType]);
+      // this code cannot run if baseClassTypeID is zero
+      throwUnboundTypeError(`Cannot construct ${name} due to unbound types`, [baseClassTypeID]);
     });
 
     whenDependentTypesAreResolved(
-      [rawType, rawPointerType, rawConstPointerType],
-      baseClassRawType ? [baseClassRawType] : [],
+      [typeID, pointerTypeID, constPointerTypeID],
+      baseClassTypeID ? [baseClassTypeID] : [],
       (base) => {
         base = base[0];
 
         var baseClass;
         var basePrototype;
-        if (baseClassRawType) {
+        if (baseClassTypeID) {
           baseClass = base.registeredClass;
           basePrototype = baseClass.instancePrototype;
         } else {
@@ -1685,7 +1685,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
                                                           true,
                                                           false);
 
-        registeredPointers[rawType] = {
+        registeredPointers[typeID] = {
           pointerType: pointerConverter,
           constPointerType: constPointerConverter
         };
@@ -1697,10 +1697,10 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     );
   },
 
-  _embind_register_iterable: (rawClassType, rawElementType, sizeMethodName, getMethodName) => {
+  _embind_register_iterable: (classTypeID, elementTypeID, sizeMethodName, getMethodName) => {
     sizeMethodName = AsciiToString(sizeMethodName);
     getMethodName = AsciiToString(getMethodName);
-    whenDependentTypesAreResolved([], [rawClassType, rawElementType], (types) => {
+    whenDependentTypesAreResolved([], [classTypeID, elementTypeID], (types) => {
       const classType = types[0];
       installIndexedIterator(classType.registeredClass.instancePrototype, sizeMethodName, getMethodName);
       return [];
@@ -1708,7 +1708,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
   },
 
   _embind_register_class_constructor: (
-    rawClassType,
+    classTypeID,
     argCount,
     rawArgTypesAddr,
     invokerSignature,
@@ -1718,12 +1718,12 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
 #if ASSERTIONS
     assert(argCount > 0);
 #endif
-    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+    var argTypeIDs = heap32VectorToArray(argCount, rawArgTypesAddr);
     invoker = embind__requireFunction(invokerSignature, invoker);
     var args = [rawConstructor];
     var destructors = [];
 
-    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
+    whenDependentTypesAreResolved([], [classTypeID], (classType) => {
       classType = classType[0];
       var humanName = `constructor ${classType.name}`;
 
@@ -1734,10 +1734,10 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
         throw new BindingError(`Cannot register multiple constructors with identical number of parameters (${argCount-1}) for class '${classType.name}'! Overload resolution is currently only performed using the parameter count, not actual type info!`);
       }
       classType.registeredClass.constructor_body[argCount - 1] = () => {
-        throwUnboundTypeError(`Cannot construct ${classType.name} due to unbound types`, rawArgTypes);
+        throwUnboundTypeError(`Cannot construct ${classType.name} due to unbound types`, argTypeIDs);
       };
 
-      whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
+      whenDependentTypesAreResolved([], argTypeIDs, (argTypes) => {
         // Insert empty slot for context type (argTypes[1]).
         argTypes.splice(1, 0, null);
         classType.registeredClass.constructor_body[argCount - 1] = craftInvokerFunction(humanName, argTypes, null, invoker, rawConstructor);
@@ -1790,7 +1790,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
                          classType.registeredClass);
   },
 
-  _embind_register_class_function: (rawClassType,
+  _embind_register_class_function: (classTypeID,
                                     methodName,
                                     argCount,
                                     rawArgTypesAddr, // [ReturnType, ThisType, Args...]
@@ -1800,12 +1800,12 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
                                     isPureVirtual,
                                     isAsync,
                                     isNonnullReturn) => {
-    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+    var argTypeIDs = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = AsciiToString(methodName);
     methodName = getFunctionName(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
 
-    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
+    whenDependentTypesAreResolved([], [classTypeID], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${methodName}`;
 
@@ -1818,7 +1818,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
       }
 
       function unboundTypesHandler() {
-        throwUnboundTypeError(`Cannot call ${humanName} due to unbound types`, rawArgTypes);
+        throwUnboundTypeError(`Cannot call ${humanName} due to unbound types`, argTypeIDs);
       }
 
       var proto = classType.registeredClass.instancePrototype;
@@ -1836,7 +1836,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
         proto[methodName].overloadTable[argCount - 2] = unboundTypesHandler;
       }
 
-      whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
+      whenDependentTypesAreResolved([], argTypeIDs, (argTypes) => {
         var memberFunction = craftInvokerFunction(humanName, argTypes, classType, rawInvoker, context, isAsync);
 
         // Replace the initial unbound-handler-stub function with the
@@ -1857,31 +1857,31 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     });
   },
 
-  _embind_register_class_property: (classType,
+  _embind_register_class_property: (classTypeID,
                                     fieldName,
-                                    getterReturnType,
+                                    getterReturnTypeID,
                                     getterSignature,
                                     getter,
                                     getterContext,
-                                    setterArgumentType,
+                                    setterArgumentTypeID,
                                     setterSignature,
                                     setter,
                                     setterContext) => {
     fieldName = AsciiToString(fieldName);
     getter = embind__requireFunction(getterSignature, getter);
 
-    whenDependentTypesAreResolved([], [classType], (classType) => {
+    whenDependentTypesAreResolved([], [classTypeID], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${fieldName}`;
       var desc = {
         get() {
-          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
+          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnTypeID, setterArgumentTypeID]);
         },
         enumerable: true,
         configurable: true
       };
       if (setter) {
-        desc.set = () => throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
+        desc.set = () => throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnTypeID, setterArgumentTypeID]);
       } else {
         desc.set = (v) => throwBindingError(humanName + ' is a read-only property');
       }
@@ -1890,7 +1890,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
 
       whenDependentTypesAreResolved(
         [],
-        (setter ? [getterReturnType, setterArgumentType] : [getterReturnType]),
+        (setter ? [getterReturnTypeID, setterArgumentTypeID] : [getterReturnTypeID]),
       (types) => {
         var getterReturnType = types[0];
         var desc = {
@@ -1920,7 +1920,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     });
   },
 
-  _embind_register_class_class_function: (rawClassType,
+  _embind_register_class_class_function: (classTypeID,
                                           methodName,
                                           argCount,
                                           rawArgTypesAddr,
@@ -1929,16 +1929,16 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
                                           fn,
                                           isAsync,
                                           isNonnullReturn) => {
-    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+    var argTypeIDs = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = AsciiToString(methodName);
     methodName = getFunctionName(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
-    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
+    whenDependentTypesAreResolved([], [classTypeID], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${methodName}`;
 
       function unboundTypesHandler() {
-        throwUnboundTypeError(`Cannot call ${humanName} due to unbound types`, rawArgTypes);
+        throwUnboundTypeError(`Cannot call ${humanName} due to unbound types`, argTypeIDs);
       }
 
       if (methodName.startsWith('@@')) {
@@ -1957,7 +1957,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
         proto[methodName].overloadTable[argCount-1] = unboundTypesHandler;
       }
 
-      whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
+      whenDependentTypesAreResolved([], argTypeIDs, (argTypes) => {
         // Replace the initial unbound-types-handler stub with the proper
         // function. If multiple overloads are registered, the function handlers
         // go into an overload table.
@@ -1972,10 +1972,8 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
 
         if (classType.registeredClass.__derivedClasses) {
           for (const derivedClass of classType.registeredClass.__derivedClasses) {
-            if (!hasOwn(derivedClass.constructor, methodName)) {
-              // TODO: Add support for overloads
-              derivedClass.constructor[methodName] = func;
-            }
+            // TODO: Add support for overloads
+            derivedClass.constructor[methodName] ??= func;
           }
         }
 
@@ -1985,9 +1983,9 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     });
   },
 
-  _embind_register_class_class_property: (rawClassType,
+  _embind_register_class_class_property: (classTypeID,
                                           fieldName,
-                                          rawFieldType,
+                                          fieldTypeID,
                                           rawFieldPtr,
                                           getterSignature,
                                           getter,
@@ -1996,19 +1994,19 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     fieldName = AsciiToString(fieldName);
     getter = embind__requireFunction(getterSignature, getter);
 
-    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
+    whenDependentTypesAreResolved([], [classTypeID], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${fieldName}`;
       var desc = {
         get() {
-          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [rawFieldType]);
+          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [fieldTypeID]);
         },
         enumerable: true,
         configurable: true
       };
       if (setter) {
         desc.set = () => {
-          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [rawFieldType]);
+          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [fieldTypeID]);
         };
       } else {
         desc.set = (v) => {
@@ -2018,7 +2016,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
 
       Object.defineProperty(classType.registeredClass.constructor, fieldName, desc);
 
-      whenDependentTypesAreResolved([], [rawFieldType], (fieldType) => {
+      whenDependentTypesAreResolved([], [fieldTypeID], (fieldType) => {
         fieldType = fieldType[0];
         var desc = {
           get() {
@@ -2044,9 +2042,9 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     });
   },
 
-  _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {
+  _embind_create_inheriting_constructor: (constructorName, wrapperTypeID, properties) => {
     constructorName = AsciiToString(constructorName);
-    wrapperType = requireRegisteredType(wrapperType, 'wrapper');
+    var wrapperType = requireRegisteredType(wrapperTypeID, 'wrapper');
     properties = Emval.toValue(properties);
 
     var registeredClass = wrapperType.registeredClass;
@@ -2116,8 +2114,8 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     return name;
   },
 
-  _embind_register_smart_ptr: (rawType,
-                               rawPointeeType,
+  _embind_register_smart_ptr: (typeID,
+                               pointeeTypeID,
                                name,
                                sharingPolicy,
                                getPointeeSignature,
@@ -2134,7 +2132,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     rawShare = embind__requireFunction(shareSignature, rawShare);
     rawDestructor = embind__requireFunction(destructorSignature, rawDestructor);
 
-    whenDependentTypesAreResolved([rawType], [rawPointeeType], (pointeeType) => {
+    whenDependentTypesAreResolved([typeID], [pointeeTypeID], (pointeeType) => {
       pointeeType = pointeeType[0];
 
       var registeredPointer = new RegisteredPointer(name,
@@ -2154,7 +2152,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
   },
 
   _embind_register_enum__docs: '/** @suppress {globalThis} */',
-  _embind_register_enum: (rawType, name, size, isSigned, rawValueType) => {
+  _embind_register_enum: (typeID, name, size, isSigned, rawValueType) => {
     name = AsciiToString(name);
     const valueType = getEnumValueType(rawValueType);
 
@@ -2163,7 +2161,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
         function ctor() {}
         ctor.values = {};
 
-        registerType(rawType, {
+        registerType(typeID, {
           name,
           constructor: ctor,
           valueType,
@@ -2181,7 +2179,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
       case 'number': {
         var keysMap = {};
 
-        registerType(rawType, {
+        registerType(typeID, {
           name: name,
           keysMap,
           valueType,
@@ -2201,7 +2199,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
         var reverseMap = {};
         var keysMap = {};
 
-        registerType(rawType, {
+        registerType(typeID, {
           name: name,
           valuesMap,
           reverseMap,
@@ -2225,8 +2223,8 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     }
   },
 
-  _embind_register_enum_value: (rawEnumType, name, enumValue) => {
-    var enumType = requireRegisteredType(rawEnumType, 'enum');
+  _embind_register_enum_value: (enumTypeID, name, enumValue) => {
+    var enumType = requireRegisteredType(enumTypeID, 'enum');
     name = AsciiToString(name);
 
     switch (enumType.valueType) {
@@ -2253,9 +2251,9 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     }
   },
 
-  _embind_register_constant: (name, type, value) => {
+  _embind_register_constant: (name, typeID, value) => {
     name = AsciiToString(name);
-    whenDependentTypesAreResolved([], [type], (type) => {
+    whenDependentTypesAreResolved([], [typeID], (type) => {
       type = type[0];
       Module[name] = type.fromWireType(value);
       return [];

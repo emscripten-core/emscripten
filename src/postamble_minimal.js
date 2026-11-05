@@ -328,7 +328,7 @@ null;
 #endif
     // WebAssembly compilation failed, try running the JS fallback instead.
     var search = location.search;
-    if (search.indexOf('_rwasm=0') < 0) {
+    if (!search.includes('_rwasm=0')) {
       location.href += (search ? search + '&' : '?') + '_rwasm=0';
     }
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL

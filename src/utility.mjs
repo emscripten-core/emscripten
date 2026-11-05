@@ -58,7 +58,7 @@ export function popCurrentFile() {
 
 function errorPrefix(lineNo) {
   if (!currentFile.length) return '';
-  const filename = currentFile[currentFile.length - 1];
+  const filename = currentFile.at(-1);
   if (lineNo) {
     return `${filename}:${lineNo}: `;
   } else {
@@ -313,7 +313,7 @@ class Profiler {
 
   terminate() {
     while (this.ids.length) {
-      const lastID = this.ids[this.ids.length - 1][0];
+      const lastID = this.ids.at(-1)[0];
       this.stop(lastID);
     }
     // const overall = performance.now() - this.startTime

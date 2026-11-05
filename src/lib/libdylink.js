@@ -537,7 +537,7 @@ var LibraryDylink = {
     }
 
 #if ASSERTIONS
-    var tableAlign = Math.pow(2, customSection.tableAlign);
+    var tableAlign = 2 ** customSection.tableAlign;
     assert(tableAlign === 1, `invalid tableAlign ${tableAlign}`);
     assert(offset == end);
 #endif
@@ -554,9 +554,7 @@ var LibraryDylink = {
     for (var [sym, exp] of Object.entries(exports)) {
       if (sym.startsWith('dynCall_')) {
         var sig = sym.substring(8);
-        if (!hasOwn(dynCalls, sig)) {
-          dynCalls[sig] = exp;
-        }
+        dynCalls[sig] ??= exp;
       }
     }
   },
@@ -719,7 +717,7 @@ var LibraryDylink = {
     if (firstLoad) {
 #endif
       // alignments are powers of 2
-      var memAlign = Math.pow(2, metadata.memoryAlign);
+      var memAlign = 2 ** metadata.memoryAlign;
       // prepare memory
       var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
       var tableBase = metadata.tableSize ? {{{ from64Expr('wasmTable.length') }}} : 0;

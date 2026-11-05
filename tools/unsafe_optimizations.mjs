@@ -217,8 +217,8 @@ function runOnJsText(js, pretty = false) {
   let progress = true;
   while (progress) {
     progress = optPassMergeVarDeclarations(ast);
-    progress = progress || optPassMergeVarInitializationAssignments(ast);
-    progress = progress || optPassMergeEmptyVarDeclarators(ast);
+    progress ||= optPassMergeVarInitializationAssignments(ast);
+    progress ||= optPassMergeEmptyVarDeclarators(ast);
   }
 
   optPassSimplifyModularizeFunction(ast);

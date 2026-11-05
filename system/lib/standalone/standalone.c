@@ -142,6 +142,46 @@ weak int __syscall_lstat64(const char *path, struct stat *buf) {
   return -ENOSYS;
 }
 
+#define STRINGIFY(s) #s
+#define STR(s) STRINGIFY(s)
+
+weak int __syscall_uname(struct utsname *buf) {
+  if (!buf) {
+    return -EFAULT;
+  }
+  const char* full_version = STR(__EMSCRIPTEN_MAJOR__) "." \
+                             STR(__EMSCRIPTEN_MINOR__) "." \
+                             STR(__EMSCRIPTEN_TINY__);
+
+  memset(buf, 0, sizeof(*buf));
+  strcpy(buf->sysname, "Emscripten");
+  strcpy(buf->nodename, "emscripten");
+  strcpy(buf->release, full_version);
+  strcpy(buf->version, "#1");
+#ifdef __wasm64__
+  strcpy(buf->machine, "wasm64");
+#else
+  strcpy(buf->machine, "wasm32");
+#endif
+  return 0;
+}
+
+weak uid_t __syscall_getuid32(void) {
+  return 0;
+}
+
+weak uid_t __syscall_geteuid32(void) {
+  return 0;
+}
+
+weak gid_t __syscall_getgid32(void) {
+  return 0;
+}
+
+weak gid_t __syscall_getegid32(void) {
+  return 0;
+}
+
 // Emscripten additions
 
 size_t emscripten_get_heap_max() {

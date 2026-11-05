@@ -34,18 +34,18 @@
   }
 
   const currentSafariVersion = userAgent.includes("Safari/") && !userAgent.includes("Chrome/") && userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/) ? humanReadableVersionToPacked(userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]) : TARGET_NOT_SUPPORTED;
-  if (currentSafariVersion < 150000) {
-    throw new Error(`This emscripten-generated code requires Safari v${ packedVersionToHumanReadable(150000) } (detected v${currentSafariVersion})`);
+  if (currentSafariVersion < 150400) {
+    throw new Error(`This emscripten-generated code requires Safari v${ packedVersionToHumanReadable(150400) } (detected v${currentSafariVersion})`);
   }
 
   const currentFirefoxVersion = userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/) ? parseFloat(userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1]) : TARGET_NOT_SUPPORTED;
-  if (currentFirefoxVersion < 79) {
-    throw new Error(`This emscripten-generated code requires Firefox v79 (detected v${currentFirefoxVersion})`);
+  if (currentFirefoxVersion < 92) {
+    throw new Error(`This emscripten-generated code requires Firefox v92 (detected v${currentFirefoxVersion})`);
   }
 
   const currentChromeVersion = userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/) ? parseFloat(userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1]) : TARGET_NOT_SUPPORTED;
-  if (currentChromeVersion < 85) {
-    throw new Error(`This emscripten-generated code requires Chrome v85 (detected v${currentChromeVersion})`);
+  if (currentChromeVersion < 93) {
+    throw new Error(`This emscripten-generated code requires Chrome v93 (detected v${currentChromeVersion})`);
   }
 })();
 

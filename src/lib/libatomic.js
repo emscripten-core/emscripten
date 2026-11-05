@@ -9,12 +9,13 @@ assert(SHARED_MEMORY);
 addToLibrary({
 // Chrome 87 shipped Atomics.waitAsync:
 //   https://www.chromestatus.com/feature/6243382101803008
-// However its implementation is faulty:
+// However its implementation is faulty until Chrome 91:
 //   https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
-// Firefox Nightly 86.0a1 (2021-01-15) does not yet have it:
+// Firefox added support in 145:
 //   https://bugzilla.mozilla.org/show_bug.cgi?id=1467846
-// And at the time of writing, no other browser has it either.
-#if MIN_CHROME_VERSION < 91 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED || ENVIRONMENT_MAY_BE_NODE
+// Safari added support in 16.4, and Node.js in 16.0.0:
+//   https://caniuse.com/mdn-javascript_builtins_atomics_waitasync
+#if MIN_CHROME_VERSION < 91 || MIN_SAFARI_VERSION < 160400 || MIN_FIREFOX_VERSION < 145
   // Partially polyfill Atomics.waitAsync() if not available in the browser.
   // Also polyfill for old Chrome-based browsers, where Atomics.waitAsync is
   // broken until Chrome 91, see:
@@ -22,7 +23,11 @@ addToLibrary({
   //   https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the
   // target memory location.
+#if MIN_CHROME_VERSION < 91
   $waitAsyncPolyfilled: '=(!Atomics.waitAsync || (globalThis.navigator?.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91));',
+#else
+  $waitAsyncPolyfilled: '=!Atomics.waitAsync;',
+#endif
   $polyfillWaitAsync__postset: `if (waitAsyncPolyfilled) {
   let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
   function __Atomics_pollWaitAsyncAddresses() {

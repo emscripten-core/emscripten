@@ -1023,7 +1023,7 @@ function(${args}) {
         //  emits
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
-        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') {
+        if (snippet.at(-1) != ';' && snippet.at(-1) != '}') {
           contentText += ';';
         }
       } else if (typeof snippet === 'undefined') {
