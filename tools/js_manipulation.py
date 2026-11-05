@@ -103,7 +103,7 @@ def is_legal_sig(sig):
 
 def isidentifier(name):
   # https://stackoverflow.com/questions/43244604/check-that-a-string-is-a-valid-javascript-identifier-name-using-python-3
-  return name.replace('$', '_').isidentifier()
+  return all(ident.isidentifier() for ident in name.replace('$', '_').split('.'))
 
 
 def make_dynCall(sig, args):
