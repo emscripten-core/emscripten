@@ -1073,9 +1073,8 @@ jobs:
     resource_class: large
     steps:
       - checkout
-      # This job doesn't depend on `build-linux` so we have to install emsdk directly
-      - install-emsdk
       - pip-install
+      - install-emsdk
       - run:
           name: Sync and build CPython
           command: |
