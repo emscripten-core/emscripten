@@ -185,6 +185,15 @@ class sockets_node(RunnerCore):
     # and recv over real OS sockets via the tcp_wrap server path.
     self.do_runf('sockets/test_tcp_server.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
+  @parameterized({
+    '': ([],),
+    'shutdown': (['-DSHUTDOWN'],),
+  })
+  def test_noderawsockets_close_flush(self, args):
+    # Data accepted by send() still reaches the peer when the sender closes at
+    # once, or after shutdown(SHUT_WR) once POLLOUT reports the flush done.
+    self.do_runf('sockets/test_tcp_close_flush.c', 'done\n', cflags=['-sNODERAWSOCKETS'] + args)
+
   @also_with_proxy_to_pthread
   def test_noderawsockets_peek(self):
     # recv(MSG_PEEK) must leave the data buffered: a peek returns the bytes, the
