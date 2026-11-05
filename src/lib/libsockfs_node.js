@@ -389,27 +389,25 @@ var NodeSockFSLibrary = {
     setMembership(sock, add, group, iface) {
       var m = sock.memberships ??= new Map();
       var key = group + '%' + (iface ?? '');
-      if (add && m.has(key)) return {{{ cDefs.EADDRINUSE }}};
-      if (!add && !m.has(key)) {
-        // Which join a leave naming no interface matches is the kernel's call:
-        // Linux only looks on the interface the group routes to, BSD anywhere.
-        if (iface !== undefined || !sock.udpBound) return {{{ cDefs.EADDRNOTAVAIL }}};
-        var err = nodeSockHelpers.udpMembership(sock, group, undefined, false);
+      // Once bound the kernel decides, and the map just follows it.
+      if (sock.udpBound) {
+        var err = nodeSockHelpers.udpMembership(sock, group, iface, add);
         if (err) return err;
+      } else if (add ? m.has(key) : !m.has(key)) {
+        return add ? {{{ cDefs.EADDRINUSE }}} : {{{ cDefs.EADDRNOTAVAIL }}};
+      }
+      if (add) {
+        m.set(key, [group, iface]);
+      } else if (!m.delete(key)) {
+        // A leave can match a join made under another key, and the kernel
+        // doesn't say which one it dropped.
         for (var [k, v] of m) {
           if (v[0] === group) {
             m.delete(k);
             break;
           }
         }
-        return 0;
       }
-      if (sock.udpBound) {
-        var err = nodeSockHelpers.udpMembership(sock, group, iface, add);
-        if (err) return err;
-      }
-      if (add) m.set(key, [group, iface]);
-      else m.delete(key);
       return 0;
     },
     udpMembership(sock, group, iface, add = true) {
