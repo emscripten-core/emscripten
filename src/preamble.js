@@ -389,17 +389,15 @@ function instrumentWasmExportsWithAbort(exports) {
 function instrumentWasmTableWithAbort() {
   // Override the wasmTable get function to return the wrappers
   var realGet = wasmTable.get;
-  var wrapperCache = {};
+  var wrapperCache = new Map();
   wasmTable.get = (i) => {
     var func = realGet.call(wasmTable, {{{ toIndexType('i') }}});
-    var cached = wrapperCache[i];
-    if (!cached || cached.func !== func) {
-      cached = wrapperCache[i] = {
-        func,
-        wrapper: makeAbortWrapper(func)
-      }
+    var wrapper = wrapperCache.get(func);
+    if (!wrapper) {
+      wrapper = makeAbortWrapper(func);
+      wrapperCache.set(func, wrapper);
     }
-    return cached.wrapper;
+    return wrapper;
   };
 }
 #endif

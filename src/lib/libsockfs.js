@@ -104,7 +104,7 @@ addToLibrary({
         protocol,
         server: null,
         error: null, // Used in getsockopt for SOL_SOCKET/SO_ERROR test
-        peers: {},
+        peers: new Map(),
         pending: [],
         recv_queue: [],
 #if NODERAWSOCKETS
@@ -321,13 +321,13 @@ addToLibrary({
         return peer;
       },
       getPeer(sock, addr, port) {
-        return sock.peers[addr + ':' + port];
+        return sock.peers.get(addr + ':' + port);
       },
       addPeer(sock, peer) {
-        sock.peers[peer.addr + ':' + peer.port] = peer;
+        sock.peers.set(peer.addr + ':' + peer.port, peer);
       },
       removePeer(sock, peer) {
-        delete sock.peers[peer.addr + ':' + peer.port];
+        sock.peers.delete(peer.addr + ':' + peer.port);
       },
       handlePeerEvents(sock, peer) {
         var first = true;
@@ -513,13 +513,13 @@ addToLibrary({
           sock.server = null;
         }
         // close any peer connections
-        for (var peer of Object.values(sock.peers)) {
+        for (var peer of sock.peers.values()) {
           try {
             peer.socket.close();
           } catch (e) {
           }
-          SOCKFS.websocket_sock_ops.removePeer(sock, peer);
         }
+        sock.peers.clear();
         return 0;
       },
       bind(sock, addr, port) {
