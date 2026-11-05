@@ -1,20 +1,23 @@
 name: 'Install Chrome'
-description: 'Installs Google Chrome'
+description: 'Installs Google Chrome Canary'
 runs:
   using: "composite"
   steps:
-    - name: Download and install Chrome
+    - name: Download and install Chrome Canary
       run: |
-        if [ -f /usr/bin/google-chrome ]; then
-          echo "Google Chrome is already installed:"
-          /usr/bin/google-chrome --version
-        else
-          sudo apt-get update
-          sudo apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
-          wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
-          sudo apt install -y ~/chrome.deb
-          echo "Chrome version:"
-          /usr/bin/google-chrome --version
+        cd $HOME
+        npx --yes @puppeteer/browsers install chrome@canary --format={{path}} | tee browser_path.txt
+        BROWSER_PATH=$(cat browser_path.txt 2>/dev/null || true)
+        # @puppeteer/browsers can exit 0 on truncated downloads while
+        # failing to extract the binary or outputting an empty path.
+        # See: https://github.com/puppeteer/puppeteer/issues/15487
+        if [[ -z "${BROWSER_PATH}" || ! -x "${BROWSER_PATH}" ]]; then
+          echo "Failed to install browser (empty path or binary missing)"
+          exit 1
         fi
+        echo "browser installed to: ${BROWSER_PATH}"
+        "${BROWSER_PATH}" --version
+        echo "EMTEST_BROWSER=${BROWSER_PATH}" >> $GITHUB_ENV
       shell: bash
+
 

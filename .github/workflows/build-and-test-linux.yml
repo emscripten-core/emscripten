@@ -752,6 +752,19 @@ jobs:
           title: 'browser-chrome'
           test_targets: 'browser.test_gl_stride browser.test_memory_growth_during_startup browser.test_pthread_memgrowth_stale_views browser.test_pthread_large_pthread_allocation browser.test_pthread_sbrk* browser.test_pthread_asan* browser.test_webgl_multi_draw* browser.test_pthread_growth* browser.test_4gb browser.test_emmalloc_3gb* browser.test_dlmalloc_3gb browser.test_2gb_fail browser.test_audio_worklet*'
 
+  test-browser-chrome-emrun:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Run emrun tests
+        uses: ./.github/actions/run-tests-chrome
+        with:
+          title: 'browser-chrome-emrun'
+          test_targets: 'emrun'
+
   test-browser-chrome-wasm64:
     needs: build-linux
     runs-on: ubuntu-latest
