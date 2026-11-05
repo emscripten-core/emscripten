@@ -1072,7 +1072,10 @@ jobs:
     executor: linux-python
     resource_class: large
     steps:
-      - prepare-for-tests
+      - checkout
+      # This job doesn't depend on `build-linux` so we have to install emsdk directly
+      - install-emsdk
+      - pip-install
       - run:
           name: Sync and build CPython
           command: |
