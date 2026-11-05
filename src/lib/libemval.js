@@ -307,7 +307,7 @@ ${functionBody}
       var rv;
       switch (kind) {
         case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
-          rv = Emval.toValue(handle).apply(null, argN);
+          rv = Emval.toValue(handle)(...argN);
           break;
         case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
           rv = Reflect.construct(Emval.toValue(handle), argN);

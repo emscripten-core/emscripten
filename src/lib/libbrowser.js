@@ -285,7 +285,7 @@ var LibraryBrowser = {
 
 #if MIN_SAFARI_VERSION < 160400
       var CFS = document.exitFullscreen ?? document['webkitCancelFullScreen'];
-      CFS.apply(document, []);
+      CFS.call(document);
 #else
       document.exitFullscreen();
 #endif

@@ -39,7 +39,7 @@ var LibraryEmbindShared = {
     if (!typeID) {
       throwBindingError(`type "${name}" must have a positive integer typeid pointer`);
     }
-    if (hasOwn(registeredTypes, typeID)) {
+    if (registeredTypes[typeID]) {
       if (options.ignoreDuplicateRegistrations) {
         return;
       } else {
@@ -50,7 +50,7 @@ var LibraryEmbindShared = {
     registeredTypes[typeID] = registeredInstance;
     delete typeDependencies[typeID];
 
-    if (hasOwn(awaitingDependencies, typeID)) {
+    if (awaitingDependencies[typeID]) {
       var callbacks = awaitingDependencies[typeID];
       delete awaitingDependencies[typeID];
       callbacks.forEach((cb) => cb());
@@ -74,14 +74,11 @@ var LibraryEmbindShared = {
     var unregisteredTypes = [];
     var registered = 0;
     for (let [i, dt] of dependentTypes.entries()) {
-      if (hasOwn(registeredTypes, dt)) {
+      if (registeredTypes[dt]) {
         typeConverters[i] = registeredTypes[dt];
       } else {
         unregisteredTypes.push(dt);
-        if (!hasOwn(awaitingDependencies, dt)) {
-          awaitingDependencies[dt] = [];
-        }
-        awaitingDependencies[dt].push(() => {
+        (awaitingDependencies[dt] ??= []).push(() => {
           typeConverters[i] = registeredTypes[dt];
           ++registered;
           if (registered === unregisteredTypes.length) {

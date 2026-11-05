@@ -6,7 +6,7 @@
 
 let MAGIC = 0;
 Math.random = () => {
-  MAGIC = Math.pow(MAGIC + 1.8912, 3) % 1;
+  MAGIC = ((MAGIC + 1.8912) ** 3) % 1;
   return MAGIC;
 };
 
