@@ -248,29 +248,17 @@ function isNiceIdent(ident) {
 
 export let POINTER_SIZE;
 export let POINTER_TYPE;
-const STACK_ALIGN = 16;
 
 onSettingsLoaded(() => {
   POINTER_SIZE = MEMORY64 ? 8 : 4;
-  const POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
   const POINTER_BITS = POINTER_SIZE * 8;
   POINTER_TYPE = `u${POINTER_BITS}`;
-  const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
   const LONG_TYPE = `i${POINTER_BITS}`;
   const SIZE_TYPE = POINTER_TYPE;
 
-  // Similar to POINTER_TYPE, but this is the actual wasm type that is
-  // used in practice, while POINTER_TYPE is the more refined internal
-  // type (that is unsigned, where as core wasm does not have unsigned
-  // types).
-  const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
-
   addToCompileTimeContext({
     LONG_TYPE,
-    POINTER_JS_TYPE,
-    POINTER_MAX,
     POINTER_SIZE,
-    POINTER_WASM_TYPE,
     SIZE_TYPE,
   });
 });
@@ -1231,7 +1219,6 @@ addToCompileTimeContext({
   ATMAINS,
   ATPOSTRUNS,
   FOUR_GB,
-  STACK_ALIGN,
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,
   ENVIRONMENT_IS_MAIN_THREAD,

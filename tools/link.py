@@ -1566,7 +1566,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
   if settings.AUDIO_WORKLET:
     add_system_js_lib('libwebaudio.js')
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$getWasmTableEntry')
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry', '$STACK_ALIGN']
 
   if not settings.MINIMAL_RUNTIME:
     if 'preRun' in settings.INCOMING_MODULE_JS_API:
