@@ -120,16 +120,19 @@ jobs:
           ./embuilder build MINIMAL --pic --lto
 
       - name: Clean build directory
-        run: rm -rf ~/cache/build
+        run: rm -rf ~/cache/build ~/cache/ports/*.zip ~/cache/ports/*.tar.*
 
       - name: Archive persistent directories
-        run: tar -czf ~/emscripten-cache.tar.gz -C ~/ .jsvu cache vms wasi-sdk
+        run: tar -I 'zstd -T0 -6' -cf ~/emscripten-cache.tar.zst -C ~/ .jsvu cache vms wasi-sdk
 
       - name: Persist workspace
         uses: actions/upload-artifact@v7.0.1
         with:
           name: emscripten-cache
-          path: ~/emscripten-cache.tar.gz
+          path: ~/emscripten-cache.tar.zst
+          # Avoid redundant single-threaded zlib re-compression in upload-artifact
+          # since the tarball is already compressed with multi-threaded zstd.
+          compression-level: 0
 
   test-sanity:
     needs: build-linux

@@ -22,7 +22,8 @@ runs:
 
     - name: Extract persistent directories
       run: |
-        tar -xzf ~/emscripten-cache.tar.gz -C ~/
+        tar --zstd -xf ~/emscripten-cache.tar.zst -C ~/
+        rm -f ~/emscripten-cache.tar.zst
         sed -i "s|\|.*|\|$EMSDK/upstream/bin|" ~/cache/sanity.txt
       shell: bash
 
