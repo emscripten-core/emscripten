@@ -218,15 +218,18 @@ function hasSideEffects(node) {
 function JSDCE(ast, aggressive) {
   function iteration() {
     let removed = 0;
-    const scopes = [{}]; // begin with empty toplevel scope
+    const scopes = [new Map()]; // begin with empty toplevel scope
     function ensureData(scope, name) {
-      if (Object.hasOwn(scope, name)) return scope[name];
-      scope[name] = {
-        def: 0,
-        use: 0,
-        param: 0, // true for function params, which cannot be eliminated
-      };
-      return scope[name];
+      let data = scope.get(name);
+      if (!data) {
+        data = {
+          def: 0,
+          use: 0,
+          param: 0, // true for function params, which cannot be eliminated
+        };
+        scope.set(name, data);
+      }
+      return data;
     }
     function cleanUp(ast, names) {
       recursiveWalk(ast, {
@@ -294,12 +297,13 @@ function JSDCE(ast, aggressive) {
       if (defun) {
         ensureData(scopes.at(-1), node.id.name).def = 1;
       }
-      const scope = {};
+      const scope = new Map();
       scopes.push(scope);
       for (const param of node.params) {
         walkPattern(param, c, (name) => {
-          ensureData(scope, name).def = 1;
-          scope[name].param = 1;
+          const data = ensureData(scope, name);
+          data.def = 1;
+          data.param = 1;
         });
       }
       c(node.body);
@@ -307,7 +311,7 @@ function JSDCE(ast, aggressive) {
       // ourselves, for named defined (defun) functions
       const ownName = defun ? node.id.name : '';
       const names = new Set();
-      for (const [name, data] of Object.entries(scopes.pop())) {
+      for (const [name, data] of scopes.pop()) {
         if (name === ownName) continue;
         if (data.use && !data.def) {
           // this is used from a higher scope, propagate the use down
@@ -388,7 +392,7 @@ function JSDCE(ast, aggressive) {
     assert(scopes.length === 0);
 
     const names = new Set();
-    for (const [name, data] of Object.entries(scope)) {
+    for (const [name, data] of scope) {
       if (data.def && !data.use) {
         assert(!data.param); // can't be
         // this is eliminatable!
@@ -703,11 +707,12 @@ function emitDCEGraph(ast) {
         node.specifiers.forEach((spec) => {
           const jsName = spec.local.name; // JS-side name
           const asmName = spec.imported.name; // wasm-provided name
-          if (exportNameToGraphName.has(asmName)) {
+          const graphName = exportNameToGraphName.get(asmName);
+          if (graphName) {
             // Another local already binds this wasm export (e.g. both `memory`
             // and `memory as wasmMemory`): point this local at the same node so
             // a use of either roots the one underlying export.
-            nameToGraphName.set(jsName, exportNameToGraphName.get(asmName));
+            nameToGraphName.set(jsName, graphName);
           } else {
             saveAsmExport(jsName, asmName);
           }
@@ -868,24 +873,26 @@ function emitDCEGraph(ast) {
   function getGraphName(name, what) {
     return 'emcc$' + what + '$' + name;
   }
-  const infos = {}; // the graph name of the item => info for it
+  const infos = new Map(); // the graph name of the item => info for it
   for (const [jsName, nativeName] of imports) {
     const name = getGraphName(jsName, 'import');
-    const info = (infos[name] = {
+    const info = {
       name: name,
       import: ['env', nativeName],
       reaches: new Set(),
-    });
-    if (nameToGraphName.has(jsName)) {
-      info.reaches.add(nameToGraphName.get(jsName));
+    };
+    infos.set(name, info);
+    const graphName = nameToGraphName.get(jsName);
+    if (graphName) {
+      info.reaches.add(graphName);
     } // otherwise, it's a number, ignore
   }
   for (const [e, name] of exportNameToGraphName) {
-    infos[name] = {
+    infos.set(name, {
       name: name,
       export: e,
       reaches: new Set(),
-    };
+    });
   }
   // a function that handles a node we visit, in either a defun or
   // the toplevel scope (in which case the second param is not provided)
@@ -905,8 +912,9 @@ function emitDCEGraph(ast) {
     } else if (isExportUse(node)) {
       // any remaining asm uses are always rooted in any case
       const name = getExportOrModuleUseName(node);
-      if (exportNameToGraphName.has(name)) {
-        infos[exportNameToGraphName.get(name)].root = true;
+      const graphName = exportNameToGraphName.get(name);
+      if (graphName) {
+        infos.get(graphName).root = true;
       }
       return;
     }
@@ -915,8 +923,9 @@ function emitDCEGraph(ast) {
         if (defunInfo) {
           defunInfo.reaches.add(reached); // defun reaches it
         } else {
-          if (infos[reached]) {
-            infos[reached].root = true; // in global scope, root it
+          const info = infos.get(reached);
+          if (info) {
+            info.root = true; // in global scope, root it
           } else {
             // An info might not exist for the identifier if it is missing, for
             // example, we might call Module.dynCall_vi in library code, but it
@@ -935,18 +944,19 @@ function emitDCEGraph(ast) {
   }
   defuns.forEach((defun) => {
     const name = getGraphName(defun.id.name, 'defun');
-    const info = (infos[name] = {
+    const info = {
       name: name,
       reaches: new Set(),
-    });
+    };
+    infos.set(name, info);
     fullWalk(defun.body, (node) => visitNode(node, info));
   });
   fullWalk(ast, (node) => visitNode(node, null));
   // Final work: print out the graph
   // sort for determinism
-  const graph = Object.entries(infos)
-    .sort(([name1], [name2]) => (name1 > name2 ? 1 : -1))
-    .map(([_name, info]) => ({
+  const graph = Array.from(infos.values())
+    .sort((info1, info2) => (info1.name > info2.name ? 1 : -1))
+    .map((info) => ({
       ...info,
       reaches: Array.from(info.reaches).sort(),
     }));
@@ -1718,10 +1728,7 @@ function minifyGlobals(ast) {
   fun.id = funId;
 
   // Emit the metadata
-  const json = {};
-  for (const x of minified.entries()) json[x[0]] = x[1];
-
-  suffix = '// EXTRA_INFO:' + JSON.stringify(json);
+  suffix = '// EXTRA_INFO:' + JSON.stringify(Object.fromEntries(minified));
 }
 
 // Utilities
@@ -1756,7 +1763,8 @@ function reattachComments(ast, commentsMap, parenSpans) {
   // Walk through all comments in ascending line number, and match each
   // comment to the appropriate code block.
   let j = 0;
-  for (const [pos, comments] of Object.entries(commentsMap)) {
+  const sortedComments = Array.from(commentsMap).sort(([a], [b]) => a - b);
+  for (const [pos, comments] of sortedComments) {
     while (j < symbols.length && symbols[j].start.pos < pos) {
       ++j;
     }
@@ -1827,7 +1835,7 @@ if (extraInfoStart > 0) {
 }
 // Collect all JS code comments to this map so that we can retain them in the
 // outputted code if --closureFriendly was requested.
-const sourceComments = {};
+const sourceComments = new Map();
 const params = {
   ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
@@ -1839,9 +1847,11 @@ if (closureFriendly) {
   Object.assign(params, {
     preserveParens: true,
     onToken(token) {
-      // Associate comments with the start position of the next token.
-      sourceComments[token.start] = currentComments.slice();
-      currentComments.length = 0;
+      if (currentComments.length) {
+        // Associate comments with the start position of the next token.
+        sourceComments.set(token.start, currentComments.slice());
+        currentComments.length = 0;
+      }
     },
     onComment: currentComments,
   });
@@ -1874,10 +1884,15 @@ try {
     fullWalk(ast, (node) => {
       if (node.type === 'ParenthesizedExpression') {
         const {start, end, expression} = node;
-        if (sourceComments[expression.start]) {
-          sourceComments[start] ??= [];
-          sourceComments[start].push(...sourceComments[expression.start]);
-          delete sourceComments[expression.start];
+        const exprComments = sourceComments.get(expression.start);
+        if (exprComments) {
+          const startComments = sourceComments.get(start);
+          if (startComments) {
+            startComments.push(...exprComments);
+          } else {
+            sourceComments.set(start, exprComments);
+          }
+          sourceComments.delete(expression.start);
         }
         delete node.expression;
         Object.assign(node, expression, {start, end});
