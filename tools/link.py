@@ -475,7 +475,8 @@ def setup_pthreads():
     settings.REQUIRED_EXPORTS += [
       '_emscripten_dlsync_self',
       '_emscripten_dlsync_self_async',
-      '_emscripten_proxy_dlsync',
+      '_emscripten_proxy_dlsync_post',
+      '_emscripten_proxy_dlsync_wait',
       '_emscripten_proxy_dlsync_async',
       '__dl_seterr',
     ]

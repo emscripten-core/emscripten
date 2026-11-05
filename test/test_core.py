@@ -9400,6 +9400,18 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @requires_pthreads
+  def test_pthread_dlopen_parallel_sync(self):
+    self.cflags += ['-Wno-experimental', '-pthread']
+    create_file('side.c', 'int side_fn(int x) { return x + 1; }')
+    self.build_dlfcn_lib('side.c')
+    self.cflags += ['--embed-file', 'libside.so@/lib/libside.so']
+    self.prep_dlfcn_main()
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('PTHREAD_POOL_SIZE', 4)
+    self.do_runf('core/pthread/test_pthread_dlopen_parallel_sync.c', 'done\n')
+
+  @needs_dylink
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
     # In other suites, this test is flaky.. but in Wasm64 suite, it is failing
