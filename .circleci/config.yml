@@ -1383,9 +1383,7 @@ workflows:
       - test-misc:
           requires:
             - build-linux
-      - test-cpython:
-          requires:
-            - build-linux
+      - test-cpython
       - test-modularize-instance:
           requires:
             - build-linux
