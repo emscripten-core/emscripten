@@ -486,10 +486,11 @@ def main():  # ruff: ignore[complex-structure, too-many-branches, too-many-state
   if len(data_files) == 0:
     diagnostics.error('Nothing to do!')
 
-  # Absolutize paths, and check that they make sense
-  # os.getcwd() always returns the hard path with any symbolic links resolved,
-  # even if we cd'd into a symbolic link.
-  curr_abspath = os.path.abspath(os.getcwd())
+  # Absolutize paths, and check that they make sense.
+  # Use os.path.realpath on os.getcwd() as well, since on Windows os.getcwd()
+  # does not resolve directory junctions/symlinks or expand 8.3 short names
+  # (such as RUNNER~1 vs runneradmin), unlike os.path.realpath().
+  curr_abspath = os.path.realpath(os.getcwd())
 
   for file_ in data_files:
     if not file_.explicit_dst_path:
