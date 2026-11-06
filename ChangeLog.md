@@ -18,12 +18,15 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-7.0.0 (in development)
+7.0.1 (in development)
 ----------------------
 - C preprocessor defines from `struct_info.json` (previously accessed via
   `{{{ cDefs.FOO }}}`) are now exposed as `const` JavaScript library symbols
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
   making unminified output more readable. (#28144)
+
+7.0.0 - 11/06/26
+----------------
 - Remove support for the `EMCC_ONLY_FORCED_STDLIBS` environment variable, which
   was deprecated in 2.0.14 (#13448). Use `-nostdlib` instead to avoid linking
   standard libraries. (#28151)
