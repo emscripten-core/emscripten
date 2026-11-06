@@ -986,9 +986,153 @@ jobs:
         run: npm run check
         shell: bash
 
+  test-mac-arm64:
+    needs: build-linux
+    runs-on: macos-15
+    env:
+      LANG: "en_US.UTF-8"
+      EMTEST_WASI_SYSROOT: ""
+      EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+      # We don't install d8 or modern node on the mac runner so we skip any
+      # tests that depend on those.
+      EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_MESON: "1"
+      EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_NODE_25: "1"
+      # Some native clang tests assume x86 clang (e.g. -sse2)
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMCC_SKIP_SANITY_CHECK: "1"
+      EM_FROZEN_CACHE: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
 
+      - name: Install brew package dependencies
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: |
+          missing=()
+          command -v cmake >/dev/null 2>&1 || missing+=(cmake)
+          command -v ninja >/dev/null 2>&1 || missing+=(ninja)
+          command -v pkg-config >/dev/null 2>&1 || missing+=(pkg-config)
+          command -v zstd >/dev/null 2>&1 || missing+=(zstd)
+          if [ "${#missing[@]}" -gt 0 ]; then
+            brew install --force-bottle "${missing[@]}"
+          fi
+        shell: bash
 
+      - name: Attach workspace
+        uses: actions/download-artifact@v8
+        with:
+          name: emscripten-cache
+          path: ~/
 
+      - name: Extract cache and remove Linux binaries
+        run: |
+          zstd -dc ~/emscripten-cache.tar.zst | tar -xf - -C ~/
+          rm -rf ~/emscripten-cache.tar.zst ~/vms ~/.jsvu ~/wasi-sdk
+        shell: bash
 
+      - name: Read emsdk version
+        id: emsdk_version
+        run: echo "version=$(cat test/emsdk_version.txt)" >> $GITHUB_OUTPUT
+        shell: bash
 
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: ${{ steps.emsdk_version.outputs.version }}
+          emsdk-version: main
 
+      - name: Set EM_CONFIG and PATH
+        run: |
+          echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+          echo "$(dirname "$EMSDK_NODE")" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Setup cache config
+        run: |
+          echo "CACHE = '~/cache'" >> "$EMSDK/.emscripten"
+          echo "JS_ENGINES = [NODE_JS]" >> "$EMSDK/.emscripten"
+          echo "WASM_ENGINES = []" >> "$EMSDK/.emscripten"
+        shell: bash
+
+      - name: Pip install
+        run: '"$EMSDK_PYTHON" -m pip install -r requirements-dev.txt'
+        shell: bash
+
+      - name: Bootstrap
+        run: '"$EMSDK_PYTHON" ./bootstrap.py'
+        shell: bash
+
+      - name: Run crossplatform tests
+        run: |
+          ./test/runner --crossplatform-only
+          "$EMSDK_PYTHON" ./test/check_clean.py
+        shell: bash
+
+  test-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    env:
+      EMTEST_WASI_SYSROOT: ""
+      EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_WASM_LEGACY_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_NODE_25: "1"
+      # Some native clang tests assume x86 clang (e.g. -sse2)
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMCC_SKIP_SANITY_CHECK: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Read emsdk version
+        id: emsdk_version
+        run: echo "version=$(cat test/emsdk_version.txt)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: ${{ steps.emsdk_version.outputs.version }}
+          emsdk-version: main
+
+      - name: Set EM_CONFIG and PATH
+        run: |
+          echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+          echo "$(dirname "$EMSDK_NODE")" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Setup cache config
+        run: |
+          echo "CACHE = '~/cache'" >> "$EMSDK/.emscripten"
+          echo "JS_ENGINES = [NODE_JS]" >> "$EMSDK/.emscripten"
+          echo "WASM_ENGINES = []" >> "$EMSDK/.emscripten"
+        shell: bash
+
+      - name: Pip install
+        env:
+          PIP_BREAK_SYSTEM_PACKAGES: "1"
+        run: python3 -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap.py
+        shell: bash
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -q -y ninja-build scons cmake make pkg-config
+        shell: bash
+
+      - name: Run crossplatform tests
+        run: |
+          ./test/runner --crossplatform-only
+          ./test/check_clean.py
+        shell: bash
