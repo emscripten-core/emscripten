@@ -9402,6 +9402,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @requires_pthreads
+  def test_pthread_dlopen_exit(self):
+    num_libs = 100
+    self.cflags += ['-Wno-experimental', '-pthread']
+    self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_exit_side.c'))
+    # dlclose does not unload libraries, so use a fresh name each time to
+    # generate dynamic link synchronization work on every iteration.
+    for i in range(num_libs):
+      shutil.copy('libside.so', f'libside{i}.so')
+
+    self.prep_dlfcn_main()
+    self.do_runf('core/pthread/test_pthread_dlopen_exit.c', 'done\n',
+                 cflags=['-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', f'-DNUM_SIDE_MODULES={num_libs}'])
+
+  @needs_dylink
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
     # In other suites, this test is flaky.. but in Wasm64 suite, it is failing
