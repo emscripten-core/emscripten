@@ -3,19 +3,23 @@
 #include <pthread.h>
 #include <stdio.h>
 
-static pthread_barrier_t barrier;
+// NUM_SIDE_MODULES is passed on the command line and matches the number of
+// libsideN.so copies created by the test runner. Each one is loaded while a
+// worker thread is exiting, so it is also the number of worker threads.
 
-static void* exiting_worker(void* arg) {
+pthread_barrier_t barrier;
+
+void* exiting_worker(void* arg) {
   pthread_barrier_wait(&barrier);
   // Race thread shutdown against dynamic link synchronization.
   return NULL;
 }
 
-static void* loader_thread(void* arg) {
-  for (int i = 0; i < NUM_ITERATIONS; ++i) {
+void* loader_thread(void* arg) {
+  for (int i = 0; i < NUM_SIDE_MODULES; ++i) {
     char filename[32];
     snprintf(filename, sizeof(filename), "libside%d.so", i);
-    // Pair with every exiting worker, not just the first one.
+    // Pair each dlopen with the exit of one worker thread.
     pthread_barrier_wait(&barrier);
     void* handle = dlopen(filename, RTLD_NOW | RTLD_GLOBAL);
     assert(handle && "dlopen failed");
@@ -33,7 +37,9 @@ int main() {
   pthread_t loader;
   assert(pthread_create(&loader, NULL, loader_thread, NULL) == 0);
 
-  for (int i = 0; i < NUM_ITERATIONS; ++i) {
+  // One worker per side module: the barrier pairs each worker with one
+  // iteration of the loader thread, so the two loop counts must match.
+  for (int i = 0; i < NUM_SIDE_MODULES; ++i) {
     pthread_t worker;
     assert(pthread_create(&worker, NULL, exiting_worker, NULL) == 0);
     assert(pthread_join(worker, NULL) == 0);
@@ -41,6 +47,6 @@ int main() {
 
   assert(pthread_join(loader, NULL) == 0);
   assert(pthread_barrier_destroy(&barrier) == 0);
-  puts("PASSED");
+  printf("done\n");
   return 0;
 }
