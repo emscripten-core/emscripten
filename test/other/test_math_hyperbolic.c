@@ -5,8 +5,9 @@
  * found in the LICENSE file.
  */
 
-#include <stdio.h>
+#include <assert.h>
 #include <math.h>
+#include <stdio.h>
 
 // Canonicalize nan output: wasm and asm encode negative nans differently
 void printCanonicalizedNan(char* funcName, double value) {
@@ -28,6 +29,11 @@ int main() {
     printCanonicalizedNan("acosh", acosh(i));
     printCanonicalizedNan("atanh", atanh(i));
     printf("\n");
+  }
+  volatile double inputs[] = {
+    -0.0, -0x1.8p15, -51274.919509887695, -6.7e7, -INFINITY};
+  for (size_t j = 0; j < sizeof(inputs) / sizeof(inputs[0]); j++) {
+    assert(isnan(acosh(inputs[j])));
   }
   return 0;
 }

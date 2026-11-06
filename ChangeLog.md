@@ -42,6 +42,11 @@ See docs/process.md for more on how version tagging works.
   of `clang`. Previously, `.dwo` files were named `<input>.dwo` and other
   auxiliary files were written to the temporary directory. (#28045)
 - libcxx, libcxxabi, libunwind and compiler-rt were updated to LLVM 23.1.3.
+  Note that libc++ 23 removes many transitive header includes by default, which
+  may cause build errors in code that relies on them. As a temporary workaround,
+  you can define `-D_LIBCPP_KEEP_TRANSITIVE_INCLUDES_LLVM23` until missing
+  `#include` directives are added. See the libc++ 23 release notes for details:
+  https://libcxx.llvm.org/ReleaseNotes/23.html#potentially-breaking-changes
   (#28011, #28014, #28108, #28149)
 - The WasmFS OPFS backend now uses `readwrite-unsafe` access handles in
   pthreads builds, so `unlink` and `rename` fail with `EIO` on files open
