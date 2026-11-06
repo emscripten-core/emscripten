@@ -1914,7 +1914,7 @@ var LibrarySDL = {
     var srcData = SDL.surfaces[src];
     var w = srcData.width * zoom;
     var h = srcData.height * zoom;
-    var diagonal = Math.ceil(Math.sqrt(Math.pow(w, 2) + Math.pow(h, 2)));
+    var diagonal = Math.ceil(Math.hypot(w, h));
     var ret = SDL.makeSurface(diagonal, diagonal, srcData.flags, false, 'rotozoomSurface');
     var dstData = SDL.surfaces[ret];
     dstData.ctx.translate(diagonal / 2, diagonal / 2);
@@ -3354,10 +3354,7 @@ var LibrarySDL = {
     var gamepad = SDL.getGamepad(deviceIndex);
     if (gamepad) {
       var name = gamepad.id;
-      if (hasOwn(SDL.joystickNamePool, name)) {
-        return SDL.joystickNamePool[name];
-      }
-      return SDL.joystickNamePool[name] = stringToNewUTF8(name);
+      return SDL.joystickNamePool[name] ??= stringToNewUTF8(name);
     }
     return 0;
   },

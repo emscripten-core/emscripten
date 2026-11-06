@@ -3366,15 +3366,19 @@ Var: 42
     if is_sanitizing(self.cflags):
       return
 
-    def get_data_exports(wasm):
-      wat = self.get_wasm_text(wasm)
+    wat = self.get_wasm_text('test_dlfcn_self.wasm')
+    # Unlike other system libraries, libclang-rt.profile.a should not
+    # be force-included in -sMAIN_MODULE=1 builds.
+    self.assertNotContained('__llvm_profile', wat)
+
+    def get_data_exports(wat):
       lines = wat.splitlines()
       exports = [line for line in lines if line.strip().startswith('(export ')]
       data_exports = [exp for exp in exports if '(global ' in exp]
       data_exports = [d.split()[1].strip('"') for d in data_exports]
       return data_exports
 
-    data_exports = get_data_exports('test_dlfcn_self.wasm')
+    data_exports = get_data_exports(wat)
     # Certain exports are removed by wasm-emscripten-finalize, but this
     # tool is not run in all configurations, so ignore these exports.
     data_exports = [d for d in data_exports if d not in {'__start_em_asm', '__stop_em_asm'}]
@@ -4718,10 +4722,10 @@ res64 - external 64\n''', header='''\
 
   @with_dylink_reversed
   @parameterized({
-    'libcxx': ('libc,libc++,libmalloc,libc++abi',),
+    'libcxx': ('libc,libc++,libmalloc,libc++abi,libemcc,libclang_rt.builtins',),
     'all': ('1',),
-    'missing': ('libc,libmalloc,libc++abi', False, False, False),
-    'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
+    'missing': ('libc,libmalloc,libc++abi,libemcc,libclang_rt.builtins', False, False, False),
+    'missing_assertions': ('libc,libmalloc,libc++abi,libemcc,libclang_rt.builtins', False, False, True),
   })
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_dylink_syslibs(self, syslibs, expect_pass=True, with_reversed=True, assertions=True):
@@ -4732,7 +4736,7 @@ res64 - external 64\n''', header='''\
     # one module uses libcxx, need to force its inclusion when it isn't the main
     if not with_reversed and self.dylink_reversed:
       self.skipTest('with_reversed is false')
-    self.cflags.append('-Wno-deprecated')
+    self.cflags.append('-nodefaultlibs')
     self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
 
     if assertions is not None:
@@ -4748,7 +4752,7 @@ res64 - external 64\n''', header='''\
         expected = 'Error'
       assert_returncode = NON_ZERO
 
-    with env_modify({'EMCC_FORCE_STDLIBS': syslibs, 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': syslibs}):
       self.dylink_test(main=r'''
         void side();
         int main() {
@@ -6013,10 +6017,11 @@ got: 10
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
   @also_with_nodefs_both
-  @no_wasmfs('Assertion failed: open("./does-not-exist/", O_CREAT, 0777) == -1 in test_fs_enotdir.c line 20. https://github.com/emscripten-core/emscripten/issues/25035')
+  @no_wasmfs('Assertion failed: open("./does-not-exist/", O_CREAT, 0777) == -1 in test_fs_enotdir.c line 24. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_enotdir(self):
     if MACOS and '-DNODERAWFS' in self.cflags:
       self.skipTest('BSD libc sets a different errno')
+    self.maybe_closure()
     self.do_runf('fs/test_fs_enotdir.c', 'done\n')
 
   @also_with_noderawfs
@@ -6308,6 +6313,7 @@ Module.onRuntimeInitialized = () => {
   def test_posixtime(self):
     self.do_core_test('test_posixtime.c')
 
+  @also_with_standalone_wasm()
   def test_uname(self):
     self.do_core_test('test_uname.c', regex=True)
 

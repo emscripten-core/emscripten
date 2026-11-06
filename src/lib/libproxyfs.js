@@ -11,7 +11,7 @@ addToLibrary({
     },
     createNode(parent, name, mode, dev = undefined) {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
       var node = FS.createNode(parent, name, mode);
       node.node_ops = PROXYFS.node_ops;
@@ -209,7 +209,7 @@ addToLibrary({
         }
 
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
 
         return position;

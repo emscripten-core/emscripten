@@ -24,6 +24,16 @@ assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
 }}}
 
 var LibraryGLEmulation = {
+  ...defineInternalConsts({
+    $GLEMU_MAX_CLIP_PLANES: 6,
+    $GLEMU_MAX_LIGHTS: 8,
+    // Clientside attributes
+    $GL_IMMEDIATE_VERTEX: 0,
+    $GL_IMMEDIATE_NORMAL: 1,
+    $GL_IMMEDIATE_COLOR: 2,
+    $GL_IMMEDIATE_TEXTURE0: 3,
+    $POINTER_MAX: MEMORY64 ? Number.MAX_SAFE_INTEGER : 0xFFFFFFFF,
+  }),
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
   $GLEmulation__deps: ['$GLImmediateSetup'],
   $GLEmulation__force: true,
@@ -37,7 +47,6 @@ var LibraryGLEmulation = {
     fogEnabled: false,
 
     // GL_CLIP_PLANE support
-    MAX_CLIP_PLANES: 6,
     clipPlaneEnabled: [false, false, false, false, false, false],
     clipPlaneEquation: [],
 
@@ -53,7 +62,6 @@ var LibraryGLEmulation = {
     materialShininess: 0,
     materialEmission: null,
 
-    MAX_LIGHTS: 8,
     lightEnabled: [false, false, false, false, false, false, false, false],
     lightAmbient: [],
     lightDiffuse: [],
@@ -122,7 +130,7 @@ var LibraryGLEmulation = {
 
       GLEmulation.fogColor = new Float32Array(4);
 
-      for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+      for (var clipPlaneId = 0; clipPlaneId < GLEMU_MAX_CLIP_PLANES; clipPlaneId++) {
         GLEmulation.clipPlaneEquation[clipPlaneId] = new Float32Array(4);
       }
 
@@ -133,7 +141,7 @@ var LibraryGLEmulation = {
       GLEmulation.materialSpecular = new Float32Array([0.0, 0.0, 0.0, 1.0]);
       GLEmulation.materialEmission = new Float32Array([0.0, 0.0, 0.0, 1.0]);
 
-      for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+      for (var lightId = 0; lightId < GLEMU_MAX_LIGHTS; lightId++) {
         GLEmulation.lightAmbient[lightId] = new Float32Array([0.0, 0.0, 0.0, 1.0]);
         GLEmulation.lightDiffuse[lightId] = lightId ? new Float32Array([0.0, 0.0, 0.0, 1.0]) : new Float32Array([1.0, 1.0, 1.0, 1.0]);
         GLEmulation.lightSpecular[lightId] = lightId ? new Float32Array([0.0, 0.0, 0.0, 1.0]) : new Float32Array([1.0, 1.0, 1.0, 1.0]);
@@ -318,52 +326,52 @@ var LibraryGLEmulation = {
           }
           case 0x8871: pname = GLctx.MAX_COMBINED_TEXTURE_IMAGE_UNITS /* close enough */; break; // GL_MAX_TEXTURE_COORDS
           case 0x807A: { // GL_VERTEX_ARRAY_SIZE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX];
+            var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_VERTEX];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
             return;
           }
           case 0x807B: { // GL_VERTEX_ARRAY_TYPE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX];
+            var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_VERTEX];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
             return;
           }
           case 0x807C: { // GL_VERTEX_ARRAY_STRIDE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX];
+            var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_VERTEX];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
             return;
           }
           case 0x8081: { // GL_COLOR_ARRAY_SIZE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.COLOR];
+            var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_COLOR];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
             return;
           }
           case 0x8082: { // GL_COLOR_ARRAY_TYPE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.COLOR];
+            var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_COLOR];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
             return;
           }
           case 0x8083: { // GL_COLOR_ARRAY_STRIDE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.COLOR];
+            var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_COLOR];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
             return;
           }
           case 0x8088: { // GL_TEXTURE_COORD_ARRAY_SIZE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture];
+            var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
             return;
           }
           case 0x8089: { // GL_TEXTURE_COORD_ARRAY_TYPE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture];
+            var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
             return;
           }
           case 0x808A: { // GL_TEXTURE_COORD_ARRAY_STRIDE
-            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture];
+            var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
             return;
           }
           case 0x0D32: { // GL_MAX_CLIP_PLANES
-            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support at least 6
+            {{{ makeSetValue('params', '0', 'GLEMU_MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support at least 6
             return;
           }
           case 0x0BA0: { // GL_MATRIX_MODE
@@ -716,13 +724,13 @@ var LibraryGLEmulation = {
 #endif
           // Fall through:
         case 0x8078: // GL_TEXTURE_COORD_ARRAY
-          attrib = GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture; break;
+          attrib = GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture; break;
         case 0x8074: // GL_VERTEX_ARRAY
-          attrib = GLImmediate.VERTEX; break;
+          attrib = GL_IMMEDIATE_VERTEX; break;
         case 0x8075: // GL_NORMAL_ARRAY
-          attrib = GLImmediate.NORMAL; break;
+          attrib = GL_IMMEDIATE_NORMAL; break;
         case 0x8076: // GL_COLOR_ARRAY
-          attrib = GLImmediate.COLOR; break;
+          attrib = GL_IMMEDIATE_COLOR; break;
       }
       return attrib;
     },
@@ -789,11 +797,11 @@ var LibraryGLEmulation = {
     var attribute;
     switch (name) {
       case 0x808E: // GL_VERTEX_ARRAY_POINTER
-        attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX]; break;
+        attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_VERTEX]; break;
       case 0x8090: // GL_COLOR_ARRAY_POINTER
-        attribute = GLImmediate.clientAttributes[GLImmediate.COLOR]; break;
+        attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_COLOR]; break;
       case 0x8092: // GL_TEXTURE_COORD_ARRAY_POINTER
-        attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture]; break;
+        attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture]; break;
       default:
         GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
@@ -1946,10 +1954,6 @@ var LibraryGLEmulation = {
     useTextureMatrix: false,
 
     // Clientside attributes
-    VERTEX: 0,
-    NORMAL: 1,
-    COLOR: 2,
-    TEXTURE0: 3,
     NUM_ATTRIBUTES: -1, // Initialized in GL emulation init().
     MAX_TEXTURES: -1,   // Initialized in GL emulation init().
 
@@ -2057,13 +2061,13 @@ var LibraryGLEmulation = {
       enabledAttributesKey = (enabledAttributesKey << 2) | fogParam;
 
       // By clip plane mode
-      for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+      for (var clipPlaneId = 0; clipPlaneId < GLEMU_MAX_CLIP_PLANES; clipPlaneId++) {
         enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.clipPlaneEnabled[clipPlaneId];
       }
 
       // By lighting mode and enabled lights
       enabledAttributesKey = (enabledAttributesKey << 1) | GLEmulation.lightingEnabled;
-      for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+      for (var lightId = 0; lightId < GLEMU_MAX_LIGHTS; lightId++) {
         enabledAttributesKey = (enabledAttributesKey << 1) | (GLEmulation.lightingEnabled ? GLEmulation.lightEnabled[lightId] : 0);
       }
 
@@ -2104,7 +2108,7 @@ var LibraryGLEmulation = {
       var useCurrProgram = !!GL.currProgram;
       var hasTextures = false;
       for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
-        var texAttribName = GLImmediate.TEXTURE0 + i;
+        var texAttribName = GL_IMMEDIATE_TEXTURE0 + i;
         if (!GLImmediate.enabledClientAttributes[texAttribName])
           continue;
 
@@ -2196,7 +2200,7 @@ var LibraryGLEmulation = {
             var vsClipPlaneInit = '';
             var fsClipPlaneDefs = '';
             var fsClipPlanePass = '';
-            for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+            for (var clipPlaneId = 0; clipPlaneId < GLEMU_MAX_CLIP_PLANES; clipPlaneId++) {
               if (GLEmulation.clipPlaneEnabled[clipPlaneId]) {
                 vsClipPlaneDefs += 'uniform vec4 u_clipPlaneEquation' + clipPlaneId + ';';
                 vsClipPlaneDefs += 'varying float v_clipDistance' + clipPlaneId + ';';
@@ -2223,7 +2227,7 @@ var LibraryGLEmulation = {
               vsLightingPass += '  v_color.xyz = u_materialEmission.xyz;';
               vsLightingPass += '  v_color.xyz += u_lightModelAmbient.xyz * u_materialAmbient.xyz;';
 
-              for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+              for (var lightId = 0; lightId < GLEMU_MAX_LIGHTS; lightId++) {
                 if (GLEmulation.lightEnabled[lightId]) {
                   vsLightingDefs += 'uniform vec4 u_lightAmbient' + lightId + ';';
                   vsLightingDefs += 'uniform vec4 u_lightDiffuse' + lightId + ';';
@@ -2361,13 +2365,13 @@ var LibraryGLEmulation = {
             // code can submit attributes to any generated FFP shader without having to examine each shader in turn.
             // These prespecified locations are only assumed if GL_FFP_ONLY is specified, since user could also create their
             // own shaders that didn't have attributes in the same locations.
-            GLctx.bindAttribLocation(this.program, GLImmediate.VERTEX, 'a_position');
-            GLctx.bindAttribLocation(this.program, GLImmediate.COLOR, 'a_color');
-            GLctx.bindAttribLocation(this.program, GLImmediate.NORMAL, 'a_normal');
+            GLctx.bindAttribLocation(this.program, GL_IMMEDIATE_VERTEX, 'a_position');
+            GLctx.bindAttribLocation(this.program, GL_IMMEDIATE_COLOR, 'a_color');
+            GLctx.bindAttribLocation(this.program, GL_IMMEDIATE_NORMAL, 'a_normal');
             var maxVertexAttribs = GLctx.getParameter(GLctx.MAX_VERTEX_ATTRIBS);
-            for (var i = 0; i < GLImmediate.MAX_TEXTURES && GLImmediate.TEXTURE0 + i < maxVertexAttribs; i++) {
-              GLctx.bindAttribLocation(this.program, GLImmediate.TEXTURE0 + i, 'a_texCoord'+i);
-              GLctx.bindAttribLocation(this.program, GLImmediate.TEXTURE0 + i, aTexCoordPrefix+i);
+            for (var i = 0; i < GLImmediate.MAX_TEXTURES && GL_IMMEDIATE_TEXTURE0 + i < maxVertexAttribs; i++) {
+              GLctx.bindAttribLocation(this.program, GL_IMMEDIATE_TEXTURE0 + i, 'a_texCoord'+i);
+              GLctx.bindAttribLocation(this.program, GL_IMMEDIATE_TEXTURE0 + i, aTexCoordPrefix+i);
             }
             GLctx.linkProgram(this.program);
           }
@@ -2381,7 +2385,7 @@ var LibraryGLEmulation = {
           this.texCoordLocations = [];
 
           for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
-            if (!GLImmediate.enabledClientAttributes[GLImmediate.TEXTURE0 + i]) {
+            if (!GLImmediate.enabledClientAttributes[GL_IMMEDIATE_TEXTURE0 + i]) {
               this.texCoordLocations[i] = -1;
               continue;
             }
@@ -2421,8 +2425,8 @@ var LibraryGLEmulation = {
           this.normalMatrixLocation = GLctx.getUniformLocation(this.program, 'u_normalMatrix');
 
           this.hasTextures = hasTextures;
-          this.hasNormal = GLImmediate.enabledClientAttributes[GLImmediate.NORMAL] &&
-                           GLImmediate.clientAttributes[GLImmediate.NORMAL].size > 0 &&
+          this.hasNormal = GLImmediate.enabledClientAttributes[GL_IMMEDIATE_NORMAL] &&
+                           GLImmediate.clientAttributes[GL_IMMEDIATE_NORMAL].size > 0 &&
                            this.normalLocation >= 0;
           this.hasColor = this.colorLocation >= 0;
 
@@ -2439,7 +2443,7 @@ var LibraryGLEmulation = {
 
           this.hasClipPlane = false;
           this.clipPlaneEquationLocation = [];
-          for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+          for (var clipPlaneId = 0; clipPlaneId < GLEMU_MAX_CLIP_PLANES; clipPlaneId++) {
             this.clipPlaneEquationLocation[clipPlaneId] = GLctx.getUniformLocation(this.program, `u_clipPlaneEquation${clipPlaneId}`);
             this.hasClipPlane = (this.hasClipPlane || this.clipPlaneEquationLocation[clipPlaneId]);
           }
@@ -2455,7 +2459,7 @@ var LibraryGLEmulation = {
           this.lightDiffuseLocation = []
           this.lightSpecularLocation = []
           this.lightPositionLocation = []
-          for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+          for (var lightId = 0; lightId < GLEMU_MAX_LIGHTS; lightId++) {
             this.lightAmbientLocation[lightId] = GLctx.getUniformLocation(this.program, `u_lightAmbient${lightId}`);
             this.lightDiffuseLocation[lightId] = GLctx.getUniformLocation(this.program, `u_lightDiffuse${lightId}`);
             this.lightSpecularLocation[lightId] = GLctx.getUniformLocation(this.program, `u_lightSpecular${lightId}`);
@@ -2474,7 +2478,7 @@ var LibraryGLEmulation = {
             var start = GLImmediate.firstVertex*GLImmediate.stride;
             var end = GLImmediate.lastVertex*GLImmediate.stride;
 #if ASSERTIONS
-            assert(end <= GL.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
+            assert(end <= GL_MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
 #endif
             arrayBuffer = GL.getTempVertexBuffer(end);
             // TODO: consider using the last buffer we bound, if it was larger. downside is larger buffer, but we might avoid rebinding and preparing
@@ -2537,25 +2541,25 @@ var LibraryGLEmulation = {
           }
 
           var clientAttributes = GLImmediate.clientAttributes;
-          var posAttr = clientAttributes[GLImmediate.VERTEX];
+          var posAttr = clientAttributes[GL_IMMEDIATE_VERTEX];
 
 #if GL_ASSERTIONS
-          GL.validateVertexAttribPointer(posAttr.size, posAttr.type, GLImmediate.stride, clientAttributes[GLImmediate.VERTEX].offset);
+          GL.validateVertexAttribPointer(posAttr.size, posAttr.type, GLImmediate.stride, clientAttributes[GL_IMMEDIATE_VERTEX].offset);
 #endif
 
 #if GL_FFP_ONLY
           if (!GLctx.currentArrayBufferBinding) {
-            GLctx.vertexAttribPointer(GLImmediate.VERTEX, posAttr.size, posAttr.type, false, GLImmediate.stride, posAttr.offset);
+            GLctx.vertexAttribPointer(GL_IMMEDIATE_VERTEX, posAttr.size, posAttr.type, false, GLImmediate.stride, posAttr.offset);
             if (this.hasNormal) {
-              var normalAttr = clientAttributes[GLImmediate.NORMAL];
-              GLctx.vertexAttribPointer(GLImmediate.NORMAL, normalAttr.size, normalAttr.type, true, GLImmediate.stride, normalAttr.offset);
+              var normalAttr = clientAttributes[GL_IMMEDIATE_NORMAL];
+              GLctx.vertexAttribPointer(GL_IMMEDIATE_NORMAL, normalAttr.size, normalAttr.type, true, GLImmediate.stride, normalAttr.offset);
             }
           }
 #else
           GLctx.vertexAttribPointer(this.positionLocation, posAttr.size, posAttr.type, false, GLImmediate.stride, posAttr.offset);
           GLctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasNormal) {
-            var normalAttr = clientAttributes[GLImmediate.NORMAL];
+            var normalAttr = clientAttributes[GL_IMMEDIATE_NORMAL];
 #if GL_ASSERTIONS
             GL.validateVertexAttribPointer(normalAttr.size, normalAttr.type, GLImmediate.stride, normalAttr.offset);
 #endif
@@ -2567,7 +2571,7 @@ var LibraryGLEmulation = {
             for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
 #if GL_FFP_ONLY
               if (!GLctx.currentArrayBufferBinding) {
-                var attribLoc = GLImmediate.TEXTURE0+i;
+                var attribLoc = GL_IMMEDIATE_TEXTURE0+i;
                 var texAttr = clientAttributes[attribLoc];
                 if (texAttr.size) {
                   GLctx.vertexAttribPointer(attribLoc, texAttr.size, texAttr.type, false, GLImmediate.stride, texAttr.offset);
@@ -2579,7 +2583,7 @@ var LibraryGLEmulation = {
 #else
               var attribLoc = this.texCoordLocations[i];
               if (attribLoc === undefined || attribLoc < 0) continue;
-              var texAttr = clientAttributes[GLImmediate.TEXTURE0+i];
+              var texAttr = clientAttributes[GL_IMMEDIATE_TEXTURE0+i];
 
               if (texAttr.size) {
 #if GL_ASSERTIONS
@@ -2600,14 +2604,14 @@ var LibraryGLEmulation = {
               }
             }
           }
-          if (GLImmediate.enabledClientAttributes[GLImmediate.COLOR]) {
-            var colorAttr = clientAttributes[GLImmediate.COLOR];
+          if (GLImmediate.enabledClientAttributes[GL_IMMEDIATE_COLOR]) {
+            var colorAttr = clientAttributes[GL_IMMEDIATE_COLOR];
 #if GL_ASSERTIONS
             GL.validateVertexAttribPointer(colorAttr.size, colorAttr.type, GLImmediate.stride, colorAttr.offset);
 #endif
 #if GL_FFP_ONLY
             if (!GLctx.currentArrayBufferBinding) {
-              GLctx.vertexAttribPointer(GLImmediate.COLOR, colorAttr.size, colorAttr.type, true, GLImmediate.stride, colorAttr.offset);
+              GLctx.vertexAttribPointer(GL_IMMEDIATE_COLOR, colorAttr.size, colorAttr.type, true, GLImmediate.stride, colorAttr.offset);
             }
 #else
             GLctx.vertexAttribPointer(this.colorLocation, colorAttr.size, colorAttr.type, true, GLImmediate.stride, colorAttr.offset);
@@ -2628,7 +2632,7 @@ var LibraryGLEmulation = {
           }
 
           if (this.hasClipPlane) {
-            for (var clipPlaneId = 0; clipPlaneId < GLEmulation.MAX_CLIP_PLANES; clipPlaneId++) {
+            for (var clipPlaneId = 0; clipPlaneId < GLEMU_MAX_CLIP_PLANES; clipPlaneId++) {
               if (this.clipPlaneEquationLocation[clipPlaneId]) GLctx.uniform4fv(this.clipPlaneEquationLocation[clipPlaneId], GLEmulation.clipPlaneEquation[clipPlaneId]);
             }
           }
@@ -2640,7 +2644,7 @@ var LibraryGLEmulation = {
             if (this.materialSpecularLocation) GLctx.uniform4fv(this.materialSpecularLocation, GLEmulation.materialSpecular);
             if (this.materialShininessLocation) GLctx.uniform1f(this.materialShininessLocation, GLEmulation.materialShininess);
             if (this.materialEmissionLocation) GLctx.uniform4fv(this.materialEmissionLocation, GLEmulation.materialEmission);
-            for (var lightId = 0; lightId < GLEmulation.MAX_LIGHTS; lightId++) {
+            for (var lightId = 0; lightId < GLEMU_MAX_LIGHTS; lightId++) {
               if (this.lightAmbientLocation[lightId]) GLctx.uniform4fv(this.lightAmbientLocation[lightId], GLEmulation.lightAmbient[lightId]);
               if (this.lightDiffuseLocation[lightId]) GLctx.uniform4fv(this.lightDiffuseLocation[lightId], GLEmulation.lightDiffuse[lightId]);
               if (this.lightSpecularLocation[lightId]) GLctx.uniform4fv(this.lightSpecularLocation[lightId], GLEmulation.lightSpecular[lightId]);
@@ -2664,7 +2668,7 @@ var LibraryGLEmulation = {
           GLctx.disableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
-              if (GLImmediate.enabledClientAttributes[GLImmediate.TEXTURE0+i] && this.texCoordLocations[i] >= 0) {
+              if (GLImmediate.enabledClientAttributes[GL_IMMEDIATE_TEXTURE0+i] && this.texCoordLocations[i] >= 0) {
                 GLctx.disableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
@@ -2814,7 +2818,7 @@ var LibraryGLEmulation = {
       GLImmediate.rendererCache = GLImmediate.MapTreeLib.create();
 
       // Buffers for data
-      GLImmediate.tempData = new Float32Array(GL.MAX_TEMP_BUFFER_SIZE >> 2);
+      GLImmediate.tempData = new Float32Array(GL_MAX_TEMP_BUFFER_SIZE >> 2);
 
       GLImmediate.vertexDataU8 = new Uint8Array(GLImmediate.tempData.buffer);
 
@@ -2869,9 +2873,9 @@ var LibraryGLEmulation = {
       // Detect which case we are in by using a quick heuristic by examining the
       // strides of the buffers. If all the buffers have identical stride, we
       // assume we have case (2), otherwise we have something more complex.
-      var clientStartPointer = {{{ POINTER_MAX }}};
+      var clientStartPointer = POINTER_MAX;
       var bytes = 0; // Total number of bytes taken up by a single vertex.
-      var minStride = {{{ POINTER_MAX }}};
+      var minStride = POINTER_MAX;
       var maxStride = 0;
       var attributes = GLImmediate.liveClientAttributes;
       attributes.length = 0;
@@ -2896,7 +2900,7 @@ var LibraryGLEmulation = {
 #if GL_ASSERTIONS
         warnOnce('Rendering from planar client-side vertex arrays. This is a very slow emulation path! Use interleaved vertex arrays for best performance.');
 #endif
-        GLImmediate.restrideBuffer ||= _malloc(GL.MAX_TEMP_BUFFER_SIZE);
+        GLImmediate.restrideBuffer ||= _malloc(GL_MAX_TEMP_BUFFER_SIZE);
         var start = GLImmediate.restrideBuffer;
         bytes = 0;
         // calculate restrided offsets and total size
@@ -2984,7 +2988,7 @@ var LibraryGLEmulation = {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
           var byteSize = numProvidedIndexes << 1;
 #if ASSERTIONS
-          assert(byteSize <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
+          assert(byteSize <= GL_MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
 #endif
           var indexBuffer = GL.getTempIndexBuffer(byteSize);
           GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -3005,7 +3009,7 @@ var LibraryGLEmulation = {
         var numQuads = numVertices / 4;
         numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
 #if ASSERTIONS
-        assert(ptr + (numIndexes << 1) <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
+        assert(ptr + (numIndexes << 1) <= GL_MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
 #endif
         GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, GL.currentContext.tempQuadIndexBuffer);
         emulatedElementArrayBuffer = true;
@@ -3058,7 +3062,7 @@ var LibraryGLEmulation = {
   },
 
   glEnd: () => {
-    GLImmediate.prepareClientAttributes(GLImmediate.rendererComponents[GLImmediate.VERTEX], true);
+    GLImmediate.prepareClientAttributes(GLImmediate.rendererComponents[GL_IMMEDIATE_VERTEX], true);
     GLImmediate.firstVertex = 0;
     GLImmediate.lastVertex = GLImmediate.vertexCounter / (GLImmediate.stride >> 2);
     GLImmediate.flush();
@@ -3081,9 +3085,9 @@ var LibraryGLEmulation = {
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = 0;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = 1;
 #if ASSERTIONS
-    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+    assert(GLImmediate.vertexCounter << 2 < GL_MAX_TEMP_BUFFER_SIZE);
 #endif
-    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
+    GLImmediate.addRendererComponent(GL_IMMEDIATE_VERTEX, 4, GLctx.FLOAT);
   },
 
   glVertex3f: (x, y, z) => {
@@ -3095,9 +3099,9 @@ var LibraryGLEmulation = {
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = 1;
 #if ASSERTIONS
-    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+    assert(GLImmediate.vertexCounter << 2 < GL_MAX_TEMP_BUFFER_SIZE);
 #endif
-    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
+    GLImmediate.addRendererComponent(GL_IMMEDIATE_VERTEX, 4, GLctx.FLOAT);
   },
 
   glVertex4f: (x, y, z, w) => {
@@ -3109,9 +3113,9 @@ var LibraryGLEmulation = {
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = w;
 #if ASSERTIONS
-    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+    assert(GLImmediate.vertexCounter << 2 < GL_MAX_TEMP_BUFFER_SIZE);
 #endif
-    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
+    GLImmediate.addRendererComponent(GL_IMMEDIATE_VERTEX, 4, GLctx.FLOAT);
   },
 
   glVertex2fv: (p) => _glVertex2f({{{ makeGetValue('p', '0', 'float') }}},
@@ -3138,7 +3142,7 @@ var LibraryGLEmulation = {
 #endif
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = u;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = v;
-    GLImmediate.addRendererComponent(GLImmediate.TEXTURE0, 2, GLctx.FLOAT);
+    GLImmediate.addRendererComponent(GL_IMMEDIATE_TEXTURE0, 2, GLctx.FLOAT);
   },
   glTexCoord2f: 'glTexCoord2i',
 
@@ -3161,14 +3165,14 @@ var LibraryGLEmulation = {
       GLImmediate.vertexDataU8[start + 2] = b * 255;
       GLImmediate.vertexDataU8[start + 3] = a * 255;
       GLImmediate.vertexCounter++;
-      GLImmediate.addRendererComponent(GLImmediate.COLOR, 4, GLctx.UNSIGNED_BYTE);
+      GLImmediate.addRendererComponent(GL_IMMEDIATE_COLOR, 4, GLctx.UNSIGNED_BYTE);
     } else {
       GLImmediate.clientColor[0] = r;
       GLImmediate.clientColor[1] = g;
       GLImmediate.clientColor[2] = b;
       GLImmediate.clientColor[3] = a;
 #if GL_FFP_ONLY
-      GLctx.vertexAttrib4fv(GLImmediate.COLOR, GLImmediate.clientColor);
+      GLctx.vertexAttrib4fv(GL_IMMEDIATE_COLOR, GLImmediate.clientColor);
 #endif
     }
   },
@@ -3313,9 +3317,9 @@ var LibraryGLEmulation = {
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
 #if ASSERTIONS
-    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+    assert(GLImmediate.vertexCounter << 2 < GL_MAX_TEMP_BUFFER_SIZE);
 #endif
-    GLImmediate.addRendererComponent(GLImmediate.NORMAL, 3, GLctx.FLOAT);
+    GLImmediate.addRendererComponent(GL_IMMEDIATE_NORMAL, 3, GLctx.FLOAT);
   },
 
   glNormal3fv: (p) => {
@@ -3373,35 +3377,35 @@ var LibraryGLEmulation = {
   },
 
   glVertexPointer: (size, type, stride, pointer) => {
-    GLImmediate.setClientAttribute(GLImmediate.VERTEX, size, type, stride, pointer);
+    GLImmediate.setClientAttribute(GL_IMMEDIATE_VERTEX, size, type, stride, pointer);
 #if GL_FFP_ONLY
     if (GLctx.currentArrayBufferBinding) {
-      GLctx.vertexAttribPointer(GLImmediate.VERTEX, size, type, false, stride, pointer);
+      GLctx.vertexAttribPointer(GL_IMMEDIATE_VERTEX, size, type, false, stride, pointer);
     }
 #endif
   },
   glTexCoordPointer: (size, type, stride, pointer) => {
-    GLImmediate.setClientAttribute(GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture, size, type, stride, pointer);
+    GLImmediate.setClientAttribute(GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture, size, type, stride, pointer);
 #if GL_FFP_ONLY
     if (GLctx.currentArrayBufferBinding) {
-      var loc = GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture;
+      var loc = GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture;
       GLctx.vertexAttribPointer(loc, size, type, false, stride, pointer);
     }
 #endif
   },
   glNormalPointer: (type, stride, pointer) => {
-    GLImmediate.setClientAttribute(GLImmediate.NORMAL, 3, type, stride, pointer);
+    GLImmediate.setClientAttribute(GL_IMMEDIATE_NORMAL, 3, type, stride, pointer);
 #if GL_FFP_ONLY
     if (GLctx.currentArrayBufferBinding) {
-      GLctx.vertexAttribPointer(GLImmediate.NORMAL, 3, type, true, stride, pointer);
+      GLctx.vertexAttribPointer(GL_IMMEDIATE_NORMAL, 3, type, true, stride, pointer);
     }
 #endif
   },
   glColorPointer: (size, type, stride, pointer) => {
-    GLImmediate.setClientAttribute(GLImmediate.COLOR, size, type, stride, pointer);
+    GLImmediate.setClientAttribute(GL_IMMEDIATE_COLOR, size, type, stride, pointer);
 #if GL_FFP_ONLY
     if (GLctx.currentArrayBufferBinding) {
-      GLctx.vertexAttribPointer(GLImmediate.COLOR, size, type, true, stride, pointer);
+      GLctx.vertexAttribPointer(GL_IMMEDIATE_COLOR, size, type, true, stride, pointer);
     }
 #endif
   },
@@ -3539,7 +3543,7 @@ var LibraryGLEmulation = {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
     GLImmediate.matrixStack[GLImmediate.currentMatrix].push(
-        Array.prototype.slice.call(GLImmediate.matrix[GLImmediate.currentMatrix]));
+        GLImmediate.matrix[GLImmediate.currentMatrix].slice());
   },
 
   glPopMatrix: () => {
@@ -3567,7 +3571,7 @@ var LibraryGLEmulation = {
 
   glLoadMatrixf: (matrix) => {
 #if GL_DEBUG
-    if (GL.debug) dbg('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
+    if (GL.debug) dbg('glLoadMatrixf receiving: ' + HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16));
 #endif
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;

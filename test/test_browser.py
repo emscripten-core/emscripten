@@ -239,7 +239,6 @@ class browser(BrowserCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    cls.browser_timeout = 60
     if get_browser() != 'node':
       print()
       print('Running the browser tests. Make sure the browser allows popups from localhost.')

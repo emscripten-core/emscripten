@@ -192,7 +192,7 @@ addToLibrary({
       var st = fs.fstatSync(nfd);
       if (flags & {{{ cDefs.O_DIRECTORY }}} && !st.isDirectory()) {
         fs.closeSync(nfd);
-        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+        throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
       }
       var newMode = NODEFS.getMode(pathTruncated);
       var node = { id: st.ino, mode: newMode, node_ops: NODERAWFS, path }

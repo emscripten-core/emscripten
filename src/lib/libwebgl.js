@@ -18,6 +18,11 @@ var LibraryGL = {
   // of 9 and 16.
   ...defineInternalConsts({
     $GL_POOL_TEMP_BUFFERS_SIZE: 2 * 9 * 16, // = 288
+    $GL_MAX_TEMP_BUFFER_SIZE: GL_MAX_TEMP_BUFFER_SIZE,
+    // Maximum number of temp VBOs of one size to maintain, after that we start
+    // reusing old ones, which is safe but can give a performance impact. If
+    // CPU-GPU stalls are a problem, increasing this might help.
+    $GL_NUM_TEMP_VERTEX_BUFFERS_PER_SIZE: 64,
   }),
 
   // For functions such as glDrawBuffers, glInvalidateFramebuffer and
@@ -373,12 +378,6 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     // data to it, which could cause a GPU-CPU pipeline stall.
     // Note that index buffers are not double-buffered (at the moment) in this
     // manner.
-    MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
-    // Maximum number of temp VBOs of one size to maintain, after that we start
-    // reusing old ones, which is safe but can give a performance impact. If
-    // CPU-GPU stalls are a problem, increasing this might help.
-    numTempVertexBuffersPerSize: 64, // (const)
-
     // Precompute a lookup table for the function ceil(log2(x)), i.e. how many
     // bits are needed to represent x, or, if x was rounded up to next pow2,
     // which index is the single '1' bit at?
@@ -386,7 +385,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     log2ceilLookup: (i) => 32 - Math.clz32(i ? i - 1 : 0),
 
     generateTempBuffers: (quads, context) => {
-      var largestIndex = GL.log2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
+      var largestIndex = GL.log2ceilLookup(GL_MAX_TEMP_BUFFER_SIZE);
       context.tempVertexBufferCounters1 = [];
       context.tempVertexBufferCounters2 = [];
       context.tempVertexBufferCounters1.length = context.tempVertexBufferCounters2.length = largestIndex+1;
@@ -398,7 +397,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       for (var i = 0; i <= largestIndex; ++i) {
         context.tempIndexBuffers[i] = null; // Created on-demand
         context.tempVertexBufferCounters1[i] = context.tempVertexBufferCounters2[i] = 0;
-        var ringbufferLength = GL.numTempVertexBuffersPerSize;
+        var ringbufferLength = GL_NUM_TEMP_VERTEX_BUFFERS_PER_SIZE;
         context.tempVertexBuffers1[i] = [];
         context.tempVertexBuffers2[i] = [];
         var ringbuffer1 = context.tempVertexBuffers1[i];
@@ -413,7 +412,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
         // GL_QUAD indexes can be precalculated
         context.tempQuadIndexBuffer = GLctx.createBuffer();
         context.GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, context.tempQuadIndexBuffer);
-        var numIndexes = GL.MAX_TEMP_BUFFER_SIZE >> 1;
+        var numIndexes = GL_MAX_TEMP_BUFFER_SIZE >> 1;
         var quadIndexes = new Uint16Array(numIndexes);
         var i = 0, v = 0;
         while (1) {
@@ -443,7 +442,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       assert(ringbuffer, `MAX_TEMP_BUFFER_SIZE is not large enough to store a buffer of size ${sizeBytes}`);
 #endif
       var nextFreeBufferIndex = GL.currentContext.tempVertexBufferCounters1[idx];
-      GL.currentContext.tempVertexBufferCounters1[idx] = (GL.currentContext.tempVertexBufferCounters1[idx]+1) & (GL.numTempVertexBuffersPerSize-1);
+      GL.currentContext.tempVertexBufferCounters1[idx] = (GL.currentContext.tempVertexBufferCounters1[idx]+1) & (GL_NUM_TEMP_VERTEX_BUFFERS_PER_SIZE-1);
       var vbo = ringbuffer[nextFreeBufferIndex];
       if (vbo) {
         return vbo;
@@ -484,7 +483,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       vb = GL.currentContext.tempVertexBufferCounters1;
       GL.currentContext.tempVertexBufferCounters1 = GL.currentContext.tempVertexBufferCounters2;
       GL.currentContext.tempVertexBufferCounters2 = vb;
-      var largestIndex = GL.log2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
+      var largestIndex = GL.log2ceilLookup(GL_MAX_TEMP_BUFFER_SIZE);
       for (var i = 0; i <= largestIndex; ++i) {
         GL.currentContext.tempVertexBufferCounters1[i] = 0;
       }
@@ -3150,7 +3149,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
 #if GL_TRACK_ERRORS
       var bindingsType = 0x8872/*GL_MAX_TEXTURE_IMAGE_UNITS*/;
 #endif
-      if (bindingMatch[3] && bindingMatch[2].indexOf('sampler') != -1) {
+      if (bindingMatch[3] && bindingMatch[2].includes('sampler')) {
         samplerBindings[bindingMatch[3]] = [binding, arrayLength];
       } else {
 #if GL_TRACK_ERRORS

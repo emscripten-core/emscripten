@@ -22,7 +22,7 @@ addToLibrary({
       var url = '';
       var fileUrl_p = __wasmfs_fetch_get_file_url(file);
       var fileUrl = UTF8ToString(fileUrl_p);
-      var isAbs = fileUrl.indexOf('://') !== -1;
+      var isAbs = fileUrl.includes('://');
       if (isAbs) {
         url = fileUrl;
       } else {

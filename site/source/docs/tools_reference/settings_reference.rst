@@ -2901,12 +2901,12 @@ Specifies the oldest major version of Firefox to target. I.e. all Firefox
 versions >= MIN_FIREFOX_VERSION
 are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than majorVersion.
-Firefox 79 was released on 2020-07-28.
+Firefox 92 was released on 2021-09-07.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 68 which was released on 2019-07-09 (see
+Minimum supported value is 79 which was released on 2020-07-28 (see
 feature_matrix.py)
 
-Default value: 79
+Default value: 92
 
 .. _min_safari_version:
 
@@ -2915,8 +2915,8 @@ MIN_SAFARI_VERSION
 
 Specifies the oldest version of desktop Safari to target. Version is encoded
 in MMmmVV, e.g. 160101 denotes Safari 16.1.1.
-Safari 15 was released on September 20, 2021, bundled with macOS 12.0
-Monterey and iOS 15.
+Safari 15.4 was released on March 14, 2022, bundled with macOS 12.3
+Monterey and iOS 15.4.
 NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
@@ -2924,7 +2924,7 @@ MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 150000 which was released on 2021-09-20 (see
 feature_matrix.py).
 
-Default value: 150000
+Default value: 150400
 
 .. _min_chrome_version:
 
@@ -2935,12 +2935,12 @@ Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=100 to
 drop support for Chrome 99 and older.
 This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
-Chrome 85 was released on 2020-08-25.
+Chrome 93 was released on 2021-08-31.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 85, which was released on 2020-08-25 (see
 feature_matrix.py).
 
-Default value: 85
+Default value: 93
 
 .. _min_node_version:
 

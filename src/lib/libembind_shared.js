@@ -34,12 +34,12 @@ var LibraryEmbindShared = {
   $structRegistrations: {},
 
   $sharedRegisterType__docs: '/** @param {Object=} options */',
-  $sharedRegisterType: function(rawType, registeredInstance, options = {}) {
+  $sharedRegisterType: function(typeID, registeredInstance, options = {}) {
     var name = registeredInstance.name;
-    if (!rawType) {
+    if (!typeID) {
       throwBindingError(`type "${name}" must have a positive integer typeid pointer`);
     }
-    if (hasOwn(registeredTypes, rawType)) {
+    if (registeredTypes[typeID]) {
       if (options.ignoreDuplicateRegistrations) {
         return;
       } else {
@@ -47,12 +47,12 @@ var LibraryEmbindShared = {
       }
     }
 
-    registeredTypes[rawType] = registeredInstance;
-    delete typeDependencies[rawType];
+    registeredTypes[typeID] = registeredInstance;
+    delete typeDependencies[typeID];
 
-    if (hasOwn(awaitingDependencies, rawType)) {
-      var callbacks = awaitingDependencies[rawType];
-      delete awaitingDependencies[rawType];
+    if (awaitingDependencies[typeID]) {
+      var callbacks = awaitingDependencies[typeID];
+      delete awaitingDependencies[typeID];
       callbacks.forEach((cb) => cb());
     }
   },
@@ -74,14 +74,11 @@ var LibraryEmbindShared = {
     var unregisteredTypes = [];
     var registered = 0;
     for (let [i, dt] of dependentTypes.entries()) {
-      if (hasOwn(registeredTypes, dt)) {
+      if (registeredTypes[dt]) {
         typeConverters[i] = registeredTypes[dt];
       } else {
         unregisteredTypes.push(dt);
-        if (!hasOwn(awaitingDependencies, dt)) {
-          awaitingDependencies[dt] = [];
-        }
-        awaitingDependencies[dt].push(() => {
+        (awaitingDependencies[dt] ??= []).push(() => {
           typeConverters[i] = registeredTypes[dt];
           ++registered;
           if (registered === unregisteredTypes.length) {
@@ -96,8 +93,8 @@ var LibraryEmbindShared = {
   },
 
   $getTypeName__deps: ['__getTypeName', 'free'],
-  $getTypeName: (type) => {
-    var ptr = ___getTypeName(type);
+  $getTypeName: (typeID) => {
+    var ptr = ___getTypeName(typeID);
     var rv = AsciiToString(ptr);
     _free(ptr);
     return rv;
@@ -132,10 +129,10 @@ var LibraryEmbindShared = {
     return array;
   },
 
-  $requireRegisteredType: (rawType, humanName) => {
-    var impl = registeredTypes[rawType];
+  $requireRegisteredType: (typeID, humanName) => {
+    var impl = registeredTypes[typeID];
     if (undefined === impl) {
-      throwBindingError(`${humanName} has unknown type ${getTypeName(rawType)}`);
+      throwBindingError(`${humanName} has unknown type ${getTypeName(typeID)}`);
     }
     return impl;
   },

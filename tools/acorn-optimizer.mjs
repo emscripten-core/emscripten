@@ -218,15 +218,18 @@ function hasSideEffects(node) {
 function JSDCE(ast, aggressive) {
   function iteration() {
     let removed = 0;
-    const scopes = [{}]; // begin with empty toplevel scope
+    const scopes = [new Map()]; // begin with empty toplevel scope
     function ensureData(scope, name) {
-      if (Object.hasOwn(scope, name)) return scope[name];
-      scope[name] = {
-        def: 0,
-        use: 0,
-        param: 0, // true for function params, which cannot be eliminated
-      };
-      return scope[name];
+      let data = scope.get(name);
+      if (!data) {
+        data = {
+          def: 0,
+          use: 0,
+          param: 0, // true for function params, which cannot be eliminated
+        };
+        scope.set(name, data);
+      }
+      return data;
     }
     function cleanUp(ast, names) {
       recursiveWalk(ast, {
@@ -292,14 +295,15 @@ function JSDCE(ast, aggressive) {
     function handleFunction(node, c, defun) {
       // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
       if (defun) {
-        ensureData(scopes[scopes.length - 1], node.id.name).def = 1;
+        ensureData(scopes.at(-1), node.id.name).def = 1;
       }
-      const scope = {};
+      const scope = new Map();
       scopes.push(scope);
       for (const param of node.params) {
         walkPattern(param, c, (name) => {
-          ensureData(scope, name).def = 1;
-          scope[name].param = 1;
+          const data = ensureData(scope, name);
+          data.def = 1;
+          data.param = 1;
         });
       }
       c(node.body);
@@ -307,12 +311,11 @@ function JSDCE(ast, aggressive) {
       // ourselves, for named defined (defun) functions
       const ownName = defun ? node.id.name : '';
       const names = new Set();
-      for (const name in scopes.pop()) {
+      for (const [name, data] of scopes.pop()) {
         if (name === ownName) continue;
-        const data = scope[name];
         if (data.use && !data.def) {
           // this is used from a higher scope, propagate the use down
-          ensureData(scopes[scopes.length - 1], name).use = 1;
+          ensureData(scopes.at(-1), name).use = 1;
           continue;
         }
         if (data.def && !data.use && !data.param) {
@@ -326,19 +329,16 @@ function JSDCE(ast, aggressive) {
     recursiveWalk(ast, {
       VariableDeclarator(node, c) {
         walkPattern(node.id, c, (name) => {
-          ensureData(scopes[scopes.length - 1], name).def = 1;
+          ensureData(scopes.at(-1), name).def = 1;
         });
         if (node.init) c(node.init);
       },
-      ObjectExpression(node, c) {
-        // ignore the property identifiers
-        node.properties.forEach((node) => {
-          if (node.value) {
-            c(node.value);
-          } else if (node.argument) {
-            c(node.argument);
-          }
-        });
+      Property(node, c) {
+        // Ignore a property identifier ({X: 1}), but notice {[X]: 1} (computed props).
+        if (node.computed) {
+          c(node.key);
+        }
+        c(node.value);
       },
       MemberExpression(node, c) {
         c(node.object);
@@ -358,30 +358,30 @@ function JSDCE(ast, aggressive) {
       },
       Identifier(node, _c) {
         const name = node.name;
-        ensureData(scopes[scopes.length - 1], name).use = 1;
+        ensureData(scopes.at(-1), name).use = 1;
       },
       ExportDefaultDeclaration(node, c) {
         const name = node.declaration.id.name;
-        ensureData(scopes[scopes.length - 1], name).use = 1;
+        ensureData(scopes.at(-1), name).use = 1;
         c(node.declaration);
       },
       ExportNamedDeclaration(node, c) {
         if (node.declaration) {
           if (node.declaration.type == 'FunctionDeclaration') {
             const name = node.declaration.id.name;
-            ensureData(scopes[scopes.length - 1], name).use = 1;
+            ensureData(scopes.at(-1), name).use = 1;
           } else {
             assert(node.declaration.type == 'VariableDeclaration');
             for (const decl of node.declaration.declarations) {
               const name = decl.id.name;
-              ensureData(scopes[scopes.length - 1], name).use = 1;
+              ensureData(scopes.at(-1), name).use = 1;
             }
           }
           c(node.declaration);
         } else {
           for (const specifier of node.specifiers) {
             const name = specifier.local.name;
-            ensureData(scopes[scopes.length - 1], name).use = 1;
+            ensureData(scopes.at(-1), name).use = 1;
           }
         }
       },
@@ -392,7 +392,7 @@ function JSDCE(ast, aggressive) {
     assert(scopes.length === 0);
 
     const names = new Set();
-    for (const [name, data] of Object.entries(scope)) {
+    for (const [name, data] of scope) {
       if (data.def && !data.use) {
         assert(!data.param); // can't be
         // this is eliminatable!
@@ -649,9 +649,9 @@ function emitDCEGraph(ast) {
   const imports = [];
   const defuns = [];
   const dynCallNames = [];
-  const nameToGraphName = {};
-  const modulePropertyToGraphName = {};
-  const exportNameToGraphName = {}; // identical to wasmExports['..'] nameToGraphName
+  const nameToGraphName = new Map();
+  const modulePropertyToGraphName = new Map();
+  const exportNameToGraphName = new Map(); // identical to wasmExports['..'] nameToGraphName
   let foundWasmImportsAssign = false;
   let foundMinimalRuntimeExports = false;
   // Under WASM_ESM_INTEGRATION, JS names bound to wasm exports via an ES import
@@ -663,9 +663,9 @@ function emitDCEGraph(ast) {
     // the asmName is what the wasm provides directly; the outside JS
     // name may be slightly different (extra "_" in wasm backend)
     const graphName = getGraphName(name, 'export');
-    nameToGraphName[name] = graphName;
-    modulePropertyToGraphName[name] = graphName;
-    exportNameToGraphName[asmName] = graphName;
+    nameToGraphName.set(name, graphName);
+    modulePropertyToGraphName.set(name, graphName);
+    exportNameToGraphName.set(asmName, graphName);
     if (/^dynCall_/.test(name)) {
       dynCallNames.push(graphName);
     }
@@ -707,11 +707,12 @@ function emitDCEGraph(ast) {
         node.specifiers.forEach((spec) => {
           const jsName = spec.local.name; // JS-side name
           const asmName = spec.imported.name; // wasm-provided name
-          if (Object.hasOwn(exportNameToGraphName, asmName)) {
+          const graphName = exportNameToGraphName.get(asmName);
+          if (graphName) {
             // Another local already binds this wasm export (e.g. both `memory`
             // and `memory as wasmMemory`): point this local at the same node so
             // a use of either roots the one underlying export.
-            nameToGraphName[jsName] = exportNameToGraphName[asmName];
+            nameToGraphName.set(jsName, graphName);
           } else {
             saveAsmExport(jsName, asmName);
           }
@@ -835,7 +836,7 @@ function emitDCEGraph(ast) {
           }
         } else if (!specialScopes) {
           defuns.push(node);
-          nameToGraphName[name] = getGraphName(name, 'defun');
+          nameToGraphName.set(name, getGraphName(name, 'defun'));
           emptyOut(node); // ignore this in the second pass; we scan defuns separately
         }
       } else if (node.type === 'ArrowFunctionExpression') {
@@ -872,25 +873,26 @@ function emitDCEGraph(ast) {
   function getGraphName(name, what) {
     return 'emcc$' + what + '$' + name;
   }
-  const infos = {}; // the graph name of the item => info for it
+  const infos = new Map(); // the graph name of the item => info for it
   for (const [jsName, nativeName] of imports) {
     const name = getGraphName(jsName, 'import');
-    const info = (infos[name] = {
+    const info = {
       name: name,
       import: ['env', nativeName],
       reaches: new Set(),
-    });
-    if (Object.hasOwn(nameToGraphName, jsName)) {
-      info.reaches.add(nameToGraphName[jsName]);
+    };
+    infos.set(name, info);
+    const graphName = nameToGraphName.get(jsName);
+    if (graphName) {
+      info.reaches.add(graphName);
     } // otherwise, it's a number, ignore
   }
-  for (const [e, _] of Object.entries(exportNameToGraphName)) {
-    const name = exportNameToGraphName[e];
-    infos[name] = {
+  for (const [e, name] of exportNameToGraphName) {
+    infos.set(name, {
       name: name,
       export: e,
       reaches: new Set(),
-    };
+    });
   }
   // a function that handles a node we visit, in either a defun or
   // the toplevel scope (in which case the second param is not provided)
@@ -899,15 +901,9 @@ function emitDCEGraph(ast) {
     //       from the top scope, which might create more uses than needed
     let reached;
     if (node.type === 'Identifier') {
-      const name = node.name;
-      if (Object.hasOwn(nameToGraphName, name)) {
-        reached = nameToGraphName[name];
-      }
+      reached = nameToGraphName.get(node.name);
     } else if (isModuleUse(node)) {
-      const name = getExportOrModuleUseName(node);
-      if (Object.hasOwn(modulePropertyToGraphName, name)) {
-        reached = modulePropertyToGraphName[name];
-      }
+      reached = modulePropertyToGraphName.get(getExportOrModuleUseName(node));
     } else if (isStaticDynCall(node)) {
       reached = getGraphName(getStaticDynCallName(node), 'export');
     } else if (isDynamicDynCall(node)) {
@@ -916,8 +912,9 @@ function emitDCEGraph(ast) {
     } else if (isExportUse(node)) {
       // any remaining asm uses are always rooted in any case
       const name = getExportOrModuleUseName(node);
-      if (Object.hasOwn(exportNameToGraphName, name)) {
-        infos[exportNameToGraphName[name]].root = true;
+      const graphName = exportNameToGraphName.get(name);
+      if (graphName) {
+        infos.get(graphName).root = true;
       }
       return;
     }
@@ -926,8 +923,9 @@ function emitDCEGraph(ast) {
         if (defunInfo) {
           defunInfo.reaches.add(reached); // defun reaches it
         } else {
-          if (infos[reached]) {
-            infos[reached].root = true; // in global scope, root it
+          const info = infos.get(reached);
+          if (info) {
+            info.root = true; // in global scope, root it
           } else {
             // An info might not exist for the identifier if it is missing, for
             // example, we might call Module.dynCall_vi in library code, but it
@@ -946,18 +944,19 @@ function emitDCEGraph(ast) {
   }
   defuns.forEach((defun) => {
     const name = getGraphName(defun.id.name, 'defun');
-    const info = (infos[name] = {
+    const info = {
       name: name,
       reaches: new Set(),
-    });
+    };
+    infos.set(name, info);
     fullWalk(defun.body, (node) => visitNode(node, info));
   });
   fullWalk(ast, (node) => visitNode(node, null));
   // Final work: print out the graph
   // sort for determinism
-  const graph = Object.entries(infos)
-    .sort(([name1], [name2]) => (name1 > name2 ? 1 : -1))
-    .map(([_name, info]) => ({
+  const graph = Array.from(infos.values())
+    .sort((info1, info2) => (info1.name > info2.name ? 1 : -1))
+    .map((info) => ({
       ...info,
       reaches: Array.from(info.reaches).sort(),
     }));
@@ -1729,10 +1728,7 @@ function minifyGlobals(ast) {
   fun.id = funId;
 
   // Emit the metadata
-  const json = {};
-  for (const x of minified.entries()) json[x[0]] = x[1];
-
-  suffix = '// EXTRA_INFO:' + JSON.stringify(json);
+  suffix = '// EXTRA_INFO:' + JSON.stringify(Object.fromEntries(minified));
 }
 
 // Utilities
@@ -1767,7 +1763,8 @@ function reattachComments(ast, commentsMap, parenSpans) {
   // Walk through all comments in ascending line number, and match each
   // comment to the appropriate code block.
   let j = 0;
-  for (const [pos, comments] of Object.entries(commentsMap)) {
+  const sortedComments = Array.from(commentsMap).sort(([a], [b]) => a - b);
+  for (const [pos, comments] of sortedComments) {
     while (j < symbols.length && symbols[j].start.pos < pos) {
       ++j;
     }
@@ -1838,7 +1835,7 @@ if (extraInfoStart > 0) {
 }
 // Collect all JS code comments to this map so that we can retain them in the
 // outputted code if --closureFriendly was requested.
-const sourceComments = {};
+const sourceComments = new Map();
 const params = {
   ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
@@ -1850,9 +1847,11 @@ if (closureFriendly) {
   Object.assign(params, {
     preserveParens: true,
     onToken(token) {
-      // Associate comments with the start position of the next token.
-      sourceComments[token.start] = currentComments.slice();
-      currentComments.length = 0;
+      if (currentComments.length) {
+        // Associate comments with the start position of the next token.
+        sourceComments.set(token.start, currentComments.slice());
+        currentComments.length = 0;
+      }
     },
     onComment: currentComments,
   });
@@ -1885,10 +1884,15 @@ try {
     fullWalk(ast, (node) => {
       if (node.type === 'ParenthesizedExpression') {
         const {start, end, expression} = node;
-        if (sourceComments[expression.start]) {
-          sourceComments[start] ??= [];
-          sourceComments[start].push(...sourceComments[expression.start]);
-          delete sourceComments[expression.start];
+        const exprComments = sourceComments.get(expression.start);
+        if (exprComments) {
+          const startComments = sourceComments.get(start);
+          if (startComments) {
+            startComments.push(...exprComments);
+          } else {
+            sourceComments.set(start, exprComments);
+          }
+          sourceComments.delete(expression.start);
         }
         delete node.expression;
         Object.assign(node, expression, {start, end});

@@ -323,7 +323,7 @@ class sockets_node(RunnerCore):
     # UDP socket options: IP_MULTICAST_TTL/LOOP and their IPv6 counterparts
     # round-trip through set/getsockopt, with POSIX defaults readable before
     # any set, and SO_REUSEADDR/SO_REUSEPORT are applied at bind so sockets can
-    # share a port. EXIT_RUNTIME so the plain synchronous main()
+    # share a port, and multicast group joins reach the kernel. EXIT_RUNTIME so the plain synchronous main()
     # tears down the proxy worker on return (otherwise noExitRuntime keeps the
     # worker, and thus node, alive under PROXY_TO_PTHREAD).
     self.do_runf('sockets/test_udp_sockopts.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])

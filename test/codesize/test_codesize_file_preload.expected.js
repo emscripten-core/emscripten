@@ -480,6 +480,8 @@ var onPreRuns = [];
 
 /** @type {!Uint32Array} */ var HEAPU32;
 
+const FS_MAX_OPEN_FDS = 4096;
+
 var FS_createDataFile = (...args) => FS.createDataFile(...args);
 
 var preloadPlugins = [];
@@ -1049,7 +1051,7 @@ var MEMFS = {
             if (contents.subarray) {
               contents = contents.subarray(position, position + length);
             } else {
-              contents = Array.prototype.slice.call(contents, position, position + length);
+              contents = contents.slice(position, position + length);
             }
           }
           HEAP8.set(contents, ptr);
@@ -1696,9 +1698,8 @@ var FS = {
     }
     return op;
   },
-  MAX_OPEN_FDS: 4096,
   nextfd() {
-    for (var fd = 0; fd <= FS.MAX_OPEN_FDS; fd++) {
+    for (var fd = 0; fd <= FS_MAX_OPEN_FDS; fd++) {
       if (!FS.streams[fd]) {
         return fd;
       }

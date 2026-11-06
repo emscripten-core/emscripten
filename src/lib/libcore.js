@@ -1480,7 +1480,7 @@ addToLibrary({
   // implementation is not :(
   ...defineInternalConsts({
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
-    $nowIsMonotonic: '!!globalThis.performance?.now;',
+    $nowIsMonotonic: '=!!globalThis.performance?.now',
 #else
     // Modern environment where performance.now() is supported
     $nowIsMonotonic: 1,
@@ -1591,7 +1591,7 @@ addToLibrary({
     // Nobody should have mutated _readEmAsmArgsArray underneath us to be something else than an array.
     assert(Array.isArray(readEmAsmArgsArray));
     // The input buffer is allocated on the stack, so it must be stack-aligned.
-    assert(buf % {{{ STACK_ALIGN }}} == 0);
+    assert(buf % STACK_ALIGN == 0);
 #endif
     readEmAsmArgsArray.length = 0;
     var ch;
@@ -2426,7 +2426,7 @@ addToLibrary({
   // demand.
   ...defineConsts({
     $STACK_SIZE: {{{ STACK_SIZE }}},
-    $STACK_ALIGN: {{{ STACK_ALIGN }}},
+    $STACK_ALIGN: 16,
     $POINTER_SIZE: {{{ POINTER_SIZE }}},
     $ASSERTIONS: {{{ ASSERTIONS }}},
   }),
@@ -2525,7 +2525,7 @@ function wrapSyscallFunction(x, library, isWasi) {
       post += 'SYSCALLS.varargs = undefined;\n';
     }
   }
-  pre += `dbg('syscall! ${x}: [' + Array.prototype.slice.call(arguments) + ']');\n`;
+  pre += `dbg('syscall! ${x}: [' + Array.from(arguments) + ']');\n`;
   pre += 'var canWarn = true;\n';
   pre += 'var ret = (() => {';
   post += '})();\n';

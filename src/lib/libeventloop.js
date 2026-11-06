@@ -256,7 +256,7 @@ LibraryJSEventLoop = {
         var expected = MainLoop.expectedBlockers ?? 0;
         if (remaining) {
           if (remaining < expected) {
-            Module['setStatus'](`{message} ({expected - remaining}/{expected})`);
+            Module['setStatus'](`${message} (${expected - remaining}/${expected})`);
           } else {
             Module['setStatus'](message);
           }

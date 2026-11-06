@@ -1,3 +1,6 @@
+#ifndef _LIBCPP___CONFIG_SITE
+#define _LIBCPP___CONFIG_SITE
+
 // Set the LIBCPP ABI version 2 under emscripten so that we get nicely aligned string
 // data and other nice fixes.
 #define _LIBCPP_ABI_VERSION 2
@@ -26,3 +29,10 @@
 // Hardening
 #define _LIBCPP_HARDENING_MODE_DEFAULT _LIBCPP_HARDENING_MODE_NONE
 #define _LIBCPP_ASSERTION_SEMANTIC_DEFAULT _LIBCPP_ASSERTION_SEMANTIC_HARDENING_DEPENDENT
+
+// C libraries
+#define _LIBCPP_LIBC_PICOLIBC 0
+#define _LIBCPP_LIBC_NEWLIB 0
+#define _LIBCPP_LIBC_LLVM_LIBC 0
+
+#endif // _LIBCPP___CONFIG_SITE

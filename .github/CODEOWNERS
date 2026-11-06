@@ -1,0 +1,21 @@
+# Proxying
+/system/include/emscripten/proxying.h @tlively
+/system/lib/pthread/proxying.c @tlively
+
+# Embind
+*embind* @brendandahl
+/site/source/docs/api_reference/bind.h.rst @brendandahl
+/site/source/docs/api_reference/val.h.rst @brendandahl
+/src/lib/libemval.js @brendandahl
+/system/include/emscripten/bind.h @brendandahl
+/system/include/emscripten/val.h @brendandahl
+/system/include/emscripten/wire.h @brendandahl
+/system/lib/embind/ @brendandahl
+/test/embind/ @brendandahl
+
+# Emmalloc
+/system/lib/emmalloc.c @juj
+
+# Node sockfs and epoll
+/src/lib/libepoll.js @guybedford
+/src/lib/libsockfs_node.js @guybedford

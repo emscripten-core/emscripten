@@ -58,7 +58,7 @@ export function popCurrentFile() {
 
 function errorPrefix(lineNo) {
   if (!currentFile.length) return '';
-  const filename = currentFile[currentFile.length - 1];
+  const filename = currentFile.at(-1);
   if (lineNo) {
     return `${filename}:${lineNo}: `;
   } else {
@@ -234,6 +234,7 @@ export function isDecorator(ident) {
 export function defineConsts(consts) {
   const rtn = {};
   for (const [key, value] of Object.entries(consts)) {
+    assert(isJsOnlySymbol(key), `expected JS-only symbol (starting with '$'): ${key}`);
     rtn[key] = value;
     rtn[key + '__const'] = true;
   }
@@ -312,7 +313,7 @@ class Profiler {
 
   terminate() {
     while (this.ids.length) {
-      const lastID = this.ids[this.ids.length - 1][0];
+      const lastID = this.ids.at(-1)[0];
       this.stop(lastID);
     }
     // const overall = performance.now() - this.startTime
@@ -365,7 +366,15 @@ const setLikeSettings = [
   'WEAK_IMPORTS'
 ];
 
-export function applySettings(obj) {
+const settingsCallbacks = [];
+let settingsLoaded = false;
+
+export function onSettingsLoaded(cb) {
+  assert(!settingsLoaded);
+  settingsCallbacks.push(cb);
+}
+
+function setSettings(obj) {
   // Certain settings are read in as lists, but we convert them to Set
   // within the compiler, for efficiency.
   for (const key of setLikeSettings) {
@@ -380,11 +389,20 @@ export function applySettings(obj) {
   addToCompileTimeContext(obj);
 }
 
+export function applySettings(obj) {
+  assert(!settingsLoaded);
+  settingsLoaded = true;
+  setSettings(obj);
+  for (const cb of settingsCallbacks) {
+    cb();
+  }
+}
+
 export function loadSettingsFile(f) {
   timer.start('loadSettingsFile')
   const settings = {};
   vm.runInNewContext(readFile(f), settings, {filename: f});
-  applySettings(settings);
+  setSettings(settings);
   timer.stop('loadSettingsFile')
   return settings;
 }

@@ -641,7 +641,7 @@ export async function runJSify(outputFile, symbolsOnly) {
         }
         return `\
 function(${args}) {
-  dbg("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  dbg("[library call:${mangled}: " + Array.from(arguments, prettyPrint) + "]");
   ${run_func}
   dbg("  [     return:" + prettyPrint(ret));
   return ret;
@@ -800,19 +800,24 @@ function(${args}) {
 
       const postsetId = symbol + '__postset';
       const postset = LibraryManager.library[postsetId];
+      const isConst = LibraryManager.library[symbol + '__const'];
 
       if (symbolsOnly) {
         if (Object.hasOwn(LibraryManager.library, symbol)) {
           let snippet = LibraryManager.library[symbol];
-          if (!LibraryManager.isAlias(snippet)) {
+          if (isConst || !LibraryManager.isAlias(snippet)) {
             if (typeof snippet === 'object') {
               snippet = stringifyWithFunctions(snippet);
             } else if (typeof snippet === 'function') {
               snippet = snippet.toString();
             } else if (typeof snippet === 'string') {
-              snippet = snippet.replace(/^[=;]/, '');
+              if (!isConst || snippet.startsWith('=')) {
+                snippet = snippet.replace(/^[=;]/, '');
+              } else {
+                snippet = '';
+              }
             }
-            if (typeof snippet === 'string') {
+            if (typeof snippet === 'string' && snippet) {
               addImplicitDeps(snippet);
             }
           }
@@ -885,7 +890,6 @@ function(${args}) {
         snippet = new Function('...args', stubFunctionBody);
       }
 
-      const isConst = LibraryManager.library[symbol + '__const'];
       if (!isConst) {
         librarySymbols.push(mangled);
       }
@@ -911,7 +915,7 @@ function(${args}) {
       }
 
       let aliasTarget;
-      if (LibraryManager.isAlias(snippet)) {
+      if (!isConst && LibraryManager.isAlias(snippet)) {
         // Redirection for aliases. We include the parent, and at runtime
         // make ourselves equal to it.  This avoid having duplicate
         // functions with identical content.
@@ -938,13 +942,16 @@ function(${args}) {
           }
         }
       } else if (typeof snippet === 'object') {
+        if (isConst) {
+          error(`JS library error: '__const' decorator cannot be used with objects: '${symbol}'`);
+        }
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet);
       } else if (typeof snippet === 'string') {
         if (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/)) {
           // Support functions that are already "stringified"
           isFunction = true;
-        } else {
+        } else if (!isConst || snippet.startsWith('=')) {
           addImplicitDeps(snippet.replace(/^[=;]/, ''));
         }
       }
@@ -1016,7 +1023,7 @@ function(${args}) {
         //  emits
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
-        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') {
+        if (snippet.at(-1) != ';' && snippet.at(-1) != '}') {
           contentText += ';';
         }
       } else if (typeof snippet === 'undefined') {
@@ -1037,8 +1044,14 @@ function(${args}) {
         //   foo: '=[value]'
         //  emits
         //   'var foo = [value];'
-        if (typeof snippet === 'string' && snippet[0] == '=') {
-          snippet = snippet.slice(1);
+        if (typeof snippet === 'string') {
+          if (snippet[0] == '=') {
+            snippet = snippet.slice(1);
+          } else if (isConst) {
+            snippet = JSON.stringify(snippet);
+          }
+        } else if (typeof snippet === 'bigint') {
+          snippet = `${snippet}n`;
         }
         const declType = isConst ? 'const' : 'var';
         contentText = `${declType} ${mangled} = ${snippet};`;

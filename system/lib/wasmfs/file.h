@@ -17,6 +17,7 @@
 #include <mutex>
 #include <optional>
 #include <poll.h>
+#include <string>
 #include <sys/stat.h>
 #include <variant>
 #include <vector>
