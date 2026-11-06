@@ -35,7 +35,7 @@ typedef struct em_task_queue {
   // hold the lock when accessing it. TODO: We disallow recursive processing
   // because that's what the old proxying API does, so it is safer to start with
   // the same behavior. Experiment with relaxing this restriction.
-  int processing;
+  bool processing;
   // Ring buffer of tasks of size `capacity`. New tasks are enqueued at
   // `tail` and dequeued at `head`.
   task* tasks;
