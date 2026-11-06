@@ -1,0 +1,20 @@
+name: 'Install Chrome'
+description: 'Installs Google Chrome'
+runs:
+  using: "composite"
+  steps:
+    - name: Download and install Chrome
+      run: |
+        if [ -f /usr/bin/google-chrome ]; then
+          echo "Google Chrome is already installed:"
+          /usr/bin/google-chrome --version
+        else
+          sudo apt-get update
+          sudo apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
+          wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+          sudo apt install -y ~/chrome.deb
+          echo "Chrome version:"
+          /usr/bin/google-chrome --version
+        fi
+      shell: bash
+
