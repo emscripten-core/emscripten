@@ -284,11 +284,15 @@ By default:
   malfunctioned.
 
   :param input: Input callback. This will be called with no parameters whenever
-   the program attempts to read from ``stdin``. It should return an ASCII
-   character code when data is available, or ``null`` when it isn't.
-  :param output: Output callback. This will be called with an ASCII character
-   code whenever the program writes to ``stdout``. It may also be called with
-   ``null`` to flush the output.
+   the program attempts to read from ``stdin``, once per byte. It should return
+   the next byte as an integer in the range 0-255, ``null`` at the end of the
+   input, or ``undefined`` if no data is available yet (a read that has not
+   received any bytes then fails with ``EAGAIN``).
+  :param output: Output callback. This will be called once for each byte the
+   program writes to ``stdout``. The byte is passed as a signed integer in the
+   range -128 to 127, so bytes above 127 (such as the bytes of a multi-byte
+   UTF-8 character) arrive as negative numbers. Use ``value & 0xFF`` to get
+   the unsigned byte.
   :param error: Error callback. This is similar to ``output``, except it is
    called when data is written to ``stderr``.
 
