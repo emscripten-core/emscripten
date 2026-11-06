@@ -15,19 +15,19 @@
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 
-static em_proxying_queue* user_queue = NULL;
-static _Thread_local bool intercept_malloc = false;
-static _Thread_local bool wait_in_malloc = false;
-static _Thread_local bool wait_for_worker_in_malloc = false;
-static _Atomic int in_malloc = 0;
-static _Atomic int worker_proxied = 0;
-static _Atomic int task_done = 0;
+em_proxying_queue* user_queue = NULL;
+_Thread_local bool intercept_malloc = false;
+_Thread_local bool wait_in_malloc = false;
+_Thread_local bool wait_for_worker_in_malloc = false;
+_Atomic int in_malloc = 0;
+_Atomic int worker_proxied = 0;
+_Atomic int task_done = 0;
 
 // In the actual implementation of malloc, the system proxying queue may be
 // executed non-deterministically if malloc contends on its mutex and calls
 // emscripten_futex_wait -> _emscripten_yield. This wraps malloc and realloc to
 // make that behavior deterministic.
-static void maybe_execute_queues(void) {
+void maybe_execute_queues(void) {
   if (wait_in_malloc) {
     wait_in_malloc = false;
     int dummy = 0;
@@ -151,6 +151,9 @@ int main() {
   pthread_t worker;
   int rc = pthread_create(&worker, NULL, lost_wakeup_worker_main, &main_thread);
   assert(rc == 0);
+  // Spin rather than using pthread_barrier_wait or emscripten_futex_wait so we
+  // do not call _emscripten_yield and execute the system queue (consuming
+  // NOTIFY_BIT) before calling emscripten_proxy_async below.
   while (!worker_proxied) {
   }
   wait_in_malloc = true;
