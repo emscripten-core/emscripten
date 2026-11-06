@@ -993,6 +993,7 @@ jobs:
       LANG: "en_US.UTF-8"
       EMTEST_WASI_SYSROOT: ""
       EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+      EMTEST_BROWSER: "0"
       # We don't install d8 or modern node on the mac runner so we skip any
       # tests that depend on those.
       EMTEST_SKIP_V8: "1"
