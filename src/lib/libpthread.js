@@ -791,7 +791,6 @@ var LibraryPThread = {
 
     // List of JS objects that will transfer ownership to the Worker hosting the thread
     var transferList = [];
-    var error = 0;
 
 #if OFFSCREENCANVAS_SUPPORT
     // Deduce which WebGL canvases (HTMLCanvasElements or OffscreenCanvases) should be passed over to the
@@ -823,9 +822,15 @@ var LibraryPThread = {
       try {
         if (name == '#canvas') {
           if (!Module['canvas']) {
+            if (ENVIRONMENT_IS_PTHREAD) {
+              // This pthread doesn't own Module['canvas']; clear transferList
+              // and break out so pthreadCreateProxied can transfer it from the
+              // main thread.
+              transferList.length = 0;
+              break;
+            }
             err(`pthread_create: could not find canvas with ID "${name}" to transfer to thread!`);
-            error = {{{ cDefs.EINVAL }}};
-            break;
+            return {{{ cDefs.EINVAL }}};
           }
           name = Module['canvas'].id;
         }
@@ -840,13 +845,11 @@ var LibraryPThread = {
           var canvas = (Module['canvas'] && Module['canvas'].id === name) ? Module['canvas'] : document.querySelector(name);
           if (!canvas) {
             err(`pthread_create: could not find canvas with ID "${name}" to transfer to thread!`);
-            error = {{{ cDefs.EINVAL }}};
-            break;
+            return {{{ cDefs.EINVAL }}};
           }
           if (canvas.controlTransferredOffscreen) {
             err(`pthread_create: cannot transfer canvas with ID "${name}" to thread, since the current thread does not have control over it!`);
-            error = {{{ cDefs.EPERM }}}; // Operation not permitted, some other thread is accessing the canvas.
-            break;
+            return {{{ cDefs.EPERM }}}; // Operation not permitted, some other thread is accessing the canvas.
           }
           if (canvas.transferControlToOffscreen) {
 #if GL_DEBUG
@@ -879,7 +882,8 @@ var LibraryPThread = {
             // proxied from worker to main thread.
 #if !OFFSCREEN_FRAMEBUFFER
             err('pthread_create: Build with -sOFFSCREEN_FRAMEBUFFER to enable fallback proxying of GL commands from pthread to main thread.');
-            return {{{ cDefs.ENOSYS }}}; // Function not implemented, browser doesn't have support for this.
+            // Function not implemented, browser doesn't have support for this.
+            return {{{ cDefs.ENOSYS }}};
 #endif
           }
         }
@@ -889,7 +893,8 @@ var LibraryPThread = {
         }
       } catch(e) {
         err(`pthread_create: failed to transfer control of canvas "${name}" to OffscreenCanvas! Error: ${e}`);
-        return {{{ cDefs.EINVAL }}}; // Hitting this might indicate an implementation bug or some other internal error
+        // Hitting this might indicate an implementation bug or some other internal error
+        return {{{ cDefs.EINVAL }}};
       }
     }
 #endif // OFFSCREENCANVAS_SUPPORT
@@ -897,13 +902,9 @@ var LibraryPThread = {
     // Synchronously proxy the thread creation to main thread if possible. If we
     // need to transfer ownership of objects, then proxy asynchronously via
     // postMessage.
-    if (ENVIRONMENT_IS_PTHREAD && (!transferList.length || error)) {
+    if (ENVIRONMENT_IS_PTHREAD && !transferList.length) {
       return pthreadCreateProxied(pthread_ptr, attr, startRoutine, arg);
     }
-
-    // If on the main thread, and accessing Canvas/OffscreenCanvas failed, abort
-    // with the detected error.
-    if (error) return error;
 
 #if OFFSCREENCANVAS_SUPPORT
     // Register for each of the transferred canvases that the new thread now
