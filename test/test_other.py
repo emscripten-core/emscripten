@@ -5369,18 +5369,16 @@ int main() {
     create_file('code.c', r'''
 #include <stdio.h>
 int main(int argc, char **argv) {
-  printf("I am %s.\n", argv[0]);
+  puts(argv[0]);
   return 0;
 }
 ''')
 
-    output = self.do_runf('code.c')
-    m = re.search(r'^I am (.*)\.$', output, re.M)
-    self.assertIsNotNone(m, output)
+    output = self.do_runf('code.c').strip()
     # Resolve both paths with realpath: Node's process.argv[1] resolves symlinks
     # (e.g. /var -> /private/var on macOS) without expanding Windows 8.3 short
     # names (e.g. RUNNER~1 -> runneradmin), whereas Python's realpath resolves both.
-    self.assertPathsIdentical(os.path.realpath(self.in_dir('code.js')), os.path.realpath(m.group(1)))
+    self.assertPathsIdentical(os.path.realpath(self.in_dir('code.js')), os.path.realpath(output))
 
   @parameterized({
     'no_exit_runtime': (True,),
