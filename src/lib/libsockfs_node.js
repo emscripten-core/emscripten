@@ -389,14 +389,25 @@ var NodeSockFSLibrary = {
     setMembership(sock, add, group, iface) {
       var m = sock.memberships ??= new Map();
       var key = group + '%' + (iface ?? '');
-      if (add && m.has(key)) return {{{ cDefs.EADDRINUSE }}};
-      if (!add && !m.has(key)) return {{{ cDefs.EADDRNOTAVAIL }}};
+      // Once bound the kernel decides, and the map just follows it.
       if (sock.udpBound) {
         var err = nodeSockHelpers.udpMembership(sock, group, iface, add);
         if (err) return err;
+      } else if (add ? m.has(key) : !m.has(key)) {
+        return add ? {{{ cDefs.EADDRINUSE }}} : {{{ cDefs.EADDRNOTAVAIL }}};
       }
-      if (add) m.set(key, [group, iface]);
-      else m.delete(key);
+      if (add) {
+        m.set(key, [group, iface]);
+      } else if (!m.delete(key)) {
+        // A leave can match a join made under another key, and the kernel
+        // doesn't say which one it dropped.
+        for (var [k, v] of m) {
+          if (v[0] === group) {
+            m.delete(k);
+            break;
+          }
+        }
+      }
       return 0;
     },
     udpMembership(sock, group, iface, add = true) {
@@ -410,8 +421,13 @@ var NodeSockFSLibrary = {
       return 0;
     },
     applyMemberships(sock) {
-      for (var [group, iface] of sock.memberships?.values() ?? []) {
-        nodeSockHelpers.udpMembership(sock, group, iface);
+      // A join made before bind() returned 0 without reaching the kernel. If the
+      // kernel rejects it now, forget it, so a later join gets the real error
+      // rather than looking like a duplicate.
+      for (var [key, [group, iface]] of sock.memberships ?? []) {
+        if (nodeSockHelpers.udpMembership(sock, group, iface)) {
+          sock.memberships.delete(key);
+        }
       }
     },
     // The live OS buffer size from a bound UDP socket, or undefined.
@@ -949,6 +965,9 @@ var NodeSockFSLibrary = {
           case 36: { // IP_DROP_MEMBERSHIP
             if (sock.type !== {{{ cDefs.SOCK_DGRAM }}}) return -{{{ cDefs.EPROTO }}};
             if (optlen < 8) return -{{{ cDefs.EINVAL }}};
+            // The kernel's first check, needed here as a join before bind()
+            // reaches the kernel only later.
+            if (optname === 35 && ({{{ makeGetValue('optval', 0, 'u8') }}} & 0xf0) !== 0xe0) return -{{{ cDefs.EINVAL }}}; // 224.0.0.0/4
             var iface = {{{ makeGetValue('optval', 4, 'i32') }}};
             // node selects the interface by address only, so an ip_mreqn that
             // names it by index alone cannot be honored.
@@ -975,6 +994,8 @@ var NodeSockFSLibrary = {
           case 21: { // IPV6_LEAVE_GROUP
             if (sock.type !== {{{ cDefs.SOCK_DGRAM }}}) return -{{{ cDefs.EPROTO }}};
             if (optlen < 20) return -{{{ cDefs.EINVAL }}};
+            // As for IP_ADD_MEMBERSHIP above, though here a leave is refused too.
+            if ({{{ makeGetValue('optval', 0, 'u8') }}} !== 0xff) return -{{{ cDefs.EINVAL }}}; // ff00::/8
             // node selects the interface by name and has no index-to-name
             // lookup, so only the default interface (index 0) is supported.
             if ({{{ makeGetValue('optval', 16, 'i32') }}}) return -{{{ cDefs.ENODEV }}};
