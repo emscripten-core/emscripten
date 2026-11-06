@@ -11,16 +11,14 @@ var LibraryEmbind = {
   $emittedFunctions: 'new Set()',
 
   $PrimitiveType: class {
-    constructor(typeId, name, destructorType) {
+    constructor(typeId, name) {
       this.typeId = typeId;
       this.name = name;
-      this.destructorType = destructorType;
     }
   },
   $IntegerType: class {
     constructor(typeId) {
       this.typeId = typeId;
-      this.destructorType = 'none';
     }
   },
   $Argument: class {
@@ -33,7 +31,6 @@ var LibraryEmbind = {
     constructor(typeId, name) {
       this.typeId = typeId;
       this.name = name;
-      this.destructorType = 'none'; // Same as emval.
     }
   },
   $UserTypeDefinition: class {
@@ -41,7 +38,6 @@ var LibraryEmbind = {
       this.typeId = typeId;
       this.name = name;
       this.definition = definition;
-      this.destructorType = 'none'; // Same as emval.
     }
 
     print(nameMap, out) {
@@ -51,7 +47,6 @@ var LibraryEmbind = {
   $OptionalType: class {
     constructor(type) {
       this.type = type;
-      this.destructorType = 'none'; // Same as emval.
     }
   },
   $FunctionDefinition: class {
@@ -119,18 +114,8 @@ var LibraryEmbind = {
       const ret = {
         name: type.name,
       };
-      switch (type.destructorType) {
-        case 'none':
-          ret.destructorFunction = null;
-          break;
-        case 'function':
-          ret.destructorFunction = true;
-          break;
-        case 'stack':
-          // Intentionally empty since embind uses `undefined` for this type.
-          break;
-        default:
-          throw new Error(`Bad destructor type '${type.destructorType}'`);
+      if (type.usesDestructor) {
+        ret.usesDestructor = true;
       }
       if (type.argStackAlloc) {
         // Trivial value types stack-allocate their argument temporaries;
@@ -161,14 +146,9 @@ var LibraryEmbind = {
     }
   },
   $PointerDefinition: class {
-    constructor(classType, isConst, isSmartPointer) {
+    constructor(classType, isSmartPointer = false) {
       this.classType = classType;
-      this.isConst = isConst;
-      this.isSmartPointer = isSmartPointer;
-      this.destructorType = 'none';
-      if (isSmartPointer || classType.base) {
-        this.destructorType = 'stack';
-      }
+      this.usesDestructor = isSmartPointer;
     }
   },
   $ClassDefinition: class {
@@ -183,10 +163,6 @@ var LibraryEmbind = {
       this.base = base;
       this.properties = [];
       this.iterableElementType = null;
-      this.destructorType = 'none';
-      if (base) {
-        this.destructorType = 'stack';
-      }
     }
 
     print(nameMap, out) {
@@ -306,7 +282,6 @@ var LibraryEmbind = {
       this.typeId = typeId;
       this.name = name;
       this.items = [];
-      this.destructorType = 'none';
       this.valueType = valueType;
     }
 
@@ -368,7 +343,7 @@ var LibraryEmbind = {
       this.elements = [];
       // Trivial types need no destructor call; their argument temporaries
       // live in the invoker's stack frame.
-      this.destructorType = isTrivial ? 'none' : 'function';
+      this.usesDestructor = !isTrivial;
       this.argStackAlloc = !!isTrivial;
     }
 
@@ -390,7 +365,7 @@ var LibraryEmbind = {
       this.fieldNames = [];
       this.fields = [];
       // See ValueArrayDefinition: trivial types stack-allocate.
-      this.destructorType = isTrivial ? 'none' : 'function';
+      this.usesDestructor = !isTrivial;
       this.argStackAlloc = !!isTrivial;
     }
 
@@ -530,9 +505,9 @@ var LibraryEmbind = {
   $registerType: function(typeID, registeredInstance, options = {}) {
     return sharedRegisterType(typeID, registeredInstance, options);
   },
-  $registerPrimitiveType: (id, name, destructorType) => {
+  $registerPrimitiveType: (id, name) => {
     name = AsciiToString(name);
-    registerType(id, new PrimitiveType(id, name, destructorType));
+    registerType(id, new PrimitiveType(id, name));
   },
   $registerIntegerType: (id) => {
     registerType(id, new IntegerType(id));
@@ -549,10 +524,8 @@ var LibraryEmbind = {
       let argStart = 1;
       if (hasThis) {
         thisType = argTypes[1];
-        if (thisType instanceof PointerDefinition) {
-          thisType = argTypes[1].classType;
-        }
-        if (!(thisType instanceof ClassDefinition)) {
+        const classType = thisType instanceof PointerDefinition ? thisType.classType : thisType;
+        if (!(classType instanceof ClassDefinition)) {
           throw new Error('This type must be class definition for: ' + name);
         }
         argStart = 2;
@@ -574,32 +547,31 @@ var LibraryEmbind = {
       return [];
     });
   },
-  _embind_register_void__deps: ['$registerPrimitiveType'],
   _embind_register_void: (typeID, name) => {
-    const voidType = new PrimitiveType(typeID, 'void', 'none');
+    const voidType = new PrimitiveType(typeID, 'void');
     voidType.isVoid = true; // Match the marker property from the non-AOT mode.
     registerType(typeID, voidType);
   },
   _embind_register_bool: (typeID, name, trueValue, falseValue) => {
-    registerPrimitiveType(typeID, name, 'none');
+    registerPrimitiveType(typeID, name);
   },
   _embind_register_integer: (typeID, name, size, minRange, maxRange) => {
     registerIntegerType(typeID, name);
   },
   _embind_register_bigint: (typeID, name, size, minRange, maxRange) => {
-    registerPrimitiveType(typeID, name, 'none');
+    registerPrimitiveType(typeID, name);
   },
   _embind_register_float: (typeID, name, size) => {
-    registerPrimitiveType(typeID, name, 'none');
+    registerPrimitiveType(typeID, name);
   },
   _embind_register_std_string: (typeID, name) => {
-    registerPrimitiveType(typeID, name, 'function');
+    registerPrimitiveType(typeID, name);
   },
   _embind_register_std_wstring: (typeID, charSize, name) => {
-    registerPrimitiveType(typeID, name, 'function');
+    registerPrimitiveType(typeID, name);
   },
   _embind_register_emval: (typeID) => {
-    registerType(typeID, new PrimitiveType(typeID, 'emscripten::val', 'none'));
+    registerType(typeID, new PrimitiveType(typeID, 'emscripten::val'));
   },
   _embind_register_user_type: (typeID, name) => {
     name = AsciiToString(name);
@@ -648,8 +620,8 @@ var LibraryEmbind = {
         const classDef = new ClassDefinition(typeID, name, hasBase ? base[0] : null);
         moduleDefinitions.push(classDef);
 
-        const pointer = new PointerDefinition(classDef, false, false);
-        const constPointer = new PointerDefinition(classDef, true, false);
+        const pointer = new PointerDefinition(classDef);
+        const constPointer = new PointerDefinition(classDef);
         return [classDef, pointer, constPointer];
       }
     );
@@ -690,7 +662,7 @@ var LibraryEmbind = {
           isAsync,
           isNonnullReturn) {
     createFunctionDefinition(methodName, argCount, rawArgTypesAddr, context, true, isNonnullReturn, isAsync, (funcDef) => {
-      const classDef = funcDef.thisType;
+      const classDef = funcDef.thisType instanceof PointerDefinition ? funcDef.thisType.classType : funcDef.thisType;
       classDef.methods.push(funcDef);
     });
   },
@@ -880,7 +852,7 @@ var LibraryEmbind = {
                                        destructorSignature,
                                        rawDestructor) {
     whenDependentTypesAreResolved([typeID], [pointeeTypeID], function(pointeeType) {
-      const smartPointer = new PointerDefinition(pointeeType[0], false, true);
+      const smartPointer = new PointerDefinition(pointeeType[0], true);
       return [smartPointer];
     });
   },
