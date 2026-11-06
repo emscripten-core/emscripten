@@ -2047,7 +2047,7 @@ var LibraryHTML5 = {
 #endif
       var autoResizeViewport = false;
       if (canvas.GLctxObject?.GLctx) {
-        var prevViewport = canvas.GLctxObject.GLctx.getParameter(0xBA2 /* GL_VIEWPORT */);
+        var prevViewport = canvas.GLctxObject.GLctx.getParameter(GL_VIEWPORT);
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
         autoResizeViewport = (!prevViewport[0] && !prevViewport[1] && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);
 #if GL_DEBUG
