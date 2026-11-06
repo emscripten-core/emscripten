@@ -17,6 +17,10 @@ int main() {
     assert(errno == ENOTDIR);
   }
   {
+    assert(open("file", O_RDONLY | O_DIRECTORY) == -1);
+    assert(errno == ENOTDIR);
+  }
+  {
     assert(open("./does-not-exist/", O_CREAT, 0777) == -1);
     assert(errno == EISDIR);
   }
