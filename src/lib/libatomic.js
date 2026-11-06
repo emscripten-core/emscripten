@@ -122,9 +122,9 @@ addToLibrary({
 
   emscripten_atomic_cancel_wait_async: (waitToken) => {
 #if ASSERTIONS
-    if (waitToken == {{{ cDefs.ATOMICS_WAIT_NOT_EQUAL }}}) {
+    if (waitToken == ATOMICS_WAIT_NOT_EQUAL) {
       warnOnce('Attempted to call emscripten_atomic_cancel_wait_async() with a value ATOMICS_WAIT_NOT_EQUAL (1) that is not a valid wait token! Check success in return value from call to emscripten_atomic_wait_async()');
-    } else if (waitToken == {{{ cDefs.ATOMICS_WAIT_TIMED_OUT }}}) {
+    } else if (waitToken == ATOMICS_WAIT_TIMED_OUT) {
       warnOnce('Attempted to call emscripten_atomic_cancel_wait_async() with a value ATOMICS_WAIT_TIMED_OUT (2) that is not a valid wait token! Check success in return value from call to emscripten_atomic_wait_async()');
     } else if (waitToken > 0) {
       warnOnce(`Attempted to call emscripten_atomic_cancel_wait_async() with an invalid wait token value ${waitToken}`);
@@ -140,10 +140,10 @@ addToLibrary({
       Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
       delete liveAtomicWaitAsyncs[waitToken];
       {{{ runtimeKeepalivePop() }}}
-      return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+      return EMSCRIPTEN_RESULT_SUCCESS;
     }
     // This waitToken does not exist.
-    return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
+    return EMSCRIPTEN_RESULT_INVALID_PARAM;
   },
 
   emscripten_atomic_cancel_all_wait_asyncs: () => {

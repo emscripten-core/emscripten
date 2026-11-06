@@ -355,7 +355,7 @@ var LibraryDylink = {
       // as been created.
       assert(wasmImports);
 #endif
-      newDSO('__main__', {{{ cDefs.RTLD_DEFAULT }}}, wasmImports);
+      newDSO('__main__', RTLD_DEFAULT, wasmImports);
     },
   },
 
@@ -1005,7 +1005,7 @@ var LibraryDylink = {
     if (PATH.isAbs(libName)) {
 #if WASMFS
       var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(libName)));
-      return result === {{{ cDefs.EEXIST }}} ? libName : undefined;
+      return result === EEXIST ? libName : undefined;
 #else
       try {
         FS.lookupPath(libName);
@@ -1228,13 +1228,13 @@ var LibraryDylink = {
     filename = PATH.normalize(filename);
     var searchpaths = [];
 
-    var global = Boolean(flags & {{{ cDefs.RTLD_GLOBAL }}});
+    var global = Boolean(flags & RTLD_GLOBAL);
     var localScope = global ? null : {};
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
     var combinedFlags = {
       global,
-      nodelete:  Boolean(flags & {{{ cDefs.RTLD_NODELETE }}}),
+      nodelete:  Boolean(flags & RTLD_NODELETE),
       loadAsync: jsflags.loadAsync,
     }
 

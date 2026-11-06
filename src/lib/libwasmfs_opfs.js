@@ -96,15 +96,15 @@ addToLibrary({
       fileHandle = await parentHandle.getFileHandle(name, {create: create});
     } catch (e) {
       if (e.name === 'NotFoundError') {
-        return -{{{ cDefs.EEXIST }}};
+        return -EEXIST;
       }
       if (e.name === 'TypeMismatchError') {
-        return -{{{ cDefs.EISDIR }}};
+        return -EISDIR;
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefs.EIO }}};
+      return -EIO;
     }
     return wasmfsOPFSFileHandles.allocate(fileHandle);
   },
@@ -120,15 +120,15 @@ addToLibrary({
           await parentHandle.getDirectoryHandle(name, {create: create});
     } catch (e) {
       if (e.name === 'NotFoundError') {
-        return -{{{ cDefs.EEXIST }}};
+        return -EEXIST;
       }
       if (e.name === 'TypeMismatchError') {
-        return -{{{ cDefs.ENOTDIR }}};
+        return -ENOTDIR;
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefs.EIO }}};
+      return -EIO;
     }
     return wasmfsOPFSDirectoryHandles.allocate(childHandle);
   },
@@ -138,7 +138,7 @@ addToLibrary({
     let name = UTF8ToString(namePtr);
     let childType = 1;
     let childID = await wasmfsOPFSGetOrCreateFile(parent, name, false);
-    if (childID == -{{{ cDefs.EISDIR }}}) {
+    if (childID == -EISDIR) {
       childType = 2;
       childID = await wasmfsOPFSGetOrCreateDir(parent, name, false);
     }
@@ -168,7 +168,7 @@ addToLibrary({
         stackRestore(sp);
       }
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
@@ -198,7 +198,7 @@ addToLibrary({
     try {
       await fileHandle.move(newDirHandle, name);
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
@@ -211,7 +211,7 @@ addToLibrary({
     try {
       await dirHandle.removeEntry(name);
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
@@ -298,12 +298,12 @@ addToLibrary({
       // TODO: Presumably only one of these will appear in the final API?
       if (e.name === 'InvalidStateError' ||
           e.name === 'NoModificationAllowedError') {
-        accessID = -{{{ cDefs.EACCES }}};
+        accessID = -EACCES;
       } else {
 #if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
-        accessID = -{{{ cDefs.EIO }}};
+        accessID = -EIO;
       }
     }
     {{{ makeSetValue('accessIDPtr', 0, 'accessID', 'i32') }}};
@@ -319,12 +319,12 @@ addToLibrary({
       blobID = wasmfsOPFSBlobs.allocate(blob);
     } catch (e) {
       if (e.name === 'NotAllowedError') {
-        blobID = -{{{ cDefs.EACCES }}};
+        blobID = -EACCES;
       } else {
 #if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
-        blobID = -{{{ cDefs.EIO }}};
+        blobID = -EIO;
       }
     }
     {{{ makeSetValue('blobIDPtr', 0, 'blobID', 'i32') }}};
@@ -337,7 +337,7 @@ addToLibrary({
     try {
       await accessHandle.close();
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSAccessHandles.free(accessID);
@@ -357,12 +357,12 @@ addToLibrary({
       return {{{ awaitIf(!PTHREADS) }}}accessHandle.read(data, {at: pos});
     } catch (e) {
       if (e.name == 'TypeError') {
-        return -{{{ cDefs.EINVAL }}};
+        return -EINVAL;
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefs.EIO }}};
+      return -EIO;
     }
   },
 
@@ -383,12 +383,12 @@ addToLibrary({
       nread += data.length;
     } catch (e) {
       if (e instanceof RangeError) {
-        nread = -{{{ cDefs.EFAULT }}};
+        nread = -EFAULT;
       } else {
 #if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
-        nread = -{{{ cDefs.EIO }}};
+        nread = -EIO;
       }
     }
 
@@ -405,12 +405,12 @@ addToLibrary({
       return {{{ awaitIf(!PTHREADS) }}}accessHandle.write(data, {at: pos});
     } catch (e) {
       if (e.name == 'TypeError') {
-        return -{{{ cDefs.EINVAL }}};
+        return -EINVAL;
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefs.EIO }}};
+      return -EIO;
     }
   },
 
@@ -421,7 +421,7 @@ addToLibrary({
     try {
       size = await accessHandle.getSize();
     } catch {
-      size = -{{{ cDefs.EIO }}};
+      size = -EIO;
     }
     {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
     wasmfsOPFSProxyFinish(ctx);
@@ -440,7 +440,7 @@ addToLibrary({
     try {
       size = (await fileHandle.getFile()).size;
     } catch {
-      size = -{{{ cDefs.EIO }}};
+      size = -EIO;
     }
     {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
     wasmfsOPFSProxyFinish(ctx);
@@ -453,7 +453,7 @@ addToLibrary({
     try {
       await accessHandle.truncate(size);
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
@@ -468,7 +468,7 @@ addToLibrary({
       await writable.truncate(size);
       await writable.close();
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
@@ -480,7 +480,7 @@ addToLibrary({
     try {
       await accessHandle.flush();
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);

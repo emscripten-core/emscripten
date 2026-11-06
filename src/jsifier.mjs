@@ -1230,7 +1230,7 @@ var proxiedFunctionTable = [
   if (symbolsOnly) {
     const symbolDeps = {};
     for (const sym of Object.keys(LibraryManager.library)) {
-      if (!isDecorator(sym)) {
+      if (!isDecorator(sym) && !LibraryManager.library[sym + '__const']) {
         const transitiveDeps = getTransitiveDeps(sym);
         symbolDeps[sym] = transitiveDeps.filter(
           (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),

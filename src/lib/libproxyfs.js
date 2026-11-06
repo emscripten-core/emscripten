@@ -195,9 +195,9 @@ addToLibrary({
       },
       llseek(stream, offset, whence) {
         var position = offset;
-        if (whence === {{{ cDefs.SEEK_CUR }}}) {
+        if (whence === SEEK_CUR) {
           position += stream.position;
-        } else if (whence === {{{ cDefs.SEEK_END }}}) {
+        } else if (whence === SEEK_END) {
           if (FS.isFile(stream.node.mode)) {
             try {
               var stat = stream.node.node_ops.getattr(stream.node);

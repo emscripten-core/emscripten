@@ -76,12 +76,12 @@ addToLibrary({
   $FS_modeStringToFlags: (str) => {
     if (typeof str !== 'string') return str;
     var flagModes = {
-      'r': {{{ cDefs.O_RDONLY }}},
-      'r+': {{{ cDefs.O_RDWR }}},
-      'w': {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_WRONLY }}},
-      'w+': {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
-      'a': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_WRONLY }}},
-      'a+': {{{ cDefs.O_APPEND }}} | {{{ cDefs.O_CREAT }}} | {{{ cDefs.O_RDWR }}},
+      'r': O_RDONLY,
+      'r+': O_RDWR,
+      'w': O_TRUNC | O_CREAT | O_WRONLY,
+      'w+': O_TRUNC | O_CREAT | O_RDWR,
+      'a': O_APPEND | O_CREAT | O_WRONLY,
+      'a+': O_APPEND | O_CREAT | O_RDWR,
     };
     var flags = flagModes[str];
     if (typeof flags === 'undefined') {
@@ -91,8 +91,8 @@ addToLibrary({
   },
   $FS_getMode: (canRead, canWrite) => {
     var mode = 0;
-    if (canRead) mode |= {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
-    if (canWrite) mode |= {{{ cDefs.S_IWUGO }}};
+    if (canRead) mode |= S_IRUGO | S_IXUGO;
+    if (canWrite) mode |= S_IWUGO;
     return mode;
   },
 

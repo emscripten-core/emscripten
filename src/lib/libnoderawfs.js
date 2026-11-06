@@ -71,7 +71,7 @@ addToLibrary({
         // every stream has a node.
         var st = fs.fstatSync(i);
         var node = { id: st.ino, mode: st.mode, node_ops: NODERAWFS, path: paths[i] };
-        var flags = i ? {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}} : 0;
+        var flags = i ? (O_TRUNC | O_CREAT | O_WRONLY) : 0;
         FS.createStream({ nfd: i, position: 0, path: paths[i], flags, node }, i);
       }
     },
@@ -105,7 +105,7 @@ addToLibrary({
       if (NODEFS.isWindows) {
         // Windows does not report the 'x' permission bit, so propagate read
         // bits to execute bits.
-        stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
+        stat.mode |= (stat.mode & S_IRUGO) >> 2;
       }
       return stat;
     },
@@ -133,16 +133,16 @@ addToLibrary({
       return FS.statfs(stream.path);
     },
     chmod(path, mode, dontFollow = false) {
-      mode &= {{{ cDefs.S_IALLUGO }}};
+      mode &= S_IALLUGO;
       if (NODEFS.isWindows) {
         // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
         // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
-        mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
+        mode &= S_IRUSR | S_IWUSR;
       }
       if (dontFollow && fs.lstatSync(path).isSymbolicLink()) {
         // Node (and indeed linux) does not support chmod on symlinks
         // https://nodejs.org/api/fs.html#fslchmodsyncpath-mode
-        throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        throw new FS.ErrnoError(EOPNOTSUPP);
       }
       fs.chmodSync(path, mode);
     },
@@ -158,14 +158,14 @@ addToLibrary({
     truncate(path, len) {
       // See https://github.com/nodejs/node/issues/35632
       if (len < 0) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+        throw new FS.ErrnoError(EINVAL);
       }
       return fs.truncateSync(path, len);
     },
     ftruncate(fd, len) {
       // See https://github.com/nodejs/node/issues/35632
       if (len < 0) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+        throw new FS.ErrnoError(EINVAL);
       }
       var stream = FS.getStreamChecked(fd);
       fs.ftruncateSync(stream.nfd, len);
@@ -190,7 +190,7 @@ addToLibrary({
       var pathTruncated = path.split('/').map((s) => s.slice(0, 255)).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);
-      if (flags & {{{ cDefs.O_DIRECTORY }}} && !st.isDirectory()) {
+      if (flags & O_DIRECTORY && !st.isDirectory()) {
         fs.closeSync(nfd);
         throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
       }
@@ -231,16 +231,16 @@ addToLibrary({
     },
     llseek(stream, offset, whence) {
       var position = offset;
-      if (whence === {{{ cDefs.SEEK_CUR }}}) {
+      if (whence === SEEK_CUR) {
         position += stream.position;
-      } else if (whence === {{{ cDefs.SEEK_END }}}) {
+      } else if (whence === SEEK_END) {
         position += fs.fstatSync(stream.nfd).size;
-      } else if (whence !== {{{ cDefs.SEEK_SET }}}) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      } else if (whence !== SEEK_SET) {
+        throw new FS.ErrnoError(EINVAL);
       }
 
       if (position < 0) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+        throw new FS.ErrnoError(EINVAL);
       }
       stream.position = position;
       return position;
@@ -254,9 +254,9 @@ addToLibrary({
       return bytesRead;
     },
     write(stream, buffer, offset, length, position) {
-      if (stream.flags & {{{ cDefs.O_APPEND }}}) {
+      if (stream.flags & O_APPEND) {
         // seek to the end before writing in append mode
-        FS.llseek(stream, 0, {{{ cDefs.SEEK_END }}});
+        FS.llseek(stream, 0, SEEK_END);
       }
       var seeking = typeof position !== 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
@@ -267,7 +267,7 @@ addToLibrary({
     },
     mmap(stream, length, position, prot, flags) {
       if (!length) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+        throw new FS.ErrnoError(EINVAL);
       }
       var ptr = mmapAlloc(length);
       FS.read(stream, HEAP8, ptr, length, position);
@@ -279,7 +279,7 @@ addToLibrary({
       return 0;
     },
     ioctl(stream, cmd, arg) {
-      throw new FS.ErrnoError({{{ cDefs.ENOTTY }}});
+      throw new FS.ErrnoError(ENOTTY);
     },
   },
 });

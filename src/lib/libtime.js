@@ -198,16 +198,16 @@ addToLibrary({
 #if ASSERTIONS
     assert(winterName);
     assert(summerName);
-    assert(lengthBytesUTF8(winterName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${winterName})`);
-    assert(lengthBytesUTF8(summerName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${summerName})`);
+    assert(lengthBytesUTF8(winterName) <= TZNAME_MAX, `timezone name truncated to fit in TZNAME_MAX (${winterName})`);
+    assert(lengthBytesUTF8(summerName) <= TZNAME_MAX, `timezone name truncated to fit in TZNAME_MAX (${summerName})`);
 #endif
     if (summerOffset < winterOffset) {
       // Northern hemisphere
-      stringToUTF8(winterName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
-      stringToUTF8(summerName, dst_name, {{{ cDefs.TZNAME_MAX + 1 }}});
+      stringToUTF8(winterName, std_name, TZNAME_MAX + 1);
+      stringToUTF8(summerName, dst_name, TZNAME_MAX + 1);
     } else {
-      stringToUTF8(winterName, dst_name, {{{ cDefs.TZNAME_MAX + 1 }}});
-      stringToUTF8(summerName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
+      stringToUTF8(winterName, dst_name, TZNAME_MAX + 1);
+      stringToUTF8(summerName, std_name, TZNAME_MAX + 1);
     }
   },
 

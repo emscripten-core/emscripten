@@ -43,7 +43,7 @@ var LibraryWebGL2 = {
   },
 
   glGetInteger64v: (name_, p) => {
-    emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_J }}});
+    emscriptenWebGLGet(name_, p, EM_FUNC_SIG_PARAM_J);
   },
 
   glGetInternalformativ: (target, internalformat, pname, bufSize, params) => {
@@ -459,19 +459,19 @@ var LibraryWebGL2 = {
     }
 
     switch (type) {
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_J }}}: writeI53ToI64(data, ret); break;
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      case EM_FUNC_SIG_PARAM_J: writeI53ToI64(data, ret); break;
+      case EM_FUNC_SIG_PARAM_I: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
+      case EM_FUNC_SIG_PARAM_F: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
+      case EM_FUNC_SIG_PARAM_B: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
       default: abort('internal emscriptenWebGLGetIndexed() error, bad type: ' + type);
     }
   },
 
   glGetIntegeri_v: (target, index, data) =>
-    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}),
+    emscriptenWebGLGetIndexed(target, index, data, EM_FUNC_SIG_PARAM_I),
 
   glGetInteger64i_v: (target, index, data) =>
-    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_J }}}),
+    emscriptenWebGLGetIndexed(target, index, data, EM_FUNC_SIG_PARAM_J),
 
   // Uniform Buffer objects
   glBindBufferBase: (target, index, buffer) => {
@@ -714,7 +714,7 @@ var LibraryWebGL2 = {
   glIsSync: (sync) => GLctx.isSync(GL.syncs[sync]),
 
   glGetUniformuiv: (program, location, params) =>
-    emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}),
+    emscriptenWebGLGetUniform(program, location, params, EM_FUNC_SIG_PARAM_I),
 
   glGetFragDataLocation: (program, name) => {
 #if GL_ASSERTIONS
@@ -726,7 +726,7 @@ var LibraryWebGL2 = {
   glGetVertexAttribIiv: (index, pname, params) => {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4iv(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
+    emscriptenWebGLGetVertexAttrib(index, pname, params, EM_FUNC_SIG_PARAM_I);
   },
 
   // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4uiv(),
