@@ -2560,7 +2560,7 @@ The current type of b is: 9
   @no_lsan('cannot replace malloc/free with LSan')
   @requires_pthreads
   @parameterized({
-    'system_queue': (['-DTEST_SYSTEM_QUEUE'],),
+    '': (['-DTEST_SYSTEM_QUEUE'],),
     'user_queue': (['-DTEST_USER_QUEUE'],),
     'user_queue_contended': (['-DTEST_USER_QUEUE_CONTENDED'],),
     'lost_wakeup': (['-DTEST_LOST_WAKEUP'],),
