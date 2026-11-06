@@ -607,7 +607,8 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #if expectToReceiveOnModule('onCOSCacheHit')
       Module['onCOSCacheHit']?.(cosHash.value);
 #endif
-      return cosInstantiateStream(cosFile.stream(), imports);
+      // Await so that a failed compile lands in the catch below.
+      return await cosInstantiateStream(cosFile.stream(), imports);
     } catch {
       // Any error (not found, not allowed, ...) - fetch from the network and
       // attempt to store in COS for future page loads.
@@ -650,10 +651,10 @@ async function instantiateAsync(binary, binaryFile, imports) {
             storeStream.cancel().catch(() => {});
           }
         })();
-        return cosInstantiateStream(compileStream, imports);
+        return await cosInstantiateStream(compileStream, imports);
       } catch (fetchErr) {
-        // Network fetch failed; fall through to the standard path below.
-        err(`COS fallback fetch failed: ${fetchErr}`);
+        // Fetching or compiling failed; fall through to the standard path below.
+        err(`COS fallback failed: ${fetchErr}`);
       }
       // Fall through to the standard streaming path below.
     }

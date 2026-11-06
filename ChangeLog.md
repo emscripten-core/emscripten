@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 7.0.0 (in development)
 ----------------------
+- With `-sCROSS_ORIGIN_STORAGE`, a Wasm file that fails to compile on the
+  cache-hit or cache-miss path now falls through to the standard loading path,
+  as documented. Previously the compile error rejected module instantiation.
 - Remove support for the `EMCC_ONLY_FORCED_STDLIBS` environment variable, which
   was deprecated in 2.0.14 (#13448). Use `-nostdlib` instead to avoid linking
   standard libraries. (#28151)

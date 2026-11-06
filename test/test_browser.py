@@ -5702,6 +5702,26 @@ fetch('report_result?0');
     self.btest_exit('browser_test_hello_world.c',
                     cflags=['-O2', '-sCROSS_ORIGIN_STORAGE', '-Wno-experimental'])
 
+  def test_cross_origin_storage_bad_hit(self):
+    if not is_chrome():
+      self.skipTest('cross-origin storage tests require a Chromium-based browser')
+    # A stub COS that reports a cache hit with bytes that do not compile, and
+    # refuses writes. The failed compile must fall through to the network.
+    create_file('cos_pre.js', '''
+      Object.defineProperty(navigator, 'crossOriginStorage', {
+        configurable: true,
+        value: {
+          getFileHandle: async (hash, options) => {
+            if (options?.create) throw new DOMException('stub', 'NotAllowedError');
+            return { getFile: async () => new Blob([new Uint8Array([0, 1, 2, 3])]) };
+          },
+        },
+      });
+    ''')
+    self.btest_exit('browser_test_hello_world.c',
+                    cflags=['-O2', '-sCROSS_ORIGIN_STORAGE', '-Wno-experimental',
+                            '--pre-js', 'cos_pre.js'])
+
   def test_cross_origin_storage_miss_then_hit(self):
     if not is_chrome():
       self.skipTest('cross-origin storage tests require a Chromium-based browser')
