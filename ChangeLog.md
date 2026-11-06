@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 7.0.0 (in development)
 ----------------------
+- Reading the undocumented `Module['ctx']` property now warns in `ASSERTIONS`
+  builds. It still works, but new code should use `GLctx` in JS libraries,
+  `EM_ASM` and `EM_JS`. (#28081)
 - Remove support for the `EMCC_ONLY_FORCED_STDLIBS` environment variable, which
   was deprecated in 2.0.14 (#13448). Use `-nostdlib` instead to avoid linking
   standard libraries. (#28151)

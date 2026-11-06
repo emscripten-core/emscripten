@@ -226,6 +226,9 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
   $GLctx__deps: ['$GL'],
   $GLctx: undefined,
   $GL__deps: [
+#if ASSERTIONS
+    '$readModuleCtx',
+#endif
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
 #if PTHREADS

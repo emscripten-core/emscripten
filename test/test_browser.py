@@ -1499,6 +1499,17 @@ window.close = () => {
   def test_glfw_minimal(self, args):
     self.btest_exit('test_glfw_minimal.c', cflags=['-lglfw', '-lGL'] + args)
 
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '--closure=1'],),
+  })
+  def test_module_ctx_deprecated(self, args):
+    create_file('pre.js', '''
+      Module['warnings'] = [];
+      Module['printErr'] = (text) => Module['warnings'].push(text);
+    ''')
+    self.btest_exit('test_module_ctx_deprecated.c', cflags=['--pre-js=pre.js', '-sASSERTIONS', '-sUSE_GLFW=3', '-lglfw', '-lGL'] + args)
+
   def test_glfw_time(self):
     self.btest_exit('test_glfw_time.c', cflags=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 

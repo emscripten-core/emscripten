@@ -1501,6 +1501,36 @@ addToLibrary({
     }
   },
 
+#if ASSERTIONS
+  // Reading `Module['ctx']` from user code warns, since it is deprecated (see
+  // #28081). Writes stay silent, because the runtime and some user code do both.
+  $hookModuleCtx__internal: true,
+  $hookModuleCtx__postset: 'hookModuleCtx();',
+  $hookModuleCtx: () => {
+    var ctx = Module['ctx'];
+    Object.defineProperty(Module, 'ctx', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        if (!hookModuleCtx.runtimeRead) {
+          warnOnce('`Module.ctx` is deprecated. Use `GLctx` in JS libraries, EM_ASM and EM_JS code (see https://github.com/emscripten-core/emscripten/issues/28081)');
+        }
+        return ctx;
+      },
+      set(value) { ctx = value; },
+    });
+  },
+
+  // The runtime's own reads, which must not warn about code the user can't change.
+  $readModuleCtx__internal: true,
+  $readModuleCtx: () => {
+    hookModuleCtx.runtimeRead = true;
+    var ctx = Module['ctx'];
+    hookModuleCtx.runtimeRead = false;
+    return ctx;
+  },
+#endif
+
   _emscripten_log_formatted: (flags, str) => {
     str = UTF8ToString(str);
 
