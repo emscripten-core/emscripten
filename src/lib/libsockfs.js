@@ -22,11 +22,11 @@ addToLibrary({
       // 'error' event carries [fd, ...]; the rest carry the fd directly.
       var fd = event === 'error' ? param[0] : param;
       var flags = {
-        'message':    {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}},
-        'open':       {{{ cDefs.POLLOUT }}},
-        'connection': {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}},
-        'close':      {{{ cDefs.POLLIN }}} | {{{ cDefs.POLLHUP }}},
-        'error':      {{{ cDefs.POLLERR }}},
+        'message':    POLLRDNORM | POLLIN,
+        'open':       POLLOUT,
+        'connection': POLLRDNORM | POLLIN,
+        'close':      POLLIN | POLLHUP,
+        'error':      POLLERR,
       }[event];
       // 'listen' has no readiness mapping; skip it.
       if (flags) FS.getStream(fd)?.node.notifyListeners(flags);
@@ -52,49 +52,49 @@ addToLibrary({
       SOCKFS.on('close', (fd) => dbg(`websocket: close fd = ${fd}`));
 #endif
 
-      return FS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
+      return FS.createNode(null, '/', S_IFDIR | 0o777, 0);
     },
     createSocket(family, type, protocol) {
-      if (family != {{{ cDefs.AF_INET }}}
+      if (family != AF_INET
 #if NODERAWSOCKETS
           // The node:net backend supports IPv6; other backends are IPv4 only.
-          && family != {{{ cDefs.AF_INET6 }}}
+          && family != AF_INET6
 #if NODERAWFS
           // AF_UNIX stream sockets are backed by node's named pipes, and their
           // paths live in the host filesystem. That only stays coherent with the
           // program's own file syscalls (bind's parent dir, getsockname, unlink)
           // under NODERAWFS, so the family is gated behind it - MEMFS paths are a
           // disjoint namespace and would fail confusingly.
-          && family != {{{ cDefs.AF_UNIX }}}
+          && family != AF_UNIX
 #endif
 #endif
          ) {
-        throw new FS.ErrnoError({{{ cDefs.EAFNOSUPPORT }}});
+        throw new FS.ErrnoError(EAFNOSUPPORT);
       }
-      var flags = {{{ cDefs.O_RDWR }}};
+      var flags = O_RDWR;
 #if NODERAWSOCKETS
-      if (type & {{{ cDefs.SOCK_NONBLOCK }}}) flags |= {{{ cDefs.O_NONBLOCK }}};
+      if (type & SOCK_NONBLOCK) flags |= O_NONBLOCK;
 #endif
-      type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // SOCK_CLOEXEC makes no sense for a single process.
+      type &= ~(SOCK_CLOEXEC | SOCK_NONBLOCK); // SOCK_CLOEXEC makes no sense for a single process.
       // Emscripten only supports SOCK_STREAM and SOCK_DGRAM
-      if (type != {{{ cDefs.SOCK_STREAM }}} && type != {{{ cDefs.SOCK_DGRAM }}}) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      if (type != SOCK_STREAM && type != SOCK_DGRAM) {
+        throw new FS.ErrnoError(EINVAL);
       }
 #if NODERAWSOCKETS && NODERAWFS
       // node has no AF_UNIX datagram primitive; only stream unix sockets exist.
-      if (family == {{{ cDefs.AF_UNIX }}} && type != {{{ cDefs.SOCK_STREAM }}}) {
-        throw new FS.ErrnoError({{{ cDefs.EPROTONOSUPPORT }}});
+      if (family == AF_UNIX && type != SOCK_STREAM) {
+        throw new FS.ErrnoError(EPROTONOSUPPORT);
       }
 #endif
-      var streaming = type == {{{ cDefs.SOCK_STREAM }}};
+      var streaming = type == SOCK_STREAM;
       // The IPPROTO_TCP protocol guard only applies to INET stream sockets; unix
       // stream sockets use protocol 0.
-      if (streaming && protocol && protocol != {{{ cDefs.IPPROTO_TCP }}}
+      if (streaming && protocol && protocol != IPPROTO_TCP
 #if NODERAWSOCKETS && NODERAWFS
-          && family != {{{ cDefs.AF_UNIX }}}
+          && family != AF_UNIX
 #endif
          ) {
-        throw new FS.ErrnoError({{{ cDefs.EPROTONOSUPPORT }}}); // if SOCK_STREAM, must be tcp or 0.
+        throw new FS.ErrnoError(EPROTONOSUPPORT); // if SOCK_STREAM, must be tcp or 0.
       }
 
       // create our internal socket structure
@@ -116,7 +116,7 @@ addToLibrary({
 
       // create the filesystem node to store the socket structure
       var name = SOCKFS.nextname();
-      var node = FS.createNode(SOCKFS.root, name, {{{ cDefs.S_IFSOCK }}}, 0);
+      var node = FS.createNode(SOCKFS.root, name, S_IFSOCK, 0);
       node.sock = sock;
 
       // and the wrapping stream that enables library functions such
@@ -149,7 +149,7 @@ addToLibrary({
         return {
           dev: 1,
           ino: node.id,
-          mode: {{{ cDefs.S_IFSOCK }}} | 0o777,
+          mode: S_IFSOCK | 0o777,
           nlink: 1,
           uid: 0,
           gid: 0,
@@ -286,7 +286,7 @@ addToLibrary({
 #if SOCKET_DEBUG
             dbg(`websocket: error connecting: ${e}`);
 #endif
-            throw new FS.ErrnoError({{{ cDefs.EHOSTUNREACH }}});
+            throw new FS.ErrnoError(EHOSTUNREACH);
           }
         }
 
@@ -307,7 +307,7 @@ addToLibrary({
         // if this is a bound dgram socket, send the port number first to allow
         // us to override the ephemeral port reported to us by remotePort on the
         // remote end.
-        if (sock.type === {{{ cDefs.SOCK_DGRAM }}} && typeof sock.sport !== 'undefined') {
+        if (sock.type === SOCK_DGRAM && typeof sock.sport !== 'undefined') {
 #if SOCKET_DEBUG
           dbg(`websocket: queuing port message (port ${sock.sport})`);
 #endif
@@ -412,7 +412,7 @@ addToLibrary({
             // ECONNREFUSED they are not necessarily the expected error code e.g.
             // ENOTFOUND on getaddrinfo seems to be node.js specific, so using ECONNREFUSED
             // is still probably the most useful thing to do.
-            sock.error = {{{ cDefs.ECONNREFUSED }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+            sock.error = ECONNREFUSED; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
             SOCKFS.emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
           });
           return;
@@ -424,7 +424,7 @@ addToLibrary({
         peer.socket.onerror = (error) => {
           // The WebSocket spec only allows a 'simple event' to be thrown on error,
           // so we only really know as much as ECONNREFUSED.
-          sock.error = {{{ cDefs.ECONNREFUSED }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+          sock.error = ECONNREFUSED; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
           SOCKFS.emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
         };
       },
@@ -433,23 +433,23 @@ addToLibrary({
       // actual sock ops
       //
       poll(sock) {
-        if (sock.type === {{{ cDefs.SOCK_STREAM }}} && (sock.server || sock.listening)) {
+        if (sock.type === SOCK_STREAM && (sock.server || sock.listening)) {
           if (sock.error) {
-            return {{{ cDefs.POLLERR }}};
+            return POLLERR;
           }
           if (!sock.server) {
-            return {{{ cDefs.POLLHUP }}};
+            return POLLHUP;
           }
           // listen sockets should only say they're available for reading
           // if there are pending clients.
-          return sock.pending.length ? ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}}) : 0;
+          return sock.pending.length ? (POLLRDNORM | POLLIN) : 0;
         }
 
         var mask = 0;
         if (sock.error) {
-          mask |= {{{ cDefs.POLLERR }}};
+          mask |= POLLERR;
         }
-        var dest = sock.type === {{{ cDefs.SOCK_STREAM }}} ?  // we only care about the socket state for connection-based sockets
+        var dest = sock.type === SOCK_STREAM ?  // we only care about the socket state for connection-based sockets
           SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport) :
           null;
 
@@ -457,12 +457,12 @@ addToLibrary({
             !dest ||  // connection-less sockets are always ready to read
             (dest && dest.socket.readyState === dest.socket.CLOSING) ||
             (dest && dest.socket.readyState === dest.socket.CLOSED)) {  // let recv return 0 once closed
-          mask |= ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+          mask |= (POLLRDNORM | POLLIN);
         }
 
         if (!dest ||  // connection-less sockets are always ready to write
             (dest && dest.socket.readyState === dest.socket.OPEN)) {
-          mask |= {{{ cDefs.POLLOUT }}};
+          mask |= POLLOUT;
         }
 
         if ((dest && dest.socket.readyState === dest.socket.CLOSING) ||
@@ -472,10 +472,10 @@ addToLibrary({
           // retrieve the error.
           // See https://man7.org/linux/man-pages/man2/connect.2.html
           if (sock.connecting) {
-            mask |= {{{ cDefs.POLLOUT }}};
+            mask |= POLLOUT;
           } else  {
             // A closed peer is both a full hangup and a read-side hangup.
-            mask |= {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLRDHUP }}};
+            mask |= POLLHUP | POLLRDHUP;
           }
         }
 
@@ -483,23 +483,23 @@ addToLibrary({
       },
       ioctl(sock, request, arg) {
         switch (request) {
-          case {{{ cDefs.FIONREAD }}}:
+          case FIONREAD:
             var bytes = 0;
             if (sock.recv_queue.length) {
               bytes = sock.recv_queue[0].data.length;
             }
             {{{ makeSetValue('arg', '0', 'bytes', 'i32') }}};
             return 0;
-          case {{{ cDefs.FIONBIO }}}:
+          case FIONBIO:
             var on = {{{ makeGetValue('arg', '0', 'i32') }}};
             if (on) {
-              sock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
+              sock.stream.flags |= O_NONBLOCK;
             } else {
-              sock.stream.flags &= ~{{{ cDefs.O_NONBLOCK }}};
+              sock.stream.flags &= ~O_NONBLOCK;
             }
             return 0;
           default:
-            return {{{ cDefs.EINVAL }}};
+            return EINVAL;
         }
       },
       close(sock) {
@@ -524,14 +524,14 @@ addToLibrary({
       },
       bind(sock, addr, port) {
         if (typeof sock.saddr !== 'undefined' || typeof sock.sport !== 'undefined') {
-          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already bound
+          throw new FS.ErrnoError(EINVAL);  // already bound
         }
         sock.saddr = addr;
         sock.sport = port;
         // in order to emulate dgram sockets, we need to launch a listen server when
         // binding on a connection-less socket
         // note: this is only required on the server side
-        if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
+        if (sock.type === SOCK_DGRAM) {
           // close the existing server if it exists
           if (sock.server) {
             sock.server.close();
@@ -543,17 +543,17 @@ addToLibrary({
             sock.sock_ops.listen(sock, 0);
           } catch (e) {
             if (!(e.name === 'ErrnoError')) throw e;
-            if (e.errno !== {{{ cDefs.EOPNOTSUPP }}}) throw e;
+            if (e.errno !== EOPNOTSUPP) throw e;
           }
         }
       },
       connect(sock, addr, port) {
         if (sock.server) {
-          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+          throw new FS.ErrnoError(EOPNOTSUPP);
         }
 
         // TODO autobind
-        // if (!sock.addr && sock.type == {{{ cDefs.SOCK_DGRAM }}}) {
+        // if (!sock.addr && sock.type == SOCK_DGRAM) {
         // }
 
         // early out if we're already connected / in the middle of connecting
@@ -561,9 +561,9 @@ addToLibrary({
           var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
           if (dest) {
             if (dest.socket.readyState === dest.socket.CONNECTING) {
-              throw new FS.ErrnoError({{{ cDefs.EALREADY }}});
+              throw new FS.ErrnoError(EALREADY);
             } else {
-              throw new FS.ErrnoError({{{ cDefs.EISCONN }}});
+              throw new FS.ErrnoError(EISCONN);
             }
           }
         }
@@ -581,11 +581,11 @@ addToLibrary({
       },
       listen(sock, backlog) {
         if (!ENVIRONMENT_IS_NODE) {
-          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+          throw new FS.ErrnoError(EOPNOTSUPP);
         }
 #if ENVIRONMENT_MAY_BE_NODE
         if (sock.server || sock.listening) {
-           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already listening
+           throw new FS.ErrnoError(EINVAL);  // already listening
         }
         var WebSocketServer = require('ws').Server;
         var host = sock.saddr;
@@ -604,7 +604,7 @@ addToLibrary({
 #if SOCKET_DEBUG
           dbg(`websocket: received connection from: ${ws._socket.remoteAddress}:${ws._socket.remotePort}`);
 #endif
-          if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
+          if (sock.type === SOCK_STREAM) {
             var newsock = SOCKFS.createSocket(sock.family, sock.type, sock.protocol);
 
             // create a peer on the new socket
@@ -616,7 +616,7 @@ addToLibrary({
             sock.pending.push(newsock);
             SOCKFS.emit('connection', newsock.stream.fd);
             // A queued client makes the listening socket readable (POLLIN).
-            sock.stream.node.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+            sock.stream.node.notifyListeners(POLLRDNORM | POLLIN);
           } else {
             // create a peer on the listen socket so calling sendto
             // with the listen socket and an address will resolve
@@ -633,7 +633,7 @@ addToLibrary({
 #if SOCKET_DEBUG
           dbg(`websocket: server error on ${host}:${sock.sport}: ${error.message || error}`);
 #endif
-          sock.error = (error.code && ERRNO_CODES[error.code]) || {{{ cDefs.EIO }}};
+          sock.error = (error.code && ERRNO_CODES[error.code]) || EIO;
           SOCKFS.emit('error', [sock.stream.fd, sock.error, error.message || error.code || 'Server error']);
           if (sock.server) {
             try {
@@ -653,7 +653,7 @@ addToLibrary({
           throw new FS.ErrnoError(err);
         }
         if (!listensock.server || !listensock.pending.length) {
-          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+          throw new FS.ErrnoError(EINVAL);
         }
         var newsock = listensock.pending.shift();
         newsock.stream.flags = listensock.stream.flags;
@@ -663,7 +663,7 @@ addToLibrary({
         var addr, port;
         if (peer) {
           if (sock.daddr === undefined || sock.dport === undefined) {
-            throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
+            throw new FS.ErrnoError(ENOTCONN);
           }
           addr = sock.daddr;
           port = sock.dport;
@@ -676,7 +676,7 @@ addToLibrary({
         return { addr, port };
       },
       sendmsg(sock, buffer, offset, length, addr, port) {
-        if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
+        if (sock.type === SOCK_DGRAM) {
           // connection-less sockets will honor the message address,
           // and otherwise fall back to the bound destination address
           if (addr === undefined || port === undefined) {
@@ -685,7 +685,7 @@ addToLibrary({
           }
           // if there was no address to fall back to, error out
           if (addr === undefined || port === undefined) {
-            throw new FS.ErrnoError({{{ cDefs.EDESTADDRREQ }}});
+            throw new FS.ErrnoError(EDESTADDRREQ);
           }
         } else {
           // connection-based sockets will only use the bound
@@ -697,9 +697,9 @@ addToLibrary({
         var dest = SOCKFS.websocket_sock_ops.getPeer(sock, addr, port);
 
         // early out if not connected with a connection-based socket
-        if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
+        if (sock.type === SOCK_STREAM) {
           if (!dest || dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
-            throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
+            throw new FS.ErrnoError(ENOTCONN);
 #if SOCKET_DEBUG
           } else if (dest.socket.readyState === dest.socket.CONNECTING) {
             dbg('socket sendmsg called while socket is still connecting.');
@@ -730,7 +730,7 @@ addToLibrary({
         // connect, and lie, saying the data was sent now.
         if (!dest || dest.socket.readyState !== dest.socket.OPEN) {
           // if we're not connected, open a new connection
-          if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
+          if (sock.type === SOCK_DGRAM) {
             if (!dest || dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
               dest = SOCKFS.websocket_sock_ops.createPeer(sock, addr, port);
             }
@@ -750,36 +750,36 @@ addToLibrary({
           dest.socket.send(data);
           return length;
         } catch (e) {
-          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+          throw new FS.ErrnoError(EINVAL);
         }
       },
       recvmsg(sock, length, flags) {
         // http://pubs.opengroup.org/onlinepubs/7908799/xns/recvmsg.html
-        if (sock.type === {{{ cDefs.SOCK_STREAM }}} && sock.server) {
+        if (sock.type === SOCK_STREAM && sock.server) {
           // tcp servers should not be recv()'ing on the listen socket
-          throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
+          throw new FS.ErrnoError(ENOTCONN);
         }
 
         // MSG_PEEK returns the head of the queue without consuming it, so a
         // later recv sees the same bytes and poll still reports it readable.
-        var peek = flags & {{{ cDefs.MSG_PEEK }}};
+        var peek = flags & MSG_PEEK;
         var queued = sock.recv_queue[0];
         if (!queued) {
-          if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
+          if (sock.type === SOCK_STREAM) {
             var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
 
             if (!dest) {
               // if we have a destination address but are not connected, error out
-              throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
+              throw new FS.ErrnoError(ENOTCONN);
             }
             if (dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
               // return null if the socket has closed
               return null;
             }
             // else, our socket is in a valid state but truly has nothing available
-            throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+            throw new FS.ErrnoError(EAGAIN);
           }
-          throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+          throw new FS.ErrnoError(EAGAIN);
         }
 
         // queued.data will be an ArrayBuffer if it's unadulterated, but if it's
@@ -802,7 +802,7 @@ addToLibrary({
         sock.recv_queue.shift();
 
         // push back any unread data for TCP connections
-        if (sock.type === {{{ cDefs.SOCK_STREAM }}} && bytesRead < queuedLength) {
+        if (sock.type === SOCK_STREAM && bytesRead < queuedLength) {
           var bytesRemaining = queuedLength - bytesRead;
 #if SOCKET_DEBUG
           dbg(`websocket: read: put back ${bytesRemaining} bytes`);

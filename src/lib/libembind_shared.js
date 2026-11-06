@@ -140,8 +140,7 @@ var LibraryEmbindShared = {
   $usesDestructorStack(argTypes) {
     // Skip return value at index 0 - it's not deleted here.
     for (var i = 1; i < argTypes.length; ++i) {
-      // The type does not define a destructor function - must use dynamic stack
-      if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) {
+      if (argTypes[i]?.usesDestructor) {
         return true;
       }
     }
@@ -179,12 +178,10 @@ var LibraryEmbindShared = {
         // Stack-allocated trivial value type: needs no destructor, but the
         // invoker must bracket the call in a stack frame.
         destructorSig = 's';
-      } else if (arg.destructorFunction === undefined) {
-        destructorSig = 'u';
-      } else if (arg.destructorFunction === null) {
-        destructorSig = 'n';
+      } else if (arg.usesDestructor) {
+        destructorSig = 'd';
       } else {
-        destructorSig = 't';
+        destructorSig = 'n';
       }
       signature.push(destructorSig);
     }
@@ -306,14 +303,6 @@ var LibraryEmbindShared = {
 
     if (needsDestructorStack) {
       invokerFnBody += 'runDestructors(destructors);\n';
-    } else {
-      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
-        var paramName = (i === 1 ? 'thisWired' : `arg${i - 2}Wired`);
-        if (argTypes[i].destructorFunction !== null) {
-          invokerFnBody += `${paramName}_dtor(${paramName});\n`;
-          args1.push(`${paramName}_dtor`);
-        }
-      }
     }
 
     if (returns) {

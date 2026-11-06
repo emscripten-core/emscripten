@@ -239,7 +239,6 @@ class browser(BrowserCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    cls.browser_timeout = 60
     if get_browser() != 'node':
       print()
       print('Running the browser tests. Make sure the browser allows popups from localhost.')
@@ -5697,15 +5696,15 @@ fetch('report_result?0');
     self.btest_exit('test_pthread_memgrowth_stale_views.c',
                     cflags=['-pthread', '-sINITIAL_MEMORY=10mb', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'])
 
+  @no_firefox('cross-origin storage not yet supported on firefox')
+  @no_safari('cross-origin storage not yet supported on safari')
   def test_cross_origin_storage_fallback(self):
-    if not is_chrome():
-      self.skipTest('cross-origin storage tests require a Chromium-based browser')
     self.btest_exit('browser_test_hello_world.c',
                     cflags=['-O2', '-sCROSS_ORIGIN_STORAGE', '-Wno-experimental'])
 
+  @no_firefox('cross-origin storage not yet supported on firefox')
+  @no_safari('cross-origin storage not yet supported on safari')
   def test_cross_origin_storage_miss_then_hit(self):
-    if not is_chrome():
-      self.skipTest('cross-origin storage tests require a Chromium-based browser')
     if not EMTEST_COS_EXTENSION_PATH:
       self.skipTest(
         'set EMTEST_COS_EXTENSION_PATH to the COS extension directory; '

@@ -508,9 +508,9 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   var dataLength = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestDataSize, '*') }}};
 
   var fetchAttributes = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.attributes, 'u32') }}};
-  var fetchAttrLoadToMemory = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_LOAD_TO_MEMORY }}});
-  var fetchAttrStreamData = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_STREAM_DATA }}});
-  var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_SYNCHRONOUS }}});
+  var fetchAttrLoadToMemory = !!(fetchAttributes & EMSCRIPTEN_FETCH_LOAD_TO_MEMORY);
+  var fetchAttrStreamData = !!(fetchAttributes & EMSCRIPTEN_FETCH_STREAM_DATA);
+  var fetchAttrSynchronous = !!(fetchAttributes & EMSCRIPTEN_FETCH_SYNCHRONOUS);
 
   var userNameStr = userName ? UTF8ToString(userName) : undefined;
   var passwordStr = password ? UTF8ToString(password) : undefined;
@@ -746,7 +746,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   var onprogress = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.onprogress, '*') }}};
   var onreadystatechange = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.onreadystatechange, '*') }}};
   var fetchAttributes = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.attributes, '*') }}};
-  var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_SYNCHRONOUS }}});
+  var fetchAttrSynchronous = !!(fetchAttributes & EMSCRIPTEN_FETCH_SYNCHRONOUS);
 
   function doCallback(f) {
     if (fetchAttrSynchronous) {
@@ -838,9 +838,9 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   };
 
   var requestMethod = UTF8ToString(fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestMethod }}});
-  var fetchAttrReplace = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_REPLACE }}});
-  var fetchAttrPersistFile = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_PERSIST_FILE }}});
-  var fetchAttrNoDownload = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_NO_DOWNLOAD }}});
+  var fetchAttrReplace = !!(fetchAttributes & EMSCRIPTEN_FETCH_REPLACE);
+  var fetchAttrPersistFile = !!(fetchAttributes & EMSCRIPTEN_FETCH_PERSIST_FILE);
+  var fetchAttrNoDownload = !!(fetchAttributes & EMSCRIPTEN_FETCH_NO_DOWNLOAD);
   if (requestMethod === 'EM_IDB_STORE') {
     var ptr = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestData, '*') }}};
     var size = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestDataSize, '*') }}};

@@ -12,7 +12,7 @@ var LibraryStackTrace = {
     var callstack = jsStackTrace();
 
 #if ASSERTIONS
-    if (flags & {{{ cDefs.EM_LOG_C_STACK }}}) {
+    if (flags & EM_LOG_C_STACK) {
       warnOnce('emscripten_log with EM_LOG_C_STACK no longer has any effect');
     }
 #endif
@@ -64,8 +64,8 @@ var LibraryStackTrace = {
         continue;
       }
 
-      if ((flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}})) {
-        if (flags & {{{ cDefs.EM_LOG_NO_PATHS }}}) {
+      if ((flags & (EM_LOG_C_STACK | EM_LOG_JS_STACK))) {
+        if (flags & EM_LOG_NO_PATHS) {
           file = file.substring(file.replace(/\\/g, '/').lastIndexOf('/')+1);
         }
         callstack += `    at ${symbolName} (${file}:${lineno}:${column})\n`;

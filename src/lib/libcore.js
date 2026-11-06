@@ -363,13 +363,13 @@ addToLibrary({
         var signalToNumber = (sig) => {
           // implement only the most common ones, and fallback to SIGINT
           switch (sig) {
-            case 'SIGHUP': return {{{ cDefs.SIGHUP }}};
-            case 'SIGQUIT': return {{{ cDefs.SIGQUIT }}};
-            case 'SIGFPE': return {{{ cDefs.SIGFPE }}};
-            case 'SIGKILL': return {{{ cDefs.SIGKILL }}};
-            case 'SIGALRM': return {{{ cDefs.SIGALRM }}};
-            case 'SIGTERM': return {{{ cDefs.SIGTERM }}};
-            default: return {{{ cDefs.SIGINT }}};
+            case 'SIGHUP': return SIGHUP;
+            case 'SIGQUIT': return SIGQUIT;
+            case 'SIGFPE': return SIGFPE;
+            case 'SIGKILL': return SIGKILL;
+            case 'SIGALRM': return SIGALRM;
+            case 'SIGTERM': return SIGTERM;
+            default: return SIGINT;
           }
         }
         return _W_EXITCODE(0, signalToNumber(ret.signal));
@@ -382,7 +382,7 @@ addToLibrary({
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
     if (!command) return 0; // no shell available
-    return -{{{ cDefs.ENOSYS }}};
+    return -ENOSYS;
   },
 
   // ==========================================================================
@@ -806,7 +806,7 @@ addToLibrary({
 
     switch (family) {
 #if NODERAWSOCKETS
-      case {{{ cDefs.AF_UNIX }}}: {
+      case AF_UNIX: {
         // sun_path runs from offsetof(sun_path) to salen. An address of only the
         // family (salen <= offset) is the unnamed/autobind case -> empty path. A
         // leading NUL marks the Linux abstract namespace; keep the NUL so the
@@ -825,16 +825,16 @@ addToLibrary({
         return { family, addr: path, port: 0 };
       }
 #endif
-      case {{{ cDefs.AF_INET }}}:
+      case AF_INET:
         if (salen !== {{{ C_STRUCTS.sockaddr_in.__size__ }}}) {
-          return { errno: {{{ cDefs.EINVAL }}} };
+          return { errno: EINVAL };
         }
         addr = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'i32') }}};
         addr = inetNtop4(addr);
         break;
-      case {{{ cDefs.AF_INET6 }}}:
+      case AF_INET6:
         if (salen !== {{{ C_STRUCTS.sockaddr_in6.__size__ }}}) {
-          return { errno: {{{ cDefs.EINVAL }}} };
+          return { errno: EINVAL };
         }
         addr = [
           {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+0, 'i32') }}},
@@ -845,7 +845,7 @@ addToLibrary({
         addr = inetNtop6(addr);
         break;
       default:
-        return { errno: {{{ cDefs.EAFNOSUPPORT }}} };
+        return { errno: EAFNOSUPPORT };
     }
 
     return { family: family, addr: addr, port: port };
@@ -857,7 +857,7 @@ addToLibrary({
   $writeSockaddr: (sa, family, addr, port, addrlen) => {
     switch (family) {
 #if NODERAWSOCKETS
-      case {{{ cDefs.AF_UNIX }}}: {
+      case AF_UNIX: {
         // addr is the JS path string produced by readSockaddr: a leading '\0'
         // marks the abstract namespace (its bytes are written verbatim, no NUL
         // terminator), any other path is written NUL-terminated. An empty path
@@ -882,7 +882,7 @@ addToLibrary({
         break;
       }
 #endif
-      case {{{ cDefs.AF_INET }}}:
+      case AF_INET:
         // The address may still be an unresolved hostname (e.g. a peer name
         // recorded at connect time); map it to its fake IP here so callers can
         // pass names and IPs alike. Real sockets only ever see numeric addresses.
@@ -895,7 +895,7 @@ addToLibrary({
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'addr', 'i32') }}};
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in.sin_port, '_htons(port)', 'i16') }}};
         break;
-      case {{{ cDefs.AF_INET6 }}}:
+      case AF_INET6:
         addr = inetPton6({{{ NODERAWSOCKETS ? 'addr' : 'DNS.lookup_name(addr)' }}});
         zeroMemory(sa, {{{ C_STRUCTS.sockaddr_in6.__size__ }}});
         if (addrlen) {
@@ -909,7 +909,7 @@ addToLibrary({
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_port, '_htons(port)', 'i16') }}};
         break;
       default:
-        return {{{ cDefs.EAFNOSUPPORT }}};
+        return EAFNOSUPPORT;
     }
     return 0;
   },
@@ -982,7 +982,7 @@ addToLibrary({
     var addr = 0;
     var port = 0;
     var flags = 0;
-    var family = {{{ cDefs.AF_UNSPEC }}};
+    var family = AF_UNSPEC;
     var type = 0;
     var proto = 0;
     var ai, last;
@@ -991,10 +991,10 @@ addToLibrary({
       var sa, salen, ai;
       var errno;
 
-      salen = family === {{{ cDefs.AF_INET6 }}} ?
+      salen = family === AF_INET6 ?
         {{{ C_STRUCTS.sockaddr_in6.__size__ }}} :
         {{{ C_STRUCTS.sockaddr_in.__size__ }}};
-      addr = family === {{{ cDefs.AF_INET6 }}} ?
+      addr = family === AF_INET6 ?
         inetNtop6(addr) :
         inetNtop4(addr);
       sa = _malloc(salen);
@@ -1009,7 +1009,7 @@ addToLibrary({
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_protocol, 'proto', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, 'canon', '*') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addr, 'sa', '*') }}};
-      if (family === {{{ cDefs.AF_INET6 }}}) {
+      if (family === AF_INET6) {
         {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
       } else {
         {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
@@ -1047,40 +1047,40 @@ addToLibrary({
       proto = {{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_protocol, 'i32') }}};
     }
     if (type && !proto) {
-      proto = type === {{{ cDefs.SOCK_DGRAM }}} ? {{{ cDefs.IPPROTO_UDP }}} : {{{ cDefs.IPPROTO_TCP }}};
+      proto = type === SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
     }
     if (!type && proto) {
-      type = proto === {{{ cDefs.IPPROTO_UDP }}} ? {{{ cDefs.SOCK_DGRAM }}} : {{{ cDefs.SOCK_STREAM }}};
+      type = proto === IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
     }
 
     // If type or proto are set to zero in hints we should really be returning multiple addrinfo values, but for
     // now default to a TCP STREAM socket so we can at least return a sensible addrinfo given NULL hints.
     if (!proto) {
-      proto = {{{ cDefs.IPPROTO_TCP }}};
+      proto = IPPROTO_TCP;
     }
     if (!type) {
-      type = {{{ cDefs.SOCK_STREAM }}};
+      type = SOCK_STREAM;
     }
 
     if (!node && !service) {
-      return {{{ cDefs.EAI_NONAME }}};
+      return EAI_NONAME;
     }
-    if (flags & ~({{{ cDefs.AI_PASSIVE }}}|{{{ cDefs.AI_CANONNAME }}}|{{{ cDefs.AI_NUMERICHOST }}}|
-        {{{ cDefs.AI_NUMERICSERV }}}|{{{ cDefs.AI_V4MAPPED }}}|{{{ cDefs.AI_ALL }}}|{{{ cDefs.AI_ADDRCONFIG }}})) {
-      return {{{ cDefs.EAI_BADFLAGS }}};
+    if (flags & ~(AI_PASSIVE|AI_CANONNAME|AI_NUMERICHOST|
+        AI_NUMERICSERV|AI_V4MAPPED|AI_ALL|AI_ADDRCONFIG)) {
+      return EAI_BADFLAGS;
     }
-    if (hint && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & {{{ cDefs.AI_CANONNAME }}}) && !node) {
-      return {{{ cDefs.EAI_BADFLAGS }}};
+    if (hint && ({{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}} & AI_CANONNAME) && !node) {
+      return EAI_BADFLAGS;
     }
-    if (flags & {{{ cDefs.AI_ADDRCONFIG }}}) {
+    if (flags & AI_ADDRCONFIG) {
       // TODO
-      return {{{ cDefs.EAI_NONAME }}};
+      return EAI_NONAME;
     }
-    if (type && type !== {{{ cDefs.SOCK_STREAM }}} && type !== {{{ cDefs.SOCK_DGRAM }}}) {
-      return {{{ cDefs.EAI_SOCKTYPE }}};
+    if (type && type !== SOCK_STREAM && type !== SOCK_DGRAM) {
+      return EAI_SOCKTYPE;
     }
-    if (family !== {{{ cDefs.AF_UNSPEC }}} && family !== {{{ cDefs.AF_INET }}} && family !== {{{ cDefs.AF_INET6 }}}) {
-      return {{{ cDefs.EAI_FAMILY }}};
+    if (family !== AF_UNSPEC && family !== AF_INET && family !== AF_INET6) {
+      return EAI_FAMILY;
     }
 
     if (service) {
@@ -1088,22 +1088,22 @@ addToLibrary({
       port = parseInt(service, 10);
 
       if (isNaN(port)) {
-        if (flags & {{{ cDefs.AI_NUMERICSERV }}}) {
-          return {{{ cDefs.EAI_NONAME }}};
+        if (flags & AI_NUMERICSERV) {
+          return EAI_NONAME;
         }
         // TODO support resolving well-known service names from:
         // http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
-        return {{{ cDefs.EAI_SERVICE }}};
+        return EAI_SERVICE;
       }
     }
 
     if (!node) {
-      if (family === {{{ cDefs.AF_UNSPEC }}}) {
-        family = {{{ cDefs.AF_INET }}};
+      if (family === AF_UNSPEC) {
+        family = AF_INET;
       }
-      if (!(flags & {{{ cDefs.AI_PASSIVE }}})) {
-        if (family === {{{ cDefs.AF_INET }}}) {
-          addr = _htonl({{{ cDefs.INADDR_LOOPBACK }}});
+      if (!(flags & AI_PASSIVE)) {
+        if (family === AF_INET) {
+          addr = _htonl(INADDR_LOOPBACK);
         } else {
           addr = [0, 0, 0, _htonl(1)];
         }
@@ -1120,23 +1120,23 @@ addToLibrary({
     addr = inetPton4(node);
     if (addr !== null) {
       // incoming node is a valid ipv4 address
-      if (family === {{{ cDefs.AF_UNSPEC }}} || family === {{{ cDefs.AF_INET }}}) {
-        family = {{{ cDefs.AF_INET }}};
+      if (family === AF_UNSPEC || family === AF_INET) {
+        family = AF_INET;
       }
-      else if (family === {{{ cDefs.AF_INET6 }}} && (flags & {{{ cDefs.AI_V4MAPPED }}})) {
+      else if (family === AF_INET6 && (flags & AI_V4MAPPED)) {
         addr = [0, 0, _htonl(0xffff), addr];
-        family = {{{ cDefs.AF_INET6 }}};
+        family = AF_INET6;
       } else {
-        return {{{ cDefs.EAI_NONAME }}};
+        return EAI_NONAME;
       }
     } else {
       addr = inetPton6(node);
       if (addr !== null) {
         // incoming node is a valid ipv6 address
-        if (family === {{{ cDefs.AF_UNSPEC }}} || family === {{{ cDefs.AF_INET6 }}}) {
-          family = {{{ cDefs.AF_INET6 }}};
+        if (family === AF_UNSPEC || family === AF_INET6) {
+          family = AF_INET6;
         } else {
-          return {{{ cDefs.EAI_NONAME }}};
+          return EAI_NONAME;
         }
       }
     }
@@ -1145,8 +1145,8 @@ addToLibrary({
       {{{ makeSetValue('out', '0', 'ai', '*') }}};
       return 0;
     }
-    if (flags & {{{ cDefs.AI_NUMERICHOST }}}) {
-      return {{{ cDefs.EAI_NONAME }}};
+    if (flags & AI_NUMERICHOST) {
+      return EAI_NONAME;
     }
 
     //
@@ -1168,15 +1168,15 @@ addToLibrary({
     // this body reaches handleAsync again and takes the stored result.
     return Asyncify.handleAsync(lookupHostname);
 #else
-    return {{{ cDefs.EAI_AGAIN }}};
+    return EAI_AGAIN;
 #endif
 #else
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
     addr = inetPton4(node);
-    if (family === {{{ cDefs.AF_UNSPEC }}}) {
-      family = {{{ cDefs.AF_INET }}};
-    } else if (family === {{{ cDefs.AF_INET6 }}}) {
+    if (family === AF_UNSPEC) {
+      family = AF_INET;
+    } else if (family === AF_INET6) {
       addr = [0, 0, _htonl(0xffff), addr];
     }
     ai = allocaddrinfo(family, type, proto, null, addr, port);
@@ -1194,7 +1194,7 @@ addToLibrary({
   getnameinfo: (sa, salen, node, nodelen, serv, servlen, flags) => {
     var info = readSockaddr(sa, salen);
     if (info.errno) {
-      return {{{ cDefs.EAI_FAMILY }}};
+      return EAI_FAMILY;
     }
     var port = info.port;
     var addr = info.addr;
@@ -1206,8 +1206,8 @@ addToLibrary({
 
       if (node && nodelen) {
         if (!lookup) {
-          if (flags & {{{ cDefs.NI_NAMEREQD }}}) {
-            return {{{ cDefs.EAI_NONAME }}};
+          if (flags & NI_NAMEREQD) {
+            return EAI_NONAME;
           }
         } else {
           addr = lookup;
@@ -1230,13 +1230,13 @@ addToLibrary({
 
       if (overflowed) {
         // Note: even when we overflow, getnameinfo() is specced to write out the truncated results.
-        return {{{ cDefs.EAI_OVERFLOW }}};
+        return EAI_OVERFLOW;
       }
 
       return 0;
     }
 
-    if (node && nodelen && !(flags & {{{ cDefs.NI_NUMERICHOST }}})) {
+    if (node && nodelen && !(flags & NI_NUMERICHOST)) {
 #if NODERAWSOCKETS
       // A node:dns reverse lookup, where the calling stack can wait on it (see
       // getaddrinfo). Where it cannot, the numeric form is the answer unless a
@@ -1248,8 +1248,8 @@ addToLibrary({
 #if ASYNCIFY
       return Asyncify.handleAsync(lookupService);
 #else
-      if (flags & {{{ cDefs.NI_NAMEREQD }}}) {
-        return {{{ cDefs.EAI_AGAIN }}};
+      if (flags & NI_NAMEREQD) {
+        return EAI_AGAIN;
       }
       return write(null);
 #endif
@@ -1504,24 +1504,24 @@ addToLibrary({
   _emscripten_log_formatted: (flags, str) => {
     str = UTF8ToString(str);
 
-    if (flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}}) {
+    if (flags & (EM_LOG_C_STACK | EM_LOG_JS_STACK)) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
       str += (str.length > 0 ? '\n' : '') + getCallstack(flags);
     }
 
-    if (flags & {{{ cDefs.EM_LOG_CONSOLE }}}) {
-      if (flags & {{{ cDefs.EM_LOG_ERROR }}}) {
+    if (flags & EM_LOG_CONSOLE) {
+      if (flags & EM_LOG_ERROR) {
         console.error(str);
-      } else if (flags & {{{ cDefs.EM_LOG_WARN }}}) {
+      } else if (flags & EM_LOG_WARN) {
         console.warn(str);
-      } else if (flags & {{{ cDefs.EM_LOG_INFO }}}) {
+      } else if (flags & EM_LOG_INFO) {
         console.info(str);
-      } else if (flags & {{{ cDefs.EM_LOG_DEBUG }}}) {
+      } else if (flags & EM_LOG_DEBUG) {
         console.debug(str);
       } else {
         console.log(str);
       }
-    } else if (flags & {{{ cDefs.EM_LOG_ERROR | cDefs.EM_LOG_WARN }}}) {
+    } else if (flags & (EM_LOG_ERROR | EM_LOG_WARN)) {
       err(str);
     } else {
       out(str);
@@ -1591,7 +1591,7 @@ addToLibrary({
     // Nobody should have mutated _readEmAsmArgsArray underneath us to be something else than an array.
     assert(Array.isArray(readEmAsmArgsArray));
     // The input buffer is allocated on the stack, so it must be stack-aligned.
-    assert(buf % {{{ STACK_ALIGN }}} == 0);
+    assert(buf % STACK_ALIGN == 0);
 #endif
     readEmAsmArgsArray.length = 0;
     var ch;
@@ -2426,7 +2426,7 @@ addToLibrary({
   // demand.
   ...defineConsts({
     $STACK_SIZE: {{{ STACK_SIZE }}},
-    $STACK_ALIGN: {{{ STACK_ALIGN }}},
+    $STACK_ALIGN: 16,
     $POINTER_SIZE: {{{ POINTER_SIZE }}},
     $ASSERTIONS: {{{ ASSERTIONS }}},
   }),

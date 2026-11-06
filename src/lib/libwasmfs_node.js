@@ -30,7 +30,7 @@ var wasmFSNodeLibrary = {
     if (wasmfsNodeIsWindows) {
       // Windows does not report the 'x' permission bit, so propagate read
       // bits to execute bits.
-      stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
+      stat.mode |= (stat.mode & S_IRUGO) >> 2;
     }
     return stat;
   },
@@ -141,13 +141,13 @@ var wasmFSNodeLibrary = {
 
   _wasmfs_node_truncate__i53abi: true,
   _wasmfs_node_truncate: (path_p, len) => {
-    if (isNaN(len)) return {{{ cDefs.EFBIG }}};
+    if (isNaN(len)) return EFBIG;
     return wasmfsTry(() => fs.truncateSync(UTF8ToString(path_p), len));
   },
 
   _wasmfs_node_ftruncate__i53abi: true,
   _wasmfs_node_ftruncate: (fd, len) => {
-    if (isNaN(len)) return {{{ cDefs.EFBIG }}};
+    if (isNaN(len)) return EFBIG;
     return wasmfsTry(() => fs.ftruncateSync(fd, len));
   },
 

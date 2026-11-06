@@ -696,7 +696,7 @@ class BrowserCore(RunnerCore):
   # suite early, as otherwise we will wait for the timeout on every
   # single test (hundreds of minutes)
   MAX_UNRESPONSIVE_TESTS = 10
-  BROWSER_TIMEOUT = 60
+  BROWSER_TIMEOUT = int(os.getenv('EMTEST_TIMEOUT', '60'))
 
   unresponsive_tests = 0
   num_tests_ran = 0

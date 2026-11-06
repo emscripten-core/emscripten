@@ -63,16 +63,28 @@ onSettingsLoaded(() => {
     QUANTUM_SIZE: POINTER_SIZE,
   };
 
+  const STACK_ALIGN = 16;
   const POINTER_BITS = POINTER_SIZE * 8;
   const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+  const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
+  const POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
   const POINTER_SHIFT = MEMORY64 ? '3' : '2';
+  // Similar to POINTER_TYPE, but this is the actual wasm type that is
+  // used in practice, while POINTER_TYPE is the more refined internal
+  // type (that is unsigned, where as core wasm does not have unsigned
+  // types).
+  const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
 
   addToCompileTimeContext({
     POINTER_BITS,
     POINTER_HEAP,
+    POINTER_JS_TYPE,
+    POINTER_MAX,
     POINTER_SHIFT,
     POINTER_TYPE,
+    POINTER_WASM_TYPE,
     Runtime,
+    STACK_ALIGN,
     buildStringArray,
     cDefine,
     makeMalloc,
