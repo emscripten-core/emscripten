@@ -179,31 +179,31 @@ def get_firefox_version():
   if not is_firefox():
     return UNSUPPORTED
   exe_path = shutil.which(shlex.split(EMTEST_BROWSER)[0])
-  ini_path = None
+  search_dirs = []
   if exe_path:
-    exe_path = os.path.realpath(exe_path)
-    candidate = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
-    if os.path.isfile(candidate):
-      ini_path = candidate
+    exe_dir = os.path.dirname(os.path.realpath(exe_path))
+    if MACOS:
+      search_dirs.append(os.path.join(exe_dir, '../Resources'))
+    else:
+      search_dirs.append(exe_dir)
 
-  # System and package-manager Firefox installations (e.g. /usr/bin/firefox
-  # wrapper scripts on Linux or Homebrew Cask shims at /opt/homebrew/bin/firefox
-  # on macOS) do not keep platform.ini next to the wrapper script.
-  if not ini_path:
-    if LINUX:
-      search_dirs = ['/usr/lib/firefox-esr/', '/usr/lib/firefox/']
-    elif MACOS:
-      search_dirs = [
+    # System and package-manager Firefox installations (e.g. /usr/bin/firefox
+    # wrapper scripts on Linux or Homebrew Cask shims at /opt/homebrew/bin/firefox
+    # on macOS) do not keep platform.ini next to the wrapper script.
+    if LINUX and exe_path.startswith('/usr/bin/'):
+      search_dirs += ['/usr/lib/firefox-esr/', '/usr/lib/firefox/']
+    elif MACOS and exe_path.startswith(('/opt/homebrew/', '/usr/local/')):
+      search_dirs += [
         '/Applications/Firefox.app/Contents/Resources',
         os.path.expanduser('~/Applications/Firefox.app/Contents/Resources'),
       ]
-    else:
-      search_dirs = []
-    for path in search_dirs:
-      candidate = os.path.join(path, 'platform.ini')
-      if os.path.isfile(candidate):
-        ini_path = candidate
-        break
+
+  ini_path = None
+  for path in search_dirs:
+    candidate = os.path.join(path, 'platform.ini')
+    if os.path.isfile(candidate):
+      ini_path = candidate
+      break
 
   if not ini_path:
     logger.warning(f'Firefox browser detected in {EMTEST_BROWSER}, but could not find Firefox platform.ini to detect Firefox version. Assuming OLDEST_SUPPORTED_FIREFOX={OLDEST_SUPPORTED_FIREFOX}')
