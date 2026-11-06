@@ -37,6 +37,9 @@ static em_proxying_queue system_proxying_queue = {
 
 static _Thread_local bool system_queue_in_use = false;
 
+// The queue this thread is adding a task to, with its mutex held.
+static _Thread_local em_proxying_queue* queue_being_added_to = NULL;
+
 em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
 }
@@ -112,6 +115,13 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
   assert(pthread_self());
 
+  // Adding a task can allocate with the queue's mutex held, and a contended
+  // malloc can get here from emscripten_yield. Taking the mutex again would
+  // deadlock this thread, so leave the queue to be executed later.
+  if (q == queue_being_added_to) {
+    return;
+  }
+
   // Below is a recursion and deadlock guard: The recursion guard is to avoid
   // infinite recursion when we arrive here from the pthread_lock call below
   // that executes the system queue. The per-task_queue recursion lock can't
@@ -153,7 +163,10 @@ static bool do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   if (is_system_queue) {
     system_queue_in_use = true;
   }
+  em_proxying_queue* previous_queue = queue_being_added_to;
+  queue_being_added_to = q;
   em_task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
+  queue_being_added_to = previous_queue;
   if (is_system_queue) {
     system_queue_in_use = false;
   }

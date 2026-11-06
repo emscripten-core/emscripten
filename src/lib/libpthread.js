@@ -1231,7 +1231,7 @@ var LibraryPThread = {
 
 
     // We then create a sequence of promises, one per thread, that resolve once
-    // each thread has performed its sync using _emscripten_proxy_dlsync.
+    // each thread has performed its sync using _emscripten_proxy_dlsync_async.
     // Any new threads that are created after this call will automatically be
     // in sync because we call `__emscripten_dlsync_self` in
     // invokeEntryPoint before the threads entry point is called.
@@ -1261,7 +1261,7 @@ var LibraryPThread = {
   // synchronously block the main thread until all other threads are in sync.
   // When `dlopen` is called from a worker, the worker itself is blocked but
   // the operation its waiting on (on the main thread) can be async.
-  _emscripten_dlsync_threads__deps: ['_emscripten_proxy_dlsync'],
+  _emscripten_dlsync_threads__deps: ['_emscripten_proxy_dlsync_post', '_emscripten_proxy_dlsync_wait'],
   _emscripten_dlsync_threads__async: 'auto',
   _emscripten_dlsync_threads__proxy: 'sync',
   _emscripten_dlsync_threads: () => {
@@ -1269,12 +1269,16 @@ var LibraryPThread = {
     if (callingThread) {
       return dlsyncThreadsAsync();
     }
+    // Ask every thread to sync before waiting for any of them, so that they do
+    // it at the same time and a thread that is slow to yield holds up only
+    // itself.
     for (const ptr of Object.keys(PThread.pthreads)) {
       const pthread_ptr = Number(ptr);
       if (!PThread.finishedThreads.has(pthread_ptr)) {
-        __emscripten_proxy_dlsync(pthread_ptr);
+        __emscripten_proxy_dlsync_post(pthread_ptr);
       }
     }
+    __emscripten_proxy_dlsync_wait();
   },
 #endif // MAIN_MODULE
 

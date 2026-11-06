@@ -322,12 +322,6 @@ static void do_thread_sync(void* arg) {
   info->result = _emscripten_dlsync_self();
 }
 
-static void do_thread_sync_out(void* arg) {
-  dbg("do_thread_sync_out");
-  int* result = (int*)arg;
-  *result = _emscripten_dlsync_self();
-}
-
 // Called when a thread exists prior to being able to completely sync operation.
 // We can just ignore this case and report success.
 static void thread_sync_cancelled(void* arg) {
@@ -358,7 +352,7 @@ static void thread_sync_done(void* arg) {
 
 // Proxying queue specially for handling code loading (dlopen) events.
 // Initialized by the main thread on the first call to
-// `_emscripten_proxy_dlsync` below, and processed by background threads
+// `_emscripten_proxy_dlsync_post` below, and processed by background threads
 // that call `_emscripten_process_dlopen_queue` during futex_wait (i.e. whenever
 // they block).
 em_proxying_queue* _Atomic _dlopen_proxying_queue = NULL;
@@ -407,17 +401,49 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
   return rtn;
 }
 
-int _emscripten_proxy_dlsync(pthread_t target_thread) {
+// The number of threads that `_emscripten_proxy_dlsync_post` is waiting for.
+// Only the main runtime thread touches it: the callbacks below run on that
+// thread, from `_emscripten_proxy_dlsync_wait`, and it holds the dlopen write
+// lock throughout.
+static int dlsync_pending = 0;
+
+static void dlsync_post_run(void* arg) {
+  _emscripten_dlsync_self();
+}
+
+// Called once the thread has synced or, if it exited first, was canceled.
+static void dlsync_post_finished(void* arg) {
+  dlsync_pending--;
+}
+
+// Asks the target thread to run _emscripten_dlsync_self, without waiting for it.
+void _emscripten_proxy_dlsync_post(pthread_t target_thread) {
   assert(emscripten_is_main_runtime_thread());
   if (!_dlopen_proxying_queue) {
     _dlopen_proxying_queue = em_proxying_queue_create();
   }
-  int result;
-  if (!emscripten_proxy_sync(
-        _dlopen_proxying_queue, target_thread, do_thread_sync_out, &result)) {
-    return 0;
+  dlsync_pending++;
+  if (!emscripten_proxy_callback(_dlopen_proxying_queue,
+                                 target_thread,
+                                 dlsync_post_run,
+                                 dlsync_post_finished,
+                                 dlsync_post_finished,
+                                 NULL)) {
+    dlsync_pending--;
   }
-  return result;
+}
+
+// Blocks until every thread passed to `_emscripten_proxy_dlsync_post` has
+// synced or exited.  The completion callbacks arrive on the same queue, so it
+// has to be processed here.
+void _emscripten_proxy_dlsync_wait() {
+  assert(emscripten_is_main_runtime_thread());
+  while (dlsync_pending > 0) {
+    emscripten_proxy_execute_queue(_dlopen_proxying_queue);
+    if (dlsync_pending > 0) {
+      emscripten_futex_wait(&dlsync_pending, dlsync_pending, 1);
+    }
+  }
 }
 #endif // _REENTRANT
 
