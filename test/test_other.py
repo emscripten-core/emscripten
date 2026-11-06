@@ -5375,7 +5375,12 @@ int main(int argc, char **argv) {
 ''')
 
     output = self.do_runf('code.c')
-    self.assertContained('I am ' + utils.normalize_path(os.path.realpath(self.get_dir())) + '/code.js', utils.normalize_path(output))
+    m = re.search(r'^I am (.*)\.$', output, re.M)
+    self.assertIsNotNone(m, output)
+    # Resolve both paths with realpath: Node's process.argv[1] resolves symlinks
+    # (e.g. /var -> /private/var on macOS) without expanding Windows 8.3 short
+    # names (e.g. RUNNER~1 -> runneradmin), whereas Python's realpath resolves both.
+    self.assertPathsIdentical(os.path.realpath(self.in_dir('code.js')), os.path.realpath(m.group(1)))
 
   @parameterized({
     'no_exit_runtime': (True,),
