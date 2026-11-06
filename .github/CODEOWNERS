@@ -1,6 +1,8 @@
 # Proxying
 /system/include/emscripten/proxying.h @tlively
 /system/lib/pthread/proxying.c @tlively
+/system/lib/pthread/em_task_queue.h @tlively
+/system/lib/pthread/em_task_queue.c @tlively
 
 # Embind
 *embind* @brendandahl
