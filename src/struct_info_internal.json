@@ -4,8 +4,13 @@
     // ===========================================
     {
         "file": "pthread_impl.h",
+        "defines": [
+            "DT_EXITED",
+            "DT_EXITING"
+        ],
         "structs": {
             "pthread": [
+              "detach_state",
               "profilerBlock",
               "stack",
               "stack_size",

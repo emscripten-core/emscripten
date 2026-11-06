@@ -55,6 +55,8 @@
         "CSIZE": 48,
         "DT_CHR": 2,
         "DT_DIR": 4,
+        "DT_EXITED": 0,
+        "DT_EXITING": 1,
         "DT_LNK": 10,
         "DT_REG": 8,
         "E2BIG": 1,
@@ -1079,6 +1081,7 @@
         },
         "pthread": {
             "__size__": 120,
+            "detach_state": 28,
             "profilerBlock": 96,
             "stack": 48,
             "stack_size": 52,
