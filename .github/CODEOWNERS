@@ -12,3 +12,10 @@
 /system/include/emscripten/wire.h @brendandahl
 /system/lib/embind/ @brendandahl
 /test/embind/ @brendandahl
+
+# Emmalloc
+/system/lib/emmalloc.c @juj
+
+# Node sockfs and epoll
+/src/lib/libepoll.js @guybedford
+/src/lib/libsockfs_node.js @guybedford
