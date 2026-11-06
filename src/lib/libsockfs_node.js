@@ -274,26 +274,8 @@ var NodeSockFSLibrary = {
     ensureUdpHandle(sock) {
       if (sock.udp) return sock.udp;
       if (nodeSockHelpers.useDgram()) {
-        var o = sock.opts ?? {};
-        var v6 = sock.family === {{{ cDefs.AF_INET6 }}};
-        // The bind-time flags are constructor options here, applied by bindSync.
-        var socket = nodeSockHelpers.getDgram().createSocket({
-          type: v6 ? 'udp6' : 'udp4',
-          reuseAddr: !!o.reuseAddr,
-          reusePort: !!o.reusePort,
-          ipv6Only: v6 && !!o.ipv6Only,
-        });
-        socket.on('message', (msg, rinfo) => {
-          var data = new Uint8Array(msg.length);
-          data.set(msg);
-          nodeSockHelpers.udpDeliver(sock, rinfo.address, rinfo.port, data);
-        });
-        socket.on('error', (e) => {
-          sock.error = nodeSockHelpers.nodeErrToErrno(e);
-          SOCKFS.emit('error', [sock.stream.fd, sock.error, (e && e.message) || 'udp error']);
-        });
         sock.udpPublic = true;
-        return sock.udp = socket;
+        return sock.udp = nodeSockHelpers.createDgramSocket(sock);
       }
       var udp = nodeSockHelpers.udpWrap ??= process.binding('udp_wrap');
       var handle = new udp.UDP();
@@ -309,6 +291,52 @@ var NodeSockFSLibrary = {
         nodeSockHelpers.udpDeliver(sock, rinfo.address, rinfo.port, data);
       };
       return sock.udp = handle;
+    },
+    createDgramSocket(sock) {
+      var o = sock.opts ?? {};
+      var v6 = sock.family === {{{ cDefs.AF_INET6 }}};
+      // The bind-time flags are constructor options here, applied by bindSync.
+      var socket = nodeSockHelpers.getDgram().createSocket({
+        type: v6 ? 'udp6' : 'udp4',
+        reuseAddr: !!o.reuseAddr,
+        reusePort: !!o.reusePort,
+        ipv6Only: v6 && !!o.ipv6Only,
+      });
+      socket.on('message', (msg, rinfo) => {
+        var data = new Uint8Array(msg.length);
+        data.set(msg);
+        nodeSockHelpers.udpDeliver(sock, rinfo.address, rinfo.port, data);
+      });
+      socket.on('error', (e) => {
+        sock.error = nodeSockHelpers.nodeErrToErrno(e);
+        SOCKFS.emit('error', [sock.stream.fd, sock.error, (e && e.message) || 'udp error']);
+      });
+      return socket;
+    },
+    // node and libuv refuse to connect an already-connected socket, and on
+    // Linux the disconnect in between (connect(AF_UNSPEC)) releases a port the
+    // user did not bind as nonzero, so the next connect would auto-bind a new
+    // one. BSD kernels keep the port. When it was released, move to a fresh
+    // socket bound to the old port (and to the address the user bound, so an
+    // unlocked address stays unlocked).
+    reconnectDgram(sock, addr, port) {
+      var old = sock.udp;
+      old.disconnect();
+      sock.udpConnected = false;
+      if (old.address().port !== sock.sport) {
+        var udp = nodeSockHelpers.createDgramSocket(sock);
+        var wild = sock.family === {{{ cDefs.AF_INET6 }}} ? '::' : '0.0.0.0';
+        try {
+          udp.bindSync({ address: sock.udpBindAddr ?? wild, port: sock.sport });
+        } catch (e) {
+          udp.close();
+          throw e;
+        }
+        old.close();
+        sock.udp = udp;
+        nodeSockHelpers.applyMemberships(sock);
+      }
+      sock.udp.connectSync(port, addr);
     },
     // Begin receiving exactly once. A udp_wrap handle needs an explicit
     // recvStart after it is bound; a public dgram socket receives automatically
@@ -385,7 +413,8 @@ var NodeSockFSLibrary = {
     },
     // Multicast joins are tracked so that one made before bind() can be
     // applied once the socket is bound (libuv would otherwise auto-bind it to
-    // an ephemeral port). Returns an errno, or 0.
+    // an ephemeral port), and replayed on a socket swapped in by
+    // reconnectDgram. Returns an errno, or 0.
     setMembership(sock, add, group, iface) {
       var m = sock.memberships ??= new Map();
       var key = group + '%' + (iface ?? '');
@@ -606,6 +635,7 @@ var NodeSockFSLibrary = {
           catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
           sock.saddr = a.address;
           sock.sport = a.port;
+          sock.udpBindAddr = addr;
         } else {
           var o = sock.opts ?? {};
           var uc = nodeSockHelpers.udpWrap.constants;
@@ -662,13 +692,18 @@ var NodeSockFSLibrary = {
         if (sock.udpPublic) {
           // Real kernel connect: the OS filters non-peer datagrams and reports
           // async errors (e.g. ICMP ECONNREFUSED) on the socket. connectSync
-          // binds first if needed and throws synchronously; a re-connect just
-          // replaces the peer.
-          if (sock.udpConnected) udp.disconnect();
-          try { udp.connectSync(port, addr); }
-          catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
+          // binds first if needed and throws synchronously.
+          try {
+            if (sock.udpConnected) {
+              nodeSockHelpers.reconnectDgram(sock, addr, port);
+            } else {
+              udp.connectSync(port, addr);
+            }
+          } catch (e) {
+            throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e));
+          }
           sock.udpConnected = true;
-          var a = udp.address();
+          var a = sock.udp.address();
           sock.saddr = a.address;
           sock.sport = a.port;
           var wasBound = sock.udpBound;
