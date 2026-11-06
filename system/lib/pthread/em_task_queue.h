@@ -28,14 +28,14 @@ typedef struct em_task_queue {
   _Atomic notification_state notification;
   // Protects all modifications to mutable `em_task_queue` state.
   pthread_mutex_t mutex;
-  // The target thread for this em_task_queue. Immutable and accessible without
-  // acquiring the mutex.
-  pthread_t thread;
   // Recursion guard. Only accessed on the target thread, so there's no need to
   // hold the lock when accessing it. TODO: We disallow recursive processing
   // because that's what the old proxying API does, so it is safer to start with
   // the same behavior. Experiment with relaxing this restriction.
-  int processing;
+  bool processing;
+  // The target thread for this em_task_queue. Immutable and accessible without
+  // acquiring the mutex.
+  pthread_t thread;
   // Ring buffer of tasks of size `capacity`. New tasks are enqueued at
   // `tail` and dequeued at `head`.
   task* tasks;

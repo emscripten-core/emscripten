@@ -105,8 +105,8 @@ em_task_queue* em_task_queue_create(pthread_t thread) {
   }
   *queue = (em_task_queue){.notification = NOTIFICATION_NONE,
                            .mutex = PTHREAD_MUTEX_INITIALIZER,
+                           .processing = false,
                            .thread = thread,
-                           .processing = 0,
                            .tasks = tasks,
                            .capacity = EM_TASK_QUEUE_INITIAL_CAPACITY,
                            .head = 0,
@@ -168,7 +168,7 @@ static bool em_task_queue_grow(em_task_queue* queue) {
 
 void em_task_queue_execute(em_task_queue* queue) {
   DBG("em_task_queue_execute");
-  queue->processing = 1;
+  queue->processing = true;
   pthread_mutex_lock(&queue->mutex);
   while (!em_task_queue_is_empty(queue)) {
     task t = em_task_queue_dequeue(queue);
@@ -179,12 +179,12 @@ void em_task_queue_execute(em_task_queue* queue) {
     pthread_mutex_lock(&queue->mutex);
   }
   pthread_mutex_unlock(&queue->mutex);
-  queue->processing = 0;
+  queue->processing = false;
   DBG("done em_task_queue_execute");
 }
 
 void em_task_queue_cancel(em_task_queue* queue) {
-  queue->processing = 1;
+  queue->processing = true;
   pthread_mutex_lock(&queue->mutex);
   while (!em_task_queue_is_empty(queue)) {
     task t = em_task_queue_dequeue(queue);
@@ -195,7 +195,7 @@ void em_task_queue_cancel(em_task_queue* queue) {
     }
   }
   pthread_mutex_unlock(&queue->mutex);
-  queue->processing = 0;
+  queue->processing = false;
   // Any subsequent messages to this queue (for example if a pthread struct is
   // reused for a future thread, potentially on a different worker) will require
   // a new notification. Clearing the flag is safe here because in both the
