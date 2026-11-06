@@ -302,33 +302,30 @@ var EpollLibrary = {
   $epollPwait__internal: true,
   $epollPwait: (ep, ev, maxevents, timeout, sync) => {
 #if PTHREADS || ASYNCIFY
-    // Always resolve through a Promise here: when proxied from a worker the
-    // result is delivered by promise resolution, so a bare value would break
-    // the proxy (it has no `.then`). Block on the epoll's own readiness - each
-    // registration's persistent listener wakes ep.node on a leaf edge - and
-    // re-derive on wake, resolving the count or 0 after `timeout`.
+    // Re-derives readiness on each wake of ep.node and settles a SyncDeferred
+    // with the count, or with 0 once `timeout` passes.
     if (!sync) {
-      return new Promise((resolve) => {
-        var count = doEpollWait(ep, ev, maxevents);
-        if (count || !timeout) {
-          resolve(count);
-          return;
-        }
-        var done = false;
-        var reg = ep.node.addListener(() => {
-          if (done) return;
-          var c = doEpollWait(ep, ev, maxevents);
-          if (c) finish(c);
-        });
-        var timer = timeout > 0 ? setTimeout(() => finish(0), timeout) : undefined;
-        function finish(c) {
-          if (done) return;
-          done = true;
-          reg.listeners.delete(reg.entry);
-          if (timer) clearTimeout(timer);
-          resolve(c);
-        }
+      var deferred = new SyncDeferred();
+      var n = doEpollWait(ep, ev, maxevents);
+      if (n || !timeout) {
+        deferred.resolve(n);
+        return deferred;
+      }
+      var done = false;
+      var finish = (c) => {
+        if (done) return;
+        done = true;
+        reg.listeners.delete(reg.entry);
+        if (timer) clearTimeout(timer);
+        deferred.resolve(c);
+      };
+      var reg = ep.node.addListener(() => {
+        if (done) return;
+        var c = doEpollWait(ep, ev, maxevents);
+        if (c) finish(c);
       });
+      var timer = timeout > 0 ? setTimeout(() => finish(0), timeout) : undefined;
+      return deferred;
     }
 #endif
     var count = doEpollWait(ep, ev, maxevents);
