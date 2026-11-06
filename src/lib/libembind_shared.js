@@ -161,33 +161,6 @@ var LibraryEmbindShared = {
     return false;
   },
 
-  // Many of the JS invoker functions are generic and can be reused for multiple
-  // function bindings. This function needs to match createJsInvoker and create
-  // a unique signature for any inputs that will create different invoker
-  // function outputs.
-  $createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync) {
-    const signature = [
-      isClassMethodFunc ? 't' : 'f',
-      returns ? 't' : 'f',
-      isAsync ? 't' : 'f'
-    ];
-    for (let i = isClassMethodFunc ? 1 : 2; i < argTypes.length; ++i) {
-      const arg = argTypes[i];
-      let destructorSig = '';
-      if (arg.argStackAlloc) {
-        // Stack-allocated trivial value type: needs no destructor, but the
-        // invoker must bracket the call in a stack frame.
-        destructorSig = 's';
-      } else if (arg.usesDestructor) {
-        destructorSig = 'd';
-      } else {
-        destructorSig = 'n';
-      }
-      signature.push(destructorSig);
-    }
-    return signature.join('');
-  },
-
   $checkArgCount(numArgs, minArgs, maxArgs, humanName, throwBindingError) {
     if (numArgs < minArgs || numArgs > maxArgs) {
       var argCountMessage = minArgs == maxArgs ? minArgs : `${minArgs} to ${maxArgs}`;
@@ -211,30 +184,15 @@ var LibraryEmbindShared = {
     return requiredArgCount;
   },
 
-  $createJsInvoker__deps: [
-#if ASSERTIONS
-    '$checkArgCount',
-#endif
-  ],
-  $createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync) {
-    var needsDestructorStack = usesDestructorStack(argTypes);
-    var argsNeedStack = argsUseStackAlloc(argTypes);
-#if ASYNCIFY == 1
-    // Any call may suspend under Asyncify, and destructors run deferred in
-    // onDone, after a stack frame would already be gone.
-    var useStackFrame = false;
-#else
-    // JSPI-async invokers resume after the frame would be gone, so they
-    // defer through the destructors array instead.
-    var useStackFrame = argsNeedStack && !isAsync && !needsDestructorStack;
-#endif
-    if (argsNeedStack && !useStackFrame) {
-      // A stack-allocating type must never see a null destructors argument
-      // without a bracketing frame; route it through the destructors array
-      // (it heap-allocates on that path).
-      needsDestructorStack = true;
-    }
-    var argCount = argTypes.length - 2;
+  $createJsInvoker(signature) {
+    var isClassMethodFunc = signature[0] === 't';
+    var returns = signature[1] === 't';
+    var isAsync = signature[2] === 't';
+    var cleanupMode = signature[3];
+    var argCount = Number(signature.slice(4));
+    var needsDestructorStack = cleanupMode === 'd';
+    var useStackFrame = cleanupMode === 's';
+
     var argsList = [];
     var argsListWired = ['fn'];
     if (isClassMethodFunc) {

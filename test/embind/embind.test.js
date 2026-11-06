@@ -146,7 +146,7 @@ module({
             });
             assert.equal('Cannot pass "true" as a Derived*', e.message);
 
-            if (cm.getCompilerSetting('STRICT_JS') && !cm.getCompilerSetting('DYNAMIC_EXECUTION')) {
+            if (cm.getCompilerSetting('STRICT_JS')) {
               var e = assert.throws(TypeError, function() {
                   cm.Derived.prototype.setMember.call(null, "foo");
               });

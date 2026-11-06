@@ -8,9 +8,7 @@
 var LibraryEmbind = {
   $UnboundTypeError: class extends Error {},
   $PureVirtualError: class extends Error {},
-#if EMBIND_AOT
-  $InvokerFunctions: '<<< EMBIND_AOT_INVOKERS >>>',
-#endif
+  $InvokerFunctions: `{${EMBIND_INVOKERS.map((sig) => `'${sig}': ${LibraryEmbindShared.$createJsInvoker(sig)},`).join('\n')}}`,
   // If register_type is used, emval will be registered multiple times for
   // different type ids, but only a single type object is needed on the JS side
   // for all of them. Store the type for reuse.
@@ -630,69 +628,6 @@ var LibraryEmbind = {
 #if ASSERTIONS
     var minArgs = getRequiredArgCount(argTypes);
 #endif
-#if DYNAMIC_EXECUTION == 0 && !EMBIND_AOT
-    var invokerFuncArgs = [];
-    var destructors = [];
-    var invokerFn = function(...args) {
-#if ASSERTIONS
-      checkArgCount(args.length, minArgs, expectedArgCount, humanName, throwBindingError);
-#endif
-#if EMSCRIPTEN_TRACING
-      Module.emscripten_trace_enter_context(`embind::${humanName}`);
-#endif
-      destructors.length = 0;
-      var sp;
-      if (useStackFrame) {
-        sp = stackSave();
-      }
-      invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
-      invokerFuncArgs[0] = cppTargetFunc;
-      if (isClassMethodFunc) {
-        invokerFuncArgs[1] = argTypes[1].toWireType(destructors, this);
-      }
-      for (var i = 0; i < expectedArgCount; ++i) {
-        var argType = argTypes[i + 2];
-        // Stack-allocating types take the stack path only under a frame; a
-        // null destructors argument is that contract.
-        invokerFuncArgs.push(argType.toWireType(useStackFrame && argType.argStackAlloc ? null : destructors, args[i]));
-      }
-
-      var rv = cppInvokerFunc(...invokerFuncArgs);
-      if (useStackFrame) {
-        // The callee has consumed the stack-allocated argument temporaries.
-        // As everywhere else in emscripten, the frame is not restored on an
-        // exception path; a JS caller that catches and continues must
-        // stackSave/stackRestore around the call (see the exceptions docs).
-        stackRestore(sp);
-      }
-
-      function onDone(rv) {
-        if (needsDestructorStack) {
-          runDestructors(destructors);
-        }
-
-  #if EMSCRIPTEN_TRACING
-        Module.emscripten_trace_exit_context();
-  #endif
-
-        if (returns) {
-          return argTypes[0].fromWireType(rv);
-        }
-      }
-
-#if ASYNCIFY == 1
-      if (Asyncify.currData) {
-        return Asyncify.whenDone().then(onDone);
-      }
-#elif ASYNCIFY == 2
-      if (isAsync) {
-        return rv.then(onDone);
-      }
-#endif
-
-      return onDone(rv);
-    };
-#else
     // Build the arguments that will be passed into the closure around the invoker
     // function.
     var retType = argTypes[0];
@@ -716,15 +651,18 @@ var LibraryEmbind = {
     closureArgs.push(checkArgCount, minArgs, expectedArgCount);
 #endif
 
-#if EMBIND_AOT
-    var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
-    var invokerFn = InvokerFunctions[signature](...closureArgs);
-#else
-
-    let invokerFactory = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
+    var cleanupMode = useStackFrame ? 's' : (needsDestructorStack ? 'd' : 'n');
+    var signature = `${isClassMethodFunc ? 't' : 'f'}${returns ? 't' : 'f'}${isAsync ? 't' : 'f'}${cleanupMode}${expectedArgCount}`;
+    var invokerFactory = InvokerFunctions[signature];
+#if MAIN_MODULE && DYNAMIC_EXECUTION
+    if (!invokerFactory) {
+      invokerFactory = InvokerFunctions[signature] = createJsInvoker(signature);
+    }
+#endif
+#if ASSERTIONS
+    assert(invokerFactory, `Missing embind invoker for signature: ${signature}`);
+#endif
     var invokerFn = invokerFactory(...closureArgs);
-#endif
-#endif
     return createNamedFunction(humanName, invokerFn);
   },
 
