@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-7.0.0 (in development)
+7.0.1 (in development)
 ----------------------
+
+7.0.0 - 11/06/26
+----------------
 - C preprocessor defines from `struct_info.json` (previously accessed via
   `{{{ cDefs.FOO }}}`) are now exposed as `const` JavaScript library symbols
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
