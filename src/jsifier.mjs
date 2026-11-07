@@ -784,6 +784,7 @@ function(${args}) {
       function addImplicitDeps(snippet) {
         for (const dep of calcImplicitDeps(snippet)) {
           if (dep === symbol) continue;
+          if (symbolsOnly && LibraryManager.library[dep + '__const']) continue;
           if (explicitDeps.has(dep)) {
             if (!symbolsOnly && (STRICT || !isUserSymbol) && LibraryManager.library[symbol] !== dep) {
               warn(`${symbol}: redundant __deps entry: ${dep}`);
