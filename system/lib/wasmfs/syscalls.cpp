@@ -13,6 +13,7 @@
 #include <emscripten/html5.h>
 #include <emscripten/syscalls.h>
 #include <errno.h>
+#include <math.h>
 #include <mutex>
 #include <poll.h>
 #include <stdarg.h>

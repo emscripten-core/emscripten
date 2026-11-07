@@ -11,6 +11,7 @@
 #include "file.h"
 #include "file_table.h"
 #include <assert.h>
+#include <atomic>
 #include <emscripten/html5.h>
 #include <mutex>
 #include <sys/stat.h>

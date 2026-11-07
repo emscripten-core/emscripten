@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <emscripten/bind.h>
 #include <emscripten/em_asm.h>
 #include <emscripten/heap.h>

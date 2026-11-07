@@ -256,7 +256,7 @@ LibraryJSEventLoop = {
         var expected = MainLoop.expectedBlockers ?? 0;
         if (remaining) {
           if (remaining < expected) {
-            Module['setStatus'](`{message} ({expected - remaining}/{expected})`);
+            Module['setStatus'](`${message} (${expected - remaining}/${expected})`);
           } else {
             Module['setStatus'](message);
           }
@@ -340,18 +340,18 @@ LibraryJSEventLoop = {
       runtimeKeepalivePush();
     }
 #endif
-    if (mode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
+    if (mode == EM_TIMING_SETTIMEOUT) {
       MainLoop.scheduler = function MainLoop_scheduler_setTimeout() {
         var timeUntilNextTick = Math.max(0, MainLoop.tickStartTime + value - _emscripten_get_now())|0;
         setTimeout(MainLoop.runner, timeUntilNextTick); // doing this each time means that on exception, we stop
       };
-    } else if (mode == {{{ cDefs.EM_TIMING_RAF }}}) {
+    } else if (mode == EM_TIMING_RAF) {
       MainLoop.scheduler = function MainLoop_scheduler_rAF() {
         MainLoop.requestAnimationFrame(MainLoop.runner);
       };
     } else {
 #if ASSERTIONS
-      assert(mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}});
+      assert(mode == EM_TIMING_SETIMMEDIATE);
 #endif
       if (!MainLoop.setImmediate) {
         if (globalThis.scheduler) {
@@ -467,11 +467,11 @@ LibraryJSEventLoop = {
 
       // Implement very basic swap interval control
       MainLoop.currentFrameNumber = MainLoop.currentFrameNumber + 1 | 0;
-      if (MainLoop.timingMode == {{{ cDefs.EM_TIMING_RAF }}} && MainLoop.timingValue > 1 && MainLoop.currentFrameNumber % MainLoop.timingValue != 0) {
+      if (MainLoop.timingMode == EM_TIMING_RAF && MainLoop.timingValue > 1 && MainLoop.currentFrameNumber % MainLoop.timingValue != 0) {
         // Not the scheduled time to render this frame - skip.
         MainLoop.scheduler();
         return;
-      } else if (MainLoop.timingMode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
+      } else if (MainLoop.timingMode == EM_TIMING_SETTIMEOUT) {
         MainLoop.tickStartTime = _emscripten_get_now();
 #if ASSERTIONS
         if (Module['ctx']) {
@@ -490,10 +490,10 @@ LibraryJSEventLoop = {
 
     if (!noSetTiming) {
       if (fps > 0) {
-        _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 1000.0 / fps);
+        _emscripten_set_main_loop_timing(EM_TIMING_SETTIMEOUT, 1000.0 / fps);
       } else {
         // Do rAF by rendering each frame (no decimating)
-        _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, 1);
+        _emscripten_set_main_loop_timing(EM_TIMING_RAF, 1);
       }
 
       MainLoop.scheduler();

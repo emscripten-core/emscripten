@@ -480,6 +480,52 @@ var onPreRuns = [];
 
 /** @type {!Uint32Array} */ var HEAPU32;
 
+const AT_FDCWD = -100;
+
+const ENODEV = 43;
+
+const ENOENT = 44;
+
+const EACCES = 2;
+
+const EAGAIN = 6;
+
+const EBADF = 8;
+
+const EBUSY = 10;
+
+const EEXIST = 20;
+
+const EFBIG = 22;
+
+const EINVAL = 28;
+
+const EIO = 29;
+
+const EISDIR = 31;
+
+const ELOOP = 32;
+
+const EMFILE = 33;
+
+const EMLINK = 34;
+
+const ENOMEM = 48;
+
+const ENOSYS = 52;
+
+const ENOTDIR = 54;
+
+const ENOTEMPTY = 55;
+
+const ENOTTY = 59;
+
+const EPERM = 63;
+
+const ESPIPE = 70;
+
+const EXDEV = 75;
+
 const FS_MAX_OPEN_FDS = 4096;
 
 var FS_createDataFile = (...args) => FS.createDataFile(...args);
@@ -743,22 +789,40 @@ var FS_fileDataToTypedArray = data => {
   return data;
 };
 
+const S_IRUGO = 292;
+
+const S_IWUGO = 146;
+
+const S_IXUGO = 73;
+
 var FS_getMode = (canRead, canWrite) => {
   var mode = 0;
-  if (canRead) mode |= 292 | 73;
-  if (canWrite) mode |= 146;
+  if (canRead) mode |= S_IRUGO | S_IXUGO;
+  if (canWrite) mode |= S_IWUGO;
   return mode;
 };
+
+const O_APPEND = 1024;
+
+const O_CREAT = 64;
+
+const O_RDONLY = 0;
+
+const O_RDWR = 2;
+
+const O_TRUNC = 512;
+
+const O_WRONLY = 1;
 
 var FS_modeStringToFlags = str => {
   if (typeof str !== "string") return str;
   var flagModes = {
-    "r": 0,
-    "r+": 2,
-    "w": 512 | 64 | 1,
-    "w+": 512 | 64 | 2,
-    "a": 1024 | 64 | 1,
-    "a+": 1024 | 64 | 2
+    "r": O_RDONLY,
+    "r+": O_RDWR,
+    "w": O_TRUNC | O_CREAT | O_WRONLY,
+    "w+": O_TRUNC | O_CREAT | O_RDWR,
+    "a": O_APPEND | O_CREAT | O_WRONLY,
+    "a+": O_APPEND | O_CREAT | O_RDWR
   };
   var flags = flagModes[str];
   if (typeof flags === "undefined") {
@@ -769,6 +833,16 @@ var FS_modeStringToFlags = str => {
 
 /** @type {!Int8Array} */ var HEAP8;
 
+const MAP_PRIVATE = 2;
+
+const SEEK_CUR = 1;
+
+const SEEK_END = 2;
+
+const S_IFDIR = 16384;
+
+const S_IFLNK = 40960;
+
 var mmapAlloc = size => {
   abort();
 };
@@ -776,12 +850,12 @@ var mmapAlloc = size => {
 var MEMFS = {
   ops_table: null,
   mount(mount) {
-    return MEMFS.createNode(null, "/", 16895, 0);
+    return MEMFS.createNode(null, "/", S_IFDIR | 511, 0);
   },
   createNode(parent, name, mode, dev = undefined) {
     if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
       // not supported
-      throw new FS.ErrnoError(63);
+      throw new FS.ErrnoError(EPERM);
     }
     MEMFS.ops_table ||= {
       dir: {
@@ -933,7 +1007,7 @@ var MEMFS = {
       // This error may happen quite a bit. To avoid overhead we reuse it (and
       // suffer a lack of stack info).
       if (!MEMFS.doesNotExistError) {
-        MEMFS.doesNotExistError = new FS.ErrnoError(44);
+        MEMFS.doesNotExistError = new FS.ErrnoError(ENOENT);
         /** @suppress {checkTypes} */ MEMFS.doesNotExistError.stack = "<generic error, no stack>";
       }
       throw MEMFS.doesNotExistError;
@@ -949,7 +1023,7 @@ var MEMFS = {
       if (new_node && FS.isDir(old_node.mode)) {
         // if we're overwriting a directory at new_name, make sure it's empty.
         for (var i in new_node.contents) {
-          throw new FS.ErrnoError(55);
+          throw new FS.ErrnoError(ENOTEMPTY);
         }
       }
       // do the internal rewiring
@@ -965,7 +1039,7 @@ var MEMFS = {
     rmdir(parent, name) {
       var node = FS.lookupNode(parent, name);
       for (var i in node.contents) {
-        throw new FS.ErrnoError(55);
+        throw new FS.ErrnoError(ENOTEMPTY);
       }
       delete parent.contents[name];
       parent.ctime = parent.mtime = Date.now();
@@ -974,13 +1048,13 @@ var MEMFS = {
       return [ ".", "..", ...Object.keys(node.contents) ];
     },
     symlink(parent, newname, oldpath) {
-      var node = MEMFS.createNode(parent, newname, 511 | 40960, 0);
+      var node = MEMFS.createNode(parent, newname, 511 | S_IFLNK, 0);
       node.link = oldpath;
       return node;
     },
     readlink(node) {
       if (!FS.isLink(node.mode)) {
-        throw new FS.ErrnoError(28);
+        throw new FS.ErrnoError(EINVAL);
       }
       return node.link;
     }
@@ -1014,27 +1088,27 @@ var MEMFS = {
     },
     llseek(stream, offset, whence) {
       var position = offset;
-      if (whence === 1) {
+      if (whence === SEEK_CUR) {
         position += stream.position;
-      } else if (whence === 2) {
+      } else if (whence === SEEK_END) {
         if (FS.isFile(stream.node.mode)) {
           position += stream.node.usedBytes;
         }
       }
       if (position < 0) {
-        throw new FS.ErrnoError(28);
+        throw new FS.ErrnoError(EINVAL);
       }
       return position;
     },
     mmap(stream, length, position, prot, flags) {
       if (!FS.isFile(stream.node.mode)) {
-        throw new FS.ErrnoError(43);
+        throw new FS.ErrnoError(ENODEV);
       }
       var ptr;
       var allocated;
       var contents = stream.node.contents;
       // Only make a new copy when MAP_PRIVATE is specified.
-      if (!(flags & 2) && contents.buffer === HEAP8.buffer) {
+      if (!(flags & MAP_PRIVATE) && contents.buffer === HEAP8.buffer) {
         // We can't emulate MAP_SHARED when the file is not backed by the
         // buffer we're mapping to (e.g. the HEAP buffer).
         allocated = false;
@@ -1043,7 +1117,7 @@ var MEMFS = {
         allocated = true;
         ptr = mmapAlloc(length);
         if (!ptr) {
-          throw new FS.ErrnoError(48);
+          throw new FS.ErrnoError(ENOMEM);
         }
         if (contents) {
           // Try to avoid unnecessary slices.
@@ -1051,7 +1125,7 @@ var MEMFS = {
             if (contents.subarray) {
               contents = contents.subarray(position, position + length);
             } else {
-              contents = Array.prototype.slice.call(contents, position, position + length);
+              contents = contents.slice(position, position + length);
             }
           }
           HEAP8.set(contents, ptr);
@@ -1069,6 +1143,58 @@ var MEMFS = {
     }
   }
 };
+
+const O_ACCMODE = 2097155;
+
+const O_DIRECTORY = 65536;
+
+const O_EXCL = 128;
+
+const O_NOFOLLOW = 131072;
+
+const POLLNVAL = 32;
+
+const PROT_WRITE = 2;
+
+const SEEK_SET = 0;
+
+const SYMLOOP_MAX = 40;
+
+const S_IALLUGO = 4095;
+
+const S_IFBLK = 24576;
+
+const S_IFCHR = 8192;
+
+const S_IFIFO = 4096;
+
+const S_IFMT = 61440;
+
+const S_IFREG = 32768;
+
+const S_IFSOCK = 49152;
+
+const S_IRWXUGO = 511;
+
+const S_ISVTX = 512;
+
+const B38400 = 15;
+
+const CREAD = 128;
+
+const CSIZE = 48;
+
+const ECHO = 8;
+
+const ECHOCTL = 512;
+
+const ECHOE = 16;
+
+const ECHOK = 32;
+
+const ECHOKE = 2048;
+
+const ENXIO = 60;
 
 var FS_stdin_getChar_buffer = [];
 
@@ -1106,6 +1232,24 @@ var FS_stdin_getChar = () => {
   }
   return FS_stdin_getChar_buffer.shift();
 };
+
+const ICANON = 2;
+
+const ICRNL = 256;
+
+const IEXTEN = 32768;
+
+const IMAXBEL = 8192;
+
+const ISIG = 1;
+
+const IUTF8 = 16384;
+
+const IXON = 1024;
+
+const ONLCR = 4;
+
+const OPOST = 1;
 
 var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
@@ -1189,7 +1333,7 @@ var TTY = {
     open(stream) {
       var tty = TTY.ttys[stream.node.rdev];
       if (!tty) {
-        throw new FS.ErrnoError(43);
+        throw new FS.ErrnoError(ENODEV);
       }
       stream.tty = tty;
       stream.seekable = false;
@@ -1203,7 +1347,7 @@ var TTY = {
     },
     read(stream, buffer, offset, length, pos) {
       if (!stream.tty || !stream.tty.ops.get_char) {
-        throw new FS.ErrnoError(60);
+        throw new FS.ErrnoError(ENXIO);
       }
       var bytesRead = 0;
       for (var i = 0; i < length; i++) {
@@ -1211,10 +1355,10 @@ var TTY = {
         try {
           result = stream.tty.ops.get_char(stream.tty);
         } catch (e) {
-          throw new FS.ErrnoError(29);
+          throw new FS.ErrnoError(EIO);
         }
         if (result === undefined && !bytesRead) {
-          throw new FS.ErrnoError(6);
+          throw new FS.ErrnoError(EAGAIN);
         }
         if (result === null || result === undefined) break;
         bytesRead++;
@@ -1230,14 +1374,14 @@ var TTY = {
     },
     write(stream, buffer, offset, length, pos) {
       if (!stream.tty || !stream.tty.ops.put_char) {
-        throw new FS.ErrnoError(60);
+        throw new FS.ErrnoError(ENXIO);
       }
       try {
         for (var i = 0; i < length; i++) {
           stream.tty.ops.put_char(stream.tty, buffer[offset + i]);
         }
       } catch (e) {
-        throw new FS.ErrnoError(29);
+        throw new FS.ErrnoError(EIO);
       }
       if (length) {
         stream.node.mtime = stream.node.ctime = Date.now();
@@ -1266,10 +1410,10 @@ var TTY = {
     ioctl_tcgets(tty) {
       // typical setting
       return {
-        c_iflag: 25856,
-        c_oflag: 5,
-        c_cflag: 191,
-        c_lflag: 35387,
+        c_iflag: ICRNL | IXON | IMAXBEL | IUTF8,
+        c_oflag: OPOST | ONLCR,
+        c_cflag: B38400 | CSIZE | CREAD,
+        c_lflag: ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN,
         c_cc: [ 3, 28, 127, 21, 4, 0, 1, 0, 17, 19, 26, 0, 18, 15, 23, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
       };
     },
@@ -1342,13 +1486,13 @@ var FS = {
       this.node = val;
     }
     get isRead() {
-      return (this.flags & 2097155) !== 1;
+      return (this.flags & O_ACCMODE) !== O_WRONLY;
     }
     get isWrite() {
-      return (this.flags & 2097155) !== 0;
+      return (this.flags & O_ACCMODE) !== O_RDONLY;
     }
     get isAppend() {
-      return (this.flags & 1024);
+      return (this.flags & O_APPEND);
     }
     get flags() {
       return this.shared.flags;
@@ -1366,8 +1510,8 @@ var FS = {
   FSNode: class {
     node_ops={};
     stream_ops={};
-    readMode=292 | 73;
-    writeMode=146;
+    readMode=S_IRUGO | S_IXUGO;
+    writeMode=S_IWUGO;
     mounted=null;
     constructor(parent, name, mode, rdev) {
       if (!parent) {
@@ -1449,14 +1593,14 @@ var FS = {
   },
   lookupPath(path, opts = {}) {
     if (!path) {
-      throw new FS.ErrnoError(44);
+      throw new FS.ErrnoError(ENOENT);
     }
     opts.follow_mount ??= true;
     if (!PATH.isAbs(path)) {
       path = FS.cwd() + "/" + path;
     }
     // limit max consecutive symlinks to SYMLOOP_MAX.
-    linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
+    linkloop: for (var nlinks = 0; nlinks < SYMLOOP_MAX; nlinks++) {
       // split the absolute path
       var parts = path.split("/").filter(p => !!p);
       // start at the root
@@ -1491,7 +1635,7 @@ var FS = {
           // if noent_okay is true, suppress a ENOENT in the last component
           // and return an object with an undefined node. This is needed for
           // resolving symlinks in the path when creating a file.
-          if ((e?.errno === 44) && islast && opts.noent_okay) {
+          if ((e?.errno === ENOENT) && islast && opts.noent_okay) {
             return {
               path: current_path
             };
@@ -1506,7 +1650,7 @@ var FS = {
         // setting opts.follow = true will override this behavior.
         if (FS.isLink(current.mode) && (!islast || opts.follow)) {
           if (!current.node_ops.readlink) {
-            throw new FS.ErrnoError(52);
+            throw new FS.ErrnoError(ENOSYS);
           }
           var link = current.node_ops.readlink(current);
           if (!PATH.isAbs(link)) {
@@ -1521,7 +1665,7 @@ var FS = {
         node: current
       };
     }
-    throw new FS.ErrnoError(32);
+    throw new FS.ErrnoError(ELOOP);
   },
   getPath(node) {
     var path;
@@ -1592,29 +1736,29 @@ var FS = {
     return !!node.mounted;
   },
   isFile(mode) {
-    return (mode & 61440) === 32768;
+    return (mode & S_IFMT) === S_IFREG;
   },
   isDir(mode) {
-    return (mode & 61440) === 16384;
+    return (mode & S_IFMT) === S_IFDIR;
   },
   isLink(mode) {
-    return (mode & 61440) === 40960;
+    return (mode & S_IFMT) === S_IFLNK;
   },
   isChrdev(mode) {
-    return (mode & 61440) === 8192;
+    return (mode & S_IFMT) === S_IFCHR;
   },
   isBlkdev(mode) {
-    return (mode & 61440) === 24576;
+    return (mode & S_IFMT) === S_IFBLK;
   },
   isFIFO(mode) {
-    return (mode & 61440) === 4096;
+    return (mode & S_IFMT) === S_IFIFO;
   },
   isSocket(mode) {
-    return (mode & 49152) === 49152;
+    return (mode & S_IFSOCK) === S_IFSOCK;
   },
   flagsToPermissionString(flag) {
     var perms = [ "r", "w", "rw" ][flag & 3];
-    if ((flag & 512)) {
+    if ((flag & O_TRUNC)) {
       perms += "w";
     }
     return perms;
@@ -1624,31 +1768,31 @@ var FS = {
       return 0;
     }
     // return 0 if any user, group or owner bits are set.
-    if (perms.includes("r") && !(node.mode & 292)) {
-      return 2;
+    if (perms.includes("r") && !(node.mode & S_IRUGO)) {
+      return EACCES;
     }
-    if (perms.includes("w") && !(node.mode & 146)) {
-      return 2;
+    if (perms.includes("w") && !(node.mode & S_IWUGO)) {
+      return EACCES;
     }
-    if (perms.includes("x") && !(node.mode & 73)) {
-      return 2;
+    if (perms.includes("x") && !(node.mode & S_IXUGO)) {
+      return EACCES;
     }
     return 0;
   },
   mayLookup(dir) {
-    if (!FS.isDir(dir.mode)) return 54;
+    if (!FS.isDir(dir.mode)) return ENOTDIR;
     var errCode = FS.nodePermissions(dir, "x");
     if (errCode) return errCode;
-    if (!dir.node_ops.lookup) return 2;
+    if (!dir.node_ops.lookup) return EACCES;
     return 0;
   },
   mayCreate(dir, name) {
     if (!FS.isDir(dir.mode)) {
-      return 54;
+      return ENOTDIR;
     }
     try {
       var node = FS.lookupNode(dir, name);
-      return 20;
+      return EEXIST;
     } catch (e) {}
     return FS.nodePermissions(dir, "wx");
   },
@@ -1665,29 +1809,29 @@ var FS = {
     }
     if (isdir) {
       if (!FS.isDir(node.mode)) {
-        return 54;
+        return ENOTDIR;
       }
       if (FS.isRoot(node) || FS.getPath(node) === FS.cwd()) {
-        return 10;
+        return EBUSY;
       }
     } else if (FS.isDir(node.mode)) {
-      return 31;
+      return EISDIR;
     }
     return 0;
   },
   mayOpen(node, flags) {
     if (!node) {
-      return 44;
+      return ENOENT;
     }
     if (FS.isLink(node.mode)) {
-      return 32;
+      return ELOOP;
     }
     var mode = FS.flagsToPermissionString(flags);
     if (FS.isDir(node.mode)) {
       // opening for write
       // TODO: check for O_SEARCH? (== search for dir only)
-      if (mode !== "r" || (flags & (512 | 64))) {
-        return 31;
+      if (mode !== "r" || (flags & (O_TRUNC | O_CREAT))) {
+        return EISDIR;
       }
     }
     return FS.nodePermissions(node, mode);
@@ -1704,12 +1848,12 @@ var FS = {
         return fd;
       }
     }
-    throw new FS.ErrnoError(33);
+    throw new FS.ErrnoError(EMFILE);
   },
   getStreamChecked(fd) {
     var stream = FS.getStream(fd);
     if (!stream) {
-      throw new FS.ErrnoError(8);
+      throw new FS.ErrnoError(EBADF);
     }
     return stream;
   },
@@ -1736,12 +1880,12 @@ var FS = {
     var setattr = stream?.stream_ops.setattr;
     var arg = setattr ? stream : node;
     setattr ??= node.node_ops.setattr;
-    FS.checkOpExists(setattr, 63);
+    FS.checkOpExists(setattr, EPERM);
     try {
       setattr(arg, attr);
     } catch (e) {
       if (e instanceof RangeError) {
-        throw new FS.ErrnoError(22);
+        throw new FS.ErrnoError(EFBIG);
       }
       throw e;
     }
@@ -1755,7 +1899,7 @@ var FS = {
       stream.stream_ops.open?.(stream);
     },
     llseek() {
-      throw new FS.ErrnoError(70);
+      throw new FS.ErrnoError(ESPIPE);
     }
   },
   major: dev => ((dev) >> 8),
@@ -1818,7 +1962,7 @@ var FS = {
     var pseudo = !mountpoint;
     var node;
     if (root && FS.root) {
-      throw new FS.ErrnoError(10);
+      throw new FS.ErrnoError(EBUSY);
     } else if (!root && !pseudo) {
       var lookup = FS.lookupPath(mountpoint, {
         follow_mount: false
@@ -1827,10 +1971,10 @@ var FS = {
       // use the absolute path
       node = lookup.node;
       if (FS.isMountpoint(node)) {
-        throw new FS.ErrnoError(10);
+        throw new FS.ErrnoError(EBUSY);
       }
       if (!FS.isDir(node.mode)) {
-        throw new FS.ErrnoError(54);
+        throw new FS.ErrnoError(ENOTDIR);
       }
     }
     var mount = {
@@ -1860,7 +2004,7 @@ var FS = {
       follow_mount: false
     });
     if (!FS.isMountpoint(lookup.node)) {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
     // destroy the nodes for this mount, and all its child mounts
     var node = lookup.node;
@@ -1891,17 +2035,17 @@ var FS = {
     var parent = lookup.node;
     var name = PATH.basename(path);
     if (!name) {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
     if (name === "." || name === "..") {
-      throw new FS.ErrnoError(20);
+      throw new FS.ErrnoError(EEXIST);
     }
     var errCode = FS.mayCreate(parent, name);
     if (errCode) {
       throw new FS.ErrnoError(errCode);
     }
     if (!parent.node_ops.mknod) {
-      throw new FS.ErrnoError(63);
+      throw new FS.ErrnoError(EPERM);
     }
     return parent.node_ops.mknod(parent, name, mode, dev);
   },
@@ -1938,13 +2082,13 @@ var FS = {
     return rtn;
   },
   create(path, mode = 438) {
-    mode &= 4095;
-    mode |= 32768;
+    mode &= S_IALLUGO;
+    mode |= S_IFREG;
     return FS.mknod(path, mode, 0);
   },
   mkdir(path, mode = 511) {
-    mode &= 511 | 512;
-    mode |= 16384;
+    mode &= S_IRWXUGO | S_ISVTX;
+    mode |= S_IFDIR;
     return FS.mknod(path, mode, 0);
   },
   mkdirTree(path, mode = 511) {
@@ -1957,7 +2101,7 @@ var FS = {
       try {
         FS.mkdir(d, mode);
       } catch (e) {
-        if (e.errno != 20) throw e;
+        if (e.errno != EEXIST) throw e;
       }
     }
   },
@@ -1966,19 +2110,19 @@ var FS = {
       dev = mode;
       mode = 438;
     }
-    mode |= 8192;
+    mode |= S_IFCHR;
     return FS.mknod(path, mode, dev);
   },
   symlink(oldpath, newpath) {
     if (!PATH_FS.resolve(oldpath)) {
-      throw new FS.ErrnoError(44);
+      throw new FS.ErrnoError(ENOENT);
     }
     var lookup = FS.lookupPath(newpath, {
       parent: true
     });
     var parent = lookup.node;
     if (!parent) {
-      throw new FS.ErrnoError(44);
+      throw new FS.ErrnoError(ENOENT);
     }
     var newname = PATH.basename(newpath);
     var errCode = FS.mayCreate(parent, newname);
@@ -1986,7 +2130,7 @@ var FS = {
       throw new FS.ErrnoError(errCode);
     }
     if (!parent.node_ops.symlink) {
-      throw new FS.ErrnoError(63);
+      throw new FS.ErrnoError(EPERM);
     }
     return parent.node_ops.symlink(parent, newname, oldpath);
   },
@@ -1996,7 +2140,7 @@ var FS = {
     });
     var parent = lookup.node;
     if (!parent) {
-      throw new FS.ErrnoError(44);
+      throw new FS.ErrnoError(ENOENT);
     }
     var newname = PATH.basename(newpath);
     var errCode = FS.mayCreate(parent, newname);
@@ -2007,7 +2151,7 @@ var FS = {
     // `link` node op (e.g. NODERAWFS backed by the host). NODEFS omits it:
     // a host hardlink cannot be confined to the mount root.
     if (!parent.node_ops.link) {
-      throw new FS.ErrnoError(34);
+      throw new FS.ErrnoError(EMLINK);
     }
     return parent.node_ops.link(parent, newname, oldpath, flags);
   },
@@ -2027,22 +2171,22 @@ var FS = {
       parent: true
     });
     new_dir = lookup.node;
-    if (!old_dir || !new_dir) throw new FS.ErrnoError(44);
+    if (!old_dir || !new_dir) throw new FS.ErrnoError(ENOENT);
     // need to be part of the same mount
     if (old_dir.mount !== new_dir.mount) {
-      throw new FS.ErrnoError(75);
+      throw new FS.ErrnoError(EXDEV);
     }
     // source must exist
     var old_node = FS.lookupNode(old_dir, old_name);
     // old path should not be an ancestor of the new path
     var relative = PATH_FS.relative(old_path, new_dirname);
     if (relative.charAt(0) !== ".") {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
     // new path should not be an ancestor of the old path
     relative = PATH_FS.relative(new_path, old_dirname);
     if (relative.charAt(0) !== ".") {
-      throw new FS.ErrnoError(55);
+      throw new FS.ErrnoError(ENOTEMPTY);
     }
     // see if the new path already exists
     var new_node;
@@ -2066,10 +2210,10 @@ var FS = {
       throw new FS.ErrnoError(errCode);
     }
     if (!old_dir.node_ops.rename) {
-      throw new FS.ErrnoError(63);
+      throw new FS.ErrnoError(EPERM);
     }
     if (FS.isMountpoint(old_node) || (new_node && FS.isMountpoint(new_node))) {
-      throw new FS.ErrnoError(10);
+      throw new FS.ErrnoError(EBUSY);
     }
     // if we are going to change the parent, check write permissions
     if (new_dir !== old_dir) {
@@ -2111,10 +2255,10 @@ var FS = {
       throw new FS.ErrnoError(errCode);
     }
     if (!parent.node_ops.rmdir) {
-      throw new FS.ErrnoError(63);
+      throw new FS.ErrnoError(EPERM);
     }
     if (FS.isMountpoint(node)) {
-      throw new FS.ErrnoError(10);
+      throw new FS.ErrnoError(EBUSY);
     }
     parent.node_ops.rmdir(parent, name);
     FS.destroyNode(node);
@@ -2124,7 +2268,7 @@ var FS = {
       follow: true
     });
     var node = lookup.node;
-    var readdir = FS.checkOpExists(node.node_ops.readdir, 54);
+    var readdir = FS.checkOpExists(node.node_ops.readdir, ENOTDIR);
     return readdir(node);
   },
   unlink(path) {
@@ -2133,7 +2277,7 @@ var FS = {
     });
     var parent = lookup.node;
     if (!parent) {
-      throw new FS.ErrnoError(44);
+      throw new FS.ErrnoError(ENOENT);
     }
     var name = PATH.basename(path);
     var node = FS.lookupNode(parent, name);
@@ -2145,10 +2289,10 @@ var FS = {
       throw new FS.ErrnoError(errCode);
     }
     if (!parent.node_ops.unlink) {
-      throw new FS.ErrnoError(63);
+      throw new FS.ErrnoError(EPERM);
     }
     if (FS.isMountpoint(node)) {
-      throw new FS.ErrnoError(10);
+      throw new FS.ErrnoError(EBUSY);
     }
     parent.node_ops.unlink(parent, name);
     FS.destroyNode(node);
@@ -2157,10 +2301,10 @@ var FS = {
     var lookup = FS.lookupPath(path);
     var link = lookup.node;
     if (!link) {
-      throw new FS.ErrnoError(44);
+      throw new FS.ErrnoError(ENOENT);
     }
     if (!link.node_ops.readlink) {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
     return link.node_ops.readlink(link);
   },
@@ -2169,7 +2313,7 @@ var FS = {
       follow: !dontFollow
     });
     var node = lookup.node;
-    var getattr = FS.checkOpExists(node.node_ops.getattr, 63);
+    var getattr = FS.checkOpExists(node.node_ops.getattr, EPERM);
     return getattr(node);
   },
   fstat(fd) {
@@ -2178,7 +2322,7 @@ var FS = {
     var getattr = stream.stream_ops.getattr;
     var arg = getattr ? stream : node;
     getattr ??= node.node_ops.getattr;
-    FS.checkOpExists(getattr, 63);
+    FS.checkOpExists(getattr, EPERM);
     return getattr(arg);
   },
   lstat(path) {
@@ -2186,7 +2330,7 @@ var FS = {
   },
   doChmod(stream, node, mode, dontFollow = false) {
     FS.doSetAttr(stream, node, {
-      mode: (mode & 4095) | (node.mode & ~4095),
+      mode: (mode & S_IALLUGO) | (node.mode & ~S_IALLUGO),
       ctime: Date.now(),
       dontFollow
     });
@@ -2237,10 +2381,10 @@ var FS = {
   },
   doTruncate(stream, node, len) {
     if (FS.isDir(node.mode)) {
-      throw new FS.ErrnoError(31);
+      throw new FS.ErrnoError(EISDIR);
     }
     if (!FS.isFile(node.mode)) {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
     var errCode = FS.nodePermissions(node, "w");
     if (errCode) {
@@ -2253,7 +2397,7 @@ var FS = {
   },
   truncate(path, len) {
     if (len < 0) {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
     var node;
     if (typeof path === "string") {
@@ -2268,8 +2412,8 @@ var FS = {
   },
   ftruncate(fd, len) {
     var stream = FS.getStreamChecked(fd);
-    if (len < 0 || (stream.flags & 2097155) === 0) {
-      throw new FS.ErrnoError(28);
+    if (len < 0 || (stream.flags & O_ACCMODE) === O_RDONLY) {
+      throw new FS.ErrnoError(EINVAL);
     }
     FS.doTruncate(stream, stream.node, len);
   },
@@ -2285,11 +2429,11 @@ var FS = {
   },
   open(path, flags, mode = 438) {
     if (path === "") {
-      throw new FS.ErrnoError(44);
+      throw new FS.ErrnoError(ENOENT);
     }
     flags = FS_modeStringToFlags(flags);
-    if ((flags & 64)) {
-      mode = (mode & 4095) | 32768;
+    if ((flags & O_CREAT)) {
+      mode = (mode & S_IALLUGO) | S_IFREG;
     } else {
       mode = 0;
     }
@@ -2303,7 +2447,7 @@ var FS = {
       // doesn't exist, lookupPath returns `node: undefined`. `path` will be
       // updated to point to the target of all symlinks.
       var lookup = FS.lookupPath(path, {
-        follow: !(flags & 131072),
+        follow: !(flags & O_NOFOLLOW),
         noent_okay: true
       });
       node = lookup.node;
@@ -2311,14 +2455,14 @@ var FS = {
     }
     // perhaps we need to create the node
     var created = false;
-    if ((flags & 64)) {
+    if ((flags & O_CREAT)) {
       if (node) {
         // if O_CREAT and O_EXCL are set, error out if the node already exists
-        if ((flags & 128)) {
-          throw new FS.ErrnoError(20);
+        if ((flags & O_EXCL)) {
+          throw new FS.ErrnoError(EEXIST);
         }
       } else if (isDirPath) {
-        throw new FS.ErrnoError(31);
+        throw new FS.ErrnoError(EISDIR);
       } else {
         // node doesn't exist, try to create it
         // Ignore the permission bits here to ensure we can `open` this new
@@ -2329,15 +2473,15 @@ var FS = {
       }
     }
     if (!node) {
-      throw new FS.ErrnoError(44);
+      throw new FS.ErrnoError(ENOENT);
     }
     // can't truncate a device
     if (FS.isChrdev(node.mode)) {
-      flags &= ~512;
+      flags &= ~O_TRUNC;
     }
     // if asked only for a directory, then this must be one
-    if ((flags & 65536) && !FS.isDir(node.mode)) {
-      throw new FS.ErrnoError(54);
+    if ((flags & O_DIRECTORY) && !FS.isDir(node.mode)) {
+      throw new FS.ErrnoError(ENOTDIR);
     }
     // check permissions, if this is not a file we just created now (it is ok to
     // create and write to a file with read-only permissions; it is read-only
@@ -2349,11 +2493,11 @@ var FS = {
       }
     }
     // do truncation if necessary
-    if ((flags & 512) && !created) {
+    if ((flags & O_TRUNC) && !created) {
       FS.truncate(node, 0);
     }
     // we've already handled these, don't pass down to the underlying vfs
-    flags &= ~(128 | 512 | 131072);
+    flags &= ~(O_EXCL | O_TRUNC | O_NOFOLLOW);
     // register the stream with the filesystem
     var stream = FS.createStream({
       node,
@@ -2378,7 +2522,7 @@ var FS = {
   },
   close(stream) {
     if (FS.isClosed(stream)) {
-      throw new FS.ErrnoError(8);
+      throw new FS.ErrnoError(EBADF);
     }
     if (stream.getdents) stream.getdents = null;
     // free readdir state
@@ -2386,7 +2530,7 @@ var FS = {
     // POLLNVAL so a blocking wait unblocks and an epoll registration is evicted
     // on its next derive. Only sockets/pipes/epoll ever carry a wait-queue, so
     // for every other stream (incl. nodeless noderawfs stdio) this is a no-op.
-    stream.node?.notifyListeners(32);
+    stream.node?.notifyListeners(POLLNVAL);
     try {
       if (stream.stream_ops.close) {
         stream.stream_ops.close(stream);
@@ -2403,13 +2547,13 @@ var FS = {
   },
   llseek(stream, offset, whence) {
     if (FS.isClosed(stream)) {
-      throw new FS.ErrnoError(8);
+      throw new FS.ErrnoError(EBADF);
     }
     if (!stream.seekable || !stream.stream_ops.llseek) {
-      throw new FS.ErrnoError(70);
+      throw new FS.ErrnoError(ESPIPE);
     }
-    if (whence != 0 && whence != 1 && whence != 2) {
-      throw new FS.ErrnoError(28);
+    if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END) {
+      throw new FS.ErrnoError(EINVAL);
     }
     stream.position = stream.stream_ops.llseek(stream, offset, whence);
     stream.ungotten = [];
@@ -2417,25 +2561,25 @@ var FS = {
   },
   read(stream, buffer, offset, length, position = undefined) {
     if (length < 0 || position < 0) {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
     if (FS.isClosed(stream)) {
-      throw new FS.ErrnoError(8);
+      throw new FS.ErrnoError(EBADF);
     }
-    if ((stream.flags & 2097155) === 1) {
-      throw new FS.ErrnoError(8);
+    if ((stream.flags & O_ACCMODE) === O_WRONLY) {
+      throw new FS.ErrnoError(EBADF);
     }
     if (FS.isDir(stream.node.mode)) {
-      throw new FS.ErrnoError(31);
+      throw new FS.ErrnoError(EISDIR);
     }
     if (!stream.stream_ops.read) {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
     var seeking = typeof position !== "undefined";
     if (!seeking) {
       position = stream.position;
     } else if (!stream.seekable) {
-      throw new FS.ErrnoError(70);
+      throw new FS.ErrnoError(ESPIPE);
     }
     var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
     if (!seeking) stream.position += bytesRead;
@@ -2443,29 +2587,29 @@ var FS = {
   },
   write(stream, buffer, offset, length, position = undefined, canOwn = undefined) {
     if (length < 0 || position < 0) {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
     if (FS.isClosed(stream)) {
-      throw new FS.ErrnoError(8);
+      throw new FS.ErrnoError(EBADF);
     }
-    if ((stream.flags & 2097155) === 0) {
-      throw new FS.ErrnoError(8);
+    if ((stream.flags & O_ACCMODE) === O_RDONLY) {
+      throw new FS.ErrnoError(EBADF);
     }
     if (FS.isDir(stream.node.mode)) {
-      throw new FS.ErrnoError(31);
+      throw new FS.ErrnoError(EISDIR);
     }
     if (!stream.stream_ops.write) {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
-    if (stream.seekable && stream.flags & 1024) {
+    if (stream.seekable && stream.flags & O_APPEND) {
       // seek to the end before writing in append mode
-      FS.llseek(stream, 0, 2);
+      FS.llseek(stream, 0, SEEK_END);
     }
     var seeking = typeof position !== "undefined";
     if (!seeking) {
       position = stream.position;
     } else if (!stream.seekable) {
-      throw new FS.ErrnoError(70);
+      throw new FS.ErrnoError(ESPIPE);
     }
     var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
     if (!seeking) stream.position += bytesWritten;
@@ -2478,17 +2622,17 @@ var FS = {
     // to write to file opened in read-only mode with MAP_PRIVATE flag,
     // as all modifications will be visible only in the memory of
     // the current process.
-    if ((prot & 2) && !(flags & 2) && (stream.flags & 2097155) !== 2) {
-      throw new FS.ErrnoError(2);
+    if ((prot & PROT_WRITE) && !(flags & MAP_PRIVATE) && (stream.flags & O_ACCMODE) !== O_RDWR) {
+      throw new FS.ErrnoError(EACCES);
     }
-    if ((stream.flags & 2097155) === 1) {
-      throw new FS.ErrnoError(2);
+    if ((stream.flags & O_ACCMODE) === O_WRONLY) {
+      throw new FS.ErrnoError(EACCES);
     }
     if (!stream.stream_ops.mmap) {
-      throw new FS.ErrnoError(43);
+      throw new FS.ErrnoError(ENODEV);
     }
     if (!length) {
-      throw new FS.ErrnoError(28);
+      throw new FS.ErrnoError(EINVAL);
     }
     return stream.stream_ops.mmap(stream, length, position, prot, flags);
   },
@@ -2500,12 +2644,12 @@ var FS = {
   },
   ioctl(stream, cmd, arg) {
     if (!stream.stream_ops.ioctl) {
-      throw new FS.ErrnoError(59);
+      throw new FS.ErrnoError(ENOTTY);
     }
     return stream.stream_ops.ioctl(stream, cmd, arg);
   },
   readFile(path, opts = {}) {
-    opts.flags ??= 0;
+    opts.flags ??= O_RDONLY;
     opts.encoding ??= "binary";
     if (opts.encoding !== "utf8" && opts.encoding !== "binary") {
       abort(`Invalid encoding type "${opts.encoding}"`);
@@ -2522,7 +2666,7 @@ var FS = {
     return buf;
   },
   writeFile(path, data, opts = {}) {
-    opts.flags ??= 577;
+    opts.flags ??= O_TRUNC | O_CREAT | O_WRONLY;
     var stream = FS.open(path, opts.flags, opts.mode);
     data = FS_fileDataToTypedArray(data);
     FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
@@ -2534,10 +2678,10 @@ var FS = {
       follow: true
     });
     if (lookup.node === null) {
-      throw new FS.ErrnoError(44);
+      throw new FS.ErrnoError(ENOENT);
     }
     if (!FS.isDir(lookup.node.mode)) {
-      throw new FS.ErrnoError(54);
+      throw new FS.ErrnoError(ENOTDIR);
     }
     var errCode = FS.nodePermissions(lookup.node, "x");
     if (errCode) {
@@ -2592,7 +2736,7 @@ var FS = {
     FS.mkdir("/proc/self/fd");
     FS.mount({
       mount() {
-        var node = FS.createNode(proc_self, "fd", 16895, 73);
+        var node = FS.createNode(proc_self, "fd", S_IFDIR | 511, S_IXUGO);
         node.stream_ops = {
           llseek: MEMFS.stream_ops.llseek
         };
@@ -2646,9 +2790,9 @@ var FS = {
       FS.symlink("/dev/tty1", "/dev/stderr");
     }
     // open default streams for the stdin, stdout and stderr devices
-    var stdin = FS.open("/dev/stdin", 0);
-    var stdout = FS.open("/dev/stdout", 1);
-    var stderr = FS.open("/dev/stderr", 1);
+    var stdin = FS.open("/dev/stdin", O_RDONLY);
+    var stdout = FS.open("/dev/stdout", O_WRONLY);
+    var stderr = FS.open("/dev/stderr", O_WRONLY);
   },
   staticInit() {
     FS.nameTable.length = 4096;
@@ -2682,7 +2826,7 @@ var FS = {
       try {
         FS.mkdir(current);
       } catch (e) {
-        if (e.errno != 20) throw e;
+        if (e.errno != EEXIST) throw e;
       }
       parent = current;
     }
@@ -2704,8 +2848,8 @@ var FS = {
     if (data) {
       data = FS_fileDataToTypedArray(data);
       // make sure we can write to the file
-      FS.chmod(node, mode | 146);
-      var stream = FS.open(node, 577);
+      FS.chmod(node, mode | S_IWUGO);
+      var stream = FS.open(node, O_TRUNC | O_CREAT | O_WRONLY);
       FS.write(stream, data, 0, data.length, 0, canOwn);
       FS.close(stream);
       FS.chmod(node, mode);
@@ -2735,10 +2879,10 @@ var FS = {
           try {
             result = input();
           } catch (e) {
-            throw new FS.ErrnoError(29);
+            throw new FS.ErrnoError(EIO);
           }
           if (result === undefined && !bytesRead) {
-            throw new FS.ErrnoError(6);
+            throw new FS.ErrnoError(EAGAIN);
           }
           if (result === null || result === undefined) break;
           bytesRead++;
@@ -2754,7 +2898,7 @@ var FS = {
           try {
             output(buffer[offset + i]);
           } catch (e) {
-            throw new FS.ErrnoError(29);
+            throw new FS.ErrnoError(EIO);
           }
         }
         if (length) {
@@ -2774,7 +2918,7 @@ var FS = {
       try {
         obj.contents = readBinary(obj.url);
       } catch (e) {
-        throw new FS.ErrnoError(29);
+        throw new FS.ErrnoError(EIO);
       }
     }
   },
@@ -2933,7 +3077,7 @@ var FS = {
       FS.forceLoadFile(node);
       var ptr = mmapAlloc(length);
       if (!ptr) {
-        throw new FS.ErrnoError(48);
+        throw new FS.ErrnoError(ENOMEM);
       }
       writeChunks(stream, HEAP8, ptr, length, position);
       return {
@@ -2974,7 +3118,7 @@ var SYSCALLS = {
     }
     // relative path
     var dir;
-    if (dirfd === -100) {
+    if (dirfd === AT_FDCWD) {
       dir = FS.cwd();
     } else {
       var dirstream = SYSCALLS.getStreamFromFD(dirfd);
@@ -2982,7 +3126,7 @@ var SYSCALLS = {
     }
     if (path.length == 0) {
       if (!allowEmpty) {
-        throw new FS.ErrnoError(44);
+        throw new FS.ErrnoError(ENOENT);
       }
       return dir;
     }
@@ -3025,9 +3169,9 @@ var SYSCALLS = {
   },
   doMsync(addr, stream, len, flags, offset) {
     if (!FS.isFile(stream.node.mode)) {
-      throw new FS.ErrnoError(43);
+      throw new FS.ErrnoError(ENODEV);
     }
-    if (flags & 2) {
+    if (flags & MAP_PRIVATE) {
       // MAP_PRIVATE calls need not to be synced back to underlying fs
       return 0;
     }

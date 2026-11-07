@@ -15,6 +15,7 @@ import assert from 'node:assert';
 import {
   addToCompileTimeContext,
   error,
+  onSettingsLoaded,
   readFile,
   runInMacroContext,
   pushCurrentFile,
@@ -120,7 +121,7 @@ export function preprocess(filename) {
   let inStyle = false;
   const lines = text.split('\n');
   // text.split yields an extra empty element at the end if text itself ends with a newline.
-  if (!lines[lines.length - 1]) {
+  if (!lines.at(-1)) {
     lines.pop();
   }
 
@@ -245,23 +246,22 @@ function isNiceIdent(ident) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
-export const POINTER_SIZE = MEMORY64 ? 8 : 4;
-const POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
-const STACK_ALIGN = 16;
-const POINTER_BITS = POINTER_SIZE * 8;
-const POINTER_TYPE = `u${POINTER_BITS}`;
-const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
-const POINTER_SHIFT = MEMORY64 ? '3' : '2';
-const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
-const LONG_TYPE = `i${POINTER_BITS}`;
+export let POINTER_SIZE;
+export let POINTER_TYPE;
 
-const SIZE_TYPE = POINTER_TYPE;
+onSettingsLoaded(() => {
+  POINTER_SIZE = MEMORY64 ? 8 : 4;
+  const POINTER_BITS = POINTER_SIZE * 8;
+  POINTER_TYPE = `u${POINTER_BITS}`;
+  const LONG_TYPE = `i${POINTER_BITS}`;
+  const SIZE_TYPE = POINTER_TYPE;
 
-// Similar to POINTER_TYPE, but this is the actual wasm type that is
-// used in practice, while POINTER_TYPE is the more refined internal
-// type (that is unsigned, where as core wasm does not have unsigned
-// types).
-const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
+  addToCompileTimeContext({
+    LONG_TYPE,
+    POINTER_SIZE,
+    SIZE_TYPE,
+  });
+});
 
 function isPointerType(type) {
   return type.endsWith('*');
@@ -985,15 +985,6 @@ function makeRemovedFSAssert(fsName) {
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
-// Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
-function buildStringArray(array) {
-  if (array.length > 0) {
-    return "['" + array.join("','") + "']";
-  } else {
-    return '[]';
-  }
-}
-
 function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
@@ -1148,13 +1139,6 @@ function getEntryFunction() {
   return `_${entryFunction}`;
 }
 
-function formattedMinNodeVersion() {
-  var major = MIN_NODE_VERSION / 10_000;
-  var minor = (MIN_NODE_VERSION / 100) % 100;
-  var rev = MIN_NODE_VERSION % 100;
-  return `v${major}.${minor}.${rev}`;
-}
-
 function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
@@ -1235,17 +1219,6 @@ addToCompileTimeContext({
   ATMAINS,
   ATPOSTRUNS,
   FOUR_GB,
-  LONG_TYPE,
-  POINTER_HEAP,
-  POINTER_BITS,
-  POINTER_JS_TYPE,
-  POINTER_MAX,
-  POINTER_SHIFT,
-  POINTER_SIZE,
-  POINTER_TYPE,
-  POINTER_WASM_TYPE,
-  SIZE_TYPE,
-  STACK_ALIGN,
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,
   ENVIRONMENT_IS_MAIN_THREAD,
@@ -1259,11 +1232,9 @@ addToCompileTimeContext({
   addAtPostRun,
   asyncIf,
   awaitIf,
-  buildStringArray,
   charCode,
   defineI64Param,
   expectToReceiveOnModule,
-  formattedMinNodeVersion,
   from64,
   from64Expr,
   getEntryFunction,

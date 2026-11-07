@@ -28,7 +28,7 @@ addToLibrary({
           wasmFS$JSMemoryFiles[file].set(HEAPU8.subarray(buffer, buffer + length), offset);
           return length;
         } catch (err) {
-          return -{{{ cDefs.EIO }}};
+          return -EIO;
         }
       },
       read: (file, buffer, length, offset) => {

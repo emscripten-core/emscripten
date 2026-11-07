@@ -8,12 +8,12 @@ addToLibrary({
   $MEMFS: {
     ops_table: null,
     mount(mount) {
-      return MEMFS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
+      return MEMFS.createNode(null, '/', S_IFDIR | 0o777, 0);
     },
     createNode(parent, name, mode, dev = undefined) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
         // not supported
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+        throw new FS.ErrnoError(EPERM);
       }
       MEMFS.ops_table ||= {
         dir: {
@@ -173,12 +173,12 @@ addToLibrary({
       },
       lookup(parent, name) {
 #if ASSERTIONS
-        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+        throw new FS.ErrnoError(ENOENT);
 #else
         // This error may happen quite a bit. To avoid overhead we reuse it (and
         // suffer a lack of stack info).
         if (!MEMFS.doesNotExistError) {
-          MEMFS.doesNotExistError = new FS.ErrnoError({{{ cDefs.ENOENT }}});
+          MEMFS.doesNotExistError = new FS.ErrnoError(ENOENT);
           /** @suppress {checkTypes} */
           MEMFS.doesNotExistError.stack = '<generic error, no stack>';
         }
@@ -196,7 +196,7 @@ addToLibrary({
         if (new_node && FS.isDir(old_node.mode)) {
           // if we're overwriting a directory at new_name, make sure it's empty.
           for (var i in new_node.contents) {
-            throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
+            throw new FS.ErrnoError(ENOTEMPTY);
           }
         }
         // do the internal rewiring
@@ -212,7 +212,7 @@ addToLibrary({
       rmdir(parent, name) {
         var node = FS.lookupNode(parent, name);
         for (var i in node.contents) {
-          throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
+          throw new FS.ErrnoError(ENOTEMPTY);
         }
         delete parent.contents[name];
         parent.ctime = parent.mtime = Date.now();
@@ -221,13 +221,13 @@ addToLibrary({
         return ['.', '..', ...Object.keys(node.contents)];
       },
       symlink(parent, newname, oldpath) {
-        var node = MEMFS.createNode(parent, newname, 0o777 | {{{ cDefs.S_IFLNK }}}, 0);
+        var node = MEMFS.createNode(parent, newname, 0o777 | S_IFLNK, 0);
         node.link = oldpath;
         return node;
       },
       readlink(node) {
         if (!FS.isLink(node.mode)) {
-          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+          throw new FS.ErrnoError(EINVAL);
         }
         return node.link;
       },
@@ -296,27 +296,27 @@ addToLibrary({
 
       llseek(stream, offset, whence) {
         var position = offset;
-        if (whence === {{{ cDefs.SEEK_CUR }}}) {
+        if (whence === SEEK_CUR) {
           position += stream.position;
-        } else if (whence === {{{ cDefs.SEEK_END }}}) {
+        } else if (whence === SEEK_END) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.usedBytes;
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+          throw new FS.ErrnoError(EINVAL);
         }
         return position;
       },
       mmap(stream, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
+          throw new FS.ErrnoError(ENODEV);
         }
         var ptr;
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if (!(flags & {{{ cDefs.MAP_PRIVATE }}}) && contents.buffer === HEAP8.buffer) {
+        if (!(flags & MAP_PRIVATE) && contents.buffer === HEAP8.buffer) {
           // We can't emulate MAP_SHARED when the file is not backed by the
           // buffer we're mapping to (e.g. the HEAP buffer).
           allocated = false;
@@ -325,7 +325,7 @@ addToLibrary({
           allocated = true;
           ptr = mmapAlloc(length);
           if (!ptr) {
-            throw new FS.ErrnoError({{{ cDefs.ENOMEM }}});
+            throw new FS.ErrnoError(ENOMEM);
           }
           if (contents) {
             // Try to avoid unnecessary slices.
@@ -333,7 +333,7 @@ addToLibrary({
               if (contents.subarray) {
                 contents = contents.subarray(position, position + length);
               } else {
-                contents = Array.prototype.slice.call(contents, position, position + length);
+                contents = contents.slice(position, position + length);
               }
             }
             HEAP8.set(contents, ptr);

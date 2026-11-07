@@ -5369,18 +5369,16 @@ int main() {
     create_file('code.c', r'''
 #include <stdio.h>
 int main(int argc, char **argv) {
-  printf("I am %s.\n", argv[0]);
+  puts(argv[0]);
   return 0;
 }
 ''')
 
-    output = self.do_runf('code.c')
-    m = re.search(r'^I am (.*)\.$', output, re.M)
-    self.assertIsNotNone(m, output)
+    output = self.do_runf('code.c').strip()
     # Resolve both paths with realpath: Node's process.argv[1] resolves symlinks
     # (e.g. /var -> /private/var on macOS) without expanding Windows 8.3 short
     # names (e.g. RUNNER~1 -> runneradmin), whereas Python's realpath resolves both.
-    self.assertPathsIdentical(os.path.realpath(self.in_dir('code.js')), os.path.realpath(m.group(1)))
+    self.assertPathsIdentical(os.path.realpath(self.in_dir('code.js')), os.path.realpath(output))
 
   @parameterized({
     'no_exit_runtime': (True,),
@@ -5737,51 +5735,15 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
     self.do_runf('fs/test_fs_dev_random.c', 'done\n')
 
   @parameterized({
-    'none': ({'EMCC_FORCE_STDLIBS': None}, False),
+    'all': ('1',),
     # forced libs is ok, they were there anyhow
-    'normal': ({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}, False),
+    'normal': ('libc,libc++abi,libc++',),
     # partial list, but ok since we grab them as needed
-    'partial': ({'EMCC_FORCE_STDLIBS': 'libc++'}, False),
-    # fail! not enough stdlibs
-    'partial_only': ({'EMCC_FORCE_STDLIBS': 'libc++,libc,libc++abi', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True),
-    # force all the needed stdlibs, so this works even though we ignore the input file
-    'full_only': ({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False),
+    'partial': ('libc++',),
   })
-  def test_only_force_stdlibs(self, env, fail):
-    cmd = [EMXX, test_file('hello_libcxx.cpp')]
-    with env_modify(env):
-      if fail:
-        self.assert_fail(cmd, 'undefined symbol: emscripten_builtin_memalign')
-      else:
-        err = self.run_process(cmd, stderr=PIPE).stderr
-        if 'EMCC_ONLY_FORCED_STDLIBS' in env:
-          self.assertContained('EMCC_ONLY_FORCED_STDLIBS is deprecated', err)
-        else:
-          self.assertContained('Hello, world!', self.run_js('a.out.js'))
-
-  def test_only_force_stdlibs_2(self):
-    create_file('src.cpp', r'''
-#include <iostream>
-#include <stdexcept>
-
-int main()
-{
-  try {
-    throw std::exception();
-    std::cout << "got here" << std::endl;
-  }
-  catch (const std::exception& ex) {
-    std::cout << "Caught exception: " << ex.what() << std::endl;
-  }
-}
-''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-      self.run_process([EMXX, 'src.cpp', '-sDISABLE_EXCEPTION_CATCHING=0'])
-    self.assertContained('Caught exception: std::exception', self.run_js('a.out.js'))
-
-  @with_env_modify({'EMCC_FORCE_STDLIBS': '1'})
-  def test_force_stdlibs(self):
-    self.do_runf_out_file('hello_world.c')
+  def test_force_stdlibs(self, force):
+    with env_modify({'EMCC_FORCE_STDLIBS': force}):
+      self.do_runf('hello_libcxx.cpp', 'Hello, world!')
 
   @also_with_standalone_wasm(impure=True)
   def test_time(self):
@@ -6963,6 +6925,75 @@ int main() {
 ''')
     self.do_runf('test.c', 'done\n', cflags=['-sGLOBAL_BASE=2Gb', '-sTOTAL_MEMORY=4Gb', '-sMAXIMUM_MEMORY=5Gb', '-sALLOW_MEMORY_GROWTH', '-m64'])
 
+  @requires_wasm64
+  @parameterized({
+    '': ([],),
+    'emmalloc': (['-sMALLOC=emmalloc'],),
+    'emmalloc_memvalidate': (['-sMALLOC=emmalloc-memvalidate', '-DEMMALLOC_MEMVALIDATE'],),
+    'mimalloc': (['-sMALLOC=mimalloc'],),
+  })
+  def test_malloc_large_wasm64(self, args):
+    create_file('test.c', r'''
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <emscripten/emmalloc.h>
+#include <emscripten/heap.h>
+
+#define GiB ((size_t)1 << 30)
+#define MiB ((size_t)1 << 20)
+
+int main() {
+  // Overflowing allocation sizes must return NULL.
+  assert(malloc(SIZE_MAX) == NULL);
+  assert(malloc((size_t)-100) == NULL);
+
+  // Allocate and free single blocks of 4 GiB and 5 GiB.
+  const size_t sizes[] = { 4 * GiB, 5 * GiB };
+  for (int i = 0; i < 2; ++i) {
+    size_t size = sizes[i];
+    uint8_t* p = (uint8_t*)malloc(size);
+    assert(p != NULL);
+    p[0] = 0x5a;
+    p[size - 1] = 0xa5;
+    assert(p[0] == 0x5a && p[size - 1] == 0xa5);
+    free(p);
+  }
+
+  // Allocate 10 blocks of 512 MiB (5 GiB total), free them so they merge into
+  // a single >4 GiB free region, and allocate them again without growing the heap.
+  enum { N = 10 };
+  void* blocks[N];
+  for (int i = 0; i < N; ++i) {
+    blocks[i] = malloc(512 * MiB);
+    assert(blocks[i] != NULL);
+    memset(blocks[i], 1, 4096);
+  }
+  size_t heap_after_first = emscripten_get_heap_size();
+  for (int i = 0; i < N; ++i) {
+    free(blocks[i]);
+  }
+#ifdef EMMALLOC_MEMVALIDATE
+  assert(emmalloc_validate_memory_regions() == 0);
+  emmalloc_dump_free_dynamic_memory_fragmentation_map();
+#endif
+  for (int i = 0; i < N; ++i) {
+    blocks[i] = malloc(512 * MiB);
+    assert(blocks[i] != NULL);
+  }
+  assert(emscripten_get_heap_size() == heap_after_first);
+  for (int i = 0; i < N; ++i) {
+    free(blocks[i]);
+  }
+
+  printf("done\n");
+  return 0;
+}
+''')
+    self.do_runf('test.c', 'done\n', cflags=['-m64', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=16GB', '-sABORTING_MALLOC=0'] + args)
+
   def test_libcxx_minimal(self):
     create_file('vector.cpp', r'''
 #include <vector>
@@ -7875,7 +7906,7 @@ addToLibrary({
     'O2': (['-O2'], 137000),
     'emmalloc': (['-sMALLOC=emmalloc'], 185000),
     'dlmalloc': (['-sMALLOC=dlmalloc'], 191000),
-    'mimalloc': (['-sMALLOC=mimalloc'], 258000),
+    'mimalloc': (['-sMALLOC=mimalloc'], 261000),
     'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 131000),
     'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 137000),
     'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 201000),
@@ -9129,6 +9160,7 @@ int main() {
       }
     '''
     rethrow_src2 = r'''
+      #include <exception>
       #include <stdexcept>
 
       void important_function() {
@@ -12558,7 +12590,7 @@ int main(void) {
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
     # Build again but with explicit system libraries
-    libs = ['-lc', '-lclang_rt.builtins']
+    libs = ['-lc', '-lemcc', '-lclang_rt.builtins']
     self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nolibc', '-lc'])
@@ -13235,7 +13267,7 @@ exec "$@"
     # EMCC_CFLAGS (or any of the other environment variables that might effect compilation or
     # linking) to effect the internal building and running of this code.
     # For example -O2 causes printf -> iprintf which will fail with undefined symbol iprintf.
-    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1'}):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
   def test_dylink_limited_exports(self):
@@ -13542,12 +13574,13 @@ kill -9 $$
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
-    libs = ['-lc', '-lclang_rt.builtins', '-lmalloc']
+    libs = ['-lc', '-lemcc', '-lclang_rt.builtins', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
     # Check that the linker was run with `-mt` variants because `-pthread` was passed.
     self.assertContained(' -lc-mt-debug ', err)
     self.assertContained(' -ldlmalloc-mt-debug ', err)
+    self.assertContained(' -lemcc-mt ', err)
     self.assertContained(' -lclang_rt.builtins-mt ', err)
 
   def test_explicit_gl_linking(self):
@@ -13673,18 +13706,18 @@ void foo() {}
     self.cflags += ['-gsource-map', '-pthread']
     expected = [
       'Direct leak of 3432 byte(s) in 1 object(s) allocated from',
-      'test_pthread_lsan_leak.cpp:18:17',
+      'test_pthread_lsan_leak.cpp:19:17',
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
-      'test_pthread_lsan_leak.cpp:36:10',
+      'test_pthread_lsan_leak.cpp:37:10',
       'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
-      'test_pthread_lsan_leak.cpp:30:16',
+      'test_pthread_lsan_leak.cpp:31:16',
       'Direct leak of 1234 byte(s) in 1 object(s) allocated from',
-      'test_pthread_lsan_leak.cpp:20:13',
+      'test_pthread_lsan_leak.cpp:21:13',
       'Direct leak of 420 byte(s) in 1 object(s) allocated from',
-      'test_pthread_lsan_leak.cpp:31:13',
+      'test_pthread_lsan_leak.cpp:32:13',
       'Direct leak of 42 byte(s) in 1 object(s) allocated from',
-      'test_pthread_lsan_leak.cpp:13:21',
-      'test_pthread_lsan_leak.cpp:35:3',
+      'test_pthread_lsan_leak.cpp:14:21',
+      'test_pthread_lsan_leak.cpp:36:3',
       '8513 byte(s) leaked in 6 allocation(s).',
     ]
     self.do_runf('pthread/test_pthread_lsan_leak.cpp', expected, assert_all=True, cflags=['-fsanitize=leak'])
@@ -13747,6 +13780,30 @@ void foo() {}
 
   def test_emscripten_main_loop_and_blocker(self):
     self.do_runf('test_emscripten_main_loop_and_blocker.c')
+
+  def test_emscripten_main_loop_blocker_status(self):
+    # While counted blockers run, the status shows how many are done.
+    create_file('pre.js', 'Module.setStatus = (s) => out(`status: ${s}`);')
+    create_file('main.c', r'''
+      #include <stdlib.h>
+      #include <emscripten.h>
+
+      void blocker(void* arg) {}
+
+      void looper() {
+        emscripten_cancel_main_loop();
+        exit(0);
+      }
+
+      int main() {
+        emscripten_set_main_loop_expected_blockers(2);
+        emscripten_push_main_loop_blocker(blocker, NULL);
+        emscripten_push_main_loop_blocker(blocker, NULL);
+        emscripten_set_main_loop(looper, 0, 0);
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', 'status: Please wait... (1/2)\n', cflags=['--pre-js', 'pre.js'])
 
   def test_emscripten_main_loop_settimeout(self):
     self.do_runf('test_emscripten_main_loop_settimeout.c')

@@ -320,7 +320,7 @@ var LibrarySDL = {
 #if ASSERTIONS
       // Canvas screens are always RGBA.
       var format = {{{ makeGetValue('fmt', C_STRUCTS.SDL_PixelFormat.format, 'i32') }}};
-      if (format != {{{ cDefs.SDL_PIXELFORMAT_RGBA8888 }}}) {
+      if (format != SDL_PIXELFORMAT_RGBA8888) {
         warnOnce('Unsupported pixel format!');
       }
 #endif
@@ -339,9 +339,9 @@ var LibrarySDL = {
       'rgba(' + (r&0xff) + ',' + (g&0xff) + ',' + (b&0xff) + ',' + (a&0xff)/255 + ')',
 
     makeSurface(width, height, flags, usePageCanvas, source = undefined, rmask = undefined, gmask = undefined, bmask = undefined, amask = undefined) {
-      var is_SDL_HWSURFACE = flags & {{{ cDefs.SDL_HWSURFACE }}};
-      var is_SDL_HWPALETTE = flags & {{{ cDefs.SDL_HWPALETTE }}};
-      var is_SDL_OPENGL = flags & {{{ cDefs.SDL_OPENGL }}};
+      var is_SDL_HWSURFACE = flags & SDL_HWSURFACE;
+      var is_SDL_HWPALETTE = flags & SDL_HWPALETTE;
+      var is_SDL_OPENGL = flags & SDL_OPENGL;
 
       var surf = _malloc({{{ C_STRUCTS.SDL_Surface.__size__ }}});
       var pixelFormat = _malloc({{{ C_STRUCTS.SDL_PixelFormat.__size__ }}});
@@ -371,7 +371,7 @@ var LibrarySDL = {
 
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}};
 
-      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, cDefs.SDL_PIXELFORMAT_RGBA8888, 'i32') }}};
+      {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.format, 'SDL_PIXELFORMAT_RGBA8888', 'i32') }}};
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.palette, '0', 'i32') }}};// TODO
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BitsPerPixel, 'bpp * 8', 'i8') }}};
       {{{ makeSetValue('pixelFormat', C_STRUCTS.SDL_PixelFormat.BytesPerPixel, 'bpp', 'i8') }}};
@@ -394,10 +394,10 @@ var LibrarySDL = {
       }
 
       var webGLContextAttributes = {
-        antialias: ((SDL.glAttributes[{{{ cDefs.SDL_GL_MULTISAMPLEBUFFERS }}}] != 0) && (SDL.glAttributes[{{{ cDefs.SDL_GL_MULTISAMPLESAMPLES }}}] > 1)),
-        depth: (SDL.glAttributes[{{{ cDefs.SDL_GL_DEPTH_SIZE }}}] > 0),
-        stencil: (SDL.glAttributes[{{{ cDefs.SDL_GL_STENCIL_SIZE }}}] > 0),
-        alpha: (SDL.glAttributes[{{{ cDefs.SDL_GL_ALPHA_SIZE }}}] > 0)
+        antialias: ((SDL.glAttributes[SDL_GL_MULTISAMPLEBUFFERS] != 0) && (SDL.glAttributes[SDL_GL_MULTISAMPLESAMPLES] > 1)),
+        depth: (SDL.glAttributes[SDL_GL_DEPTH_SIZE] > 0),
+        stencil: (SDL.glAttributes[SDL_GL_STENCIL_SIZE] > 0),
+        alpha: (SDL.glAttributes[SDL_GL_ALPHA_SIZE] > 0)
       };
 
 #if OFFSCREEN_FRAMEBUFFER
@@ -636,7 +636,7 @@ var LibrarySDL = {
 
           // Simulate old-style SDL events representing mouse wheel input as buttons
           // Subtract one since JS->C marshalling is defined to add one back.
-          var button = (delta > 0 ? {{{ cDefs.SDL_BUTTON_WHEELUP }}} : {{{ cDefs.SDL_BUTTON_WHEELDOWN }}}) - 1;
+          var button = (delta > 0 ? SDL_BUTTON_WHEELUP : SDL_BUTTON_WHEELDOWN) - 1;
           SDL.events.push({ type: 'mousedown', button, pageX: event.pageX, pageY: event.pageY });
           SDL.events.push({ type: 'mouseup', button, pageX: event.pageX, pageY: event.pageY });
 
@@ -653,7 +653,7 @@ var LibrarySDL = {
               type: 'touchmove',
               touch: {
                 identifier: 0,
-                deviceID: {{{ cDefs.SDL_TOUCH_MOUSEID }}},
+                deviceID: SDL_TOUCH_MOUSEID,
                 pageX: event.pageX,
                 pageY: event.pageY
               }
@@ -679,7 +679,7 @@ var LibrarySDL = {
               type: 'touchstart',
               touch: {
                 identifier: 0,
-                deviceID: {{{ cDefs.SDL_TOUCH_MOUSEID }}},
+                deviceID: SDL_TOUCH_MOUSEID,
                 pageX: event.pageX,
                 pageY: event.pageY
               }
@@ -695,7 +695,7 @@ var LibrarySDL = {
               type: 'touchend',
               touch: {
                 identifier: 0,
-                deviceID: {{{ cDefs.SDL_TOUCH_MOUSEID }}},
+                deviceID: SDL_TOUCH_MOUSEID,
                 pageX: event.pageX,
                 pageY: event.pageY
               }
@@ -839,12 +839,12 @@ var LibrarySDL = {
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
           SDL.modState =
-            ({{{ makeGetValue('SDL.keyboardState', cDefs.SDLK_LCTRL, 'i8') }}} ? {{{ cDefs.KMOD_LCTRL }}} : 0) |
-            ({{{ makeGetValue('SDL.keyboardState', cDefs.SDLK_LSHIFT, 'i8') }}} ? {{{ cDefs.KMOD_LSHIFT }}} : 0) |
-            ({{{ makeGetValue('SDL.keyboardState', cDefs.SDLK_LALT, 'i8') }}} ? {{{ cDefs.KMOD_LALT }}} : 0) |
-            ({{{ makeGetValue('SDL.keyboardState', cDefs.SDLK_RCTRL, 'i8') }}} ? {{{ cDefs.KMOD_RCTRL }}} : 0) |
-            ({{{ makeGetValue('SDL.keyboardState', cDefs.SDLK_RSHIFT, 'i8') }}} ? {{{ cDefs.KMOD_RSHIFT }}} : 0) |
-            ({{{ makeGetValue('SDL.keyboardState', cDefs.SDLK_RALT, 'i8') }}} ? {{{ cDefs.KMOD_RALT }}} : 0);
+            ({{{ makeGetValue('SDL.keyboardState', 'SDLK_LCTRL', 'i8') }}} ? KMOD_LCTRL : 0) |
+            ({{{ makeGetValue('SDL.keyboardState', 'SDLK_LSHIFT', 'i8') }}} ? KMOD_LSHIFT : 0) |
+            ({{{ makeGetValue('SDL.keyboardState', 'SDLK_LALT', 'i8') }}} ? KMOD_LALT : 0) |
+            ({{{ makeGetValue('SDL.keyboardState', 'SDLK_RCTRL', 'i8') }}} ? KMOD_RCTRL : 0) |
+            ({{{ makeGetValue('SDL.keyboardState', 'SDLK_RSHIFT', 'i8') }}} ? KMOD_RSHIFT : 0) |
+            ({{{ makeGetValue('SDL.keyboardState', 'SDLK_RALT', 'i8') }}} ? KMOD_RALT : 0);
           if (down) {
             SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
           } else {
@@ -880,7 +880,7 @@ var LibrarySDL = {
     },
 
     pollEvent(ptr) {
-      if (SDL.initFlags & {{{ cDefs.SDL_INIT_JOYSTICK }}} && SDL.joystickEventState) {
+      if (SDL.initFlags & SDL_INIT_JOYSTICK && SDL.joystickEventState) {
         // If SDL_INIT_JOYSTICK was supplied AND the joystick system is configured
         // to automatically query for events, query for joystick events.
         SDL.queryJoysticks();
@@ -1025,17 +1025,17 @@ var LibrarySDL = {
         case 'focus': {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.windowID, '0', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, cDefs.SDL_WINDOWEVENT_FOCUS_GAINED, 'i8') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, 'SDL_WINDOWEVENT_FOCUS_GAINED', 'i8') }}};
           break;
         }
         case 'blur': {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.windowID, '0', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, cDefs.SDL_WINDOWEVENT_FOCUS_LOST, 'i8') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, 'SDL_WINDOWEVENT_FOCUS_LOST', 'i8') }}};
           break;
         }
         case 'visibilitychange': {
-          var visibilityEventID = event.visible ? {{{ cDefs.SDL_WINDOWEVENT_SHOWN }}} : {{{ cDefs.SDL_WINDOWEVENT_HIDDEN }}};
+          var visibilityEventID = event.visible ? SDL_WINDOWEVENT_SHOWN : SDL_WINDOWEVENT_HIDDEN;
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.windowID, 0, 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, 'visibilityEventID' , 'i8') }}};
@@ -1195,16 +1195,16 @@ var LibrarySDL = {
         if (channelData.length != sizeSamplesPerChannel) {
           abort(`Web Audio output buffer length mismatch! Destination size: ${channelData.length} samples vs expected ${sizeSamplesPerChannel} samples!`);
         }
-        if (audio.format == {{{ cDefs.AUDIO_S16LSB }}}) {
+        if (audio.format == AUDIO_S16LSB) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*2', 'i16') }}}) / 0x8000;
           }
-        } else if (audio.format == {{{ cDefs.AUDIO_U8 }}}) {
+        } else if (audio.format == AUDIO_U8) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8') }}});
             channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
           }
-        } else if (audio.format == {{{ cDefs.AUDIO_F32 }}}) {
+        } else if (audio.format == AUDIO_F32) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float') }}});
           }
@@ -1336,28 +1336,28 @@ var LibrarySDL = {
     window.addEventListener('pagehide', SDL.receiveEvent);
     SDL.keyboardState = _calloc(0x10000, 1); // Our SDL needs 512, but 64K is safe for older SDLs
     // Initialize this structure carefully for closure
-    SDL.DOMEventToSDLEvent['keydown']    = {{{ cDefs.SDL_KEYDOWN }}};
-    SDL.DOMEventToSDLEvent['keyup']      = {{{ cDefs.SDL_KEYUP }}};
-    SDL.DOMEventToSDLEvent['keypress']   = {{{ cDefs.SDL_TEXTINPUT }}};
-    SDL.DOMEventToSDLEvent['mousedown']  = {{{ cDefs.SDL_MOUSEBUTTONDOWN }}};
-    SDL.DOMEventToSDLEvent['mouseup']    = {{{ cDefs.SDL_MOUSEBUTTONUP }}};
-    SDL.DOMEventToSDLEvent['mousemove']  = {{{ cDefs.SDL_MOUSEMOTION }}};
-    SDL.DOMEventToSDLEvent['wheel']      = {{{ cDefs.SDL_MOUSEWHEEL }}};
-    SDL.DOMEventToSDLEvent['touchstart'] = {{{ cDefs.SDL_FINGERDOWN }}};
-    SDL.DOMEventToSDLEvent['touchend']   = {{{ cDefs.SDL_FINGERUP }}};
-    SDL.DOMEventToSDLEvent['touchmove']  = {{{ cDefs.SDL_FINGERMOTION }}};
-    SDL.DOMEventToSDLEvent['pagehide']   = {{{ cDefs.SDL_QUIT }}};
-    SDL.DOMEventToSDLEvent['resize']     = {{{ cDefs.SDL_VIDEORESIZE }}};
-    SDL.DOMEventToSDLEvent['visibilitychange'] = {{{ cDefs.SDL_WINDOWEVENT }}};
-    SDL.DOMEventToSDLEvent['focus']      = {{{ cDefs.SDL_WINDOWEVENT }}};
-    SDL.DOMEventToSDLEvent['blur']       = {{{ cDefs.SDL_WINDOWEVENT }}};
+    SDL.DOMEventToSDLEvent['keydown']    = SDL_KEYDOWN;
+    SDL.DOMEventToSDLEvent['keyup']      = SDL_KEYUP;
+    SDL.DOMEventToSDLEvent['keypress']   = SDL_TEXTINPUT;
+    SDL.DOMEventToSDLEvent['mousedown']  = SDL_MOUSEBUTTONDOWN;
+    SDL.DOMEventToSDLEvent['mouseup']    = SDL_MOUSEBUTTONUP;
+    SDL.DOMEventToSDLEvent['mousemove']  = SDL_MOUSEMOTION;
+    SDL.DOMEventToSDLEvent['wheel']      = SDL_MOUSEWHEEL;
+    SDL.DOMEventToSDLEvent['touchstart'] = SDL_FINGERDOWN;
+    SDL.DOMEventToSDLEvent['touchend']   = SDL_FINGERUP;
+    SDL.DOMEventToSDLEvent['touchmove']  = SDL_FINGERMOTION;
+    SDL.DOMEventToSDLEvent['pagehide']   = SDL_QUIT;
+    SDL.DOMEventToSDLEvent['resize']     = SDL_VIDEORESIZE;
+    SDL.DOMEventToSDLEvent['visibilitychange'] = SDL_WINDOWEVENT;
+    SDL.DOMEventToSDLEvent['focus']      = SDL_WINDOWEVENT;
+    SDL.DOMEventToSDLEvent['blur']       = SDL_WINDOWEVENT;
 
     // These are not technically DOM events; the HTML gamepad API is poll-based.
     // However, we define them here, as the rest of the SDL code assumes that
     // all SDL events originate as DOM events.
-    SDL.DOMEventToSDLEvent['joystick_axis_motion'] = {{{ cDefs.SDL_JOYAXISMOTION }}};
-    SDL.DOMEventToSDLEvent['joystick_button_down'] = {{{ cDefs.SDL_JOYBUTTONDOWN }}};
-    SDL.DOMEventToSDLEvent['joystick_button_up'] = {{{ cDefs.SDL_JOYBUTTONUP }}};
+    SDL.DOMEventToSDLEvent['joystick_axis_motion'] = SDL_JOYAXISMOTION;
+    SDL.DOMEventToSDLEvent['joystick_button_down'] = SDL_JOYBUTTONDOWN;
+    SDL.DOMEventToSDLEvent['joystick_button_up'] = SDL_JOYBUTTONUP;
     return 0; // success
   },
 
@@ -1455,7 +1455,7 @@ var LibrarySDL = {
 #endif
     }
 
-    if (SDL.GL) flags = flags | {{{ cDefs.SDL_OPENGL }}}; // if we are using GL, then later calls to SetVideoMode may not mention GL, but we do need it. Once in GL mode, we never leave it.
+    if (SDL.GL) flags = flags | SDL_OPENGL; // if we are using GL, then later calls to SetVideoMode may not mention GL, but we do need it. Once in GL mode, we never leave it.
 
     SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
 
@@ -1530,7 +1530,7 @@ var LibrarySDL = {
 
     if (SDL.defaults.copyOnLock && !SDL.defaults.discardOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
-      if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
+      if (surfData.isFlagSet(SDL_HWPALETTE)) {
         abort('CopyOnLock is not supported for SDL_LockSurface with SDL_HWPALETTE flag set');
       } else {
         HEAPU8.set(surfData.image.data, surfData.buffer);
@@ -1554,7 +1554,7 @@ var LibrarySDL = {
     }
 
     // Copy pixel data to image
-    if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
+    if (surfData.isFlagSet(SDL_HWPALETTE)) {
       SDL.copyIndexedColorData(surfData);
     } else if (!surfData.colors) {
       var data = surfData.image.data;
@@ -1864,7 +1864,7 @@ var LibrarySDL = {
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
 #endif
 
-    if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
+    if (surfData.isFlagSet(SDL_HWPALETTE)) {
       // in SDL_HWPALETTE color is index (0..255)
       // so we should translate 1 byte value to
       // 32 bit canvas
@@ -1914,7 +1914,7 @@ var LibrarySDL = {
     var srcData = SDL.surfaces[src];
     var w = srcData.width * zoom;
     var h = srcData.height * zoom;
-    var diagonal = Math.ceil(Math.sqrt(Math.pow(w, 2) + Math.pow(h, 2)));
+    var diagonal = Math.ceil(Math.hypot(w, h));
     var ret = SDL.makeSurface(diagonal, diagonal, srcData.flags, false, 'rotozoomSurface');
     var dstData = SDL.surfaces[ret];
     dstData.ctx.translate(diagonal / 2, diagonal / 2);
@@ -1928,7 +1928,7 @@ var LibrarySDL = {
     var surfData = SDL.surfaces[surf];
     surfData.alpha = alpha;
 
-    if (!(flag & {{{ cDefs.SDL_SRCALPHA }}})) { // !SDL_SRCALPHA
+    if (!(flag & SDL_SRCALPHA)) { // !SDL_SRCALPHA
       surfData.alpha = 255;
     }
   },
@@ -2082,12 +2082,12 @@ var LibrarySDL = {
     var state = 0;
 
     if (Browser.pointerLock) {
-      state |= {{{ cDefs.SDL_APPMOUSEFOCUS }}};
+      state |= SDL_APPMOUSEFOCUS;
     }
     if (document.hasFocus()) {
-      state |= {{{ cDefs.SDL_APPINPUTFOCUS }}};
+      state |= SDL_APPINPUTFOCUS;
     }
-    state |= {{{ cDefs.SDL_APPACTIVE }}};
+    state |= SDL_APPACTIVE;
 
     return state;
   },
@@ -2288,11 +2288,11 @@ var LibrarySDL = {
         timer: null
       };
       // The .silence field tells the constant sample value that corresponds to the safe un-skewed silence value for the wave data.
-      if (SDL.audio.format == {{{ cDefs.AUDIO_U8 }}}) {
+      if (SDL.audio.format == AUDIO_U8) {
         SDL.audio.silence = 128; // Audio ranges in [0, 255], so silence is half-way in between.
-      } else if (SDL.audio.format == {{{ cDefs.AUDIO_S16LSB }}}) {
+      } else if (SDL.audio.format == AUDIO_S16LSB) {
         SDL.audio.silence = 0; // Signed data in range [-32768, 32767], silence is 0.
-      } else if (SDL.audio.format == {{{ cDefs.AUDIO_F32 }}}) {
+      } else if (SDL.audio.format == AUDIO_F32) {
         SDL.audio.silence = 0.0; // Float data in range [-1.0, 1.0], silence is 0.0
       } else {
         abort(`Invalid SDL audio format ${SDL.audio.format}!`);
@@ -2328,11 +2328,11 @@ var LibrarySDL = {
       }
 
       var totalSamples = SDL.audio.samples*SDL.audio.channels;
-      if (SDL.audio.format == {{{ cDefs.AUDIO_U8 }}}) {
+      if (SDL.audio.format == AUDIO_U8) {
         SDL.audio.bytesPerSample = 1;
-      } else if (SDL.audio.format == {{{ cDefs.AUDIO_S16LSB }}}) {
+      } else if (SDL.audio.format == AUDIO_S16LSB) {
         SDL.audio.bytesPerSample = 2;
-      } else if (SDL.audio.format == {{{ cDefs.AUDIO_F32 }}}) {
+      } else if (SDL.audio.format == AUDIO_F32) {
         SDL.audio.bytesPerSample = 4;
       } else {
         abort(`Invalid SDL audio format ${SDL.audio.format}!`);
@@ -3296,14 +3296,14 @@ var LibrarySDL = {
 
   SDL_GL_GetSwapInterval__proxy: 'sync',
   SDL_GL_GetSwapInterval: () => {
-    if (MainLoop.timingMode == {{{ cDefs.EM_TIMING_RAF }}}) {
+    if (MainLoop.timingMode == EM_TIMING_RAF) {
       return MainLoop.timingValue;
     } else {
       return 0;
     }
   },
 
-  SDL_GL_SetSwapInterval: (state) => _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, state),
+  SDL_GL_SetSwapInterval: (state) => _emscripten_set_main_loop_timing(EM_TIMING_RAF, state),
 
   SDL_SetWindowTitle__proxy: 'sync',
   SDL_SetWindowTitle: (window, title) => {
@@ -3354,10 +3354,7 @@ var LibrarySDL = {
     var gamepad = SDL.getGamepad(deviceIndex);
     if (gamepad) {
       var name = gamepad.id;
-      if (hasOwn(SDL.joystickNamePool, name)) {
-        return SDL.joystickNamePool[name];
-      }
-      return SDL.joystickNamePool[name] = stringToNewUTF8(name);
+      return SDL.joystickNamePool[name] ??= stringToNewUTF8(name);
     }
     return 0;
   },

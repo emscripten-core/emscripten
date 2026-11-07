@@ -4722,10 +4722,10 @@ res64 - external 64\n''', header='''\
 
   @with_dylink_reversed
   @parameterized({
-    'libcxx': ('libc,libc++,libmalloc,libc++abi',),
+    'libcxx': ('libc,libc++,libmalloc,libc++abi,libemcc,libclang_rt.builtins',),
     'all': ('1',),
-    'missing': ('libc,libmalloc,libc++abi', False, False, False),
-    'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
+    'missing': ('libc,libmalloc,libc++abi,libemcc,libclang_rt.builtins', False, False, False),
+    'missing_assertions': ('libc,libmalloc,libc++abi,libemcc,libclang_rt.builtins', False, False, True),
   })
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_dylink_syslibs(self, syslibs, expect_pass=True, with_reversed=True, assertions=True):
@@ -4736,7 +4736,7 @@ res64 - external 64\n''', header='''\
     # one module uses libcxx, need to force its inclusion when it isn't the main
     if not with_reversed and self.dylink_reversed:
       self.skipTest('with_reversed is false')
-    self.cflags.append('-Wno-deprecated')
+    self.cflags.append('-nodefaultlibs')
     self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
 
     if assertions is not None:
@@ -4752,7 +4752,7 @@ res64 - external 64\n''', header='''\
         expected = 'Error'
       assert_returncode = NON_ZERO
 
-    with env_modify({'EMCC_FORCE_STDLIBS': syslibs, 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': syslibs}):
       self.dylink_test(main=r'''
         void side();
         int main() {
@@ -6017,10 +6017,11 @@ got: 10
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
   @also_with_nodefs_both
-  @no_wasmfs('Assertion failed: open("./does-not-exist/", O_CREAT, 0777) == -1 in test_fs_enotdir.c line 20. https://github.com/emscripten-core/emscripten/issues/25035')
+  @no_wasmfs('Assertion failed: open("./does-not-exist/", O_CREAT, 0777) == -1 in test_fs_enotdir.c line 24. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_enotdir(self):
     if MACOS and '-DNODERAWFS' in self.cflags:
       self.skipTest('BSD libc sets a different errno')
+    self.maybe_closure()
     self.do_runf('fs/test_fs_enotdir.c', 'done\n')
 
   @also_with_noderawfs
@@ -6312,6 +6313,7 @@ Module.onRuntimeInitialized = () => {
   def test_posixtime(self):
     self.do_core_test('test_posixtime.c')
 
+  @also_with_standalone_wasm()
   def test_uname(self):
     self.do_core_test('test_uname.c', regex=True)
 
@@ -9397,6 +9399,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/pthread/test_pthread_dlopen.c',
                  ['side module ctor', 'done\n', 'side module atexit'],
                  assert_all=True, cflags=args)
+
+  @needs_dylink
+  @requires_pthreads
+  def test_pthread_dlopen_exit(self):
+    num_libs = 100
+    self.cflags += ['-Wno-experimental', '-pthread']
+    self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_exit_side.c'))
+    # dlclose does not unload libraries, so use a fresh name each time to
+    # generate dynamic link synchronization work on every iteration.
+    for i in range(num_libs):
+      shutil.copy('libside.so', f'libside{i}.so')
+
+    self.prep_dlfcn_main()
+    self.do_runf('core/pthread/test_pthread_dlopen_exit.c', 'done\n',
+                 cflags=['-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', f'-DNUM_SIDE_MODULES={num_libs}'])
 
   @needs_dylink
   @requires_pthreads

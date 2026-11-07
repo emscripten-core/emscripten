@@ -32,6 +32,7 @@ var LibraryGLEmulation = {
     $GL_IMMEDIATE_NORMAL: 1,
     $GL_IMMEDIATE_COLOR: 2,
     $GL_IMMEDIATE_TEXTURE0: 3,
+    $POINTER_MAX: MEMORY64 ? Number.MAX_SAFE_INTEGER : 0xFFFFFFFF,
   }),
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
   $GLEmulation__deps: ['$GLImmediateSetup'],
@@ -2872,9 +2873,9 @@ var LibraryGLEmulation = {
       // Detect which case we are in by using a quick heuristic by examining the
       // strides of the buffers. If all the buffers have identical stride, we
       // assume we have case (2), otherwise we have something more complex.
-      var clientStartPointer = {{{ POINTER_MAX }}};
+      var clientStartPointer = POINTER_MAX;
       var bytes = 0; // Total number of bytes taken up by a single vertex.
-      var minStride = {{{ POINTER_MAX }}};
+      var minStride = POINTER_MAX;
       var maxStride = 0;
       var attributes = GLImmediate.liveClientAttributes;
       attributes.length = 0;
@@ -3542,7 +3543,7 @@ var LibraryGLEmulation = {
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;
     GLImmediate.matrixStack[GLImmediate.currentMatrix].push(
-        Array.prototype.slice.call(GLImmediate.matrix[GLImmediate.currentMatrix]));
+        GLImmediate.matrix[GLImmediate.currentMatrix].slice());
   },
 
   glPopMatrix: () => {
@@ -3570,7 +3571,7 @@ var LibraryGLEmulation = {
 
   glLoadMatrixf: (matrix) => {
 #if GL_DEBUG
-    if (GL.debug) dbg('glLoadMatrixf receiving: ' + Array.prototype.slice.call(HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16)));
+    if (GL.debug) dbg('glLoadMatrixf receiving: ' + HEAPF32.subarray(matrix >> 2, (matrix >> 2) + 16));
 #endif
     GLImmediate.matricesModified = true;
     GLImmediate.matrixVersion[GLImmediate.currentMatrix] = (GLImmediate.matrixVersion[GLImmediate.currentMatrix] + 1)|0;

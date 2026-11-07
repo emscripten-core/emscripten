@@ -13,6 +13,8 @@
 var LibraryDylink = {
   ...defineInternalConsts({
     $UNDEFINED_ADDR: MEMORY64 ? -1n : -1,
+    $POINTER_WASM_TYPE: MEMORY64 ? 'i64' : 'i32',
+    $POINTER_JS_TYPE: MEMORY64 ? 'bigint' : 'number',
   }),
 #if FILESYSTEM
   $registerWasmPlugin: () => {
@@ -156,7 +158,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG == 2
         dbg(`new GOT entry: ${symName}`);
 #endif
-        rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, UNDEFINED_ADDR);
+        rtn = GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, UNDEFINED_ADDR);
       }
       if (!weakImports.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
@@ -226,7 +228,7 @@ var LibraryDylink = {
         var newValue;
         if (typeof value === 'function') {
           newValue = {{{ to64('addFunction(value)') }}};
-        } else if (typeof value.value === {{{ POINTER_JS_TYPE }}}) {
+        } else if (typeof value.value === POINTER_JS_TYPE) {
           newValue = value;
         } else {
           // The GOT can only contain addresses (i.e data addresses or function
@@ -239,7 +241,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT:  after: ${symName} : ${newValue} (${value})`);
 #endif
-        GOT[symName] ??= new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
+        GOT[symName] ??= new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true});
         GOT[symName].value = newValue;
       }
 #if DYLINK_DEBUG
@@ -282,7 +284,7 @@ var LibraryDylink = {
       // Detect immutable wasm global exports. These represent data addresses
       // which are relative to `memoryBase`
       if (isImmutableGlobal(value)) {
-        return new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}'}, value.value + {{{ to64('memoryBase') }}});
+        return new WebAssembly.Global({'value': POINTER_WASM_TYPE}, value.value + {{{ to64('memoryBase') }}});
       }
 
       // Return unmodified value (no relocation required).
@@ -329,7 +331,7 @@ var LibraryDylink = {
 #endif
         } else if (typeof value === 'number') {
           entry.value = {{{ to64('value') }}};
-        } else if (typeof value.value === {{{ POINTER_JS_TYPE }}}) {
+        } else if (typeof value.value === POINTER_JS_TYPE) {
           entry.value = value;
         } else {
           throw new Error(`bad export type for '${symName}': ${typeof value} (${value})`);
@@ -353,7 +355,7 @@ var LibraryDylink = {
       // as been created.
       assert(wasmImports);
 #endif
-      newDSO('__main__', {{{ cDefs.RTLD_DEFAULT }}}, wasmImports);
+      newDSO('__main__', RTLD_DEFAULT, wasmImports);
     },
   },
 
@@ -396,7 +398,7 @@ var LibraryDylink = {
     }
     var ret = ___heap_base;
     // Keep __heap_base stack aligned.
-    var end = ret + alignMemory(size, {{{ STACK_ALIGN }}});
+    var end = ret + alignMemory(size, STACK_ALIGN);
 #if ASSERTIONS
     //dbg(ret);
     //dbg(HEAP8.length);
@@ -537,7 +539,7 @@ var LibraryDylink = {
     }
 
 #if ASSERTIONS
-    var tableAlign = Math.pow(2, customSection.tableAlign);
+    var tableAlign = 2 ** customSection.tableAlign;
     assert(tableAlign === 1, `invalid tableAlign ${tableAlign}`);
     assert(offset == end);
 #endif
@@ -554,9 +556,7 @@ var LibraryDylink = {
     for (var [sym, exp] of Object.entries(exports)) {
       if (sym.startsWith('dynCall_')) {
         var sig = sym.substring(8);
-        if (!hasOwn(dynCalls, sig)) {
-          dynCalls[sig] = exp;
-        }
+        dynCalls[sig] ??= exp;
       }
     }
   },
@@ -719,7 +719,7 @@ var LibraryDylink = {
     if (firstLoad) {
 #endif
       // alignments are powers of 2
-      var memAlign = Math.pow(2, metadata.memoryAlign);
+      var memAlign = 2 ** metadata.memoryAlign;
       // prepare memory
       var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
       var tableBase = metadata.tableSize ? {{{ from64Expr('wasmTable.length') }}} : 0;
@@ -1005,7 +1005,7 @@ var LibraryDylink = {
     if (PATH.isAbs(libName)) {
 #if WASMFS
       var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(libName)));
-      return result === {{{ cDefs.EEXIST }}} ? libName : undefined;
+      return result === EEXIST ? libName : undefined;
 #else
       try {
         FS.lookupPath(libName);
@@ -1228,13 +1228,13 @@ var LibraryDylink = {
     filename = PATH.normalize(filename);
     var searchpaths = [];
 
-    var global = Boolean(flags & {{{ cDefs.RTLD_GLOBAL }}});
+    var global = Boolean(flags & RTLD_GLOBAL);
     var localScope = global ? null : {};
 
     // We don't care about RTLD_NOW and RTLD_LAZY.
     var combinedFlags = {
       global,
-      nodelete:  Boolean(flags & {{{ cDefs.RTLD_NODELETE }}}),
+      nodelete:  Boolean(flags & RTLD_NODELETE),
       loadAsync: jsflags.loadAsync,
     }
 

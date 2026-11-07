@@ -20,16 +20,16 @@ addToLibrary({
       NODEFS.isWindows = !!process.platform.match(/^win/);
       var flags = fs.constants;
       NODEFS.flagsForNodeMap = {
-        {{{ cDefs.O_APPEND }}}: flags.O_APPEND,
-        {{{ cDefs.O_CREAT }}}: flags.O_CREAT,
-        {{{ cDefs.O_EXCL }}}: flags.O_EXCL,
-        {{{ cDefs.O_NOCTTY }}}: flags.O_NOCTTY,
-        {{{ cDefs.O_RDONLY }}}: flags.O_RDONLY,
-        {{{ cDefs.O_RDWR }}}: flags.O_RDWR,
-        {{{ cDefs.O_DSYNC }}}: flags.O_SYNC,
-        {{{ cDefs.O_TRUNC }}}: flags.O_TRUNC,
-        {{{ cDefs.O_WRONLY }}}: flags.O_WRONLY,
-        {{{ cDefs.O_NOFOLLOW }}}: flags.O_NOFOLLOW,
+        [O_APPEND]: flags.O_APPEND,
+        [O_CREAT]: flags.O_CREAT,
+        [O_EXCL]: flags.O_EXCL,
+        [O_NOCTTY]: flags.O_NOCTTY,
+        [O_RDONLY]: flags.O_RDONLY,
+        [O_RDWR]: flags.O_RDWR,
+        [O_DSYNC]: flags.O_SYNC,
+        [O_TRUNC]: flags.O_TRUNC,
+        [O_WRONLY]: flags.O_WRONLY,
+        [O_NOFOLLOW]: flags.O_NOFOLLOW,
       };
 #if ASSERTIONS
       // The 0 define must match on both sides, as otherwise we would not
@@ -51,7 +51,7 @@ addToLibrary({
         if (!e.code) throw e;
         // node under windows can return code 'UNKNOWN' here:
         // https://github.com/emscripten-core/emscripten/issues/15468
-        if (e.code === 'UNKNOWN') throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+        if (e.code === 'UNKNOWN') throw new FS.ErrnoError(EINVAL);
         throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
       }
     },
@@ -63,7 +63,7 @@ addToLibrary({
     },
     createNode(parent, name, mode, dev = undefined) {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+        throw new FS.ErrnoError(EINVAL);
       }
       var node = FS.createNode(parent, name, mode);
       node.node_ops = NODEFS.node_ops;
@@ -76,7 +76,7 @@ addToLibrary({
         if (NODEFS.isWindows) {
           // Windows does not report the 'x' permission bit, so propagate read
           // bits to execute bits.
-          mode |= (mode & {{{ cDefs.S_IRUGO }}}) >> 2;
+          mode |= (mode & S_IRUGO) >> 2;
         }
         return mode;
       });
@@ -94,11 +94,11 @@ addToLibrary({
     // This maps the integer permission modes from http://linux.die.net/man/3/open
     // to node.js-specific file open permission strings at http://nodejs.org/api/fs.html#fs_fs_open_path_flags_mode_callback
     flagsForNode(flags) {
-      flags &= ~{{{ cDefs.O_PATH }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~{{{ cDefs.O_NONBLOCK }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~{{{ cDefs.O_LARGEFILE }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~{{{ cDefs.O_CLOEXEC }}}; // Some applications may pass it; it makes no sense for a single process.
-      flags &= ~{{{ cDefs.O_DIRECTORY }}}; // Node.js doesn't need this passed in, it errors.
+      flags &= ~O_PATH; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~O_NONBLOCK; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~O_LARGEFILE; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~O_CLOEXEC; // Some applications may pass it; it makes no sense for a single process.
+      flags &= ~O_DIRECTORY; // Node.js doesn't need this passed in, it errors.
       var newFlags = 0;
       for (var k in NODEFS.flagsForNodeMap) {
         if (flags & k) {
@@ -107,7 +107,7 @@ addToLibrary({
         }
       }
       if (flags) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+        throw new FS.ErrnoError(EINVAL);
       }
       return newFlags;
     },
@@ -125,7 +125,7 @@ addToLibrary({
         }
         // Windows does not report the 'x' permission bit, so propagate read
         // bits to execute bits.
-        stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
+        stat.mode |= (stat.mode & S_IRUGO) >> 2;
       }
       return {
         dev: stat.dev,
@@ -157,7 +157,7 @@ addToLibrary({
           if (NODEFS.isWindows) {
             // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
             // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
-            mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
+            mode &= S_IRUSR | S_IWUSR;
           }
           chmod(arg, mode);
           // update the common node structure mode as well
@@ -191,7 +191,7 @@ addToLibrary({
       setattr(node, attr) {
         var path = NODEFS.realPath(node);
         if (attr.mode != null && attr.dontFollow) {
-          throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
+          throw new FS.ErrnoError(ENOSYS);
         }
         // `dontFollow` (AT_SYMLINK_NOFOLLOW): use lutimes so the symlink's own
         // timestamps are set without the host resolving it, which would
@@ -287,9 +287,9 @@ addToLibrary({
       },
       llseek(stream, offset, whence) {
         var position = offset;
-        if (whence === {{{ cDefs.SEEK_CUR }}}) {
+        if (whence === SEEK_CUR) {
           position += stream.position;
-        } else if (whence === {{{ cDefs.SEEK_END }}}) {
+        } else if (whence === SEEK_END) {
           if (FS.isFile(stream.node.mode)) {
             NODEFS.tryFSOperation(() => {
               var stat = fs.fstatSync(stream.nfd);
@@ -299,14 +299,14 @@ addToLibrary({
         }
 
         if (position < 0) {
-          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+          throw new FS.ErrnoError(EINVAL);
         }
 
         return position;
       },
       mmap(stream, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
+          throw new FS.ErrnoError(ENODEV);
         }
 
         var ptr = mmapAlloc(length);

@@ -641,7 +641,7 @@ export async function runJSify(outputFile, symbolsOnly) {
         }
         return `\
 function(${args}) {
-  dbg("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  dbg("[library call:${mangled}: " + Array.from(arguments, prettyPrint) + "]");
   ${run_func}
   dbg("  [     return:" + prettyPrint(ret));
   return ret;
@@ -1023,7 +1023,7 @@ function(${args}) {
         //  emits
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
-        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') {
+        if (snippet.at(-1) != ';' && snippet.at(-1) != '}') {
           contentText += ';';
         }
       } else if (typeof snippet === 'undefined') {
@@ -1230,7 +1230,7 @@ var proxiedFunctionTable = [
   if (symbolsOnly) {
     const symbolDeps = {};
     for (const sym of Object.keys(LibraryManager.library)) {
-      if (!isDecorator(sym)) {
+      if (!isDecorator(sym) && !LibraryManager.library[sym + '__const']) {
         const transitiveDeps = getTransitiveDeps(sym);
         symbolDeps[sym] = transitiveDeps.filter(
           (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),

@@ -19,6 +19,7 @@ import {
   pushCurrentFile,
   popCurrentFile,
   addToCompileTimeContext,
+  onSettingsLoaded,
   runInMacroContext,
   mergeInto,
   localFile,
@@ -379,8 +380,8 @@ function addToLibrary(obj, options = null) {
   mergeInto(LibraryManager.library, obj, options);
 }
 
-let structs = {};
-let defines = {};
+const structs = {};
+const defines = {};
 
 /**
  * Read JSON file containing struct and macro/define information
@@ -390,16 +391,28 @@ function loadStructInfo(filename) {
   const temp = JSON.parse(readFile(filename));
   Object.assign(structs, temp.structs);
   Object.assign(defines, temp.defines);
-}
-
-if (!BOOTSTRAPPING_STRUCT_INFO) {
-  // Load struct and define information.
-  if (MEMORY64) {
-    loadStructInfo(localFile('struct_info_generated_wasm64.json'));
-  } else {
-    loadStructInfo(localFile('struct_info_generated.json'));
+  // Also expose all C defines (except C++ scoped enum values containing '::')
+  // as internal JS library constants so they can be referenced directly in JS
+  // library functions without `{{{ cDefs.FOO }}}`.
+  for (const [key, value] of Object.entries(temp.defines)) {
+    if (!key.includes(':')) {
+      LibraryManager.library['$' + key] = value;
+      LibraryManager.library['$' + key + '__const'] = true;
+      LibraryManager.library['$' + key + '__internal'] = true;
+    }
   }
 }
+
+onSettingsLoaded(() => {
+  if (!BOOTSTRAPPING_STRUCT_INFO) {
+    // Load struct and define information.
+    if (MEMORY64) {
+      loadStructInfo(localFile('struct_info_generated_wasm64.json'));
+    } else {
+      loadStructInfo(localFile('struct_info_generated.json'));
+    }
+  }
+});
 
 // Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
 // error messages.
@@ -426,13 +439,7 @@ const C_DEFINES = new Proxy(defines, {
 });
 
 // shorter alias for C_DEFINES
-const cDefs = C_DEFINES;
-
-// Legacy function that existed solely to give error message.  These are now
-// provided by the cDefs proxy object above.
-function cDefine(key) {
-  return cDefs[key];
-}
+export const cDefs = C_DEFINES;
 
 function isInternalSymbol(ident) {
   return ident + '__internal' in LibraryManager.library;
@@ -639,7 +646,6 @@ addToCompileTimeContext({
   extraExports,
   addToLibrary,
   cDefs,
-  cDefine,
   C_STRUCTS,
   C_DEFINES,
 });

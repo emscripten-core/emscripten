@@ -22,7 +22,7 @@ addToLibrary({
       var url = '';
       var fileUrl_p = __wasmfs_fetch_get_file_url(file);
       var fileUrl = UTF8ToString(fileUrl_p);
-      var isAbs = fileUrl.indexOf('://') !== -1;
+      var isAbs = fileUrl.includes('://');
       if (isAbs) {
         url = fileUrl;
       } else {
@@ -129,7 +129,7 @@ addToLibrary({
         try {
           await getFileRange(file, offset || 0, length);
         } catch (failedResponse) {
-          return failedResponse.status === 404 ? -{{{ cDefs.ENOENT }}} : -{{{ cDefs.EBADF }}};
+          return failedResponse.status === 404 ? -ENOENT : -EBADF;
         }
         var fileInfo = wasmFS$JSMemoryRanges[file];
         length = Math.min(length, fileInfo.size-offset);

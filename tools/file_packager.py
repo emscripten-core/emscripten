@@ -500,7 +500,7 @@ def main():  # ruff: ignore[complex-structure, too-many-branches, too-many-state
       path = file_.dstpath
       # Use os.path.realpath to resolve any symbolic links to hard paths,
       # to match the structure in curr_abspath.
-      abspath = os.path.realpath(os.path.abspath(path))
+      abspath = os.path.realpath(path)
       if DEBUG:
         err(path, abspath, curr_abspath)
       if not abspath.startswith(curr_abspath):

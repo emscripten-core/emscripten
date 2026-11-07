@@ -555,7 +555,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 #endif
       // WebAssembly compilation failed, try running the JS fallback instead.
       var search = location.search;
-      if (search.indexOf('_rwasm=0') < 0) {
+      if (!search.includes('_rwasm=0')) {
         // Reload the page with the `_rwasm=0` argument
         location.href += (search ? search + '&' : '?') + '_rwasm=0';
         // Return a promise that never resolves.  We don't want to

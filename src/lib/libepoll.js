@@ -36,7 +36,7 @@ var EpollLibrary = {
         epollEvict(ep, reg);
         continue;
       }
-      if (pollOne(reg.fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}})) {
+      if (pollOne(reg.fd, reg.events & ~(EPOLLET | EPOLLONESHOT | EPOLLEXCLUSIVE))) {
         return false;
       }
     }
@@ -55,7 +55,7 @@ var EpollLibrary = {
         // Readable when any listed registration is currently ready: this is what
         // lets an epoll fd be polled/nested.
         poll(stream) {
-          return epollWouldBlock(stream.shared) ? 0 : {{{ cDefs.POLLIN }}};
+          return epollWouldBlock(stream.shared) ? 0 : POLLIN;
         },
         // A dup shares readiness but starts without callbacks.
         dup(stream) {
@@ -138,12 +138,12 @@ var EpollLibrary = {
   $epollCtl__internal: true,
   $epollCtl: (ep, op, fd, ev) => {
     var target = FS.getStream(fd);
-    if (!target) return -{{{ cDefs.EBADF }}};
-    if (op != {{{ cDefs.EPOLL_CTL_ADD }}} && op != {{{ cDefs.EPOLL_CTL_MOD }}} && op != {{{ cDefs.EPOLL_CTL_DEL }}}) {
-      return -{{{ cDefs.EINVAL }}};
+    if (!target) return -EBADF;
+    if (op != EPOLL_CTL_ADD && op != EPOLL_CTL_MOD && op != EPOLL_CTL_DEL) {
+      return -EINVAL;
     }
     // An epoll cannot watch itself (via any fd referring to the same instance).
-    if (target.shared === ep) return -{{{ cDefs.EINVAL }}};
+    if (target.shared === ep) return -EINVAL;
 
     // A registration keys on the open file description (stream.shared) - the
     // struct-file analog that dup'd fds share. If this fd's number now resolves
@@ -156,19 +156,19 @@ var EpollLibrary = {
       cur = undefined;
     }
     var has = !!cur;
-    if (op == {{{ cDefs.EPOLL_CTL_DEL }}}) {
-      if (!has) return -{{{ cDefs.ENOENT }}};
+    if (op == EPOLL_CTL_DEL) {
+      if (!has) return -ENOENT;
       epollEvict(ep, cur);
       return 0;
     }
 
     var events = {{{ makeGetValue('ev', C_STRUCTS.epoll_event.events, 'u32') }}};
-    if (op == {{{ cDefs.EPOLL_CTL_ADD }}}) {
-      if (has) return -{{{ cDefs.EEXIST }}};
+    if (op == EPOLL_CTL_ADD) {
+      if (has) return -EEXIST;
       // Only descriptors with a readiness derivation can be epoll-watched
       // (sockets/pipes/epoll itself). Regular files have no poll handler and so
       // are not epoll-capable, matching Linux (-EPERM).
-      if (!target.stream_ops?.poll) return -{{{ cDefs.EPERM }}};
+      if (!target.stream_ops?.poll) return -EPERM;
       // Nesting another epoll: reject cycles, and chains deeper than 5 levels of
       // epoll (ELOOP) - the Linux cap is EP_MAX_NESTS (4) plus the leaf level.
       if (target.shared.epoll) {
@@ -194,14 +194,14 @@ var EpollLibrary = {
           return 1 + max;
         };
         if (reaches(target, ep, new Set()) || 1 + depth(target, new Set()) > 5) {
-          return -{{{ cDefs.ELOOP }}};
+          return -ELOOP;
         }
       }
     } else { // EPOLL_CTL_MOD
-      if (!has) return -{{{ cDefs.ENOENT }}};
+      if (!has) return -ENOENT;
       // An EPOLLEXCLUSIVE registration cannot be modified, and EPOLLEXCLUSIVE
       // may only be set at ADD time.
-      if ((events | cur.events) & {{{ cDefs.EPOLLEXCLUSIVE }}}) return -{{{ cDefs.EINVAL }}};
+      if ((events | cur.events) & EPOLLEXCLUSIVE) return -EINVAL;
     }
 
     // `data` is opaque user data echoed back by epoll_wait; keep its 8 bytes as
@@ -212,7 +212,7 @@ var EpollLibrary = {
     reg.events = events;
     reg.dataLo = {{{ makeGetValue('ev', C_STRUCTS.epoll_event.data, 'i32') }}};
     reg.dataHi = {{{ makeGetValue('ev', C_STRUCTS.epoll_event.data + 4, 'i32') }}};
-    if (op == {{{ cDefs.EPOLL_CTL_ADD }}}) ep.epoll.set(fd, reg);
+    if (op == EPOLL_CTL_ADD) ep.epoll.set(fd, reg);
     // The registration's listener is its edge in the interest graph - present
     // only while armed, so a watched node fires nothing for a dead edge. ADD
     // installs it; a fired EPOLLONESHOT dropped it, so a MOD re-arm reinstalls it.
@@ -222,17 +222,17 @@ var EpollLibrary = {
       reg.listener = target.node.addListener((flags) => {
         readyListAdd(ep, reg);
         // A closing fd (POLLNVAL) wakes the epoll as a teardown, not readiness.
-        ep.node.notifyListeners(flags & {{{ cDefs.POLLNVAL }}} ? {{{ cDefs.POLLNVAL }}} : {{{ cDefs.POLLIN }}});
+        ep.node.notifyListeners(flags & POLLNVAL ? POLLNVAL : POLLIN);
       // EPOLLEXCLUSIVE: when one fd is watched by several epolls, the watched
       // node wakes only one of them per edge (round-robin), not all.
-      }, !!(events & {{{ cDefs.EPOLLEXCLUSIVE }}}));
+      }, !!(events & EPOLLEXCLUSIVE));
     }
     // Arming is itself an event source (ep_insert/ep_modify): a source-based
     // model only learns readiness from edges, so sample the level now - the
     // (re-)armed fd may already be ready with no producer notify to follow.
-    if (pollOne(fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}})) {
+    if (pollOne(fd, reg.events & ~(EPOLLET | EPOLLONESHOT | EPOLLEXCLUSIVE))) {
       readyListAdd(ep, reg);
-      ep.node.notifyListeners({{{ cDefs.POLLIN }}});
+      ep.node.notifyListeners(POLLIN);
     }
     return 0;
   },
@@ -264,19 +264,19 @@ var EpollLibrary = {
         // listener and drops it from the map.
         epollEvict(ep, node);
       } else {
-        var revents = pollOne(fd, node.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}});
+        var revents = pollOne(fd, node.events & ~(EPOLLET | EPOLLONESHOT | EPOLLEXCLUSIVE));
         if (revents) {
           var out = ev + {{{ C_STRUCTS.epoll_event.__size__ }}} * n;
           {{{ makeSetValue('out', C_STRUCTS.epoll_event.events, 'revents', 'u32') }}};
           {{{ makeSetValue('out', C_STRUCTS.epoll_event.data, 'node.dataLo', 'i32') }}};
           {{{ makeSetValue('out', C_STRUCTS.epoll_event.data + 4, 'node.dataHi', 'i32') }}};
           n++;
-          if (node.events & {{{ cDefs.EPOLLONESHOT }}}) {
+          if (node.events & EPOLLONESHOT) {
             // Fired: a dead edge until EPOLL_CTL_MOD re-arms it, so drop its
             // listener - the watched node stops poking it (no re-arm needed).
             node.listener.listeners.delete(node.listener.entry);
             node.listener = null;
-          } else if (!(node.events & {{{ cDefs.EPOLLET }}})) {
+          } else if (!(node.events & EPOLLET)) {
             readyListAdd(ep, node); // level: re-list at tail
           }
         }
@@ -351,14 +351,14 @@ var EpollLibrary = {
   emscripten_epoll_listener_add: (epfd, callback, userdata) => {
 #if PTHREADS
     // Readiness is tracked on the main thread and the callback runs there.
-    if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};
+    if (ENVIRONMENT_IS_PTHREAD) return ENOTSUP;
 #endif
     var stream = FS.getStream(epfd);
     // A public API, not a syscall: positive errno.
-    if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
+    if (!stream?.shared.epoll) return EBADF;
     var ep = stream.shared;
     var key = callback + ':' + userdata;
-    if (stream.listeners.has(key)) return {{{ cDefs.EEXIST }}};
+    if (stream.listeners.has(key)) return EEXIST;
     var it = {key};
     stream.listeners.set(key, it);
 
@@ -386,12 +386,12 @@ var EpollLibrary = {
 
   emscripten_epoll_listener_remove: (epfd, callback, userdata) => {
 #if PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return {{{ cDefs.ENOTSUP }}};
+    if (ENVIRONMENT_IS_PTHREAD) return ENOTSUP;
 #endif
     var stream = FS.getStream(epfd);
-    if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
+    if (!stream?.shared.epoll) return EBADF;
     var it = stream.listeners.get(callback + ':' + userdata);
-    if (!it) return {{{ cDefs.ENOENT }}};
+    if (!it) return ENOENT;
     epollClearListener(stream, it);
     return 0;
   },

@@ -6,6 +6,7 @@
 // This file defines the global state.
 
 #include <emscripten/threading.h>
+#include <functional>
 
 #include "memory_backend.h"
 #include "paths.h"
@@ -29,10 +30,10 @@ backend_t createIgnoreCaseBackend(std::function<backend_t()> createBackend);
 // system priority) since wasmFS is a system level component.
 // TODO: consider instead adding this in libc's startup code.
 // WARNING: Maintain # n + 1 "wasmfs.cpp" 3 where n = line number.
-static_assert(__LINE__ == 32, "Incorrect line number mapping");
-# 34 "wasmfs.cpp" 3
+static_assert(__LINE__ == 33, "Incorrect line number mapping");
+# 35 "wasmfs.cpp" 3
 __attribute__((init_priority(100))) WasmFS wasmFS;
-# 36 "wasmfs.cpp"
+# 37 "wasmfs.cpp"
 
 // If the user does not implement this hook, do nothing.
 __attribute__((weak)) extern "C" void wasmfs_before_preload(void) {}

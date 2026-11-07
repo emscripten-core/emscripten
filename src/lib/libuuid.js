@@ -100,9 +100,9 @@ addToLibrary({
   },
 
   // int uuid_type(const uuid_t uu);
-  uuid_type: (uu) => {{{ cDefs.UUID_TYPE_DCE_RANDOM }}},
+  uuid_type: (uu) => UUID_TYPE_DCE_RANDOM,
 
   // int uuid_variant(const uuid_t uu);
-  uuid_variant: (uu) => {{{ cDefs.UUID_VARIANT_DCE }}},
+  uuid_variant: (uu) => UUID_VARIANT_DCE,
 });
 

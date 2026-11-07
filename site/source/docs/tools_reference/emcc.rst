@@ -599,7 +599,6 @@ Environment variables
   - ``EMCC_DEBUG`` [general]
   - ``EMCC_DEBUG_SAVE`` [general]
   - ``EMCC_FORCE_STDLIBS`` [link]
-  - ``EMCC_ONLY_FORCED_STDLIBS`` [link]
   - ``EMCC_LOCAL_PORTS`` [compile+link]
   - ``EMCC_CLOSURE_ARGS`` [link] arguments to be passed to *Closure Compiler*
   - ``EMCC_STRICT`` [general]

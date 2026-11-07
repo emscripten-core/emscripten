@@ -102,8 +102,8 @@ addToLibrary({
 #if ASSERTIONS
     assert(wwParams);
     assert(wwParams.wwID);
-    assert(wwParams.stackLowestAddress % {{{ STACK_ALIGN }}} == 0);
-    assert(wwParams.stackSize % {{{ STACK_ALIGN }}} == 0);
+    assert(wwParams.stackLowestAddress % STACK_ALIGN == 0);
+    assert(wwParams.stackSize % STACK_ALIGN == 0);
 #endif
 #if RUNTIME_DEBUG
     dbg('wasmWorkerInitializeRuntime wwID:', wwParams.wwID);

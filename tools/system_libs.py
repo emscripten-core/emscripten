@@ -99,7 +99,6 @@ def clean_env():
               'EMCC_CFLAGS',
               'EMCC_AUTODEBUG',
               'EMCC_FORCE_STDLIBS',
-              'EMCC_ONLY_FORCED_STDLIBS',
               'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
@@ -957,22 +956,37 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-# Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
-class libclang_rt_builtins(CompilerRTLibrary, MTLibrary, SjLjLibrary):
+# Low-level Emscripten runtime library below libc (like libclang_rt.builtins,
+# but only linked into the main module rather than into each side module).
+# Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support.
+class libemcc(CompilerRTLibrary, MTLibrary, SjLjLibrary):
+  name = 'libemcc'
+
+  cflags = ['-DNDEBUG']
+  src_dir = 'system/lib/libemcc'
+  includes = ['system/lib/libc']
+  src_files = [
+    'stack_ops.S',
+    'stack_limits.S',
+    'emscripten_setjmp.c',
+    'emscripten_exception_builtins.c',
+    'emscripten_tempret.s',
+    '__c_longjmp.S',
+    '__trap.c',
+  ]
+
+
+class libclang_rt_builtins(CompilerRTLibrary, MTLibrary):
   name = 'libclang_rt.builtins'
 
-  cflags = [
-    '-DNDEBUG',
-    # TODO: Remove this if the emutls_key_created variable in emutls.c is
-    # fixed or if the scope of the warning is modified again (see
-    # https://github.com/llvm/llvm-project/pull/178342)
-    '-Wno-unused-but-set-variable',
-  ]
+  cflags = ['-DNDEBUG', '-fvisibility=hidden']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   includes = ['system/lib/libc']
   excludes = {
     # gcc_personality_v0.c depends on libunwind, which don't include by default.
     'gcc_personality_v0.c',
+    # Emscripten uses native Wasm TLS rather than emulated TLS.
+    'emutls.c',
     # bfloat16
     'extendbfsf2.c',
     'truncdfbf2.c',
@@ -1001,17 +1015,6 @@ class libclang_rt_builtins(CompilerRTLibrary, MTLibrary, SjLjLibrary):
     'truncxfhf2.c',
   }
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
-  src_files += files_in_path(
-      path='system/lib/compiler-rt',
-      filenames=[
-        'stack_ops.S',
-        'stack_limits.S',
-        'emscripten_setjmp.c',
-        'emscripten_exception_builtins.c',
-        'emscripten_tempret.s',
-        '__c_longjmp.S',
-        '__trap.c',
-      ])
 
 
 class libclang_rt_profile(CompilerRTLibrary, MTLibrary):
@@ -1647,6 +1650,7 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
     '-Oz',
     '-D_LIBCXXABI_USE_FUTEX',
     '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCPP_AVAILABILITY_MINIMUM_HEADER_VERSION=23',
     '-D_LIBCXXABI_BUILDING_LIBRARY',
     '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
     '-std=c++23',
@@ -1721,12 +1725,14 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     '-Oz',
     '-DLIBCXX_BUILDING_LIBCXXABI=1',
     '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCPP_AVAILABILITY_MINIMUM_HEADER_VERSION=23',
     '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+    '-D_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER',
     # TODO(sbc): clang recently introduced this new warning which is triggered
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
-    '-std=c++23',
+    '-std=c++26',
     '-DLIBC_NAMESPACE=__llvm_libc',
   ]
 
@@ -2377,21 +2383,15 @@ def get_libs_to_link():
   # ones you want
   force_include = []
   force = os.environ.get('EMCC_FORCE_STDLIBS')
-  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This
-  # avoids spending time checking for unresolved symbols in your project files,
-  # which can speed up linking, but if you do not have the proper list of
-  # actually needed libraries, errors can occur.
-  only_forced = utils.get_env_bool('EMCC_ONLY_FORCED_STDLIBS')
-  if only_forced:
-    # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
-    # of the input files for reverse dependencies.
-    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries')
   if force == '1':
     force_include = [name for name, lib in system_libs_map.items() if not lib.never_force]
   elif force:
     force_include = force.split(',')
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
+
+  if utils.get_env_bool('EMCC_ONLY_FORCED_STDLIBS'):
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is no longer supported.  Use `-nostdlib` to avoid linking standard libraries')
 
   def add_library(libname, whole_archive=False):
     lib = system_libs_map[libname]
@@ -2418,6 +2418,10 @@ def get_libs_to_link():
         add_library('crt1_proxy_main')
 
   if settings.SIDE_MODULE:
+    if not options.nodefaultlibs:
+      add_library('libclang_rt.builtins')
+      if options.profile:
+        add_library('libclang_rt.profile')
     return libs_to_link
 
   # We add the forced libs last so that any libraries that are added in the normal
@@ -2428,10 +2432,6 @@ def get_libs_to_link():
       if forced not in system_libs_map:
         utils.exit_with_error('invalid forced library: %s', forced)
       add_library(forced)
-
-  if options.nodefaultlibs:
-    add_forced_libs()
-    return libs_to_link
 
   sanitize = settings.USE_LSAN or settings.USE_ASAN or settings.UBSAN_RUNTIME
 
@@ -2454,8 +2454,7 @@ def get_libs_to_link():
     if sanitize:
       add_library('libclang_rt.sanitizer_common')
 
-  if only_forced:
-    add_library('libclang_rt.builtins')
+  if options.nodefaultlibs:
     add_sanitizer_libs()
     add_forced_libs()
     return libs_to_link
@@ -2497,6 +2496,7 @@ def get_libs_to_link():
         utils.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
+  add_library('libemcc')
   add_library('libclang_rt.builtins')
   if settings.LINK_AS_CXX:
     add_library('libc++')
@@ -2546,8 +2546,14 @@ def calculate():
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
   # shouldn't add any extra `--no-whole-archive` or we will undo the intent of building.link_ldd.
+  # However, in SIDE_MODULE builds we never want system libraries (such as libclang_rt.builtins)
+  # to be linked with --whole-archive, so we prepend --no-whole-archive before them.
+  # See https://github.com/llvm/llvm-project/issues/238581
   if settings.LINKABLE or settings.SIDE_MODULE:
-    return [lib.get_link_flag() for lib, _ in libs_to_link]
+    ret = [lib.get_link_flag() for lib, _ in libs_to_link]
+    if settings.SIDE_MODULE and settings.LINKABLE and ret:
+      ret.insert(0, '--no-whole-archive')
+    return ret
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
