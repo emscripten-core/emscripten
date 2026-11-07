@@ -24,6 +24,7 @@
 #include <wasi/api.h>
 
 namespace wasmfs {
+class WaitQueue;
 
 // Note: The general locking strategy for all Files is to only hold 1 lock at a
 // time to prevent deadlock. This methodology can be seen in getDirs().
@@ -55,6 +56,9 @@ public:
     DirectoryKind = 2,
     SymlinkKind = 3
   };
+
+  // For notifying when `poll()` may change
+  virtual WaitQueue* getWaitQueue() { return nullptr; }
 
   const FileKind kind;
 

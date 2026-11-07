@@ -12,6 +12,7 @@
 #include <emscripten/heap.h>
 #include <emscripten/html5.h>
 #include <emscripten/syscalls.h>
+#include <emscripten/threading.h>
 #include <errno.h>
 #include <math.h>
 #include <mutex>
@@ -1436,7 +1437,13 @@ int __syscall_pipe2(int fd[2], int flags) {
   return 0;
 }
 
-int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
+// Compute revents for every fd and return how many are ready. If `waiter` is
+// non-null, also register it in the wait queue of each pollable file.
+static int doPoll(struct pollfd* fds,
+                  nfds_t nfds,
+                  PollWaiter* waiter,
+                  std::vector<std::shared_ptr<OpenFileState>>& files,
+                  std::vector<WaitRegistration>& regs) {
   auto fileTable = wasmFS.getFileTable().locked();
 
   // Process the list of FDs and compute their revents masks. Count the number
@@ -1456,6 +1463,13 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
     if (openFile) {
       auto flags = openFile->locked().getFlags();
       auto file = openFile->locked().getFile();
+      if (waiter) {
+        if (auto* queue = file->getWaitQueue()) {
+          // Keep the file, and so its queue, alive while registered.
+          files.push_back(openFile);
+          regs.emplace_back(*queue, *waiter);
+        }
+      }
       // POLLERR and POLLHUP are reported whether or not they were requested.
       mask = file->locked().poll(flags) & (pollfd->events | POLLERR | POLLHUP);
     }
@@ -1464,14 +1478,40 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
     }
     pollfd->revents = mask;
   }
-  // TODO: This should block based on the timeout. The old FS did not do so due
-  //       to web limitations, which we should perhaps revisit (especially with
-  //       pthreads and asyncify).
   return nonzero;
 }
 
-// libc routes zero-timeout poll() calls here (see musl's poll.c). WasmFS's
-// __syscall_poll never blocks, so the zero-timeout probe is the same call.
+int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
+  PollWaiter waiter;
+  std::vector<std::shared_ptr<OpenFileState>> files;
+  std::vector<WaitRegistration> regs;
+  files.reserve(nfds);
+  regs.reserve(nfds);
+
+
+  // A zero timeout is a simple check. Blocking on the main browser thread
+  // would busy-wait and could deadlock, so only check there too.
+  if (timeout == 0 || emscripten_is_main_browser_thread()) {
+    return doPoll(fds, nfds, nullptr, files, regs);
+  }
+
+  PollWaiter::Deadline deadline;
+  if (timeout > 0) {
+    deadline =
+      std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout);
+  }
+
+  // The first scan registers the waiter; later ones only recompute.
+  int nonzero = doPoll(fds, nfds, &waiter, files, regs);
+  bool timedOut = false;
+  while (!nonzero && !timedOut) {
+    timedOut = !waiter.wait(deadline);
+    nonzero = doPoll(fds, nfds, nullptr, files, regs);
+  }
+  return nonzero;
+}
+
+// libc routes zero-timeout poll() calls here (see musl's poll.c).
 int __syscall_poll_nonblocking(struct pollfd* fds, nfds_t nfds) {
   return __syscall_poll(fds, nfds, 0);
 }
