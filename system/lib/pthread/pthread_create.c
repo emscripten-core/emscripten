@@ -28,6 +28,13 @@
 #define dbg(fmt, ...)
 #endif
 
+static _Thread_local const char* next_thread_transferredcanvases;
+
+int emscripten_set_next_thread_transferredcanvases(const char* str) {
+  next_thread_transferredcanvases = (str && str[0]) ? str : NULL;
+  return 0;
+}
+
 // See musl's pthread_create.c
 
 static void dummy_0() {}
@@ -131,6 +138,12 @@ int __pthread_create(pthread_t* restrict res,
   if (!attrp || c11) {
     attr._a_stacksize = __default_stacksize;
     attr._a_guardsize = __default_guardsize;
+  }
+  if (!attr._a_transferredcanvases) {
+    if (next_thread_transferredcanvases) {
+      attr._a_transferredcanvases = next_thread_transferredcanvases;
+      next_thread_transferredcanvases = NULL;
+    }
   }
 
   size_t guard_size = 0;
