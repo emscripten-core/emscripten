@@ -8,8 +8,8 @@ import re
 
 from tools import diagnostics
 
-TAG = 'version_3_4'
-HASH = '38dc1406d679d05ecd89c11db05ceb72ac9feefae733e23c2f2bbb22e8b0728d8ec902cec53fa13eb3927a130e58e9ae4c7a4cd6479295d0fc6ad68b5168f930'
+TAG = 'version_3_5'
+HASH = '78d2a4e3c5ce3c2b22ddfb81d935e2cb07c213e341eb3b38831a9ebc97b299bdc70941812f8dc71f29de0fedea47b1077cb637961db9a4614b49703b7e30f79f'
 
 deps = ['libpng', 'zlib']
 
