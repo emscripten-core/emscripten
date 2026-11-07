@@ -282,7 +282,7 @@ Here’s code implementing the base64 solution::
   console.log(window.btoa(binary));
   console.log("===END===");
 
-Then the profile file can be created by by running::
+Then the profile file can be created by running::
 
   $ echo [pasted base64] | base64 --decode > profile.data
 

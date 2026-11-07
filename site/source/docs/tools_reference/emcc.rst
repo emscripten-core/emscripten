@@ -241,7 +241,7 @@ Options that are modified or new in *emcc* are listed below:
   [compile+link]
   Write tar file containing inputs and command to reproduce invocation.  When
   sharing this file be aware that it will any object files, source files and
-  libraries that that were passed to the compiler.
+  libraries that were passed to the compiler.
 
 .. _emcc-emit-symbol-map:
 
