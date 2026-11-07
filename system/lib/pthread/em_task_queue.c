@@ -103,16 +103,12 @@ em_task_queue* em_task_queue_create(pthread_t thread) {
     free(queue);
     return NULL;
   }
-  *queue = (em_task_queue){.notification = NOTIFICATION_NONE,
-                           .mutex = PTHREAD_MUTEX_INITIALIZER,
-                           .thread = thread,
-                           .processing = 0,
-                           .tasks = tasks,
-                           .capacity = EM_TASK_QUEUE_INITIAL_CAPACITY,
-                           .head = 0,
-                           .tail = 0,
-                           .zombie_prev = NULL,
-                           .zombie_next = NULL};
+  memset(queue, 0, sizeof(*queue));
+  queue->notification = NOTIFICATION_NONE;
+  queue->mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+  queue->thread = thread;
+  queue->tasks = tasks;
+  queue->capacity = EM_TASK_QUEUE_INITIAL_CAPACITY;
   return queue;
 }
 

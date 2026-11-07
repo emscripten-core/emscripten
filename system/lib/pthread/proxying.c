@@ -47,12 +47,8 @@ em_proxying_queue* em_proxying_queue_create(void) {
   if (q == NULL) {
     return NULL;
   }
-  *q = (em_proxying_queue){
-    .mutex = PTHREAD_MUTEX_INITIALIZER,
-    .task_queues = NULL,
-    .size = 0,
-    .capacity = 0,
-  };
+  memset(q, 0, sizeof(*q));
+  q->mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
   return q;
 }
 
@@ -288,23 +284,6 @@ static void cancel_active_ctxs(void* arg) {
   } while (curr != head);
 }
 
-static void em_proxying_ctx_init_sync(em_proxying_ctx* ctx,
-                                      void (*func)(em_proxying_ctx*, void*),
-                                      void* arg) {
-  pthread_once(&active_ctxs_once, init_active_ctxs);
-  *ctx = (em_proxying_ctx){
-    .func = func,
-    .arg = arg,
-    .kind = SYNC,
-    .sync =
-      {
-        .state = PENDING,
-        .mutex = PTHREAD_MUTEX_INITIALIZER,
-        .cond = PTHREAD_COND_INITIALIZER,
-      },
-  };
-}
-
 static void em_proxying_ctx_init_callback(em_proxying_ctx* ctx,
                                           em_proxying_queue* queue,
                                           pthread_t caller_thread,
@@ -313,18 +292,14 @@ static void em_proxying_ctx_init_callback(em_proxying_ctx* ctx,
                                           void (*cancel)(void*),
                                           void* arg) {
   pthread_once(&active_ctxs_once, init_active_ctxs);
-  *ctx = (em_proxying_ctx){
-    .func = func,
-    .arg = arg,
-    .kind = CALLBACK,
-    .cb =
-      {
-        .queue = queue,
-        .caller_thread = caller_thread,
-        .callback = callback,
-        .cancel = cancel,
-      },
-  };
+  memset(ctx, 0, sizeof(*ctx));
+  ctx->func = func;
+  ctx->arg = arg;
+  ctx->kind = CALLBACK;
+  ctx->cb.queue = queue;
+  ctx->cb.caller_thread = caller_thread;
+  ctx->cb.callback = callback;
+  ctx->cb.cancel = cancel;
 }
 
 static void em_proxying_ctx_deinit(em_proxying_ctx* ctx) {
@@ -410,8 +385,18 @@ bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
                                    void* arg) {
   assert(!pthread_equal(target_thread, pthread_self()) &&
          "Cannot synchronously wait for work proxied to the current thread");
-  em_proxying_ctx ctx;
-  em_proxying_ctx_init_sync(&ctx, func, arg);
+  pthread_once(&active_ctxs_once, init_active_ctxs);
+  em_proxying_ctx ctx = {
+    .func = func,
+    .arg = arg,
+    .kind = SYNC,
+    .sync =
+      {
+        .state = PENDING,
+        .mutex = PTHREAD_MUTEX_INITIALIZER,
+        .cond = PTHREAD_COND_INITIALIZER,
+      },
+  };
   if (!do_proxy(q, target_thread, (task){call_with_ctx, cancel_ctx, &ctx})) {
     em_proxying_ctx_deinit(&ctx);
     return false;
