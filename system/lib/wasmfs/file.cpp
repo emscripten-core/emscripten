@@ -16,6 +16,80 @@ namespace wasmfs {
 // DataFile
 //
 
+ssize_t DataFile::read(const __wasi_iovec_t* iovs,
+                       size_t iovs_len,
+                       off_t offset,
+                       oflags_t flags) {
+  size_t bytesRead = 0;
+  for (size_t i = 0; i < iovs_len; i++) {
+    uint8_t* buf = iovs[i].buf;
+    size_t len = iovs[i].buf_len;
+
+    // TODO: Check for overflow when adding offset + bytesRead.
+    auto result = read(buf, len, offset + bytesRead);
+    if (result < 0) {
+      // This individual read failed. Report the error unless we've already read
+      // some bytes, in which case report a successful short read.
+      if (bytesRead > 0) {
+        break;
+      }
+      return result;
+    }
+
+    // The read was successful.
+
+    // Backends must only return len or less.
+    assert(result <= len);
+
+    bytesRead += result;
+    if (result < len) {
+      // The read was short, so stop here.
+      break;
+    }
+  }
+  return bytesRead;
+}
+
+ssize_t DataFile::write(const __wasi_ciovec_t* iovs,
+                        size_t iovs_len,
+                        off_t offset,
+                        oflags_t flags) {
+  size_t bytesWritten = 0;
+  for (size_t i = 0; i < iovs_len; i++) {
+    const uint8_t* buf = iovs[i].buf;
+    size_t len = iovs[i].buf_len;
+
+    // Check if the sum of the buf_len values overflows an off_t (63 bits).
+    if (addWillOverFlow(offset, (off_t)bytesWritten)) {
+      if (bytesWritten > 0) {
+        break;
+      }
+      return -EFBIG;
+    }
+
+    auto result = write(buf, len, offset + bytesWritten);
+    if (result < 0) {
+      // This individual write failed. Report the error unless we've already
+      // written some bytes, in which case report a successful short write.
+      if (bytesWritten > 0) {
+        break;
+      }
+      return result;
+    }
+    // The write was successful.
+
+    // Backends must only return len or less.
+    assert(result <= len);
+
+    bytesWritten += result;
+    if (result < len) {
+      // The write was short, so stop here.
+      break;
+    }
+  }
+  return bytesWritten;
+}
+
 void DataFile::Handle::preloadFromJS(int index) {
   // TODO: Each Datafile type could have its own impl of file preloading.
   // Create a buffer with the required file size.
