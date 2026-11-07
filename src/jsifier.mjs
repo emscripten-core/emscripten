@@ -135,27 +135,42 @@ function isDefined(symName) {
   return false;
 }
 
+// Cache transitive dependencies per symbol to avoid re-walking shared
+// dependency subgraphs (which would otherwise lead to quadratic behavior).
+const transitiveDepsCache = new Map();
+
 function getTransitiveDeps(symbol) {
-  // TODO(sbc): Use some kind of cache to avoid quadratic behaviour here.
+  let result = transitiveDepsCache.get(symbol);
+  if (result) {
+    return result;
+  }
   const transitiveDeps = new Set();
   const seen = new Set();
   const toVisit = [symbol];
   while (toVisit.length) {
     const sym = toVisit.pop();
     if (!seen.has(sym)) {
-      let directDeps = LibraryManager.library[sym + '__deps'] ?? [];
-      directDeps = directDeps.filter((d) => typeof d === 'string');
-      for (const dep of directDeps) {
+      const cached = transitiveDepsCache.get(sym);
+      let deps = cached;
+      if (!deps) {
+        deps = LibraryManager.library[sym + '__deps'] ?? [];
+        deps = deps.filter((d) => typeof d === 'string');
+      }
+      for (const dep of deps) {
         if (!transitiveDeps.has(dep)) {
           debugLog(`adding dependency ${symbol} -> ${dep}`);
+          transitiveDeps.add(dep);
+          if (!cached) {
+            toVisit.push(dep);
+          }
         }
-        transitiveDeps.add(dep);
-        toVisit.push(dep);
       }
       seen.add(sym);
     }
   }
-  return Array.from(transitiveDeps);
+  result = Array.from(transitiveDeps);
+  transitiveDepsCache.set(symbol, result);
+  return result;
 }
 
 function shouldPreprocess(fileName) {
