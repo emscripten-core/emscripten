@@ -567,7 +567,6 @@ addToLibrary({
   },
 
   _wasmfs_poll_wait__async: 'auto',
-  _wasmfs_poll_wait__sig: 'ipi',
   _wasmfs_poll_wait: (key, ms, sync) => {
   if (sync) {
     return 0;
@@ -585,7 +584,6 @@ addToLibrary({
   }
   },
 
-  _wasmfs_poll_notify__sig: 'vp',
   _wasmfs_poll_notify: (key) => {
   var entry = wasmFSPollWaiters[key];
   if (!entry)

@@ -21,6 +21,7 @@
 #include <assert.h>
 #include <chrono>
 #include <condition_variable>
+#include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 #include <mutex>
 #include <optional>
@@ -119,7 +120,15 @@ public:
       }
 
       if (isAsync) {
-        _wasmfs_poll_notify(waiter);
+        if (emscripten_is_main_browser_thread()) {
+          _wasmfs_poll_notify(waiter);
+        } else {
+          // poll() coming from main thread
+          emscripten_proxy_async(emscripten_proxy_get_system_queue(),
+                                 emscripten_main_runtime_thread_id(),
+                                 _wasmfs_poll_notify,
+                                 waiter);
+        }
       } else {
         waiter->cond.notify_one();
       }
