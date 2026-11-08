@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "wasmfs_internal.h"
 #include <algorithm>
 #include <assert.h>
 #include <chrono>
@@ -44,8 +45,10 @@ public:
   // notification arrived since the previous wait(). Clears the notification
   // before returning. Returns true if notified, false on timeout.
   bool wait(Deadline deadline) {
-    assert(!emscripten_is_main_browser_thread() &&
-           "cannot block in PollWaiter::wait() on the main browser thread");
+    if (emscripten_is_main_browser_thread()) {
+      return waitAsync(deadline);
+    }
+
     std::unique_lock<std::mutex> lock(mutex);
     auto isTriggered = [&]() { return triggered; };
     bool notified = true;
@@ -62,6 +65,31 @@ private:
   std::mutex mutex;
   std::condition_variable cond;
   bool triggered = false;
+  bool async = false;
+
+  bool waitAsync(Deadline deadline) {
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      if (triggered) {
+        triggered = false;
+        return true;
+      }
+      async = true;
+    }
+
+    int ms = -1;
+    if (deadline) {
+      auto remaining = std::chrono::ceil<std::chrono::milliseconds>(
+        *deadline - std::chrono::steady_clock::now());
+      ms = static_cast<int>(std::max<long long>(remaining.count(), 0));
+    }
+    int res = _wasmfs_poll_wait(this, ms);
+
+    std::lock_guard<std::mutex> lock(mutex);
+    bool notified = res || triggered;
+    triggered = false;
+    return notified;
+  }
 
   friend class WaitQueue;
 };
@@ -83,12 +111,18 @@ public:
     // unregistered (and so cannot be destroyed) until we are done with it.
     std::lock_guard<std::mutex> lock(mutex);
     for (auto* waiter : waiters) {
+      bool isAsync = false;
       {
         std::lock_guard<std::mutex> waiterLock(waiter->mutex);
         waiter->triggered = true;
+        isAsync = waiter->async;
       }
-      // Only the owning poll() call ever waits on a PollWaiter.
-      waiter->cond.notify_one();
+
+      if (isAsync) {
+        _wasmfs_poll_notify(waiter);
+      } else {
+        waiter->cond.notify_one();
+      }
     }
   }
 

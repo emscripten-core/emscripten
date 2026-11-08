@@ -21,6 +21,10 @@ void _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* data);
 // Returns the next character from stdin, or -1 on EOF.
 int _wasmfs_stdin_get_char(void);
 
+// if notified returns 1, 0 for timeout
+int _wasmfs_poll_wait(void* key, int ms);
+void _wasmfs_poll_notify(void* key);
+
 #ifdef __cplusplus
 }
 #endif

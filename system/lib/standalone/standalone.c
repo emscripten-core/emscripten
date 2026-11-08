@@ -319,6 +319,17 @@ int _wasmfs_stdin_get_char(void) {
   return c;
 }
 
+int _wasmfs_poll_wait(void* key, int ms) {
+  (void)key;
+  (void)ms;
+  return 0;
+}
+
+void _wasmfs_poll_notify(void* key) {
+  (void)key;
+  return;
+}
+
 // In the non-standalone build we define this helper function in JS to avoid
 // signature mismatch issues.
 // See: https://github.com/emscripten-core/posixtestsuite/issues/6
@@ -332,6 +343,8 @@ int _setitimer_js(int which, double timeout) {
   errno = ENOTSUP;
   return -1;
 }
+
+weak int emscripten_is_main_browser_thread() { return true; }
 
 weak uintptr_t emscripten_stack_snapshot(void) {
   return 0;

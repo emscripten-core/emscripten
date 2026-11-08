@@ -1485,15 +1485,13 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
   PollWaiter waiter;
   std::vector<std::shared_ptr<OpenFileState>> files;
   std::vector<WaitRegistration> regs;
-  files.reserve(nfds);
-  regs.reserve(nfds);
 
-
-  // A zero timeout is a simple check. Blocking on the main browser thread
-  // would busy-wait and could deadlock, so only check there too.
-  if (timeout == 0 || emscripten_is_main_browser_thread()) {
+  if (timeout == 0) {
     return doPoll(fds, nfds, nullptr, files, regs);
   }
+
+  files.reserve(nfds);
+  regs.reserve(nfds);
 
   PollWaiter::Deadline deadline;
   if (timeout > 0) {
