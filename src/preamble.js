@@ -799,9 +799,7 @@ function getWasmImports() {
 
 #if MAIN_MODULE
 #if PTHREADS
-    if (!ENVIRONMENT_IS_PTHREAD) {
-      recordMainModuleExportSlots(origExports);
-    }
+    initFunctionsInTableMap(origExports);
 #endif
     updateGOT(origExports);
 #endif

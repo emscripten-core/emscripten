@@ -202,18 +202,29 @@ var LibraryDylink = {
   },
 
 #if PTHREADS
-  // Called on the main thread once the main module is instantiated.  Records
-  // which table slots hold the main module's exported functions, which new
-  // workers use in getFunctionAddress.
-  $recordMainModuleExportSlots__internal: true,
-  $recordMainModuleExportSlots: (exports) => {
-    mainModuleTableSize = {{{ from64Expr('wasmTable.length') }}};
-    mainModuleExportSlots = [];
-    for (var symName in exports) {
-      var value = exports[symName];
-      var slot = typeof value === 'function' && getFunctionAddress(value);
-      if (slot) {
-        mainModuleExportSlots.push(slot);
+  // Called once the main module is instantiated, before updateGOT.  The first
+  // getFunctionAddress walks the whole table, creating a JS function object for
+  // every entry, which every worker would keep for its lifetime.  The dynamic
+  // linker only looks up the main module's exported functions, so the main
+  // thread records their table slots and workers start functionsInTableMap
+  // with just those.  Side modules add their own slots when they are loaded.
+  // As a consequence, addFunction in a worker on a main-module function that
+  // is in the table but not exported gives it a new slot (ASSERTIONS=2 reports
+  // this).
+  $initFunctionsInTableMap__internal: true,
+  $initFunctionsInTableMap: (exports) => {
+    if (!ENVIRONMENT_IS_PTHREAD) {
+      mainModuleExportSlots = [];
+      for (var value of Object.values(exports)) {
+        var addr = typeof value == 'function' && getFunctionAddress(value);
+        if (addr) {
+          mainModuleExportSlots.push(addr);
+        }
+      }
+    } else if (mainModuleExportSlots) {
+      functionsInTableMap = new WeakMap();
+      for (var slot of mainModuleExportSlots) {
+        functionsInTableMap.set(getWasmTableEntry(slot), slot);
       }
     }
   },

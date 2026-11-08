@@ -124,22 +124,6 @@ addToLibrary({
     // First, create the map if this is the first use.
     if (!functionsInTableMap) {
       functionsInTableMap = new WeakMap();
-#if MAIN_MODULE && PTHREADS
-      // Walking the main module's part of the table would create a JS wrapper
-      // for every function in it, in every worker.  The dynamic linker only
-      // looks up the main module's exported functions, so workers add just the
-      // slots of those, as recorded by the main thread.
-      // As a consequence, a main-module function that is in the table but not
-      // exported is not found here, so addFunction in a worker gives it a new
-      // slot rather than the address it has on the main thread (ASSERTIONS=2
-      // reports this in addFunction).
-      if (ENVIRONMENT_IS_PTHREAD && mainModuleExportSlots) {
-        for (var slot of mainModuleExportSlots) {
-          functionsInTableMap.set(getWasmTableEntry(slot), slot);
-        }
-        updateTableMap(mainModuleTableSize, {{{ from64Expr('wasmTable.length') }}} - mainModuleTableSize);
-      } else
-#endif
       updateTableMap(0, {{{ from64Expr('wasmTable.length') }}});
     }
     return functionsInTableMap.get(func) || 0;
