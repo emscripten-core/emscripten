@@ -9560,7 +9560,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @also_with_minimal_runtime
   @no_esm_integration('depends on wasmExports')
   def test_get_exported_function(self):
-    self.do_core_test('test_get_exported_function.cpp', cflags=['-sALLOW_TABLE_GROWTH', '-lexports.js'])
+    output = self.do_runf_out_file('core/test_get_exported_function.cpp', cflags=['-sALLOW_TABLE_GROWTH', '-lexports.js'])
+    self.assertContainedIf('No exported function found by name "no_such_function"', output, not self.is_optimizing())
 
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet suppored by the wasm engines we test against.
