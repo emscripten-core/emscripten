@@ -5,7 +5,7 @@
 
 from subprocess import PIPE
 
-from common import EMCC, RunnerCore, copy_asset, create_file, read_file, test_file
+from common import EMCC, NON_ZERO, RunnerCore, copy_asset, create_file, read_file, test_file
 from decorators import (
   also_with_wasm2js,
   also_with_wasm64,
@@ -136,19 +136,30 @@ addToLibrary({
     '': ([],),
     'asyncify': (['-sASYNCIFY', '-DASYNC'],),
     'jspi': (['-sJSPI', '-DASYNC'],),
-    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-DWAITS'],),
+    'pthread_main': (['-pthread'],),
+    'proxy': (['-DPROXY'],),
+    'proxy_asyncify': (['-sASYNCIFY', '-DASYNC', '-DPROXY'],),
+    'proxy_jspi': (['-sJSPI', '-DASYNC', '-DPROXY'],),
+    'proxy_pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-DPROXY', '-DWAITS'],),
+    'proxy_pthread_main': (['-pthread', '-DPROXY'],),
+    'proxy_pthread_asyncify': (['-pthread', '-sPROXY_TO_PTHREAD', '-sASYNCIFY', '-DASYNC', '-DPROXY', '-DWAITS'],),
+    'proxy_pthread_jspi': (['-pthread', '-sPROXY_TO_PTHREAD', '-sJSPI', '-DASYNC', '-DPROXY', '-DWAITS'],),
   })
   def test_jslib_async_auto_sync(self, args):
     # `answer(ms, value)` resolves to `value` after `ms` milliseconds
     # (synchronously if `ms` is 0), or is -1 where the caller cannot wait.
+    # With PROXY (`__async: 'proxy'`) only a proxied pthread call can wait
+    # (WAITS: main() runs on a pthread).
     if '-sJSPI' in args:
       self.require_jspi()
     if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    mode = "'proxy'" if '-DPROXY' in args else "'auto'"
     create_file('lib.js', r'''
 addToLibrary({
   answer__sig: 'pip',
-  answer__async: 'auto',
+  answer__async: MODE,
   answer__proxy: 'sync',
   answer: (ms, value, sync) => {
     if (!ms) return value;
@@ -156,13 +167,13 @@ addToLibrary({
     return new Promise((resolve) => setTimeout(() => resolve(value), ms));
   },
   // No __sig: `sync` is found by name alone.
-  wait_ms__async: 'auto',
+  wait_ms__async: MODE,
   wait_ms__proxy: 'sync',
   wait_ms: (ms, sync) => {
     if (ms && !sync) return new Promise((resolve) => setTimeout(resolve, ms));
   },
 });
-''')
+'''.replace('MODE', mode))
     create_file('src.c', r'''
 #include <assert.h>
 #include <stdint.h>
@@ -173,7 +184,7 @@ void wait_ms(int ms);
 
 int main() {
   assert(answer(0, 7) == 7);
-#if defined(__EMSCRIPTEN_PTHREADS__) || defined(ASYNC)
+#if defined(WAITS) || (defined(ASYNC) && !defined(PROXY))
   assert(answer(5, 42) == 42);
 #else
   assert(answer(5, 42) == -1);
@@ -196,6 +207,39 @@ addToLibrary({
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
                      "error: JS library error: 'jslibfunc' must take 'sync' as parameter 3, after the 2 of its '__sig'")
+
+  def test_jslib_async_auto_sync_promise(self):
+    # A body that ignores `sync` and returns a Promise where the caller cannot
+    # wait is caught, rather than coerced to 0.
+    create_file('lib.js', '''
+addToLibrary({
+  jslibfunc__sig: 'ii',
+  jslibfunc__async: 'auto',
+  jslibfunc: (x, sync) => Promise.resolve(x),
+});
+''')
+    create_file('src.c', '''
+#include <stdio.h>
+int jslibfunc(int x);
+int main() {
+  printf("%d\\n", jslibfunc(1));
+  printf("done\\n");
+}
+''')
+    self.do_runf('src.c', "'jslibfunc' returned a Promise where the caller cannot wait (sync is true)",
+                 assert_returncode=NON_ZERO, cflags=['--js-library', 'lib.js'])
+    self.do_runf('src.c', '1\ndone\n', cflags=['--js-library', 'lib.js', '-sASYNCIFY'])
+
+  def test_jslib_async_proxy_requires_proxying(self):
+    create_file('lib.js', '''
+addToLibrary({
+  jslibfunc__sig: 'ii',
+  jslibfunc__async: 'proxy',
+  jslibfunc: (x, sync) => x,
+});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
+                     "error: JS library error: 'jslibfunc' is '__async: 'proxy'' and requires '__proxy: 'sync''")
 
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
