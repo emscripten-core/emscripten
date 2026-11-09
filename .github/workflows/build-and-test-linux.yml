@@ -136,7 +136,7 @@ jobs:
 
   test-sanity:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -149,7 +149,7 @@ jobs:
 
   test-posixtest:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EM_FROZEN_CACHE: "1"
     steps:
@@ -167,7 +167,7 @@ jobs:
 
   test-core0:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EMTEST_SKIP_NODE_25: "1"
       EM_FROZEN_CACHE: "1"
@@ -185,7 +185,7 @@ jobs:
 
   test-wasm64-4gb:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -210,7 +210,7 @@ jobs:
 
   test-core2:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EMTEST_BROWSER: "node"
       EMTEST_SKIP_NODE_25: "1"
@@ -269,7 +269,7 @@ jobs:
 
   test-core3:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EMTEST_SKIP_NODE_25: "1"
     steps:
@@ -376,7 +376,7 @@ jobs:
 
   test-wasm64-misc:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EMTEST_SKIP_NINJA: "1"
     steps:
@@ -414,7 +414,7 @@ jobs:
 
   test-wasm2js1:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EMTEST_SKIP_NODE_25: "1"
       EM_FROZEN_CACHE: "1"
@@ -430,7 +430,7 @@ jobs:
         shell: bash
 
   test-bun:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -476,7 +476,7 @@ jobs:
           EMTEST_SKIP_WASM64: "1"
 
   test-deno:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -520,7 +520,7 @@ jobs:
           EMTEST_SKIP_NINJA: "1"
 
   test-jsc:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -565,7 +565,7 @@ jobs:
         shell: bash
 
   test-spidermonkey:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -610,7 +610,7 @@ jobs:
         shell: bash
 
   test-node-compat:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -682,7 +682,7 @@ jobs:
 
   test-browser-firefox:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -710,7 +710,7 @@ jobs:
           DISPLAY: ":0"
 
   test-browser-firefox-wasm64:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -762,7 +762,7 @@ jobs:
 
   test-browser-chrome:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -775,7 +775,7 @@ jobs:
 
   test-browser-chrome-emrun:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -788,7 +788,7 @@ jobs:
 
   test-browser-chrome-wasm64:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -802,7 +802,7 @@ jobs:
 
   test-browser-chrome-2gb:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -816,7 +816,7 @@ jobs:
 
   test-browser-chrome-wasm64-4gb:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -830,7 +830,7 @@ jobs:
 
   test-sockets-chrome:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -843,7 +843,7 @@ jobs:
 
   test-other:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_RUST: "1"
@@ -889,7 +889,7 @@ jobs:
     # CPython's test suite exercises a lot of libc/syscall behaviour that isn't
     # covered elsewhere, and emscripten releases have historically regressed
     # CPython.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -933,7 +933,7 @@ jobs:
 
 
   build-docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -960,7 +960,7 @@ jobs:
 
   test-modularize-instance:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EMTEST_SKIP_NODE_25: "1"
       EM_FROZEN_CACHE: "1"
@@ -979,7 +979,7 @@ jobs:
 
   test-stress:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EMTEST_SKIP_NODE_25: "1"
       EM_FROZEN_CACHE: "1"
@@ -998,7 +998,7 @@ jobs:
 
   test-esm-integration:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -1018,7 +1018,7 @@ jobs:
 
 
   linters:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
