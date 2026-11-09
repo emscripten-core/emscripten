@@ -150,6 +150,8 @@ jobs:
   test-posixtest:
     needs: build-linux
     runs-on: ubuntu-latest
+    env:
+      EM_FROZEN_CACHE: "1"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -168,6 +170,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EMTEST_SKIP_NODE_25: "1"
+      EM_FROZEN_CACHE: "1"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -255,6 +258,8 @@ jobs:
         shell: bash
 
       - name: Run core2+extras tests
+        env:
+          EM_FROZEN_CACHE: "1"
         run: |
           ./test/runner \
             core2 \
@@ -412,6 +417,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EMTEST_SKIP_NODE_25: "1"
+      EM_FROZEN_CACHE: "1"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -842,6 +848,7 @@ jobs:
       EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NEW_CMAKE: "1"
+      EM_FROZEN_CACHE: "1"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -956,6 +963,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EMTEST_SKIP_NODE_25: "1"
+      EM_FROZEN_CACHE: "1"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -974,6 +982,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EMTEST_SKIP_NODE_25: "1"
+      EM_FROZEN_CACHE: "1"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
