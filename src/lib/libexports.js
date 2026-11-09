@@ -18,6 +18,6 @@ addToLibrary({
 #if ASSERTIONS
     err(`No exported function found by name "${name}"`);
 #endif
-    // implicit return 0;
+    return 0;
   }
 });
