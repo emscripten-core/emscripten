@@ -1193,6 +1193,11 @@ jobs:
           sudo apt-get install -q -y ninja-build scons cmake make pkg-config
         shell: bash
 
+      - name: Set EMTEST_RETRY_FLAKY on pull requests
+        if: github.event_name == 'pull_request'
+        run: echo "EMTEST_RETRY_FLAKY=2" >> $GITHUB_ENV
+        shell: bash
+
       - name: Run crossplatform tests
         run: |
           ./test/runner --crossplatform-only

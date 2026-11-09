@@ -53,3 +53,11 @@ runs:
     - name: Bootstrap
       run: ./bootstrap.py
       shell: bash
+
+    - name: Set EMTEST_RETRY_FLAKY on pull requests
+      # We only set EMTEST_RETRY_FLAKY on pull requests. When we run
+      # normal CI jobs on branches like main we still want to be able to
+      # detect flakiness.
+      if: github.event_name == 'pull_request'
+      run: echo "EMTEST_RETRY_FLAKY=2" >> $GITHUB_ENV
+      shell: bash
