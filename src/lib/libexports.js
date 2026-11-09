@@ -16,7 +16,7 @@ addToLibrary({
       return addFunction(exportedFunc);
     }
 #if ASSERTIONS
-    err(`No exported function found by name "{exportedFunc}"`);
+    err(`No exported function found by name "${name}"`);
 #endif
     // implicit return 0;
   }

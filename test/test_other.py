@@ -13811,6 +13811,21 @@ void foo() {}
   def test_emscripten_main_loop_setimmediate(self):
     self.do_runf('test_emscripten_main_loop_setimmediate.c')
 
+  def test_get_exported_function_missing(self):
+    # With assertions, a name that is not exported is reported by the name looked up.
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <emscripten/exports.h>
+
+      int main() {
+        void* f = emscripten_get_exported_function("_no_such_function");
+        printf("found: %d\n", f != NULL);
+        return 0;
+      }
+    ''')
+    output = self.do_runf('main.c', 'found: 0\n', cflags=['-sASSERTIONS', '-lexports.js'])
+    self.assertContained('No exported function found by name "no_such_function"', output)
+
   # These exercise the epoll JS API/readiness logic, which does not vary by wasm
   # config, so they live here rather than in the test_core.py config matrix.
   def test_epoll_fairness(self):
