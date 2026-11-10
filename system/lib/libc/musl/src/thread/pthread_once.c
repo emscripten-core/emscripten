@@ -8,8 +8,9 @@ static void undo(void *control)
 		__wake(control, -1, 1);
 }
 
-hidden int __pthread_once_full(pthread_once_t *control, void (*init)(void))
+hidden int __pthread_once_full(pthread_once_t *control_, void (*init)(void))
 {
+	_Atomic int *control = (_Atomic int *)control_;
 	/* Try to enter initializing state. Four possibilities:
 	 *  0 - we're the first or the other cancelled; run init
 	 *  1 - another thread is running init; wait
@@ -40,7 +41,7 @@ int __pthread_once(pthread_once_t *control, void (*init)(void))
 {
 	/* Return immediately if init finished before, but ensure that
 	 * effects of the init routine are visible to the caller. */
-	if (*(volatile int *)control == 2) {
+	if (*(_Atomic int *)control == 2) {
 		a_barrier();
 		return 0;
 	}

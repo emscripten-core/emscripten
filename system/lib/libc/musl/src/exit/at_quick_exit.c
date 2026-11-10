@@ -7,8 +7,8 @@
 
 static void (*funcs[COUNT])(void);
 static int count;
-static volatile int lock[1];
-volatile int *const __at_quick_exit_lockptr = lock;
+static _Atomic int lock[1];
+_Atomic int *const __at_quick_exit_lockptr = lock;
 
 void __funcs_on_quick_exit()
 {
