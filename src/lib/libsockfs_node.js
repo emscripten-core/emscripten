@@ -256,16 +256,6 @@ var NodeSockFSLibrary = {
     connectInProgress(sock) {
       if (sock.stream.flags & O_NONBLOCK) throw new FS.ErrnoError(EINPROGRESS);
     },
-    // Operations that would block return EAGAIN even on a blocking fd, since
-    // there is no way to block here.
-    wouldBlock(sock) {
-#if ASSERTIONS
-      if (!(sock.stream.flags & O_NONBLOCK)) {
-        warnOnce('NODERAWSOCKETS: a blocking socket operation would block, returning EAGAIN instead (blocking I/O is not supported, use O_NONBLOCK with poll/epoll)');
-      }
-#endif
-      return new FS.ErrnoError(EAGAIN);
-    },
     // The UDP backing object. With a synchronous dgram bindSync available we use
     // a public node:dgram socket (sock.udpPublic); otherwise we fall back to a
     // private udp_wrap handle, which is the only older-node way to get a
@@ -774,7 +764,7 @@ var NodeSockFSLibrary = {
         listensock.error = null;
         throw new FS.ErrnoError(e);
       }
-      if (!listensock.pending.length) throw nodeSockHelpers.wouldBlock(listensock);
+      if (!listensock.pending.length) throw new FS.ErrnoError(EAGAIN);
       return listensock.pending.shift();
     },
     sendmsg(sock, buffer, offset, length, addr, port) {
@@ -856,7 +846,7 @@ var NodeSockFSLibrary = {
             sock.error = null;
             throw new FS.ErrnoError(derr);
           }
-          throw nodeSockHelpers.wouldBlock(sock);
+          throw new FS.ErrnoError(EAGAIN);
         }
         // A datagram is atomic: return up to length bytes and drop the rest.
         var dd = dgram.data;
@@ -866,11 +856,19 @@ var NodeSockFSLibrary = {
       }
       var queued = sock.recv_queue[0];
       if (!queued) {
+        // A pending error (poll reports it readable for this) is returned and
+        // cleared here, as Linux does, rather than reporting EAGAIN forever. It
+        // takes precedence over EOF: node emits 'close' right after 'error'.
+        if (sock.error) {
+          var serr = sock.error;
+          sock.error = null;
+          throw new FS.ErrnoError(serr);
+        }
         if (sock.readClosed) return null; // EOF
         if (!sock.connection) {
           throw new FS.ErrnoError(ENOTCONN);
         }
-        throw nodeSockHelpers.wouldBlock(sock);
+        throw new FS.ErrnoError(EAGAIN);
       }
       var q = queued.data;
       var bytesRead = Math.min(length, q.length);
