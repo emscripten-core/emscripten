@@ -71,6 +71,20 @@ void test_stopped_seek(void) {
   alDeleteBuffers(1, &buf);
 }
 
+void test_get_buffer_param_errors(void) {
+  // Invalid buffer ID (0) with a valid enum should set AL_INVALID_NAME and
+  // leave the output value untouched.
+  int val = 42;
+  alGetBufferi(0, AL_FREQUENCY, &val);
+  assert(alGetError() == AL_INVALID_NAME);
+  assert(val == 42);
+
+  float fval = 42.0f;
+  alGetBufferf(0, AL_FREQUENCY, &fval);
+  assert(alGetError() == AL_INVALID_NAME);
+  assert(fval == 42.0f);
+}
+
 int main(int argc, char* argv[]) {
   ALCboolean ret;
 
@@ -86,6 +100,19 @@ int main(int argc, char* argv[]) {
   // Check that the error is reset after reading it.
   assert(alcGetError(device) == ALC_NO_ERROR);
 
+  // Calling alGetBuffer* without an active context should not crash or modify
+  // the output pointer.
+  value = 42;
+  alGetBufferi(1, AL_FREQUENCY, &value);
+  assert(value == 42);
+  assert(alGetError() == AL_INVALID_OPERATION);
+  alGetBufferi(1, AL_FREQUENCY, NULL);
+  assert(alGetError() == AL_INVALID_OPERATION);
+  float fvalue = 42.0f;
+  alGetBufferf(1, AL_FREQUENCY, &fvalue);
+  assert(fvalue == 42.0f);
+  assert(alGetError() == AL_INVALID_OPERATION);
+
   context = alcCreateContext(device, NULL);
   ret = alcMakeContextCurrent(context);
   assert(ret == ALC_TRUE);
@@ -96,6 +123,7 @@ int main(int argc, char* argv[]) {
   // Check that the error is reset after reading it.
   assert(alGetError() == AL_NO_ERROR);
 
+  test_get_buffer_param_errors();
   test_offsets_with_zero_buffer();
   test_stopped_seek();
 
