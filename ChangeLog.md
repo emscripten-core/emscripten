@@ -24,7 +24,7 @@ See docs/process.md for more on how version tagging works.
   `{{{ cDefs.FOO }}}`) are now exposed as `const` JavaScript library symbols
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
   making unminified output more readable. (#28144)
-- zlib port updated from 1.2.13 to 1.3.1. (#28210)
+- zlib port updated from 1.3.2 to 1.4. (#28210)
 
 7.0.0 - 11/06/26
 ----------------
