@@ -188,8 +188,8 @@ var LibraryOpenAL = {
             startTime = Math.max(startTime, src.context.audioCtx.currentTime);
             audioSrc.noteOn(startTime);
 #if OPENAL_DEBUG
-            if (offset > 0.0) {
-              warnOnce('The current browser does not support AudioBufferSourceNode.start(when, offset); method, so cannot play back audio with an offset '+startOffset+' secs! Audio glitches will occur!');
+            if (startOffset > 0.0) {
+              warnOnce(`The current browser does not support AudioBufferSourceNode.start(when, offset); method, so cannot play back audio with an offset ${startOffset} secs! Audio glitches will occur!`);
             }
 #endif
           }
@@ -969,7 +969,7 @@ var LibraryOpenAL = {
         }
         return [
           (buf.audioBuf._loopStart ?? 0.0) * buf.frequency,
-          (buf.audioBuf._loopEnd ?? buf.length) * buf.frequency
+          buf.audioBuf._loopEnd ? buf.audioBuf._loopEnd * buf.frequency : buf.length
         ];
       default:
 #if OPENAL_DEBUG
@@ -1016,7 +1016,7 @@ var LibraryOpenAL = {
         // Per the spec, setting AL_SIZE to 0 is a legal NOP.
         break;
       case 0x2015 /* AL_LOOP_POINTS_SOFT */:
-        if (value[0] < 0 || value[0] > buf.length || value[1] < 0 || value[1] > buf.Length || value[0] >= value[1]) {
+        if (value[0] < 0 || value[0] > buf.length || value[1] < 0 || value[1] > buf.length || value[0] >= value[1]) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_LOOP_POINTS_SOFT value ${value} is out of range`);
 #endif
@@ -2204,7 +2204,7 @@ var LibraryOpenAL = {
   alcDestroyContext__proxy: 'sync',
   alcDestroyContext: (contextId) => {
     var ctx = AL.contexts[contextId];
-    if (AL.currentCtx === ctx) {
+    if (!ctx || AL.currentCtx === ctx) {
 #if OPENAL_DEBUG
       dbg('alcDestroyContext() called with an invalid context');
 #endif
@@ -2495,6 +2495,7 @@ var LibraryOpenAL = {
       }
 
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
+      break;
     case 0x312 /* ALC_CAPTURE_SAMPLES */:
       var c = AL.requireValidCaptureDevice(deviceId, 'alcGetIntegerv');
       if (!c) {
@@ -3064,7 +3065,7 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x200 /* AL_SOURCE_DISTANCE_MODEL */:
-      return AL.currentCtx.sourceDistanceModel ? AL_FALSE : AL_TRUE;
+      return AL.currentCtx.sourceDistanceModel ? AL_TRUE : AL_FALSE;
     default:
 #if OPENAL_DEBUG
       dbg(`alIsEnabled() with param ${ptrToString(param)} not implemented yet`);
@@ -3606,9 +3607,6 @@ var LibraryOpenAL = {
     if (!AL.currentCtx) {
       return false;
     }
-    if (bufferId > AL.buffers.length) {
-      return false;
-    }
 
     if (!AL.buffers[bufferId]) {
       return false;
@@ -4032,6 +4030,7 @@ var LibraryOpenAL = {
         dbg('alSourceQueueBuffers() called with a buffer of different format');
 #endif
         AL.currentCtx.err = AL_INVALID_OPERATION;
+        return;
       }
     }
 
@@ -4398,7 +4397,7 @@ var LibraryOpenAL = {
     case 0x1025 /* AL_SAMPLE_OFFSET */:
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
-      {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
+      {{{ makeSetValue('pValues', '0', 'val', 'float') }}};
       break;
     case AL_POSITION:
     case AL_DIRECTION:
