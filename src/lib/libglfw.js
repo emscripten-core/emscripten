@@ -886,26 +886,25 @@ var LibraryGLFW = {
       if (DataTransferItem.prototype.webkitGetAsEntry) {
         let entriesTree = new Map();
         function markDone(fullpath, recursive) {
-          if (entriesTree.get(fullpath).subpaths.length != 0) return;
+          if (entriesTree.get(fullpath).length != 0) return;
           entriesTree.delete(fullpath);
           let parentpath = fullpath.substring(0, fullpath.lastIndexOf('/'));
-          if (!entriesTree.has(parentpath)) {
-            if (entriesTree.size == 0) finalize();
-            return;
+          let subpaths = entriesTree.get(parentpath);
+          if (subpaths) {
+            const fpIndex = subpaths.indexOf(fullpath);
+            if (fpIndex > -1) subpaths.splice(fpIndex, 1);
+            if (recursive) markDone(parentpath, true);
           }
-          const fpIndex = entriesTree.get(parentpath).subpaths.indexOf(fullpath);
-          if (fpIndex > -1) entriesTree.get(parentpath).subpaths.splice(fpIndex, 1);
-          if (recursive) markDone(parentpath, true);
           if (entriesTree.size == 0) finalize();
         }
         function processEntry(entry) {
           let fp = entry.fullPath;
           let pp = fp.substring(0, fp.lastIndexOf('/'));
-          entriesTree.set(fp, { subpaths: [] });
+          entriesTree.set(fp, []);
           if (entry.isFile) {
             entry.file((f) => { filesQ.push({ file: f, path: pp }); markDone(fp, false); })
           } else if (entry.isDirectory) {
-            if (entriesTree.has(pp)) entriesTree.get(pp).subpaths.push(fp);
+            entriesTree.get(pp)?.push(fp);
             FS.createPath('/' + drop_dir + pp, entry.name);
             var reader = entry.createReader();
             var rRead = function (dirEntries) {
