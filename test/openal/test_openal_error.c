@@ -85,6 +85,35 @@ void test_get_buffer_param_errors(void) {
   assert(fval == 42.0f);
 }
 
+void test_queue_buffers_format_mismatch(void) {
+  // Queueing a buffer with a mismatched format should fail with
+  // AL_INVALID_OPERATION and not queue the incompatible buffer.
+  short dummy_data[1000] = {0};
+  ALuint mono_buf = 0;
+  alGenBuffers(1, &mono_buf);
+  alBufferData(mono_buf, AL_FORMAT_MONO16, dummy_data, sizeof(dummy_data), 44100);
+  assert(alGetError() == AL_NO_ERROR);
+
+  ALuint stereo_buf = 0;
+  alGenBuffers(1, &stereo_buf);
+  alBufferData(stereo_buf, AL_FORMAT_STEREO16, dummy_data, sizeof(dummy_data), 44100);
+  assert(alGetError() == AL_NO_ERROR);
+
+  ALuint src = 0;
+  alGenSources(1, &src);
+  alSourceQueueBuffers(src, 1, &mono_buf);
+  assert(alGetError() == AL_NO_ERROR);
+  alSourceQueueBuffers(src, 1, &stereo_buf);
+  assert(alGetError() == AL_INVALID_OPERATION);
+  ALint queued = 0;
+  alGetSourcei(src, AL_BUFFERS_QUEUED, &queued);
+  assert(queued == 1);
+
+  alDeleteSources(1, &src);
+  alDeleteBuffers(1, &stereo_buf);
+  alDeleteBuffers(1, &mono_buf);
+}
+
 int main(int argc, char* argv[]) {
   ALCboolean ret;
 
@@ -140,6 +169,7 @@ int main(int argc, char* argv[]) {
   test_get_buffer_param_errors();
   test_offsets_with_zero_buffer();
   test_stopped_seek();
+  test_queue_buffers_format_mismatch();
 
   ret = alcMakeContextCurrent(NULL);
   assert(ret == ALC_TRUE);
