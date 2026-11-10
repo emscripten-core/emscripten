@@ -1241,8 +1241,7 @@ var LibrarySDL = {
       for (var [joystick, prevState] of SDL.lastJoystickState) {
         var state = SDL.getGamepad(joystick - 1);
         // If joystick was removed, state returns null.
-        if (typeof state === 'undefined') return;
-        if (state === null) return;
+        if (!state) continue;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
         // NOTE: Timestamp is currently not properly set for the GearVR controller
