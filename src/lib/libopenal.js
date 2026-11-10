@@ -18,7 +18,24 @@ var LibraryOpenAL = {
   // ** INTERNALS
   // ************************************************************************
 
+  $AL__postset: 'AL.init()',
   $AL: {
+    init() {
+      AL.devices = new HandleAllocator();
+      AL.contexts = new HandleAllocator();
+      AL.captures = new HandleAllocator();
+      AL.buffers = new HandleAllocator();
+      // The zero buffer is legal to use, so create a placeholder for it
+      AL.buffers.allocated[0] = {
+        id: 0,
+        refCount: 0,
+        audioBuf: null,
+        frequency: 0,
+        bytesPerSample: 2,
+        channels: 1,
+        length: 0,
+      };
+    },
     // ------------------------------------------------------
     // -- Constants
     // ------------------------------------------------------
@@ -52,7 +69,6 @@ var LibraryOpenAL = {
       }
     },
 
-    deviceRefCounts: {},
     alcStringCache: {},
     paused: false,
 
@@ -61,25 +77,8 @@ var LibraryOpenAL = {
     // ------------------------------------------------------
 
     stringCache: {},
-    contexts: new Map(),
     currentCtx: null,
-    buffers: {
-      // The zero buffer is legal to use, so create a placeholder for it
-      '0': {
-        id: 0,
-        refCount: 0,
-        audioBuf: null,
-        frequency: 0,
-        bytesPerSample: 2,
-        channels: 1,
-        length: 0
-      }
-    },
     paramArray: [], // Used to prevent allocating a new array for each param call
-
-    _nextId: 1,
-    newId: () => AL.freeIds.length > 0 ? AL.freeIds.pop() : AL._nextId++,
-    freeIds: [],
 
     // ------------------------------------------------------
     // -- Mixing Logic
@@ -93,8 +92,10 @@ var LibraryOpenAL = {
         return;
       }
 
-      for (var src of ctx.sources.values()) {
-        AL.scheduleSourceAudio(src);
+      for (var src of ctx.sources.allocated) {
+        if (src) {
+          AL.scheduleSourceAudio(src);
+        }
       }
     },
 
@@ -408,7 +409,7 @@ var LibraryOpenAL = {
       }
 
       // Find the first non-zero buffer in the queue to determine the proper format
-      var templateBuf = AL.buffers[0];
+      var templateBuf = AL.buffers.get(0);
       for (var buf of src.bufQueue) {
         if (buf.id) {
           templateBuf = buf;
@@ -441,8 +442,10 @@ var LibraryOpenAL = {
     },
 
     updateContextGlobal: (ctx) => {
-      for (var src of ctx.sources.values()) {
-        AL.updateSourceGlobal(src);
+      for (var src of ctx.sources.allocated) {
+        if (src) {
+          AL.updateSourceGlobal(src);
+        }
       }
     },
 
@@ -509,8 +512,10 @@ var LibraryOpenAL = {
       }
 
       // Update sources that are relative to the listener
-      for (var src of ctx.sources.values()) {
-        AL.updateSourceSpace(src);
+      for (var src of ctx.sources.allocated) {
+        if (src) {
+          AL.updateSourceSpace(src);
+        }
       }
     },
 
@@ -758,7 +763,7 @@ var LibraryOpenAL = {
     },
 
     requireValidDevice: (deviceId, funcname) => {
-      if (!(deviceId in AL.deviceRefCounts)) {
+      if (!AL.devices.has(deviceId)) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called with an invalid device`);
 #endif
@@ -786,15 +791,14 @@ var LibraryOpenAL = {
       if (!AL.requireValidContext(funcname)) {
         return null;
       }
-      var src = AL.currentCtx.sources.get(sourceId);
-      if (!src) {
+      if (!AL.currentCtx.sources.has(sourceId)) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called with an invalid source`);
 #endif
         AL.currentCtx.err = AL_INVALID_NAME;
         return null;
       }
-      return src;
+      return AL.currentCtx.sources.get(sourceId);
     },
 
     requireValidSources: (count, pSourceIds, funcname) => {
@@ -1001,14 +1005,14 @@ var LibraryOpenAL = {
       if (!AL.requireValidContext(funcname)) {
         return null;
       }
-      var buf = AL.buffers[bufferId];
-      if (!buf || !bufferId) {
+      if (!bufferId || !AL.buffers.has(bufferId)) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called with an invalid buffer`);
 #endif
         AL.currentCtx.err = AL_INVALID_NAME;
         return null;
       }
+      var buf = AL.buffers.get(bufferId);
 
       switch (param) {
       case 0x2001 /* AL_FREQUENCY */:
@@ -1040,14 +1044,14 @@ var LibraryOpenAL = {
       if (!AL.requireValidContext(funcname)) {
         return;
       }
-      var buf = AL.buffers[bufferId];
-      if (!buf || !bufferId) {
+      if (!bufferId || !AL.buffers.has(bufferId)) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called with an invalid buffer`);
 #endif
         AL.currentCtx.err = AL_INVALID_NAME;
         return;
       }
+      var buf = AL.buffers.get(bufferId);
       if (value === null) {
 #if OPENAL_DEBUG
         dbg(`${funcname}(): param ${ptrToString(param)} has wrong signature`);
@@ -1349,14 +1353,14 @@ var LibraryOpenAL = {
           return;
         }
 
-        var buf = AL.buffers[value];
-        if (!buf) {
+        if (!AL.buffers.has(value)) {
 #if OPENAL_DEBUG
           dbg('alSourcei(AL_BUFFER) called with an invalid buffer');
 #endif
           AL.currentCtx.err = AL_INVALID_VALUE;
           return;
         }
+        var buf = AL.buffers.get(value);
 
         for (var oldBuf of src.bufQueue) {
           oldBuf.refCount--;
@@ -1573,9 +1577,6 @@ var LibraryOpenAL = {
     // -- Capture
     // -------------------------------------------------------
 
-    // A map of 'capture device contexts'.
-    captures: new Map(),
-
     sharedCaptureAudioCtx: null,
 
     // Helper which:
@@ -1593,14 +1594,14 @@ var LibraryOpenAL = {
         AL.alcErr = ALC_INVALID_DEVICE;
         return null;
       }
-      var c = AL.captures.get(deviceId);
-      if (!c) {
+      if (!AL.captures.has(deviceId)) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() on an invalid device`);
 #endif
         AL.alcErr = ALC_INVALID_DEVICE;
         return null;
       }
+      var c = AL.captures.get(deviceId);
       var err = c.mediaStreamError;
       if (err) {
 #if OPENAL_DEBUG
@@ -1901,9 +1902,7 @@ var LibraryOpenAL = {
 
     navigator.mediaDevices.getUserMedia({audio: true}).then(onSuccess).catch(onError);
 
-    var id = AL.newId();
-    AL.captures.set(id, newCapture);
-    return id;
+    return AL.captures.allocate(newCapture);
   },
 
   alcCaptureCloseDevice__proxy: 'sync',
@@ -1911,8 +1910,7 @@ var LibraryOpenAL = {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureCloseDevice');
     if (!c) return false;
 
-    AL.captures.delete(deviceId);
-    AL.freeIds.push(deviceId);
+    AL.captures.free(deviceId);
 
     // This clean-up might be unnecessary (paranoid) ?
 
@@ -2074,19 +2072,16 @@ var LibraryOpenAL = {
       return 0;
     }
 
-    var deviceId = AL.newId();
-    AL.deviceRefCounts[deviceId] = 0;
-    return deviceId;
+    return AL.devices.allocate({ refCount: 0 });
   },
 
   alcCloseDevice__proxy: 'sync',
   alcCloseDevice: (deviceId) => {
-    if (!(deviceId in AL.deviceRefCounts) || AL.deviceRefCounts[deviceId] > 0) {
+    if (!AL.devices.has(deviceId) || AL.devices.get(deviceId).refCount > 0) {
       return ALC_FALSE;
     }
 
-    delete AL.deviceRefCounts[deviceId];
-    AL.freeIds.push(deviceId);
+    AL.devices.free(deviceId);
     return ALC_TRUE;
   },
 
@@ -2184,7 +2179,6 @@ var LibraryOpenAL = {
     gain.connect(ac.destination);
     var ctx = {
       deviceId,
-      id: AL.newId(),
       attrs,
       audioCtx: ac,
       listener: {
@@ -2193,7 +2187,7 @@ var LibraryOpenAL = {
         direction: [0.0, 0.0, 0.0],
         up: [0.0, 0.0, 0.0]
       },
-      sources: new Map(),
+      sources: new HandleAllocator(),
       interval: setInterval(() => AL.scheduleContextAudio(ctx), AL_QUEUE_INTERVAL),
       gain,
       distanceModel: 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */,
@@ -2213,13 +2207,13 @@ var LibraryOpenAL = {
         }
       }
     };
-    AL.deviceRefCounts[deviceId]++;
-    AL.contexts.set(ctx.id, ctx);
+    AL.devices.get(deviceId).refCount++;
+    ctx.id = AL.contexts.allocate(ctx);
 
     if (hrtf !== null) {
       // Apply hrtf attrib to all contexts for this device
-      for (var c of AL.contexts.values()) {
-        if (c.deviceId === deviceId) {
+      for (var c of AL.contexts.allocated) {
+        if (c?.deviceId === deviceId) {
           c.hrtf = hrtf;
           AL.updateContextGlobal(c);
         }
@@ -2231,7 +2225,7 @@ var LibraryOpenAL = {
 
   alcDestroyContext__proxy: 'sync',
   alcDestroyContext: (contextId) => {
-    var ctx = AL.contexts.get(contextId);
+    var ctx = AL.contexts.has(contextId) && AL.contexts.get(contextId);
     if (!ctx || AL.currentCtx === ctx) {
 #if OPENAL_DEBUG
       dbg('alcDestroyContext() called with an invalid context');
@@ -2244,9 +2238,8 @@ var LibraryOpenAL = {
     if (ctx.interval) {
       clearInterval(ctx.interval);
     }
-    AL.deviceRefCounts[ctx.deviceId]--;
-    AL.contexts.delete(contextId);
-    AL.freeIds.push(contextId);
+    AL.devices.get(ctx.deviceId).refCount--;
+    AL.contexts.free(contextId);
   },
 
   // -------------------------------------------------------
@@ -2265,12 +2258,17 @@ var LibraryOpenAL = {
 
   alcMakeContextCurrent__proxy: 'sync',
   alcMakeContextCurrent: (contextId) => {
-    AL.currentCtx = AL.contexts.get(contextId);
+    AL.currentCtx = AL.contexts.has(contextId) ? AL.contexts.get(contextId) : null;
     return ALC_TRUE;
   },
 
   alcGetContextsDevice__proxy: 'sync',
-  alcGetContextsDevice: (contextId) => AL.contexts.get(contextId)?.deviceId || 0,
+  alcGetContextsDevice: (contextId) => {
+    if (AL.contexts.has(contextId)) {
+      return AL.contexts.get(contextId).deviceId;
+    }
+    return 0;
+  },
 
   // The spec is vague about what these are actually supposed to do, and NOP is a reasonable implementation
   alcProcessContext: (contextId) => {},
@@ -2288,7 +2286,7 @@ var LibraryOpenAL = {
     // Spec says :
     // Using a NULL handle is legal, but only the
     // tokens defined by the AL core are guaranteed.
-    if (deviceId && !(deviceId in AL.deviceRefCounts)) {
+    if (deviceId && !AL.devices.has(deviceId)) {
 #if OPENAL_DEBUG
       dbg('alcGetEnumValue() called with an invalid device');
 #endif
@@ -2487,8 +2485,8 @@ var LibraryOpenAL = {
       }
 
       var hrtfStatus = 0 /* ALC_HRTF_DISABLED_SOFT */;
-      for (var ctx of AL.contexts.values()) {
-        if (ctx.deviceId === deviceId) {
+      for (var ctx of AL.contexts.allocated) {
+        if (ctx?.deviceId === deviceId) {
           hrtfStatus = ctx.hrtf ? 1 /* ALC_HRTF_ENABLED_SOFT */ : 0 /* ALC_HRTF_DISABLED_SOFT */;
         }
       }
@@ -2543,8 +2541,8 @@ var LibraryOpenAL = {
     }
     AL.paused = true;
 
-    for (var ctx of AL.contexts.values()) {
-      if (ctx.deviceId !== deviceId) {
+    for (var ctx of AL.contexts.allocated) {
+      if (ctx?.deviceId !== deviceId) {
         continue;
       }
 
@@ -2566,8 +2564,8 @@ var LibraryOpenAL = {
     }
     AL.paused = false;
 
-    for (var ctx of AL.contexts.values()) {
-      if (ctx.deviceId !== deviceId) {
+    for (var ctx of AL.contexts.allocated) {
+      if (ctx?.deviceId !== deviceId) {
         continue;
       }
 
@@ -2649,8 +2647,8 @@ var LibraryOpenAL = {
 
     if (hrtf !== null) {
       // Apply hrtf attrib to all contexts for this device
-      for (var ctx of AL.contexts.values()) {
-        if (ctx.deviceId === deviceId) {
+      for (var ctx of AL.contexts.allocated) {
+        if (ctx?.deviceId === deviceId) {
           ctx.hrtf = hrtf;
           AL.updateContextGlobal(ctx);
         }
@@ -2677,7 +2675,6 @@ var LibraryOpenAL = {
     for (var i = 0; i < count; ++i) {
       var buf = {
         deviceId: AL.currentCtx.deviceId,
-        id: AL.newId(),
         refCount: 0,
         audioBuf: null,
         frequency: 0,
@@ -2685,8 +2682,8 @@ var LibraryOpenAL = {
         channels: 1,
         length: 0,
       };
-      AL.deviceRefCounts[buf.deviceId]++;
-      AL.buffers[buf.id] = buf;
+      AL.devices.get(buf.deviceId).refCount++;
+      buf.id = AL.buffers.allocate(buf);
       {{{ makeSetValue('pBufferIds', 'i*4', 'buf.id', 'i32') }}};
     }
   },
@@ -2705,7 +2702,7 @@ var LibraryOpenAL = {
       }
 
       // Make sure the buffer index is valid.
-      if (!AL.buffers[bufId]) {
+      if (!AL.buffers.has(bufId)) {
 #if OPENAL_DEBUG
         dbg('alDeleteBuffers() called with an invalid buffer');
 #endif
@@ -2714,7 +2711,7 @@ var LibraryOpenAL = {
       }
 
       // Make sure the buffer is no longer in use.
-      if (AL.buffers[bufId].refCount) {
+      if (AL.buffers.get(bufId).refCount) {
 #if OPENAL_DEBUG
         dbg('alDeleteBuffers() called with a used buffer');
 #endif
@@ -2729,9 +2726,8 @@ var LibraryOpenAL = {
         continue;
       }
 
-      AL.deviceRefCounts[AL.buffers[bufId].deviceId]--;
-      delete AL.buffers[bufId];
-      AL.freeIds.push(bufId);
+      AL.devices.get(AL.buffers.get(bufId).deviceId).refCount--;
+      AL.buffers.free(bufId);
     }
   },
 
@@ -2745,10 +2741,9 @@ var LibraryOpenAL = {
       gain.connect(AL.currentCtx.gain);
       var src = {
         context: AL.currentCtx,
-        id: AL.newId(),
         type: 0x1030 /* AL_UNDETERMINED */,
         state: AL_INITIAL,
-        bufQueue: [AL.buffers[0]],
+        bufQueue: [AL.buffers.get(0)],
         audioQueue: [],
         looping: false,
         pitch: 1.0,
@@ -2777,7 +2772,7 @@ var LibraryOpenAL = {
           return this.pitch * this.dopplerShift;
         }
       };
-      AL.currentCtx.sources.set(src.id, src);
+      src.id = AL.currentCtx.sources.allocate(src);
       {{{ makeSetValue('pSourceIds', 'i*4', 'src.id', 'i32') }}};
     }
   },
@@ -2792,8 +2787,7 @@ var LibraryOpenAL = {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
       AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_STOPPED);
       _alSourcei(srcId, 0x1009 /* AL_BUFFER */, 0);
-      AL.currentCtx.sources.delete(srcId);
-      AL.freeIds.push(srcId);
+      AL.currentCtx.sources.free(srcId);
     }
   },
 
@@ -3364,11 +3358,7 @@ var LibraryOpenAL = {
     if (!AL.currentCtx) {
       return false;
     }
-
-    if (!AL.buffers[bufferId]) {
-      return false;
-    }
-    return true;
+    return AL.buffers.has(bufferId);
   },
 
   alBufferData__proxy: 'sync',
@@ -3376,7 +3366,7 @@ var LibraryOpenAL = {
     if (!AL.requireValidContext('alBufferData')) {
       return;
     }
-    var buf = AL.buffers[bufferId];
+    var buf = AL.buffers.has(bufferId) && AL.buffers.get(bufferId);
     if (!buf) {
 #if OPENAL_DEBUG
       dbg('alBufferData() called with an invalid buffer');
@@ -3679,7 +3669,7 @@ var LibraryOpenAL = {
     }
 
     // Find the first non-zero buffer in the queue to determine the proper format
-    var templateBuf = AL.buffers[0];
+    var templateBuf = AL.buffers.get(0);
     for (var buf of src.bufQueue) {
       if (buf.id) {
         templateBuf = buf;
@@ -3689,7 +3679,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var bufId = {{{ makeGetValue('pBufferIds', 'i*4', 'i32') }}};
-      var buf = AL.buffers[bufId];
+      var buf = AL.buffers.has(bufId) && AL.buffers.get(bufId);
       if (!buf) {
 #if OPENAL_DEBUG
         dbg('alSourceQueueBuffers() called with an invalid buffer');
@@ -3720,7 +3710,7 @@ var LibraryOpenAL = {
     src.type = 0x1029 /* AL_STREAMING */;
     for (var i = 0; i < count; ++i) {
       var bufId = {{{ makeGetValue('pBufferIds', 'i*4', 'i32') }}};
-      var buf = AL.buffers[bufId];
+      var buf = AL.buffers.get(bufId);
       buf.refCount++;
       src.bufQueue.push(buf);
     }
@@ -3759,7 +3749,7 @@ var LibraryOpenAL = {
 
     /// If the queue is empty, put the zero buffer back in
     if (!src.bufQueue.length) {
-      src.bufQueue.push(AL.buffers[0]);
+      src.bufQueue.push(AL.buffers.get(0));
     }
 
     AL.initSourcePanner(src);
