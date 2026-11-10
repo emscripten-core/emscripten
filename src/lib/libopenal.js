@@ -2204,7 +2204,7 @@ var LibraryOpenAL = {
   alcDestroyContext__proxy: 'sync',
   alcDestroyContext: (contextId) => {
     var ctx = AL.contexts[contextId];
-    if (AL.currentCtx === ctx) {
+    if (!ctx || AL.currentCtx === ctx) {
 #if OPENAL_DEBUG
       dbg('alcDestroyContext() called with an invalid context');
 #endif
