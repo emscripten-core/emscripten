@@ -2488,6 +2488,7 @@ var LibraryOpenAL = {
       }
 
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
+      break;
     case 0x312 /* ALC_CAPTURE_SAMPLES */:
       var c = AL.requireValidCaptureDevice(deviceId, 'alcGetIntegerv');
       if (!c) {
