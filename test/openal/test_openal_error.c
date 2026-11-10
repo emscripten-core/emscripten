@@ -66,6 +66,9 @@ void test_stopped_seek(void) {
   float offset = 0.0f;
   alGetSourcef(src, AL_SEC_OFFSET, &offset);
   assert(offset == 0.01f);
+  offset = 0.0f;
+  alGetSourcefv(src, AL_SEC_OFFSET, &offset);
+  assert(offset == 0.01f);
 
   alDeleteSources(1, &src);
   alDeleteBuffers(1, &buf);
