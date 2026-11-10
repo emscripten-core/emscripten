@@ -24,6 +24,13 @@ See docs/process.md for more on how version tagging works.
   `{{{ cDefs.FOO }}}`) are now exposed as `const` JavaScript library symbols
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
   making unminified output more readable. (#28144)
+- In pthreads builds with `MAIN_MODULE`, workers no longer walk the main
+  module's whole function table, which created a JS function object for every
+  table entry in every worker.  The main thread now passes them the table slots
+  of the main module's exported functions.  As a result, calling `addFunction`
+  in a worker on a main-module function that is not exported (for example one
+  obtained with `getWasmTableEntry`) now allocates a new table slot instead of
+  returning its existing address. (#28105)
 
 7.0.0 - 11/06/26
 ----------------

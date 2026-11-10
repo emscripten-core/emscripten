@@ -12,6 +12,11 @@
 // Map of modules to be shared with new threads.  This gets populated by the
 // main thread and shared with all new workers via the initial `load` message.
 var sharedModules = {};
+
+// Table slots of the main module's exported functions.  Recorded by the main
+// thread and shared with all new workers via the initial `load` message (see
+// initFunctionsInTableMap).
+var mainModuleExportSlots;
 #endif
 
 var startWorker;
@@ -67,6 +72,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if MAIN_MODULE
         dynamicLibraries = msgData.dynamicLibraries;
         sharedModules = msgData.sharedModules;
+        mainModuleExportSlots = msgData.mainModuleExportSlots;
 #if RUNTIME_DEBUG
         dbg(`worker: received ${Object.keys(msgData.sharedModules).length} shared modules: ${Object.keys(msgData.sharedModules)}`);
 #endif
