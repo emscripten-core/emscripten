@@ -229,8 +229,11 @@ export const decoratorSuffixes = [
   '__async_variants',
 ];
 
+const decoratorSuffixSet = new Set(decoratorSuffixes);
+
 export function isDecorator(ident) {
-  return decoratorSuffixes.some((suffix) => ident.endsWith(suffix));
+  const index = ident.lastIndexOf('__');
+  return index > 0 && decoratorSuffixSet.has(ident.slice(index));
 }
 
 export function defineConsts(consts) {
