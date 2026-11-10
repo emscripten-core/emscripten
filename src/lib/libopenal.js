@@ -3055,7 +3055,7 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x200 /* AL_SOURCE_DISTANCE_MODEL */:
-      return AL.currentCtx.sourceDistanceModel ? AL_FALSE : AL_TRUE;
+      return AL.currentCtx.sourceDistanceModel ? AL_TRUE : AL_FALSE;
     default:
 #if OPENAL_DEBUG
       dbg(`alIsEnabled() with param ${ptrToString(param)} not implemented yet`);
