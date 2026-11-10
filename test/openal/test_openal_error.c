@@ -19,6 +19,8 @@ void test_offsets_with_zero_buffer(void) {
   // Test AL_SAMPLE_OFFSET and AL_BYTE_OFFSET when buffer 0 is queued before a real buffer
   ALuint buf = 0;
   alGenBuffers(1, &buf);
+  assert(alIsBuffer(buf) == AL_TRUE);
+  assert(alIsBuffer(9999) == AL_FALSE);
   char dummy_data[2000] = {0};
   alBufferData(buf, AL_FORMAT_MONO16, dummy_data, sizeof(dummy_data), 44100);
 
