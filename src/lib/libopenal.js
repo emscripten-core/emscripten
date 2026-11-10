@@ -188,8 +188,8 @@ var LibraryOpenAL = {
             startTime = Math.max(startTime, src.context.audioCtx.currentTime);
             audioSrc.noteOn(startTime);
 #if OPENAL_DEBUG
-            if (offset > 0.0) {
-              warnOnce('The current browser does not support AudioBufferSourceNode.start(when, offset); method, so cannot play back audio with an offset '+startOffset+' secs! Audio glitches will occur!');
+            if (startOffset > 0.0) {
+              warnOnce(`The current browser does not support AudioBufferSourceNode.start(when, offset); method, so cannot play back audio with an offset ${startOffset} secs! Audio glitches will occur!`);
             }
 #endif
           }
