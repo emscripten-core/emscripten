@@ -943,7 +943,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called without a valid context`);
 #endif
-        return;
+        return null;
       }
       var buf = AL.buffers[bufferId];
       if (!buf || !bufferId) {
@@ -951,7 +951,7 @@ var LibraryOpenAL = {
         dbg(`${funcname}() called with an invalid buffer`);
 #endif
         AL.currentCtx.err = AL_INVALID_NAME;
-        return;
+        return null;
       }
 
       switch (param) {
