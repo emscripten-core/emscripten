@@ -102,7 +102,18 @@ var LibraryTracing = {
         EmscriptenTrace.worker.postMessage({ 'cmd': 'post',
                                              'entry': entry });
       } else if (EmscriptenTrace.postEnabled && EmscriptenTrace.testingEnabled) {
-        out('Tracing ' + entry);
+        out(
+          "Tracing " +
+            (Array.isArray(entry)
+              ? Array.from(entry, (entryVal) =>
+                  typeof entryVal === "object" && entryVal !== null
+                    ? JSON.stringify(entryVal, (_, v) =>
+                        typeof v === "bigint" ? v.toString() + "n" : v,
+                      )
+                    : entryVal,
+                )
+              : entry),
+        );
       }
     },
 
