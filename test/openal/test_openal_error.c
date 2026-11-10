@@ -117,6 +117,14 @@ int main(int argc, char* argv[]) {
   ret = alcMakeContextCurrent(context);
   assert(ret == ALC_TRUE);
 
+  // Destroying the current or an invalid context should fail with ALC_INVALID_CONTEXT
+  alcDestroyContext(context);
+  assert(alcGetError(device) == ALC_INVALID_CONTEXT);
+  alcDestroyContext(NULL);
+  assert(alcGetError(device) == ALC_INVALID_CONTEXT);
+  alcDestroyContext((ALCcontext*)9999);
+  assert(alcGetError(device) == ALC_INVALID_CONTEXT);
+
   // Request an invalid enum to generate an AL error
   alGetFloat(0);
   assert(alGetError() == AL_INVALID_ENUM);
