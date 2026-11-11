@@ -127,6 +127,18 @@ void main_2(void* arg) {
   emscripten_run_script("window.simulateGamepadButtonDown(0, 1)");
   assertNoJoystickEvent();
 
+  // Reopen joystick 0 and open joystick 1, then disconnect joystick 0;
+  // joystick 1 events should still be processed.
+  pad1 = SDL_JoystickOpen(0);
+  SDL_Joystick* pad2 = SDL_JoystickOpen(1);
+  assert(SDL_JoystickOpened(0));
+  assert(SDL_JoystickOpened(1));
+  emscripten_run_script("window.disconnectGamepad(0)");
+  emscripten_run_script("window.simulateGamepadButtonDown(1, 2)");
+  assertJoystickEvent(1, SDL_JOYBUTTONDOWN, 2, SDL_PRESSED);
+  SDL_JoystickClose(pad1);
+  SDL_JoystickClose(pad2);
+
   // End test.
   printf("Test passed!\n");
   exit(0);

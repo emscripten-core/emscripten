@@ -5369,13 +5369,16 @@ int main() {
     create_file('code.c', r'''
 #include <stdio.h>
 int main(int argc, char **argv) {
-  printf("I am %s.\n", argv[0]);
+  puts(argv[0]);
   return 0;
 }
 ''')
 
-    output = self.do_runf('code.c')
-    self.assertContained('I am ' + utils.normalize_path(os.path.realpath(self.get_dir())) + '/code.js', utils.normalize_path(output))
+    output = self.do_runf('code.c').strip()
+    # Resolve both paths with realpath: Node's process.argv[1] resolves symlinks
+    # (e.g. /var -> /private/var on macOS) without expanding Windows 8.3 short
+    # names (e.g. RUNNER~1 -> runneradmin), whereas Python's realpath resolves both.
+    self.assertPathsIdentical(os.path.realpath(self.in_dir('code.js')), os.path.realpath(output))
 
   @parameterized({
     'no_exit_runtime': (True,),
@@ -12536,7 +12539,7 @@ int main(void) {
     if config.FROZEN_CACHE and (self.is_wasm64() or '-sMAIN_MODULE=2' in args):
       # CI configuration doesn't run `embuilder` with wasm64 on ports
       self.skipTest("test doesn't work with frozen cache")
-    self.emcc(test_file('test_emdawnwebgpu_link_test.cpp'), ['--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
+    self.emcc(test_file('test_emdawnwebgpu_link_test.cpp'), ['--use-port=emdawnwebgpu', '-std=c++20', '-sASYNCIFY'] + args)
 
   def test_signature_mismatch(self):
     create_file('a.c', 'void foo(); int main() { foo(); return 0; }')

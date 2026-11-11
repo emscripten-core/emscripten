@@ -182,7 +182,7 @@ export function mergeInto(obj, other, options = null) {
           __noleakcheck: 'boolean',
           __internal: 'boolean',
           __user: 'boolean',
-          __async: ['string', 'boolean'],
+          __async: ['string', 'boolean', 'object'],
           __i53abi: 'boolean',
           __export: 'boolean',
           __force: 'boolean',
@@ -225,10 +225,15 @@ export const decoratorSuffixes = [
   '__export',
   '__force',
   '__const',
+  '__async_variant',
+  '__async_variants',
 ];
 
+const decoratorSuffixSet = new Set(decoratorSuffixes);
+
 export function isDecorator(ident) {
-  return decoratorSuffixes.some((suffix) => ident.endsWith(suffix));
+  const index = ident.lastIndexOf('__');
+  return index > 0 && decoratorSuffixSet.has(ident.slice(index));
 }
 
 export function defineConsts(consts) {

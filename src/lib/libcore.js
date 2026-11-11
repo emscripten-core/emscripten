@@ -1346,12 +1346,12 @@ addToLibrary({
 
 #endif // PROXY_POSIX_SOCKETS == 0
 
-  $timers: {},
+  $timers: new Map(),
 
   $clearTimers__internal: true,
   $clearTimers: () => {
-    for (var t of Object.values(timers)) {
-      clearTimeout(t.id);
+    for (var id of timers.values()) {
+      clearTimeout(id);
     }
   },
 
@@ -1366,9 +1366,9 @@ addToLibrary({
     dbg(`setitimer_js ${which} timeout=${timeout_ms}`);
 #endif
     // First, clear any existing timer.
-    if (timers[which]) {
-      clearTimeout(timers[which].id);
-      delete timers[which];
+    if (timers.has(which)) {
+      clearTimeout(timers.get(which));
+      timers.delete(which);
     }
 
     // A timeout of zero simply cancels the current timeout so we have nothing
@@ -1377,15 +1377,15 @@ addToLibrary({
 
     var id = setTimeout(() => {
 #if ASSERTIONS
-      assert(which in timers);
+      assert(timers.has(which));
 #endif
-      delete timers[which];
+      timers.delete(which);
 #if RUNTIME_DEBUG
       dbg(`itimer fired: ${which}`);
 #endif
       callUserCallback(__emscripten_timeout, which, _emscripten_get_now());
     }, timeout_ms);
-    timers[which] = { id, timeout_ms };
+    timers.set(which, id);
     return 0;
   },
 

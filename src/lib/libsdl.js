@@ -92,7 +92,7 @@ var LibrarySDL = {
     },
 
     keyboardState: null,
-    keyboardMap: {},
+    keyboardMap: new Map(),
 
     canRequestFullscreen: false,
     isRequestingFullscreen: false,
@@ -544,7 +544,7 @@ var LibrarySDL = {
     receiveEvent(event) {
       function unpressAllPressedKeys() {
         // Un-press all pressed keys: TODO
-        for (var keyCode of Object.values(SDL.keyboardMap)) {
+        for (var keyCode of SDL.keyboardMap.values()) {
           SDL.events.push({
             type: 'keyup',
             keyCode,
@@ -846,9 +846,9 @@ var LibrarySDL = {
             ({{{ makeGetValue('SDL.keyboardState', 'SDLK_RSHIFT', 'i8') }}} ? KMOD_RSHIFT : 0) |
             ({{{ makeGetValue('SDL.keyboardState', 'SDLK_RALT', 'i8') }}} ? KMOD_RALT : 0);
           if (down) {
-            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
+            SDL.keyboardMap.set(code, event.keyCode); // save the DOM input, which we can use to unpress it during blur
           } else {
-            delete SDL.keyboardMap[code];
+            SDL.keyboardMap.delete(code);
           }
 
           break;
@@ -1217,7 +1217,7 @@ var LibrarySDL = {
     // Joystick helper methods and state
 
     joystickEventState: 1, // SDL_ENABLE
-    lastJoystickState: {}, // Map from SDL_Joystick* to their last known state. Required to determine if a change has occurred.
+    lastJoystickState: new Map(), // Map from SDL_Joystick* to their last known state. Required to determine if a change has occurred.
     // Maps Joystick names to pointers. Allows us to avoid reallocating memory for
     // joystick names each time this function is called.
     joystickNamePool: {},
@@ -1228,22 +1228,20 @@ var LibrarySDL = {
         buttons.push(button.pressed);
       }
 
-      SDL.lastJoystickState[joystick] = {
+      SDL.lastJoystickState.set(joystick, {
         buttons,
         axes: state.axes.slice(0),
         timestamp: state.timestamp,
         index: state.index,
         id: state.id
-      };
+      });
     },
     // Queries for and inserts controller events into the SDL queue.
     queryJoysticks() {
-      for (var joystick in SDL.lastJoystickState) {
+      for (var [joystick, prevState] of SDL.lastJoystickState) {
         var state = SDL.getGamepad(joystick - 1);
-        var prevState = SDL.lastJoystickState[joystick];
         // If joystick was removed, state returns null.
-        if (typeof state === 'undefined') return;
-        if (state === null) return;
+        if (!state) continue;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
         // NOTE: Timestamp is currently not properly set for the GearVR controller
@@ -3372,7 +3370,7 @@ var LibrarySDL = {
   },
 
   SDL_JoystickOpened__proxy: 'sync',
-  SDL_JoystickOpened: (deviceIndex) => hasOwn(SDL.lastJoystickState, deviceIndex+1) ? 1 : 0,
+  SDL_JoystickOpened: (deviceIndex) => SDL.lastJoystickState.has(deviceIndex + 1) ? 1 : 0,
 
   // joystick pointers are simply the deviceIndex+1.
   SDL_JoystickIndex: (joystick) => joystick - 1,
@@ -3435,7 +3433,7 @@ var LibrarySDL = {
 
   SDL_JoystickClose__proxy: 'sync',
   SDL_JoystickClose: (joystick) => {
-    delete SDL.lastJoystickState[joystick];
+    SDL.lastJoystickState.delete(joystick);
   },
 
   // Misc

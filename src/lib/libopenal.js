@@ -61,7 +61,7 @@ var LibraryOpenAL = {
     // ------------------------------------------------------
 
     stringCache: {},
-    contexts: {},
+    contexts: new Map(),
     currentCtx: null,
     buffers: {
       // The zero buffer is legal to use, so create a placeholder for it
@@ -93,8 +93,8 @@ var LibraryOpenAL = {
         return;
       }
 
-      for (var i in ctx.sources) {
-        AL.scheduleSourceAudio(ctx.sources[i]);
+      for (var src of ctx.sources.values()) {
+        AL.scheduleSourceAudio(src);
       }
     },
 
@@ -431,8 +431,8 @@ var LibraryOpenAL = {
     },
 
     updateContextGlobal: (ctx) => {
-      for (var i in ctx.sources) {
-        AL.updateSourceGlobal(ctx.sources[i]);
+      for (var src of ctx.sources.values()) {
+        AL.updateSourceGlobal(src);
       }
     },
 
@@ -499,8 +499,8 @@ var LibraryOpenAL = {
       }
 
       // Update sources that are relative to the listener
-      for (var i in ctx.sources) {
-        AL.updateSourceSpace(ctx.sources[i]);
+      for (var src of ctx.sources.values()) {
+        AL.updateSourceSpace(src);
       }
     },
 
@@ -943,7 +943,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called without a valid context`);
 #endif
-        return;
+        return null;
       }
       var buf = AL.buffers[bufferId];
       if (!buf || !bufferId) {
@@ -951,7 +951,7 @@ var LibraryOpenAL = {
         dbg(`${funcname}() called with an invalid buffer`);
 #endif
         AL.currentCtx.err = AL_INVALID_NAME;
-        return;
+        return null;
       }
 
       switch (param) {
@@ -1016,7 +1016,7 @@ var LibraryOpenAL = {
         // Per the spec, setting AL_SIZE to 0 is a legal NOP.
         break;
       case 0x2015 /* AL_LOOP_POINTS_SOFT */:
-        if (value[0] < 0 || value[0] > buf.length || value[1] < 0 || value[1] > buf.Length || value[0] >= value[1]) {
+        if (value[0] < 0 || value[0] > buf.length || value[1] < 0 || value[1] > buf.length || value[0] >= value[1]) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_LOOP_POINTS_SOFT value ${value} is out of range`);
 #endif
@@ -1052,7 +1052,7 @@ var LibraryOpenAL = {
 #endif
         return null;
       }
-      var src = AL.currentCtx.sources[sourceId];
+      var src = AL.currentCtx.sources.get(sourceId);
       if (!src) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called with an invalid source`);
@@ -1163,7 +1163,7 @@ var LibraryOpenAL = {
 #endif
         return;
       }
-      var src = AL.currentCtx.sources[sourceId];
+      var src = AL.currentCtx.sources.get(sourceId);
       if (!src) {
 #if OPENAL_DEBUG
         dbg('alSourcef() called with an invalid source');
@@ -1541,7 +1541,7 @@ var LibraryOpenAL = {
     // -------------------------------------------------------
 
     // A map of 'capture device contexts'.
-    captures: {},
+    captures: new Map(),
 
     sharedCaptureAudioCtx: null,
 
@@ -1560,7 +1560,7 @@ var LibraryOpenAL = {
         AL.alcErr = ALC_INVALID_DEVICE;
         return null;
       }
-      var c = AL.captures[deviceId];
+      var c = AL.captures.get(deviceId);
       if (!c) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() on an invalid device`);
@@ -1869,7 +1869,7 @@ var LibraryOpenAL = {
     navigator.mediaDevices.getUserMedia({audio: true}).then(onSuccess).catch(onError);
 
     var id = AL.newId();
-    AL.captures[id] = newCapture;
+    AL.captures.set(id, newCapture);
     return id;
   },
 
@@ -1878,7 +1878,7 @@ var LibraryOpenAL = {
     var c = AL.requireValidCaptureDevice(deviceId, 'alcCaptureCloseDevice');
     if (!c) return false;
 
-    delete AL.captures[deviceId];
+    AL.captures.delete(deviceId);
     AL.freeIds.push(deviceId);
 
     // This clean-up might be unnecessary (paranoid) ?
@@ -2164,7 +2164,7 @@ var LibraryOpenAL = {
         direction: [0.0, 0.0, 0.0],
         up: [0.0, 0.0, 0.0]
       },
-      sources: [],
+      sources: new Map(),
       interval: setInterval(() => AL.scheduleContextAudio(ctx), AL_QUEUE_INTERVAL),
       gain,
       distanceModel: 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */,
@@ -2185,12 +2185,11 @@ var LibraryOpenAL = {
       }
     };
     AL.deviceRefCounts[deviceId]++;
-    AL.contexts[ctx.id] = ctx;
+    AL.contexts.set(ctx.id, ctx);
 
     if (hrtf !== null) {
       // Apply hrtf attrib to all contexts for this device
-      for (var ctxId in AL.contexts) {
-        var c = AL.contexts[ctxId];
+      for (var c of AL.contexts.values()) {
         if (c.deviceId === deviceId) {
           c.hrtf = hrtf;
           AL.updateContextGlobal(c);
@@ -2203,8 +2202,8 @@ var LibraryOpenAL = {
 
   alcDestroyContext__proxy: 'sync',
   alcDestroyContext: (contextId) => {
-    var ctx = AL.contexts[contextId];
-    if (AL.currentCtx === ctx) {
+    var ctx = AL.contexts.get(contextId);
+    if (!ctx || AL.currentCtx === ctx) {
 #if OPENAL_DEBUG
       dbg('alcDestroyContext() called with an invalid context');
 #endif
@@ -2213,11 +2212,11 @@ var LibraryOpenAL = {
     }
 
     // Stop playback, etc
-    if (AL.contexts[contextId].interval) {
-      clearInterval(AL.contexts[contextId].interval);
+    if (ctx.interval) {
+      clearInterval(ctx.interval);
     }
     AL.deviceRefCounts[ctx.deviceId]--;
-    delete AL.contexts[contextId];
+    AL.contexts.delete(contextId);
     AL.freeIds.push(contextId);
   },
 
@@ -2237,17 +2236,12 @@ var LibraryOpenAL = {
 
   alcMakeContextCurrent__proxy: 'sync',
   alcMakeContextCurrent: (contextId) => {
-    AL.currentCtx = AL.contexts[contextId];
+    AL.currentCtx = AL.contexts.get(contextId);
     return ALC_TRUE;
   },
 
   alcGetContextsDevice__proxy: 'sync',
-  alcGetContextsDevice: (contextId) => {
-    if (contextId in AL.contexts) {
-      return AL.contexts[contextId].deviceId;
-    }
-    return 0;
-  },
+  alcGetContextsDevice: (contextId) => AL.contexts.get(contextId)?.deviceId || 0,
 
   // The spec is vague about what these are actually supposed to do, and NOP is a reasonable implementation
   alcProcessContext: (contextId) => {},
@@ -2469,8 +2463,7 @@ var LibraryOpenAL = {
       }
 
       var hrtfStatus = 0 /* ALC_HRTF_DISABLED_SOFT */;
-      for (var ctxId in AL.contexts) {
-        var ctx = AL.contexts[ctxId];
+      for (var ctx of AL.contexts.values()) {
         if (ctx.deviceId === deviceId) {
           hrtfStatus = ctx.hrtf ? 1 /* ALC_HRTF_ENABLED_SOFT */ : 0 /* ALC_HRTF_DISABLED_SOFT */;
         }
@@ -2495,6 +2488,7 @@ var LibraryOpenAL = {
       }
 
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
+      break;
     case 0x312 /* ALC_CAPTURE_SAMPLES */:
       var c = AL.requireValidCaptureDevice(deviceId, 'alcGetIntegerv');
       if (!c) {
@@ -2531,8 +2525,7 @@ var LibraryOpenAL = {
     }
     AL.paused = true;
 
-    for (var ctxId in AL.contexts) {
-      var ctx = AL.contexts[ctxId];
+    for (var ctx of AL.contexts.values()) {
       if (ctx.deviceId !== deviceId) {
         continue;
       }
@@ -2559,8 +2552,7 @@ var LibraryOpenAL = {
     }
     AL.paused = false;
 
-    for (var ctxId in AL.contexts) {
-      var ctx = AL.contexts[ctxId];
+    for (var ctx of AL.contexts.values()) {
       if (ctx.deviceId !== deviceId) {
         continue;
       }
@@ -2651,8 +2643,7 @@ var LibraryOpenAL = {
 
     if (hrtf !== null) {
       // Apply hrtf attrib to all contexts for this device
-      for (var ctxId in AL.contexts) {
-        var ctx = AL.contexts[ctxId];
+      for (var ctx of AL.contexts.values()) {
         if (ctx.deviceId === deviceId) {
           ctx.hrtf = hrtf;
           AL.updateContextGlobal(ctx);
@@ -2789,7 +2780,7 @@ var LibraryOpenAL = {
           return this.pitch * this.dopplerShift;
         }
       };
-      AL.currentCtx.sources[src.id] = src;
+      AL.currentCtx.sources.set(src.id, src);
       {{{ makeSetValue('pSourceIds', 'i*4', 'src.id', 'i32') }}};
     }
   },
@@ -2805,7 +2796,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      if (!AL.currentCtx.sources[srcId]) {
+      if (!AL.currentCtx.sources.has(srcId)) {
 #if OPENAL_DEBUG
         dbg('alDeleteSources() called with an invalid source');
 #endif
@@ -2816,9 +2807,9 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], AL_STOPPED);
+      AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_STOPPED);
       _alSourcei(srcId, 0x1009 /* AL_BUFFER */, 0);
-      delete AL.currentCtx.sources[srcId];
+      AL.currentCtx.sources.delete(srcId);
       AL.freeIds.push(srcId);
     }
   },
@@ -3606,9 +3597,6 @@ var LibraryOpenAL = {
     if (!AL.currentCtx) {
       return false;
     }
-    if (bufferId > AL.buffers.length) {
-      return false;
-    }
 
     if (!AL.buffers[bufferId]) {
       return false;
@@ -3967,11 +3955,7 @@ var LibraryOpenAL = {
     if (!AL.currentCtx) {
       return false;
     }
-
-    if (!AL.currentCtx.sources[sourceId]) {
-      return false;
-    }
-    return true;
+    return AL.currentCtx.sources.has(sourceId);
   },
 
   alSourceQueueBuffers__proxy: 'sync',
@@ -3982,7 +3966,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentCtx.sources[sourceId];
+    var src = AL.currentCtx.sources.get(sourceId);
     if (!src) {
 #if OPENAL_DEBUG
       dbg('alSourceQueueBuffers() called with an invalid source');
@@ -4032,6 +4016,7 @@ var LibraryOpenAL = {
         dbg('alSourceQueueBuffers() called with a buffer of different format');
 #endif
         AL.currentCtx.err = AL_INVALID_OPERATION;
+        return;
       }
     }
 
@@ -4065,7 +4050,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentCtx.sources[sourceId];
+    var src = AL.currentCtx.sources.get(sourceId);
     if (!src) {
 #if OPENAL_DEBUG
       dbg('alSourceUnqueueBuffers() called with an invalid source');
@@ -4107,7 +4092,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentCtx.sources[sourceId];
+    var src = AL.currentCtx.sources.get(sourceId);
     if (!src) {
 #if OPENAL_DEBUG
       dbg('alSourcePlay() called with an invalid source');
@@ -4133,7 +4118,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = AL_INVALID_VALUE;
     }
     for (var i = 0; i < count; ++i) {
-      if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
+      if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
 #if OPENAL_DEBUG
         dbg('alSourcePlayv() called with an invalid source');
 #endif
@@ -4144,7 +4129,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], AL_PLAYING);
+      AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_PLAYING);
     }
   },
 
@@ -4156,7 +4141,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentCtx.sources[sourceId];
+    var src = AL.currentCtx.sources.get(sourceId);
     if (!src) {
 #if OPENAL_DEBUG
       dbg('alSourceStop() called with an invalid source');
@@ -4182,7 +4167,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = AL_INVALID_VALUE;
     }
     for (var i = 0; i < count; ++i) {
-      if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
+      if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
 #if OPENAL_DEBUG
         dbg('alSourceStopv() called with an invalid source');
 #endif
@@ -4193,7 +4178,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], AL_STOPPED);
+      AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_STOPPED);
     }
   },
 
@@ -4205,7 +4190,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentCtx.sources[sourceId];
+    var src = AL.currentCtx.sources.get(sourceId);
     if (!src) {
 #if OPENAL_DEBUG
       dbg('alSourceRewind() called with an invalid source');
@@ -4234,7 +4219,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = AL_INVALID_VALUE;
     }
     for (var i = 0; i < count; ++i) {
-      if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
+      if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
 #if OPENAL_DEBUG
         dbg('alSourceRewindv() called with an invalid source');
 #endif
@@ -4245,7 +4230,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], AL_INITIAL);
+      AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_INITIAL);
     }
   },
 
@@ -4257,7 +4242,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    var src = AL.currentCtx.sources[sourceId];
+    var src = AL.currentCtx.sources.get(sourceId);
     if (!src) {
 #if OPENAL_DEBUG
       dbg('alSourcePause() called with an invalid source');
@@ -4283,7 +4268,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = AL_INVALID_VALUE;
     }
     for (var i = 0; i < count; ++i) {
-      if (!AL.currentCtx.sources[{{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}]) {
+      if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
 #if OPENAL_DEBUG
         dbg('alSourcePausev() called with an invalid source');
 #endif
@@ -4294,7 +4279,7 @@ var LibraryOpenAL = {
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources[srcId], AL_PAUSED);
+      AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_PAUSED);
     }
   },
 
@@ -4398,7 +4383,7 @@ var LibraryOpenAL = {
     case 0x1025 /* AL_SAMPLE_OFFSET */:
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
-      {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
+      {{{ makeSetValue('pValues', '0', 'val', 'float') }}};
       break;
     case AL_POSITION:
     case AL_DIRECTION:

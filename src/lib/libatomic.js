@@ -93,7 +93,7 @@ addToLibrary({
 
   $atomicWaitStates__internal: true,
   $atomicWaitStates: ['ok', 'not-equal', 'timed-out'],
-  $liveAtomicWaitAsyncs: {},
+  $liveAtomicWaitAsyncs: new Map(),
   $liveAtomicWaitAsyncs__internal: true,
   $liveAtomicWaitAsyncCounter: 0,
   $liveAtomicWaitAsyncCounter__internal: true,
@@ -108,12 +108,11 @@ addToLibrary({
     // Valid counter range: 0...2^31-1
     let counter = liveAtomicWaitAsyncCounter;
     liveAtomicWaitAsyncCounter = Math.max(0, (liveAtomicWaitAsyncCounter+1)|0);
-    liveAtomicWaitAsyncs[counter] = addr;
+    liveAtomicWaitAsyncs.set(counter, addr);
     {{{ runtimeKeepalivePush() }}}
     wait.value.then((value) => {
-      if (liveAtomicWaitAsyncs[counter]) {
+      if (liveAtomicWaitAsyncs.delete(counter)) {
         {{{ runtimeKeepalivePop() }}}
-        delete liveAtomicWaitAsyncs[counter];
         callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, addr, val, atomicWaitStates.indexOf(value), userData);
       }
     });
@@ -130,7 +129,7 @@ addToLibrary({
       warnOnce(`Attempted to call emscripten_atomic_cancel_wait_async() with an invalid wait token value ${waitToken}`);
     }
 #endif
-    var address = liveAtomicWaitAsyncs[waitToken];
+    var address = liveAtomicWaitAsyncs.get(waitToken);
     if (address) {
       // Notify the waitAsync waiters on the memory location, so that JavaScript
       // garbage collection can occur.
@@ -138,7 +137,7 @@ addToLibrary({
       // This has the unfortunate effect of causing spurious wakeup of all other
       // waiters at the address (which causes a small performance loss).
       Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
-      delete liveAtomicWaitAsyncs[waitToken];
+      liveAtomicWaitAsyncs.delete(waitToken);
       {{{ runtimeKeepalivePop() }}}
       return EMSCRIPTEN_RESULT_SUCCESS;
     }
@@ -147,20 +146,20 @@ addToLibrary({
   },
 
   emscripten_atomic_cancel_all_wait_asyncs: () => {
-    let waitAsyncs = Object.values(liveAtomicWaitAsyncs);
-    for (var address of waitAsyncs) {
+    for (var address of liveAtomicWaitAsyncs.values()) {
       Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
     }
-    liveAtomicWaitAsyncs = {};
-    return waitAsyncs.length;
+    var count = liveAtomicWaitAsyncs.size;
+    liveAtomicWaitAsyncs.clear();
+    return count;
   },
 
   emscripten_atomic_cancel_all_wait_asyncs_at_address: (address) => {
     let numCancelled = 0;
-    for (var [waitToken, waitAddress] of Object.entries(liveAtomicWaitAsyncs)) {
+    for (var [waitToken, waitAddress] of liveAtomicWaitAsyncs) {
       if (waitAddress == address) {
         Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
-        delete liveAtomicWaitAsyncs[waitToken];
+        liveAtomicWaitAsyncs.delete(waitToken);
         numCancelled++;
       }
     }

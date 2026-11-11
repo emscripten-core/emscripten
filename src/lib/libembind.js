@@ -128,7 +128,7 @@ var LibraryEmbind = {
   },
 
   // raw pointer -> instance
-  $registeredInstances: {},
+  $registeredInstances: new Map(),
 
   $getBasestPointer: (class_, ptr) => {
     if (ptr === undefined) {
@@ -143,25 +143,23 @@ var LibraryEmbind = {
 
   $registerInheritedInstance: (class_, ptr, instance) => {
     ptr = getBasestPointer(class_, ptr);
-    if (registeredInstances[ptr]) {
+    if (registeredInstances.has(ptr)) {
         throwBindingError(`Tried to register registered instance: ${ptr}`);
     } else {
-        registeredInstances[ptr] = instance;
+        registeredInstances.set(ptr, instance);
     }
   },
 
   $unregisterInheritedInstance: (class_, ptr) => {
     ptr = getBasestPointer(class_, ptr);
-    if (registeredInstances[ptr]) {
-        delete registeredInstances[ptr];
-    } else {
+    if (!registeredInstances.delete(ptr)) {
         throwBindingError(`Tried to unregister unregistered instance: ${ptr}`);
     }
   },
 
   $getInheritedInstance: (class_, ptr) => {
     ptr = getBasestPointer(class_, ptr);
-    return registeredInstances[ptr];
+    return registeredInstances.get(ptr);
   },
 
   // class typeID -> {pointerType: ..., constPointerType: ...}
