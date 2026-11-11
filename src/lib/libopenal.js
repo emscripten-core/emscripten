@@ -742,7 +742,7 @@ var LibraryOpenAL = {
     // -- Accessor Helpers
     // ------------------------------------------------------
 
-    getGlobalParam: (funcname, param) => {
+    getGlobalParam: (param, funcname) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called without a valid context`);
@@ -766,7 +766,7 @@ var LibraryOpenAL = {
       }
     },
 
-    setGlobalParam: (funcname, param, value) => {
+    setGlobalParam: (param, value, funcname) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called without a valid context`);
@@ -828,7 +828,7 @@ var LibraryOpenAL = {
       }
     },
 
-    getListenerParam: (funcname, param) => {
+    getListenerParam: (param, funcname) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called without a valid context`);
@@ -854,7 +854,7 @@ var LibraryOpenAL = {
       }
     },
 
-    setListenerParam: (funcname, param, value) => {
+    setListenerParam: (param, value, funcname) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called without a valid context`);
@@ -938,7 +938,7 @@ var LibraryOpenAL = {
       }
     },
 
-    getBufferParam: (funcname, bufferId, param) => {
+    getBufferParam: (bufferId, param, funcname) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called without a valid context`);
@@ -980,7 +980,7 @@ var LibraryOpenAL = {
       }
     },
 
-    setBufferParam: (funcname, bufferId, param, value) => {
+    setBufferParam: (bufferId, param, value, funcname) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called without a valid context`);
@@ -1045,7 +1045,7 @@ var LibraryOpenAL = {
       }
     },
 
-    getSourceParam: (funcname, sourceId, param) => {
+    getSourceParam: (sourceId, param, funcname) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called without a valid context`);
@@ -1156,7 +1156,7 @@ var LibraryOpenAL = {
       }
     },
 
-    setSourceParam: (funcname, sourceId, param, value) => {
+    setSourceParam: (sourceId, param, value, funcname) => {
       if (!AL.currentCtx) {
 #if OPENAL_DEBUG
         dbg(`${funcname}() called without a valid context`);
@@ -3074,7 +3074,7 @@ var LibraryOpenAL = {
 
   alGetDouble__proxy: 'sync',
   alGetDouble: (param) => {
-    var val = AL.getGlobalParam('alGetDouble', param);
+    var val = AL.getGlobalParam(param, 'alGetDouble');
     if (val === null) {
       return 0.0;
     }
@@ -3095,7 +3095,7 @@ var LibraryOpenAL = {
 
   alGetDoublev__proxy: 'sync',
   alGetDoublev: (param, pValues) => {
-    var val = AL.getGlobalParam('alGetDoublev', param);
+    var val = AL.getGlobalParam(param, 'alGetDoublev');
     // Silently ignore null destinations, as per the spec for global state functions
     if (val === null || !pValues) {
       return;
@@ -3118,7 +3118,7 @@ var LibraryOpenAL = {
 
   alGetFloat__proxy: 'sync',
   alGetFloat: (param) => {
-    var val = AL.getGlobalParam('alGetFloat', param);
+    var val = AL.getGlobalParam(param, 'alGetFloat');
     if (val === null) {
       return 0.0;
     }
@@ -3138,7 +3138,7 @@ var LibraryOpenAL = {
 
   alGetFloatv__proxy: 'sync',
   alGetFloatv: (param, pValues) => {
-    var val = AL.getGlobalParam('alGetFloatv', param);
+    var val = AL.getGlobalParam(param, 'alGetFloatv');
     // Silently ignore null destinations, as per the spec for global state functions
     if (val === null || !pValues) {
       return;
@@ -3161,7 +3161,7 @@ var LibraryOpenAL = {
 
   alGetInteger__proxy: 'sync',
   alGetInteger: (param) => {
-    var val = AL.getGlobalParam('alGetInteger', param);
+    var val = AL.getGlobalParam(param, 'alGetInteger');
     if (val === null) {
       return 0;
     }
@@ -3182,7 +3182,7 @@ var LibraryOpenAL = {
 
   alGetIntegerv__proxy: 'sync',
   alGetIntegerv: (param, pValues) => {
-    var val = AL.getGlobalParam('alGetIntegerv', param);
+    var val = AL.getGlobalParam(param, 'alGetIntegerv');
     // Silently ignore null destinations, as per the spec for global state functions
     if (val === null || !pValues) {
       return;
@@ -3205,7 +3205,7 @@ var LibraryOpenAL = {
 
   alGetBoolean__proxy: 'sync',
   alGetBoolean: (param) => {
-    var val = AL.getGlobalParam('alGetBoolean', param);
+    var val = AL.getGlobalParam(param, 'alGetBoolean');
     if (val === null) {
       return AL_FALSE;
     }
@@ -3226,7 +3226,7 @@ var LibraryOpenAL = {
 
   alGetBooleanv__proxy: 'sync',
   alGetBooleanv: (param, pValues) => {
-    var val = AL.getGlobalParam('alGetBooleanv', param);
+    var val = AL.getGlobalParam(param, 'alGetBooleanv');
     // Silently ignore null destinations, as per the spec for global state functions
     if (val === null || !pValues) {
       return;
@@ -3249,17 +3249,17 @@ var LibraryOpenAL = {
 
   alDistanceModel__proxy: 'sync',
   alDistanceModel: (model) => {
-    AL.setGlobalParam('alDistanceModel', AL_DISTANCE_MODEL, model);
+    AL.setGlobalParam(AL_DISTANCE_MODEL, model, 'alDistanceModel');
   },
 
   alSpeedOfSound__proxy: 'sync',
   alSpeedOfSound: (value) => {
-    AL.setGlobalParam('alSpeedOfSound', AL_SPEED_OF_SOUND, value);
+    AL.setGlobalParam(AL_SPEED_OF_SOUND, value, 'alSpeedOfSound');
   },
 
   alDopplerFactor__proxy: 'sync',
   alDopplerFactor: (value) => {
-    AL.setGlobalParam('alDopplerFactor', AL_DOPPLER_FACTOR, value);
+    AL.setGlobalParam(AL_DOPPLER_FACTOR, value, 'alDopplerFactor');
   },
 
   // http://openal.996291.n3.nabble.com/alSpeedOfSound-or-alDopperVelocity-tp1960.html
@@ -3287,7 +3287,7 @@ var LibraryOpenAL = {
 
   alGetListenerf__proxy: 'sync',
   alGetListenerf: (param, pValue) => {
-    var val = AL.getListenerParam('alGetListenerf', param);
+    var val = AL.getListenerParam(param, 'alGetListenerf');
     if (val === null) {
       return;
     }
@@ -3314,7 +3314,7 @@ var LibraryOpenAL = {
 
   alGetListener3f__proxy: 'sync',
   alGetListener3f: (param, pValue0, pValue1, pValue2) => {
-    var val = AL.getListenerParam('alGetListener3f', param);
+    var val = AL.getListenerParam(param, 'alGetListener3f');
     if (val === null) {
       return;
     }
@@ -3344,7 +3344,7 @@ var LibraryOpenAL = {
 
   alGetListenerfv__proxy: 'sync',
   alGetListenerfv: (param, pValues) => {
-    var val = AL.getListenerParam('alGetListenerfv', param);
+    var val = AL.getListenerParam(param, 'alGetListenerfv');
     if (val === null) {
       return;
     }
@@ -3382,7 +3382,7 @@ var LibraryOpenAL = {
 
   alGetListeneri__proxy: 'sync',
   alGetListeneri: (param, pValue) => {
-    var val = AL.getListenerParam('alGetListeneri', param);
+    var val = AL.getListenerParam(param, 'alGetListeneri');
     if (val === null) {
       return;
     }
@@ -3402,7 +3402,7 @@ var LibraryOpenAL = {
 
   alGetListener3i__proxy: 'sync',
   alGetListener3i: (param, pValue0, pValue1, pValue2) => {
-    var val = AL.getListenerParam('alGetListener3i', param);
+    var val = AL.getListenerParam(param, 'alGetListener3i');
     if (val === null) {
       return;
     }
@@ -3432,7 +3432,7 @@ var LibraryOpenAL = {
 
   alGetListeneriv__proxy: 'sync',
   alGetListeneriv: (param, pValues) => {
-    var val = AL.getListenerParam('alGetListeneriv', param);
+    var val = AL.getListenerParam(param, 'alGetListeneriv');
     if (val === null) {
       return;
     }
@@ -3472,10 +3472,10 @@ var LibraryOpenAL = {
   alListenerf: (param, value) => {
     switch (param) {
     case AL_GAIN:
-      AL.setListenerParam('alListenerf', param, value);
+      AL.setListenerParam(param, value, 'alListenerf');
       break;
     default:
-      AL.setListenerParam('alListenerf', param, null);
+      AL.setListenerParam(param, null, 'alListenerf');
       break;
     }
   },
@@ -3488,10 +3488,10 @@ var LibraryOpenAL = {
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
-      AL.setListenerParam('alListener3f', param, AL.paramArray);
+      AL.setListenerParam(param, AL.paramArray, 'alListener3f');
       break;
     default:
-      AL.setListenerParam('alListener3f', param, null);
+      AL.setListenerParam(param, null, 'alListener3f');
       break;
     }
   },
@@ -3518,7 +3518,7 @@ var LibraryOpenAL = {
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
-      AL.setListenerParam('alListenerfv', param, AL.paramArray);
+      AL.setListenerParam(param, AL.paramArray, 'alListenerfv');
       break;
     case AL_ORIENTATION:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
@@ -3527,17 +3527,17 @@ var LibraryOpenAL = {
       AL.paramArray[3] = {{{ makeGetValue('pValues', '12', 'float') }}};
       AL.paramArray[4] = {{{ makeGetValue('pValues', '16', 'float') }}};
       AL.paramArray[5] = {{{ makeGetValue('pValues', '20', 'float') }}};
-      AL.setListenerParam('alListenerfv', param, AL.paramArray);
+      AL.setListenerParam(param, AL.paramArray, 'alListenerfv');
       break;
     default:
-      AL.setListenerParam('alListenerfv', param, null);
+      AL.setListenerParam(param, null, 'alListenerfv');
       break;
     }
   },
 
   alListeneri__proxy: 'sync',
   alListeneri: (param, value) => {
-    AL.setListenerParam('alListeneri', param, null);
+    AL.setListenerParam(param, null, 'alListeneri');
   },
 
   alListener3i__proxy: 'sync',
@@ -3548,10 +3548,10 @@ var LibraryOpenAL = {
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
-      AL.setListenerParam('alListener3i', param, AL.paramArray);
+      AL.setListenerParam(param, AL.paramArray, 'alListener3i');
       break;
     default:
-      AL.setListenerParam('alListener3i', param, null);
+      AL.setListenerParam(param, null, 'alListener3i');
       break;
     }
   },
@@ -3578,7 +3578,7 @@ var LibraryOpenAL = {
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};
-      AL.setListenerParam('alListeneriv', param, AL.paramArray);
+      AL.setListenerParam(param, AL.paramArray, 'alListeneriv');
       break;
     case AL_ORIENTATION:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
@@ -3587,10 +3587,10 @@ var LibraryOpenAL = {
       AL.paramArray[3] = {{{ makeGetValue('pValues', '12', 'i32') }}};
       AL.paramArray[4] = {{{ makeGetValue('pValues', '16', 'i32') }}};
       AL.paramArray[5] = {{{ makeGetValue('pValues', '20', 'i32') }}};
-      AL.setListenerParam('alListeneriv', param, AL.paramArray);
+      AL.setListenerParam(param, AL.paramArray, 'alListeneriv');
       break;
     default:
-      AL.setListenerParam('alListeneriv', param, null);
+      AL.setListenerParam(param, null, 'alListeneriv');
       break;
     }
   },
@@ -3740,7 +3740,7 @@ var LibraryOpenAL = {
 
   alGetBufferf__proxy: 'sync',
   alGetBufferf: (bufferId, param, pValue) => {
-    var val = AL.getBufferParam('alGetBufferf', bufferId, param);
+    var val = AL.getBufferParam(bufferId, param, 'alGetBufferf');
     if (val === null) {
       return;
     }
@@ -3760,7 +3760,7 @@ var LibraryOpenAL = {
 
   alGetBuffer3f__proxy: 'sync',
   alGetBuffer3f: (bufferId, param, pValue0, pValue1, pValue2) => {
-    var val = AL.getBufferParam('alGetBuffer3f', bufferId, param);
+    var val = AL.getBufferParam(bufferId, param, 'alGetBuffer3f');
     if (val === null) {
       return;
     }
@@ -3780,7 +3780,7 @@ var LibraryOpenAL = {
 
   alGetBufferfv__proxy: 'sync',
   alGetBufferfv: (bufferId, param, pValues) => {
-    var val = AL.getBufferParam('alGetBufferfv', bufferId, param);
+    var val = AL.getBufferParam(bufferId, param, 'alGetBufferfv');
     if (val === null) {
       return;
     }
@@ -3800,7 +3800,7 @@ var LibraryOpenAL = {
 
   alGetBufferi__proxy: 'sync',
   alGetBufferi: (bufferId, param, pValue) => {
-    var val = AL.getBufferParam('alGetBufferi', bufferId, param);
+    var val = AL.getBufferParam(bufferId, param, 'alGetBufferi');
     if (val === null) {
       return;
     }
@@ -3830,7 +3830,7 @@ var LibraryOpenAL = {
 
   alGetBuffer3i__proxy: 'sync',
   alGetBuffer3i: (bufferId, param, pValue0, pValue1, pValue2) => {
-    var val = AL.getBufferParam('alGetBuffer3i', bufferId, param);
+    var val = AL.getBufferParam(bufferId, param, 'alGetBuffer3i');
     if (val === null) {
       return;
     }
@@ -3850,7 +3850,7 @@ var LibraryOpenAL = {
 
   alGetBufferiv__proxy: 'sync',
   alGetBufferiv: (bufferId, param, pValues) => {
-    var val = AL.getBufferParam('alGetBufferiv', bufferId, param);
+    var val = AL.getBufferParam(bufferId, param, 'alGetBufferiv');
     if (val === null) {
       return;
     }
@@ -3888,12 +3888,12 @@ var LibraryOpenAL = {
 
   alBufferf__proxy: 'sync',
   alBufferf: (bufferId, param, value) => {
-    AL.setBufferParam('alBufferf', bufferId, param, null);
+    AL.setBufferParam(bufferId, param, null, 'alBufferf');
   },
 
   alBuffer3f__proxy: 'sync',
   alBuffer3f: (bufferId, param, value0, value1, value2) => {
-    AL.setBufferParam('alBuffer3f', bufferId, param, null);
+    AL.setBufferParam(bufferId, param, null, 'alBuffer3f');
   },
 
   alBufferfv__proxy: 'sync',
@@ -3912,17 +3912,17 @@ var LibraryOpenAL = {
       return;
     }
 
-    AL.setBufferParam('alBufferfv', bufferId, param, null);
+    AL.setBufferParam(bufferId, param, null, 'alBufferfv');
   },
 
   alBufferi__proxy: 'sync',
   alBufferi: (bufferId, param, value) => {
-    AL.setBufferParam('alBufferi', bufferId, param, null);
+    AL.setBufferParam(bufferId, param, null, 'alBufferi');
   },
 
   alBuffer3i__proxy: 'sync',
   alBuffer3i: (bufferId, param, value0, value1, value2) => {
-    AL.setBufferParam('alBuffer3i', bufferId, param, null);
+    AL.setBufferParam(bufferId, param, null, 'alBuffer3i');
   },
 
   alBufferiv__proxy: 'sync',
@@ -3945,10 +3945,10 @@ var LibraryOpenAL = {
     case 0x2015 /* AL_LOOP_POINTS_SOFT */:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
-      AL.setBufferParam('alBufferiv', bufferId, param, AL.paramArray);
+      AL.setBufferParam(bufferId, param, AL.paramArray, 'alBufferiv');
       break;
     default:
-      AL.setBufferParam('alBufferiv', bufferId, param, null);
+      AL.setBufferParam(bufferId, param, null, 'alBufferiv');
       break;
     }
   },
@@ -4296,7 +4296,7 @@ var LibraryOpenAL = {
 
   alGetSourcef__proxy: 'sync',
   alGetSourcef: (sourceId, param, pValue) => {
-    var val = AL.getSourceParam('alGetSourcef', sourceId, param);
+    var val = AL.getSourceParam(sourceId, param, 'alGetSourcef');
     if (val === null) {
       return;
     }
@@ -4336,7 +4336,7 @@ var LibraryOpenAL = {
 
   alGetSource3f__proxy: 'sync',
   alGetSource3f: (sourceId, param, pValue0, pValue1, pValue2) => {
-    var val = AL.getSourceParam('alGetSource3f', sourceId, param);
+    var val = AL.getSourceParam(sourceId, param, 'alGetSource3f');
     if (val === null) {
       return;
     }
@@ -4367,7 +4367,7 @@ var LibraryOpenAL = {
 
   alGetSourcefv__proxy: 'sync',
   alGetSourcefv: (sourceId, param, pValues) => {
-    var val = AL.getSourceParam('alGetSourcefv', sourceId, param);
+    var val = AL.getSourceParam(sourceId, param, 'alGetSourcefv');
     if (val === null) {
       return;
     }
@@ -4414,7 +4414,7 @@ var LibraryOpenAL = {
 
   alGetSourcei__proxy: 'sync',
   alGetSourcei: (sourceId, param, pValue) => {
-    var val = AL.getSourceParam('alGetSourcei', sourceId, param);
+    var val = AL.getSourceParam(sourceId, param, 'alGetSourcei');
     if (val === null) {
       return;
     }
@@ -4459,7 +4459,7 @@ var LibraryOpenAL = {
 
   alGetSource3i__proxy: 'sync',
   alGetSource3i: (sourceId, param, pValue0, pValue1, pValue2) => {
-    var val = AL.getSourceParam('alGetSource3i', sourceId, param);
+    var val = AL.getSourceParam(sourceId, param, 'alGetSource3i');
     if (val === null) {
       return;
     }
@@ -4490,7 +4490,7 @@ var LibraryOpenAL = {
 
   alGetSourceiv__proxy: 'sync',
   alGetSourceiv: (sourceId, param, pValues) => {
-    var val = AL.getSourceParam('alGetSourceiv', sourceId, param);
+    var val = AL.getSourceParam(sourceId, param, 'alGetSourceiv');
     if (val === null) {
       return;
     }
@@ -4557,10 +4557,10 @@ var LibraryOpenAL = {
     case 0x1025 /* AL_SAMPLE_OFFSET */:
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
-      AL.setSourceParam('alSourcef', sourceId, param, value);
+      AL.setSourceParam(sourceId, param, value, 'alSourcef');
       break;
     default:
-      AL.setSourceParam('alSourcef', sourceId, param, null);
+      AL.setSourceParam(sourceId, param, null, 'alSourcef');
       break;
     }
   },
@@ -4574,10 +4574,10 @@ var LibraryOpenAL = {
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
-      AL.setSourceParam('alSource3f', sourceId, param, AL.paramArray);
+      AL.setSourceParam(sourceId, param, AL.paramArray, 'alSource3f');
       break;
     default:
-      AL.setSourceParam('alSource3f', sourceId, param, null);
+      AL.setSourceParam(sourceId, param, null, 'alSource3f');
       break;
     }
   },
@@ -4614,7 +4614,7 @@ var LibraryOpenAL = {
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
       var val = {{{ makeGetValue('pValues', '0', 'float') }}};
-      AL.setSourceParam('alSourcefv', sourceId, param, val);
+      AL.setSourceParam(sourceId, param, val, 'alSourcefv');
       break;
     case AL_POSITION:
     case AL_DIRECTION:
@@ -4622,10 +4622,10 @@ var LibraryOpenAL = {
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'float') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'float') }}};
-      AL.setSourceParam('alSourcefv', sourceId, param, AL.paramArray);
+      AL.setSourceParam(sourceId, param, AL.paramArray, 'alSourcefv');
       break;
     default:
-      AL.setSourceParam('alSourcefv', sourceId, param, null);
+      AL.setSourceParam(sourceId, param, null, 'alSourcefv');
       break;
     }
   },
@@ -4648,10 +4648,10 @@ var LibraryOpenAL = {
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
     case AL_DISTANCE_MODEL:
-      AL.setSourceParam('alSourcei', sourceId, param, value);
+      AL.setSourceParam(sourceId, param, value, 'alSourcei');
       break;
     default:
-      AL.setSourceParam('alSourcei', sourceId, param, null);
+      AL.setSourceParam(sourceId, param, null, 'alSourcei');
       break;
     }
   },
@@ -4665,10 +4665,10 @@ var LibraryOpenAL = {
       AL.paramArray[0] = value0;
       AL.paramArray[1] = value1;
       AL.paramArray[2] = value2;
-      AL.setSourceParam('alSource3i', sourceId, param, AL.paramArray);
+      AL.setSourceParam(sourceId, param, AL.paramArray, 'alSource3i');
       break;
     default:
-      AL.setSourceParam('alSource3i', sourceId, param, null);
+      AL.setSourceParam(sourceId, param, null, 'alSource3i');
       break;
     }
   },
@@ -4706,7 +4706,7 @@ var LibraryOpenAL = {
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
     case AL_DISTANCE_MODEL:
       var val = {{{ makeGetValue('pValues', '0', 'i32') }}};
-      AL.setSourceParam('alSourceiv', sourceId, param, val);
+      AL.setSourceParam(sourceId, param, val, 'alSourceiv');
       break;
     case AL_POSITION:
     case AL_DIRECTION:
@@ -4714,10 +4714,10 @@ var LibraryOpenAL = {
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.paramArray[2] = {{{ makeGetValue('pValues', '8', 'i32') }}};
-      AL.setSourceParam('alSourceiv', sourceId, param, AL.paramArray);
+      AL.setSourceParam(sourceId, param, AL.paramArray, 'alSourceiv');
       break;
     default:
-      AL.setSourceParam('alSourceiv', sourceId, param, null);
+      AL.setSourceParam(sourceId, param, null, 'alSourceiv');
       break;
     }
   }
