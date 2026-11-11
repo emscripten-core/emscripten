@@ -367,10 +367,10 @@ var EpollLibrary = {
 
     // A wake is delivered either from a microtask or from an immediate,
     // depending on whether a listener callback is running. Outside of one, the
-    // microtask delivers within the host task that made the set ready. A wake
-    // under a callback, or a set left ready by one, yields to the event loop
-    // instead so that it cannot starve I/O and timers. A turn re-derives
-    // readiness, so one pending of each covers every wake before it.
+    // microtask delivers within the task that made the set ready. A wake under
+    // a callback, or a set left ready by one, yields to the event loop instead
+    // so that it cannot starve I/O and timers. A turn re-derives readiness, so
+    // one pending of each covers every wake before it.
     var pendingMicrotask;
     var pendingImmediate;
     function schedule() {
