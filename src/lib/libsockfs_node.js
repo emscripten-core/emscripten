@@ -882,6 +882,11 @@ var NodeSockFSLibrary = {
       }
       var queued = sock.recv_queue[0];
       if (!queued) {
+        if (sock.error) {
+          var serr = sock.error;
+          sock.error = null;
+          throw new FS.ErrnoError(serr);
+        }
         if (sock.readClosed) return null; // EOF
         if (!sock.connection) {
           throw new FS.ErrnoError(ENOTCONN);
