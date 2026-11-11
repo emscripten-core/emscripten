@@ -35,7 +35,7 @@ static int __futex4_cp(volatile void *addr, int op, int val, const struct timesp
 static volatile int dummy = 0;
 weak_alias(dummy, __eintr_valid_flag);
 
-int __timedwait_cp(volatile int *addr, int val,
+int __timedwait_cp(_Atomic int *addr, int val,
 	clockid_t clk, const struct timespec *at, int priv)
 {
 	int r;
@@ -71,7 +71,7 @@ int __timedwait_cp(volatile int *addr, int val,
 	return r;
 }
 
-int __timedwait(volatile int *addr, int val,
+int __timedwait(_Atomic int *addr, int val,
 	clockid_t clk, const struct timespec *at, int priv)
 {
 	int cs, r;

@@ -27,7 +27,7 @@
 weak long __cancel(void);
 #endif
 
-extern void* _emscripten_main_thread_futex;
+extern void* _Atomic _emscripten_main_thread_futex;
 
 static int futex_wait_main_browser_thread(volatile void* addr,
                                           uint32_t val,

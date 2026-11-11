@@ -43,8 +43,8 @@ struct pthread {
 	// Emscripten uses C11 _Thread_local instead for errno
 	int errno_val;
 #endif
-	volatile int detach_state;
-	volatile int cancel;
+	_Atomic int detach_state;
+	_Atomic int cancel;
 	// XXX EMSCRIPTEN: Remove unneeded `volatile`. Unlike `cancel` above, these
 	// are only ever accessed by the owning thread (upstream musl only marks them
 	// `volatile` for async SIGCANCEL signal handlers).
@@ -68,12 +68,12 @@ struct pthread {
 	// Emscripten uses C11 _Thread_local instead for h_errno
 	int h_errno_val;
 #endif
-	volatile int timer_id;
+	_Atomic int timer_id;
 #ifndef __EMSCRIPTEN__
 	// Emscripten uses C11 _Thread_local instead for locale
 	locale_t locale;
 	// Emscripten doesn't use this field.
-	volatile int killlock[1];
+	_Atomic int killlock[1];
 #endif
 	char *dlerror_buf;
 	void *stdio_locks;
@@ -236,10 +236,10 @@ hidden int __set_thread_area(void *);
 hidden int __libc_sigaction(int, const struct sigaction *, struct sigaction *);
 hidden void __unmapself(void *, size_t);
 
-hidden int __timedwait(volatile int *, int, clockid_t, const struct timespec *, int);
-hidden int __timedwait_cp(volatile int *, int, clockid_t, const struct timespec *, int);
-hidden void __wait(volatile int *, volatile int *, int, int);
-static inline void __wake(volatile void *addr, int cnt, int priv)
+hidden int __timedwait(_Atomic int *, int, clockid_t, const struct timespec *, int);
+hidden int __timedwait_cp(_Atomic int *, int, clockid_t, const struct timespec *, int);
+hidden void __wait(_Atomic int *, _Atomic int *, int, int);
+static inline void __wake(_Atomic int *addr, int cnt, int priv)
 {
 	if (priv) priv = FUTEX_PRIVATE;
 	if (cnt<0) cnt = INT_MAX;
@@ -250,7 +250,7 @@ static inline void __wake(volatile void *addr, int cnt, int priv)
 	__syscall(SYS_futex, addr, FUTEX_WAKE, cnt);
 #endif
 }
-static inline void __futexwait(volatile void *addr, int val, int priv)
+static inline void __futexwait(_Atomic int *addr, int val, int priv)
 {
 #ifdef __EMSCRIPTEN__
 	__wait(addr, NULL, val, priv);
@@ -269,9 +269,9 @@ hidden void __tl_lock(void);
 hidden void __tl_unlock(void);
 hidden void __tl_sync(pthread_t);
 
-extern hidden volatile int __thread_list_lock;
+extern hidden _Atomic int __thread_list_lock;
 
-extern hidden volatile int __abort_lock[1];
+extern hidden _Atomic int __abort_lock[1];
 
 extern hidden unsigned __default_stacksize;
 extern hidden unsigned __default_guardsize;

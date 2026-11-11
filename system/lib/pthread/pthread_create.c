@@ -65,9 +65,9 @@ static void init_file_lock(FILE *f) {
 }
 
 static int tl_lock_count;
-static int tl_lock_waiters;
+static _Atomic int tl_lock_waiters;
 
-volatile int __thread_list_lock;
+_Atomic int __thread_list_lock;
 
 void __tl_lock(void) {
   int tid = __pthread_self()->tid;

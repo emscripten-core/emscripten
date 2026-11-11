@@ -20,13 +20,13 @@
 struct binding {
 	struct binding *next;
 	int dirlen;
-	volatile int active;
+	_Atomic int active;
 	char *domainname;
 	char *dirname;
 	char buf[];
 };
 
-static void *volatile bindings;
+static void * _Atomic bindings;
 
 static char *gettextdir(const char *domainname, size_t *dirlen)
 {
@@ -40,8 +40,8 @@ static char *gettextdir(const char *domainname, size_t *dirlen)
 	return 0;
 }
 
-static volatile int lock[1];
-volatile int *const __gettext_lockptr = lock;
+static _Atomic int lock[1];
+_Atomic int *const __gettext_lockptr = lock;
 
 char *bindtextdomain(const char *domainname, const char *dirname)
 {
@@ -124,7 +124,7 @@ weak_alias(dummy_gettextdomain, __gettextdomain);
 
 char *dcngettext(const char *domainname, const char *msgid1, const char *msgid2, unsigned long int n, int category)
 {
-	static struct msgcat *volatile cats;
+	static void * _Atomic cats;
 	struct msgcat *p;
 	struct __locale_struct *loc = CURRENT_LOCALE;
 	const struct __locale_map *lm;

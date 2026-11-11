@@ -16,7 +16,7 @@
  * with INT_MIN as a lock flag.
  */
 
-void __lock(volatile int *l)
+void __lock(_Atomic int *l)
 {
 	int need_locks = libc.need_locks;
 	if (!need_locks) return;
@@ -51,7 +51,7 @@ void __lock(volatile int *l)
 	}
 }
 
-void __unlock(volatile int *l)
+void __unlock(_Atomic int *l)
 {
 	/* Check l[0] to see if we are multi-threaded. */
 	if (l[0] < 0) {

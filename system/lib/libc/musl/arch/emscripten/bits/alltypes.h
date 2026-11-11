@@ -88,7 +88,7 @@ typedef struct { alignas(8) long long __ll; long double __ld; } max_align_t;
 // For canvas transfer implementation in Emscripten, use an extra control field
 // to pass a pointer to a string denoting the WebGL canvases to transfer.
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
-typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned long __s[10]; } __u; const char *_a_transferredcanvases; } pthread_attr_t;
+typedef struct { union { int __i[10]; _Atomic int __vi[10]; unsigned long __s[10]; } __u; const char *_a_transferredcanvases; } pthread_attr_t;
 #define __DEFINED_pthread_attr_t
 #endif
 
@@ -441,37 +441,37 @@ typedef unsigned short sa_family_t;
 
 
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
-typedef struct { union { int __i[sizeof(long)==8?14:9]; volatile int __vi[sizeof(long)==8?14:9]; unsigned long __s[sizeof(long)==8?7:9]; } __u; } pthread_attr_t;
+typedef struct { union { int __i[sizeof(long)==8?14:9]; _Atomic int __vi[sizeof(long)==8?14:9]; unsigned long __s[sizeof(long)==8?7:9]; } __u; } pthread_attr_t;
 #define __DEFINED_pthread_attr_t
 #endif
 
 #if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
-typedef struct { union { int __i[sizeof(long)==8?10:6]; volatile int __vi[sizeof(long)==8?10:6]; void *__p[sizeof(long)==8?5:6]; } __u; } pthread_mutex_t;
+typedef struct { union { int __i[sizeof(long)==8?10:6]; _Atomic int __vi[sizeof(long)==8?10:6]; void *__p[sizeof(long)==8?5:6]; } __u; } pthread_mutex_t;
 #define __DEFINED_pthread_mutex_t
 #endif
 
 #if defined(__NEED_mtx_t) && !defined(__DEFINED_mtx_t)
-typedef struct { union { int __i[sizeof(long)==8?10:6]; volatile int __vi[sizeof(long)==8?10:6]; void *__p[sizeof(long)==8?5:6]; } __u; } mtx_t;
+typedef struct { union { int __i[sizeof(long)==8?10:6]; _Atomic int __vi[sizeof(long)==8?10:6]; void *__p[sizeof(long)==8?5:6]; } __u; } mtx_t;
 #define __DEFINED_mtx_t
 #endif
 
 #if defined(__NEED_pthread_cond_t) && !defined(__DEFINED_pthread_cond_t)
-typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12*sizeof(int)/sizeof(void*)]; } __u; } pthread_cond_t;
+typedef struct { union { int __i[12]; _Atomic int __vi[12]; void *__p[12*sizeof(int)/sizeof(void*)]; } __u; } pthread_cond_t;
 #define __DEFINED_pthread_cond_t
 #endif
 
 #if defined(__NEED_cnd_t) && !defined(__DEFINED_cnd_t)
-typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12*sizeof(int)/sizeof(void*)]; } __u; } cnd_t;
+typedef struct { union { int __i[12]; _Atomic int __vi[12]; void *__p[12*sizeof(int)/sizeof(void*)]; } __u; } cnd_t;
 #define __DEFINED_cnd_t
 #endif
 
 #if defined(__NEED_pthread_rwlock_t) && !defined(__DEFINED_pthread_rwlock_t)
-typedef struct { union { int __i[sizeof(long)==8?14:8]; volatile int __vi[sizeof(long)==8?14:8]; void *__p[sizeof(long)==8?7:8]; } __u; } pthread_rwlock_t;
+typedef struct { union { int __i[sizeof(long)==8?14:8]; _Atomic int __vi[sizeof(long)==8?14:8]; void *__p[sizeof(long)==8?7:8]; } __u; } pthread_rwlock_t;
 #define __DEFINED_pthread_rwlock_t
 #endif
 
 #if defined(__NEED_pthread_barrier_t) && !defined(__DEFINED_pthread_barrier_t)
-typedef struct { union { int __i[sizeof(long)==8?8:5]; volatile int __vi[sizeof(long)==8?8:5]; void *__p[sizeof(long)==8?4:5]; } __u; } pthread_barrier_t;
+typedef struct { union { int __i[sizeof(long)==8?8:5]; _Atomic int __vi[sizeof(long)==8?8:5]; void *__p[sizeof(long)==8?4:5]; } __u; } pthread_barrier_t;
 #define __DEFINED_pthread_barrier_t
 #endif
 
