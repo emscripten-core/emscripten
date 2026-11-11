@@ -3597,9 +3597,6 @@ var LibraryOpenAL = {
     if (!AL.currentCtx) {
       return false;
     }
-    if (bufferId > AL.buffers.length) {
-      return false;
-    }
 
     if (!AL.buffers[bufferId]) {
       return false;
