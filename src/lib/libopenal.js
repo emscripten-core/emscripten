@@ -4386,7 +4386,7 @@ var LibraryOpenAL = {
     case 0x1025 /* AL_SAMPLE_OFFSET */:
     case 0x1026 /* AL_BYTE_OFFSET */:
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
-      {{{ makeSetValue('pValues', '0', 'val[0]', 'float') }}};
+      {{{ makeSetValue('pValues', '0', 'val', 'float') }}};
       break;
     case AL_POSITION:
     case AL_DIRECTION:
