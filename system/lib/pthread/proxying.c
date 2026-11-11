@@ -780,10 +780,14 @@ typedef struct proxied_js_callback_t {
 } proxied_js_callback_t;
 
 static void js_callback_settle(proxied_js_callback_t* c, bool err) {
-  c->callback(err, (void*)(intptr_t)c->func.result, c->arg);
+  // Clean up first, in case the callback throws or exits the thread.
+  void (*callback)(bool, void*, void*) = c->callback;
+  void* result = (void*)(intptr_t)c->func.result;
+  void* arg = c->arg;
   free(c->func.argBuffer);
   free(c);
   emscripten_runtime_keepalive_pop();
+  callback(err, result, arg);
 }
 
 static void js_callback_call(void* data) {
