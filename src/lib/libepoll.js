@@ -366,12 +366,10 @@ var EpollLibrary = {
     var it = {key};
     stream.listeners.set(key, it);
 
-    // A wake is delivered as a microtask: after the notifying wasm call's
-    // frames, but within the host task that made the set ready. A wake under a
-    // listener callback, or a set the callback leaves ready, is redelivered
-    // from an immediate instead, yielding to I/O. At most one of each is
-    // pending per listener: a turn re-derives readiness, so it covers every
-    // wake before it.
+    // A wake is delivered as a microtask, within the host task that made the
+    // set ready. A wake under a listener callback, or a set left ready by one,
+    // is redelivered from an immediate instead, yielding to I/O. A turn
+    // re-derives readiness, so one pending of each covers every wake before it.
     var pending = [];
     function schedule() {
       var defer = epollDelivering;

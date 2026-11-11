@@ -13887,8 +13887,8 @@ void foo() {}
     self.do_runf('other/test_epoll_callback_level.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_coalesce(self):
-    # A burst of edges before the notifying call returns (many writes, a run of
-    # socket chunks) schedules one delivery, not one per edge.
+    # A burst of edges schedules one delivery, run as a microtask of the host
+    # task that made the set ready; redelivery yields to the event loop.
     self.do_runf('other/test_epoll_callback_coalesce.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   @parameterized({
@@ -13903,12 +13903,6 @@ void foo() {}
     # alive. With an explicit keepalive the delivery runs and its pop exits.
     self.do_runf('other/test_epoll_callback_unref.c', 'done\nexited %d\n' % returncode,
                  cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
-
-  def test_epoll_callback_microtask(self):
-    # A delivery runs as a microtask of the host task that made the set ready,
-    # after the notifying call returns; redelivery of a set left ready yields
-    # to the event loop.
-    self.do_runf('other/test_epoll_callback_microtask.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_abort(self):
     # A fatal error in the callback is an uncaught exception from the delivery
