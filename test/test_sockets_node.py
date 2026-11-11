@@ -267,6 +267,11 @@ class sockets_node(RunnerCore):
     self.do_runf('sockets/test_epoll_rdhup.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_reset(self):
+    # A peer reset is reported by recv() as ECONNRESET, not as a clean EOF.
+    self.do_runf('sockets/test_tcp_reset.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
   def test_noderawsockets_nonblock_flags(self):
     # socket()/accept4() SOCK_NONBLOCK, FIONBIO, no listener flag inheritance on
     # accept, non-blocking connect EINPROGRESS (TCP and AF_UNIX), and a warning
