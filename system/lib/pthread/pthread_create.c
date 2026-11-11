@@ -339,7 +339,7 @@ void _emscripten_thread_exit(void* result) {
    * and the detached thread case where the robust list head will
    * be invalid when the kernel would process it. */
   __vm_lock();
-  volatile void *volatile *rp;
+  void **rp;
   while ((rp=self->robust_list.head) && rp != &self->robust_list.head) {
     pthread_mutex_t *m = (void *)((char *)rp
       - offsetof(pthread_mutex_t, _m_next));

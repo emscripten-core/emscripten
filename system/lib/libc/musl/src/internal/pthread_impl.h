@@ -45,7 +45,10 @@ struct pthread {
 #endif
 	volatile int detach_state;
 	volatile int cancel;
-	volatile unsigned char canceldisable, cancelasync;
+	// XXX EMSCRIPTEN: Remove unneeded `volatile`. Unlike `cancel` above, these
+	// are only ever accessed by the owning thread (upstream musl only marks them
+	// `volatile` for async SIGCANCEL signal handlers).
+	unsigned char canceldisable, cancelasync;
 	unsigned char tsd_used:1;
 	unsigned char dlerror_flag:1;
 	unsigned char *map_base;
@@ -57,9 +60,9 @@ struct pthread {
 	struct __ptcb *cancelbuf;
 	void **tsd;
 	struct {
-		volatile void *volatile head;
+		void *head; // XXX EMSCRIPTEN: Remove unneeded `volatile`
 		long off;
-		volatile void *volatile pending;
+		void *pending; // XXX EMSCRIPTEN: Remove unneeded `volatile`
 	} robust_list;
 #ifndef __EMSCRIPTEN__
 	// Emscripten uses C11 _Thread_local instead for h_errno
