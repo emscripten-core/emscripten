@@ -4,11 +4,9 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * A burst of readiness edges before the event loop turns (here many small pipe
- * writes; on a socket, a run of incoming chunks) coalesces onto one pending
- * delivery task rather than one per edge: on hosts where setImmediate is a
- * counted timer that is not serviced while I/O keeps completing, one task per
- * edge piles up until the host's cap.
+ * A burst of readiness edges before the notifying call returns (here many
+ * small pipe writes; on a socket, a run of incoming chunks) coalesces onto one
+ * pending delivery rather than one per edge.
  */
 
 #include <sys/epoll.h>
@@ -21,17 +19,19 @@
 
 #define WRITES 1000
 
-EM_JS(void, count_immediates, (void), {
-  var orig = globalThis.setImmediate;
-  globalThis.immediates = 0;
-  globalThis.setImmediate = (...args) => {
-    globalThis.immediates++;
-    return orig(...args);
-  };
+EM_JS(void, count_deliveries, (void), {
+  globalThis.deliveries = 0;
+  for (let fn of ['queueMicrotask', 'setImmediate']) {
+    var orig = globalThis[fn];
+    globalThis[fn] = (...args) => {
+      globalThis.deliveries++;
+      return orig(...args);
+    };
+  }
 });
 
-EM_JS(int, immediates_scheduled, (void), {
-  return globalThis.immediates;
+EM_JS(int, deliveries_scheduled, (void), {
+  return globalThis.deliveries;
 });
 
 int fires;
@@ -44,9 +44,9 @@ void on_ready(int ep, void* ud) {
   assert(read(ev.data.fd, buf, sizeof(buf)) == WRITES);
   fires++;
   // Registering the listener and every write each wake the epoll; all of those
-  // wakes happened before this first turn, so one task covers them.
-  int scheduled = immediates_scheduled();
-  printf("fires=%d immediates=%d\n", fires, scheduled);
+  // wakes happened before this first turn, so one delivery covers them.
+  int scheduled = deliveries_scheduled();
+  printf("fires=%d deliveries=%d\n", fires, scheduled);
   assert(scheduled == 1);
   assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == 0);
   printf("done\n");
@@ -54,7 +54,7 @@ void on_ready(int ep, void* ud) {
 }
 
 int main() {
-  count_immediates();
+  count_deliveries();
   int ep = epoll_create1(0);
   int p[2];
   assert(pipe(p) == 0);

@@ -345,6 +345,10 @@ var EpollLibrary = {
     it.listener.listeners.delete(it.listener.entry);
   },
 
+  // Set while a listener callback runs.
+  $epollDelivering__internal: true,
+  $epollDelivering: 0,
+
   // See <emscripten/epoll.h>. A listener is keyed by (callback, userdata) and
   // signals the callback while the set has uncollected ready events.
   emscripten_epoll_listener_add__deps: ['$epollClearListener'],
@@ -362,22 +366,33 @@ var EpollLibrary = {
     var it = {key};
     stream.listeners.set(key, it);
 
-    // Every delivery is an event-loop task, never under the notifying wasm
-    // call's frames. At most one task is pending per listener: a turn
-    // re-derives readiness, so it covers every wake before it.
+    // A wake is delivered as a microtask: after the notifying wasm call's
+    // frames, but within the host task that made the set ready. A wake under a
+    // listener callback, or a set the callback leaves ready, is redelivered
+    // from an immediate instead, yielding to I/O. At most one of each is
+    // pending per listener: a turn re-derives readiness, so it covers every
+    // wake before it.
+    var pending = [];
     function schedule() {
-      if (it.pending) return;
-      it.pending = true;
-      emSetImmediate(turn);
+      var defer = epollDelivering;
+      if (pending[defer]) return;
+      pending[defer] = true;
+      (defer ? emSetImmediate : queueMicrotask)(() => {
+        pending[defer] = false;
+        turn();
+      });
     }
     function turn() {
-      it.pending = false;
       if (it.cleared || epollWouldBlock(ep)) return;
-      callUserCallback(() => {
-        {{{ makeDynCall('vip', 'callback') }}}(epfd, userdata);
-        // A still-ready level fd yields to I/O before the next delivery.
-        if (!it.cleared && !epollWouldBlock(ep)) schedule();
-      });
+      epollDelivering = 1;
+      try {
+        callUserCallback(() => {
+          {{{ makeDynCall('vip', 'callback') }}}(epfd, userdata);
+          if (!it.cleared && !epollWouldBlock(ep)) schedule();
+        });
+      } finally {
+        epollDelivering = 0;
+      }
     }
     it.listener = ep.node.addListener(schedule);
     schedule();

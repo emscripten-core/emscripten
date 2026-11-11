@@ -25,7 +25,7 @@ void on_ready(int ep, void* ud) {
   struct epoll_event ev[4];
   assert(epoll_wait(ep, ev, 4, 0) == 1);
   assert(ev[0].events & EPOLLOUT);
-  if (++fires == 3) { // re-fired every tick despite no new event and no drain
+  if (++fires == 3) { // re-fired every turn despite no new event and no drain
     assert(emscripten_epoll_listener_remove(ep, on_ready, 0) == 0);
     printf("done\n");
     emscripten_runtime_keepalive_pop();
