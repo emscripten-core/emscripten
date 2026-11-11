@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <AL/al.h>
 #include <AL/alc.h>
+#include <AL/alext.h>
 
 ALCdevice* device = NULL;
 ALCcontext* context = NULL;
@@ -117,6 +118,29 @@ void test_queue_buffers_format_mismatch(void) {
   alDeleteBuffers(1, &mono_buf);
 }
 
+void test_loop_points(void) {
+  ALuint buf = 0;
+  alGenBuffers(1, &buf);
+  short dummy_data[1000] = {0};
+  alBufferData(buf, AL_FORMAT_MONO16, dummy_data, sizeof(dummy_data), 44100);
+  assert(alGetError() == AL_NO_ERROR);
+
+  // Out-of-bounds loop end point should fail with AL_INVALID_VALUE
+  ALint bad_pts[2] = {0, 1001};
+  alBufferiv(buf, AL_LOOP_POINTS_SOFT, bad_pts);
+  assert(alGetError() == AL_INVALID_VALUE);
+
+  ALint valid_pts[2] = {100, 500};
+  alBufferiv(buf, AL_LOOP_POINTS_SOFT, valid_pts);
+  assert(alGetError() == AL_NO_ERROR);
+  ALint loop_pts[2] = {-1, -1};
+  alGetBufferiv(buf, AL_LOOP_POINTS_SOFT, loop_pts);
+  assert(loop_pts[0] == 100);
+  assert(loop_pts[1] == 500);
+
+  alDeleteBuffers(1, &buf);
+}
+
 int main(int argc, char* argv[]) {
   ALCboolean ret;
 
@@ -173,6 +197,7 @@ int main(int argc, char* argv[]) {
   test_offsets_with_zero_buffer();
   test_stopped_seek();
   test_queue_buffers_format_mismatch();
+  test_loop_points();
 
   ret = alcMakeContextCurrent(NULL);
   assert(ret == ALC_TRUE);

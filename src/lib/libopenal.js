@@ -1016,7 +1016,7 @@ var LibraryOpenAL = {
         // Per the spec, setting AL_SIZE to 0 is a legal NOP.
         break;
       case 0x2015 /* AL_LOOP_POINTS_SOFT */:
-        if (value[0] < 0 || value[0] > buf.length || value[1] < 0 || value[1] > buf.Length || value[0] >= value[1]) {
+        if (value[0] < 0 || value[0] > buf.length || value[1] < 0 || value[1] > buf.length || value[0] >= value[1]) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_LOOP_POINTS_SOFT value ${value} is out of range`);
 #endif
