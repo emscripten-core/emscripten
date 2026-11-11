@@ -345,6 +345,9 @@ var EpollLibrary = {
     it.listener.listeners.delete(it.listener.entry);
   },
 
+  $epollCallbackRunning__internal: true,
+  $epollCallbackRunning: false,
+
   // See <emscripten/epoll.h>. A listener is keyed by (callback, userdata) and
   // signals the callback while the set has uncollected ready events.
   emscripten_epoll_listener_add__deps: ['$epollClearListener'],
@@ -362,22 +365,41 @@ var EpollLibrary = {
     var it = {key};
     stream.listeners.set(key, it);
 
-    // Every delivery is an event-loop task, never under the notifying wasm
-    // call's frames. At most one task is pending per listener: a turn
-    // re-derives readiness, so it covers every wake before it.
+    // A wake is delivered either from a microtask or from an immediate,
+    // depending on whether a listener callback is running. Outside of one, the
+    // microtask delivers within the task that made the set ready. A wake under
+    // a callback, or a set left ready by one, yields to the event loop instead
+    // so that it cannot starve I/O and timers. A turn re-derives readiness, so
+    // one pending of each covers every wake before it.
+    var pendingMicrotask;
+    var pendingImmediate;
     function schedule() {
-      if (it.pending) return;
-      it.pending = true;
-      emSetImmediate(turn);
+      if (epollCallbackRunning) {
+        if (!pendingImmediate) {
+          emSetImmediate(() => {
+            pendingImmediate = false;
+            turn();
+          });
+        }
+        pendingImmediate = true;
+      } else {
+        if (!pendingMicrotask) queueMicrotask(turn);
+        pendingMicrotask = true;
+      }
     }
     function turn() {
-      it.pending = false;
+      // Microtasks drain before any immediate, so none is pending past here.
+      pendingMicrotask = false;
       if (it.cleared || epollWouldBlock(ep)) return;
-      callUserCallback(() => {
-        {{{ makeDynCall('vip', 'callback') }}}(epfd, userdata);
-        // A still-ready level fd yields to I/O before the next delivery.
-        if (!it.cleared && !epollWouldBlock(ep)) schedule();
-      });
+      epollCallbackRunning = true;
+      try {
+        callUserCallback(() => {
+          {{{ makeDynCall('vip', 'callback') }}}(epfd, userdata);
+          if (!it.cleared && !epollWouldBlock(ep)) schedule();
+        });
+      } finally {
+        epollCallbackRunning = false;
+      }
     }
     it.listener = ep.node.addListener(schedule);
     schedule();

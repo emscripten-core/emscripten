@@ -13887,10 +13887,8 @@ void foo() {}
     self.do_runf('other/test_epoll_callback_level.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_coalesce(self):
-    # A burst of edges before the loop turns (many writes, a run of socket
-    # chunks) schedules one delivery task, not one per edge: on hosts where
-    # setImmediate is a counted timer not serviced while I/O completes, a task
-    # per edge piles up to the host's cap.
+    # A burst of edges schedules one delivery, run as a microtask of the host
+    # task that made the set ready; redelivery yields to the event loop.
     self.do_runf('other/test_epoll_callback_coalesce.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   @parameterized({
@@ -13905,11 +13903,6 @@ void foo() {}
     # alive. With an explicit keepalive the delivery runs and its pop exits.
     self.do_runf('other/test_epoll_callback_unref.c', 'done\nexited %d\n' % returncode,
                  cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'] + cflags, assert_returncode=returncode)
-
-  def test_epoll_callback_macrotask(self):
-    # A delivery runs on a later event-loop turn, after the call that made the
-    # set ready and the current microtask checkpoint have completed.
-    self.do_runf('other/test_epoll_callback_macrotask.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_abort(self):
     # A fatal error in the callback is an uncaught exception from the delivery
