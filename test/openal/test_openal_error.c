@@ -149,6 +149,32 @@ void test_loop_points(void) {
   alDeleteBuffers(1, &buf);
 }
 
+void test_source_array_null_ptr(void) {
+  // Calling alDeleteSources or alSource*v with count == 0 and NULL should be a valid no-op.
+  alDeleteSources(0, NULL);
+  assert(alGetError() == AL_NO_ERROR);
+  alSourcePlayv(0, NULL);
+  assert(alGetError() == AL_NO_ERROR);
+  alSourceStopv(0, NULL);
+  assert(alGetError() == AL_NO_ERROR);
+  alSourceRewindv(0, NULL);
+  assert(alGetError() == AL_NO_ERROR);
+  alSourcePausev(0, NULL);
+  assert(alGetError() == AL_NO_ERROR);
+
+  // Calling alDeleteSources or alSource*v with count > 0 and NULL should fail with AL_INVALID_VALUE.
+  alDeleteSources(1, NULL);
+  assert(alGetError() == AL_INVALID_VALUE);
+  alSourcePlayv(1, NULL);
+  assert(alGetError() == AL_INVALID_VALUE);
+  alSourceStopv(1, NULL);
+  assert(alGetError() == AL_INVALID_VALUE);
+  alSourceRewindv(1, NULL);
+  assert(alGetError() == AL_INVALID_VALUE);
+  alSourcePausev(1, NULL);
+  assert(alGetError() == AL_INVALID_VALUE);
+}
+
 int main(int argc, char* argv[]) {
   ALCboolean ret;
 
@@ -212,6 +238,7 @@ int main(int argc, char* argv[]) {
   test_stopped_seek();
   test_queue_buffers_format_mismatch();
   test_loop_points();
+  test_source_array_null_ptr();
 
   ret = alcMakeContextCurrent(NULL);
   assert(ret == ALC_TRUE);

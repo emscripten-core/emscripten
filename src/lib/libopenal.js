@@ -2793,6 +2793,13 @@ var LibraryOpenAL = {
 #endif
       return;
     }
+    if (count > 0 && !pSourceIds) {
+#if OPENAL_DEBUG
+      dbg('alDeleteSources() called with a null pointer');
+#endif
+      AL.currentCtx.err = AL_INVALID_VALUE;
+      return;
+    }
 
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
@@ -4111,11 +4118,12 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    if (!pSourceIds) {
+    if (count > 0 && !pSourceIds) {
 #if OPENAL_DEBUG
       dbg('alSourcePlayv() called with null pointer');
 #endif
       AL.currentCtx.err = AL_INVALID_VALUE;
+      return;
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
@@ -4160,11 +4168,12 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    if (!pSourceIds) {
+    if (count > 0 && !pSourceIds) {
 #if OPENAL_DEBUG
       dbg('alSourceStopv() called with null pointer');
 #endif
       AL.currentCtx.err = AL_INVALID_VALUE;
+      return;
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
@@ -4212,11 +4221,12 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    if (!pSourceIds) {
+    if (count > 0 && !pSourceIds) {
 #if OPENAL_DEBUG
       dbg('alSourceRewindv() called with null pointer');
 #endif
       AL.currentCtx.err = AL_INVALID_VALUE;
+      return;
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
@@ -4261,11 +4271,12 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    if (!pSourceIds) {
+    if (count > 0 && !pSourceIds) {
 #if OPENAL_DEBUG
       dbg('alSourcePausev() called with null pointer');
 #endif
       AL.currentCtx.err = AL_INVALID_VALUE;
+      return;
     }
     for (var i = 0; i < count; ++i) {
       if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
