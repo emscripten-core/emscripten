@@ -1082,6 +1082,9 @@ window.close = () => {
       window['simulateAxisMotion'] = (index, axis, value) => {
         gamepads[index].axes[axis] = value;
       };
+      window['disconnectGamepad'] = (index) => {
+        gamepads[index] = null;
+      };
     ''')
 
     self.btest_exit('test_sdl_joystick.c', cflags=['-O2', '--minify=0', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
