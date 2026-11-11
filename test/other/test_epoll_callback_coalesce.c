@@ -7,8 +7,8 @@
  * Delivery scheduling. A burst of readiness edges within one host task (here
  * many small pipe writes; on a socket, a run of incoming chunks) coalesces onto
  * one delivery, which runs as a microtask of that task. A set left ready, or
- * woken by the listener callback itself, is redelivered from an immediate, so
- * it cannot starve a timer.
+ * woken by the listener callback itself, is redelivered after returning to the
+ * event loop, so it cannot starve a timer.
  */
 
 #include <sys/epoll.h>
