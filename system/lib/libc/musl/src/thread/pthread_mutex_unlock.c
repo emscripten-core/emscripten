@@ -24,10 +24,10 @@ int __pthread_mutex_unlock(pthread_mutex_t *m)
 			self->robust_list.pending = &m->_m_next;
 			__vm_lock();
 		}
-		volatile void *prev = m->_m_prev;
-		volatile void *next = m->_m_next;
-		*(volatile void *volatile *)prev = next;
-		if (next != &self->robust_list.head) *(volatile void *volatile *)
+		void *prev = m->_m_prev;
+		void *next = m->_m_next;
+		*(void **)prev = next;
+		if (next != &self->robust_list.head) *(void **)
 			((char *)next - sizeof(void *)) = prev;
 	}
 #ifdef __EMSCRIPTEN__
