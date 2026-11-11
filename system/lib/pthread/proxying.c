@@ -19,7 +19,9 @@
 #include "threading_internal.h"
 
 struct em_proxying_queue {
-  // Protects all accesses to em_task_queues, size, and capacity.
+  // Protects all accesses to em_task_queues, size, and capacity. We
+  // must not allocate while holding this lock to prevent deadlocks
+  // on the system proxying queue.
   pthread_mutex_t mutex;
   // `size` task queue pointers stored in an array of size `capacity`.
   em_task_queue** task_queues;
