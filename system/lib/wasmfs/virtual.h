@@ -35,11 +35,17 @@ protected:
     return real->locked().open(flags);
   }
   virtual int close() override { return real->locked().close(); }
-  virtual ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
-    return real->locked().read(buf, len, offset);
+  virtual ssize_t read(const __wasi_iovec_t* iovs,
+                       size_t iovs_len,
+                       off_t offset,
+                       oflags_t flags) override {
+    return real->locked().read(iovs, iovs_len, offset, flags);
   }
-  virtual ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
-    return real->locked().write(buf, len, offset);
+  virtual ssize_t write(const __wasi_ciovec_t* iovs,
+                        size_t iovs_len,
+                        off_t offset,
+                        oflags_t flags) override {
+    return real->locked().write(iovs, iovs_len, offset, flags);
   }
   virtual int setSize(off_t size) override {
     return real->locked().setSize(size);
