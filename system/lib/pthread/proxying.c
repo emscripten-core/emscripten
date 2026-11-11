@@ -100,6 +100,7 @@ static em_task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
   em_task_queue** queues_to_free = NULL;
   pthread_mutex_lock(&q->mutex);
   while (true) {
+    // Re-check in case another thread added the queue while unlocked.
     tasks = get_tasks_for_thread(q, thread);
     if (tasks != NULL) {
       pthread_mutex_unlock(&q->mutex);
