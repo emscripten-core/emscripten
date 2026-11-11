@@ -125,6 +125,12 @@ int main(int argc, char* argv[]) {
   alcDestroyContext((ALCcontext*)9999);
   assert(alcGetError(device) == ALC_INVALID_CONTEXT);
 
+  // ALC_MAX_AUXILIARY_SENDS should succeed without falling through
+  value = 0;
+  alcGetIntegerv(device, 0x20003 /* ALC_MAX_AUXILIARY_SENDS */, 1, &value);
+  assert(alcGetError(device) == ALC_NO_ERROR);
+  assert(value == 1);
+
   // Request an invalid enum to generate an AL error
   alGetFloat(0);
   assert(alGetError() == AL_INVALID_ENUM);
