@@ -4019,6 +4019,7 @@ var LibraryOpenAL = {
         dbg('alSourceQueueBuffers() called with a buffer of different format');
 #endif
         AL.currentCtx.err = AL_INVALID_OPERATION;
+        return;
       }
     }
 
