@@ -2559,8 +2559,14 @@ The current type of b is: 9
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
   @requires_pthreads
-  def test_pthread_proxy_deadlock(self):
-    self.do_runf('pthread/test_pthread_proxy_deadlock.c')
+  @parameterized({
+    '': (['-DTEST_SYSTEM_QUEUE'],),
+    'user_queue': (['-DTEST_USER_QUEUE'],),
+    'user_queue_contended': (['-DTEST_USER_QUEUE_CONTENDED'],),
+    'lost_wakeup': (['-DTEST_LOST_WAKEUP'],),
+  })
+  def test_pthread_proxy_deadlock(self, args):
+    self.do_runf('pthread/test_pthread_proxy_deadlock.c', cflags=args)
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):

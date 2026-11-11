@@ -35,8 +35,6 @@ static em_proxying_queue system_proxying_queue = {
   .capacity = 0,
 };
 
-static _Thread_local bool system_queue_in_use = false;
-
 em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
 }
@@ -80,56 +78,93 @@ static em_task_queue* get_tasks_for_thread(em_proxying_queue* q,
   return NULL;
 }
 
-// Not thread safe.
 static em_task_queue* get_or_add_tasks_for_thread(em_proxying_queue* q,
                                                   pthread_t thread) {
+  pthread_mutex_lock(&q->mutex);
   em_task_queue* tasks = get_tasks_for_thread(q, thread);
+  pthread_mutex_unlock(&q->mutex);
   if (tasks != NULL) {
     return tasks;
   }
-  // There were no tasks for the thread; initialize a new em_task_queue. If
-  // there are not enough queues, allocate more.
-  if (q->size == q->capacity) {
-    int new_capacity = q->capacity == 0 ? 1 : q->capacity * 2;
-    em_task_queue** new_task_queues =
-      realloc(q->task_queues, sizeof(em_task_queue*) * new_capacity);
-    if (new_task_queues == NULL) {
-      return NULL;
-    }
-    q->task_queues = new_task_queues;
-    q->capacity = new_capacity;
-  }
-  // Initialize the next available task queue.
-  tasks = em_task_queue_create(thread);
-  if (tasks == NULL) {
+
+  // There were no tasks for the thread; initialize a new em_task_queue outside
+  // the lock so allocations cannot deadlock with queue execution.
+  em_task_queue* new_tasks = em_task_queue_create(thread);
+  if (new_tasks == NULL) {
     return NULL;
   }
-  q->task_queues[q->size++] = tasks;
+
+  // Holds the newly allocated task_queues array before it is installed, or the
+  // old task_queues array after they are swapped so it can be freed outside
+  // the lock.
+  em_task_queue** queues_to_free = NULL;
+  pthread_mutex_lock(&q->mutex);
+  while (true) {
+    // Re-check in case another thread added the queue while unlocked.
+    tasks = get_tasks_for_thread(q, thread);
+    if (tasks != NULL) {
+      pthread_mutex_unlock(&q->mutex);
+      goto out;
+    }
+    if (q->size < q->capacity) {
+      // We have free capacity to add a new queue.
+      break;
+    }
+    // There is not capacity for more queues; reallocate outside the lock.
+    int new_capacity = q->capacity == 0 ? 1 : q->capacity * 2;
+    pthread_mutex_unlock(&q->mutex);
+    em_task_queue** new_task_queues =
+      realloc(queues_to_free, sizeof(em_task_queue*) * new_capacity);
+    if (new_task_queues == NULL) {
+      goto out;
+    }
+    queues_to_free = new_task_queues;
+    pthread_mutex_lock(&q->mutex);
+    if (q->capacity < new_capacity) {
+      // Copy existing queues to the new array.
+      if (q->task_queues != NULL) {
+        memcpy(
+          queues_to_free, q->task_queues, sizeof(em_task_queue*) * q->size);
+      }
+      // Install the new array and arrange for the old to be freed.
+      em_task_queue** old_task_queues = q->task_queues;
+      q->task_queues = queues_to_free;
+      q->capacity = new_capacity;
+      queues_to_free = old_task_queues;
+    }
+  }
+  // Add the new task queue.
+  q->task_queues[q->size++] = new_tasks;
+  pthread_mutex_unlock(&q->mutex);
+  tasks = new_tasks;
+  new_tasks = NULL;
+
+out:
+  if (queues_to_free != NULL) {
+    free(queues_to_free);
+  }
+  if (new_tasks != NULL) {
+    em_task_queue_destroy(new_tasks);
+  }
   return tasks;
 }
+
+static _Thread_local bool executing_system_queue = false;
 
 void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
   assert(pthread_self());
 
-  // Below is a recursion and deadlock guard: The recursion guard is to avoid
-  // infinite recursion when we arrive here from the pthread_lock call below
-  // that executes the system queue. The per-task_queue recursion lock can't
-  // catch these recursions because it can only be checked after the lock has
-  // been acquired.
-  //
-  // This also guards against deadlocks when adding to the system queue. When
-  // the current thread is adding tasks, it locks the queue, but we can
-  // potentially try to execute the queue during the add (from emscripten_yield
-  // when malloc takes a lock). This will deadlock the thread, so only try to
-  // take the lock if the current thread is not using the queue. We then hope
-  // the queue is executed later when it is unlocked.
+  // Recursion guard to avoid infinite recursion when we arrive here from the
+  // pthread_lock call below that executes the system queue. The per-task_queue
+  // recursion lock can't catch these recursions because it can only be checked
+  // after the lock has been acquired.
   bool is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
-    if (system_queue_in_use) {
+    if (executing_system_queue) {
       return;
     }
-    system_queue_in_use = true;
+    executing_system_queue = true;
   }
 
   pthread_mutex_lock(&q->mutex);
@@ -142,22 +177,13 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   }
 
   if (is_system_queue) {
-    system_queue_in_use = false;
+    executing_system_queue = false;
   }
 }
 
 static bool do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   assert(q != NULL);
-  pthread_mutex_lock(&q->mutex);
-  bool is_system_queue = q == &system_proxying_queue;
-  if (is_system_queue) {
-    system_queue_in_use = true;
-  }
   em_task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
-  if (is_system_queue) {
-    system_queue_in_use = false;
-  }
-  pthread_mutex_unlock(&q->mutex);
   if (tasks == NULL) {
     return false;
   }
@@ -168,6 +194,7 @@ static bool do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   // special case in that we need to wake the target thread in case it is in
   // `emscripten_futex_wait`. Additionally, the _dlopen_proxying_queue also
   // requires a wakeup of the target thread after enqueuing work.
+  bool is_system_queue = q == &system_proxying_queue;
   bool needs_notify =
 #ifdef EMSCRIPTEN_DYNAMIC_LINKING
     q == _dlopen_proxying_queue ||
