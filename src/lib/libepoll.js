@@ -345,9 +345,8 @@ var EpollLibrary = {
     it.listener.listeners.delete(it.listener.entry);
   },
 
-  // Set while a listener callback runs.
-  $epollDelivering__internal: true,
-  $epollDelivering: 0,
+  $epollCallbackRunning__internal: true,
+  $epollCallbackRunning: false,
 
   // See <emscripten/epoll.h>. A listener is keyed by (callback, userdata) and
   // signals the callback while the set has uncollected ready events.
@@ -366,30 +365,41 @@ var EpollLibrary = {
     var it = {key};
     stream.listeners.set(key, it);
 
-    // A wake is delivered as a microtask, within the host task that made the
-    // set ready. A wake under a listener callback, or a set left ready by one,
-    // is redelivered from an immediate instead, yielding to I/O. A turn
-    // re-derives readiness, so one pending of each covers every wake before it.
-    var pending = [];
+    // A wake is delivered either from a microtask or from an immediate,
+    // depending on whether a listener callback is running. Outside of one, the
+    // microtask delivers within the host task that made the set ready. A wake
+    // under a callback, or a set left ready by one, yields to the event loop
+    // instead so that it cannot starve I/O and timers. A turn re-derives
+    // readiness, so one pending of each covers every wake before it.
+    var pendingMicrotask = false;
+    var pendingImmediate = false;
     function schedule() {
-      var defer = epollDelivering;
-      if (pending[defer]) return;
-      pending[defer] = true;
-      (defer ? emSetImmediate : queueMicrotask)(() => {
-        pending[defer] = false;
-        turn();
-      });
+      if (epollCallbackRunning) {
+        if (pendingImmediate) return;
+        pendingImmediate = true;
+        emSetImmediate(() => {
+          pendingImmediate = false;
+          turn();
+        });
+      } else {
+        if (pendingMicrotask) return;
+        pendingMicrotask = true;
+        queueMicrotask(() => {
+          pendingMicrotask = false;
+          turn();
+        });
+      }
     }
     function turn() {
       if (it.cleared || epollWouldBlock(ep)) return;
-      epollDelivering = 1;
+      epollCallbackRunning = true;
       try {
         callUserCallback(() => {
           {{{ makeDynCall('vip', 'callback') }}}(epfd, userdata);
           if (!it.cleared && !epollWouldBlock(ep)) schedule();
         });
       } finally {
-        epollDelivering = 0;
+        epollCallbackRunning = false;
       }
     }
     it.listener = ep.node.addListener(schedule);
