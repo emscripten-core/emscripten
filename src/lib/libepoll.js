@@ -371,26 +371,25 @@ var EpollLibrary = {
     // under a callback, or a set left ready by one, yields to the event loop
     // instead so that it cannot starve I/O and timers. A turn re-derives
     // readiness, so one pending of each covers every wake before it.
-    var pendingMicrotask = false;
-    var pendingImmediate = false;
+    var pendingMicrotask;
+    var pendingImmediate;
     function schedule() {
       if (epollCallbackRunning) {
-        if (pendingImmediate) return;
+        if (!pendingImmediate) {
+          emSetImmediate(() => {
+            pendingImmediate = false;
+            turn();
+          });
+        }
         pendingImmediate = true;
-        emSetImmediate(() => {
-          pendingImmediate = false;
-          turn();
-        });
       } else {
-        if (pendingMicrotask) return;
+        if (!pendingMicrotask) queueMicrotask(turn);
         pendingMicrotask = true;
-        queueMicrotask(() => {
-          pendingMicrotask = false;
-          turn();
-        });
       }
     }
     function turn() {
+      // Microtasks drain before any immediate, so none is pending past here.
+      pendingMicrotask = false;
       if (it.cleared || epollWouldBlock(ep)) return;
       epollCallbackRunning = true;
       try {
