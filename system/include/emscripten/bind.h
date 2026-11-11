@@ -428,6 +428,9 @@ constexpr const char* getSignature(Return (*)(Args...)) {
     return Signature<Return, Args...>;
 }
 
+// Emits a null-terminated `<is_method><returns><is_async><arg_count>` descriptor
+// string (e.g. "ftf02") into the `em_embind` section so the linker knows which
+// JS invoker functions to generate at link time.
 template<char IsClassMethod, char Returns, char IsAsync, size_t ArgCount>
 struct InvokerDescriptor {
     __attribute__((section("em_embind"), aligned(1)))

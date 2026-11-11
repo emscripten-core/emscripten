@@ -302,7 +302,7 @@ class Metadata:
   export: list[str]
   em_asm_consts: dict[int, str]
   js_deps: list[str]
-  embind_invokers: list[str]
+  embind_invokers: set[str]
   em_js_funcs: dict[str, str]
   em_js_func_types: dict[str, webassembly.FuncType]
   features: list[str]
@@ -341,7 +341,7 @@ def extract_metadata(filename):
     metadata.all_exports = [e.name.removeprefix('__em_js__') for e in exports]
     metadata.em_asm_consts = get_section_strings(module, export_map, 'em_asm')
     metadata.js_deps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
-    metadata.embind_invokers = sorted({d for d in get_section_strings(module, export_map, 'em_embind').values() if d})
+    metadata.embind_invokers = {d for d in get_section_strings(module, export_map, 'em_embind').values() if d}
     metadata.em_js_funcs = em_js_funcs
     metadata.features = features
     metadata.main_reads_params = get_main_reads_params(module, export_map)

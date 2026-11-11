@@ -178,8 +178,7 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     expanded_invokers = set()
     for desc in metadata.embind_invokers:
       prefix = desc[:3]
-      is_method = desc[0]
-      is_async = desc[2]
+      is_method, _returns, is_async = prefix
       arg_count = int(desc[3:])
       expanded_invokers.add(f'{prefix}n{arg_count}')
       if has_value_types and arg_count > 0 and is_async == 'f' and settings.ASYNCIFY != 1:

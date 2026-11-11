@@ -5,10 +5,119 @@
 
 #include "libembind_shared.js"
 
+function createJsInvoker(signature) {
+  var isClassMethodFunc = signature[0] === 't';
+  var returns = signature[1] === 't';
+  var isAsync = signature[2] === 't';
+  var cleanupMode = signature[3];
+  var argCount = Number(signature.slice(4));
+  var needsDestructorStack = cleanupMode === 'd';
+  var useStackFrame = cleanupMode === 's';
+
+  var argsList = [];
+  var argsListWired = ['fn'];
+  if (isClassMethodFunc) {
+    argsListWired.push('thisWired');
+  }
+  for (var i = 0; i < argCount; ++i) {
+    argsList.push(`arg${i}`);
+    argsListWired.push(`arg${i}Wired`);
+  }
+  argsList = argsList.join();
+  argsListWired = argsListWired.join();
+
+  var invokerFnBody = `return function (${argsList}) {\n`;
+
+#if ASSERTIONS
+  invokerFnBody += 'checkArgCount(arguments.length, minArgs, maxArgs, humanName, throwBindingError);\n';
+#endif
+
+#if EMSCRIPTEN_TRACING
+  invokerFnBody += `Module.emscripten_trace_enter_context('embind::' + humanName );\n`;
+#endif
+
+  if (needsDestructorStack) {
+    invokerFnBody += 'var destructors = [];\n';
+  }
+  if (useStackFrame) {
+    invokerFnBody += 'var sp = stackSave();\n';
+  }
+
+  var dtorStack = needsDestructorStack ? 'destructors' : 'null';
+  var args1 = ['humanName', 'throwBindingError', 'invoker', 'fn', 'runDestructors', 'fromRetWire', 'toClassParamWire'];
+  if (useStackFrame) {
+    args1.push('stackSave', 'stackRestore');
+  }
+
+#if EMSCRIPTEN_TRACING
+  args1.push('Module');
+#endif
+
+  if (isClassMethodFunc) {
+    invokerFnBody += `var thisWired = toClassParamWire(${dtorStack}, this);\n`;
+  }
+
+  for (var i = 0; i < argCount; ++i) {
+    var argName = `toArg${i}Wire`;
+    invokerFnBody += `var arg${i}Wired = ${argName}(${dtorStack}, arg${i});\n`;
+    args1.push(argName);
+  }
+
+  invokerFnBody += (returns || isAsync ? 'var rv = ' : '') + `invoker(${argsListWired});\n`;
+  if (useStackFrame) {
+    // The callee has consumed the stack-allocated argument temporaries;
+    // release the frame before any post-call work. Not restored on an
+    // exception path, matching the rest of emscripten (see the exceptions
+    // docs on stackSave/stackRestore at JS catch sites).
+    invokerFnBody += 'stackRestore(sp);\n';
+  }
+
+  var returnVal = returns ? 'rv' : '';
+#if ASYNCIFY == 1
+  args1.push('Asyncify');
+#endif
+#if ASYNCIFY
+  invokerFnBody += `function onDone(${returnVal}) {\n`;
+#endif
+
+  if (needsDestructorStack) {
+    invokerFnBody += 'runDestructors(destructors);\n';
+  }
+
+  if (returns) {
+    invokerFnBody += 'var ret = fromRetWire(rv);\n' +
+#if EMSCRIPTEN_TRACING
+                     'Module.emscripten_trace_exit_context();\n' +
+#endif
+                     'return ret;\n';
+  } else {
+#if EMSCRIPTEN_TRACING
+    invokerFnBody += 'Module.emscripten_trace_exit_context();\n';
+#endif
+  }
+
+#if ASYNCIFY == 1
+  invokerFnBody += '}\n';
+  invokerFnBody += `return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(${returnVal});\n`;
+#elif ASYNCIFY == 2
+  invokerFnBody += '}\n';
+  invokerFnBody += 'return ' + (isAsync ? 'rv.then(onDone)' : `onDone(${returnVal})`) + ';';
+#endif
+
+  invokerFnBody += '}\n';
+
+#if ASSERTIONS
+  args1.push('checkArgCount', 'minArgs', 'maxArgs');
+  invokerFnBody = `if (arguments.length !== ${args1.length}){ throw new Error(humanName + "Expected ${args1.length} closure arguments " + arguments.length + " given."); }\n${invokerFnBody}`;
+#endif
+  return new Function(args1, invokerFnBody);
+}
+
 var LibraryEmbind = {
   $UnboundTypeError: class extends Error {},
   $PureVirtualError: class extends Error {},
-  $InvokerFunctions: `{${EMBIND_INVOKERS.map((sig) => `'${sig}': ${LibraryEmbindShared.$createJsInvoker(sig)},`).join('\n')}}`,
+  $createJsInvoker: createJsInvoker,
+  $InvokerFunctions: `{${EMBIND_INVOKERS.map((sig) => `'${sig}': ${createJsInvoker(sig)},`).join('\n')}}`,
   // If register_type is used, emval will be registered multiple times for
   // different type ids, but only a single type object is needed on the JS side
   // for all of them. Store the type for reuse.

@@ -1524,6 +1524,9 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     default_setting('ABORTING_MALLOC', 0)
 
   if settings.EMBIND:
+    # Side modules loaded at runtime may require invoker signatures not present
+    # when linking the main module, which requires generating invokers via
+    # `new Function` at runtime.
     if settings.MAIN_MODULE and not settings.DYNAMIC_EXECUTION:
       exit_with_error('EMBIND with MAIN_MODULE is not compatible with DYNAMIC_EXECUTION=0')
     # Workaround for embind+LTO issue:
