@@ -201,6 +201,12 @@ int main(int argc, char* argv[]) {
   // Check that the error is reset after reading it.
   assert(alGetError() == AL_NO_ERROR);
 
+  assert(alIsEnabled(AL_SOURCE_DISTANCE_MODEL) == AL_FALSE);
+  alEnable(AL_SOURCE_DISTANCE_MODEL);
+  assert(alIsEnabled(AL_SOURCE_DISTANCE_MODEL) == AL_TRUE);
+  alDisable(AL_SOURCE_DISTANCE_MODEL);
+  assert(alIsEnabled(AL_SOURCE_DISTANCE_MODEL) == AL_FALSE);
+
   test_get_buffer_param_errors();
   test_offsets_with_zero_buffer();
   test_stopped_seek();
