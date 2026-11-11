@@ -969,7 +969,7 @@ var LibraryOpenAL = {
         }
         return [
           (buf.audioBuf._loopStart ?? 0.0) * buf.frequency,
-          (buf.audioBuf._loopEnd ?? buf.length) * buf.frequency
+          buf.audioBuf._loopEnd ? buf.audioBuf._loopEnd * buf.frequency : buf.length
         ];
       default:
 #if OPENAL_DEBUG

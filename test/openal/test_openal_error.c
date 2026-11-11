@@ -127,6 +127,13 @@ void test_loop_points(void) {
   alBufferData(buf, AL_FORMAT_MONO16, dummy_data, sizeof(dummy_data), 44100);
   assert(alGetError() == AL_NO_ERROR);
 
+  // Default AL_LOOP_POINTS_SOFT should be [0, sample_length]
+  ALint loop_pts[2] = {-1, -1};
+  alGetBufferiv(buf, AL_LOOP_POINTS_SOFT, loop_pts);
+  assert(alGetError() == AL_NO_ERROR);
+  assert(loop_pts[0] == 0);
+  assert(loop_pts[1] == 1000);
+
   // Out-of-bounds loop end point should fail with AL_INVALID_VALUE
   ALint bad_pts[2] = {0, 1001};
   alBufferiv(buf, AL_LOOP_POINTS_SOFT, bad_pts);
@@ -135,7 +142,6 @@ void test_loop_points(void) {
   ALint valid_pts[2] = {100, 500};
   alBufferiv(buf, AL_LOOP_POINTS_SOFT, valid_pts);
   assert(alGetError() == AL_NO_ERROR);
-  ALint loop_pts[2] = {-1, -1};
   alGetBufferiv(buf, AL_LOOP_POINTS_SOFT, loop_pts);
   assert(loop_pts[0] == 100);
   assert(loop_pts[1] == 500);
