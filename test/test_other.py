@@ -3507,8 +3507,6 @@ More info: https://emscripten.org
 
   def test_embind_fail(self):
     self.assert_fail([EMXX, test_file('embind/test_unsigned.cpp')], 'undefined symbol: _embind_register_function')
-    self.assert_fail([EMXX, test_file('embind/test_unsigned.cpp'), '-lembind', '-sMAIN_MODULE', '-sDYNAMIC_EXECUTION=0'],
-                     'EMBIND with MAIN_MODULE is not compatible with DYNAMIC_EXECUTION=0')
 
   def test_embind_invalid_overload(self):
     expected = 'BindingError: Cannot register multiple overloads of a function with the same number of arguments'

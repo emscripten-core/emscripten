@@ -763,9 +763,9 @@ var LibraryEmbind = {
     var cleanupMode = useStackFrame ? 's' : (needsDestructorStack ? 'd' : 'n');
     var signature = `${isClassMethodFunc ? 't' : 'f'}${returns ? 't' : 'f'}${isAsync ? 't' : 'f'}${cleanupMode}${expectedArgCount}`;
     var invokerFactory = InvokerFunctions[signature];
-#if MAIN_MODULE && DYNAMIC_EXECUTION
+#if MAIN_MODULE
     if (!invokerFactory) {
-      invokerFactory = InvokerFunctions[signature] = createJsInvoker(signature);
+      {{{ makeEval('invokerFactory = InvokerFunctions[signature] = createJsInvoker(signature);') }}}
     }
 #endif
 #if ASSERTIONS
