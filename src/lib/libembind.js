@@ -1119,7 +1119,7 @@ var LibraryEmbind = {
       }
 
       switch (this.sharingPolicy) {
-        case 0: // NONE
+        case {{{ cDefs['sharing_policy::NONE'] }}}:
           // no upcasting
           if (handle.$$.smartPtrType === this) {
             ptr = handle.$$.smartPtr;
@@ -1128,11 +1128,11 @@ var LibraryEmbind = {
           }
           break;
 
-        case 1: // INTRUSIVE
+        case {{{ cDefs['sharing_policy::INTRUSIVE'] }}}:
           ptr = handle.$$.smartPtr;
           break;
 
-        case 2: // BY_EMVAL
+        case {{{ cDefs['sharing_policy::BY_EMVAL'] }}}:
           if (handle.$$.smartPtrType === this) {
             ptr = handle.$$.smartPtr;
           } else {

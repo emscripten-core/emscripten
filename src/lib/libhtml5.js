@@ -338,11 +338,12 @@ var LibraryHTML5 = {
 
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
   $maybeCStringToJsString: (cString) => {
-    // 'cString > 2' checks if the input is a number, and isn't of the special
-    // values we accept here, EMSCRIPTEN_EVENT_TARGET_* (which map to 0, 1, 2).
-    // In other words, if cString > 2 then it's a pointer to a valid place in
-    // memory, and points to a C string.
-    return cString > 2 ? UTF8ToString(cString) : cString;
+    // 'cString > EMSCRIPTEN_EVENT_TARGET_WINDOW' checks if the input is a
+    // pointer, and isn't of the special values we accept here,
+    // EMSCRIPTEN_EVENT_TARGET_* (which map to 0, 1, 2).
+    // In other words, if cString > EMSCRIPTEN_EVENT_TARGET_WINDOW then it's a
+    // pointer to a valid place in memory, and points to a C string.
+    return cString > EMSCRIPTEN_EVENT_TARGET_WINDOW ? UTF8ToString(cString) : cString;
   },
 
   // Find a DOM element with the given ID, or null if none is found.
@@ -957,10 +958,10 @@ var LibraryHTML5 = {
   emscripten_lock_orientation__proxy: 'sync',
   emscripten_lock_orientation: (allowedOrientations) => {
     var orientations = [];
-    if (allowedOrientations & 1) orientations.push('portrait-primary');
-    if (allowedOrientations & 2) orientations.push('portrait-secondary');
-    if (allowedOrientations & 4) orientations.push('landscape-primary');
-    if (allowedOrientations & 8) orientations.push('landscape-secondary');
+    if (allowedOrientations & EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY) orientations.push('portrait-primary');
+    if (allowedOrientations & EMSCRIPTEN_ORIENTATION_PORTRAIT_SECONDARY) orientations.push('portrait-secondary');
+    if (allowedOrientations & EMSCRIPTEN_ORIENTATION_LANDSCAPE_PRIMARY) orientations.push('landscape-primary');
+    if (allowedOrientations & EMSCRIPTEN_ORIENTATION_LANDSCAPE_SECONDARY) orientations.push('landscape-secondary');
     if (screen.lockOrientation) {
       return screen.lockOrientation(orientations) ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED;
     }
@@ -2047,7 +2048,7 @@ var LibraryHTML5 = {
 #endif
       var autoResizeViewport = false;
       if (canvas.GLctxObject?.GLctx) {
-        var prevViewport = canvas.GLctxObject.GLctx.getParameter(0xBA2 /* GL_VIEWPORT */);
+        var prevViewport = canvas.GLctxObject.GLctx.getParameter(GL_VIEWPORT);
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
         autoResizeViewport = (!prevViewport[0] && !prevViewport[1] && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);
 #if GL_DEBUG
