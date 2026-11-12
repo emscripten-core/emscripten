@@ -58,8 +58,8 @@ var LibrarySDL = {
       audio: null,
       volume: 1.0
     },
-    mixerFrequency: 22050,
-    mixerNumChannels: 2,
+    mixerFrequency: cDefs.MIX_DEFAULT_FREQUENCY,
+    mixerNumChannels: cDefs.MIX_DEFAULT_CHANNELS,
     channelMinimumNumber: 0,
 
     // Set to true if we call SDL_SetVideoMode with SDL_OPENGL, and if so, we do
@@ -70,25 +70,25 @@ var LibrarySDL = {
 
     // all possible GL attributes, with their default value
     glAttributes: {
-      0: 3,    /* SDL_GL_RED_SIZE */
-      1: 3,    /* SDL_GL_GREEN_SIZE */
-      2: 2,    /* SDL_GL_BLUE_SIZE */
-      3: 0,    /* SDL_GL_ALPHA_SIZE */
-      4: 0,    /* SDL_GL_BUFFER_SIZE */
-      5: 1,    /* SDL_GL_DOUBLEBUFFER */
-      6: 16,   /* SDL_GL_DEPTH_SIZE */
-      7: 0,    /* SDL_GL_STENCIL_SIZE */
-      8: 0,    /* SDL_GL_ACCUM_RED_SIZE */
-      9: 0,    /* SDL_GL_ACCUM_GREEN_SIZE */
-      10: 0,   /* SDL_GL_ACCUM_BLUE_SIZE */
-      11: 0,   /* SDL_GL_ACCUM_ALPHA_SIZE */
-      12: 0,   /* SDL_GL_STEREO */
-      13: 0,   /* SDL_GL_MULTISAMPLEBUFFERS */
-      14: 0,   /* SDL_GL_MULTISAMPLESAMPLES */
-      15: 1,   /* SDL_GL_ACCELERATED_VISUAL */
-      16: 0,   /* SDL_GL_RETAINED_BACKING */
-      17: 0,   /* SDL_GL_CONTEXT_MAJOR_VERSION */
-      18: 0    /* SDL_GL_CONTEXT_MINOR_VERSION */
+      [cDefs.SDL_GL_RED_SIZE]: 3,
+      [cDefs.SDL_GL_GREEN_SIZE]: 3,
+      [cDefs.SDL_GL_BLUE_SIZE]: 2,
+      [cDefs.SDL_GL_ALPHA_SIZE]: 0,
+      [cDefs.SDL_GL_BUFFER_SIZE]: 0,
+      [cDefs.SDL_GL_DOUBLEBUFFER]: 1,
+      [cDefs.SDL_GL_DEPTH_SIZE]: 16,
+      [cDefs.SDL_GL_STENCIL_SIZE]: 0,
+      [cDefs.SDL_GL_ACCUM_RED_SIZE]: 0,
+      [cDefs.SDL_GL_ACCUM_GREEN_SIZE]: 0,
+      [cDefs.SDL_GL_ACCUM_BLUE_SIZE]: 0,
+      [cDefs.SDL_GL_ACCUM_ALPHA_SIZE]: 0,
+      [cDefs.SDL_GL_STEREO]: 0,
+      [cDefs.SDL_GL_MULTISAMPLEBUFFERS]: 0,
+      [cDefs.SDL_GL_MULTISAMPLESAMPLES]: 0,
+      [cDefs.SDL_GL_ACCELERATED_VISUAL]: 1,
+      [cDefs.SDL_GL_RETAINED_BACKING]: 0,
+      [cDefs.SDL_GL_CONTEXT_MAJOR_VERSION]: 0,
+      [cDefs.SDL_GL_CONTEXT_MINOR_VERSION]: 0,
     },
 
     keyboardState: null,
@@ -120,84 +120,84 @@ var LibrarySDL = {
     // https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent
     // and SDL_keycode.h
     // For keys that don't have unicode value, we map DOM codes with the
-    // corresponding scan codes + 1024 (using "| 1 << 10")
+    // corresponding SDL key codes.
     keyCodes: {
-      16: 225 | 1<<10, // shift
-      17: 224 | 1<<10, // control (right, or left)
-      18: 226 | 1<<10, // alt
-      20: 57 | 1<<10, // caps lock
+      16: cDefs.SDLK_LSHIFT,
+      17: cDefs.SDLK_LCTRL, // right, or left
+      18: cDefs.SDLK_LALT,
+      20: cDefs.SDLK_CAPSLOCK,
 
-      33: 75 | 1<<10, // pagedup
-      34: 78 | 1<<10, // pagedown
-      35: 77 | 1<<10, // end
-      36: 74 | 1<<10, // home
-      37: 80 | 1<<10, // left arrow
-      38: 82 | 1<<10, // up arrow
-      39: 79 | 1<<10, // right arrow
-      40: 81 | 1<<10, // down arrow
+      33: cDefs.SDLK_PAGEUP,
+      34: cDefs.SDLK_PAGEDOWN,
+      35: cDefs.SDLK_END,
+      36: cDefs.SDLK_HOME,
+      37: cDefs.SDLK_LEFT,
+      38: cDefs.SDLK_UP,
+      39: cDefs.SDLK_RIGHT,
+      40: cDefs.SDLK_DOWN,
       44: 316, // print screen
-      45: 73 | 1<<10, // insert
-      46: 127, // SDLK_DEL == '\177'
+      45: cDefs.SDLK_INSERT,
+      46: cDefs.SDLK_DELETE,
 
-      91: 227 | 1<<10, // windows key or super key on linux (doesn't work on Mac)
-      93: 101 | 1<<10, // application
+      91: cDefs.SDLK_LGUI, // windows key or super key on linux (doesn't work on Mac)
+      93: cDefs.SDLK_APPLICATION,
 
-      96: 98 | 1<<10, // keypad 0
-      97: 89 | 1<<10, // keypad 1
-      98: 90 | 1<<10, // keypad 2
-      99: 91 | 1<<10, // keypad 3
-      100: 92 | 1<<10, // keypad 4
-      101: 93 | 1<<10, // keypad 5
-      102: 94 | 1<<10, // keypad 6
-      103: 95 | 1<<10, // keypad 7
-      104: 96 | 1<<10, // keypad 8
-      105: 97 | 1<<10, // keypad 9
-      106: 85 | 1<<10, // keypad multiply
-      107: 87 | 1<<10, // keypad plus
-      109: 86 | 1<<10, // keypad minus
-      110: 99 | 1<<10, // keypad decimal point
-      111: 84 | 1<<10, // keypad divide
-      112: 58 | 1<<10, // F1
-      113: 59 | 1<<10, // F2
-      114: 60 | 1<<10, // F3
-      115: 61 | 1<<10, // F4
-      116: 62 | 1<<10, // F5
-      117: 63 | 1<<10, // F6
-      118: 64 | 1<<10, // F7
-      119: 65 | 1<<10, // F8
-      120: 66 | 1<<10, // F9
-      121: 67 | 1<<10, // F10
-      122: 68 | 1<<10, // F11
-      123: 69 | 1<<10, // F12
-      124: 104 | 1<<10, // F13
-      125: 105 | 1<<10, // F14
-      126: 106 | 1<<10, // F15
-      127: 107 | 1<<10, // F16
-      128: 108 | 1<<10, // F17
-      129: 109 | 1<<10, // F18
-      130: 110 | 1<<10, // F19
-      131: 111 | 1<<10, // F20
-      132: 112 | 1<<10, // F21
-      133: 113 | 1<<10, // F22
-      134: 114 | 1<<10, // F23
-      135: 115 | 1<<10, // F24
+      96: cDefs.SDLK_KP_0,
+      97: cDefs.SDLK_KP_1,
+      98: cDefs.SDLK_KP_2,
+      99: cDefs.SDLK_KP_3,
+      100: cDefs.SDLK_KP_4,
+      101: cDefs.SDLK_KP_5,
+      102: cDefs.SDLK_KP_6,
+      103: cDefs.SDLK_KP_7,
+      104: cDefs.SDLK_KP_8,
+      105: cDefs.SDLK_KP_9,
+      106: cDefs.SDLK_KP_MULTIPLY,
+      107: cDefs.SDLK_KP_PLUS,
+      109: cDefs.SDLK_KP_MINUS,
+      110: cDefs.SDLK_KP_PERIOD,
+      111: cDefs.SDLK_KP_DIVIDE,
+      112: cDefs.SDLK_F1,
+      113: cDefs.SDLK_F2,
+      114: cDefs.SDLK_F3,
+      115: cDefs.SDLK_F4,
+      116: cDefs.SDLK_F5,
+      117: cDefs.SDLK_F6,
+      118: cDefs.SDLK_F7,
+      119: cDefs.SDLK_F8,
+      120: cDefs.SDLK_F9,
+      121: cDefs.SDLK_F10,
+      122: cDefs.SDLK_F11,
+      123: cDefs.SDLK_F12,
+      124: cDefs.SDLK_F13,
+      125: cDefs.SDLK_F14,
+      126: cDefs.SDLK_F15,
+      127: cDefs.SDLK_F16,
+      128: cDefs.SDLK_F17,
+      129: cDefs.SDLK_F18,
+      130: cDefs.SDLK_F19,
+      131: cDefs.SDLK_F20,
+      132: cDefs.SDLK_F21,
+      133: cDefs.SDLK_F22,
+      134: cDefs.SDLK_F23,
+      135: cDefs.SDLK_F24,
 
-      144: 83 | 1<<10, // keypad num lock
+      144: cDefs.SDLK_NUMLOCKCLEAR,
 
-      160: 94, // caret
-      161: 33, // exclaim
-      162: 34, // double quote
-      163: 35, // hash
-      164: 36, // dollar
-      165: 37, // percent
-      166: 38, // ampersand
-      167: 95, // underscore
-      168: 40, // open parenthesis
-      169: 41, // close parenthesis
-      170: 42, // asterix
-      171: 43, // plus
+      160: cDefs.SDLK_CARET,
+      161: cDefs.SDLK_EXCLAIM,
+      162: cDefs.SDLK_QUOTEDBL,
+      163: cDefs.SDLK_HASH,
+      164: cDefs.SDLK_DOLLAR,
+      165: cDefs.SDLK_PERCENT,
+      166: cDefs.SDLK_AMPERSAND,
+      167: cDefs.SDLK_UNDERSCORE,
+      168: cDefs.SDLK_LEFTPAREN,
+      169: cDefs.SDLK_RIGHTPAREN,
+      170: cDefs.SDLK_ASTERISK,
+      171: cDefs.SDLK_PLUS,
       172: 124, // pipe
-      173: 45, // minus
+      173: cDefs.SDLK_MINUS,
       174: 123, // open curly bracket
       175: 125, // close curly bracket
       176: 126, // tilde
@@ -206,84 +206,84 @@ var LibrarySDL = {
       182: 129, // audio volume down
       183: 128, // audio volume up
 
-      188: 44, // comma
-      190: 46, // period
-      191: 47, // slash (/)
-      192: 96, // backtick/backquote (`)
-      219: 91, // open square bracket
-      220: 92, // back slash
-      221: 93, // close square bracket
-      222: 39, // quote
-      224: 227 | 1<<10, // meta (command/windows)
+      188: cDefs.SDLK_COMMA,
+      190: cDefs.SDLK_PERIOD,
+      191: cDefs.SDLK_SLASH,
+      192: cDefs.SDLK_BACKQUOTE,
+      219: cDefs.SDLK_LEFTBRACKET,
+      220: cDefs.SDLK_BACKSLASH,
+      221: cDefs.SDLK_RIGHTBRACKET,
+      222: cDefs.SDLK_QUOTE,
+      224: cDefs.SDLK_LGUI, // meta (command/windows)
     },
 
     scanCodes: { // SDL keycode ==> SDL scancode. See SDL_scancode.h
-      8: 42, // backspace
-      9: 43, // tab
-      13: 40, // return
-      27: 41, // escape
-      32: 44, // space
-      35: 204, // hash
+      [cDefs.SDLK_BACKSPACE]: cDefs.SDL_SCANCODE_BACKSPACE,
+      [cDefs.SDLK_TAB]: cDefs.SDL_SCANCODE_TAB,
+      [cDefs.SDLK_RETURN]: cDefs.SDL_SCANCODE_RETURN,
+      [cDefs.SDLK_ESCAPE]: cDefs.SDL_SCANCODE_ESCAPE,
+      [cDefs.SDLK_SPACE]: cDefs.SDL_SCANCODE_SPACE,
+      [cDefs.SDLK_HASH]: cDefs.SDL_SCANCODE_KP_HASH,
 
-      39: 53, // grave
+      [cDefs.SDLK_QUOTE]: cDefs.SDL_SCANCODE_GRAVE,
 
-      44: 54, // comma
-      46: 55, // period
-      47: 56, // slash
-      48: 39, // 0
-      49: 30, // 1
-      50: 31, // 2
-      51: 32, // 3
-      52: 33, // 4
-      53: 34, // 5
-      54: 35, // 6
-      55: 36, // 7
-      56: 37, // 8
-      57: 38, // 9
-      58: 203, // colon
-      59: 51, // semicolon
+      [cDefs.SDLK_COMMA]: cDefs.SDL_SCANCODE_COMMA,
+      [cDefs.SDLK_PERIOD]: cDefs.SDL_SCANCODE_PERIOD,
+      [cDefs.SDLK_SLASH]: cDefs.SDL_SCANCODE_SLASH,
+      [cDefs.SDLK_0]: cDefs.SDL_SCANCODE_0,
+      [cDefs.SDLK_1]: cDefs.SDL_SCANCODE_1,
+      [cDefs.SDLK_2]: cDefs.SDL_SCANCODE_2,
+      [cDefs.SDLK_3]: cDefs.SDL_SCANCODE_3,
+      [cDefs.SDLK_4]: cDefs.SDL_SCANCODE_4,
+      [cDefs.SDLK_5]: cDefs.SDL_SCANCODE_5,
+      [cDefs.SDLK_6]: cDefs.SDL_SCANCODE_6,
+      [cDefs.SDLK_7]: cDefs.SDL_SCANCODE_7,
+      [cDefs.SDLK_8]: cDefs.SDL_SCANCODE_8,
+      [cDefs.SDLK_9]: cDefs.SDL_SCANCODE_9,
+      [cDefs.SDLK_COLON]: cDefs.SDL_SCANCODE_KP_COLON,
+      [cDefs.SDLK_SEMICOLON]: cDefs.SDL_SCANCODE_SEMICOLON,
 
-      61: 46, // equals
+      [cDefs.SDLK_EQUALS]: cDefs.SDL_SCANCODE_EQUALS,
 
-      91: 47, // left bracket
-      92: 49, // backslash
-      93: 48, // right bracket
+      [cDefs.SDLK_LEFTBRACKET]: cDefs.SDL_SCANCODE_LEFTBRACKET,
+      [cDefs.SDLK_BACKSLASH]: cDefs.SDL_SCANCODE_BACKSLASH,
+      [cDefs.SDLK_RIGHTBRACKET]: cDefs.SDL_SCANCODE_RIGHTBRACKET,
 
-      96: 52, // apostrophe
-      97: 4, // A
-      98: 5, // B
-      99: 6, // C
-      100: 7, // D
-      101: 8, // E
-      102: 9, // F
-      103: 10, // G
-      104: 11, // H
-      105: 12, // I
-      106: 13, // J
-      107: 14, // K
-      108: 15, // L
-      109: 16, // M
-      110: 17, // N
-      111: 18, // O
-      112: 19, // P
-      113: 20, // Q
-      114: 21, // R
-      115: 22, // S
-      116: 23, // T
-      117: 24, // U
-      118: 25, // V
-      119: 26, // W
-      120: 27, // X
-      121: 28, // Y
-      122: 29, // Z
+      [cDefs.SDLK_BACKQUOTE]: cDefs.SDL_SCANCODE_APOSTROPHE,
+      [cDefs.SDLK_a]: cDefs.SDL_SCANCODE_A,
+      [cDefs.SDLK_b]: cDefs.SDL_SCANCODE_B,
+      [cDefs.SDLK_c]: cDefs.SDL_SCANCODE_C,
+      [cDefs.SDLK_d]: cDefs.SDL_SCANCODE_D,
+      [cDefs.SDLK_e]: cDefs.SDL_SCANCODE_E,
+      [cDefs.SDLK_f]: cDefs.SDL_SCANCODE_F,
+      [cDefs.SDLK_g]: cDefs.SDL_SCANCODE_G,
+      [cDefs.SDLK_h]: cDefs.SDL_SCANCODE_H,
+      [cDefs.SDLK_i]: cDefs.SDL_SCANCODE_I,
+      [cDefs.SDLK_j]: cDefs.SDL_SCANCODE_J,
+      [cDefs.SDLK_k]: cDefs.SDL_SCANCODE_K,
+      [cDefs.SDLK_l]: cDefs.SDL_SCANCODE_L,
+      [cDefs.SDLK_m]: cDefs.SDL_SCANCODE_M,
+      [cDefs.SDLK_n]: cDefs.SDL_SCANCODE_N,
+      [cDefs.SDLK_o]: cDefs.SDL_SCANCODE_O,
+      [cDefs.SDLK_p]: cDefs.SDL_SCANCODE_P,
+      [cDefs.SDLK_q]: cDefs.SDL_SCANCODE_Q,
+      [cDefs.SDLK_r]: cDefs.SDL_SCANCODE_R,
+      [cDefs.SDLK_s]: cDefs.SDL_SCANCODE_S,
+      [cDefs.SDLK_t]: cDefs.SDL_SCANCODE_T,
+      [cDefs.SDLK_u]: cDefs.SDL_SCANCODE_U,
+      [cDefs.SDLK_v]: cDefs.SDL_SCANCODE_V,
+      [cDefs.SDLK_w]: cDefs.SDL_SCANCODE_W,
+      [cDefs.SDLK_x]: cDefs.SDL_SCANCODE_X,
+      [cDefs.SDLK_y]: cDefs.SDL_SCANCODE_Y,
+      [cDefs.SDLK_z]: cDefs.SDL_SCANCODE_Z,
 
-      127: 76, // delete
+      [cDefs.SDLK_DELETE]: cDefs.SDL_SCANCODE_DELETE,
 
-      305: 224, // ctrl
+      305: cDefs.SDL_SCANCODE_LCTRL, // ctrl
 
-      308: 226, // alt
+      308: cDefs.SDL_SCANCODE_LALT, // alt
 
-      316: 70, // print screen
+      316: cDefs.SDL_SCANCODE_PRINTSCREEN, // print screen
     },
 
     loadRect(rect) {
@@ -415,7 +415,7 @@ var LibrarySDL = {
         surf,
         buffer,
         pixelFormat,
-        alpha: 255,
+        alpha: SDL_ALPHA_OPAQUE,
         flags,
         locked: 0,
         usePageCanvas,
@@ -806,9 +806,9 @@ var LibrarySDL = {
 #if RUNTIME_DEBUG
         if (!code) dbg('unmapped keyCode: ', event.keyCode);
 #endif
-        // If this is one of the modifier keys (224 | 1<<10 - 227 | 1<<10), and the event specifies that it is
+        // If this is one of the modifier keys (SDLK_LCTRL - SDLK_LGUI), and the event specifies that it is
         // a right key, add 4 to get the right key SDL key code.
-        if (event.location === 2 /*KeyboardEvent.DOM_KEY_LOCATION_RIGHT*/ && code >= (224 | 1<<10) && code <= (227 | 1<<10)) {
+        if (event.location === 2 /*KeyboardEvent.DOM_KEY_LOCATION_RIGHT*/ && code >= SDLK_LCTRL && code <= SDLK_LGUI) {
           code += 4;
         }
       }
@@ -917,14 +917,14 @@ var LibrarySDL = {
           // Ignore key events that we don't (yet) map to SDL keys
           if (!key) return false;
           var scan;
-          if (key >= 1024) {
-            scan = key - 1024;
+          if (key >= SDLK_SCANCODE_MASK) {
+            scan = key - SDLK_SCANCODE_MASK;
           } else {
             scan = SDL.scanCodes[key] || key;
           }
 
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.state, 'down ? 1 : 0', 'i8') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.state, 'down ? SDL_PRESSED : SDL_RELEASED', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.repeat, '0', 'i8') }}}; // TODO
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.scancode, 'scan', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.sym, 'key', 'i32') }}};
@@ -948,7 +948,7 @@ var LibrarySDL = {
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.windowID, '0', 'i32') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.which, '0', 'i32') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.button, 'event.button+1', 'i8') }}}; // DOM buttons are 0-2, SDL 1-3
-            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.state, 'down ? 1 : 0', 'i8') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.state, 'down ? SDL_PRESSED : SDL_RELEASED', 'i8') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.x, 'Browser.mouseX', 'i32') }}};
             {{{ makeSetValue('ptr', C_STRUCTS.SDL_MouseButtonEvent.y, 'Browser.mouseY', 'i32') }}};
           } else {
@@ -1008,7 +1008,7 @@ var LibrarySDL = {
           break;
         }
         case 'joystick_button_up': case 'joystick_button_down': {
-          var state = event.type === 'joystick_button_up' ? 0 : 1;
+          var state = event.type === 'joystick_button_up' ? SDL_RELEASED : SDL_PRESSED;
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.which, 'event.index', 'i8') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_JoyButtonEvent.button, 'event.button', 'i8') }}};
@@ -1087,9 +1087,9 @@ var LibrarySDL = {
 
     setGetVolume(info, volume) {
       if (!info) return 0;
-      var ret = info.volume * 128; // MIX_MAX_VOLUME
+      var ret = info.volume * MIX_MAX_VOLUME;
       if (volume != -1) {
-        info.volume = Math.min(Math.max(volume, 0), 128) / 128;
+        info.volume = Math.min(Math.max(volume, 0), MIX_MAX_VOLUME) / MIX_MAX_VOLUME;
         if (info.audio) {
           try {
             info.audio.volume = info.volume; // For <audio> element
@@ -1216,7 +1216,7 @@ var LibrarySDL = {
 
     // Joystick helper methods and state
 
-    joystickEventState: 1, // SDL_ENABLE
+    joystickEventState: cDefs.SDL_ENABLE,
     lastJoystickState: new Map(), // Map from SDL_Joystick* to their last known state. Required to determine if a change has occurred.
     // Maps Joystick names to pointers. Allows us to avoid reallocating memory for
     // joystick names each time this function is called.
@@ -1306,9 +1306,9 @@ var LibrarySDL = {
   SDL_Linked_Version: () => {
     if (SDL.version === null) {
       SDL.version = _malloc({{{ C_STRUCTS.SDL_version.__size__ }}});
-      {{{ makeSetValue('SDL.version', C_STRUCTS.SDL_version.major, '1', 'i8') }}};
-      {{{ makeSetValue('SDL.version', C_STRUCTS.SDL_version.minor, '3', 'i8') }}};
-      {{{ makeSetValue('SDL.version', C_STRUCTS.SDL_version.patch, '0', 'i8') }}};
+      {{{ makeSetValue('SDL.version', C_STRUCTS.SDL_version.major, 'SDL_MAJOR_VERSION', 'i8') }}};
+      {{{ makeSetValue('SDL.version', C_STRUCTS.SDL_version.minor, 'SDL_MINOR_VERSION', 'i8') }}};
+      {{{ makeSetValue('SDL.version', C_STRUCTS.SDL_version.patch, 'SDL_PATCHLEVEL', 'i8') }}};
     }
     return SDL.version;
   },
@@ -1738,17 +1738,17 @@ var LibrarySDL = {
   SDL_ShowCursor__proxy: 'sync',
   SDL_ShowCursor: (toggle) => {
     switch (toggle) {
-      case 0: // SDL_DISABLE
+      case SDL_DISABLE:
         if (Browser.isFullscreen) { // only try to lock the pointer when in full screen mode
           Browser.getCanvas().requestPointerLock?.();
-          return 0;
+          return SDL_DISABLE;
         }
         // else return SDL_ENABLE to indicate the failure
-        return 1;
-      case 1: // SDL_ENABLE
+        return SDL_ENABLE;
+      case SDL_ENABLE:
         document.exitPointerLock?.();
-        return 1;
-      case -1: // SDL_QUERY
+        return SDL_ENABLE;
+      case SDL_QUERY:
         return !Browser.pointerLock;
       default:
         err(`SDL_ShowCursor called with unknown toggle parameter value: ${toggle}`);
@@ -1927,7 +1927,7 @@ var LibrarySDL = {
     surfData.alpha = alpha;
 
     if (!(flag & SDL_SRCALPHA)) { // !SDL_SRCALPHA
-      surfData.alpha = 255;
+      surfData.alpha = SDL_ALPHA_OPAQUE;
     }
   },
 
@@ -1956,7 +1956,7 @@ var LibrarySDL = {
   SDL_PeepEvents__proxy: 'sync',
   SDL_PeepEvents: (events, requestedEventCount, action, from, to) => {
     switch (action) {
-      case 2: { // SDL_GETEVENT
+      case SDL_GETEVENT: {
         // We only handle 1 event right now
 #if ASSERTIONS
         assert(requestedEventCount == 1);
@@ -2557,7 +2557,7 @@ var LibrarySDL = {
 
   Mix_Init: (flags) => {
     if (!flags) return 0;
-    return 8; /* MIX_INIT_OGG */
+    return MIX_INIT_OGG;
   },
   Mix_Quit: () => {},
 
@@ -2836,7 +2836,7 @@ var LibrarySDL = {
     return channel;
   },
 
-  Mix_FadingChannel: (channel) => 0, // MIX_NO_FADING, TODO
+  Mix_FadingChannel: (channel) => MIX_NO_FADING, // TODO
 
   Mix_HaltChannel__proxy: 'sync',
   Mix_HaltChannel: (channel) => {
@@ -3271,7 +3271,7 @@ var LibrarySDL = {
   // SDL 2
 
   SDL_GL_ExtensionSupported__proxy: 'sync',
-  SDL_GL_ExtensionSupported: (extension) => GLctx?.getExtension(UTF8ToString(extension)) ? 1 : 0,
+  SDL_GL_ExtensionSupported: (extension) => GLctx?.getExtension(UTF8ToString(extension)) ? SDL_TRUE : SDL_FALSE,
 
   SDL_DestroyWindow: (window) => {},
 
@@ -3280,7 +3280,7 @@ var LibrarySDL = {
   SDL_GetWindowFlags__proxy: 'sync',
   SDL_GetWindowFlags: (window) => {
     if (Browser.isFullscreen) {
-       return 1;
+       return SDL_WINDOW_FULLSCREEN;
     }
 
     return 0;
@@ -3486,7 +3486,7 @@ var LibrarySDL = {
   SDL_RemoveTimer__proxy: 'sync',
   SDL_RemoveTimer: (id) => {
     safeClearTimeout(id);
-    return true;
+    return SDL_TRUE;
   },
 
   // TODO:
@@ -3514,14 +3514,14 @@ var LibrarySDL = {
 
   /* This function would set the application window icon surface, which doesn't apply for web canvases, so a no-op. */
   SDL_WM_SetIcon: (icon, mask) => {},
-  SDL_HasRDTSC: () => 0,
-  SDL_HasMMX: () => 0,
-  SDL_HasMMXExt: () => 0,
-  SDL_Has3DNow: () => 0,
-  SDL_Has3DNowExt: () => 0,
-  SDL_HasSSE: () => 0,
-  SDL_HasSSE2: () => 0,
-  SDL_HasAltiVec: () => 0
+  SDL_HasRDTSC: () => SDL_FALSE,
+  SDL_HasMMX: () => SDL_FALSE,
+  SDL_HasMMXExt: () => SDL_FALSE,
+  SDL_Has3DNow: () => SDL_FALSE,
+  SDL_Has3DNowExt: () => SDL_FALSE,
+  SDL_HasSSE: () => SDL_FALSE,
+  SDL_HasSSE2: () => SDL_FALSE,
+  SDL_HasAltiVec: () => SDL_FALSE
 };
 
 addToLibrary(LibrarySDL);
