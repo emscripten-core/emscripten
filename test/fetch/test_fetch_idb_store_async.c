@@ -3,26 +3,27 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <emscripten/fetch.h>
 
-void success(emscripten_fetch_t *fetch)
-{
+#define FILE_SIZE 10240
+
+void success(emscripten_fetch_t *fetch) {
   printf("IDB store succeeded.\n");
   emscripten_fetch_close(fetch);
 }
 
-void failure(emscripten_fetch_t *fetch)
-{
+void failure(emscripten_fetch_t *fetch) {
   printf("IDB store failed.\n");
   emscripten_fetch_close(fetch);
+  assert(false && "IDB store failed");
 }
 
-void persistFileToIndexedDB(const char *outputFilename, uint8_t *data, size_t numBytes)
-{
+void persistFileToIndexedDB(const char *outputFilename, uint8_t *data, size_t numBytes) {
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "EM_IDB_STORE");
@@ -34,11 +35,12 @@ void persistFileToIndexedDB(const char *outputFilename, uint8_t *data, size_t nu
   emscripten_fetch(&attr, outputFilename);
 }
 
-int main()
-{
+int main() {
   // Create data
-  uint8_t *data = (uint8_t*)malloc(10240);
-  for(int i = 0; i < 10240; ++i) data[i] = (uint8_t)rand();
+  uint8_t *data = (uint8_t*)malloc(FILE_SIZE);
+  for (int i = 0; i < FILE_SIZE; ++i) {
+    data[i] = (uint8_t)rand();
+  }
 
-  persistFileToIndexedDB("outputfile.dat", data, 10240);
+  persistFileToIndexedDB("outputfile.dat", data, FILE_SIZE);
 }

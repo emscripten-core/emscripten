@@ -4483,6 +4483,11 @@ Module["preRun"] = () => {
   def test_fetch_idb_store(self):
     self.btest_exit('fetch/test_fetch_idb_store.cpp', cflags=['-pthread', '-sFETCH', '-sPROXY_TO_PTHREAD'])
 
+  @no_2gb('https://github.com/emscripten-core/emscripten/issues/28235')
+  @no_4gb('https://github.com/emscripten-core/emscripten/issues/28235')
+  def test_fetch_idb_store_async(self):
+    self.btest_exit('fetch/test_fetch_idb_store_async.c', cflags=['-sFETCH'])
+
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_delete(self):
     copy_asset('gears.png')
