@@ -55,14 +55,14 @@ var LibraryGLFW = {
       this.share = share;
       this.attributes = {...GLFW.hints};
       this.inputModes = {
-        0x00033001:0x00034001, // GLFW_CURSOR (GLFW_CURSOR_NORMAL)
-        0x00033002:0, // GLFW_STICKY_KEYS
-        0x00033003:0, // GLFW_STICKY_MOUSE_BUTTONS
+        {{{ cDefs.GLFW_CURSOR }}}: GLFW_CURSOR_NORMAL,
+        {{{ cDefs.GLFW_STICKY_KEYS }}}: GLFW_FALSE,
+        {{{ cDefs.GLFW_STICKY_MOUSE_BUTTONS }}}: GLFW_FALSE,
       };
       this.buttons = 0;
       this.keys = new Array();
       this.domKeys = new Array();
-      this.shouldClose = 0;
+      this.shouldClose = GLFW_FALSE;
       this.title = null;
       this.windowPosFunc = 0; // GLFWwindowposfun
       this.windowSizeFunc = 0; // GLFWwindowsizefun
@@ -113,38 +113,38 @@ var LibraryGLFW = {
     hints: null,
     primaryTouchId: null,
     defaultHints: {
-      0x00020001:0, // GLFW_FOCUSED
-      0x00020002:0, // GLFW_ICONIFIED
-      0x00020003:1, // GLFW_RESIZABLE
-      0x00020004:1, // GLFW_VISIBLE
-      0x00020005:1, // GLFW_DECORATED
-      0x0002000A:0, // GLFW_TRANSPARENT_FRAMEBUFFER
-      0x0002200C:0, // GLFW_SCALE_TO_MONITOR
+      [cDefs.GLFW_FOCUSED]: cDefs.GLFW_FALSE,
+      [cDefs.GLFW_ICONIFIED]: cDefs.GLFW_FALSE,
+      [cDefs.GLFW_RESIZABLE]: cDefs.GLFW_TRUE,
+      [cDefs.GLFW_VISIBLE]: cDefs.GLFW_TRUE,
+      [cDefs.GLFW_DECORATED]: cDefs.GLFW_TRUE,
+      [cDefs.GLFW_TRANSPARENT_FRAMEBUFFER]: cDefs.GLFW_FALSE,
+      [cDefs.GLFW_SCALE_TO_MONITOR]: cDefs.GLFW_FALSE,
 
-      0x00021001:8, // GLFW_RED_BITS
-      0x00021002:8, // GLFW_GREEN_BITS
-      0x00021003:8, // GLFW_BLUE_BITS
-      0x00021004:8, // GLFW_ALPHA_BITS
-      0x00021005:24, // GLFW_DEPTH_BITS
-      0x00021006:8, // GLFW_STENCIL_BITS
-      0x00021007:0, // GLFW_ACCUM_RED_BITS
-      0x00021008:0, // GLFW_ACCUM_GREEN_BITS
-      0x00021009:0, // GLFW_ACCUM_BLUE_BITS
-      0x0002100A:0, // GLFW_ACCUM_ALPHA_BITS
-      0x0002100B:0, // GLFW_AUX_BUFFERS
-      0x0002100C:0, // GLFW_STEREO
-      0x0002100D:0, // GLFW_SAMPLES
-      0x0002100E:0, // GLFW_SRGB_CAPABLE
-      0x0002100F:0, // GLFW_REFRESH_RATE
+      [cDefs.GLFW_RED_BITS]: 8,
+      [cDefs.GLFW_GREEN_BITS]: 8,
+      [cDefs.GLFW_BLUE_BITS]: 8,
+      [cDefs.GLFW_ALPHA_BITS]: 8,
+      [cDefs.GLFW_DEPTH_BITS]: 24,
+      [cDefs.GLFW_STENCIL_BITS]: 8,
+      [cDefs.GLFW_ACCUM_RED_BITS]: 0,
+      [cDefs.GLFW_ACCUM_GREEN_BITS]: 0,
+      [cDefs.GLFW_ACCUM_BLUE_BITS]: 0,
+      [cDefs.GLFW_ACCUM_ALPHA_BITS]: 0,
+      [cDefs.GLFW_AUX_BUFFERS]: 0,
+      [cDefs.GLFW_STEREO]: cDefs.GLFW_FALSE,
+      [cDefs.GLFW_SAMPLES]: 0,
+      [cDefs.GLFW_SRGB_CAPABLE]: cDefs.GLFW_FALSE,
+      [cDefs.GLFW_REFRESH_RATE]: 0,
 
-      0x00022001:0x00030001, // GLFW_CLIENT_API (GLFW_OPENGL_API)
-      0x00022002:1, // GLFW_CONTEXT_VERSION_MAJOR
-      0x00022003:0, // GLFW_CONTEXT_VERSION_MINOR
-      0x00022004:0, // GLFW_CONTEXT_REVISION
-      0x00022005:0, // GLFW_CONTEXT_ROBUSTNESS
-      0x00022006:0, // GLFW_OPENGL_FORWARD_COMPAT
-      0x00022007:0, // GLFW_OPENGL_DEBUG_CONTEXT
-      0x00022008:0, // GLFW_OPENGL_PROFILE
+      [cDefs.GLFW_CLIENT_API]: cDefs.GLFW_OPENGL_API,
+      [cDefs.GLFW_CONTEXT_VERSION_MAJOR]: 1,
+      [cDefs.GLFW_CONTEXT_VERSION_MINOR]: 0,
+      [cDefs.GLFW_CONTEXT_REVISION]: 0,
+      [cDefs.GLFW_CONTEXT_ROBUSTNESS]: cDefs.GLFW_NO_ROBUSTNESS,
+      [cDefs.GLFW_OPENGL_FORWARD_COMPAT]: cDefs.GLFW_FALSE,
+      [cDefs.GLFW_OPENGL_DEBUG_CONTEXT]: cDefs.GLFW_FALSE,
+      [cDefs.GLFW_OPENGL_PROFILE]: cDefs.GLFW_OPENGL_ANY_PROFILE,
     },
 
 /*******************************************************************************
@@ -154,56 +154,56 @@ var LibraryGLFW = {
     /* https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and GLFW/glfw3.h */
     keyCodeMap: {
       // these keycodes are only defined for GLFW3, assume they are the same for GLFW2
-      0x20: 32, // DOM_VK_SPACE -> GLFW_KEY_SPACE
-      0xDE: 39, // DOM_VK_QUOTE -> GLFW_KEY_APOSTROPHE
-      0xBC: 44, // DOM_VK_COMMA -> GLFW_KEY_COMMA
-      0xAD: 45, // DOM_VK_HYPHEN_MINUS -> GLFW_KEY_MINUS
-      0xBD: 45, // DOM_VK_MINUS -> GLFW_KEY_MINUS
-      0xBE: 46, // DOM_VK_PERIOD -> GLFW_KEY_PERIOD
-      0xBF: 47, // DOM_VK_SLASH -> GLFW_KEY_SLASH
-      0x30: 48, // DOM_VK_0 -> GLFW_KEY_0
-      0x31: 49, // DOM_VK_1 -> GLFW_KEY_1
-      0x32: 50, // DOM_VK_2 -> GLFW_KEY_2
-      0x33: 51, // DOM_VK_3 -> GLFW_KEY_3
-      0x34: 52, // DOM_VK_4 -> GLFW_KEY_4
-      0x35: 53, // DOM_VK_5 -> GLFW_KEY_5
-      0x36: 54, // DOM_VK_6 -> GLFW_KEY_6
-      0x37: 55, // DOM_VK_7 -> GLFW_KEY_7
-      0x38: 56, // DOM_VK_8 -> GLFW_KEY_8
-      0x39: 57, // DOM_VK_9 -> GLFW_KEY_9
-      0x3B: 59, // DOM_VK_SEMICOLON -> GLFW_KEY_SEMICOLON
-      0x3D: 61, // DOM_VK_EQUALS -> GLFW_KEY_EQUAL
-      0xBB: 61, // DOM_VK_EQUALS -> GLFW_KEY_EQUAL
-      0x41: 65, // DOM_VK_A -> GLFW_KEY_A
-      0x42: 66, // DOM_VK_B -> GLFW_KEY_B
-      0x43: 67, // DOM_VK_C -> GLFW_KEY_C
-      0x44: 68, // DOM_VK_D -> GLFW_KEY_D
-      0x45: 69, // DOM_VK_E -> GLFW_KEY_E
-      0x46: 70, // DOM_VK_F -> GLFW_KEY_F
-      0x47: 71, // DOM_VK_G -> GLFW_KEY_G
-      0x48: 72, // DOM_VK_H -> GLFW_KEY_H
-      0x49: 73, // DOM_VK_I -> GLFW_KEY_I
-      0x4A: 74, // DOM_VK_J -> GLFW_KEY_J
-      0x4B: 75, // DOM_VK_K -> GLFW_KEY_K
-      0x4C: 76, // DOM_VK_L -> GLFW_KEY_L
-      0x4D: 77, // DOM_VK_M -> GLFW_KEY_M
-      0x4E: 78, // DOM_VK_N -> GLFW_KEY_N
-      0x4F: 79, // DOM_VK_O -> GLFW_KEY_O
-      0x50: 80, // DOM_VK_P -> GLFW_KEY_P
-      0x51: 81, // DOM_VK_Q -> GLFW_KEY_Q
-      0x52: 82, // DOM_VK_R -> GLFW_KEY_R
-      0x53: 83, // DOM_VK_S -> GLFW_KEY_S
-      0x54: 84, // DOM_VK_T -> GLFW_KEY_T
-      0x55: 85, // DOM_VK_U -> GLFW_KEY_U
-      0x56: 86, // DOM_VK_V -> GLFW_KEY_V
-      0x57: 87, // DOM_VK_W -> GLFW_KEY_W
-      0x58: 88, // DOM_VK_X -> GLFW_KEY_X
-      0x59: 89, // DOM_VK_Y -> GLFW_KEY_Y
-      0x5a: 90, // DOM_VK_Z -> GLFW_KEY_Z
-      0xDB: 91, // DOM_VK_OPEN_BRACKET -> GLFW_KEY_LEFT_BRACKET
-      0xDC: 92, // DOM_VK_BACKSLASH -> GLFW_KEY_BACKSLASH
-      0xDD: 93, // DOM_VK_CLOSE_BRACKET -> GLFW_KEY_RIGHT_BRACKET
-      0xC0: 96, // DOM_VK_BACK_QUOTE -> GLFW_KEY_GRAVE_ACCENT
+      0x20: cDefs.GLFW_KEY_SPACE, // DOM_VK_SPACE
+      0xDE: cDefs.GLFW_KEY_APOSTROPHE, // DOM_VK_QUOTE
+      0xBC: cDefs.GLFW_KEY_COMMA, // DOM_VK_COMMA
+      0xAD: cDefs.GLFW_KEY_MINUS, // DOM_VK_HYPHEN_MINUS
+      0xBD: cDefs.GLFW_KEY_MINUS, // DOM_VK_MINUS
+      0xBE: cDefs.GLFW_KEY_PERIOD, // DOM_VK_PERIOD
+      0xBF: cDefs.GLFW_KEY_SLASH, // DOM_VK_SLASH
+      0x30: cDefs.GLFW_KEY_0, // DOM_VK_0
+      0x31: cDefs.GLFW_KEY_1, // DOM_VK_1
+      0x32: cDefs.GLFW_KEY_2, // DOM_VK_2
+      0x33: cDefs.GLFW_KEY_3, // DOM_VK_3
+      0x34: cDefs.GLFW_KEY_4, // DOM_VK_4
+      0x35: cDefs.GLFW_KEY_5, // DOM_VK_5
+      0x36: cDefs.GLFW_KEY_6, // DOM_VK_6
+      0x37: cDefs.GLFW_KEY_7, // DOM_VK_7
+      0x38: cDefs.GLFW_KEY_8, // DOM_VK_8
+      0x39: cDefs.GLFW_KEY_9, // DOM_VK_9
+      0x3B: cDefs.GLFW_KEY_SEMICOLON, // DOM_VK_SEMICOLON
+      0x3D: cDefs.GLFW_KEY_EQUAL, // DOM_VK_EQUALS
+      0xBB: cDefs.GLFW_KEY_EQUAL, // DOM_VK_EQUALS
+      0x41: cDefs.GLFW_KEY_A, // DOM_VK_A
+      0x42: cDefs.GLFW_KEY_B, // DOM_VK_B
+      0x43: cDefs.GLFW_KEY_C, // DOM_VK_C
+      0x44: cDefs.GLFW_KEY_D, // DOM_VK_D
+      0x45: cDefs.GLFW_KEY_E, // DOM_VK_E
+      0x46: cDefs.GLFW_KEY_F, // DOM_VK_F
+      0x47: cDefs.GLFW_KEY_G, // DOM_VK_G
+      0x48: cDefs.GLFW_KEY_H, // DOM_VK_H
+      0x49: cDefs.GLFW_KEY_I, // DOM_VK_I
+      0x4A: cDefs.GLFW_KEY_J, // DOM_VK_J
+      0x4B: cDefs.GLFW_KEY_K, // DOM_VK_K
+      0x4C: cDefs.GLFW_KEY_L, // DOM_VK_L
+      0x4D: cDefs.GLFW_KEY_M, // DOM_VK_M
+      0x4E: cDefs.GLFW_KEY_N, // DOM_VK_N
+      0x4F: cDefs.GLFW_KEY_O, // DOM_VK_O
+      0x50: cDefs.GLFW_KEY_P, // DOM_VK_P
+      0x51: cDefs.GLFW_KEY_Q, // DOM_VK_Q
+      0x52: cDefs.GLFW_KEY_R, // DOM_VK_R
+      0x53: cDefs.GLFW_KEY_S, // DOM_VK_S
+      0x54: cDefs.GLFW_KEY_T, // DOM_VK_T
+      0x55: cDefs.GLFW_KEY_U, // DOM_VK_U
+      0x56: cDefs.GLFW_KEY_V, // DOM_VK_V
+      0x57: cDefs.GLFW_KEY_W, // DOM_VK_W
+      0x58: cDefs.GLFW_KEY_X, // DOM_VK_X
+      0x59: cDefs.GLFW_KEY_Y, // DOM_VK_Y
+      0x5a: cDefs.GLFW_KEY_Z, // DOM_VK_Z
+      0xDB: cDefs.GLFW_KEY_LEFT_BRACKET, // DOM_VK_OPEN_BRACKET
+      0xDC: cDefs.GLFW_KEY_BACKSLASH, // DOM_VK_BACKSLASH
+      0xDD: cDefs.GLFW_KEY_RIGHT_BRACKET, // DOM_VK_CLOSE_BRACKET
+      0xC0: cDefs.GLFW_KEY_GRAVE_ACCENT, // DOM_VK_BACK_QUOTE
 
 #if USE_GLFW == 2
       //#define GLFW_KEY_SPECIAL      256
@@ -279,89 +279,89 @@ var LibraryGLFW = {
 #endif
 
 #if USE_GLFW == 3
-      0x1B: 256, // DOM_VK_ESCAPE -> GLFW_KEY_ESCAPE
-      0x0D: 257, // DOM_VK_RETURN -> GLFW_KEY_ENTER
-      0x09: 258, // DOM_VK_TAB -> GLFW_KEY_TAB
-      0x08: 259, // DOM_VK_BACK -> GLFW_KEY_BACKSPACE
-      0x2D: 260, // DOM_VK_INSERT -> GLFW_KEY_INSERT
-      0x2E: 261, // DOM_VK_DELETE -> GLFW_KEY_DELETE
-      0x27: 262, // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
-      0x25: 263, // DOM_VK_LEFT -> GLFW_KEY_LEFT
-      0x28: 264, // DOM_VK_DOWN -> GLFW_KEY_DOWN
-      0x26: 265, // DOM_VK_UP -> GLFW_KEY_UP
-      0x21: 266, // DOM_VK_PAGE_UP -> GLFW_KEY_PAGE_UP
-      0x22: 267, // DOM_VK_PAGE_DOWN -> GLFW_KEY_PAGE_DOWN
-      0x24: 268, // DOM_VK_HOME -> GLFW_KEY_HOME
-      0x23: 269, // DOM_VK_END -> GLFW_KEY_END
-      0x14: 280, // DOM_VK_CAPS_LOCK -> GLFW_KEY_CAPS_LOCK
-      0x91: 281, // DOM_VK_SCROLL_LOCK -> GLFW_KEY_SCROLL_LOCK
-      0x90: 282, // DOM_VK_NUM_LOCK -> GLFW_KEY_NUM_LOCK
-      0x2C: 283, // DOM_VK_SNAPSHOT -> GLFW_KEY_PRINT_SCREEN
-      0x13: 284, // DOM_VK_PAUSE -> GLFW_KEY_PAUSE
-      0x70: 290, // DOM_VK_F1 -> GLFW_KEY_F1
-      0x71: 291, // DOM_VK_F2 -> GLFW_KEY_F2
-      0x72: 292, // DOM_VK_F3 -> GLFW_KEY_F3
-      0x73: 293, // DOM_VK_F4 -> GLFW_KEY_F4
-      0x74: 294, // DOM_VK_F5 -> GLFW_KEY_F5
-      0x75: 295, // DOM_VK_F6 -> GLFW_KEY_F6
-      0x76: 296, // DOM_VK_F7 -> GLFW_KEY_F7
-      0x77: 297, // DOM_VK_F8 -> GLFW_KEY_F8
-      0x78: 298, // DOM_VK_F9 -> GLFW_KEY_F9
-      0x79: 299, // DOM_VK_F10 -> GLFW_KEY_F10
-      0x7A: 300, // DOM_VK_F11 -> GLFW_KEY_F11
-      0x7B: 301, // DOM_VK_F12 -> GLFW_KEY_F12
-      0x7C: 302, // DOM_VK_F13 -> GLFW_KEY_F13
-      0x7D: 303, // DOM_VK_F14 -> GLFW_KEY_F14
-      0x7E: 304, // DOM_VK_F15 -> GLFW_KEY_F15
-      0x7F: 305, // DOM_VK_F16 -> GLFW_KEY_F16
-      0x80: 306, // DOM_VK_F17 -> GLFW_KEY_F17
-      0x81: 307, // DOM_VK_F18 -> GLFW_KEY_F18
-      0x82: 308, // DOM_VK_F19 -> GLFW_KEY_F19
-      0x83: 309, // DOM_VK_F20 -> GLFW_KEY_F20
-      0x84: 310, // DOM_VK_F21 -> GLFW_KEY_F21
-      0x85: 311, // DOM_VK_F22 -> GLFW_KEY_F22
-      0x86: 312, // DOM_VK_F23 -> GLFW_KEY_F23
-      0x87: 313, // DOM_VK_F24 -> GLFW_KEY_F24
-      0x88: 314, // 0x88 (not used?) -> GLFW_KEY_F25
-      0x60: 320, // DOM_VK_NUMPAD0 -> GLFW_KEY_KP_0
-      0x61: 321, // DOM_VK_NUMPAD1 -> GLFW_KEY_KP_1
-      0x62: 322, // DOM_VK_NUMPAD2 -> GLFW_KEY_KP_2
-      0x63: 323, // DOM_VK_NUMPAD3 -> GLFW_KEY_KP_3
-      0x64: 324, // DOM_VK_NUMPAD4 -> GLFW_KEY_KP_4
-      0x65: 325, // DOM_VK_NUMPAD5 -> GLFW_KEY_KP_5
-      0x66: 326, // DOM_VK_NUMPAD6 -> GLFW_KEY_KP_6
-      0x67: 327, // DOM_VK_NUMPAD7 -> GLFW_KEY_KP_7
-      0x68: 328, // DOM_VK_NUMPAD8 -> GLFW_KEY_KP_8
-      0x69: 329, // DOM_VK_NUMPAD9 -> GLFW_KEY_KP_9
-      0x6E: 330, // DOM_VK_DECIMAL -> GLFW_KEY_KP_DECIMAL
-      0x6F: 331, // DOM_VK_DIVIDE -> GLFW_KEY_KP_DIVIDE
-      0x6A: 332, // DOM_VK_MULTIPLY -> GLFW_KEY_KP_MULTIPLY
-      0x6D: 333, // DOM_VK_SUBTRACT -> GLFW_KEY_KP_SUBTRACT
-      0x6B: 334, // DOM_VK_ADD -> GLFW_KEY_KP_ADD
-      // 0x0D: 335, // DOM_VK_RETURN -> GLFW_KEY_KP_ENTER (DOM_KEY_LOCATION_RIGHT)
-      // 0x61: 336, // DOM_VK_EQUALS -> GLFW_KEY_KP_EQUAL (DOM_KEY_LOCATION_RIGHT)
-      0x10: 340, // DOM_VK_SHIFT -> GLFW_KEY_LEFT_SHIFT
-      0x11: 341, // DOM_VK_CONTROL -> GLFW_KEY_LEFT_CONTROL
-      0x12: 342, // DOM_VK_ALT -> GLFW_KEY_LEFT_ALT
-      0x5B: 343, // DOM_VK_WIN -> GLFW_KEY_LEFT_SUPER
-      0xE0: 343, // DOM_VK_META -> GLFW_KEY_LEFT_SUPER
-      // 0x10: 344, // DOM_VK_SHIFT -> GLFW_KEY_RIGHT_SHIFT (DOM_KEY_LOCATION_RIGHT)
-      // 0x11: 345, // DOM_VK_CONTROL -> GLFW_KEY_RIGHT_CONTROL (DOM_KEY_LOCATION_RIGHT)
-      // 0x12: 346, // DOM_VK_ALT -> GLFW_KEY_RIGHT_ALT (DOM_KEY_LOCATION_RIGHT)
-      // 0x5B: 347, // DOM_VK_WIN -> GLFW_KEY_RIGHT_SUPER (DOM_KEY_LOCATION_RIGHT)
-      0x5D: 348, // DOM_VK_CONTEXT_MENU -> GLFW_KEY_MENU
+      0x1B: cDefs.GLFW_KEY_ESCAPE, // DOM_VK_ESCAPE
+      0x0D: cDefs.GLFW_KEY_ENTER, // DOM_VK_RETURN
+      0x09: cDefs.GLFW_KEY_TAB, // DOM_VK_TAB
+      0x08: cDefs.GLFW_KEY_BACKSPACE, // DOM_VK_BACK
+      0x2D: cDefs.GLFW_KEY_INSERT, // DOM_VK_INSERT
+      0x2E: cDefs.GLFW_KEY_DELETE, // DOM_VK_DELETE
+      0x27: cDefs.GLFW_KEY_RIGHT, // DOM_VK_RIGHT
+      0x25: cDefs.GLFW_KEY_LEFT, // DOM_VK_LEFT
+      0x28: cDefs.GLFW_KEY_DOWN, // DOM_VK_DOWN
+      0x26: cDefs.GLFW_KEY_UP, // DOM_VK_UP
+      0x21: cDefs.GLFW_KEY_PAGE_UP, // DOM_VK_PAGE_UP
+      0x22: cDefs.GLFW_KEY_PAGE_DOWN, // DOM_VK_PAGE_DOWN
+      0x24: cDefs.GLFW_KEY_HOME, // DOM_VK_HOME
+      0x23: cDefs.GLFW_KEY_END, // DOM_VK_END
+      0x14: cDefs.GLFW_KEY_CAPS_LOCK, // DOM_VK_CAPS_LOCK
+      0x91: cDefs.GLFW_KEY_SCROLL_LOCK, // DOM_VK_SCROLL_LOCK
+      0x90: cDefs.GLFW_KEY_NUM_LOCK, // DOM_VK_NUM_LOCK
+      0x2C: cDefs.GLFW_KEY_PRINT_SCREEN, // DOM_VK_SNAPSHOT
+      0x13: cDefs.GLFW_KEY_PAUSE, // DOM_VK_PAUSE
+      0x70: cDefs.GLFW_KEY_F1, // DOM_VK_F1
+      0x71: cDefs.GLFW_KEY_F2, // DOM_VK_F2
+      0x72: cDefs.GLFW_KEY_F3, // DOM_VK_F3
+      0x73: cDefs.GLFW_KEY_F4, // DOM_VK_F4
+      0x74: cDefs.GLFW_KEY_F5, // DOM_VK_F5
+      0x75: cDefs.GLFW_KEY_F6, // DOM_VK_F6
+      0x76: cDefs.GLFW_KEY_F7, // DOM_VK_F7
+      0x77: cDefs.GLFW_KEY_F8, // DOM_VK_F8
+      0x78: cDefs.GLFW_KEY_F9, // DOM_VK_F9
+      0x79: cDefs.GLFW_KEY_F10, // DOM_VK_F10
+      0x7A: cDefs.GLFW_KEY_F11, // DOM_VK_F11
+      0x7B: cDefs.GLFW_KEY_F12, // DOM_VK_F12
+      0x7C: cDefs.GLFW_KEY_F13, // DOM_VK_F13
+      0x7D: cDefs.GLFW_KEY_F14, // DOM_VK_F14
+      0x7E: cDefs.GLFW_KEY_F15, // DOM_VK_F15
+      0x7F: cDefs.GLFW_KEY_F16, // DOM_VK_F16
+      0x80: cDefs.GLFW_KEY_F17, // DOM_VK_F17
+      0x81: cDefs.GLFW_KEY_F18, // DOM_VK_F18
+      0x82: cDefs.GLFW_KEY_F19, // DOM_VK_F19
+      0x83: cDefs.GLFW_KEY_F20, // DOM_VK_F20
+      0x84: cDefs.GLFW_KEY_F21, // DOM_VK_F21
+      0x85: cDefs.GLFW_KEY_F22, // DOM_VK_F22
+      0x86: cDefs.GLFW_KEY_F23, // DOM_VK_F23
+      0x87: cDefs.GLFW_KEY_F24, // DOM_VK_F24
+      0x88: cDefs.GLFW_KEY_F25, // 0x88 (not used?)
+      0x60: cDefs.GLFW_KEY_KP_0, // DOM_VK_NUMPAD0
+      0x61: cDefs.GLFW_KEY_KP_1, // DOM_VK_NUMPAD1
+      0x62: cDefs.GLFW_KEY_KP_2, // DOM_VK_NUMPAD2
+      0x63: cDefs.GLFW_KEY_KP_3, // DOM_VK_NUMPAD3
+      0x64: cDefs.GLFW_KEY_KP_4, // DOM_VK_NUMPAD4
+      0x65: cDefs.GLFW_KEY_KP_5, // DOM_VK_NUMPAD5
+      0x66: cDefs.GLFW_KEY_KP_6, // DOM_VK_NUMPAD6
+      0x67: cDefs.GLFW_KEY_KP_7, // DOM_VK_NUMPAD7
+      0x68: cDefs.GLFW_KEY_KP_8, // DOM_VK_NUMPAD8
+      0x69: cDefs.GLFW_KEY_KP_9, // DOM_VK_NUMPAD9
+      0x6E: cDefs.GLFW_KEY_KP_DECIMAL, // DOM_VK_DECIMAL
+      0x6F: cDefs.GLFW_KEY_KP_DIVIDE, // DOM_VK_DIVIDE
+      0x6A: cDefs.GLFW_KEY_KP_MULTIPLY, // DOM_VK_MULTIPLY
+      0x6D: cDefs.GLFW_KEY_KP_SUBTRACT, // DOM_VK_SUBTRACT
+      0x6B: cDefs.GLFW_KEY_KP_ADD, // DOM_VK_ADD
+      // 0x0D: cDefs.GLFW_KEY_KP_ENTER, // DOM_VK_RETURN (DOM_KEY_LOCATION_RIGHT)
+      // 0x61: cDefs.GLFW_KEY_KP_EQUAL, // DOM_VK_EQUALS (DOM_KEY_LOCATION_RIGHT)
+      0x10: cDefs.GLFW_KEY_LEFT_SHIFT, // DOM_VK_SHIFT
+      0x11: cDefs.GLFW_KEY_LEFT_CONTROL, // DOM_VK_CONTROL
+      0x12: cDefs.GLFW_KEY_LEFT_ALT, // DOM_VK_ALT
+      0x5B: cDefs.GLFW_KEY_LEFT_SUPER, // DOM_VK_WIN
+      0xE0: cDefs.GLFW_KEY_LEFT_SUPER, // DOM_VK_META
+      // 0x10: cDefs.GLFW_KEY_RIGHT_SHIFT, // DOM_VK_SHIFT (DOM_KEY_LOCATION_RIGHT)
+      // 0x11: cDefs.GLFW_KEY_RIGHT_CONTROL, // DOM_VK_CONTROL (DOM_KEY_LOCATION_RIGHT)
+      // 0x12: cDefs.GLFW_KEY_RIGHT_ALT, // DOM_VK_ALT (DOM_KEY_LOCATION_RIGHT)
+      // 0x5B: cDefs.GLFW_KEY_RIGHT_SUPER, // DOM_VK_WIN (DOM_KEY_LOCATION_RIGHT)
+      0x5D: cDefs.GLFW_KEY_MENU, // DOM_VK_CONTEXT_MENU
       // XXX: GLFW_KEY_WORLD_1, GLFW_KEY_WORLD_2 what are these?
 #endif
     },
 
-    DOMToGLFWKeyCode: (keycode) => GLFW.keyCodeMap[keycode] ?? -1,
+    DOMToGLFWKeyCode: (keycode) => GLFW.keyCodeMap[keycode] ?? GLFW_KEY_UNKNOWN,
 
     getModBits: (win) => {
       var mod = 0;
-      if (win.keys[340]) mod |= 0x0001; // GLFW_MOD_SHIFT
-      if (win.keys[341]) mod |= 0x0002; // GLFW_MOD_CONTROL
-      if (win.keys[342]) mod |= 0x0004; // GLFW_MOD_ALT
-      if (win.keys[343] || win.keys[348]) mod |= 0x0008; // GLFW_MOD_SUPER
+      if (win.keys[GLFW_KEY_LEFT_SHIFT]) mod |= GLFW_MOD_SHIFT;
+      if (win.keys[GLFW_KEY_LEFT_CONTROL]) mod |= GLFW_MOD_CONTROL;
+      if (win.keys[GLFW_KEY_LEFT_ALT]) mod |= GLFW_MOD_ALT;
+      if (win.keys[GLFW_KEY_LEFT_SUPER] || win.keys[GLFW_KEY_MENU]) mod |= GLFW_MOD_SUPER;
       // add caps and num lock keys? only if lock_key_mod is set
       return mod;
     },
@@ -386,7 +386,7 @@ var LibraryGLFW = {
       if (!GLFW.active) return;
 
       var key = GLFW.DOMToGLFWKeyCode(keyCode);
-      if (key == -1) return;
+      if (key == GLFW_KEY_UNKNOWN) return;
 
 #if USE_GLFW == 3
       var repeat = status && GLFW.active.keys[key];
@@ -399,7 +399,7 @@ var LibraryGLFW = {
         {{{ makeDynCall('vii', 'GLFW.active.keyFunc') }}}(key, status);
 #endif
 #if USE_GLFW == 3
-        if (repeat) status = 2; // GLFW_REPEAT
+        if (repeat) status = GLFW_REPEAT;
         {{{ makeDynCall('vpiiii', 'GLFW.active.keyFunc') }}}(GLFW.active.id, key, keyCode, status, GLFW.getModBits(GLFW.active));
 #endif
       }
@@ -414,7 +414,7 @@ var LibraryGLFW = {
     },
 
     onKeydown: (event) => {
-      GLFW.onKeyChanged(event.keyCode, 1); // GLFW_PRESS or GLFW_REPEAT
+      GLFW.onKeyChanged(event.keyCode, GLFW_PRESS); // GLFW_PRESS or GLFW_REPEAT
 
       // This logic comes directly from the sdl implementation. We cannot
       // call preventDefault on all keydown events otherwise onKeyPress will
@@ -425,7 +425,7 @@ var LibraryGLFW = {
     },
 
     onKeyup: (event) => {
-      GLFW.onKeyChanged(event.keyCode, 0); // GLFW_RELEASE
+      GLFW.onKeyChanged(event.keyCode, GLFW_RELEASE);
     },
 
     onBlur: (event) => {
@@ -433,7 +433,7 @@ var LibraryGLFW = {
 
       for (var i = 0; i < GLFW.active.domKeys.length; ++i) {
         if (GLFW.active.domKeys[i]) {
-          GLFW.onKeyChanged(i, 0); // GLFW_RELEASE
+          GLFW.onKeyChanged(i, GLFW_RELEASE);
         }
       }
     },
@@ -485,9 +485,9 @@ var LibraryGLFW = {
       var eventButton = event['button'];
       if (eventButton > 0) {
         if (eventButton == 1) {
-          eventButton = 2;
+          eventButton = GLFW_MOUSE_BUTTON_MIDDLE;
         } else {
-          eventButton = 1;
+          eventButton = GLFW_MOUSE_BUTTON_RIGHT;
         }
       }
       return eventButton;
@@ -500,7 +500,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       if (GLFW.active.cursorEnterFunc) {
-        {{{ makeDynCall('vpi', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 1);
+        {{{ makeDynCall('vpi', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, GLFW_TRUE);
       }
 #endif
     },
@@ -512,7 +512,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       if (GLFW.active.cursorEnterFunc) {
-        {{{ makeDynCall('vpi', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, 0);
+        {{{ makeDynCall('vpi', 'GLFW.active.cursorEnterFunc') }}}(GLFW.active.id, GLFW_FALSE);
       }
 #endif
     },
@@ -526,7 +526,7 @@ var LibraryGLFW = {
       const isTouchType = event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchcancel';
 
       // Only emulating mouse left-click behavior for touches.
-      let eventButton = 0;
+      let eventButton = GLFW_MOUSE_BUTTON_LEFT;
       if (isTouchType) {
         // Handling for touch events that are being converted to mouse input.
 
@@ -566,12 +566,12 @@ var LibraryGLFW = {
         eventButton = GLFW.DOMToGLFWMouseButton(event);
       }
 
-      if (status == 1) { // GLFW_PRESS
+      if (status == GLFW_PRESS) {
         GLFW.active.buttons |= (1 << eventButton);
         try {
           event.target.setCapture();
         } catch (e) {}
-      } else {  // GLFW_RELEASE
+      } else { // GLFW_RELEASE
         GLFW.active.buttons &= ~(1 << eventButton);
       }
 
@@ -588,12 +588,12 @@ var LibraryGLFW = {
 
     onMouseButtonDown: (event) => {
       if (!GLFW.active) return;
-      GLFW.onMouseButtonChanged(event, 1); // GLFW_PRESS
+      GLFW.onMouseButtonChanged(event, GLFW_PRESS);
     },
 
     onMouseButtonUp: (event) => {
       if (!GLFW.active) return;
-      GLFW.onMouseButtonChanged(event, 0); // GLFW_RELEASE
+      GLFW.onMouseButtonChanged(event, GLFW_RELEASE);
     },
 
     onMouseWheel: (event) => {
@@ -749,7 +749,7 @@ var LibraryGLFW = {
               };
 
               if (GLFW.joystickFunc) {
-                {{{ makeDynCall('vii', 'GLFW.joystickFunc') }}}(joy, 0x00040001); // GLFW_CONNECTED
+                {{{ makeDynCall('vii', 'GLFW.joystickFunc') }}}(joy, GLFW_CONNECTED);
               }
             }
 
@@ -767,7 +767,7 @@ var LibraryGLFW = {
               out('glfw joystick disconnected',joy);
 
               if (GLFW.joystickFunc) {
-                {{{ makeDynCall('vii', 'GLFW.joystickFunc') }}}(joy, 0x00040002); // GLFW_DISCONNECTED
+                {{{ makeDynCall('vii', 'GLFW.joystickFunc') }}}(joy, GLFW_DISCONNECTED);
               }
 
               _free(GLFW.joys[joy].id);
@@ -986,20 +986,20 @@ var LibraryGLFW = {
       if (!win) return;
 
       switch (mode) {
-        case 0x00033001: { // GLFW_CURSOR
+        case GLFW_CURSOR: {
           var canvas = Browser.getCanvas();
           switch (value) {
-            case 0x00034001: { // GLFW_CURSOR_NORMAL
+            case GLFW_CURSOR_NORMAL: {
               win.inputModes[mode] = value;
               canvas.removeEventListener('click', GLFW.onClickRequestPointerLock, true);
               document.exitPointerLock?.();
               break;
             }
-            case 0x00034002: { // GLFW_CURSOR_HIDDEN
+            case GLFW_CURSOR_HIDDEN: {
               err('glfwSetInputMode called with GLFW_CURSOR_HIDDEN value not implemented');
               break;
             }
-            case 0x00034003: { // GLFW_CURSOR_DISABLED
+            case GLFW_CURSOR_DISABLED: {
               win.inputModes[mode] = value;
               canvas.addEventListener('click', GLFW.onClickRequestPointerLock, true);
               canvas.requestPointerLock?.();
@@ -1012,19 +1012,19 @@ var LibraryGLFW = {
           }
           break;
         }
-        case 0x00033002: { // GLFW_STICKY_KEYS
+        case GLFW_STICKY_KEYS: {
           err('glfwSetInputMode called with GLFW_STICKY_KEYS mode not implemented');
           break;
         }
-        case 0x00033003: { // GLFW_STICKY_MOUSE_BUTTONS
+        case GLFW_STICKY_MOUSE_BUTTONS: {
           err('glfwSetInputMode called with GLFW_STICKY_MOUSE_BUTTONS mode not implemented');
           break;
         }
-        case 0x00033004: { // GLFW_LOCK_KEY_MODS
+        case GLFW_LOCK_KEY_MODS: {
           err('glfwSetInputMode called with GLFW_LOCK_KEY_MODS mode not implemented');
           break;
         }
-        case 0x00033005: { // GLFW_RAW_MOUSE_MOTION
+        case GLFW_RAW_MOUSE_MOTION: {
           err('glfwSetInputMode called with GLFW_RAW_MOUSE_MOTION mode not implemented');
           break;
         }
@@ -1037,13 +1037,13 @@ var LibraryGLFW = {
 
     getKey: (winid, key) => {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return 0;
+      if (!win) return GLFW_RELEASE;
       return win.keys[key];
     },
 
     getMouseButton: (winid, button) => {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return 0;
+      if (!win) return GLFW_RELEASE;
       return (win.buttons & (1 << button)) > 0;
     },
 
@@ -1144,14 +1144,14 @@ var LibraryGLFW = {
 
       const canvas = Browser.getCanvas();
 
-      var useWebGL = GLFW.hints[0x00022001] > 0; // Use WebGL when we are told to based on GLFW_CLIENT_API
+      var useWebGL = GLFW.hints[GLFW_CLIENT_API] > GLFW_NO_API; // Use WebGL when we are told to based on GLFW_CLIENT_API
       if (i == GLFW.windows.length) {
         if (useWebGL) {
           var contextAttributes = {
-            antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
-            depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
-            stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
-            alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS
+            antialias: (GLFW.hints[GLFW_SAMPLES] > 1),
+            depth: (GLFW.hints[GLFW_DEPTH_BITS] > 0),
+            stencil: (GLFW.hints[GLFW_STENCIL_BITS] > 0),
+            alpha: (GLFW.hints[GLFW_ALPHA_BITS] > 0)
           }
 #if OFFSCREEN_FRAMEBUFFER
           // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
@@ -1351,7 +1351,7 @@ var LibraryGLFW = {
 
     isHiDPIAware() {
       if (GLFW.active)
-        return GLFW.active.attributes[0x0002200C] > 0; // GLFW_SCALE_TO_MONITOR
+        return GLFW.active.attributes[GLFW_SCALE_TO_MONITOR] > 0;
       else
         return false;
     },
@@ -1381,37 +1381,40 @@ var LibraryGLFW = {
     },
 
     GLFW2ParamToGLFW3Param: (param) => {
+      // Keys are GLFW 2 enum values from GL/glfw.h, which cannot be added to
+      // struct_info.json because their names collide with GLFW 3 macros in
+      // GLFW/glfw3.h.
       var table = {
-        0x00030001:0, // GLFW_MOUSE_CURSOR
-        0x00030002:0, // GLFW_STICKY_KEYS
-        0x00030003:0, // GLFW_STICKY_MOUSE_BUTTONS
-        0x00030004:0, // GLFW_SYSTEM_KEYS
-        0x00030005:0, // GLFW_KEY_REPEAT
-        0x00030006:0, // GLFW_AUTO_POLL_EVENTS
-        0x00020001:0, // GLFW_OPENED
-        0x00020002:0, // GLFW_ACTIVE
-        0x00020003:0, // GLFW_ICONIFIED
-        0x00020004:0, // GLFW_ACCELERATED
-        0x00020005:0x00021001, // GLFW_RED_BITS
-        0x00020006:0x00021002, // GLFW_GREEN_BITS
-        0x00020007:0x00021003, // GLFW_BLUE_BITS
-        0x00020008:0x00021004, // GLFW_ALPHA_BITS
-        0x00020009:0x00021005, // GLFW_DEPTH_BITS
-        0x0002000A:0x00021006, // GLFW_STENCIL_BITS
-        0x0002000B:0x0002100F, // GLFW_REFRESH_RATE
-        0x0002000C:0x00021007, // GLFW_ACCUM_RED_BITS
-        0x0002000D:0x00021008, // GLFW_ACCUM_GREEN_BITS
-        0x0002000E:0x00021009, // GLFW_ACCUM_BLUE_BITS
-        0x0002000F:0x0002100A, // GLFW_ACCUM_ALPHA_BITS
-        0x00020010:0x0002100B, // GLFW_AUX_BUFFERS
-        0x00020011:0x0002100C, // GLFW_STEREO
-        0x00020012:0, // GLFW_WINDOW_NO_RESIZE
-        0x00020013:0x0002100D, // GLFW_FSAA_SAMPLES
-        0x00020014:0x00022002, // GLFW_OPENGL_VERSION_MAJOR
-        0x00020015:0x00022003, // GLFW_OPENGL_VERSION_MINOR
-        0x00020016:0x00022006, // GLFW_OPENGL_FORWARD_COMPAT
-        0x00020017:0x00022007, // GLFW_OPENGL_DEBUG_CONTEXT
-        0x00020018:0x00022008, // GLFW_OPENGL_PROFILE
+        0x00030001: 0, // GLFW_MOUSE_CURSOR
+        0x00030002: 0, // GLFW_STICKY_KEYS
+        0x00030003: 0, // GLFW_STICKY_MOUSE_BUTTONS
+        0x00030004: 0, // GLFW_SYSTEM_KEYS
+        0x00030005: 0, // GLFW_KEY_REPEAT
+        0x00030006: 0, // GLFW_AUTO_POLL_EVENTS
+        0x00020001: 0, // GLFW_OPENED
+        0x00020002: 0, // GLFW_ACTIVE
+        0x00020003: 0, // GLFW_ICONIFIED
+        0x00020004: 0, // GLFW_ACCELERATED
+        0x00020005: GLFW_RED_BITS,
+        0x00020006: GLFW_GREEN_BITS,
+        0x00020007: GLFW_BLUE_BITS,
+        0x00020008: GLFW_ALPHA_BITS,
+        0x00020009: GLFW_DEPTH_BITS,
+        0x0002000A: GLFW_STENCIL_BITS,
+        0x0002000B: GLFW_REFRESH_RATE,
+        0x0002000C: GLFW_ACCUM_RED_BITS,
+        0x0002000D: GLFW_ACCUM_GREEN_BITS,
+        0x0002000E: GLFW_ACCUM_BLUE_BITS,
+        0x0002000F: GLFW_ACCUM_ALPHA_BITS,
+        0x00020010: GLFW_AUX_BUFFERS,
+        0x00020011: GLFW_STEREO,
+        0x00020012: 0, // GLFW_WINDOW_NO_RESIZE
+        0x00020013: GLFW_SAMPLES, // GLFW_FSAA_SAMPLES
+        0x00020014: GLFW_CONTEXT_VERSION_MAJOR, // GLFW_OPENGL_VERSION_MAJOR
+        0x00020015: GLFW_CONTEXT_VERSION_MINOR, // GLFW_OPENGL_VERSION_MINOR
+        0x00020016: GLFW_OPENGL_FORWARD_COMPAT,
+        0x00020017: GLFW_OPENGL_DEBUG_CONTEXT,
+        0x00020018: GLFW_OPENGL_PROFILE,
       };
       return table[param];
     }
@@ -1421,7 +1424,7 @@ var LibraryGLFW = {
  * GLFW FUNCTIONS
  ******************************************************************************/
   glfwInit: () => {
-    if (GLFW.windows) return 1; // GL_TRUE
+    if (GLFW.windows) return GL_TRUE;
 
     GLFW.initialTime = GLFW.getTime();
     GLFW.defaultWindowHints();
@@ -1470,7 +1473,7 @@ var LibraryGLFW = {
       }
     });
 
-    return 1; // GL_TRUE
+    return GL_TRUE;
   },
 
   glfwTerminate: () => {
@@ -1643,7 +1646,7 @@ var LibraryGLFW = {
 
   glfwWindowShouldClose: (winid) => {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return 0;
+    if (!win) return GLFW_FALSE;
     return win.shouldClose;
   },
 
@@ -1818,11 +1821,11 @@ var LibraryGLFW = {
     if (!win) return;
 
     switch (mode) {
-      case 0x00033001: { // GLFW_CURSOR
+      case GLFW_CURSOR: {
         if (Browser.pointerLock) {
-          win.inputModes[mode] = 0x00034003; // GLFW_CURSOR_DISABLED
+          win.inputModes[mode] = GLFW_CURSOR_DISABLED;
         } else {
-          win.inputModes[mode] = 0x00034001; // GLFW_CURSOR_NORMAL
+          win.inputModes[mode] = GLFW_CURSOR_NORMAL;
         }
       }
     }
@@ -1834,7 +1837,7 @@ var LibraryGLFW = {
     GLFW.setInputMode(winid, mode, value);
   },
 
-  glfwRawMouseMotionSupported: () => 0,
+  glfwRawMouseMotionSupported: () => GLFW_FALSE,
 
   glfwGetKey: (winid, key) => GLFW.getKey(winid, key),
 
@@ -1869,7 +1872,7 @@ var LibraryGLFW = {
 
   glfwSetScrollCallback: (winid, cbfun) => GLFW.setScrollCallback(winid, cbfun),
 
-  glfwVulkanSupported: () => 0,
+  glfwVulkanSupported: () => GLFW_FALSE,
 
   glfwSetDropCallback: (winid, cbfun) => GLFW.setDropCallback(winid, cbfun),
 
@@ -1942,14 +1945,14 @@ var LibraryGLFW = {
 
 #elif USE_GLFW == 2
   glfwOpenWindow: (width, height, redbits, greenbits, bluebits, alphabits, depthbits, stencilbits, mode) => {
-    GLFW.hints[0x00021001] = redbits;     // GLFW_RED_BITS
-    GLFW.hints[0x00021002] = greenbits;   // GLFW_GREEN_BITS
-    GLFW.hints[0x00021003] = bluebits;    // GLFW_BLUE_BITS
-    GLFW.hints[0x00021004] = alphabits;   // GLFW_ALPHA_BITS
-    GLFW.hints[0x00021005] = depthbits;   // GLFW_DEPTH_BITS
-    GLFW.hints[0x00021006] = stencilbits; // GLFW_STENCIL_BITS
+    GLFW.hints[GLFW_RED_BITS] = redbits;
+    GLFW.hints[GLFW_GREEN_BITS] = greenbits;
+    GLFW.hints[GLFW_BLUE_BITS] = bluebits;
+    GLFW.hints[GLFW_ALPHA_BITS] = alphabits;
+    GLFW.hints[GLFW_DEPTH_BITS] = depthbits;
+    GLFW.hints[GLFW_STENCIL_BITS] = stencilbits;
     GLFW.createWindow(width, height, 'GLFW2 Window', 0, 0);
-    return 1; // GL_TRUE
+    return GL_TRUE;
   },
 
   glfwCloseWindow: () => GLFW.destroyWindow(GLFW.active.id),
