@@ -23,7 +23,7 @@ See docs/process.md for more on how version tagging works.
 - Embind now generates JavaScript invoker functions at link time instead of
   using `new Function` at runtime. This improves startup time, makes
   `-sDYNAMIC_EXECUTION=0` bindings just as fast as `-sDYNAMIC_EXECUTION=1`
-  without needing `-sEMBIND_AOT`.
+  without needing `-sEMBIND_AOT`. (#28181)
 - C preprocessor defines from `struct_info.json` (previously accessed via
   `{{{ cDefs.FOO }}}`) are now exposed as `const` JavaScript library symbols
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,

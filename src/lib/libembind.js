@@ -117,7 +117,7 @@ var LibraryEmbind = {
   $UnboundTypeError: class extends Error {},
   $PureVirtualError: class extends Error {},
   $createJsInvoker: createJsInvoker,
-  $InvokerFunctions: `{${EMBIND_INVOKERS.map((sig) => `'${sig}': ${createJsInvoker(sig)},`).join('\n')}}`,
+  $invokerFunctions: `{${EMBIND_INVOKERS.map((sig) => `'${sig}': ${createJsInvoker(sig)},`).join('\n')}}`,
   // If register_type is used, emval will be registered multiple times for
   // different type ids, but only a single type object is needed on the JS side
   // for all of them. Store the type for reuse.
@@ -762,10 +762,10 @@ var LibraryEmbind = {
 
     var cleanupMode = useStackFrame ? 's' : (needsDestructorStack ? 'd' : 'n');
     var signature = `${isClassMethodFunc ? 't' : 'f'}${returns ? 't' : 'f'}${isAsync ? 't' : 'f'}${cleanupMode}${expectedArgCount}`;
-    var invokerFactory = InvokerFunctions[signature];
+    var invokerFactory = invokerFunctions[signature];
 #if MAIN_MODULE
     if (!invokerFactory) {
-      {{{ makeEval('invokerFactory = InvokerFunctions[signature] = createJsInvoker(signature);') }}}
+      {{{ makeEval('invokerFactory = invokerFunctions[signature] = createJsInvoker(signature);') }}}
     }
 #endif
 #if ASSERTIONS

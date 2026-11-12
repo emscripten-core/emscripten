@@ -3507,6 +3507,8 @@ More info: https://emscripten.org
 
   def test_embind_fail(self):
     self.assert_fail([EMXX, test_file('embind/test_unsigned.cpp')], 'undefined symbol: _embind_register_function')
+    self.assert_fail([EMXX, '-Werror', test_file('embind/test_unsigned.cpp'), '-lembind', '-sEMBIND_AOT'],
+                     'EMBIND_AOT is only meaningful with MODULARIZE=instance or WASM_ESM_INTEGRATION')
 
   def test_embind_invalid_overload(self):
     expected = 'BindingError: Cannot register multiple overloads of a function with the same number of arguments'

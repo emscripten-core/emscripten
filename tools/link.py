@@ -1023,6 +1023,10 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       exit_with_error('AUTO_INIT is not compatible with INCOMING_MODULE_JS_API')
     settings.INCOMING_MODULE_JS_API = []
 
+  if settings.EMBIND_AOT and settings.MODULARIZE != 'instance' and not settings.WASM_ESM_INTEGRATION:
+    diagnostics.warning('unused-command-line-argument', 'EMBIND_AOT is only meaningful with MODULARIZE=instance or WASM_ESM_INTEGRATION')
+    settings.EMBIND_AOT = False
+
   if settings.MINIMAL_RUNTIME and options.preload_files:
     exit_with_error('MINIMAL_RUNTIME is not compatible with --preload-file')
 
@@ -1931,7 +1935,7 @@ def phase_post_link(in_wasm, wasm_target, target, js_syms, base_metadata=None):
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
-  if settings.EMBIND_AOT and (settings.MODULARIZE == 'instance' or settings.WASM_ESM_INTEGRATION):
+  if settings.EMBIND_AOT:
     phase_embind_aot(wasm_target, js_syms)
 
   if options.emit_tsd:

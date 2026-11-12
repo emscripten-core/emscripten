@@ -2706,8 +2706,9 @@ EMBIND_AOT
 ==========
 
 Embind specific: If enabled, generate ES module exports for Embind bindings
-at compile time when using ``MODULARIZE=instance`` or
-``WASM_ESM_INTEGRATION``.
+at compile time.
+Note: This setting is only meaningful when using ``WASM_ESM_INTEGRATION`` or
+``MODULARIZE=instance``.
 
 Default value: false
 
