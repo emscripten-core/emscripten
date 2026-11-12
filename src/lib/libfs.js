@@ -786,7 +786,7 @@ FS.staticInit();`;
         ffree: FS.nextInode - 1,
         fsid: 42,
         flags: 2,
-        namelen: 255,
+        namelen: NAME_MAX,
       };
 
       if (node.node_ops.statfs) {
@@ -795,12 +795,12 @@ FS.staticInit();`;
       return rtn;
     },
     // helpers to create specific types of nodes
-    create(path, mode = 0o666) {
+    create(path, mode = S_IRUGO | S_IWUGO) {
       mode &= S_IALLUGO;
       mode |= S_IFREG;
       return FS.mknod(path, mode, 0);
     },
-    mkdir(path, mode = 0o777) {
+    mkdir(path, mode = S_IRWXUGO) {
       mode &= S_IRWXUGO | S_ISVTX;
       mode |= S_IFDIR;
 #if FS_DEBUG
@@ -809,7 +809,7 @@ FS.staticInit();`;
       return FS.mknod(path, mode, 0);
     },
     // Creates a whole directory tree chain if it doesn't yet exist
-    mkdirTree(path, mode = 0o777) {
+    mkdirTree(path, mode = S_IRWXUGO) {
       var dirs = path.split('/');
       var d = '';
       for (var dir of dirs) {
@@ -826,7 +826,7 @@ FS.staticInit();`;
     mkdev(path, mode, dev = undefined) {
       if (typeof dev === 'undefined') {
         dev = mode;
-        mode = 0o666;
+        mode = S_IRUGO | S_IWUGO;
       }
       mode |= S_IFCHR;
       return FS.mknod(path, mode, dev);
@@ -1149,7 +1149,7 @@ FS.staticInit();`;
         dontFollow
       });
     },
-    open(path, flags, mode = 0o666) {
+    open(path, flags, mode = S_IRUGO | S_IWUGO) {
       if (path === '') {
         throw new FS.ErrnoError(ENOENT);
       }
@@ -1190,7 +1190,7 @@ FS.staticInit();`;
           // Ignore the permission bits here to ensure we can `open` this new
           // file below. We use chmod below to apply the permissions once the
           // file is open.
-          node = FS.mknod(path, mode | 0o777, 0);
+          node = FS.mknod(path, mode | S_IRWXUGO, 0);
           created = true;
         }
       }
@@ -1241,7 +1241,7 @@ FS.staticInit();`;
         stream.stream_ops.open(stream);
       }
       if (created) {
-        FS.chmod(node, mode & 0o777);
+        FS.chmod(node, mode & S_IRWXUGO);
       }
 #if expectToReceiveOnModule('logReadFiles')
       if (Module['logReadFiles'] && !(flags & O_WRONLY)) {
@@ -1511,7 +1511,7 @@ FS.staticInit();`;
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount() {
-          var node = FS.createNode(proc_self, 'fd', S_IFDIR | 0o777, S_IXUGO);
+          var node = FS.createNode(proc_self, 'fd', S_IFDIR | S_IRWXUGO, S_IXUGO);
           node.stream_ops = {
             llseek: MEMFS.stream_ops.llseek,
           };

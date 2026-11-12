@@ -843,6 +843,8 @@ const S_IFDIR = 16384;
 
 const S_IFLNK = 40960;
 
+const S_IRWXUGO = 511;
+
 var mmapAlloc = size => {
   abort();
 };
@@ -850,7 +852,7 @@ var mmapAlloc = size => {
 var MEMFS = {
   ops_table: null,
   mount(mount) {
-    return MEMFS.createNode(null, "/", S_IFDIR | 511, 0);
+    return MEMFS.createNode(null, "/", S_IFDIR | S_IRWXUGO, 0);
   },
   createNode(parent, name, mode, dev = undefined) {
     if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
@@ -1048,7 +1050,7 @@ var MEMFS = {
       return [ ".", "..", ...Object.keys(node.contents) ];
     },
     symlink(parent, newname, oldpath) {
-      var node = MEMFS.createNode(parent, newname, 511 | S_IFLNK, 0);
+      var node = MEMFS.createNode(parent, newname, S_IRWXUGO | S_IFLNK, 0);
       node.link = oldpath;
       return node;
     },
@@ -1144,6 +1146,8 @@ var MEMFS = {
   }
 };
 
+const NAME_MAX = 255;
+
 const O_ACCMODE = 2097155;
 
 const O_DIRECTORY = 65536;
@@ -1173,8 +1177,6 @@ const S_IFMT = 61440;
 const S_IFREG = 32768;
 
 const S_IFSOCK = 49152;
-
-const S_IRWXUGO = 511;
 
 const S_ISVTX = 512;
 
@@ -2074,24 +2076,24 @@ var FS = {
       ffree: FS.nextInode - 1,
       fsid: 42,
       flags: 2,
-      namelen: 255
+      namelen: NAME_MAX
     };
     if (node.node_ops.statfs) {
       Object.assign(rtn, node.node_ops.statfs(node.mount.opts.root));
     }
     return rtn;
   },
-  create(path, mode = 438) {
+  create(path, mode = S_IRUGO | S_IWUGO) {
     mode &= S_IALLUGO;
     mode |= S_IFREG;
     return FS.mknod(path, mode, 0);
   },
-  mkdir(path, mode = 511) {
+  mkdir(path, mode = S_IRWXUGO) {
     mode &= S_IRWXUGO | S_ISVTX;
     mode |= S_IFDIR;
     return FS.mknod(path, mode, 0);
   },
-  mkdirTree(path, mode = 511) {
+  mkdirTree(path, mode = S_IRWXUGO) {
     var dirs = path.split("/");
     var d = "";
     for (var dir of dirs) {
@@ -2108,7 +2110,7 @@ var FS = {
   mkdev(path, mode, dev = undefined) {
     if (typeof dev === "undefined") {
       dev = mode;
-      mode = 438;
+      mode = S_IRUGO | S_IWUGO;
     }
     mode |= S_IFCHR;
     return FS.mknod(path, mode, dev);
@@ -2427,7 +2429,7 @@ var FS = {
       dontFollow
     });
   },
-  open(path, flags, mode = 438) {
+  open(path, flags, mode = S_IRUGO | S_IWUGO) {
     if (path === "") {
       throw new FS.ErrnoError(ENOENT);
     }
@@ -2468,7 +2470,7 @@ var FS = {
         // Ignore the permission bits here to ensure we can `open` this new
         // file below. We use chmod below to apply the permissions once the
         // file is open.
-        node = FS.mknod(path, mode | 511, 0);
+        node = FS.mknod(path, mode | S_IRWXUGO, 0);
         created = true;
       }
     }
@@ -2516,7 +2518,7 @@ var FS = {
       stream.stream_ops.open(stream);
     }
     if (created) {
-      FS.chmod(node, mode & 511);
+      FS.chmod(node, mode & S_IRWXUGO);
     }
     return stream;
   },
@@ -2736,7 +2738,7 @@ var FS = {
     FS.mkdir("/proc/self/fd");
     FS.mount({
       mount() {
-        var node = FS.createNode(proc_self, "fd", S_IFDIR | 511, S_IXUGO);
+        var node = FS.createNode(proc_self, "fd", S_IFDIR | S_IRWXUGO, S_IXUGO);
         node.stream_ops = {
           llseek: MEMFS.stream_ops.llseek
         };

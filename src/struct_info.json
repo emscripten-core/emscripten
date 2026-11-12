@@ -126,7 +126,8 @@
             "AT_SYMLINK_NOFOLLOW",
             "AT_REMOVEDIR",
             "AT_EMPTY_PATH",
-            "AT_NO_AUTOMOUNT"
+            "AT_NO_AUTOMOUNT",
+            "AT_SYMLINK_FOLLOW"
         ],
         "structs": {
             "flock": [
@@ -284,8 +285,27 @@
              "IPPROTO_IPV6",
              "IPPROTO_UDP",
              "IPPROTO_TCP",
+             "IP_TTL",
+             "IP_MULTICAST_TTL",
+             "IP_MULTICAST_LOOP",
+             "IP_ADD_MEMBERSHIP",
+             "IP_DROP_MEMBERSHIP",
+             "IPV6_MULTICAST_HOPS",
+             "IPV6_MULTICAST_LOOP",
+             "IPV6_JOIN_GROUP",
+             "IPV6_LEAVE_GROUP",
              "IPV6_V6ONLY",
              "INADDR_LOOPBACK"
+         ]
+    },
+    {
+         "file": "netinet/tcp.h",
+         "defines": [
+             "TCP_NODELAY",
+             "TCP_MAXSEG",
+             "TCP_KEEPIDLE",
+             "TCP_KEEPINTVL",
+             "TCP_KEEPCNT"
          ]
     },
     {
@@ -334,19 +354,29 @@
             "SOCK_STREAM",
             "SOCK_CLOEXEC",
             "SOCK_NONBLOCK",
-             "MSG_PEEK",
-             "AF_INET",
-             "AF_UNSPEC",
-             "AF_INET6",
-             "AF_UNIX",
-             "SOL_SOCKET",
-             "SO_ERROR",
-             "SO_REUSEPORT",
-             "SO_RCVTIMEO",
-             "SO_SNDTIMEO",
-             "SO_ACCEPTCONN",
-             "SO_DOMAIN",
-             "SO_PROTOCOL"
+            "SHUT_RD",
+            "SHUT_WR",
+            "SHUT_RDWR",
+            "MSG_PEEK",
+            "AF_INET",
+            "AF_UNSPEC",
+            "AF_INET6",
+            "AF_UNIX",
+            "SOL_SOCKET",
+            "SO_REUSEADDR",
+            "SO_TYPE",
+            "SO_ERROR",
+            "SO_BROADCAST",
+            "SO_SNDBUF",
+            "SO_RCVBUF",
+            "SO_KEEPALIVE",
+            "SO_LINGER",
+            "SO_REUSEPORT",
+            "SO_RCVTIMEO",
+            "SO_SNDTIMEO",
+            "SO_ACCEPTCONN",
+            "SO_DOMAIN",
+            "SO_PROTOCOL"
         ]
     },
     {
@@ -400,7 +430,8 @@
         "defines": [
             "TZNAME_MAX",
             "SYMLOOP_MAX",
-            "PIPE_BUF"
+            "PIPE_BUF",
+            "NAME_MAX"
         ]
     },
     {

@@ -138,18 +138,18 @@ addToLibrary({
 #if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // see comment above
     // libc methods
 
-    mkdir: (path, mode = 0o777) => FS_mkdir(path, mode),
-    mkdirTree: (path, mode = 0o777) => FS_mkdirTree(path, mode),
+    mkdir: (path, mode = S_IRWXUGO) => FS_mkdir(path, mode),
+    mkdirTree: (path, mode = S_IRWXUGO) => FS_mkdirTree(path, mode),
     rmdir: (path) => FS.handleError(
       withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path)))
     ),
-    open: (path, flags, mode = 0o666) => withStackSave(() => {
+    open: (path, flags, mode = S_IRUGO | S_IWUGO) => withStackSave(() => {
       flags = FS_modeStringToFlags(flags);
       var buffer = stringToUTF8OnStack(path);
       var fd = FS.handleError(__wasmfs_open(buffer, flags, mode));
       return { fd : fd };
     }),
-    create: (path, mode = 0o666) => FS_create(path, mode),
+    create: (path, mode = S_IRUGO | S_IWUGO) => FS_create(path, mode),
     close: (stream) => FS.handleError(-__wasmfs_close(stream.fd)),
     unlink: (path) => FS_unlink(path),
     chdir: (path) => withStackSave(() => __wasmfs_chdir(stringToUTF8OnStack(path))),
@@ -393,7 +393,7 @@ addToLibrary({
     mkdev(path, mode = undefined, dev = undefined) {
       if (typeof dev === 'undefined') {
         dev = mode;
-        mode = 0o666;
+        mode = S_IRUGO | S_IWUGO;
       }
 
       var deviceBackend = wasmFSDevices[dev];
@@ -456,7 +456,7 @@ addToLibrary({
   })),
 
   // Default settings copied from the legacy JS FS API.
-  $FS_create: (path, mode = 0o666) => {
+  $FS_create: (path, mode = S_IRUGO | S_IWUGO) => {
     mode &= S_IALLUGO;
     mode |= S_IFREG;
     return FS_mknod(path, mode, 0);
@@ -480,7 +480,7 @@ addToLibrary({
   },
 
   $FS_mkdir__deps: ['_wasmfs_mkdir'],
-  $FS_mkdir: (path, mode = 0o777) => FS.handleError(withStackSave(() => {
+  $FS_mkdir: (path, mode = S_IRWXUGO) => FS.handleError(withStackSave(() => {
     var buffer = stringToUTF8OnStack(path);
     return __wasmfs_mkdir(buffer, mode);
   })),
@@ -490,7 +490,7 @@ addToLibrary({
    * @param {number=} mode Optionally, the mode to create in. Uses mkdir's
    *                       default if not set.
    */`,
-  $FS_mkdirTree: (path, mode = 0o777) => {
+  $FS_mkdirTree: (path, mode = S_IRWXUGO) => {
     var dirs = path.split('/');
     var d = '';
     for (var dir of dirs) {
