@@ -15809,8 +15809,14 @@ addToLibrary({
     self.run_process(['cargo', 'build'])
 
     # cargo copies only the .js and .wasm; the ESM support module and snippets
-    # stay in deps/, so run from there.
-    out_dir = 'target/wasm32-unknown-emscripten/debug/deps'
+    # stay in rustc's output directory (`deps/` before cargo 1.100, or
+    # `build/<pkg>/<hash>/out/` in cargo 1.100+), so run from there.
+    out_candidates = (
+      glob.glob('target/wasm32-unknown-emscripten/debug/deps/bindgen_greeter.js')
+      or glob.glob('target/wasm32-unknown-emscripten/debug/build/bindgen_greeter/*/out/bindgen_greeter.js')
+    )
+    self.assertEqual(len(out_candidates), 1, out_candidates)
+    out_dir = os.path.dirname(out_candidates[0])
     create_file(os.path.join(out_dir, 'run.mjs'), prelude + '''
       const greeting = new mod.Greeter('Hello').greet('world');
       if (greeting !== 'Hello, world!') throw new Error('unexpected greeting: ' + greeting);
