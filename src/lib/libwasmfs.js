@@ -24,6 +24,7 @@ addToLibrary({
   $wasmFSPreloadingFlushed: false,
   $wasmFSDevices: {},
   $wasmFSDeviceStreams: {},
+  $wasmFSPollWaiters: {},
 
   $FS__deps: [
     '$MEMFS',
@@ -563,5 +564,33 @@ addToLibrary({
       return c;
     }
     return -1;
+  },
+
+  _wasmfs_poll_wait__async: 'auto',
+  _wasmfs_poll_wait: (key, ms, sync) => {
+  if (sync) {
+    return 0;
+  } else {
+    return new Promise((resolve) => {
+      var timer;
+      if (ms >= 0) {
+        timer = setTimeout(() => {
+          delete wasmFSPollWaiters[key];
+          resolve(0);
+        }, ms);
+      }
+      wasmFSPollWaiters[key] = {resolve, timer};
+    });
+  }
+  },
+
+  _wasmfs_poll_notify: (key) => {
+  var entry = wasmFSPollWaiters[key];
+  if (!entry)
+    return;
+
+  delete wasmFSPollWaiters[key];
+  clearTimeout(entry.timer);
+  entry.resolve(1);
   }
 });

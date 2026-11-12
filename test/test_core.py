@@ -9748,27 +9748,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_syscall_intercept.c')
 
   @requires_pthreads
-  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/26736')
   def test_select_blocking(self):
     self.do_runf('core/test_select_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @requires_pthreads
-  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/26736')
   def test_pselect_blocking(self):
     self.do_runf('core/test_pselect_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @requires_pthreads
-  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/26736')
   def test_poll_blocking(self):
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @requires_pthreads
-  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/26736')
   def test_ppoll_blocking(self):
     self.do_runf('core/test_ppoll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @with_asyncify_and_jspi
-  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/26736')
   def test_poll_blocking_asyncify(self):
     if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
       self.skipTest('test requires setTimeout which is not supported under v8')
@@ -9782,11 +9777,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @requires_node_25
   @with_asyncify_and_jspi
   @requires_pthreads
-  @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/26736')
   def test_poll_blocking_asyncify_pthread(self):
     if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  # A poll() suspended on the main thread must wake up when another thread
+  # writes to the pipe.
+  # See test_poll_blocking_asyncify_pthread for @requires_node_25.
+  @requires_node_25
+  @with_asyncify_and_jspi
+  @requires_pthreads
+  def test_poll_blocking_asyncify_thread_writer(self):
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_poll_blocking_asyncify_thread_writer.c', 'done\n',
+                 cflags=['-pthread', '-sPROXY_TO_PTHREAD=0', '-sEXIT_RUNTIME=1', '-sPTHREAD_POOL_SIZE=1'])
 
   @with_asyncify_and_jspi
   @needs_epoll

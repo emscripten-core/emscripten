@@ -11,6 +11,7 @@
 
 #include "file.h"
 #include "support.h"
+#include "wait_queue.h"
 
 namespace wasmfs {
 
@@ -24,6 +25,8 @@ struct PipeData {
   std::queue<uint8_t> bytes;
   bool readClosed = false;
   bool writeClosed = false;
+  WaitQueue readerQueue;
+  WaitQueue writerQueue;
 };
 
 // A PipeFile is a simple file that has a reference to a PipeData that it
@@ -35,10 +38,20 @@ class PipeFile : public DataFile {
   std::shared_ptr<PipeData> data;
   bool writeEnd;
 
+  WaitQueue* getWaitQueue() override {
+    return writeEnd ? &data->writerQueue : &data->readerQueue;
+  }
+
   int open(oflags_t) override { return 0; }
   int close() override {
     std::lock_guard lock(data->mutex);
-    (writeEnd ? data->writeClosed : data->readClosed) = true;
+    if (writeEnd) {
+      data->writeClosed = true;
+      data->readerQueue.notifyAll();
+    } else {
+      data->readClosed = true;
+      data->writerQueue.notifyAll();
+    }
     return 0;
   }
 
@@ -50,6 +63,8 @@ class PipeFile : public DataFile {
     for (size_t i = 0; i < len; i++) {
       data->bytes.push(buf[i]);
     }
+
+    data->readerQueue.notifyAll();
     return len;
   }
 
@@ -72,6 +87,7 @@ class PipeFile : public DataFile {
     for (size_t i = 0; i < len; i++) {
       if (data->bytes.empty()) {
         if (i) {
+          data->writerQueue.notifyAll();
           return i;
         }
         return data->writeClosed ? 0 : -EAGAIN;
@@ -79,6 +95,7 @@ class PipeFile : public DataFile {
       buf[i] = data->bytes.front();
       data->bytes.pop();
     }
+    data->writerQueue.notifyAll();
     return len;
   }
 
