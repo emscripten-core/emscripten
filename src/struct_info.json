@@ -934,7 +934,11 @@
             "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY",
             "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE",
 
-            "EMSCRIPTEN_ORIENTATION_UNSUPPORTED"
+            "EMSCRIPTEN_ORIENTATION_UNSUPPORTED",
+            "EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY",
+            "EMSCRIPTEN_ORIENTATION_PORTRAIT_SECONDARY",
+            "EMSCRIPTEN_ORIENTATION_LANDSCAPE_PRIMARY",
+            "EMSCRIPTEN_ORIENTATION_LANDSCAPE_SECONDARY"
         ],
         "structs": {
             "EmscriptenKeyboardEvent": [
@@ -1116,6 +1120,7 @@
     {
         "file": "emscripten/wasm_worker.h",
         "defines": [
+            "ATOMICS_WAIT_OK",
             "ATOMICS_WAIT_NOT_EQUAL",
             "ATOMICS_WAIT_TIMED_OUT"
         ]
@@ -1309,6 +1314,12 @@
     },
     {
         "file": "emscripten/webaudio.h",
+        "defines": [
+            "EM_FALSE",
+            "EM_TRUE",
+            "AUDIO_CONTEXT_STATE_SUSPENDED",
+            "AUDIO_CONTEXT_STATE_RUNNING"
+        ],
         "structs": {
             "EmscriptenWebAudioCreateAttributes": [
               "latencyHint",
@@ -1386,7 +1397,8 @@
         "file": "GL/gl.h",
         "defines": [
           "GL_UNPACK_ALIGNMENT",
-          "GL_UNPACK_ROW_LENGTH"
+          "GL_UNPACK_ROW_LENGTH",
+          "GL_VIEWPORT"
         ]
     }
 ]
