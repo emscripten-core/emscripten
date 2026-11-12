@@ -8057,6 +8057,7 @@ void* operator new(size_t size) {
     # Check that embind is usable from a library built with "-fvisibility=hidden"
 
     create_file('libside.cpp', r'''
+      #include <emscripten/bind.h>
       #include <emscripten/val.h>
       #define EXPORT __attribute__((visibility("default")))
       using namespace emscripten;
@@ -8064,18 +8065,26 @@ void* operator new(size_t size) {
         unsigned char buffer[1];
         val view(typed_memory_view(1, buffer));
       }
+      int side_add(int a, int b) {
+        return a + b;
+      }
+      EMSCRIPTEN_BINDINGS(side_module) {
+        function("side_add", &side_add);
+      }
     ''')
     self.build_dlfcn_lib('libside.cpp', cflags=['-fvisibility=hidden'])
 
     self.prep_dlfcn_main()
     self.clear_setting('NO_AUTOLOAD_DYLIBS')
     create_file('main.cpp', r'''
+      #include <assert.h>
       #include <stdio.h>
       #include <emscripten/val.h>
       using namespace emscripten;
       void liba_fun();
       int main() {
         liba_fun();
+        assert(val::module_property("side_add")(20, 22).as<int>() == 42);
         printf("done\n");
         return 0;
       }

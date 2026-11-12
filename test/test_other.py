@@ -3507,6 +3507,8 @@ More info: https://emscripten.org
 
   def test_embind_fail(self):
     self.assert_fail([EMXX, test_file('embind/test_unsigned.cpp')], 'undefined symbol: _embind_register_function')
+    self.assert_fail([EMXX, '-Werror', test_file('embind/test_unsigned.cpp'), '-lembind', '-sEMBIND_AOT'],
+                     'EMBIND_AOT is only meaningful with MODULARIZE=instance or WASM_ESM_INTEGRATION')
 
   def test_embind_invalid_overload(self):
     expected = 'BindingError: Cannot register multiple overloads of a function with the same number of arguments'
@@ -3618,7 +3620,6 @@ More info: https://emscripten.org
     '': (),
     'no_utf8': ('-sEMBIND_STD_STRING_IS_UTF8=0',),
     'no_dynamic': ('-sDYNAMIC_EXECUTION=0',),
-    'aot_js': ('-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT', '-DSKIP_UNBOUND_TYPES'),
     'wasm64': ('-m64',),
     '2gb': ('-sINITIAL_MEMORY=2200mb', '-sGLOBAL_BASE=2gb'),
   })
@@ -3704,7 +3705,6 @@ More info: https://emscripten.org
   @parameterized({
     '': (),
     'no_dynamic': ('-sDYNAMIC_EXECUTION=0',),
-    'aot_js': ('-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT'),
     'wasm64': ('-m64', '-sDYNAMIC_EXECUTION=0'),
   })
   def test_embind_trivial_value_stack(self, *extra_args):
@@ -3793,7 +3793,6 @@ More info: https://emscripten.org
     # `type: "module"` in package.json, this still tests CommonJS.
     'commonjs': (['-sMODULARIZE'], ['--module', 'node16', '--moduleResolution', 'node16']),
     'esm': (['-sEXPORT_ES6'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']),
-    'esm_with_jsgen': (['-sEXPORT_ES6', '-sEMBIND_AOT'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']),
   })
   def test_embind_tsgen_end_to_end(self, opts, tsc_opts):
     # Check that TypeScript generation works and that the program is runs as
@@ -3952,11 +3951,6 @@ More info: https://emscripten.org
                       '--emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'] +
                      self.get_cflags())
     self.assertFilesMatch(test_file('other/embind_tsgen.d.ts'), 'embind_tsgen.d.ts')
-
-  def test_embind_jsgen_method_pointer_stability(self):
-    # Test that when method pointers are allocated at different addresses that
-    # AOT JS generation still works correctly.
-    self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done\n', cflags=['-lembind', '-sEMBIND_AOT'])
 
   @requires_dev_dependency('typescript')
   @parameterized({

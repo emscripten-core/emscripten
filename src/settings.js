@@ -1792,11 +1792,11 @@ var TEXTDECODER = 1;
 // [link]
 var EMBIND_STD_STRING_IS_UTF8 = true;
 
-// Embind specific: If enabled, generate Embind's JavaScript invoker functions
-// at compile time and include them in the JS output file. When used with
-// DYNAMIC_EXECUTION=0 this allows exported bindings to be just as fast as
-// DYNAMIC_EXECUTION=1 mode, but without the need for eval(). If there are many
-// bindings the JS output size may be larger though.
+// Embind specific: If enabled, generate ES module exports for Embind bindings
+// at compile time.
+// Note: This setting is only meaningful when using ``WASM_ESM_INTEGRATION`` or
+// ``MODULARIZE=instance``.
+// [link]
 var EMBIND_AOT = false;
 
 // If set to 1, enables support for transferring canvases to pthreads and

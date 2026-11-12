@@ -1023,6 +1023,10 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       exit_with_error('AUTO_INIT is not compatible with INCOMING_MODULE_JS_API')
     settings.INCOMING_MODULE_JS_API = []
 
+  if settings.EMBIND_AOT and settings.MODULARIZE != 'instance' and not settings.WASM_ESM_INTEGRATION:
+    diagnostics.warning('unused-command-line-argument', 'EMBIND_AOT is only meaningful with MODULARIZE=instance or WASM_ESM_INTEGRATION')
+    settings.EMBIND_AOT = False
+
   if settings.MINIMAL_RUNTIME and options.preload_files:
     exit_with_error('MINIMAL_RUNTIME is not compatible with --preload-file')
 
@@ -2081,9 +2085,8 @@ def phase_embind_aot(wasm_target, js_syms):
   if DEBUG:
     write_file(in_temp('embind_aot.json'), out)
   out = json.loads(out)
-  src = read_file(final_js)
-  src = do_replace(src, '<<< EMBIND_AOT_INVOKERS >>>', out['invokers'])
   if settings.MODULARIZE == 'instance':
+    src = read_file(final_js)
     # Add ES module exports for the embind exports.
     decls = '\n'.join([f'export var {name};' for name in out['publicSymbols']])
     # Assign the runtime exports from Module to the ES export.
@@ -2095,7 +2098,7 @@ addOnPostCtor(assignEmbindExports);
 {decls}
 // end embind exports'''
     src = do_replace(src, '<<< EMBIND_AOT_EXPORTS >>>', exports)
-  write_file(final_js, src)
+    write_file(final_js, src)
   if settings.WASM_ESM_INTEGRATION:
     # With ESM integration the embind exports also need to be exported by the main file.
     settings.EXPORTED_RUNTIME_METHODS.extend(out['publicSymbols'])

@@ -7,8 +7,6 @@
 var LibraryEmbind = {
 
   $moduleDefinitions: [],
-  // Function signatures that have already been generated for JS generation.
-  $emittedFunctions: 'new Set()',
 
   $PrimitiveType: class {
     constructor(typeId, name) {
@@ -107,48 +105,10 @@ var LibraryEmbind = {
       this.printFunction(nameMap, out);
       out.push(';\n');
     }
-
-    // Convert a type definition in this file to something that matches the type
-    // object in embind.js `registerType()`.
-    convertToEmbindType(type) {
-      const ret = {
-        name: type.name,
-      };
-      if (type.usesDestructor) {
-        ret.usesDestructor = true;
-      }
-      if (type.argStackAlloc) {
-        // Trivial value types stack-allocate their argument temporaries;
-        // must mirror the runtime type object so the invoker signature and
-        // generated shape match (see createJsInvokerSignature).
-        ret.argStackAlloc = true;
-      }
-      return ret;
-    }
-
-    printJs(out) {
-      const argTypes = [this.convertToEmbindType(this.returnType)];
-      if (this.thisType) {
-        argTypes.push(this.convertToEmbindType(this.thisType));
-      } else {
-        argTypes.push(null);
-      }
-      for (const argType of this.argumentTypes) {
-        argTypes.push(this.convertToEmbindType(argType.type));
-      }
-      const signature = createJsInvokerSignature(argTypes, !!this.thisType, !this.returnType.isVoid, this.isAsync)
-      if (emittedFunctions.has(signature)) {
-        return;
-      }
-      emittedFunctions.add(signature);
-      let invokerFactory = createJsInvoker(argTypes, !!this.thisType, !this.returnType.isVoid, this.isAsync);
-      out.push(`'${signature}': ${invokerFactory},`);
-    }
   },
   $PointerDefinition: class {
-    constructor(classType, isSmartPointer = false) {
+    constructor(classType) {
       this.classType = classType;
-      this.usesDestructor = isSmartPointer;
     }
   },
   $ClassDefinition: class {
@@ -221,30 +181,6 @@ var LibraryEmbind = {
       }
       out.push('};\n');
     }
-
-    printJs(out) {
-      out.push(`// class ${this.name}\n`);
-      if (this.constructors.length) {
-        out.push(`// constructors\n`);
-        for (const construct of this.constructors) {
-          construct.printJs(out);
-        }
-      }
-      if (this.staticMethods.length) {
-        out.push(`// static methods\n`);
-        for (const method of this.staticMethods) {
-          method.printJs(out);
-        }
-      }
-      if (this.methods.length) {
-        out.push(`// methods\n`);
-        for (const method of this.methods) {
-          method.printJs(out);
-        }
-      }
-      out.push('\n');
-    }
-
   },
   $ClassProperty: class {
     constructor(type, name, readonly) {
@@ -336,15 +272,11 @@ var LibraryEmbind = {
     }
   },
   $ValueArrayDefinition: class {
-    constructor(typeId, name, isTrivial) {
+    constructor(typeId, name) {
       this.typeId = typeId;
       this.name = name;
       this.elementTypeIds = [];
       this.elements = [];
-      // Trivial types need no destructor call; their argument temporaries
-      // live in the invoker's stack frame.
-      this.usesDestructor = !isTrivial;
-      this.argStackAlloc = !!isTrivial;
     }
 
     print(nameMap, out) {
@@ -358,15 +290,12 @@ var LibraryEmbind = {
     }
   },
   $ValueObjectDefinition: class {
-    constructor(typeId, name, isTrivial) {
+    constructor(typeId, name) {
       this.typeId = typeId;
       this.name = name;
       this.fieldTypeIds = [];
       this.fieldNames = [];
       this.fields = [];
-      // See ValueArrayDefinition: trivial types stack-allocate.
-      this.usesDestructor = !isTrivial;
-      this.argStackAlloc = !!isTrivial;
     }
 
     print(nameMap, out) {
@@ -483,20 +412,13 @@ var LibraryEmbind = {
     }
 
     print() {
-      const out = ['{\n'];
       const publicSymbols = [];
       for (const def of this.definitions) {
         if (def.hasPublicSymbol) {
           publicSymbols.push(def.name);
         }
-        if (!def.printJs) {
-          continue;
-        }
-        def.printJs(out);
       }
-      out.push('}\n');
       return JSON.stringify({
-        'invokers': out.join(''),
         publicSymbols,
       });
     }
@@ -524,8 +446,10 @@ var LibraryEmbind = {
       let argStart = 1;
       if (hasThis) {
         thisType = argTypes[1];
-        const classType = thisType instanceof PointerDefinition ? thisType.classType : thisType;
-        if (!(classType instanceof ClassDefinition)) {
+        if (thisType instanceof PointerDefinition) {
+          thisType = argTypes[1].classType;
+        }
+        if (!(thisType instanceof ClassDefinition)) {
           throw new Error('This type must be class definition for: ' + name);
         }
         argStart = 2;
@@ -548,9 +472,7 @@ var LibraryEmbind = {
     });
   },
   _embind_register_void: (typeID, name) => {
-    const voidType = new PrimitiveType(typeID, 'void');
-    voidType.isVoid = true; // Match the marker property from the non-AOT mode.
-    registerType(typeID, voidType);
+    registerPrimitiveType(typeID, name);
   },
   _embind_register_bool: (typeID, name, trueValue, falseValue) => {
     registerPrimitiveType(typeID, name);
@@ -662,7 +584,7 @@ var LibraryEmbind = {
           isAsync,
           isNonnullReturn) {
     createFunctionDefinition(methodName, argCount, rawArgTypesAddr, context, true, isNonnullReturn, isAsync, (funcDef) => {
-      const classDef = funcDef.thisType instanceof PointerDefinition ? funcDef.thisType.classType : funcDef.thisType;
+      const classDef = funcDef.thisType;
       classDef.methods.push(funcDef);
     });
   },
@@ -761,7 +683,7 @@ var LibraryEmbind = {
     isTrivial
   ) {
     name = AsciiToString(name);
-    const valueArray = new ValueArrayDefinition(typeID, name, isTrivial);
+    const valueArray = new ValueArrayDefinition(typeID, name);
     tupleRegistrations[typeID] = valueArray;
   },
   _embind_register_value_array_element: function(
@@ -802,7 +724,7 @@ var LibraryEmbind = {
     isTrivial
   ) {
     name = AsciiToString(name);
-    const valueObject = new ValueObjectDefinition(typeID, name, isTrivial);
+    const valueObject = new ValueObjectDefinition(typeID, name);
     structRegistrations[typeID] = valueObject;
   },
   _embind_register_value_object_field: function(
@@ -852,7 +774,7 @@ var LibraryEmbind = {
                                        destructorSignature,
                                        rawDestructor) {
     whenDependentTypesAreResolved([typeID], [pointeeTypeID], function(pointeeType) {
-      const smartPointer = new PointerDefinition(pointeeType[0], true);
+      const smartPointer = new PointerDefinition(pointeeType[0]);
       return [smartPointer];
     });
   },
