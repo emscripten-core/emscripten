@@ -43,7 +43,7 @@ var LibraryGLEmulation = {
     fogStart: 0,
     fogEnd: 1,
     fogDensity: 1.0,
-    fogMode: 0x800, // GL_EXP
+    fogMode: cDefs.GL_EXP,
     fogEnabled: false,
 
     // GL_CLIP_PLANE support
@@ -71,7 +71,7 @@ var LibraryGLEmulation = {
 
     // GL_ALPHA_TEST support
     alphaTestEnabled: false,
-    alphaTestFunc: 0x207, // GL_ALWAYS
+    alphaTestFunc: cDefs.GL_ALWAYS,
     alphaTestRef: 0.0,
 
     // GL_POINTS support.
@@ -157,15 +157,15 @@ var LibraryGLEmulation = {
 
       // XXX some of the capabilities we don't support may lead to incorrect rendering, if we do not emulate them in shaders
       var validCapabilities = {
-        0xB44: 1, // GL_CULL_FACE
-        0xBE2: 1, // GL_BLEND
-        0xBD0: 1, // GL_DITHER,
-        0xB90: 1, // GL_STENCIL_TEST
-        0xB71: 1, // GL_DEPTH_TEST
-        0xC11: 1, // GL_SCISSOR_TEST
-        0x8037: 1, // GL_POLYGON_OFFSET_FILL
-        0x809E: 1, // GL_SAMPLE_ALPHA_TO_COVERAGE
-        0x80A0: 1  // GL_SAMPLE_COVERAGE
+        {{{ cDefs.GL_CULL_FACE }}}: 1,
+        {{{ cDefs.GL_BLEND }}}: 1,
+        {{{ cDefs.GL_DITHER }}}: 1,
+        {{{ cDefs.GL_STENCIL_TEST }}}: 1,
+        {{{ cDefs.GL_DEPTH_TEST }}}: 1,
+        {{{ cDefs.GL_SCISSOR_TEST }}}: 1,
+        {{{ cDefs.GL_POLYGON_OFFSET_FILL }}}: 1,
+        {{{ cDefs.GL_SAMPLE_ALPHA_TO_COVERAGE }}}: 1,
+        {{{ cDefs.GL_SAMPLE_COVERAGE }}}: 1,
       };
 
       var orig_glEnable = _glEnable;
@@ -173,39 +173,39 @@ var LibraryGLEmulation = {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
         GLImmediate.lastRenderer?.cleanup();
-        if (cap == 0xB60 /* GL_FOG */) {
+        if (cap == GL_FOG) {
           if (GLEmulation.fogEnabled != true) {
             GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.fogEnabled = true;
           }
           return;
-        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
-          var clipPlaneId = cap - 0x3000;
+        } else if ((cap >= GL_CLIP_PLANE0) && (cap < GL_CLIP_PLANE0 + GLEMU_MAX_CLIP_PLANES)) {
+          var clipPlaneId = cap - GL_CLIP_PLANE0;
           if (GLEmulation.clipPlaneEnabled[clipPlaneId] != true) {
             GLImmediate.currentRenderer = null; // clip plane parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.clipPlaneEnabled[clipPlaneId] = true;
           }
           return;
-        } else if ((cap >= 0x4000) && (cap < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
-          var lightId = cap - 0x4000;
+        } else if ((cap >= GL_LIGHT0) && (cap < GL_LIGHT0 + GLEMU_MAX_LIGHTS)) {
+          var lightId = cap - GL_LIGHT0;
           if (GLEmulation.lightEnabled[lightId] != true) {
             GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.lightEnabled[lightId] = true;
           }
           return;
-        } else if (cap == 0xB50 /* GL_LIGHTING */) {
+        } else if (cap == GL_LIGHTING) {
           if (GLEmulation.lightingEnabled != true) {
             GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.lightingEnabled = true;
           }
           return;
-        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+        } else if (cap == GL_ALPHA_TEST) {
           if (GLEmulation.alphaTestEnabled != true) {
             GLImmediate.currentRenderer = null; // alpha testing is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.alphaTestEnabled = true;
           }
           return;
-        } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
+        } else if (cap == GL_TEXTURE_2D) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glEnableClientState
           /* Actually, let's not, for now. (This sounds exceedingly broken)
@@ -223,39 +223,39 @@ var LibraryGLEmulation = {
       var orig_glDisable = _glDisable;
       _glDisable = _emscripten_glDisable = (cap) => {
         GLImmediate.lastRenderer?.cleanup();
-        if (cap == 0xB60 /* GL_FOG */) {
+        if (cap == GL_FOG) {
           if (GLEmulation.fogEnabled != false) {
             GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.fogEnabled = false;
           }
           return;
-        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
-          var clipPlaneId = cap - 0x3000;
+        } else if ((cap >= GL_CLIP_PLANE0) && (cap < GL_CLIP_PLANE0 + GLEMU_MAX_CLIP_PLANES)) {
+          var clipPlaneId = cap - GL_CLIP_PLANE0;
           if (GLEmulation.clipPlaneEnabled[clipPlaneId] != false) {
             GLImmediate.currentRenderer = null; // clip plane parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.clipPlaneEnabled[clipPlaneId] = false;
           }
           return;
-        } else if ((cap >= 0x4000) && (cap < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
-          var lightId = cap - 0x4000;
+        } else if ((cap >= GL_LIGHT0) && (cap < GL_LIGHT0 + GLEMU_MAX_LIGHTS)) {
+          var lightId = cap - GL_LIGHT0;
           if (GLEmulation.lightEnabled[lightId] != false) {
             GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.lightEnabled[lightId] = false;
           }
           return;
-        } else if (cap == 0xB50 /* GL_LIGHTING */) {
+        } else if (cap == GL_LIGHTING) {
           if (GLEmulation.lightingEnabled != false) {
             GLImmediate.currentRenderer = null; // light parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.lightingEnabled = false;
           }
           return;
-        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
+        } else if (cap == GL_ALPHA_TEST) {
           if (GLEmulation.alphaTestEnabled != false) {
             GLImmediate.currentRenderer = null; // alpha testing is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.alphaTestEnabled = false;
           }
           return;
-        } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
+        } else if (cap == GL_TEXTURE_2D) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glDisableClientState
           /* Actually, let's not, for now. (This sounds exceedingly broken)
@@ -272,20 +272,20 @@ var LibraryGLEmulation = {
 
       var orig_glIsEnabled = _glIsEnabled;
       _glIsEnabled = _emscripten_glIsEnabled = (cap) => {
-        if (cap == 0xB60 /* GL_FOG */) {
-          return GLEmulation.fogEnabled ? 1 : 0;
-        } else if ((cap >= 0x3000) && (cap < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
-          var clipPlaneId = cap - 0x3000;
-          return GLEmulation.clipPlaneEnabled[clipPlaneId] ? 1 : 0;
-        } else if ((cap >= 0x4000) && (cap < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
-          var lightId = cap - 0x4000;
-          return GLEmulation.lightEnabled[lightId] ? 1 : 0;
-        } else if (cap == 0xB50 /* GL_LIGHTING */) {
-          return GLEmulation.lightingEnabled ? 1 : 0;
-        } else if (cap == 0xBC0 /* GL_ALPHA_TEST */) {
-          return GLEmulation.alphaTestEnabled ? 1 : 0;
+        if (cap == GL_FOG) {
+          return GLEmulation.fogEnabled ? GL_TRUE : GL_FALSE;
+        } else if ((cap >= GL_CLIP_PLANE0) && (cap < GL_CLIP_PLANE0 + GLEMU_MAX_CLIP_PLANES)) {
+          var clipPlaneId = cap - GL_CLIP_PLANE0;
+          return GLEmulation.clipPlaneEnabled[clipPlaneId] ? GL_TRUE : GL_FALSE;
+        } else if ((cap >= GL_LIGHT0) && (cap < GL_LIGHT0 + GLEMU_MAX_LIGHTS)) {
+          var lightId = cap - GL_LIGHT0;
+          return GLEmulation.lightEnabled[lightId] ? GL_TRUE : GL_FALSE;
+        } else if (cap == GL_LIGHTING) {
+          return GLEmulation.lightingEnabled ? GL_TRUE : GL_FALSE;
+        } else if (cap == GL_ALPHA_TEST) {
+          return GLEmulation.alphaTestEnabled ? GL_TRUE : GL_FALSE;
         } else if (!(cap in validCapabilities)) {
-          return 0;
+          return GL_FALSE;
         }
         return GLctx.isEnabled(cap);
       };
@@ -297,7 +297,7 @@ var LibraryGLEmulation = {
         if (attrib !== null) {
           {{{ fromPtr('p') }}}
           var result = GLImmediate.enabledClientAttributes[attrib];
-          {{{ makeSetValue('p', '0', 'result === true ? 1 : 0', 'i8') }}};
+          {{{ makeSetValue('p', '0', 'result === true ? GL_TRUE : GL_FALSE', 'i8') }}};
           return;
         }
         orig_glGetBooleanv(pname, p);
@@ -308,77 +308,77 @@ var LibraryGLEmulation = {
       _glGetIntegerv = _emscripten_glGetIntegerv = (pname, params) => {
         {{{ fromPtr('params') }}}
         switch (pname) {
-          case 0x84E2: pname = GLctx.MAX_TEXTURE_IMAGE_UNITS /* fake it */; break; // GL_MAX_TEXTURE_UNITS
-          case 0x8B4A: { // GL_MAX_VERTEX_UNIFORM_COMPONENTS_ARB
+          case GL_MAX_TEXTURE_UNITS: pname = GLctx.MAX_TEXTURE_IMAGE_UNITS /* fake it */; break;
+          case GL_MAX_VERTEX_UNIFORM_COMPONENTS_ARB: {
             var result = GLctx.getParameter(GLctx.MAX_VERTEX_UNIFORM_VECTORS);
             {{{ makeSetValue('params', '0', 'result*4', 'i32') }}}; // GLES gives num of 4-element vectors, GL wants individual components, so multiply
             return;
           }
-          case 0x8B49: { // GL_MAX_FRAGMENT_UNIFORM_COMPONENTS_ARB
+          case GL_MAX_FRAGMENT_UNIFORM_COMPONENTS_ARB: {
             var result = GLctx.getParameter(GLctx.MAX_FRAGMENT_UNIFORM_VECTORS);
             {{{ makeSetValue('params', '0', 'result*4', 'i32') }}}; // GLES gives num of 4-element vectors, GL wants individual components, so multiply
             return;
           }
-          case 0x8B4B: { // GL_MAX_VARYING_FLOATS_ARB
+          case GL_MAX_VARYING_FLOATS_ARB: {
             var result = GLctx.getParameter(GLctx.MAX_VARYING_VECTORS);
             {{{ makeSetValue('params', '0', 'result*4', 'i32') }}}; // GLES gives num of 4-element vectors, GL wants individual components, so multiply
             return;
           }
-          case 0x8871: pname = GLctx.MAX_COMBINED_TEXTURE_IMAGE_UNITS /* close enough */; break; // GL_MAX_TEXTURE_COORDS
-          case 0x807A: { // GL_VERTEX_ARRAY_SIZE
+          case GL_MAX_TEXTURE_COORDS: pname = GLctx.MAX_COMBINED_TEXTURE_IMAGE_UNITS /* close enough */; break;
+          case GL_VERTEX_ARRAY_SIZE: {
             var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_VERTEX];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
             return;
           }
-          case 0x807B: { // GL_VERTEX_ARRAY_TYPE
+          case GL_VERTEX_ARRAY_TYPE: {
             var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_VERTEX];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
             return;
           }
-          case 0x807C: { // GL_VERTEX_ARRAY_STRIDE
+          case GL_VERTEX_ARRAY_STRIDE: {
             var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_VERTEX];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
             return;
           }
-          case 0x8081: { // GL_COLOR_ARRAY_SIZE
+          case GL_COLOR_ARRAY_SIZE: {
             var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_COLOR];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
             return;
           }
-          case 0x8082: { // GL_COLOR_ARRAY_TYPE
+          case GL_COLOR_ARRAY_TYPE: {
             var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_COLOR];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
             return;
           }
-          case 0x8083: { // GL_COLOR_ARRAY_STRIDE
+          case GL_COLOR_ARRAY_STRIDE: {
             var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_COLOR];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
             return;
           }
-          case 0x8088: { // GL_TEXTURE_COORD_ARRAY_SIZE
+          case GL_TEXTURE_COORD_ARRAY_SIZE: {
             var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
             return;
           }
-          case 0x8089: { // GL_TEXTURE_COORD_ARRAY_TYPE
+          case GL_TEXTURE_COORD_ARRAY_TYPE: {
             var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
             return;
           }
-          case 0x808A: { // GL_TEXTURE_COORD_ARRAY_STRIDE
+          case GL_TEXTURE_COORD_ARRAY_STRIDE: {
             var attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture];
             {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
             return;
           }
-          case 0x0D32: { // GL_MAX_CLIP_PLANES
+          case GL_MAX_CLIP_PLANES: {
             {{{ makeSetValue('params', '0', 'GLEMU_MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support at least 6
             return;
           }
-          case 0x0BA0: { // GL_MATRIX_MODE
-            {{{ makeSetValue('params', '0', 'GLImmediate.currentMatrix + 0x1700', 'i32') }}};
+          case GL_MATRIX_MODE: {
+            {{{ makeSetValue('params', '0', 'GLImmediate.currentMatrix + GL_MODELVIEW', 'i32') }}};
             return;
           }
-          case 0x0BC1: { // GL_ALPHA_TEST_FUNC
+          case GL_ALPHA_TEST_FUNC: {
             {{{ makeSetValue('params', '0', 'GLEmulation.alphaTestFunc', 'i32') }}};
             return;
           }
@@ -391,7 +391,7 @@ var LibraryGLEmulation = {
       _glGetString = _emscripten_glGetString = (name_) => {
         if (GL.stringCache[name_]) return GL.stringCache[name_];
         switch (name_) {
-          case 0x1F03 /* GL_EXTENSIONS */: // Add various extensions that we can support
+          case GL_EXTENSIONS: // Add various extensions that we can support
             var ret = stringToNewUTF8(getEmscriptenSupportedExtensions(GLctx).join(' ') +
                    ' GL_EXT_texture_env_combine GL_ARB_texture_env_crossbar GL_ATI_texture_env_combine3 GL_NV_texture_env_combine4 GL_EXT_texture_env_dot3 GL_ARB_multitexture GL_ARB_vertex_buffer_object GL_EXT_framebuffer_object GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_shading_language_100 GL_ARB_shader_objects GL_ARB_vertex_shader GL_ARB_fragment_shader GL_ARB_texture_cube_map GL_EXT_draw_range_elements' +
                    (GL.currentContext.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '') +
@@ -651,28 +651,28 @@ var LibraryGLEmulation = {
       var orig_glGetFloatv = _glGetFloatv;
       _glGetFloatv = _emscripten_glGetFloatv = (pname, params) => {
         {{{ fromPtr('params') }}}
-        if (pname == 0xBA6) { // GL_MODELVIEW_MATRIX
+        if (pname == GL_MODELVIEW_MATRIX) {
           HEAPF32.set(GLImmediate.matrix[0/*m*/], {{{ getHeapOffset('params', 'float') }}});
-        } else if (pname == 0xBA7) { // GL_PROJECTION_MATRIX
+        } else if (pname == GL_PROJECTION_MATRIX) {
           HEAPF32.set(GLImmediate.matrix[1/*p*/], {{{ getHeapOffset('params', 'float') }}});
-        } else if (pname == 0xBA8) { // GL_TEXTURE_MATRIX
+        } else if (pname == GL_TEXTURE_MATRIX) {
           HEAPF32.set(GLImmediate.matrix[2/*t*/ + GLImmediate.clientActiveTexture], {{{ getHeapOffset('params', 'float') }}});
-        } else if (pname == 0xB66) { // GL_FOG_COLOR
+        } else if (pname == GL_FOG_COLOR) {
           HEAPF32.set(GLEmulation.fogColor, {{{ getHeapOffset('params', 'float') }}});
-        } else if (pname == 0xB63) { // GL_FOG_START
+        } else if (pname == GL_FOG_START) {
           {{{ makeSetValue('params', '0', 'GLEmulation.fogStart', 'float') }}};
-        } else if (pname == 0xB64) { // GL_FOG_END
+        } else if (pname == GL_FOG_END) {
           {{{ makeSetValue('params', '0', 'GLEmulation.fogEnd', 'float') }}};
-        } else if (pname == 0xB62) { // GL_FOG_DENSITY
+        } else if (pname == GL_FOG_DENSITY) {
           {{{ makeSetValue('params', '0', 'GLEmulation.fogDensity', 'float') }}};
-        } else if (pname == 0xB65) { // GL_FOG_MODE
+        } else if (pname == GL_FOG_MODE) {
           {{{ makeSetValue('params', '0', 'GLEmulation.fogMode', 'float') }}};
-        } else if (pname == 0xB53) { // GL_LIGHT_MODEL_AMBIENT
+        } else if (pname == GL_LIGHT_MODEL_AMBIENT) {
           {{{ makeSetValue('params', '0', 'GLEmulation.lightModelAmbient[0]', 'float') }}};
           {{{ makeSetValue('params', '4', 'GLEmulation.lightModelAmbient[1]', 'float') }}};
           {{{ makeSetValue('params', '8', 'GLEmulation.lightModelAmbient[2]', 'float') }}};
           {{{ makeSetValue('params', '12', 'GLEmulation.lightModelAmbient[3]', 'float') }}};
-        } else if (pname == 0xBC2) { // GL_ALPHA_TEST_REF
+        } else if (pname == GL_ALPHA_TEST_REF) {
           {{{ makeSetValue('params', '0', 'GLEmulation.alphaTestRef', 'float') }}};
         } else {
           orig_glGetFloatv(pname, params);
@@ -682,7 +682,7 @@ var LibraryGLEmulation = {
 
       var orig_glHint = _glHint;
       _glHint = _emscripten_glHint = (target, mode) => {
-        if (target == 0x84EF) { // GL_TEXTURE_COMPRESSION_HINT
+        if (target == GL_TEXTURE_COMPRESSION_HINT) {
           return;
         }
         orig_glHint(target, mode);
@@ -718,18 +718,18 @@ var LibraryGLEmulation = {
     getAttributeFromCapability(cap) {
       var attrib = null;
       switch (cap) {
-        case 0xDE1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
+        case GL_TEXTURE_2D: // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
 #if ASSERTIONS
           abort('GL_TEXTURE_2D is not a spec-defined capability for gl{Enable,Disable}ClientState.');
 #endif
           // Fall through:
-        case 0x8078: // GL_TEXTURE_COORD_ARRAY
+        case GL_TEXTURE_COORD_ARRAY:
           attrib = GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture; break;
-        case 0x8074: // GL_VERTEX_ARRAY
+        case GL_VERTEX_ARRAY:
           attrib = GL_IMMEDIATE_VERTEX; break;
-        case 0x8075: // GL_NORMAL_ARRAY
+        case GL_NORMAL_ARRAY:
           attrib = GL_IMMEDIATE_NORMAL; break;
-        case 0x8076: // GL_COLOR_ARRAY
+        case GL_COLOR_ARRAY:
           attrib = GL_IMMEDIATE_COLOR; break;
       }
       return attrib;
@@ -749,7 +749,7 @@ var LibraryGLEmulation = {
 
   glGetObjectParameteriv: (id, type, result) => {
     if (GL.programs[id]) {
-      if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
+      if (type == GL_OBJECT_INFO_LOG_LENGTH_ARB) {
         var log = GLctx.getProgramInfoLog(GL.programs[id]);
         if (log === null) log = '(unknown error)';
         {{{ makeSetValue('result', '0', 'log.length', 'i32') }}};
@@ -757,12 +757,12 @@ var LibraryGLEmulation = {
       }
       _glGetProgramiv(id, type, result);
     } else if (GL.shaders[id]) {
-      if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
+      if (type == GL_OBJECT_INFO_LOG_LENGTH_ARB) {
         var log = GLctx.getShaderInfoLog(GL.shaders[id]);
         if (log === null) log = '(unknown error)';
         {{{ makeSetValue('result', '0', 'log.length', 'i32') }}};
         return;
-      } else if (type == 0x8B88) { // GL_OBJECT_SHADER_SOURCE_LENGTH_ARB
+      } else if (type == GL_OBJECT_SHADER_SOURCE_LENGTH_ARB) {
         var source = GLctx.getShaderSource(GL.shaders[id]);
         if (source === null) return; // If an error occurs, nothing will be written to result
         {{{ makeSetValue('result', '0', 'source.length', 'i32') }}};
@@ -796,14 +796,14 @@ var LibraryGLEmulation = {
   glGetPointerv: (name, p) => {
     var attribute;
     switch (name) {
-      case 0x808E: // GL_VERTEX_ARRAY_POINTER
+      case GL_VERTEX_ARRAY_POINTER:
         attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_VERTEX]; break;
-      case 0x8090: // GL_COLOR_ARRAY_POINTER
+      case GL_COLOR_ARRAY_POINTER:
         attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_COLOR]; break;
-      case 0x8092: // GL_TEXTURE_COORD_ARRAY_POINTER
+      case GL_TEXTURE_COORD_ARRAY_POINTER:
         attribute = GLImmediate.clientAttributes[GL_IMMEDIATE_TEXTURE0 + GLImmediate.clientActiveTexture]; break;
       default:
-        GL.recordError(0x500/*GL_INVALID_ENUM*/);
+        GL.recordError(GL_INVALID_ENUM);
 #if GL_ASSERTIONS
         err(`GL_INVALID_ENUM in glGetPointerv: Unsupported name ${name}!`);
 #endif
@@ -949,74 +949,6 @@ var LibraryGLEmulation = {
 
     TexEnvJIT: null,
     spawnTexEnvJIT: () => {
-      // GL defs:
-      const GL_TEXTURE0 = 0x84C0;
-      const GL_TEXTURE_1D = 0xDE0;
-      const GL_TEXTURE_2D = 0xDE1;
-      const GL_TEXTURE_3D = 0x806f;
-      const GL_TEXTURE_CUBE_MAP = 0x8513;
-      const GL_TEXTURE_ENV = 0x2300;
-      const GL_TEXTURE_ENV_MODE = 0x2200;
-      const GL_TEXTURE_ENV_COLOR = 0x2201;
-      const GL_TEXTURE_CUBE_MAP_POSITIVE_X = 0x8515;
-      const GL_TEXTURE_CUBE_MAP_NEGATIVE_X = 0x8516;
-      const GL_TEXTURE_CUBE_MAP_POSITIVE_Y = 0x8517;
-      const GL_TEXTURE_CUBE_MAP_NEGATIVE_Y = 0x8518;
-      const GL_TEXTURE_CUBE_MAP_POSITIVE_Z = 0x8519;
-      const GL_TEXTURE_CUBE_MAP_NEGATIVE_Z = 0x851A;
-
-      const GL_SRC0_RGB = 0x8580;
-      const GL_SRC1_RGB = 0x8581;
-      const GL_SRC2_RGB = 0x8582;
-
-      const GL_SRC0_ALPHA = 0x8588;
-      const GL_SRC1_ALPHA = 0x8589;
-      const GL_SRC2_ALPHA = 0x858A;
-
-      const GL_OPERAND0_RGB = 0x8590;
-      const GL_OPERAND1_RGB = 0x8591;
-      const GL_OPERAND2_RGB = 0x8592;
-
-      const GL_OPERAND0_ALPHA = 0x8598;
-      const GL_OPERAND1_ALPHA = 0x8599;
-      const GL_OPERAND2_ALPHA = 0x859A;
-
-      const GL_COMBINE_RGB = 0x8571;
-      const GL_COMBINE_ALPHA = 0x8572;
-
-      const GL_RGB_SCALE = 0x8573;
-      const GL_ALPHA_SCALE = 0xD1C;
-
-      // env.mode
-      const GL_ADD      = 0x104;
-      const GL_BLEND    = 0xBE2;
-      const GL_REPLACE  = 0x1E01;
-      const GL_MODULATE = 0x2100;
-      const GL_DECAL    = 0x2101;
-      const GL_COMBINE  = 0x8570;
-
-      // env.color/alphaCombiner
-      //const GL_ADD         = 0x104;
-      //const GL_REPLACE     = 0x1E01;
-      //const GL_MODULATE    = 0x2100;
-      const GL_SUBTRACT    = 0x84E7;
-      const GL_INTERPOLATE = 0x8575;
-
-      // env.color/alphaSrc
-      const GL_TEXTURE       = 0x1702;
-      const GL_CONSTANT      = 0x8576;
-      const GL_PRIMARY_COLOR = 0x8577;
-      const GL_PREVIOUS      = 0x8578;
-
-      // env.color/alphaOp
-      const GL_SRC_COLOR           = 0x300;
-      const GL_ONE_MINUS_SRC_COLOR = 0x301;
-      const GL_SRC_ALPHA           = 0x302;
-      const GL_ONE_MINUS_SRC_ALPHA = 0x303;
-
-      const GL_RGB  = 0x1907;
-      const GL_RGBA = 0x1908;
-
       // Our defs:
       var TEXENVJIT_NAMESPACE_PREFIX = 'tej_';
       // Not actually constant, as they can be changed between JIT passes:
@@ -1167,28 +1099,28 @@ var LibraryGLEmulation = {
         // Map GLenums to small values to efficiently pack the enums to bits for tighter access.
         this.traverseKey = {
           // mode
-          0x1E01 /* GL_REPLACE */: 0,
-          0x2100 /* GL_MODULATE */: 1,
-          0x104 /* GL_ADD */: 2,
-          0xBE2 /* GL_BLEND */: 3,
-          0x2101 /* GL_DECAL */: 4,
-          0x8570 /* GL_COMBINE */: 5,
+          {{{ cDefs.GL_REPLACE }}}: 0,
+          {{{ cDefs.GL_MODULATE }}}: 1,
+          {{{ cDefs.GL_ADD }}}: 2,
+          {{{ cDefs.GL_BLEND }}}: 3,
+          {{{ cDefs.GL_DECAL }}}: 4,
+          {{{ cDefs.GL_COMBINE }}}: 5,
 
           // additional color and alpha combiners
-          0x84E7 /* GL_SUBTRACT */: 3,
-          0x8575 /* GL_INTERPOLATE */: 4,
+          {{{ cDefs.GL_SUBTRACT }}}: 3,
+          {{{ cDefs.GL_INTERPOLATE }}}: 4,
 
           // color and alpha src
-          0x1702 /* GL_TEXTURE */: 0,
-          0x8576 /* GL_CONSTANT */: 1,
-          0x8577 /* GL_PRIMARY_COLOR */: 2,
-          0x8578 /* GL_PREVIOUS */: 3,
+          {{{ cDefs.GL_TEXTURE }}}: 0,
+          {{{ cDefs.GL_CONSTANT }}}: 1,
+          {{{ cDefs.GL_PRIMARY_COLOR }}}: 2,
+          {{{ cDefs.GL_PREVIOUS }}}: 3,
 
           // color and alpha op
-          0x300 /* GL_SRC_COLOR */: 0,
-          0x301 /* GL_ONE_MINUS_SRC_COLOR */: 1,
-          0x302 /* GL_SRC_ALPHA */: 2,
-          0x303 /* GL_ONE_MINUS_SRC_ALPHA */: 3
+          {{{ cDefs.GL_SRC_COLOR }}}: 0,
+          {{{ cDefs.GL_ONE_MINUS_SRC_COLOR }}}: 1,
+          {{{ cDefs.GL_SRC_ALPHA }}}: 2,
+          {{{ cDefs.GL_ONE_MINUS_SRC_ALPHA }}}: 3,
         };
 
         // The tuple (key0,key1,key2) uniquely identifies the state of the variables in CTexEnv.
@@ -2047,10 +1979,10 @@ var LibraryGLEmulation = {
       var fogParam = 0;
       if (GLEmulation.fogEnabled) {
         switch (GLEmulation.fogMode) {
-          case 0x801: // GL_EXP2
+          case GL_EXP2:
             fogParam = 1;
             break;
-          case 0x2601: // GL_LINEAR
+          case GL_LINEAR:
             fogParam = 2;
             break;
           default: // default to GL_EXP
@@ -2072,7 +2004,7 @@ var LibraryGLEmulation = {
       }
 
       // By alpha testing mode
-      enabledAttributesKey = (enabledAttributesKey << 3) | (GLEmulation.alphaTestEnabled ? (GLEmulation.alphaTestFunc - 0x200) : 0x7);
+      enabledAttributesKey = (enabledAttributesKey << 3) | (GLEmulation.alphaTestEnabled ? (GLEmulation.alphaTestFunc - GL_NEVER) : 0x7);
 
       // By drawing mode:
       enabledAttributesKey = (enabledAttributesKey << 1) | (GLImmediate.mode == GLctx.POINTS ? 1 : 0);
@@ -2150,11 +2082,11 @@ var LibraryGLEmulation = {
             // that you cache the renderer based on the said parameters.
             if (GLEmulation.fogEnabled) {
               switch (GLEmulation.fogMode) {
-                case 0x801: // GL_EXP2
+                case GL_EXP2:
                   // fog = exp(-(gl_Fog.density * gl_FogFragCoord)^2)
                   var fogFormula = '  float fog = exp(-u_fogDensity * u_fogDensity * ecDistance * ecDistance); \n';
                   break;
-                case 0x2601: // GL_LINEAR
+                case GL_LINEAR:
                   // fog = (gl_Fog.end - gl_FogFragCoord) * gl_fog.scale
                   var fogFormula = '  float fog = (u_fogEnd - ecDistance) * u_fogScale; \n';
                   break;
@@ -2308,28 +2240,28 @@ var LibraryGLEmulation = {
             if (GLEmulation.alphaTestEnabled) {
               fsAlphaTestDefs = 'uniform float u_alphaTestRef;';
               switch (GLEmulation.alphaTestFunc) {
-                case 0x200: // GL_NEVER
+                case GL_NEVER:
                   fsAlphaTestPass = 'discard;';
                   break;
-                case 0x201: // GL_LESS
+                case GL_LESS:
                   fsAlphaTestPass = 'if (!(gl_FragColor.a < u_alphaTestRef)) { discard; }';
                   break;
-                case 0x202: // GL_EQUAL
+                case GL_EQUAL:
                   fsAlphaTestPass = 'if (!(gl_FragColor.a == u_alphaTestRef)) { discard; }';
                   break;
-                case 0x203: // GL_LEQUAL
+                case GL_LEQUAL:
                   fsAlphaTestPass = 'if (!(gl_FragColor.a <= u_alphaTestRef)) { discard; }';
                   break;
-                case 0x204: // GL_GREATER
+                case GL_GREATER:
                   fsAlphaTestPass = 'if (!(gl_FragColor.a > u_alphaTestRef)) { discard; }';
                   break;
-                case 0x205: // GL_NOTEQUAL
+                case GL_NOTEQUAL:
                   fsAlphaTestPass = 'if (!(gl_FragColor.a != u_alphaTestRef)) { discard; }';
                   break;
-                case 0x206: // GL_GEQUAL
+                case GL_GEQUAL:
                   fsAlphaTestPass = 'if (!(gl_FragColor.a >= u_alphaTestRef)) { discard; }';
                   break;
-                case 0x207: // GL_ALWAYS
+                case GL_ALWAYS:
                   fsAlphaTestPass = '';
                   break;
               }
@@ -2764,7 +2696,7 @@ var LibraryGLEmulation = {
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = _emscripten_glGetIntegerv = (pname, params) => {
         switch (pname) {
-          case 0x8B8D: { // GL_CURRENT_PROGRAM
+          case GL_CURRENT_PROGRAM: {
             // Just query directly so we're working with WebGL objects.
             var cur = GLctx.getParameter(GLctx.CURRENT_PROGRAM);
             if (cur == GLImmediate.fixedFunctionProgram) {
@@ -2996,8 +2928,8 @@ var LibraryGLEmulation = {
           ptr = 0;
           emulatedElementArrayBuffer = true;
         }
-      } else if (GLImmediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
-        if (GLImmediate.mode != 7) abort('unsupported immediate mode ' + GLImmediate.mode); // GL_QUADS
+      } else if (GLImmediate.mode > GL_TRIANGLE_FAN) { // above GL_TRIANGLE_FAN are the non-GL ES modes
+        if (GLImmediate.mode != GL_QUADS) abort('unsupported immediate mode ' + GLImmediate.mode);
         // GLImmediate.firstVertex is the first vertex we want. Quad indexes are
         // in the pattern 0 1 2, 0 2 3, 4 5 6, 4 6 7, so we need to look at
         // index firstVertex * 1.5 to see it.  Then since indexes are 2 bytes
@@ -3223,25 +3155,25 @@ var LibraryGLEmulation = {
 
   glFogf: (pname, param) => { // partial support, TODO
     switch (pname) {
-      case 0xB63: // GL_FOG_START
+      case GL_FOG_START:
         GLEmulation.fogStart = param; break;
-      case 0xB64: // GL_FOG_END
+      case GL_FOG_END:
         GLEmulation.fogEnd = param; break;
-      case 0xB62: // GL_FOG_DENSITY
+      case GL_FOG_DENSITY:
         GLEmulation.fogDensity = param; break;
-      case 0xB65: // GL_FOG_MODE
+      case GL_FOG_MODE:
         switch (param) {
-          case 0x801: // GL_EXP2
-          case 0x2601: // GL_LINEAR
+          case GL_EXP2:
+          case GL_LINEAR:
             if (GLEmulation.fogMode != param) {
               GLImmediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
               GLEmulation.fogMode = param;
             }
             break;
           default: // default to GL_EXP
-            if (GLEmulation.fogMode != 0x800 /* GL_EXP */) {
+            if (GLEmulation.fogMode != GL_EXP) {
               GLImmediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
-              GLEmulation.fogMode = 0x800 /* GL_EXP */;
+              GLEmulation.fogMode = GL_EXP;
             }
             break;
         }
@@ -3253,20 +3185,20 @@ var LibraryGLEmulation = {
   },
   glFogfv: (pname, param) => { // partial support, TODO
     switch (pname) {
-      case 0xB66: // GL_FOG_COLOR
+      case GL_FOG_COLOR:
         GLEmulation.fogColor[0] = {{{ makeGetValue('param', '0', 'float') }}};
         GLEmulation.fogColor[1] = {{{ makeGetValue('param', '4', 'float') }}};
         GLEmulation.fogColor[2] = {{{ makeGetValue('param', '8', 'float') }}};
         GLEmulation.fogColor[3] = {{{ makeGetValue('param', '12', 'float') }}};
         break;
-      case 0xB63: // GL_FOG_START
-      case 0xB64: // GL_FOG_END
+      case GL_FOG_START:
+      case GL_FOG_END:
         _glFogf(pname, {{{ makeGetValue('param', '0', 'float') }}}); break;
     }
   },
   glFogiv: (pname, param) => {
     switch (pname) {
-      case 0xB66: // GL_FOG_COLOR
+      case GL_FOG_COLOR:
         GLEmulation.fogColor[0] = ({{{ makeGetValue('param', '0', 'i32') }}}/2147483647)/2.0+0.5;
         GLEmulation.fogColor[1] = ({{{ makeGetValue('param', '4', 'i32') }}}/2147483647)/2.0+0.5;
         GLEmulation.fogColor[2] = ({{{ makeGetValue('param', '8', 'i32') }}}/2147483647)/2.0+0.5;
@@ -3287,14 +3219,14 @@ var LibraryGLEmulation = {
 
   glAlphaFunc: (func, ref) => {
     switch(func) {
-      case 0x200: // GL_NEVER
-      case 0x201: // GL_LESS
-      case 0x202: // GL_EQUAL
-      case 0x203: // GL_LEQUAL
-      case 0x204: // GL_GREATER
-      case 0x205: // GL_NOTEQUAL
-      case 0x206: // GL_GEQUAL
-      case 0x207: // GL_ALWAYS
+      case GL_NEVER:
+      case GL_LESS:
+      case GL_EQUAL:
+      case GL_LEQUAL:
+      case GL_GREATER:
+      case GL_NOTEQUAL:
+      case GL_GEQUAL:
+      case GL_ALWAYS:
         GLEmulation.alphaTestRef = ref;
         if (GLEmulation.alphaTestFunc != func) {
           GLEmulation.alphaTestFunc = func;
@@ -3411,14 +3343,14 @@ var LibraryGLEmulation = {
   },
 
   glClientActiveTexture: (texture) => {
-    GLImmediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
+    GLImmediate.clientActiveTexture = texture - GL_TEXTURE0;
   },
 
   // Replace some functions with immediate-mode aware versions. If there are no
   // client attributes enabled, and we use webgl-friendly modes (no GL_QUADS),
   // then no need for emulation
   glDrawArrays: (mode, first, count) => {
-    if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6) {
+    if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= GL_TRIANGLE_FAN) {
       GLctx.drawArrays(mode, first, count);
       return;
     }
@@ -3435,7 +3367,7 @@ var LibraryGLEmulation = {
 
   // start, end are given if we come from glDrawRangeElements
   glDrawElements: (mode, count, type, indices, start, end) => {
-    if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6 && GLctx.currentElementArrayBufferBinding) {
+    if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= GL_TRIANGLE_FAN && GLctx.currentElementArrayBufferBinding) {
       GLctx.drawElements(mode, count, type, indices);
       return;
     }
@@ -3489,8 +3421,8 @@ var LibraryGLEmulation = {
   },
   $emulGlIsVertexArray: (array) => {
     var vao = GLEmulation.vaos[array];
-    if (!vao) return 0;
-    return 1;
+    if (!vao) return GL_FALSE;
+    return GL_TRUE;
   },
   $emulGlBindVertexArray: (vao) => {
     // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
@@ -3527,11 +3459,11 @@ var LibraryGLEmulation = {
   // Note that in the future we might make these available only in certain modes.
   glMatrixMode__deps: ['$GL', '$GLImmediateSetup'],
   glMatrixMode: (mode) => {
-    if (mode == 0x1700 /* GL_MODELVIEW */) {
+    if (mode == GL_MODELVIEW) {
       GLImmediate.currentMatrix = 0/*m*/;
-    } else if (mode == 0x1701 /* GL_PROJECTION */) {
+    } else if (mode == GL_PROJECTION) {
       GLImmediate.currentMatrix = 1/*p*/;
-    } else if (mode == 0x1702) { // GL_TEXTURE
+    } else if (mode == GL_TEXTURE) {
       GLImmediate.useTextureMatrix = true;
       GLImmediate.currentMatrix = 2/*t*/ + GLImmediate.TexEnvJIT.getActiveTexture();
     } else {
@@ -3548,7 +3480,7 @@ var LibraryGLEmulation = {
 
   glPopMatrix: () => {
     if (GLImmediate.matrixStack[GLImmediate.currentMatrix].length == 0) {
-      GL.recordError(0x504/*GL_STACK_UNDERFLOW*/);
+      GL.recordError(GL_STACK_UNDERFLOW);
       return;
     }
     GLImmediate.matricesModified = true;
@@ -3667,8 +3599,8 @@ var LibraryGLEmulation = {
 #endif
 
   glClipPlane: (pname, param) => {
-    if ((pname >= 0x3000) && (pname < 0x3006)  /* GL_CLIP_PLANE0 to GL_CLIP_PLANE5 */) {
-      var clipPlaneId = pname - 0x3000;
+    if ((pname >= GL_CLIP_PLANE0) && (pname < GL_CLIP_PLANE0 + GLEMU_MAX_CLIP_PLANES)) {
+      var clipPlaneId = pname - GL_CLIP_PLANE0;
 
       GLEmulation.clipPlaneEquation[clipPlaneId][0] = {{{ makeGetValue('param', '0', 'double') }}};
       GLEmulation.clipPlaneEquation[clipPlaneId][1] = {{{ makeGetValue('param', '8', 'double') }}};
@@ -3684,25 +3616,25 @@ var LibraryGLEmulation = {
   },
 
   glLightfv: (light, pname, param) => {
-    if ((light >= 0x4000) && (light < 0x4008)  /* GL_LIGHT0 to GL_LIGHT7 */) {
-      var lightId = light - 0x4000;
+    if ((light >= GL_LIGHT0) && (light < GL_LIGHT0 + GLEMU_MAX_LIGHTS)) {
+      var lightId = light - GL_LIGHT0;
 
-      if (pname == 0x1200) { // GL_AMBIENT
+      if (pname == GL_AMBIENT) {
         GLEmulation.lightAmbient[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
         GLEmulation.lightAmbient[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
         GLEmulation.lightAmbient[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
         GLEmulation.lightAmbient[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
-      } else if (pname == 0x1201) { // GL_DIFFUSE
+      } else if (pname == GL_DIFFUSE) {
         GLEmulation.lightDiffuse[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
         GLEmulation.lightDiffuse[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
         GLEmulation.lightDiffuse[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
         GLEmulation.lightDiffuse[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
-      } else if (pname == 0x1202) { // GL_SPECULAR
+      } else if (pname == GL_SPECULAR) {
         GLEmulation.lightSpecular[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
         GLEmulation.lightSpecular[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
         GLEmulation.lightSpecular[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
         GLEmulation.lightSpecular[lightId][3] = {{{ makeGetValue('param', '12', 'float') }}};
-      } else if (pname == 0x1203) { // GL_POSITION
+      } else if (pname == GL_POSITION) {
         GLEmulation.lightPosition[lightId][0] = {{{ makeGetValue('param', '0', 'float') }}};
         GLEmulation.lightPosition[lightId][1] = {{{ makeGetValue('param', '4', 'float') }}};
         GLEmulation.lightPosition[lightId][2] = {{{ makeGetValue('param', '8', 'float') }}};
@@ -3717,7 +3649,7 @@ var LibraryGLEmulation = {
   },
 
   glLightModelf: (pname, param) => {
-    if (pname == 0x0B52) { // GL_LIGHT_MODEL_TWO_SIDE
+    if (pname == GL_LIGHT_MODEL_TWO_SIDE) {
       GLEmulation.lightModelTwoSide = (param != 0) ? true : false;
     } else {
       abort('glLightModelf: TODO: ' + pname);
@@ -3725,7 +3657,7 @@ var LibraryGLEmulation = {
   },
 
   glLightModelfv: (pname, param) => { // TODO: GL_LIGHT_MODEL_LOCAL_VIEWER
-    if (pname == 0x0B53) { // GL_LIGHT_MODEL_AMBIENT
+    if (pname == GL_LIGHT_MODEL_AMBIENT) {
       GLEmulation.lightModelAmbient[0] = {{{ makeGetValue('param', '0', 'float') }}};
       GLEmulation.lightModelAmbient[1] = {{{ makeGetValue('param', '4', 'float') }}};
       GLEmulation.lightModelAmbient[2] = {{{ makeGetValue('param', '8', 'float') }}};
@@ -3736,24 +3668,24 @@ var LibraryGLEmulation = {
   },
 
   glMaterialfv: (face, pname, param) => {
-    if ((face != 0x0404) && (face != 0x0408)) { abort('glMaterialfv: TODO' + face); } // only GL_FRONT and GL_FRONT_AND_BACK supported
+    if ((face != GL_FRONT) && (face != GL_FRONT_AND_BACK)) { abort('glMaterialfv: TODO' + face); } // only GL_FRONT and GL_FRONT_AND_BACK supported
 
-    if (pname == 0x1200) { // GL_AMBIENT
+    if (pname == GL_AMBIENT) {
       GLEmulation.materialAmbient[0] = {{{ makeGetValue('param', '0', 'float') }}};
       GLEmulation.materialAmbient[1] = {{{ makeGetValue('param', '4', 'float') }}};
       GLEmulation.materialAmbient[2] = {{{ makeGetValue('param', '8', 'float') }}};
       GLEmulation.materialAmbient[3] = {{{ makeGetValue('param', '12', 'float') }}};
-    } else if (pname == 0x1201) { // GL_DIFFUSE
+    } else if (pname == GL_DIFFUSE) {
       GLEmulation.materialDiffuse[0] = {{{ makeGetValue('param', '0', 'float') }}};
       GLEmulation.materialDiffuse[1] = {{{ makeGetValue('param', '4', 'float') }}};
       GLEmulation.materialDiffuse[2] = {{{ makeGetValue('param', '8', 'float') }}};
       GLEmulation.materialDiffuse[3] = {{{ makeGetValue('param', '12', 'float') }}};
-    } else if (pname == 0x1202) { // GL_SPECULAR
+    } else if (pname == GL_SPECULAR) {
       GLEmulation.materialSpecular[0] = {{{ makeGetValue('param', '0', 'float') }}};
       GLEmulation.materialSpecular[1] = {{{ makeGetValue('param', '4', 'float') }}};
       GLEmulation.materialSpecular[2] = {{{ makeGetValue('param', '8', 'float') }}};
       GLEmulation.materialSpecular[3] = {{{ makeGetValue('param', '12', 'float') }}};
-    } else if (pname == 0x1601) { // GL_SHININESS
+    } else if (pname == GL_SHININESS) {
       GLEmulation.materialShininess = {{{ makeGetValue('param', '0', 'float') }}};
     } else {
       abort('glMaterialfv: TODO: ' + pname);
@@ -3816,7 +3748,7 @@ var LibraryGLEmulation = {
     GLImmediate.matrixLib.mat4.multiplyVec4({{{ makeHEAPView('F64', 'proj', 'proj+' + (16*8)) }}},
         outVec, inVec);
     if (inVec[3] == 0.0) {
-      return 0 /* GL_FALSE */;
+      return GL_FALSE;
     }
     inVec[0] /= inVec[3];
     inVec[1] /= inVec[3];
@@ -3833,7 +3765,7 @@ var LibraryGLEmulation = {
     {{{ makeSetValue('winY', '0', 'inVec[1]', 'double') }}};
     {{{ makeSetValue('winZ', '0', 'inVec[2]', 'double') }}};
 
-    return 1 /* GL_TRUE */;
+    return GL_TRUE;
   },
 
   gluUnProject: (winX, winY, winZ, model, proj, view, objX, objY, objZ) => {
@@ -3843,14 +3775,14 @@ var LibraryGLEmulation = {
         {{{ makeHEAPView('32', 'view', 'view+' + (4*4)) }}});
 
     if (result === null) {
-      return 0 /* GL_FALSE */;
+      return GL_FALSE;
     }
 
     {{{ makeSetValue('objX', '0', 'result[0]', 'double') }}};
     {{{ makeSetValue('objY', '0', 'result[1]', 'double') }}};
     {{{ makeSetValue('objZ', '0', 'result[2]', 'double') }}};
 
-    return 1 /* GL_TRUE */;
+    return GL_TRUE;
   },
 
   gluOrtho2D: (left, right, bottom, top) => _glOrtho(left, right, bottom, top, -1, 1),
