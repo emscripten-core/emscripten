@@ -14283,7 +14283,7 @@ enumerated: 3
     self.build('fetch/test_fetch_to_memory_async.c')
     self.build('fetch/test_fetch_persist.c')
     self.build('fetch/test_fetch_idb_delete.c')
-    self.build('fetch/test_fetch_idb_store.c')
+    self.build('fetch/test_fetch_idb_store_async.c')
     self.build('fetch/test_fetch_redirect.c')
     self.build('fetch/test_fetch_stream_async.c')
     self.build('fetch/test_fetch_stream_error.c')
