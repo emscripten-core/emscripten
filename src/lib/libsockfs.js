@@ -52,7 +52,7 @@ addToLibrary({
       SOCKFS.on('close', (fd) => dbg(`websocket: close fd = ${fd}`));
 #endif
 
-      return FS.createNode(null, '/', S_IFDIR | 0o777, 0);
+      return FS.createNode(null, '/', S_IFDIR | S_IRWXUGO, 0);
     },
     createSocket(family, type, protocol) {
       if (family != AF_INET
@@ -149,7 +149,7 @@ addToLibrary({
         return {
           dev: 1,
           ino: node.id,
-          mode: S_IFSOCK | 0o777,
+          mode: S_IFSOCK | S_IRWXUGO,
           nlink: 1,
           uid: 0,
           gid: 0,
