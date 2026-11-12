@@ -392,6 +392,16 @@ var LibraryOpenAL = {
       }
     },
 
+    setSourceStatev: (count, pSourceIds, state, funcname) => {
+      if (!AL.requireValidSources(count, pSourceIds, funcname)) {
+        return;
+      }
+      for (var i = 0; i < count; ++i) {
+        var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
+        AL.setSourceState(AL.currentCtx.sources.get(srcId), state);
+      }
+    },
+
     initSourcePanner: (src) => {
       if (src.type === 0x1030 /* AL_UNDETERMINED */) {
         return;
@@ -738,15 +748,73 @@ var LibraryOpenAL = {
       }
     },
 
+    requireValidContext: (funcname) => {
+#if OPENAL_DEBUG
+      if (!AL.currentCtx) {
+        dbg(`${funcname}() called without a valid context`);
+      }
+#endif
+      return AL.currentCtx;
+    },
+
+    requireValidDevice: (deviceId, funcname) => {
+      if (!(deviceId in AL.deviceRefCounts)) {
+#if OPENAL_DEBUG
+        dbg(`${funcname}() called with an invalid device`);
+#endif
+        AL.alcErr = ALC_INVALID_DEVICE;
+        return false;
+      }
+      return true;
+    },
+
+    requireValidPointer: (ptr, funcname) => {
+      if (!AL.requireValidContext(funcname)) {
+        return false;
+      }
+      if (!ptr) {
+#if OPENAL_DEBUG
+        dbg(`${funcname}() called with a null pointer`);
+#endif
+        AL.currentCtx.err = AL_INVALID_VALUE;
+        return false;
+      }
+      return true;
+    },
+
+    requireValidSource: (sourceId, funcname) => {
+      if (!AL.requireValidContext(funcname)) {
+        return null;
+      }
+      var src = AL.currentCtx.sources.get(sourceId);
+      if (!src) {
+#if OPENAL_DEBUG
+        dbg(`${funcname}() called with an invalid source`);
+#endif
+        AL.currentCtx.err = AL_INVALID_NAME;
+        return null;
+      }
+      return src;
+    },
+
+    requireValidSources: (count, pSourceIds, funcname) => {
+      if (!AL.requireValidContext(funcname) || (count > 0 && !AL.requireValidPointer(pSourceIds, funcname))) {
+        return false;
+      }
+      for (var i = 0; i < count; ++i) {
+        if (!AL.requireValidSource({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}}, funcname)) {
+          return false;
+        }
+      }
+      return true;
+    },
+
     // ------------------------------------------------------
     // -- Accessor Helpers
     // ------------------------------------------------------
 
     getGlobalParam: (param, funcname) => {
-      if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-        dbg(`${funcname}() called without a valid context`);
-#endif
+      if (!AL.requireValidContext(funcname)) {
         return null;
       }
 
@@ -767,10 +835,7 @@ var LibraryOpenAL = {
     },
 
     setGlobalParam: (param, value, funcname) => {
-      if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-        dbg(`${funcname}() called without a valid context`);
-#endif
+      if (!AL.requireValidContext(funcname)) {
         return;
       }
 
@@ -829,10 +894,7 @@ var LibraryOpenAL = {
     },
 
     getListenerParam: (param, funcname) => {
-      if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-        dbg(`${funcname}() called without a valid context`);
-#endif
+      if (!AL.requireValidContext(funcname)) {
         return null;
       }
 
@@ -855,10 +917,7 @@ var LibraryOpenAL = {
     },
 
     setListenerParam: (param, value, funcname) => {
-      if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-        dbg(`${funcname}() called without a valid context`);
-#endif
+      if (!AL.requireValidContext(funcname)) {
         return;
       }
       if (value === null) {
@@ -939,10 +998,7 @@ var LibraryOpenAL = {
     },
 
     getBufferParam: (bufferId, param, funcname) => {
-      if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-        dbg(`${funcname}() called without a valid context`);
-#endif
+      if (!AL.requireValidContext(funcname)) {
         return null;
       }
       var buf = AL.buffers[bufferId];
@@ -981,10 +1037,7 @@ var LibraryOpenAL = {
     },
 
     setBufferParam: (bufferId, param, value, funcname) => {
-      if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-        dbg(`${funcname}() called without a valid context`);
-#endif
+      if (!AL.requireValidContext(funcname)) {
         return;
       }
       var buf = AL.buffers[bufferId];
@@ -1046,18 +1099,8 @@ var LibraryOpenAL = {
     },
 
     getSourceParam: (sourceId, param, funcname) => {
-      if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-        dbg(`${funcname}() called without a valid context`);
-#endif
-        return null;
-      }
-      var src = AL.currentCtx.sources.get(sourceId);
+      var src = AL.requireValidSource(sourceId, funcname);
       if (!src) {
-#if OPENAL_DEBUG
-        dbg(`${funcname}() called with an invalid source`);
-#endif
-        AL.currentCtx.err = AL_INVALID_NAME;
         return null;
       }
 
@@ -1157,18 +1200,8 @@ var LibraryOpenAL = {
     },
 
     setSourceParam: (sourceId, param, value, funcname) => {
-      if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-        dbg(`${funcname}() called without a valid context`);
-#endif
-        return;
-      }
-      var src = AL.currentCtx.sources.get(sourceId);
+      var src = AL.requireValidSource(sourceId, funcname);
       if (!src) {
-#if OPENAL_DEBUG
-        dbg('alSourcef() called with an invalid source');
-#endif
-        AL.currentCtx.err = AL_INVALID_NAME;
         return;
       }
       if (value === null) {
@@ -2059,11 +2092,7 @@ var LibraryOpenAL = {
 
   alcCreateContext__proxy: 'sync',
   alcCreateContext: (deviceId, pAttrList) => {
-    if (!(deviceId in AL.deviceRefCounts)) {
-#if OPENAL_DEBUG
-      dbg('alcCreateContext() called with an invalid device');
-#endif
-      AL.alcErr = 0xA001; /* ALC_INVALID_DEVICE */
+    if (!AL.requireValidDevice(deviceId, 'alcCreateContext')) {
       return 0;
     }
 
@@ -2405,8 +2434,7 @@ var LibraryOpenAL = {
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
     case 0x1002 /* ALC_ATTRIBUTES_SIZE */:
-      if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = ALC_INVALID_DEVICE;
+      if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
       if (!AL.currentCtx) {
@@ -2417,8 +2445,7 @@ var LibraryOpenAL = {
       {{{ makeSetValue('pValues', '0', 'AL.currentCtx.attrs.length', 'i32') }}};
       break;
     case 0x1003 /* ALC_ALL_ATTRIBUTES */:
-      if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = ALC_INVALID_DEVICE;
+      if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
       if (!AL.currentCtx) {
@@ -2431,8 +2458,7 @@ var LibraryOpenAL = {
       }
       break;
     case 0x1007 /* ALC_FREQUENCY */:
-      if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = ALC_INVALID_DEVICE;
+      if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
       if (!AL.currentCtx) {
@@ -2444,8 +2470,7 @@ var LibraryOpenAL = {
       break;
     case 0x1010 /* ALC_MONO_SOURCES */:
     case 0x1011 /* ALC_STEREO_SOURCES */:
-      if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = ALC_INVALID_DEVICE;
+      if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
       if (!AL.currentCtx) {
@@ -2457,8 +2482,7 @@ var LibraryOpenAL = {
       break;
     case 0x1992 /* ALC_HRTF_SOFT */:
     case 0x1993 /* ALC_HRTF_STATUS_SOFT */:
-      if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = ALC_INVALID_DEVICE;
+      if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
 
@@ -2471,15 +2495,13 @@ var LibraryOpenAL = {
       {{{ makeSetValue('pValues', '0', 'hrtfStatus', 'i32') }}};
       break;
     case 0x1994 /* ALC_NUM_HRTF_SPECIFIERS_SOFT */:
-      if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = ALC_INVALID_DEVICE;
+      if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
     case 0x20003 /* ALC_MAX_AUXILIARY_SENDS */:
-      if (!(deviceId in AL.deviceRefCounts)) {
-        AL.alcErr = ALC_INVALID_DEVICE;
+      if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
       if (!AL.currentCtx) {
@@ -2512,11 +2534,7 @@ var LibraryOpenAL = {
   emscripten_alcDevicePauseSOFT__proxy: 'sync',
   emscripten_alcDevicePauseSOFT__sig: 'vi',
   emscripten_alcDevicePauseSOFT: (deviceId) => {
-    if (!(deviceId in AL.deviceRefCounts)) {
-#if OPENAL_DEBUG
-      dbg('alcDevicePauseSOFT() called with an invalid device');
-#endif
-      AL.alcErr = ALC_INVALID_DEVICE;
+    if (!AL.requireValidDevice(deviceId, 'alcDevicePauseSOFT')) {
       return;
     }
 
@@ -2539,11 +2557,7 @@ var LibraryOpenAL = {
   emscripten_alcDeviceResumeSOFT__proxy: 'sync',
   emscripten_alcDeviceResumeSOFT__sig: 'vi',
   emscripten_alcDeviceResumeSOFT: (deviceId) => {
-    if (!(deviceId in AL.deviceRefCounts)) {
-#if OPENAL_DEBUG
-      dbg('alcDeviceResumeSOFT() called with an invalid device');
-#endif
-      AL.alcErr = ALC_INVALID_DEVICE;
+    if (!AL.requireValidDevice(deviceId, 'alcDeviceResumeSOFT')) {
       return;
     }
 
@@ -2565,11 +2579,7 @@ var LibraryOpenAL = {
   emscripten_alcGetStringiSOFT__proxy: 'sync',
   emscripten_alcGetStringiSOFT__sig: 'iiii',
   emscripten_alcGetStringiSOFT: (deviceId, param, index) => {
-    if (!(deviceId in AL.deviceRefCounts)) {
-#if OPENAL_DEBUG
-      dbg('alcGetStringiSOFT() called with an invalid device');
-#endif
-      AL.alcErr = ALC_INVALID_DEVICE;
+    if (!AL.requireValidDevice(deviceId, 'alcGetStringiSOFT')) {
       return 0;
     }
 
@@ -2609,11 +2619,7 @@ var LibraryOpenAL = {
   emscripten_alcResetDeviceSOFT__proxy: 'sync',
   emscripten_alcResetDeviceSOFT__sig: 'iii',
   emscripten_alcResetDeviceSOFT: (deviceId, pAttrList) => {
-    if (!(deviceId in AL.deviceRefCounts)) {
-#if OPENAL_DEBUG
-      dbg('alcResetDeviceSOFT() called with an invalid device');
-#endif
-      AL.alcErr = ALC_INVALID_DEVICE;
+    if (!AL.requireValidDevice(deviceId, 'alcResetDeviceSOFT')) {
       return ALC_FALSE;
     }
 
@@ -2664,10 +2670,7 @@ var LibraryOpenAL = {
 
   alGenBuffers__proxy: 'sync',
   alGenBuffers: (count, pBufferIds) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alGenBuffers() called without a valid context');
-#endif
+    if (!AL.requireValidContext('alGenBuffers')) {
       return;
     }
 
@@ -2690,10 +2693,7 @@ var LibraryOpenAL = {
 
   alDeleteBuffers__proxy: 'sync',
   alDeleteBuffers: (count, pBufferIds) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alDeleteBuffers() called without a valid context');
-#endif
+    if (!AL.requireValidContext('alDeleteBuffers')) {
       return;
     }
 
@@ -2737,10 +2737,7 @@ var LibraryOpenAL = {
 
   alGenSources__proxy: 'sync',
   alGenSources: (count, pSourceIds) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alGenSources() called without a valid context');
-#endif
+    if (!AL.requireValidContext('alGenSources')) {
       return;
     }
     for (var i = 0; i < count; ++i) {
@@ -2787,29 +2784,8 @@ var LibraryOpenAL = {
 
   alDeleteSources__proxy: 'sync',
   alDeleteSources: (count, pSourceIds) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alDeleteSources() called without a valid context');
-#endif
+    if (!AL.requireValidSources(count, pSourceIds, 'alDeleteSources')) {
       return;
-    }
-    if (count > 0 && !pSourceIds) {
-#if OPENAL_DEBUG
-      dbg('alDeleteSources() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
-      return;
-    }
-
-    for (var i = 0; i < count; ++i) {
-      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      if (!AL.currentCtx.sources.has(srcId)) {
-#if OPENAL_DEBUG
-        dbg('alDeleteSources() called with an invalid source');
-#endif
-        AL.currentCtx.err = AL_INVALID_NAME;
-        return;
-      }
     }
 
     for (var i = 0; i < count; ++i) {
@@ -2845,19 +2821,8 @@ var LibraryOpenAL = {
 
   alGetEnumValue__proxy: 'sync',
   alGetEnumValue: (pEnumName) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alGetEnumValue() called without a valid context');
-#endif
+    if (!AL.requireValidPointer(pEnumName, 'alGetEnumValue')) {
       return 0;
-    }
-
-    if (!pEnumName) {
-#if OPENAL_DEBUG
-      dbg('alGetEnumValue() called with null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
-      return AL_NONE;
     }
     var name = UTF8ToString(pEnumName);
 
@@ -2993,12 +2958,8 @@ var LibraryOpenAL = {
       ret = Object.keys(AL.AL_EXTENSIONS).join(' ');
       break;
     default:
-      if (AL.currentCtx) {
+      if (AL.requireValidContext('alGetString')) {
         AL.currentCtx.err = AL_INVALID_ENUM;
-      } else {
-  #if OPENAL_DEBUG
-        dbg('alGetString() called without a valid context');
-  #endif
       }
       return 0;
     }
@@ -3010,10 +2971,7 @@ var LibraryOpenAL = {
 
   alEnable__proxy: 'sync',
   alEnable: (param) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alEnable() called without a valid context');
-#endif
+    if (!AL.requireValidContext('alEnable')) {
       return;
     }
     switch (param) {
@@ -3032,10 +2990,7 @@ var LibraryOpenAL = {
 
   alDisable__proxy: 'sync',
   alDisable: (param) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alDisable() called without a valid context');
-#endif
+    if (!AL.requireValidContext('alDisable')) {
       return;
     }
     switch (param) {
@@ -3054,10 +3009,7 @@ var LibraryOpenAL = {
 
   alIsEnabled__proxy: 'sync',
   alIsEnabled: (param) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alIsEnabled() called without a valid context');
-#endif
+    if (!AL.requireValidContext('alIsEnabled')) {
       return 0;
     }
     switch (param) {
@@ -3073,177 +3025,50 @@ var LibraryOpenAL = {
   },
 
   alGetDouble__proxy: 'sync',
-  alGetDouble: (param) => {
-    var val = AL.getGlobalParam(param, 'alGetDouble');
-    if (val === null) {
-      return 0.0;
-    }
-
-    switch (param) {
-    case AL_DOPPLER_FACTOR:
-    case AL_SPEED_OF_SOUND:
-    case AL_DISTANCE_MODEL:
-      return val;
-    default:
-#if OPENAL_DEBUG
-      dbg(`alGetDouble(): param ${ptrToString(param)} has wrong signature`);
-#endif
-      AL.currentCtx.err = AL_INVALID_ENUM;
-      return 0.0;
-    }
-  },
+  alGetDouble: (param) => AL.getGlobalParam(param, 'alGetDouble') || 0.0,
 
   alGetDoublev__proxy: 'sync',
   alGetDoublev: (param, pValues) => {
     var val = AL.getGlobalParam(param, 'alGetDoublev');
     // Silently ignore null destinations, as per the spec for global state functions
-    if (val === null || !pValues) {
-      return;
-    }
-
-    switch (param) {
-    case AL_DOPPLER_FACTOR:
-    case AL_SPEED_OF_SOUND:
-    case AL_DISTANCE_MODEL:
+    if (val !== null && pValues) {
       {{{ makeSetValue('pValues', '0', 'val', 'double') }}};
-      break;
-    default:
-#if OPENAL_DEBUG
-      dbg(`alGetDoublev(): param ${ptrToString(param)} has wrong signature`);
-#endif
-      AL.currentCtx.err = AL_INVALID_ENUM;
-      return;
     }
   },
 
   alGetFloat__proxy: 'sync',
-  alGetFloat: (param) => {
-    var val = AL.getGlobalParam(param, 'alGetFloat');
-    if (val === null) {
-      return 0.0;
-    }
-
-    switch (param) {
-    case AL_DOPPLER_FACTOR:
-    case AL_SPEED_OF_SOUND:
-    case AL_DISTANCE_MODEL:
-      return val;
-    default:
-#if OPENAL_DEBUG
-      dbg(`alGetFloat(): param ${ptrToString(param)} has wrong signature`);
-#endif
-      return 0.0;
-    }
-  },
+  alGetFloat: (param) => AL.getGlobalParam(param, 'alGetFloat') || 0.0,
 
   alGetFloatv__proxy: 'sync',
   alGetFloatv: (param, pValues) => {
     var val = AL.getGlobalParam(param, 'alGetFloatv');
     // Silently ignore null destinations, as per the spec for global state functions
-    if (val === null || !pValues) {
-      return;
-    }
-
-    switch (param) {
-    case AL_DOPPLER_FACTOR:
-    case AL_SPEED_OF_SOUND:
-    case AL_DISTANCE_MODEL:
+    if (val !== null && pValues) {
       {{{ makeSetValue('pValues', '0', 'val', 'float') }}};
-      break;
-    default:
-#if OPENAL_DEBUG
-      dbg(`alGetFloatv(): param ${ptrToString(param)} has wrong signature`);
-#endif
-      AL.currentCtx.err = AL_INVALID_ENUM;
-      return;
     }
   },
 
   alGetInteger__proxy: 'sync',
-  alGetInteger: (param) => {
-    var val = AL.getGlobalParam(param, 'alGetInteger');
-    if (val === null) {
-      return 0;
-    }
-
-    switch (param) {
-    case AL_DOPPLER_FACTOR:
-    case AL_SPEED_OF_SOUND:
-    case AL_DISTANCE_MODEL:
-      return val;
-    default:
-#if OPENAL_DEBUG
-      dbg(`alGetInteger(): param ${ptrToString(param)} has wrong signature`);
-#endif
-      AL.currentCtx.err = AL_INVALID_ENUM;
-      return 0;
-    }
-  },
+  alGetInteger: (param) => AL.getGlobalParam(param, 'alGetInteger') || 0,
 
   alGetIntegerv__proxy: 'sync',
   alGetIntegerv: (param, pValues) => {
     var val = AL.getGlobalParam(param, 'alGetIntegerv');
     // Silently ignore null destinations, as per the spec for global state functions
-    if (val === null || !pValues) {
-      return;
-    }
-
-    switch (param) {
-    case AL_DOPPLER_FACTOR:
-    case AL_SPEED_OF_SOUND:
-    case AL_DISTANCE_MODEL:
+    if (val !== null && pValues) {
       {{{ makeSetValue('pValues', '0', 'val', 'i32') }}};
-      break;
-    default:
-#if OPENAL_DEBUG
-      dbg(`alGetIntegerv(): param ${ptrToString(param)} has wrong signature`);
-#endif
-      AL.currentCtx.err = AL_INVALID_ENUM;
-      return;
     }
   },
 
   alGetBoolean__proxy: 'sync',
-  alGetBoolean: (param) => {
-    var val = AL.getGlobalParam(param, 'alGetBoolean');
-    if (val === null) {
-      return AL_FALSE;
-    }
-
-    switch (param) {
-    case AL_DOPPLER_FACTOR:
-    case AL_SPEED_OF_SOUND:
-    case AL_DISTANCE_MODEL:
-      return val ? AL_TRUE : AL_FALSE;
-    default:
-#if OPENAL_DEBUG
-      dbg(`alGetBoolean(): param ${ptrToString(param)} has wrong signature`);
-#endif
-      AL.currentCtx.err = AL_INVALID_ENUM;
-      return AL_FALSE;
-    }
-  },
+  alGetBoolean: (param) => AL.getGlobalParam(param, 'alGetBoolean') ? AL_TRUE : AL_FALSE,
 
   alGetBooleanv__proxy: 'sync',
   alGetBooleanv: (param, pValues) => {
     var val = AL.getGlobalParam(param, 'alGetBooleanv');
     // Silently ignore null destinations, as per the spec for global state functions
-    if (val === null || !pValues) {
-      return;
-    }
-
-    switch (param) {
-    case AL_DOPPLER_FACTOR:
-    case AL_SPEED_OF_SOUND:
-    case AL_DISTANCE_MODEL:
+    if (val !== null && pValues) {
       {{{ makeSetValue('pValues', '0', 'val', 'i8') }}};
-      break;
-    default:
-#if OPENAL_DEBUG
-      dbg(`alGetBooleanv(): param ${ptrToString(param)} has wrong signature`);
-#endif
-      AL.currentCtx.err = AL_INVALID_ENUM;
-      return;
     }
   },
 
@@ -3269,10 +3094,7 @@ var LibraryOpenAL = {
   alDopplerVelocity__proxy: 'sync',
   alDopplerVelocity: (value) => {
     warnOnce('alDopplerVelocity() is deprecated, and only kept for compatibility with OpenAL 1.0. Use alSpeedOfSound() instead.');
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alDopplerVelocity() called without a valid context');
-#endif
+    if (!AL.requireValidContext('alDopplerVelocity')) {
       return;
     }
     if (value <= 0) { // Negative or zero values are disallowed
@@ -3288,14 +3110,7 @@ var LibraryOpenAL = {
   alGetListenerf__proxy: 'sync',
   alGetListenerf: (param, pValue) => {
     var val = AL.getListenerParam(param, 'alGetListenerf');
-    if (val === null) {
-      return;
-    }
-    if (!pValue) {
-#if OPENAL_DEBUG
-      dbg('alGetListenerf() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue, 'alGetListenerf')) {
       return;
     }
 
@@ -3315,14 +3130,7 @@ var LibraryOpenAL = {
   alGetListener3f__proxy: 'sync',
   alGetListener3f: (param, pValue0, pValue1, pValue2) => {
     var val = AL.getListenerParam(param, 'alGetListener3f');
-    if (val === null) {
-      return;
-    }
-    if (!pValue0 || !pValue1 || !pValue2) {
-#if OPENAL_DEBUG
-      dbg('alGetListener3f() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue0 && pValue1 && pValue2, 'alGetListener3f')) {
       return;
     }
 
@@ -3345,14 +3153,7 @@ var LibraryOpenAL = {
   alGetListenerfv__proxy: 'sync',
   alGetListenerfv: (param, pValues) => {
     var val = AL.getListenerParam(param, 'alGetListenerfv');
-    if (val === null) {
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alGetListenerfv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValues, 'alGetListenerfv')) {
       return;
     }
 
@@ -3383,14 +3184,7 @@ var LibraryOpenAL = {
   alGetListeneri__proxy: 'sync',
   alGetListeneri: (param, pValue) => {
     var val = AL.getListenerParam(param, 'alGetListeneri');
-    if (val === null) {
-      return;
-    }
-    if (!pValue) {
-#if OPENAL_DEBUG
-      dbg('alGetListeneri() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue, 'alGetListeneri')) {
       return;
     }
 
@@ -3403,14 +3197,7 @@ var LibraryOpenAL = {
   alGetListener3i__proxy: 'sync',
   alGetListener3i: (param, pValue0, pValue1, pValue2) => {
     var val = AL.getListenerParam(param, 'alGetListener3i');
-    if (val === null) {
-      return;
-    }
-    if (!pValue0 || !pValue1 || !pValue2) {
-#if OPENAL_DEBUG
-      dbg('alGetListener3i() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue0 && pValue1 && pValue2, 'alGetListener3i')) {
       return;
     }
 
@@ -3433,14 +3220,7 @@ var LibraryOpenAL = {
   alGetListeneriv__proxy: 'sync',
   alGetListeneriv: (param, pValues) => {
     var val = AL.getListenerParam(param, 'alGetListeneriv');
-    if (val === null) {
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alGetListeneriv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValues, 'alGetListeneriv')) {
       return;
     }
 
@@ -3498,17 +3278,7 @@ var LibraryOpenAL = {
 
   alListenerfv__proxy: 'sync',
   alListenerfv: (param, pValues) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alListenerfv() called without a valid context');
-#endif
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alListenerfv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (!AL.requireValidPointer(pValues, 'alListenerfv')) {
       return;
     }
 
@@ -3558,17 +3328,7 @@ var LibraryOpenAL = {
 
   alListeneriv__proxy: 'sync',
   alListeneriv: (param, pValues) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alListeneriv() called without a valid context');
-#endif
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alListeneriv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (!AL.requireValidPointer(pValues, 'alListeneriv')) {
       return;
     }
 
@@ -3613,10 +3373,7 @@ var LibraryOpenAL = {
 
   alBufferData__proxy: 'sync',
   alBufferData: (bufferId, format, pData, size, freq) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alBufferData() called without a valid context');
-#endif
+    if (!AL.requireValidContext('alBufferData')) {
       return;
     }
     var buf = AL.buffers[bufferId];
@@ -3741,14 +3498,7 @@ var LibraryOpenAL = {
   alGetBufferf__proxy: 'sync',
   alGetBufferf: (bufferId, param, pValue) => {
     var val = AL.getBufferParam(bufferId, param, 'alGetBufferf');
-    if (val === null) {
-      return;
-    }
-    if (!pValue) {
-#if OPENAL_DEBUG
-      dbg('alGetBufferf() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue, 'alGetBufferf')) {
       return;
     }
 
@@ -3761,14 +3511,7 @@ var LibraryOpenAL = {
   alGetBuffer3f__proxy: 'sync',
   alGetBuffer3f: (bufferId, param, pValue0, pValue1, pValue2) => {
     var val = AL.getBufferParam(bufferId, param, 'alGetBuffer3f');
-    if (val === null) {
-      return;
-    }
-    if (!pValue0 || !pValue1 || !pValue2) {
-#if OPENAL_DEBUG
-      dbg('alGetBuffer3f() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue0 && pValue1 && pValue2, 'alGetBuffer3f')) {
       return;
     }
 
@@ -3781,14 +3524,7 @@ var LibraryOpenAL = {
   alGetBufferfv__proxy: 'sync',
   alGetBufferfv: (bufferId, param, pValues) => {
     var val = AL.getBufferParam(bufferId, param, 'alGetBufferfv');
-    if (val === null) {
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alGetBufferfv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValues, 'alGetBufferfv')) {
       return;
     }
 
@@ -3801,14 +3537,7 @@ var LibraryOpenAL = {
   alGetBufferi__proxy: 'sync',
   alGetBufferi: (bufferId, param, pValue) => {
     var val = AL.getBufferParam(bufferId, param, 'alGetBufferi');
-    if (val === null) {
-      return;
-    }
-    if (!pValue) {
-#if OPENAL_DEBUG
-      dbg('alGetBufferi() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue, 'alGetBufferi')) {
       return;
     }
 
@@ -3831,14 +3560,7 @@ var LibraryOpenAL = {
   alGetBuffer3i__proxy: 'sync',
   alGetBuffer3i: (bufferId, param, pValue0, pValue1, pValue2) => {
     var val = AL.getBufferParam(bufferId, param, 'alGetBuffer3i');
-    if (val === null) {
-      return;
-    }
-    if (!pValue0 || !pValue1 || !pValue2) {
-#if OPENAL_DEBUG
-      dbg('alGetBuffer3i() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue0 && pValue1 && pValue2, 'alGetBuffer3i')) {
       return;
     }
 
@@ -3851,14 +3573,7 @@ var LibraryOpenAL = {
   alGetBufferiv__proxy: 'sync',
   alGetBufferiv: (bufferId, param, pValues) => {
     var val = AL.getBufferParam(bufferId, param, 'alGetBufferiv');
-    if (val === null) {
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alGetBufferiv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValues, 'alGetBufferiv')) {
       return;
     }
 
@@ -3898,17 +3613,7 @@ var LibraryOpenAL = {
 
   alBufferfv__proxy: 'sync',
   alBufferfv: (bufferId, param, pValues) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alBufferfv() called without a valid context');
-#endif
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alBufferfv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (!AL.requireValidPointer(pValues, 'alBufferfv')) {
       return;
     }
 
@@ -3927,17 +3632,7 @@ var LibraryOpenAL = {
 
   alBufferiv__proxy: 'sync',
   alBufferiv: (bufferId, param, pValues) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alBufferiv() called without a valid context');
-#endif
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alBufferiv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (!AL.requireValidPointer(pValues, 'alBufferiv')) {
       return;
     }
 
@@ -3967,18 +3662,8 @@ var LibraryOpenAL = {
 
   alSourceQueueBuffers__proxy: 'sync',
   alSourceQueueBuffers: (sourceId, count, pBufferIds) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourceQueueBuffers() called without a valid context');
-#endif
-      return;
-    }
-    var src = AL.currentCtx.sources.get(sourceId);
+    var src = AL.requireValidSource(sourceId, 'alSourceQueueBuffers');
     if (!src) {
-#if OPENAL_DEBUG
-      dbg('alSourceQueueBuffers() called with an invalid source');
-#endif
-      AL.currentCtx.err = AL_INVALID_NAME;
       return;
     }
     if (src.type === AL_STATIC) {
@@ -4051,18 +3736,8 @@ var LibraryOpenAL = {
 
   alSourceUnqueueBuffers__proxy: 'sync',
   alSourceUnqueueBuffers: (sourceId, count, pBufferIds) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourceUnqueueBuffers() called without a valid context');
-#endif
-      return;
-    }
-    var src = AL.currentCtx.sources.get(sourceId);
+    var src = AL.requireValidSource(sourceId, 'alSourceUnqueueBuffers');
     if (!src) {
-#if OPENAL_DEBUG
-      dbg('alSourceUnqueueBuffers() called with an invalid source');
-#endif
-      AL.currentCtx.err = AL_INVALID_NAME;
       return;
     }
     if (count > (src.bufQueue.length === 1 && !src.bufQueue[0].id ? 0 : src.bufsProcessed)) {
@@ -4093,218 +3768,63 @@ var LibraryOpenAL = {
 
   alSourcePlay__proxy: 'sync',
   alSourcePlay: (sourceId) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourcePlay() called without a valid context');
-#endif
-      return;
+    var src = AL.requireValidSource(sourceId, 'alSourcePlay');
+    if (src) {
+      AL.setSourceState(src, AL_PLAYING);
     }
-    var src = AL.currentCtx.sources.get(sourceId);
-    if (!src) {
-#if OPENAL_DEBUG
-      dbg('alSourcePlay() called with an invalid source');
-#endif
-      AL.currentCtx.err = AL_INVALID_NAME;
-      return;
-    }
-    AL.setSourceState(src, AL_PLAYING);
   },
 
   alSourcePlayv__proxy: 'sync',
   alSourcePlayv: (count, pSourceIds) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourcePlayv() called without a valid context');
-#endif
-      return;
-    }
-    if (count > 0 && !pSourceIds) {
-#if OPENAL_DEBUG
-      dbg('alSourcePlayv() called with null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
-      return;
-    }
-    for (var i = 0; i < count; ++i) {
-      if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
-#if OPENAL_DEBUG
-        dbg('alSourcePlayv() called with an invalid source');
-#endif
-        AL.currentCtx.err = AL_INVALID_NAME;
-        return;
-      }
-    }
-
-    for (var i = 0; i < count; ++i) {
-      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_PLAYING);
-    }
+    AL.setSourceStatev(count, pSourceIds, AL_PLAYING, 'alSourcePlayv');
   },
 
   alSourceStop__proxy: 'sync',
   alSourceStop: (sourceId) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourceStop() called without a valid context');
-#endif
-      return;
+    var src = AL.requireValidSource(sourceId, 'alSourceStop');
+    if (src) {
+      AL.setSourceState(src, AL_STOPPED);
     }
-    var src = AL.currentCtx.sources.get(sourceId);
-    if (!src) {
-#if OPENAL_DEBUG
-      dbg('alSourceStop() called with an invalid source');
-#endif
-      AL.currentCtx.err = AL_INVALID_NAME;
-      return;
-    }
-    AL.setSourceState(src, AL_STOPPED);
   },
 
   alSourceStopv__proxy: 'sync',
   alSourceStopv: (count, pSourceIds) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourceStopv() called without a valid context');
-#endif
-      return;
-    }
-    if (count > 0 && !pSourceIds) {
-#if OPENAL_DEBUG
-      dbg('alSourceStopv() called with null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
-      return;
-    }
-    for (var i = 0; i < count; ++i) {
-      if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
-#if OPENAL_DEBUG
-        dbg('alSourceStopv() called with an invalid source');
-#endif
-        AL.currentCtx.err = AL_INVALID_NAME;
-        return;
-      }
-    }
-
-    for (var i = 0; i < count; ++i) {
-      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_STOPPED);
-    }
+    AL.setSourceStatev(count, pSourceIds, AL_STOPPED, 'alSourceStopv');
   },
 
   alSourceRewind__proxy: 'sync',
   alSourceRewind: (sourceId) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourceRewind() called without a valid context');
-#endif
-      return;
+    var src = AL.requireValidSource(sourceId, 'alSourceRewind');
+    if (src) {
+      // Stop the source first to clear the source queue
+      AL.setSourceState(src, AL_STOPPED);
+      // Now set the state of AL_INITIAL according to the specification
+      AL.setSourceState(src, AL_INITIAL);
     }
-    var src = AL.currentCtx.sources.get(sourceId);
-    if (!src) {
-#if OPENAL_DEBUG
-      dbg('alSourceRewind() called with an invalid source');
-#endif
-      AL.currentCtx.err = AL_INVALID_NAME;
-      return;
-    }
-    // Stop the source first to clear the source queue
-    AL.setSourceState(src, AL_STOPPED);
-    // Now set the state of AL_INITIAL according to the specification
-    AL.setSourceState(src, AL_INITIAL);
   },
 
   alSourceRewindv__proxy: 'sync',
   alSourceRewindv: (count, pSourceIds) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourceRewindv() called without a valid context');
-#endif
-      return;
-    }
-    if (count > 0 && !pSourceIds) {
-#if OPENAL_DEBUG
-      dbg('alSourceRewindv() called with null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
-      return;
-    }
-    for (var i = 0; i < count; ++i) {
-      if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
-#if OPENAL_DEBUG
-        dbg('alSourceRewindv() called with an invalid source');
-#endif
-        AL.currentCtx.err = AL_INVALID_NAME;
-        return;
-      }
-    }
-
-    for (var i = 0; i < count; ++i) {
-      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_INITIAL);
-    }
+    AL.setSourceStatev(count, pSourceIds, AL_INITIAL, 'alSourceRewindv');
   },
 
   alSourcePause__proxy: 'sync',
   alSourcePause: (sourceId) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourcePause() called without a valid context');
-#endif
-      return;
+    var src = AL.requireValidSource(sourceId, 'alSourcePause');
+    if (src) {
+      AL.setSourceState(src, AL_PAUSED);
     }
-    var src = AL.currentCtx.sources.get(sourceId);
-    if (!src) {
-#if OPENAL_DEBUG
-      dbg('alSourcePause() called with an invalid source');
-#endif
-      AL.currentCtx.err = AL_INVALID_NAME;
-      return;
-    }
-    AL.setSourceState(src, AL_PAUSED);
   },
 
   alSourcePausev__proxy: 'sync',
   alSourcePausev: (count, pSourceIds) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourcePausev() called without a valid context');
-#endif
-      return;
-    }
-    if (count > 0 && !pSourceIds) {
-#if OPENAL_DEBUG
-      dbg('alSourcePausev() called with null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
-      return;
-    }
-    for (var i = 0; i < count; ++i) {
-      if (!AL.currentCtx.sources.has({{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}})) {
-#if OPENAL_DEBUG
-        dbg('alSourcePausev() called with an invalid source');
-#endif
-        AL.currentCtx.err = AL_INVALID_NAME;
-        return;
-      }
-    }
-
-    for (var i = 0; i < count; ++i) {
-      var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
-      AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_PAUSED);
-    }
+    AL.setSourceStatev(count, pSourceIds, AL_PAUSED, 'alSourcePausev');
   },
 
   alGetSourcef__proxy: 'sync',
   alGetSourcef: (sourceId, param, pValue) => {
     var val = AL.getSourceParam(sourceId, param, 'alGetSourcef');
-    if (val === null) {
-      return;
-    }
-    if (!pValue) {
-#if OPENAL_DEBUG
-      dbg('alGetSourcef() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue, 'alGetSourcef')) {
       return;
     }
 
@@ -4337,14 +3857,7 @@ var LibraryOpenAL = {
   alGetSource3f__proxy: 'sync',
   alGetSource3f: (sourceId, param, pValue0, pValue1, pValue2) => {
     var val = AL.getSourceParam(sourceId, param, 'alGetSource3f');
-    if (val === null) {
-      return;
-    }
-    if (!pValue0 || !pValue1 || !pValue2) {
-#if OPENAL_DEBUG
-      dbg('alGetSource3f() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue0 && pValue1 && pValue2, 'alGetSource3f')) {
       return;
     }
 
@@ -4368,14 +3881,7 @@ var LibraryOpenAL = {
   alGetSourcefv__proxy: 'sync',
   alGetSourcefv: (sourceId, param, pValues) => {
     var val = AL.getSourceParam(sourceId, param, 'alGetSourcefv');
-    if (val === null) {
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alGetSourcefv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValues, 'alGetSourcefv')) {
       return;
     }
 
@@ -4415,14 +3921,7 @@ var LibraryOpenAL = {
   alGetSourcei__proxy: 'sync',
   alGetSourcei: (sourceId, param, pValue) => {
     var val = AL.getSourceParam(sourceId, param, 'alGetSourcei');
-    if (val === null) {
-      return;
-    }
-    if (!pValue) {
-#if OPENAL_DEBUG
-      dbg('alGetSourcei() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue, 'alGetSourcei')) {
       return;
     }
 
@@ -4460,14 +3959,7 @@ var LibraryOpenAL = {
   alGetSource3i__proxy: 'sync',
   alGetSource3i: (sourceId, param, pValue0, pValue1, pValue2) => {
     var val = AL.getSourceParam(sourceId, param, 'alGetSource3i');
-    if (val === null) {
-      return;
-    }
-    if (!pValue0 || !pValue1 || !pValue2) {
-#if OPENAL_DEBUG
-      dbg('alGetSource3i() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValue0 && pValue1 && pValue2, 'alGetSource3i')) {
       return;
     }
 
@@ -4491,14 +3983,7 @@ var LibraryOpenAL = {
   alGetSourceiv__proxy: 'sync',
   alGetSourceiv: (sourceId, param, pValues) => {
     var val = AL.getSourceParam(sourceId, param, 'alGetSourceiv');
-    if (val === null) {
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alGetSourceiv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (val === null || !AL.requireValidPointer(pValues, 'alGetSourceiv')) {
       return;
     }
 
@@ -4584,17 +4069,7 @@ var LibraryOpenAL = {
 
   alSourcefv__proxy: 'sync',
   alSourcefv: (sourceId, param, pValues) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourcefv() called without a valid context');
-#endif
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alSourcefv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (!AL.requireValidPointer(pValues, 'alSourcefv')) {
       return;
     }
 
@@ -4675,17 +4150,7 @@ var LibraryOpenAL = {
 
   alSourceiv__proxy: 'sync',
   alSourceiv: (sourceId, param, pValues) => {
-    if (!AL.currentCtx) {
-#if OPENAL_DEBUG
-      dbg('alSourceiv() called without a valid context');
-#endif
-      return;
-    }
-    if (!pValues) {
-#if OPENAL_DEBUG
-      dbg('alSourceiv() called with a null pointer');
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
+    if (!AL.requireValidPointer(pValues, 'alSourceiv')) {
       return;
     }
 
