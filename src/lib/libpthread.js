@@ -102,7 +102,7 @@ var LibraryPThread = {
     // pthread.
     pthreads: {},
 #if MAIN_MODULE
-    outstandingPromises: {},
+    outstandingPromises: new Map(),
     // Finished threads are threads that have finished running but we are not yet
     // joined.
     finishedThreads: new Set(),
@@ -642,9 +642,7 @@ var LibraryPThread = {
     var worker = PThread.pthreads[pthread_ptr];
 #if MAIN_MODULE
     PThread.finishedThreads.delete(pthread_ptr);
-    if (pthread_ptr in PThread.outstandingPromises) {
-      PThread.outstandingPromises[pthread_ptr].resolve();
-    }
+    PThread.outstandingPromises.get(pthread_ptr)?.resolve();
 #endif
 #if ASSERTIONS
     assert(worker);
@@ -1216,9 +1214,7 @@ var LibraryPThread = {
     dbg(`markAsFinished: ${ptrToString(pthread_ptr)}`);
 #endif
     PThread.finishedThreads.add(pthread_ptr);
-    if (pthread_ptr in PThread.outstandingPromises) {
-      PThread.outstandingPromises[pthread_ptr].resolve();
-    }
+    PThread.outstandingPromises.get(pthread_ptr)?.resolve();
   },
 
   // Asynchronous version _emscripten_dlsync_threads.
@@ -1231,7 +1227,7 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'dlsyncThreadsAsync() should only be called from the main thread');
-    assert(!Object.keys(PThread.outstandingPromises).length);
+    assert(!PThread.outstandingPromises.size);
 #endif
 
     const promises = [];
@@ -1252,7 +1248,7 @@ var LibraryPThread = {
       if (pthread_ptr !== caller && !PThread.finishedThreads.has(pthread_ptr)) {
         info = makePromise();
         __emscripten_proxy_dlsync_async(pthread_ptr, info.id);
-        PThread.outstandingPromises[pthread_ptr] = info;
+        PThread.outstandingPromises.set(pthread_ptr, info);
         promises.push(info.promise);
       }
     }
@@ -1262,7 +1258,7 @@ var LibraryPThread = {
 #endif
     await Promise.all(promises);
 
-    PThread.outstandingPromises = {};
+    PThread.outstandingPromises.clear();
 #if PTHREADS_DEBUG
     dbg('dlsyncThreadsAsync done');
 #endif
