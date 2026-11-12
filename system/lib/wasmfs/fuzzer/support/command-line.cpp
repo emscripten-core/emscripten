@@ -7,7 +7,7 @@
 // https://github.com/WebAssembly/binaryen/blob/main/src/support/command-line.cpp
 
 #include "command-line.h"
-#include <assert.h>
+#include <cassert>
 #include <iostream>
 
 using namespace wasmfs;

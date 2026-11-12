@@ -8,7 +8,7 @@
 #pragma once
 
 #include "support.h"
-#include <assert.h>
+#include <cassert>
 #include <emscripten.h>
 #include <emscripten/html5.h>
 #include <fcntl.h>

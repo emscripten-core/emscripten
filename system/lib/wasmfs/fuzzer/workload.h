@@ -10,12 +10,12 @@
 
 #include "parameters.h"
 #include "random.h"
-#include <assert.h>
+#include <cassert>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <optional>
-#include <stdio.h>
 #include <string>
 #include <thread>
 #include <unistd.h>

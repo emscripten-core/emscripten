@@ -3,8 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <cstdlib>
 #include <emscripten/threading.h>
-#include <stdlib.h>
 
 #include "backend.h"
 #include "file.h"

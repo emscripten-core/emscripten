@@ -11,8 +11,8 @@
 // dependency issues that arise from that).
 //
 
+#include <cstdio>
 #include <emscripten.h>
-#include <stdio.h>
 
 #include <string>
 
