@@ -557,8 +557,13 @@ var LibraryDylink = {
     // determine this, parse the type and import sections of the binary
     // directly.  If we are handed a pre-compiled WebAssembly.Module we have no
     // access to the bytes and `importSigs` is left undefined.
+    //
+    // This parsing is best-effort: if we encounter something we don't
+    // understand we give up and leave `importSigs` undefined, in which case
+    // late-bound symbols fall back to JS stubs (see createWasmStub), rather
+    // than failing to load the library at all.
     if (sectionsStart !== undefined) {
-      var importSigs = customSection.importSigs = {};
+      var importSigs = {};
       var types = [];
       var typeChars = {0x7f: 'i', 0x7e: 'j', 0x7d: 'f', 0x7c: 'd', 0x6f: 'e'};
 
@@ -671,17 +676,24 @@ var LibraryDylink = {
       }
 
       offset = sectionsStart;
-      while (offset < binary.length) {
-        var sectionId = getU8();
-        var sectionEnd = getLEB() + offset;
-        if (sectionId === 1 /* type */) {
-          parseTypeSection();
-        } else if (sectionId === 2 /* import */) {
-          parseImportSection();
-          // The import section always follows the type section so we are done.
-          break;
+      try {
+        while (offset < binary.length) {
+          var sectionId = getU8();
+          var sectionEnd = getLEB() + offset;
+          if (sectionId === 1 /* type */) {
+            parseTypeSection();
+          } else if (sectionId === 2 /* import */) {
+            parseImportSection();
+            // The import section always follows the type section so we are done.
+            break;
+          }
+          offset = sectionEnd;
         }
-        offset = sectionEnd;
+        customSection.importSigs = importSigs;
+      } catch (e) {
+#if ASSERTIONS
+        err(`warning: failed to parse import signatures, falling back to JS stubs for late-bound symbols: ${e}`);
+#endif
       }
     }
 #endif
