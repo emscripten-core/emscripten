@@ -46,24 +46,22 @@ var LibraryGLEW = {
       [cDefs.GLEW_VERSION_MICRO]: null,
     },
 
-    errorStringConstantFromCode(error) {
-      if (GLEW.isLinaroFork) {
-        switch (error) {
-          case GLEW_ERROR_NOT_GLES_VERSION: return 'OpenGL ES lib expected, found OpenGL lib';
-          case GLEW_ERROR_GLES_VERSION: return 'OpenGL lib expected, found OpenGL ES lib';
-          case GLEW_ERROR_NO_EGL_VERSION: return 'Missing EGL version';
-          case GLEW_ERROR_EGL_VERSION_10_ONLY: return 'EGL 1.1 and up are supported';
-          default: break;
-        }
-      }
+    errorStrings: {
+      [cDefs.GLEW_OK]: 'No error', // GLEW_OK || GLEW_NO_ERROR
+      [cDefs.GLEW_ERROR_NO_GL_VERSION]: 'Missing GL version',
+      [cDefs.GLEW_ERROR_GL_VERSION_10_ONLY]: 'GL 1.1 and up are supported',
+      [cDefs.GLEW_ERROR_GLX_VERSION_11_ONLY]: 'GLX 1.2 and up are supported',
+      [cDefs.GLEW_ERROR_NOT_GLES_VERSION]: 'OpenGL ES lib expected, found OpenGL lib',
+      [cDefs.GLEW_ERROR_GLES_VERSION]: 'OpenGL lib expected, found OpenGL ES lib',
+      [cDefs.GLEW_ERROR_NO_EGL_VERSION]: 'Missing EGL version',
+      [cDefs.GLEW_ERROR_EGL_VERSION_10_ONLY]: 'EGL 1.1 and up are supported',
+    },
 
-      switch (error) {
-        case GLEW_OK: return 'No error'; // GLEW_OK || GLEW_NO_ERROR
-        case GLEW_ERROR_NO_GL_VERSION: return 'Missing GL version';
-        case GLEW_ERROR_GL_VERSION_10_ONLY: return 'GL 1.1 and up are supported';
-        case GLEW_ERROR_GLX_VERSION_11_ONLY: return 'GLX 1.2 and up are supported';
-        default: return null;
+    errorStringConstantFromCode(error) {
+      if (!GLEW.isLinaroFork && error >= GLEW_ERROR_NOT_GLES_VERSION) {
+        return null;
       }
+      return GLEW.errorStrings[error];
     },
 
     errorString(error) {

@@ -60,60 +60,46 @@ var LibraryGLUT = {
       }
     },
 
-    getSpecialKey: (keycode) => {
-        var key = null;
-        switch (keycode) {
-          case 8:  key = 120 /* backspace */; break;
-          case 46: key = 111 /* delete */; break;
+    specialKeys: {
+      8: 120, // backspace
+      46: 111, // delete
 
-          case 0x70 /*DOM_VK_F1*/: key = GLUT_KEY_F1; break;
-          case 0x71 /*DOM_VK_F2*/: key = GLUT_KEY_F2; break;
-          case 0x72 /*DOM_VK_F3*/: key = GLUT_KEY_F3; break;
-          case 0x73 /*DOM_VK_F4*/: key = GLUT_KEY_F4; break;
-          case 0x74 /*DOM_VK_F5*/: key = GLUT_KEY_F5; break;
-          case 0x75 /*DOM_VK_F6*/: key = GLUT_KEY_F6; break;
-          case 0x76 /*DOM_VK_F7*/: key = GLUT_KEY_F7; break;
-          case 0x77 /*DOM_VK_F8*/: key = GLUT_KEY_F8; break;
-          case 0x78 /*DOM_VK_F9*/: key = GLUT_KEY_F9; break;
-          case 0x79 /*DOM_VK_F10*/: key = GLUT_KEY_F10; break;
-          case 0x7a /*DOM_VK_F11*/: key = GLUT_KEY_F11; break;
-          case 0x7b /*DOM_VK_F12*/: key = GLUT_KEY_F12; break;
-          case 0x25 /*DOM_VK_LEFT*/: key = GLUT_KEY_LEFT; break;
-          case 0x26 /*DOM_VK_UP*/: key = GLUT_KEY_UP; break;
-          case 0x27 /*DOM_VK_RIGHT*/: key = GLUT_KEY_RIGHT; break;
-          case 0x28 /*DOM_VK_DOWN*/: key = GLUT_KEY_DOWN; break;
-          case 0x21 /*DOM_VK_PAGE_UP*/: key = GLUT_KEY_PAGE_UP; break;
-          case 0x22 /*DOM_VK_PAGE_DOWN*/: key = GLUT_KEY_PAGE_DOWN; break;
-          case 0x24 /*DOM_VK_HOME*/: key = GLUT_KEY_HOME; break;
-          case 0x23 /*DOM_VK_END*/: key = GLUT_KEY_END; break;
-          case 0x2d /*DOM_VK_INSERT*/: key = GLUT_KEY_INSERT; break;
+      0x70 /*DOM_VK_F1*/: cDefs.GLUT_KEY_F1,
+      0x71 /*DOM_VK_F2*/: cDefs.GLUT_KEY_F2,
+      0x72 /*DOM_VK_F3*/: cDefs.GLUT_KEY_F3,
+      0x73 /*DOM_VK_F4*/: cDefs.GLUT_KEY_F4,
+      0x74 /*DOM_VK_F5*/: cDefs.GLUT_KEY_F5,
+      0x75 /*DOM_VK_F6*/: cDefs.GLUT_KEY_F6,
+      0x76 /*DOM_VK_F7*/: cDefs.GLUT_KEY_F7,
+      0x77 /*DOM_VK_F8*/: cDefs.GLUT_KEY_F8,
+      0x78 /*DOM_VK_F9*/: cDefs.GLUT_KEY_F9,
+      0x79 /*DOM_VK_F10*/: cDefs.GLUT_KEY_F10,
+      0x7a /*DOM_VK_F11*/: cDefs.GLUT_KEY_F11,
+      0x7b /*DOM_VK_F12*/: cDefs.GLUT_KEY_F12,
+      0x25 /*DOM_VK_LEFT*/: cDefs.GLUT_KEY_LEFT,
+      0x26 /*DOM_VK_UP*/: cDefs.GLUT_KEY_UP,
+      0x27 /*DOM_VK_RIGHT*/: cDefs.GLUT_KEY_RIGHT,
+      0x28 /*DOM_VK_DOWN*/: cDefs.GLUT_KEY_DOWN,
+      0x21 /*DOM_VK_PAGE_UP*/: cDefs.GLUT_KEY_PAGE_UP,
+      0x22 /*DOM_VK_PAGE_DOWN*/: cDefs.GLUT_KEY_PAGE_DOWN,
+      0x24 /*DOM_VK_HOME*/: cDefs.GLUT_KEY_HOME,
+      0x23 /*DOM_VK_END*/: cDefs.GLUT_KEY_END,
+      0x2d /*DOM_VK_INSERT*/: cDefs.GLUT_KEY_INSERT,
 
-          case 16   /*DOM_VK_SHIFT*/:
-          case 0x05 /*DOM_VK_LEFT_SHIFT*/:
-            key = 112 /* GLUT_KEY_SHIFT_L */;
-            break;
-          case 0x06 /*DOM_VK_RIGHT_SHIFT*/:
-            key = 113 /* GLUT_KEY_SHIFT_R */;
-            break;
+      16   /*DOM_VK_SHIFT*/: 112, // GLUT_KEY_SHIFT_L
+      0x05 /*DOM_VK_LEFT_SHIFT*/: 112, // GLUT_KEY_SHIFT_L
+      0x06 /*DOM_VK_RIGHT_SHIFT*/: 113, // GLUT_KEY_SHIFT_R
 
-          case 17   /*DOM_VK_CONTROL*/:
-          case 0x03 /*DOM_VK_LEFT_CONTROL*/:
-            key = 114 /* GLUT_KEY_CONTROL_L */;
-            break;
-          case 0x04 /*DOM_VK_RIGHT_CONTROL*/:
-            key = 115 /* GLUT_KEY_CONTROL_R */;
-            break;
+      17   /*DOM_VK_CONTROL*/: 114, // GLUT_KEY_CONTROL_L
+      0x03 /*DOM_VK_LEFT_CONTROL*/: 114, // GLUT_KEY_CONTROL_L
+      0x04 /*DOM_VK_RIGHT_CONTROL*/: 115, // GLUT_KEY_CONTROL_R
 
-          case 18   /*DOM_VK_ALT*/:
-          case 0x02 /*DOM_VK_LEFT_ALT*/:
-            key = 116 /* GLUT_KEY_ALT_L */;
-            break;
-          case 0x01 /*DOM_VK_RIGHT_ALT*/:
-            key = 117 /* GLUT_KEY_ALT_R */;
-            break;
-        };
-        return key;
+      18   /*DOM_VK_ALT*/: 116, // GLUT_KEY_ALT_L
+      0x02 /*DOM_VK_LEFT_ALT*/: 116, // GLUT_KEY_ALT_L
+      0x01 /*DOM_VK_RIGHT_ALT*/: 117, // GLUT_KEY_ALT_R
     },
+
+    getSpecialKey: (keycode) => GLUT.specialKeys[keycode] ?? null,
 
     getASCIIKey: (event) => {
       if (event['ctrlKey'] || event['altKey'] || event['metaKey']) return null;
@@ -482,78 +468,38 @@ var LibraryGLUT = {
     GLUT.mouseFunc = func;
   },
 
+  $glutCursorStyles__internal: true,
+  $glutCursorStyles: {
+    [cDefs.GLUT_CURSOR_RIGHT_ARROW]: 'auto', // No equivalent css cursor style, fallback to 'auto'
+    [cDefs.GLUT_CURSOR_LEFT_ARROW]: 'auto',
+    [cDefs.GLUT_CURSOR_INFO]: 'pointer',
+    [cDefs.GLUT_CURSOR_DESTROY]: 'auto',
+    [cDefs.GLUT_CURSOR_HELP]: 'help',
+    [cDefs.GLUT_CURSOR_CYCLE]: 'auto',
+    [cDefs.GLUT_CURSOR_SPRAY]: 'auto',
+    [cDefs.GLUT_CURSOR_WAIT]: 'wait',
+    [cDefs.GLUT_CURSOR_TEXT]: 'text',
+    [cDefs.GLUT_CURSOR_CROSSHAIR]: 'crosshair',
+    [cDefs.GLUT_CURSOR_FULL_CROSSHAIR]: 'crosshair',
+    [cDefs.GLUT_CURSOR_UP_DOWN]: 'ns-resize',
+    [cDefs.GLUT_CURSOR_LEFT_RIGHT]: 'ew-resize',
+    [cDefs.GLUT_CURSOR_TOP_SIDE]: 'n-resize',
+    [cDefs.GLUT_CURSOR_BOTTOM_SIDE]: 's-resize',
+    [cDefs.GLUT_CURSOR_LEFT_SIDE]: 'w-resize',
+    [cDefs.GLUT_CURSOR_RIGHT_SIDE]: 'e-resize',
+    [cDefs.GLUT_CURSOR_TOP_LEFT_CORNER]: 'nw-resize',
+    [cDefs.GLUT_CURSOR_TOP_RIGHT_CORNER]: 'ne-resize',
+    [cDefs.GLUT_CURSOR_BOTTOM_RIGHT_CORNER]: 'se-resize',
+    [cDefs.GLUT_CURSOR_BOTTOM_LEFT_CORNER]: 'sw-resize',
+    [cDefs.GLUT_CURSOR_INHERIT]: 'auto',
+    [cDefs.GLUT_CURSOR_NONE]: 'none',
+  },
+
   glutSetCursor__proxy: 'sync',
   glutSetCursor: (cursor) => {
-    var cursorStyle = 'auto';
-    switch (cursor) {
-      case GLUT_CURSOR_RIGHT_ARROW:
-        // No equivalent css cursor style, fallback to 'auto'
-        break;
-      case GLUT_CURSOR_LEFT_ARROW:
-        // No equivalent css cursor style, fallback to 'auto'
-        break;
-      case GLUT_CURSOR_INFO:
-        cursorStyle = 'pointer';
-        break;
-      case GLUT_CURSOR_DESTROY:
-        // No equivalent css cursor style, fallback to 'auto'
-        break;
-      case GLUT_CURSOR_HELP:
-        cursorStyle = 'help';
-        break;
-      case GLUT_CURSOR_CYCLE:
-        // No equivalent css cursor style, fallback to 'auto'
-        break;
-      case GLUT_CURSOR_SPRAY:
-        // No equivalent css cursor style, fallback to 'auto'
-        break;
-      case GLUT_CURSOR_WAIT:
-        cursorStyle = 'wait';
-        break;
-      case GLUT_CURSOR_TEXT:
-        cursorStyle = 'text';
-        break;
-      case GLUT_CURSOR_CROSSHAIR:
-      case GLUT_CURSOR_FULL_CROSSHAIR:
-        cursorStyle = 'crosshair';
-        break;
-      case GLUT_CURSOR_UP_DOWN:
-        cursorStyle = 'ns-resize';
-        break;
-      case GLUT_CURSOR_LEFT_RIGHT:
-        cursorStyle = 'ew-resize';
-        break;
-      case GLUT_CURSOR_TOP_SIDE:
-        cursorStyle = 'n-resize';
-        break;
-      case GLUT_CURSOR_BOTTOM_SIDE:
-        cursorStyle = 's-resize';
-        break;
-      case GLUT_CURSOR_LEFT_SIDE:
-        cursorStyle = 'w-resize';
-        break;
-      case GLUT_CURSOR_RIGHT_SIDE:
-        cursorStyle = 'e-resize';
-        break;
-      case GLUT_CURSOR_TOP_LEFT_CORNER:
-        cursorStyle = 'nw-resize';
-        break;
-      case GLUT_CURSOR_TOP_RIGHT_CORNER:
-        cursorStyle = 'ne-resize';
-        break;
-      case GLUT_CURSOR_BOTTOM_RIGHT_CORNER:
-        cursorStyle = 'se-resize';
-        break;
-      case GLUT_CURSOR_BOTTOM_LEFT_CORNER:
-        cursorStyle = 'sw-resize';
-        break;
-      case GLUT_CURSOR_INHERIT:
-        break;
-      case GLUT_CURSOR_NONE:
-        cursorStyle = 'none';
-        break;
-      default:
-        abort('glutSetCursor: Unknown cursor type: ' + cursor);
+    var cursorStyle = glutCursorStyles[cursor];
+    if (!cursorStyle) {
+      abort('glutSetCursor: Unknown cursor type: ' + cursor);
     }
     Browser.getCanvas().style.cursor = cursorStyle;
   },

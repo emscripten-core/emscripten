@@ -152,210 +152,209 @@ var LibraryGLFW = {
  ******************************************************************************/
 
     /* https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and GLFW/glfw3.h */
-    DOMToGLFWKeyCode: (keycode) => {
-      switch (keycode) {
-        // these keycodes are only defined for GLFW3, assume they are the same for GLFW2
-        case 0x20:return 32; // DOM_VK_SPACE -> GLFW_KEY_SPACE
-        case 0xDE:return 39; // DOM_VK_QUOTE -> GLFW_KEY_APOSTROPHE
-        case 0xBC:return 44; // DOM_VK_COMMA -> GLFW_KEY_COMMA
-        case 0xAD:return 45; // DOM_VK_HYPHEN_MINUS -> GLFW_KEY_MINUS
-        case 0xBD:return 45; // DOM_VK_MINUS -> GLFW_KEY_MINUS
-        case 0xBE:return 46; // DOM_VK_PERIOD -> GLFW_KEY_PERIOD
-        case 0xBF:return 47; // DOM_VK_SLASH -> GLFW_KEY_SLASH
-        case 0x30:return 48; // DOM_VK_0 -> GLFW_KEY_0
-        case 0x31:return 49; // DOM_VK_1 -> GLFW_KEY_1
-        case 0x32:return 50; // DOM_VK_2 -> GLFW_KEY_2
-        case 0x33:return 51; // DOM_VK_3 -> GLFW_KEY_3
-        case 0x34:return 52; // DOM_VK_4 -> GLFW_KEY_4
-        case 0x35:return 53; // DOM_VK_5 -> GLFW_KEY_5
-        case 0x36:return 54; // DOM_VK_6 -> GLFW_KEY_6
-        case 0x37:return 55; // DOM_VK_7 -> GLFW_KEY_7
-        case 0x38:return 56; // DOM_VK_8 -> GLFW_KEY_8
-        case 0x39:return 57; // DOM_VK_9 -> GLFW_KEY_9
-        case 0x3B:return 59; // DOM_VK_SEMICOLON -> GLFW_KEY_SEMICOLON
-        case 0x3D:return 61; // DOM_VK_EQUALS -> GLFW_KEY_EQUAL
-        case 0xBB:return 61; // DOM_VK_EQUALS -> GLFW_KEY_EQUAL
-        case 0x41:return 65; // DOM_VK_A -> GLFW_KEY_A
-        case 0x42:return 66; // DOM_VK_B -> GLFW_KEY_B
-        case 0x43:return 67; // DOM_VK_C -> GLFW_KEY_C
-        case 0x44:return 68; // DOM_VK_D -> GLFW_KEY_D
-        case 0x45:return 69; // DOM_VK_E -> GLFW_KEY_E
-        case 0x46:return 70; // DOM_VK_F -> GLFW_KEY_F
-        case 0x47:return 71; // DOM_VK_G -> GLFW_KEY_G
-        case 0x48:return 72; // DOM_VK_H -> GLFW_KEY_H
-        case 0x49:return 73; // DOM_VK_I -> GLFW_KEY_I
-        case 0x4A:return 74; // DOM_VK_J -> GLFW_KEY_J
-        case 0x4B:return 75; // DOM_VK_K -> GLFW_KEY_K
-        case 0x4C:return 76; // DOM_VK_L -> GLFW_KEY_L
-        case 0x4D:return 77; // DOM_VK_M -> GLFW_KEY_M
-        case 0x4E:return 78; // DOM_VK_N -> GLFW_KEY_N
-        case 0x4F:return 79; // DOM_VK_O -> GLFW_KEY_O
-        case 0x50:return 80; // DOM_VK_P -> GLFW_KEY_P
-        case 0x51:return 81; // DOM_VK_Q -> GLFW_KEY_Q
-        case 0x52:return 82; // DOM_VK_R -> GLFW_KEY_R
-        case 0x53:return 83; // DOM_VK_S -> GLFW_KEY_S
-        case 0x54:return 84; // DOM_VK_T -> GLFW_KEY_T
-        case 0x55:return 85; // DOM_VK_U -> GLFW_KEY_U
-        case 0x56:return 86; // DOM_VK_V -> GLFW_KEY_V
-        case 0x57:return 87; // DOM_VK_W -> GLFW_KEY_W
-        case 0x58:return 88; // DOM_VK_X -> GLFW_KEY_X
-        case 0x59:return 89; // DOM_VK_Y -> GLFW_KEY_Y
-        case 0x5a:return 90; // DOM_VK_Z -> GLFW_KEY_Z
-        case 0xDB:return 91; // DOM_VK_OPEN_BRACKET -> GLFW_KEY_LEFT_BRACKET
-        case 0xDC:return 92; // DOM_VK_BACKSLASH -> GLFW_KEY_BACKSLASH
-        case 0xDD:return 93; // DOM_VK_CLOSE_BRACKET -> GLFW_KEY_RIGHT_BRACKET
-        case 0xC0:return 96; // DOM_VK_BACK_QUOTE -> GLFW_KEY_GRAVE_ACCENT
+    keyCodeMap: {
+      // these keycodes are only defined for GLFW3, assume they are the same for GLFW2
+      0x20: 32, // DOM_VK_SPACE -> GLFW_KEY_SPACE
+      0xDE: 39, // DOM_VK_QUOTE -> GLFW_KEY_APOSTROPHE
+      0xBC: 44, // DOM_VK_COMMA -> GLFW_KEY_COMMA
+      0xAD: 45, // DOM_VK_HYPHEN_MINUS -> GLFW_KEY_MINUS
+      0xBD: 45, // DOM_VK_MINUS -> GLFW_KEY_MINUS
+      0xBE: 46, // DOM_VK_PERIOD -> GLFW_KEY_PERIOD
+      0xBF: 47, // DOM_VK_SLASH -> GLFW_KEY_SLASH
+      0x30: 48, // DOM_VK_0 -> GLFW_KEY_0
+      0x31: 49, // DOM_VK_1 -> GLFW_KEY_1
+      0x32: 50, // DOM_VK_2 -> GLFW_KEY_2
+      0x33: 51, // DOM_VK_3 -> GLFW_KEY_3
+      0x34: 52, // DOM_VK_4 -> GLFW_KEY_4
+      0x35: 53, // DOM_VK_5 -> GLFW_KEY_5
+      0x36: 54, // DOM_VK_6 -> GLFW_KEY_6
+      0x37: 55, // DOM_VK_7 -> GLFW_KEY_7
+      0x38: 56, // DOM_VK_8 -> GLFW_KEY_8
+      0x39: 57, // DOM_VK_9 -> GLFW_KEY_9
+      0x3B: 59, // DOM_VK_SEMICOLON -> GLFW_KEY_SEMICOLON
+      0x3D: 61, // DOM_VK_EQUALS -> GLFW_KEY_EQUAL
+      0xBB: 61, // DOM_VK_EQUALS -> GLFW_KEY_EQUAL
+      0x41: 65, // DOM_VK_A -> GLFW_KEY_A
+      0x42: 66, // DOM_VK_B -> GLFW_KEY_B
+      0x43: 67, // DOM_VK_C -> GLFW_KEY_C
+      0x44: 68, // DOM_VK_D -> GLFW_KEY_D
+      0x45: 69, // DOM_VK_E -> GLFW_KEY_E
+      0x46: 70, // DOM_VK_F -> GLFW_KEY_F
+      0x47: 71, // DOM_VK_G -> GLFW_KEY_G
+      0x48: 72, // DOM_VK_H -> GLFW_KEY_H
+      0x49: 73, // DOM_VK_I -> GLFW_KEY_I
+      0x4A: 74, // DOM_VK_J -> GLFW_KEY_J
+      0x4B: 75, // DOM_VK_K -> GLFW_KEY_K
+      0x4C: 76, // DOM_VK_L -> GLFW_KEY_L
+      0x4D: 77, // DOM_VK_M -> GLFW_KEY_M
+      0x4E: 78, // DOM_VK_N -> GLFW_KEY_N
+      0x4F: 79, // DOM_VK_O -> GLFW_KEY_O
+      0x50: 80, // DOM_VK_P -> GLFW_KEY_P
+      0x51: 81, // DOM_VK_Q -> GLFW_KEY_Q
+      0x52: 82, // DOM_VK_R -> GLFW_KEY_R
+      0x53: 83, // DOM_VK_S -> GLFW_KEY_S
+      0x54: 84, // DOM_VK_T -> GLFW_KEY_T
+      0x55: 85, // DOM_VK_U -> GLFW_KEY_U
+      0x56: 86, // DOM_VK_V -> GLFW_KEY_V
+      0x57: 87, // DOM_VK_W -> GLFW_KEY_W
+      0x58: 88, // DOM_VK_X -> GLFW_KEY_X
+      0x59: 89, // DOM_VK_Y -> GLFW_KEY_Y
+      0x5a: 90, // DOM_VK_Z -> GLFW_KEY_Z
+      0xDB: 91, // DOM_VK_OPEN_BRACKET -> GLFW_KEY_LEFT_BRACKET
+      0xDC: 92, // DOM_VK_BACKSLASH -> GLFW_KEY_BACKSLASH
+      0xDD: 93, // DOM_VK_CLOSE_BRACKET -> GLFW_KEY_RIGHT_BRACKET
+      0xC0: 96, // DOM_VK_BACK_QUOTE -> GLFW_KEY_GRAVE_ACCENT
 
 #if USE_GLFW == 2
-        //#define GLFW_KEY_SPECIAL      256
-        case 0x1B:return (256+1); // DOM_VK_ESCAPE -> GLFW_KEY_ESC
-        case 0x70:return (256+2); // DOM_VK_F1 -> GLFW_KEY_F1
-        case 0x71:return (256+3); // DOM_VK_F2 -> GLFW_KEY_F2
-        case 0x72:return (256+4); // DOM_VK_F3 -> GLFW_KEY_F3
-        case 0x73:return (256+5); // DOM_VK_F4 -> GLFW_KEY_F4
-        case 0x74:return (256+6); // DOM_VK_F5 -> GLFW_KEY_F5
-        case 0x75:return (256+7); // DOM_VK_F6 -> GLFW_KEY_F6
-        case 0x76:return (256+8); // DOM_VK_F7 -> GLFW_KEY_F7
-        case 0x77:return (256+9); // DOM_VK_F8 -> GLFW_KEY_F8
-        case 0x78:return (256+10); // DOM_VK_F9 -> GLFW_KEY_F9
-        case 0x79:return (256+11); // DOM_VK_F10 -> GLFW_KEY_F10
-        case 0x7A:return (256+12); // DOM_VK_F11 -> GLFW_KEY_F11
-        case 0x7B:return (256+13); // DOM_VK_F12 -> GLFW_KEY_F12
-        case 0x7C:return (256+14); // DOM_VK_F13 -> GLFW_KEY_F13
-        case 0x7D:return (256+15); // DOM_VK_F14 -> GLFW_KEY_F14
-        case 0x7E:return (256+16); // DOM_VK_F15 -> GLFW_KEY_F15
-        case 0x7F:return (256+17); // DOM_VK_F16 -> GLFW_KEY_F16
-        case 0x80:return (256+18); // DOM_VK_F17 -> GLFW_KEY_F17
-        case 0x81:return (256+19); // DOM_VK_F18 -> GLFW_KEY_F18
-        case 0x82:return (256+20); // DOM_VK_F19 -> GLFW_KEY_F19
-        case 0x83:return (256+21); // DOM_VK_F20 -> GLFW_KEY_F20
-        case 0x84:return (256+22); // DOM_VK_F21 -> GLFW_KEY_F21
-        case 0x85:return (256+23); // DOM_VK_F22 -> GLFW_KEY_F22
-        case 0x86:return (256+24); // DOM_VK_F23 -> GLFW_KEY_F23
-        case 0x87:return (256+25); // DOM_VK_F24 -> GLFW_KEY_F24
-        case 0x88:return (256+26); // 0x88 (not used?) -> GLFW_KEY_F25
-        case 0x27:return (256+30); // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
-        case 0x25:return (256+29); // DOM_VK_LEFT -> GLFW_KEY_LEFT
-        case 0x28:return (256+28); // DOM_VK_DOWN -> GLFW_KEY_DOWN
-        case 0x26:return (256+27); // DOM_VK_UP -> GLFW_KEY_UP
-        case 0x10:return (256+31); // DOM_VK_SHIFT -> GLFW_KEY_LSHIFT
-        // #define GLFW_KEY_RSHIFT       (GLFW_KEY_SPECIAL+32)
-        case 0x11:return (256+33); // DOM_VK_CONTROL -> GLFW_KEY_LCTRL
-        // #define GLFW_KEY_RCTRL        (GLFW_KEY_SPECIAL+34)
-        case 0x12:return (256+35); // DOM_VK_ALT -> GLFW_KEY_LALT
-        // #define GLFW_KEY_RALT         (GLFW_KEY_SPECIAL+36)
-        case 0x09:return (256+37); // DOM_VK_TAB -> GLFW_KEY_TAB
-        case 0x0D:return (256+38); // DOM_VK_RETURN -> GLFW_KEY_ENTER
-        case 0x08:return (256+39); // DOM_VK_BACK -> GLFW_KEY_BACKSPACE
-        case 0x2D:return (256+40); // DOM_VK_INSERT -> GLFW_KEY_INSERT
-        case 0x2E:return (256+41); // DOM_VK_DELETE -> GLFW_KEY_DEL
-        case 0x21:return (256+42); // DOM_VK_PAGE_UP -> GLFW_KEY_PAGEUP
-        case 0x22:return (256+43); // DOM_VK_PAGE_DOWN -> GLFW_KEY_PAGEDOWN
-        case 0x24:return (256+44); // DOM_VK_HOME -> GLFW_KEY_HOME
-        case 0x23:return (256+45); // DOM_VK_END -> GLFW_KEY_END
-        case 0x60:return (256+46); // DOM_VK_NUMPAD0 -> GLFW_KEY_KP_0
-        case 0x61:return (256+47); // DOM_VK_NUMPAD1 -> GLFW_KEY_KP_1
-        case 0x62:return (256+48); // DOM_VK_NUMPAD2 -> GLFW_KEY_KP_2
-        case 0x63:return (256+49); // DOM_VK_NUMPAD3 -> GLFW_KEY_KP_3
-        case 0x64:return (256+50); // DOM_VK_NUMPAD4 -> GLFW_KEY_KP_4
-        case 0x65:return (256+51); // DOM_VK_NUMPAD5 -> GLFW_KEY_KP_5
-        case 0x66:return (256+52); // DOM_VK_NUMPAD6 -> GLFW_KEY_KP_6
-        case 0x67:return (256+53); // DOM_VK_NUMPAD7 -> GLFW_KEY_KP_7
-        case 0x68:return (256+54); // DOM_VK_NUMPAD8 -> GLFW_KEY_KP_8
-        case 0x69:return (256+55); // DOM_VK_NUMPAD9 -> GLFW_KEY_KP_9
-        case 0x6F:return (256+56); // DOM_VK_DIVIDE -> GLFW_KEY_KP_DIVIDE
-        case 0x6A:return (256+57); // DOM_VK_MULTIPLY -> GLFW_KEY_KP_MULTIPLY
-        case 0x6D:return (256+58); // DOM_VK_SUBTRACT -> GLFW_KEY_KP_SUBTRACT
-        case 0x6B:return (256+59); // DOM_VK_ADD -> GLFW_KEY_KP_ADD
-        case 0x6E:return (256+60); // DOM_VK_DECIMAL -> GLFW_KEY_KP_DECIMAL
-        // #define GLFW_KEY_KP_EQUAL     (GLFW_KEY_SPECIAL+61)
-        // #define GLFW_KEY_KP_ENTER     (GLFW_KEY_SPECIAL+62)
-        case 0x90:return (256+63); // DOM_VK_NUM_LOCK -> GLFW_KEY_KP_NUM_LOCK
-        case 0x14:return (256+64); // DOM_VK_CAPS_LOCK -> GLFW_KEY_CAPS_LOCK
-        case 0x91:return (256+65); // DOM_VK_SCROLL_LOCK -> GLFW_KEY_SCROLL_LOCK
-        case 0x13:return (256+66); // DOM_VK_PAUSE -> GLFW_KEY_PAUSE
-        case 0x5B:return (256+67); // DOM_VK_WIN -> GLFW_KEY_LSUPER
-        // #define GLFW_KEY_RSUPER       (GLFW_KEY_SPECIAL+68)
-        case 0x5D:return (256+69); // DOM_VK_CONTEXT_MENU -> GLFW_KEY_MENU
+      //#define GLFW_KEY_SPECIAL      256
+      0x1B: 256 + 1, // DOM_VK_ESCAPE -> GLFW_KEY_ESC
+      0x70: 256 + 2, // DOM_VK_F1 -> GLFW_KEY_F1
+      0x71: 256 + 3, // DOM_VK_F2 -> GLFW_KEY_F2
+      0x72: 256 + 4, // DOM_VK_F3 -> GLFW_KEY_F3
+      0x73: 256 + 5, // DOM_VK_F4 -> GLFW_KEY_F4
+      0x74: 256 + 6, // DOM_VK_F5 -> GLFW_KEY_F5
+      0x75: 256 + 7, // DOM_VK_F6 -> GLFW_KEY_F6
+      0x76: 256 + 8, // DOM_VK_F7 -> GLFW_KEY_F7
+      0x77: 256 + 9, // DOM_VK_F8 -> GLFW_KEY_F8
+      0x78: 256 + 10, // DOM_VK_F9 -> GLFW_KEY_F9
+      0x79: 256 + 11, // DOM_VK_F10 -> GLFW_KEY_F10
+      0x7A: 256 + 12, // DOM_VK_F11 -> GLFW_KEY_F11
+      0x7B: 256 + 13, // DOM_VK_F12 -> GLFW_KEY_F12
+      0x7C: 256 + 14, // DOM_VK_F13 -> GLFW_KEY_F13
+      0x7D: 256 + 15, // DOM_VK_F14 -> GLFW_KEY_F14
+      0x7E: 256 + 16, // DOM_VK_F15 -> GLFW_KEY_F15
+      0x7F: 256 + 17, // DOM_VK_F16 -> GLFW_KEY_F16
+      0x80: 256 + 18, // DOM_VK_F17 -> GLFW_KEY_F17
+      0x81: 256 + 19, // DOM_VK_F18 -> GLFW_KEY_F18
+      0x82: 256 + 20, // DOM_VK_F19 -> GLFW_KEY_F19
+      0x83: 256 + 21, // DOM_VK_F20 -> GLFW_KEY_F20
+      0x84: 256 + 22, // DOM_VK_F21 -> GLFW_KEY_F21
+      0x85: 256 + 23, // DOM_VK_F22 -> GLFW_KEY_F22
+      0x86: 256 + 24, // DOM_VK_F23 -> GLFW_KEY_F23
+      0x87: 256 + 25, // DOM_VK_F24 -> GLFW_KEY_F24
+      0x88: 256 + 26, // 0x88 (not used?) -> GLFW_KEY_F25
+      0x27: 256 + 30, // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
+      0x25: 256 + 29, // DOM_VK_LEFT -> GLFW_KEY_LEFT
+      0x28: 256 + 28, // DOM_VK_DOWN -> GLFW_KEY_DOWN
+      0x26: 256 + 27, // DOM_VK_UP -> GLFW_KEY_UP
+      0x10: 256 + 31, // DOM_VK_SHIFT -> GLFW_KEY_LSHIFT
+      // #define GLFW_KEY_RSHIFT       (GLFW_KEY_SPECIAL+32)
+      0x11: 256 + 33, // DOM_VK_CONTROL -> GLFW_KEY_LCTRL
+      // #define GLFW_KEY_RCTRL        (GLFW_KEY_SPECIAL+34)
+      0x12: 256 + 35, // DOM_VK_ALT -> GLFW_KEY_LALT
+      // #define GLFW_KEY_RALT         (GLFW_KEY_SPECIAL+36)
+      0x09: 256 + 37, // DOM_VK_TAB -> GLFW_KEY_TAB
+      0x0D: 256 + 38, // DOM_VK_RETURN -> GLFW_KEY_ENTER
+      0x08: 256 + 39, // DOM_VK_BACK -> GLFW_KEY_BACKSPACE
+      0x2D: 256 + 40, // DOM_VK_INSERT -> GLFW_KEY_INSERT
+      0x2E: 256 + 41, // DOM_VK_DELETE -> GLFW_KEY_DEL
+      0x21: 256 + 42, // DOM_VK_PAGE_UP -> GLFW_KEY_PAGEUP
+      0x22: 256 + 43, // DOM_VK_PAGE_DOWN -> GLFW_KEY_PAGEDOWN
+      0x24: 256 + 44, // DOM_VK_HOME -> GLFW_KEY_HOME
+      0x23: 256 + 45, // DOM_VK_END -> GLFW_KEY_END
+      0x60: 256 + 46, // DOM_VK_NUMPAD0 -> GLFW_KEY_KP_0
+      0x61: 256 + 47, // DOM_VK_NUMPAD1 -> GLFW_KEY_KP_1
+      0x62: 256 + 48, // DOM_VK_NUMPAD2 -> GLFW_KEY_KP_2
+      0x63: 256 + 49, // DOM_VK_NUMPAD3 -> GLFW_KEY_KP_3
+      0x64: 256 + 50, // DOM_VK_NUMPAD4 -> GLFW_KEY_KP_4
+      0x65: 256 + 51, // DOM_VK_NUMPAD5 -> GLFW_KEY_KP_5
+      0x66: 256 + 52, // DOM_VK_NUMPAD6 -> GLFW_KEY_KP_6
+      0x67: 256 + 53, // DOM_VK_NUMPAD7 -> GLFW_KEY_KP_7
+      0x68: 256 + 54, // DOM_VK_NUMPAD8 -> GLFW_KEY_KP_8
+      0x69: 256 + 55, // DOM_VK_NUMPAD9 -> GLFW_KEY_KP_9
+      0x6F: 256 + 56, // DOM_VK_DIVIDE -> GLFW_KEY_KP_DIVIDE
+      0x6A: 256 + 57, // DOM_VK_MULTIPLY -> GLFW_KEY_KP_MULTIPLY
+      0x6D: 256 + 58, // DOM_VK_SUBTRACT -> GLFW_KEY_KP_SUBTRACT
+      0x6B: 256 + 59, // DOM_VK_ADD -> GLFW_KEY_KP_ADD
+      0x6E: 256 + 60, // DOM_VK_DECIMAL -> GLFW_KEY_KP_DECIMAL
+      // #define GLFW_KEY_KP_EQUAL     (GLFW_KEY_SPECIAL+61)
+      // #define GLFW_KEY_KP_ENTER     (GLFW_KEY_SPECIAL+62)
+      0x90: 256 + 63, // DOM_VK_NUM_LOCK -> GLFW_KEY_KP_NUM_LOCK
+      0x14: 256 + 64, // DOM_VK_CAPS_LOCK -> GLFW_KEY_CAPS_LOCK
+      0x91: 256 + 65, // DOM_VK_SCROLL_LOCK -> GLFW_KEY_SCROLL_LOCK
+      0x13: 256 + 66, // DOM_VK_PAUSE -> GLFW_KEY_PAUSE
+      0x5B: 256 + 67, // DOM_VK_WIN -> GLFW_KEY_LSUPER
+      // #define GLFW_KEY_RSUPER       (GLFW_KEY_SPECIAL+68)
+      0x5D: 256 + 69, // DOM_VK_CONTEXT_MENU -> GLFW_KEY_MENU
 #endif
 
 #if USE_GLFW == 3
-        case 0x1B:return 256; // DOM_VK_ESCAPE -> GLFW_KEY_ESCAPE
-        case 0x0D:return 257; // DOM_VK_RETURN -> GLFW_KEY_ENTER
-        case 0x09:return 258; // DOM_VK_TAB -> GLFW_KEY_TAB
-        case 0x08:return 259; // DOM_VK_BACK -> GLFW_KEY_BACKSPACE
-        case 0x2D:return 260; // DOM_VK_INSERT -> GLFW_KEY_INSERT
-        case 0x2E:return 261; // DOM_VK_DELETE -> GLFW_KEY_DELETE
-        case 0x27:return 262; // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
-        case 0x25:return 263; // DOM_VK_LEFT -> GLFW_KEY_LEFT
-        case 0x28:return 264; // DOM_VK_DOWN -> GLFW_KEY_DOWN
-        case 0x26:return 265; // DOM_VK_UP -> GLFW_KEY_UP
-        case 0x21:return 266; // DOM_VK_PAGE_UP -> GLFW_KEY_PAGE_UP
-        case 0x22:return 267; // DOM_VK_PAGE_DOWN -> GLFW_KEY_PAGE_DOWN
-        case 0x24:return 268; // DOM_VK_HOME -> GLFW_KEY_HOME
-        case 0x23:return 269; // DOM_VK_END -> GLFW_KEY_END
-        case 0x14:return 280; // DOM_VK_CAPS_LOCK -> GLFW_KEY_CAPS_LOCK
-        case 0x91:return 281; // DOM_VK_SCROLL_LOCK -> GLFW_KEY_SCROLL_LOCK
-        case 0x90:return 282; // DOM_VK_NUM_LOCK -> GLFW_KEY_NUM_LOCK
-        case 0x2C:return 283; // DOM_VK_SNAPSHOT -> GLFW_KEY_PRINT_SCREEN
-        case 0x13:return 284; // DOM_VK_PAUSE -> GLFW_KEY_PAUSE
-        case 0x70:return 290; // DOM_VK_F1 -> GLFW_KEY_F1
-        case 0x71:return 291; // DOM_VK_F2 -> GLFW_KEY_F2
-        case 0x72:return 292; // DOM_VK_F3 -> GLFW_KEY_F3
-        case 0x73:return 293; // DOM_VK_F4 -> GLFW_KEY_F4
-        case 0x74:return 294; // DOM_VK_F5 -> GLFW_KEY_F5
-        case 0x75:return 295; // DOM_VK_F6 -> GLFW_KEY_F6
-        case 0x76:return 296; // DOM_VK_F7 -> GLFW_KEY_F7
-        case 0x77:return 297; // DOM_VK_F8 -> GLFW_KEY_F8
-        case 0x78:return 298; // DOM_VK_F9 -> GLFW_KEY_F9
-        case 0x79:return 299; // DOM_VK_F10 -> GLFW_KEY_F10
-        case 0x7A:return 300; // DOM_VK_F11 -> GLFW_KEY_F11
-        case 0x7B:return 301; // DOM_VK_F12 -> GLFW_KEY_F12
-        case 0x7C:return 302; // DOM_VK_F13 -> GLFW_KEY_F13
-        case 0x7D:return 303; // DOM_VK_F14 -> GLFW_KEY_F14
-        case 0x7E:return 304; // DOM_VK_F15 -> GLFW_KEY_F15
-        case 0x7F:return 305; // DOM_VK_F16 -> GLFW_KEY_F16
-        case 0x80:return 306; // DOM_VK_F17 -> GLFW_KEY_F17
-        case 0x81:return 307; // DOM_VK_F18 -> GLFW_KEY_F18
-        case 0x82:return 308; // DOM_VK_F19 -> GLFW_KEY_F19
-        case 0x83:return 309; // DOM_VK_F20 -> GLFW_KEY_F20
-        case 0x84:return 310; // DOM_VK_F21 -> GLFW_KEY_F21
-        case 0x85:return 311; // DOM_VK_F22 -> GLFW_KEY_F22
-        case 0x86:return 312; // DOM_VK_F23 -> GLFW_KEY_F23
-        case 0x87:return 313; // DOM_VK_F24 -> GLFW_KEY_F24
-        case 0x88:return 314; // 0x88 (not used?) -> GLFW_KEY_F25
-        case 0x60:return 320; // DOM_VK_NUMPAD0 -> GLFW_KEY_KP_0
-        case 0x61:return 321; // DOM_VK_NUMPAD1 -> GLFW_KEY_KP_1
-        case 0x62:return 322; // DOM_VK_NUMPAD2 -> GLFW_KEY_KP_2
-        case 0x63:return 323; // DOM_VK_NUMPAD3 -> GLFW_KEY_KP_3
-        case 0x64:return 324; // DOM_VK_NUMPAD4 -> GLFW_KEY_KP_4
-        case 0x65:return 325; // DOM_VK_NUMPAD5 -> GLFW_KEY_KP_5
-        case 0x66:return 326; // DOM_VK_NUMPAD6 -> GLFW_KEY_KP_6
-        case 0x67:return 327; // DOM_VK_NUMPAD7 -> GLFW_KEY_KP_7
-        case 0x68:return 328; // DOM_VK_NUMPAD8 -> GLFW_KEY_KP_8
-        case 0x69:return 329; // DOM_VK_NUMPAD9 -> GLFW_KEY_KP_9
-        case 0x6E:return 330; // DOM_VK_DECIMAL -> GLFW_KEY_KP_DECIMAL
-        case 0x6F:return 331; // DOM_VK_DIVIDE -> GLFW_KEY_KP_DIVIDE
-        case 0x6A:return 332; // DOM_VK_MULTIPLY -> GLFW_KEY_KP_MULTIPLY
-        case 0x6D:return 333; // DOM_VK_SUBTRACT -> GLFW_KEY_KP_SUBTRACT
-        case 0x6B:return 334; // DOM_VK_ADD -> GLFW_KEY_KP_ADD
-        // case 0x0D:return 335; // DOM_VK_RETURN -> GLFW_KEY_KP_ENTER (DOM_KEY_LOCATION_RIGHT)
-        // case 0x61:return 336; // DOM_VK_EQUALS -> GLFW_KEY_KP_EQUAL (DOM_KEY_LOCATION_RIGHT)
-        case 0x10:return 340; // DOM_VK_SHIFT -> GLFW_KEY_LEFT_SHIFT
-        case 0x11:return 341; // DOM_VK_CONTROL -> GLFW_KEY_LEFT_CONTROL
-        case 0x12:return 342; // DOM_VK_ALT -> GLFW_KEY_LEFT_ALT
-        case 0x5B:return 343; // DOM_VK_WIN -> GLFW_KEY_LEFT_SUPER
-        case 0xE0:return 343; // DOM_VK_META -> GLFW_KEY_LEFT_SUPER
-        // case 0x10:return 344; // DOM_VK_SHIFT -> GLFW_KEY_RIGHT_SHIFT (DOM_KEY_LOCATION_RIGHT)
-        // case 0x11:return 345; // DOM_VK_CONTROL -> GLFW_KEY_RIGHT_CONTROL (DOM_KEY_LOCATION_RIGHT)
-        // case 0x12:return 346; // DOM_VK_ALT -> GLFW_KEY_RIGHT_ALT (DOM_KEY_LOCATION_RIGHT)
-        // case 0x5B:return 347; // DOM_VK_WIN -> GLFW_KEY_RIGHT_SUPER (DOM_KEY_LOCATION_RIGHT)
-        case 0x5D:return 348; // DOM_VK_CONTEXT_MENU -> GLFW_KEY_MENU
-        // XXX: GLFW_KEY_WORLD_1, GLFW_KEY_WORLD_2 what are these?
+      0x1B: 256, // DOM_VK_ESCAPE -> GLFW_KEY_ESCAPE
+      0x0D: 257, // DOM_VK_RETURN -> GLFW_KEY_ENTER
+      0x09: 258, // DOM_VK_TAB -> GLFW_KEY_TAB
+      0x08: 259, // DOM_VK_BACK -> GLFW_KEY_BACKSPACE
+      0x2D: 260, // DOM_VK_INSERT -> GLFW_KEY_INSERT
+      0x2E: 261, // DOM_VK_DELETE -> GLFW_KEY_DELETE
+      0x27: 262, // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
+      0x25: 263, // DOM_VK_LEFT -> GLFW_KEY_LEFT
+      0x28: 264, // DOM_VK_DOWN -> GLFW_KEY_DOWN
+      0x26: 265, // DOM_VK_UP -> GLFW_KEY_UP
+      0x21: 266, // DOM_VK_PAGE_UP -> GLFW_KEY_PAGE_UP
+      0x22: 267, // DOM_VK_PAGE_DOWN -> GLFW_KEY_PAGE_DOWN
+      0x24: 268, // DOM_VK_HOME -> GLFW_KEY_HOME
+      0x23: 269, // DOM_VK_END -> GLFW_KEY_END
+      0x14: 280, // DOM_VK_CAPS_LOCK -> GLFW_KEY_CAPS_LOCK
+      0x91: 281, // DOM_VK_SCROLL_LOCK -> GLFW_KEY_SCROLL_LOCK
+      0x90: 282, // DOM_VK_NUM_LOCK -> GLFW_KEY_NUM_LOCK
+      0x2C: 283, // DOM_VK_SNAPSHOT -> GLFW_KEY_PRINT_SCREEN
+      0x13: 284, // DOM_VK_PAUSE -> GLFW_KEY_PAUSE
+      0x70: 290, // DOM_VK_F1 -> GLFW_KEY_F1
+      0x71: 291, // DOM_VK_F2 -> GLFW_KEY_F2
+      0x72: 292, // DOM_VK_F3 -> GLFW_KEY_F3
+      0x73: 293, // DOM_VK_F4 -> GLFW_KEY_F4
+      0x74: 294, // DOM_VK_F5 -> GLFW_KEY_F5
+      0x75: 295, // DOM_VK_F6 -> GLFW_KEY_F6
+      0x76: 296, // DOM_VK_F7 -> GLFW_KEY_F7
+      0x77: 297, // DOM_VK_F8 -> GLFW_KEY_F8
+      0x78: 298, // DOM_VK_F9 -> GLFW_KEY_F9
+      0x79: 299, // DOM_VK_F10 -> GLFW_KEY_F10
+      0x7A: 300, // DOM_VK_F11 -> GLFW_KEY_F11
+      0x7B: 301, // DOM_VK_F12 -> GLFW_KEY_F12
+      0x7C: 302, // DOM_VK_F13 -> GLFW_KEY_F13
+      0x7D: 303, // DOM_VK_F14 -> GLFW_KEY_F14
+      0x7E: 304, // DOM_VK_F15 -> GLFW_KEY_F15
+      0x7F: 305, // DOM_VK_F16 -> GLFW_KEY_F16
+      0x80: 306, // DOM_VK_F17 -> GLFW_KEY_F17
+      0x81: 307, // DOM_VK_F18 -> GLFW_KEY_F18
+      0x82: 308, // DOM_VK_F19 -> GLFW_KEY_F19
+      0x83: 309, // DOM_VK_F20 -> GLFW_KEY_F20
+      0x84: 310, // DOM_VK_F21 -> GLFW_KEY_F21
+      0x85: 311, // DOM_VK_F22 -> GLFW_KEY_F22
+      0x86: 312, // DOM_VK_F23 -> GLFW_KEY_F23
+      0x87: 313, // DOM_VK_F24 -> GLFW_KEY_F24
+      0x88: 314, // 0x88 (not used?) -> GLFW_KEY_F25
+      0x60: 320, // DOM_VK_NUMPAD0 -> GLFW_KEY_KP_0
+      0x61: 321, // DOM_VK_NUMPAD1 -> GLFW_KEY_KP_1
+      0x62: 322, // DOM_VK_NUMPAD2 -> GLFW_KEY_KP_2
+      0x63: 323, // DOM_VK_NUMPAD3 -> GLFW_KEY_KP_3
+      0x64: 324, // DOM_VK_NUMPAD4 -> GLFW_KEY_KP_4
+      0x65: 325, // DOM_VK_NUMPAD5 -> GLFW_KEY_KP_5
+      0x66: 326, // DOM_VK_NUMPAD6 -> GLFW_KEY_KP_6
+      0x67: 327, // DOM_VK_NUMPAD7 -> GLFW_KEY_KP_7
+      0x68: 328, // DOM_VK_NUMPAD8 -> GLFW_KEY_KP_8
+      0x69: 329, // DOM_VK_NUMPAD9 -> GLFW_KEY_KP_9
+      0x6E: 330, // DOM_VK_DECIMAL -> GLFW_KEY_KP_DECIMAL
+      0x6F: 331, // DOM_VK_DIVIDE -> GLFW_KEY_KP_DIVIDE
+      0x6A: 332, // DOM_VK_MULTIPLY -> GLFW_KEY_KP_MULTIPLY
+      0x6D: 333, // DOM_VK_SUBTRACT -> GLFW_KEY_KP_SUBTRACT
+      0x6B: 334, // DOM_VK_ADD -> GLFW_KEY_KP_ADD
+      // 0x0D: 335, // DOM_VK_RETURN -> GLFW_KEY_KP_ENTER (DOM_KEY_LOCATION_RIGHT)
+      // 0x61: 336, // DOM_VK_EQUALS -> GLFW_KEY_KP_EQUAL (DOM_KEY_LOCATION_RIGHT)
+      0x10: 340, // DOM_VK_SHIFT -> GLFW_KEY_LEFT_SHIFT
+      0x11: 341, // DOM_VK_CONTROL -> GLFW_KEY_LEFT_CONTROL
+      0x12: 342, // DOM_VK_ALT -> GLFW_KEY_LEFT_ALT
+      0x5B: 343, // DOM_VK_WIN -> GLFW_KEY_LEFT_SUPER
+      0xE0: 343, // DOM_VK_META -> GLFW_KEY_LEFT_SUPER
+      // 0x10: 344, // DOM_VK_SHIFT -> GLFW_KEY_RIGHT_SHIFT (DOM_KEY_LOCATION_RIGHT)
+      // 0x11: 345, // DOM_VK_CONTROL -> GLFW_KEY_RIGHT_CONTROL (DOM_KEY_LOCATION_RIGHT)
+      // 0x12: 346, // DOM_VK_ALT -> GLFW_KEY_RIGHT_ALT (DOM_KEY_LOCATION_RIGHT)
+      // 0x5B: 347, // DOM_VK_WIN -> GLFW_KEY_RIGHT_SUPER (DOM_KEY_LOCATION_RIGHT)
+      0x5D: 348, // DOM_VK_CONTEXT_MENU -> GLFW_KEY_MENU
+      // XXX: GLFW_KEY_WORLD_1, GLFW_KEY_WORLD_2 what are these?
 #endif
-        default:return -1; // GLFW_KEY_UNKNOWN
-      };
     },
+
+    DOMToGLFWKeyCode: (keycode) => GLFW.keyCodeMap[keycode] ?? -1,
 
     getModBits: (win) => {
       var mod = 0;

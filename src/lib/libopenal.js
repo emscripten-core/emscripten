@@ -2283,6 +2283,47 @@ var LibraryOpenAL = {
     return AL.ALC_EXTENSIONS[name] ? 1 : 0;
   },
 
+  $alcEnumValues__internal: true,
+  // Note: using template literal here instead of plain object because jsify
+  // serializes identifier keys w/o quotes and Closure would mangle them.
+  $alcEnumValues: `{
+    'ALC_NO_ERROR': 0,
+    'ALC_INVALID_DEVICE': 0xA001,
+    'ALC_INVALID_CONTEXT': 0xA002,
+    'ALC_INVALID_ENUM': 0xA003,
+    'ALC_INVALID_VALUE': 0xA004,
+    'ALC_OUT_OF_MEMORY': 0xA005,
+    'ALC_MAJOR_VERSION': 0x1000,
+    'ALC_MINOR_VERSION': 0x1001,
+    'ALC_ATTRIBUTES_SIZE': 0x1002,
+    'ALC_ALL_ATTRIBUTES': 0x1003,
+    'ALC_DEFAULT_DEVICE_SPECIFIER': 0x1004,
+    'ALC_DEVICE_SPECIFIER': 0x1005,
+    'ALC_EXTENSIONS': 0x1006,
+    'ALC_FREQUENCY': 0x1007,
+    'ALC_REFRESH': 0x1008,
+    'ALC_SYNC': 0x1009,
+    'ALC_MONO_SOURCES': 0x1010,
+    'ALC_STEREO_SOURCES': 0x1011,
+    'ALC_CAPTURE_DEVICE_SPECIFIER': 0x310,
+    'ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER': 0x311,
+    'ALC_CAPTURE_SAMPLES': 0x312,
+
+    /* Extensions */
+    'ALC_HRTF_SOFT': 0x1992,
+    'ALC_HRTF_ID_SOFT': 0x1996,
+    'ALC_DONT_CARE_SOFT': 0x0002,
+    'ALC_HRTF_STATUS_SOFT': 0x1993,
+    'ALC_NUM_HRTF_SPECIFIERS_SOFT': 0x1994,
+    'ALC_HRTF_SPECIFIER_SOFT': 0x1995,
+    'ALC_HRTF_DISABLED_SOFT': 0x0000,
+    'ALC_HRTF_ENABLED_SOFT': 0x0001,
+    'ALC_HRTF_DENIED_SOFT': 0x0002,
+    'ALC_HRTF_REQUIRED_SOFT': 0x0003,
+    'ALC_HRTF_HEADPHONES_DETECTED_SOFT': 0x0004,
+    'ALC_HRTF_UNSUPPORTED_FORMAT_SOFT': 0x0005,
+  }`,
+
   alcGetEnumValue__proxy: 'sync',
   alcGetEnumValue: (deviceId, pEnumName) => {
     // Spec says :
@@ -2301,50 +2342,14 @@ var LibraryOpenAL = {
     }
     var name = UTF8ToString(pEnumName);
     // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
-    switch (name) {
-    case 'ALC_NO_ERROR': return 0;
-    case 'ALC_INVALID_DEVICE': return 0xA001;
-    case 'ALC_INVALID_CONTEXT': return 0xA002;
-    case 'ALC_INVALID_ENUM': return 0xA003;
-    case 'ALC_INVALID_VALUE': return 0xA004;
-    case 'ALC_OUT_OF_MEMORY': return 0xA005;
-    case 'ALC_MAJOR_VERSION': return 0x1000;
-    case 'ALC_MINOR_VERSION': return 0x1001;
-    case 'ALC_ATTRIBUTES_SIZE': return 0x1002;
-    case 'ALC_ALL_ATTRIBUTES': return 0x1003;
-    case 'ALC_DEFAULT_DEVICE_SPECIFIER': return 0x1004;
-    case 'ALC_DEVICE_SPECIFIER': return 0x1005;
-    case 'ALC_EXTENSIONS': return 0x1006;
-    case 'ALC_FREQUENCY': return 0x1007;
-    case 'ALC_REFRESH': return 0x1008;
-    case 'ALC_SYNC': return 0x1009;
-    case 'ALC_MONO_SOURCES': return 0x1010;
-    case 'ALC_STEREO_SOURCES': return 0x1011;
-    case 'ALC_CAPTURE_DEVICE_SPECIFIER': return 0x310;
-    case 'ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER': return 0x311;
-    case 'ALC_CAPTURE_SAMPLES': return 0x312;
-
-    /* Extensions */
-    case 'ALC_HRTF_SOFT': return 0x1992;
-    case 'ALC_HRTF_ID_SOFT': return 0x1996;
-    case 'ALC_DONT_CARE_SOFT': return 0x0002;
-    case 'ALC_HRTF_STATUS_SOFT': return 0x1993;
-    case 'ALC_NUM_HRTF_SPECIFIERS_SOFT': return 0x1994;
-    case 'ALC_HRTF_SPECIFIER_SOFT': return 0x1995;
-    case 'ALC_HRTF_DISABLED_SOFT': return 0x0000;
-    case 'ALC_HRTF_ENABLED_SOFT': return 0x0001;
-    case 'ALC_HRTF_DENIED_SOFT': return 0x0002;
-    case 'ALC_HRTF_REQUIRED_SOFT': return 0x0003;
-    case 'ALC_HRTF_HEADPHONES_DETECTED_SOFT': return 0x0004;
-    case 'ALC_HRTF_UNSUPPORTED_FORMAT_SOFT': return 0x0005;
-
-    default:
-#if OPENAL_DEBUG
-      dbg(`No value for '${pEnumName}' is known by alcGetEnumValue()`);
-#endif
-      AL.alcErr = ALC_INVALID_VALUE;
-      return AL_NONE;
+    if (hasOwn(alcEnumValues, name)) {
+      return alcEnumValues[name];
     }
+#if OPENAL_DEBUG
+    dbg(`No value for '${pEnumName}' is known by alcGetEnumValue()`);
+#endif
+    AL.alcErr = ALC_INVALID_VALUE;
+    return AL_NONE;
   },
 
   alcGetString__proxy: 'sync',
@@ -2819,104 +2824,108 @@ var LibraryOpenAL = {
     return AL.AL_EXTENSIONS[name] ? 1 : 0;
   },
 
+  $alEnumValues__internal: true,
+  // Note: using template literal here instead of plain object because jsify
+  // serializes identifier keys w/o quotes and Closure would mangle them.
+  $alEnumValues: `{
+    // Spec doesn't clearly state that alGetEnumValue() is required to
+    // support _only_ extension tokens.
+    // We should probably follow OpenAL-Soft's example and support all
+    // of the names we know.
+    // See http://repo.or.cz/openal-soft.git/blob/HEAD:/Alc/ALc.c
+    'AL_BITS': 0x2002,
+    'AL_BUFFER': 0x1009,
+    'AL_BUFFERS_PROCESSED': 0x1016,
+    'AL_BUFFERS_QUEUED': 0x1015,
+    'AL_BYTE_OFFSET': 0x1026,
+    'AL_CHANNELS': 0x2003,
+    'AL_CONE_INNER_ANGLE': 0x1001,
+    'AL_CONE_OUTER_ANGLE': 0x1002,
+    'AL_CONE_OUTER_GAIN': 0x1022,
+    'AL_DIRECTION': 0x1005,
+    'AL_DISTANCE_MODEL': 0xD000,
+    'AL_DOPPLER_FACTOR': 0xC000,
+    'AL_DOPPLER_VELOCITY': 0xC001,
+    'AL_EXPONENT_DISTANCE': 0xD005,
+    'AL_EXPONENT_DISTANCE_CLAMPED': 0xD006,
+    'AL_EXTENSIONS': 0xB004,
+    'AL_FORMAT_MONO16': 0x1101,
+    'AL_FORMAT_MONO8': 0x1100,
+    'AL_FORMAT_STEREO16': 0x1103,
+    'AL_FORMAT_STEREO8': 0x1102,
+    'AL_FREQUENCY': 0x2001,
+    'AL_GAIN': 0x100A,
+    'AL_INITIAL': 0x1011,
+    'AL_INVALID': -1,
+    'AL_ILLEGAL_ENUM': 0xA002,
+    'AL_INVALID_ENUM': 0xA002,
+    'AL_INVALID_NAME': 0xA001,
+    'AL_ILLEGAL_COMMAND': 0xA004,
+    'AL_INVALID_OPERATION': 0xA004,
+    'AL_INVALID_VALUE': 0xA003,
+    'AL_INVERSE_DISTANCE': 0xD001,
+    'AL_INVERSE_DISTANCE_CLAMPED': 0xD002,
+    'AL_LINEAR_DISTANCE': 0xD003,
+    'AL_LINEAR_DISTANCE_CLAMPED': 0xD004,
+    'AL_LOOPING': 0x1007,
+    'AL_MAX_DISTANCE': 0x1023,
+    'AL_MAX_GAIN': 0x100E,
+    'AL_MIN_GAIN': 0x100D,
+    'AL_NONE': 0,
+    'AL_NO_ERROR': 0,
+    'AL_ORIENTATION': 0x100F,
+    'AL_OUT_OF_MEMORY': 0xA005,
+    'AL_PAUSED': 0x1013,
+    'AL_PENDING': 0x2011,
+    'AL_PITCH': 0x1003,
+    'AL_PLAYING': 0x1012,
+    'AL_POSITION': 0x1004,
+    'AL_PROCESSED': 0x2012,
+    'AL_REFERENCE_DISTANCE': 0x1020,
+    'AL_RENDERER': 0xB003,
+    'AL_ROLLOFF_FACTOR': 0x1021,
+    'AL_SAMPLE_OFFSET': 0x1025,
+    'AL_SEC_OFFSET': 0x1024,
+    'AL_SIZE': 0x2004,
+    'AL_SOURCE_RELATIVE': 0x202,
+    'AL_SOURCE_STATE': 0x1010,
+    'AL_SOURCE_TYPE': 0x1027,
+    'AL_SPEED_OF_SOUND': 0xC003,
+    'AL_STATIC': 0x1028,
+    'AL_STOPPED': 0x1014,
+    'AL_STREAMING': 0x1029,
+    'AL_UNDETERMINED': 0x1030,
+    'AL_UNUSED': 0x2010,
+    'AL_VELOCITY': 0x1006,
+    'AL_VENDOR': 0xB001,
+    'AL_VERSION': 0xB002,
+
+    /* Extensions */
+    'AL_AUTO_SOFT': 0x0002,
+    'AL_SOURCE_DISTANCE_MODEL': 0x200,
+    'AL_SOURCE_SPATIALIZE_SOFT': 0x1214,
+    'AL_LOOP_POINTS_SOFT': 0x2015,
+    'AL_BYTE_LENGTH_SOFT': 0x2009,
+    'AL_SAMPLE_LENGTH_SOFT': 0x200A,
+    'AL_SEC_LENGTH_SOFT': 0x200B,
+    'AL_FORMAT_MONO_FLOAT32': 0x10010,
+    'AL_FORMAT_STEREO_FLOAT32': 0x10011,
+  }`,
+
   alGetEnumValue__proxy: 'sync',
   alGetEnumValue: (pEnumName) => {
     if (!AL.requireValidPointer(pEnumName, 'alGetEnumValue')) {
       return 0;
     }
     var name = UTF8ToString(pEnumName);
-
-    switch (name) {
-    // Spec doesn't clearly state that alGetEnumValue() is required to
-    // support _only_ extension tokens.
-    // We should probably follow OpenAL-Soft's example and support all
-    // of the names we know.
-    // See http://repo.or.cz/openal-soft.git/blob/HEAD:/Alc/ALc.c
-    case 'AL_BITS': return 0x2002;
-    case 'AL_BUFFER': return 0x1009;
-    case 'AL_BUFFERS_PROCESSED': return 0x1016;
-    case 'AL_BUFFERS_QUEUED': return 0x1015;
-    case 'AL_BYTE_OFFSET': return 0x1026;
-    case 'AL_CHANNELS': return 0x2003;
-    case 'AL_CONE_INNER_ANGLE': return 0x1001;
-    case 'AL_CONE_OUTER_ANGLE': return 0x1002;
-    case 'AL_CONE_OUTER_GAIN': return 0x1022;
-    case 'AL_DIRECTION': return 0x1005;
-    case 'AL_DISTANCE_MODEL': return 0xD000;
-    case 'AL_DOPPLER_FACTOR': return 0xC000;
-    case 'AL_DOPPLER_VELOCITY': return 0xC001;
-    case 'AL_EXPONENT_DISTANCE': return 0xD005;
-    case 'AL_EXPONENT_DISTANCE_CLAMPED': return 0xD006;
-    case 'AL_EXTENSIONS': return 0xB004;
-    case 'AL_FORMAT_MONO16': return 0x1101;
-    case 'AL_FORMAT_MONO8': return 0x1100;
-    case 'AL_FORMAT_STEREO16': return 0x1103;
-    case 'AL_FORMAT_STEREO8': return 0x1102;
-    case 'AL_FREQUENCY': return 0x2001;
-    case 'AL_GAIN': return 0x100A;
-    case 'AL_INITIAL': return 0x1011;
-    case 'AL_INVALID': return -1;
-    case 'AL_ILLEGAL_ENUM': // fallthrough
-    case 'AL_INVALID_ENUM': return 0xA002;
-    case 'AL_INVALID_NAME': return 0xA001;
-    case 'AL_ILLEGAL_COMMAND': // fallthrough
-    case 'AL_INVALID_OPERATION': return 0xA004;
-    case 'AL_INVALID_VALUE': return 0xA003;
-    case 'AL_INVERSE_DISTANCE': return 0xD001;
-    case 'AL_INVERSE_DISTANCE_CLAMPED': return 0xD002;
-    case 'AL_LINEAR_DISTANCE': return 0xD003;
-    case 'AL_LINEAR_DISTANCE_CLAMPED': return 0xD004;
-    case 'AL_LOOPING': return 0x1007;
-    case 'AL_MAX_DISTANCE': return 0x1023;
-    case 'AL_MAX_GAIN': return 0x100E;
-    case 'AL_MIN_GAIN': return 0x100D;
-    case 'AL_NONE': return 0;
-    case 'AL_NO_ERROR': return 0;
-    case 'AL_ORIENTATION': return 0x100F;
-    case 'AL_OUT_OF_MEMORY': return 0xA005;
-    case 'AL_PAUSED': return 0x1013;
-    case 'AL_PENDING': return 0x2011;
-    case 'AL_PITCH': return 0x1003;
-    case 'AL_PLAYING': return 0x1012;
-    case 'AL_POSITION': return 0x1004;
-    case 'AL_PROCESSED': return 0x2012;
-    case 'AL_REFERENCE_DISTANCE': return 0x1020;
-    case 'AL_RENDERER': return 0xB003;
-    case 'AL_ROLLOFF_FACTOR': return 0x1021;
-    case 'AL_SAMPLE_OFFSET': return 0x1025;
-    case 'AL_SEC_OFFSET': return 0x1024;
-    case 'AL_SIZE': return 0x2004;
-    case 'AL_SOURCE_RELATIVE': return 0x202;
-    case 'AL_SOURCE_STATE': return 0x1010;
-    case 'AL_SOURCE_TYPE': return 0x1027;
-    case 'AL_SPEED_OF_SOUND': return 0xC003;
-    case 'AL_STATIC': return 0x1028;
-    case 'AL_STOPPED': return 0x1014;
-    case 'AL_STREAMING': return 0x1029;
-    case 'AL_UNDETERMINED': return 0x1030;
-    case 'AL_UNUSED': return 0x2010;
-    case 'AL_VELOCITY': return 0x1006;
-    case 'AL_VENDOR': return 0xB001;
-    case 'AL_VERSION': return 0xB002;
-
-    /* Extensions */
-    case 'AL_AUTO_SOFT': return 0x0002;
-    case 'AL_SOURCE_DISTANCE_MODEL': return 0x200;
-    case 'AL_SOURCE_SPATIALIZE_SOFT': return 0x1214;
-    case 'AL_LOOP_POINTS_SOFT': return 0x2015;
-    case 'AL_BYTE_LENGTH_SOFT': return 0x2009;
-    case 'AL_SAMPLE_LENGTH_SOFT': return 0x200A;
-    case 'AL_SEC_LENGTH_SOFT': return 0x200B;
-    case 'AL_FORMAT_MONO_FLOAT32': return 0x10010;
-    case 'AL_FORMAT_STEREO_FLOAT32': return 0x10011;
-
-    default:
-#if OPENAL_DEBUG
-      dbg(`No value for '${name}' is known by alGetEnumValue()`);
-#endif
-      AL.currentCtx.err = AL_INVALID_VALUE;
-      return 0;
+    if (hasOwn(alEnumValues, name)) {
+      return alEnumValues[name];
     }
+#if OPENAL_DEBUG
+    dbg(`No value for '${name}' is known by alGetEnumValue()`);
+#endif
+    AL.currentCtx.err = AL_INVALID_VALUE;
+    return 0;
   },
 
   alGetString__proxy: 'sync',
