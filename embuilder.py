@@ -206,7 +206,7 @@ def build_port(port_name):
 
 def get_system_tasks():
   system_libraries = system_libs.Library.get_all_variations()
-  system_tasks = list(system_libraries.keys())
+  system_tasks = [name for name, lib in system_libraries.items() if not lib.experimental]
   return system_libraries, system_tasks
 
 

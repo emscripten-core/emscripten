@@ -196,6 +196,8 @@ def also_with_llvm_libc(func):
     if common.EMTEST_VERBOSE:
       print('parameterize:llvm_libc=%d' % llvm_libc)
     if llvm_libc:
+      if config.FROZEN_CACHE:
+        self.skipTest("llvm-libc test don't work with frozen cache")
       self.cflags += ['-lllvmlibc']
     return func(self, *args, **kwargs)
 
