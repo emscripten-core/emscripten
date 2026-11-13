@@ -2233,6 +2233,38 @@ addToLibrary({
     }
   },
 
+  // Like HandleAllocator, but uses a Map so iteration over live handles is
+  // O(live) rather than scanning undefined slots up to the high-water mark.
+  $IterableHandleAllocator: class {
+    allocated = new Map();
+    freelist = [];
+    nextId = 1;
+    get(id) {
+#if ASSERTIONS
+      assert(this.allocated.has(id), `invalid handle: ${id}`);
+#endif
+      return this.allocated.get(id);
+    }
+    has(id) {
+      return this.allocated.has(id);
+    }
+    allocate(handle) {
+      var id = this.freelist.pop() ?? this.nextId++;
+      this.allocated.set(id, handle);
+      return id;
+    }
+    free(id) {
+#if ASSERTIONS
+      assert(this.allocated.has(id));
+#endif
+      this.allocated.delete(id);
+      this.freelist.push(id);
+    }
+    [Symbol.iterator]() {
+      return this.allocated.values();
+    }
+  },
+
   // `wasmTable` is a JS alias for the Wasm `__indirect_function_table` export
   $wasmTable__docs: '/** @type {WebAssembly.Table} */',
   $wasmTable: '__indirect_function_table',

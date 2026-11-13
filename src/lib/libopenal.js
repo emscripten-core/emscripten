@@ -22,7 +22,7 @@ var LibraryOpenAL = {
   $AL: {
     init() {
       AL.devices = new HandleAllocator();
-      AL.contexts = new HandleAllocator();
+      AL.contexts = new IterableHandleAllocator();
       AL.captures = new HandleAllocator();
       AL.buffers = new HandleAllocator();
       // The zero buffer is legal to use, so create a placeholder for it
@@ -92,10 +92,8 @@ var LibraryOpenAL = {
         return;
       }
 
-      for (var src of ctx.sources.allocated) {
-        if (src) {
-          AL.scheduleSourceAudio(src);
-        }
+      for (var src of ctx.sources) {
+        AL.scheduleSourceAudio(src);
       }
     },
 
@@ -442,10 +440,8 @@ var LibraryOpenAL = {
     },
 
     updateContextGlobal: (ctx) => {
-      for (var src of ctx.sources.allocated) {
-        if (src) {
-          AL.updateSourceGlobal(src);
-        }
+      for (var src of ctx.sources) {
+        AL.updateSourceGlobal(src);
       }
     },
 
@@ -512,10 +508,8 @@ var LibraryOpenAL = {
       }
 
       // Update sources that are relative to the listener
-      for (var src of ctx.sources.allocated) {
-        if (src) {
-          AL.updateSourceSpace(src);
-        }
+      for (var src of ctx.sources) {
+        AL.updateSourceSpace(src);
       }
     },
 
@@ -2187,7 +2181,7 @@ var LibraryOpenAL = {
         direction: [0.0, 0.0, 0.0],
         up: [0.0, 0.0, 0.0]
       },
-      sources: new HandleAllocator(),
+      sources: new IterableHandleAllocator(),
       interval: setInterval(() => AL.scheduleContextAudio(ctx), AL_QUEUE_INTERVAL),
       gain,
       distanceModel: 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */,
@@ -2212,8 +2206,8 @@ var LibraryOpenAL = {
 
     if (hrtf !== null) {
       // Apply hrtf attrib to all contexts for this device
-      for (var c of AL.contexts.allocated) {
-        if (c?.deviceId === deviceId) {
+      for (var c of AL.contexts) {
+        if (c.deviceId === deviceId) {
           c.hrtf = hrtf;
           AL.updateContextGlobal(c);
         }
@@ -2485,8 +2479,8 @@ var LibraryOpenAL = {
       }
 
       var hrtfStatus = 0 /* ALC_HRTF_DISABLED_SOFT */;
-      for (var ctx of AL.contexts.allocated) {
-        if (ctx?.deviceId === deviceId) {
+      for (var ctx of AL.contexts) {
+        if (ctx.deviceId === deviceId) {
           hrtfStatus = ctx.hrtf ? 1 /* ALC_HRTF_ENABLED_SOFT */ : 0 /* ALC_HRTF_DISABLED_SOFT */;
         }
       }
@@ -2541,8 +2535,8 @@ var LibraryOpenAL = {
     }
     AL.paused = true;
 
-    for (var ctx of AL.contexts.allocated) {
-      if (ctx?.deviceId !== deviceId) {
+    for (var ctx of AL.contexts) {
+      if (ctx.deviceId !== deviceId) {
         continue;
       }
 
@@ -2564,8 +2558,8 @@ var LibraryOpenAL = {
     }
     AL.paused = false;
 
-    for (var ctx of AL.contexts.allocated) {
-      if (ctx?.deviceId !== deviceId) {
+    for (var ctx of AL.contexts) {
+      if (ctx.deviceId !== deviceId) {
         continue;
       }
 
@@ -2647,8 +2641,8 @@ var LibraryOpenAL = {
 
     if (hrtf !== null) {
       // Apply hrtf attrib to all contexts for this device
-      for (var ctx of AL.contexts.allocated) {
-        if (ctx?.deviceId === deviceId) {
+      for (var ctx of AL.contexts) {
+        if (ctx.deviceId === deviceId) {
           ctx.hrtf = hrtf;
           AL.updateContextGlobal(ctx);
         }
