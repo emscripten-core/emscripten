@@ -866,8 +866,7 @@ function(${args}) {
         }
       }
 
-      const postsetId = symbol + '__postset';
-      const postset = LibraryManager.library[postsetId];
+      const postset = LibraryManager.library[symbol + '__postset'];
       const isConst = LibraryManager.library[symbol + '__const'];
 
       if (symbolsOnly) {
@@ -973,8 +972,7 @@ function(${args}) {
         // A postset is either code to run right now, or some text we should emit.
         // If it's code, it may return some text to emit as well.
         const postsetString = typeof postset === 'function' ? postset() : postset;
-        if (postsetString && !addedLibraryItems[postsetId]) {
-          addedLibraryItems[postsetId] = true;
+        if (postsetString) {
           postSets.push(postsetString + ';');
           if (typeof postset === 'string') {
             addImplicitDeps(postsetString);
