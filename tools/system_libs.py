@@ -362,6 +362,9 @@ class Library:
   # and left as None in an abstract library class, e.g. MTLibrary.
   name: str | None = None
 
+  # Experimental libs are not included in `embuilder build SYSTEM`
+  experimental = False
+
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
 
@@ -1044,6 +1047,7 @@ class libnoexit(Library):
 
 class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libllvmlibc'
+  experimental = True
   never_force = True
   includes = ['system/lib/llvm-libc']
   cflags = [
