@@ -836,6 +836,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'alignMemory',
   'mmapAlloc',
   'HandleAllocator',
+  'IterableHandleAllocator',
   'getUniqueRunDependency',
   'addRunDependency',
   'removeRunDependency',
