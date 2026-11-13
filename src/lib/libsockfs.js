@@ -243,13 +243,17 @@ addToLibrary({
 
 #if expectToReceiveOnModule('websocket')
             // Fetch runtime WebSocket URL config.
-            if (SOCKFS.websocketArgs['url']) {
-              url = SOCKFS.websocketArgs['url'];
+            var websocketArgs = Module['websocket'] || SOCKFS.websocketArgs;
+            if (websocketArgs['url']) {
+              url = websocketArgs['url'];
+              if (typeof url === 'function') {
+                url = url(addr, port);
+              }
             }
             // Fetch runtime WebSocket subprotocol config.
-            if (SOCKFS.websocketArgs['subprotocol']) {
-              subProtocols = SOCKFS.websocketArgs['subprotocol'];
-            } else if (SOCKFS.websocketArgs['subprotocol'] === null) {
+            if (websocketArgs['subprotocol']) {
+              subProtocols = websocketArgs['subprotocol'];
+            } else if (websocketArgs['subprotocol'] === null) {
               subProtocols = 'null'
             }
 #endif
@@ -280,6 +284,12 @@ addToLibrary({
             {
               WebSocketConstructor = WebSocket;
             }
+#if expectToReceiveOnModule('websocket')
+            // Allow custom WebSocket constructor.
+            if (hasOwn(websocketArgs, 'constructor')) {
+              WebSocketConstructor = websocketArgs['constructor'];
+            }
+#endif
             ws = new WebSocketConstructor(url, opts);
             ws.binaryType = 'arraybuffer';
           } catch (e) {
