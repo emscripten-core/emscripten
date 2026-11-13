@@ -167,14 +167,6 @@ def align_to_wasm_page_boundary(address):
   return ((address + (page_size - 1)) // page_size) * page_size
 
 
-def will_metadce():
-  # The metadce JS parsing code does not currently support the JS that gets generated
-  # when assertions are enabled.
-  if settings.ASSERTIONS:
-    return False
-  return settings.OPT_LEVEL >= 3 or settings.SHRINK_LEVEL >= 1
-
-
 def setup_environment_settings():
   # The worker environment is automatically added if any of the pthread or Worker features are used.
   # Note: we need to actually modify ENVIRONMENTS variable here before the parsing,
@@ -419,7 +411,7 @@ def get_binaryen_passes():
   # restructures the code). We could re-run those opts, but it is most efficient
   # to just not do them now if we'll invoke other tools later, and we'll do them
   # only in the very last invocation.
-  if will_metadce():
+  if building.will_metadce():
     passes += ['--no-stack-ir']
 
   return passes
@@ -1619,15 +1611,10 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   # Things that process the JS after this operation would be done must disable this.
   # JSPI does not support this optimization yet as it has a hardcoded check for 'main' as an
   # export name. TODO
-  if will_metadce() and \
-      settings.OPT_LEVEL >= 2 and \
-      settings.DEBUG_LEVEL <= 2 and \
-      options.oformat not in {OFormat.WASM, OFormat.BARE} and \
+  if building.will_metadce() and \
       settings.ASYNCIFY != 2 and \
-      not settings.LINKABLE and \
       not settings.STANDALONE_WASM and \
       not settings.AUTODEBUG and \
-      not settings.ASSERTIONS and \
       not settings.MAIN_MODULE and \
           settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
@@ -2373,7 +2360,7 @@ def phase_binaryen(target, wasm_target):
       with ToolchainProfiler.profile_block('little_endian_heap'):
         final_js = building.little_endian_heap(final_js)
 
-    if settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL <= 2:
+    if building.will_minify_wasm_js():
       # minify the JS. Do not minify whitespace if Closure is used, so that
       # Closure can print out readable error messages (Closure will then
       # minify whitespace afterwards)
@@ -2381,7 +2368,6 @@ def phase_binaryen(target, wasm_target):
         save_intermediate_with_wasm('preclean', wasm_target)
         final_js = building.minify_wasm_js(js_file=final_js,
                                            wasm_file=wasm_target,
-                                           expensive_optimizations=will_metadce(),
                                            debug_info=intermediate_debug_info)
         save_intermediate_with_wasm('postclean', wasm_target)
 

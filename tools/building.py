@@ -768,14 +768,15 @@ def run_closure_cmd(cmd, filename, env):
 
 # minify the final wasm+JS combination. this is done after all the JS
 # and wasm optimizations; here we do the very final optimizations on them
-def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
+def minify_wasm_js(js_file, wasm_file, debug_info):
+  assert will_minify_wasm_js()
   passes = []
   extra_info = {}
 
   # if we can optimize this js+wasm combination under the assumption no one else
   # will see the internals, do so
   if not settings.LINKABLE:
-    if expensive_optimizations:
+    if will_metadce():
       # start with AJSDCE (aggressive JS DCE, performs multiple iterations), to
       # clean up obvious JS garbage before metadce.
       logger.debug('running pre-meta-DCE cleanup on shell code: AJSDCE')
@@ -812,6 +813,27 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   return js_file
 
 
+def will_minify_wasm_js():
+  # JS minification requires JS output (not Wasm-only or bare outputs).
+  if cmdline.options.oformat in {cmdline.OFormat.WASM, cmdline.OFormat.BARE}:
+    return False
+  return settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL <= 2
+
+
+def will_metadce():
+  # metadce only runs as part of minify_wasm_js
+  if not will_minify_wasm_js():
+    return False
+  # The metadce JS parsing code does not currently support the JS that gets generated
+  # when assertions are enabled.
+  if settings.ASSERTIONS:
+    return False
+  # In linkable modules, exports must be preserved for dynamic linking.
+  if settings.LINKABLE:
+    return False
+  return settings.OPT_LEVEL >= 3 or settings.SHRINK_LEVEL >= 1
+
+
 # get the flags to pass into the very last binaryen tool invocation, that runs
 # the final set of optimizations
 def get_last_binaryen_opts():
@@ -823,6 +845,7 @@ def get_last_binaryen_opts():
 # run binaryen's wasm-metadce to dce both js and wasm
 def metadce(js_file, wasm_file, debug_info, last):
   logger.debug('running meta-DCE')
+  assert will_metadce()
   temp_files = shared.get_temp_files()
   extra_info = {"exports": [[asmjs_mangle(x), x] for x in settings.WASM_EXPORTS]}
 
