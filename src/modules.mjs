@@ -14,6 +14,7 @@ import {
   debugLog,
   isDecorator,
   isJsOnlySymbol,
+  splitDecorator,
   error,
   readFile,
   pushCurrentFile,
@@ -254,8 +255,70 @@ function preprocessFiles(filenames) {
   return results;
 }
 
+/**
+ * Represents a single JS library symbol, along with all its decorator
+ * attributes.
+ */
+class LibrarySymbol {
+  name;
+  // True if the symbol itself was defined in a JS library (even if its value
+  // is `undefined`, e.g. for native aliases). False for symbols that only
+  // exist because of decorators (like `__sig` in `libsigs.js`) or were
+  // requested via `getOrCreateSymbol()` without a library definition.
+  defined = false;
+  // The raw library definition from `LibraryManager.library[name]` (e.g. a
+  // function, object, string snippet/alias, primitive constant, or `undefined`).
+  value;
+  // True if the symbol is undefined in the library and a runtime stub function
+  // was generated for it (e.g. for missing symbols or dynamic linking).
+  isStub = false;
+  async_variant;
+  async_variants;
+
+  // Automatically generated members based on e.g. `foo__sig` members.
+  deps = [];
+  sig;
+  proxy;
+  postset;
+  docs;
+  async;
+  nothrow = false;
+  noleakcheck = false;
+  internal = false;
+  user = false;
+  i53abi = false;
+  export = false;
+  force = false;
+  const = false;
+
+  constructor(name) {
+    this.name = name;
+  }
+
+  isJsOnly() {
+    return isJsOnlySymbol(this.name);
+  }
+
+  // Whether the body returns a value or a Promise as it can, told by a `sync`
+  // argument: an 'auto' function, one with async variants (whether or not it
+  // suspends itself), or such a variant.
+  isAutoBody() {
+    return this.async == 'auto' || !!this.async_variants || !!this.async_variant;
+  }
+
+  isAsync() {
+    return ASYNCIFY && this.async && !this.async_variant;
+  }
+
+  isAlias() {
+    return this.defined && !this.const && typeof this.value === 'string' && this.value[0] != '=' && (LibraryManager.symbols.get(this.value)?.defined || WASM_EXPORTS.has(this.value));
+  }
+}
+
 export const LibraryManager = {
   library: {},
+  // Map from symbol name to LibrarySymbol object, populated at the end of load().
+  symbols: null,
   // The JS and JS docs of each library definition indexed my mangled name.
   libraryDefinitions: {},
   structs: {},
@@ -275,6 +338,43 @@ export const LibraryManager = {
     return this.libraries.includes(name);
   },
 
+  getOrCreateSymbol(name) {
+    let sym = this.symbols.get(name);
+    if (!sym) {
+      sym = new LibrarySymbol(name);
+      this.symbols.set(name, sym);
+    }
+    return sym;
+  },
+
+  /**
+   * Populate `this.symbols` from `this.library` (where decorators are stored
+   * as `<name>__<attr>` keys), grouping each symbol and its attributes into a
+   * `LibrarySymbol` instance.
+   */
+  buildSymbols() {
+    timer.start('buildSymbols')
+    this.symbols = new Map();
+    for (const [key, value] of Object.entries(this.library)) {
+      const parts = splitDecorator(key);
+      if (parts) {
+        const [base, suffix] = parts;
+        this.getOrCreateSymbol(base)[suffix.slice(2)] = value;
+        continue;
+      }
+      const sym = this.getOrCreateSymbol(key);
+      if (!sym.defined) {
+        sym.defined = true;
+        // Re-insert so Map iteration order matches symbol definition order in
+        // LibraryManager.library (not earlier decorators like libsigs.js).
+        this.symbols.delete(key);
+        this.symbols.set(key, sym);
+      }
+      sym.value = value;
+    }
+    timer.stop('buildSymbols')
+  },
+
   load() {
     timer.start('load')
 
@@ -291,6 +391,7 @@ export const LibraryManager = {
     }
     timer.stop('executeJS')
 
+    this.buildSymbols();
     this.expandAsyncVariants();
     this.addAliasDependencies();
 
@@ -308,70 +409,62 @@ export const LibraryManager = {
    * trailing `sync` argument forbids (see jsifier).
    */
   expandAsyncVariants() {
-    for (const [key, forms] of Object.entries(this.library)) {
-      if (!key.endsWith('__async') || typeof forms != 'object') continue;
-      const base = key.slice(0, -'__async'.length);
-      const sig = this.library[base + '__sig'];
+    for (const sym of this.symbols.values()) {
+      const forms = sym.async;
+      if (!forms || typeof forms != 'object') continue;
+      const sig = sym.sig;
       if (!Array.isArray(forms) || !forms.length) {
-        error(`JS library error: '${key}' must be 'auto', or a non-empty array of variants`);
+        error(`JS library error: '${sym.name}__async' must be 'auto', or a non-empty array of variants`);
         continue;
       }
-      if (base[0] == '$' || typeof this.library[base] !== 'function' || !sig || !'vpi'.includes(sig[0])) {
-        error(`JS library error: async variants of '${base}' require a native function with a '__sig' returning 'v', 'p' or 'i'`);
+      if (sym.isJsOnly() || !sym.defined || typeof sym.value !== 'function' || !sig || !'vpi'.includes(sig[0])) {
+        error(`JS library error: async variants of '${sym.name}' require a native function with a '__sig' returning 'v', 'p' or 'i'`);
         continue;
       }
       if (forms.includes('auto')) {
-        this.library[key] = 'auto';
+        sym.async = 'auto';
       } else {
-        delete this.library[key];
+        sym.async = undefined;
       }
-      const variants = forms.filter((v) => v != 'auto');
-      this.library[base + '__async_variants'] = variants;
-      for (const variant of variants) {
+      sym.async_variants = forms.filter((v) => v != 'auto');
+      for (const variant of sym.async_variants) {
         const rtn = ASYNC_VARIANTS.get(variant);
-        const name = `${base}_${variant}`;
+        const name = `${sym.name}_${variant}`;
         if (!rtn) {
-          error(`JS library error: unknown async variant '${variant}' in '${key}'`);
+          error(`JS library error: unknown async variant '${variant}' in '${sym.name}__async'`);
           continue;
         }
-        if (Object.hasOwn(this.library, name)) {
-          error(`JS library error: '${name}' is defined explicitly, conflicting with the '${variant}' variant of '${base}'`);
+        const variantSym = this.getOrCreateSymbol(name);
+        if (variantSym.defined) {
+          error(`JS library error: '${name}' is defined explicitly, conflicting with the '${variant}' variant of '${sym.name}'`);
           continue;
         }
-        this.library[name] = this.library[base];
-        this.library[name + '__async_variant'] = variant;
-        this.library[name + '__sig'] = rtn + sig.slice(1);
-        for (const decorator of ['__proxy', '__deps', '__i53abi', '__user']) {
-          if (Object.hasOwn(this.library, base + decorator)) {
-            this.library[name + decorator] = this.library[base + decorator];
-          }
-        }
-        if (PTHREADS && this.library[base + '__proxy'] == 'sync') {
+        variantSym.defined = true;
+        variantSym.value = sym.value;
+        variantSym.async_variant = variant;
+        variantSym.sig = rtn + sig.slice(1);
+        variantSym.deps = [...sym.deps];
+        variantSym.proxy = sym.proxy;
+        variantSym.i53abi = sym.i53abi;
+        variantSym.user = sym.user;
+        if (PTHREADS && sym.proxy == 'sync') {
           // The proxying helper is found from the generated body, but the
           // symbols-only pass sees only the source, so its native entry is
           // declared here for the variant to be linked.
-          this.library[name + '__deps'] = [...(this.library[name + '__deps'] ?? []), `_emscripten_run_js_on_main_thread_${variant}`];
+          variantSym.deps.push(`_emscripten_run_js_on_main_thread_${variant}`);
         }
       }
     }
-  },
-
-  isAlias(entry) {
-    return (typeof entry === 'string' && entry[0] != '=' && (Object.hasOwn(this.library, entry) || WASM_EXPORTS.has(entry)));
   },
 
   /**
    * Automatically add the target of an alias to it's dependency list.
    */
   addAliasDependencies() {
-    const aliases = {};
-    for (const [key, value] of Object.entries(this.library)) {
-      if (this.isAlias(value)) {
-        aliases[key] = value;
+    for (const sym of this.symbols.values()) {
+      if (sym.isAlias()) {
+        sym.deps.push(sym.value);
       }
-    }
-    for (const [key, value] of Object.entries(aliases)) {
-      (this.library[key + '__deps'] ??= []).push(value);
     }
   },
 
@@ -440,6 +533,7 @@ export const LibraryManager = {
 // if it is set, __sig is checked for functions and error is reported
 // if <function name>__sig is missing
 function addToLibrary(obj, options = null) {
+  assert(!LibraryManager.symbols, 'addToLibrary called after LibraryManager symbol creation');
   mergeInto(LibraryManager.library, obj, options);
 }
 
@@ -451,6 +545,7 @@ const defines = {};
  * that can then be used in JavaScript via macros.
  */
 function loadStructInfo(filename) {
+  assert(!LibraryManager.symbols, 'loadStructInfo called after LibraryManager symbol creation');
   const temp = JSON.parse(readFile(filename));
   Object.assign(structs, temp.structs);
   Object.assign(defines, temp.defines);
@@ -504,17 +599,13 @@ const C_DEFINES = new Proxy(defines, {
 // shorter alias for C_DEFINES
 export const cDefs = C_DEFINES;
 
-function isInternalSymbol(ident) {
-  return ident + '__internal' in LibraryManager.library;
-}
-
 function getUnusedLibrarySymbols() {
   const missingSyms = new Set();
-  for (const [ident, value] of Object.entries(LibraryManager.library)) {
-    if (typeof value === 'function' || typeof value === 'number') {
-      if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
-        if (!(ident in addedLibraryItems)) {
-          missingSyms.add(ident.slice(1));
+  for (const sym of LibraryManager.symbols.values()) {
+    if (sym.defined && (typeof sym.value === 'function' || typeof sym.value === 'number')) {
+      if (sym.isJsOnly() && !sym.internal) {
+        if (!(sym.name in addedLibraryItems)) {
+          missingSyms.add(sym.name.slice(1));
         }
       }
     }
@@ -620,13 +711,13 @@ function exportRuntimeSymbols() {
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.
   let runtimeElementsSet = new Set(runtimeElements);
-  for (const ident of Object.keys(LibraryManager.library)) {
-    if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
-      const jsname = ident.slice(1);
+  for (const sym of LibraryManager.symbols.values()) {
+    if (sym.defined && sym.isJsOnly() && !sym.internal) {
+      const jsname = sym.name.slice(1);
       // Note that this assertion may be hit when a function is moved into the
       // JS library. In that case the function should be removed from the list
       // of runtime elements above.
-      assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
+      assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + sym.name);
       runtimeElements.push(jsname);
     }
   }
