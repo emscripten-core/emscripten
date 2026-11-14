@@ -41,7 +41,7 @@ var LibraryOpenAL = {
     // -- ALC Fields
     // ------------------------------------------------------
 
-    _alcErr: 0,
+    _alcErr: cDefs.ALC_NO_ERROR,
     get alcErr() {
       return this._alcErr;
     },
@@ -403,7 +403,7 @@ var LibraryOpenAL = {
     },
 
     initSourcePanner: (src) => {
-      if (src.type === 0x1030 /* AL_UNDETERMINED */) {
+      if (src.type === AL_UNDETERMINED) {
         return;
       }
 
@@ -416,7 +416,7 @@ var LibraryOpenAL = {
         }
       }
       // Create a panner if AL_SOURCE_SPATIALIZE_SOFT is set to true, or alternatively if it's set to auto and the source is mono
-      if (src.spatialize === AL_TRUE || (src.spatialize === 2 /* AL_AUTO_SOFT */ && templateBuf.channels === 1)) {
+      if (src.spatialize === AL_TRUE || (src.spatialize === AL_AUTO_SOFT && templateBuf.channels === 1)) {
         if (src.panner) {
           return;
         }
@@ -463,18 +463,18 @@ var LibraryOpenAL = {
       switch (distanceModel) {
       case AL_NONE:
         panner.distanceModel = 'inverse';
-        panner.refDistance = 3.40282e38 /* FLT_MAX */;
+        panner.refDistance = FLT_MAX;
         break;
-      case 0xd001 /* AL_INVERSE_DISTANCE */:
-      case 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */:
+      case AL_INVERSE_DISTANCE:
+      case AL_INVERSE_DISTANCE_CLAMPED:
         panner.distanceModel = 'inverse';
         break;
-      case 0xd003 /* AL_LINEAR_DISTANCE */:
-      case 0xd004 /* AL_LINEAR_DISTANCE_CLAMPED */:
+      case AL_LINEAR_DISTANCE:
+      case AL_LINEAR_DISTANCE_CLAMPED:
         panner.distanceModel = 'linear';
         break;
-      case 0xd005 /* AL_EXPONENT_DISTANCE */:
-      case 0xd006 /* AL_EXPONENT_DISTANCE_CLAMPED */:
+      case AL_EXPONENT_DISTANCE:
+      case AL_EXPONENT_DISTANCE_CLAMPED:
         panner.distanceModel = 'exponential';
         break;
       }
@@ -867,12 +867,12 @@ var LibraryOpenAL = {
       case AL_DISTANCE_MODEL:
         switch (value) {
         case AL_NONE:
-        case 0xd001 /* AL_INVERSE_DISTANCE */:
-        case 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */:
-        case 0xd003 /* AL_LINEAR_DISTANCE */:
-        case 0xd004 /* AL_LINEAR_DISTANCE_CLAMPED */:
-        case 0xd005 /* AL_EXPONENT_DISTANCE */:
-        case 0xd006 /* AL_EXPONENT_DISTANCE_CLAMPED */:
+        case AL_INVERSE_DISTANCE:
+        case AL_INVERSE_DISTANCE_CLAMPED:
+        case AL_LINEAR_DISTANCE:
+        case AL_LINEAR_DISTANCE_CLAMPED:
+        case AL_EXPONENT_DISTANCE:
+        case AL_EXPONENT_DISTANCE_CLAMPED:
           AL.currentCtx.distanceModel = value;
           AL.updateContextGlobal(AL.currentCtx);
           break;
@@ -1011,15 +1011,15 @@ var LibraryOpenAL = {
       }
 
       switch (param) {
-      case 0x2001 /* AL_FREQUENCY */:
+      case AL_FREQUENCY:
         return buf.frequency;
-      case 0x2002 /* AL_BITS */:
+      case AL_BITS:
         return buf.bytesPerSample * 8;
-      case 0x2003 /* AL_CHANNELS */:
+      case AL_CHANNELS:
         return buf.channels;
-      case 0x2004 /* AL_SIZE */:
+      case AL_SIZE:
         return buf.length * buf.bytesPerSample * buf.channels;
-      case 0x2015 /* AL_LOOP_POINTS_SOFT */:
+      case AL_LOOP_POINTS_SOFT:
         if (!buf.length) {
           return [0, 0];
         }
@@ -1057,7 +1057,7 @@ var LibraryOpenAL = {
       }
 
       switch (param) {
-      case 0x2004 /* AL_SIZE */:
+      case AL_SIZE:
         if (value) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_SIZE value ${value} is out of range`);
@@ -1068,7 +1068,7 @@ var LibraryOpenAL = {
 
         // Per the spec, setting AL_SIZE to 0 is a legal NOP.
         break;
-      case 0x2015 /* AL_LOOP_POINTS_SOFT */:
+      case AL_LOOP_POINTS_SOFT:
         if (value[0] < 0 || value[0] > buf.length || value[1] < 0 || value[1] > buf.length || value[0] >= value[1]) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_LOOP_POINTS_SOFT value ${value} is out of range`);
@@ -1105,13 +1105,13 @@ var LibraryOpenAL = {
       }
 
       switch (param) {
-      case 0x202 /* AL_SOURCE_RELATIVE */:
+      case AL_SOURCE_RELATIVE:
         return src.relative;
-      case 0x1001 /* AL_CONE_INNER_ANGLE */:
+      case AL_CONE_INNER_ANGLE:
         return src.coneInnerAngle;
-      case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+      case AL_CONE_OUTER_ANGLE:
         return src.coneOuterAngle;
-      case 0x1003 /* AL_PITCH */:
+      case AL_PITCH:
         return src.pitch;
       case AL_POSITION:
         return src.position;
@@ -1119,56 +1119,56 @@ var LibraryOpenAL = {
         return src.direction;
       case AL_VELOCITY:
         return src.velocity;
-      case 0x1007 /* AL_LOOPING */:
+      case AL_LOOPING:
         return src.looping;
-      case 0x1009 /* AL_BUFFER */:
+      case AL_BUFFER:
         if (src.type === AL_STATIC) {
           return src.bufQueue[0].id;
         }
         return 0;
       case AL_GAIN:
         return src.gain.gain.value;
-       case 0x100D /* AL_MIN_GAIN */:
+      case AL_MIN_GAIN:
         return src.minGain;
-      case 0x100E /* AL_MAX_GAIN */:
+      case AL_MAX_GAIN:
         return src.maxGain;
-      case 0x1010 /* AL_SOURCE_STATE */:
+      case AL_SOURCE_STATE:
         return src.state;
-      case 0x1015 /* AL_BUFFERS_QUEUED */:
+      case AL_BUFFERS_QUEUED:
         if (src.bufQueue.length === 1 && !src.bufQueue[0].id) {
           return 0;
         }
         return src.bufQueue.length;
-      case 0x1016 /* AL_BUFFERS_PROCESSED */:
+      case AL_BUFFERS_PROCESSED:
         if ((src.bufQueue.length === 1 && !src.bufQueue[0].id) || src.looping) {
           return 0;
         }
         return src.bufsProcessed;
-      case 0x1020 /* AL_REFERENCE_DISTANCE */:
+      case AL_REFERENCE_DISTANCE:
         return src.refDistance;
-      case 0x1021 /* AL_ROLLOFF_FACTOR */:
+      case AL_ROLLOFF_FACTOR:
         return src.rolloffFactor;
-      case 0x1022 /* AL_CONE_OUTER_GAIN */:
+      case AL_CONE_OUTER_GAIN:
         return src.coneOuterGain;
-      case 0x1023 /* AL_MAX_DISTANCE */:
+      case AL_MAX_DISTANCE:
         return src.maxDistance;
-      case 0x1024 /* AL_SEC_OFFSET */:
+      case AL_SEC_OFFSET:
         return AL.sourceTell(src);
-      case 0x1025 /* AL_SAMPLE_OFFSET */:
+      case AL_SAMPLE_OFFSET:
         var offset = AL.sourceTell(src);
         if (offset > 0.0) {
           offset *= src.bufQueue[0].frequency;
         }
         return offset;
-      case 0x1026 /* AL_BYTE_OFFSET */:
+      case AL_BYTE_OFFSET:
         var offset = AL.sourceTell(src);
         if (offset > 0.0) {
           offset *= src.bufQueue[0].frequency * src.bufQueue[0].bytesPerSample;
         }
         return offset;
-      case 0x1027 /* AL_SOURCE_TYPE */:
+      case AL_SOURCE_TYPE:
         return src.type;
-      case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
+      case AL_SOURCE_SPATIALIZE_SOFT:
         return src.spatialize;
       case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
         var length = 0;
@@ -1213,7 +1213,7 @@ var LibraryOpenAL = {
       }
 
       switch (param) {
-      case 0x202 /* AL_SOURCE_RELATIVE */:
+      case AL_SOURCE_RELATIVE:
         if (value === AL_TRUE) {
           src.relative = true;
           AL.updateSourceSpace(src);
@@ -1228,7 +1228,7 @@ var LibraryOpenAL = {
           return;
         }
         break;
-      case 0x1001 /* AL_CONE_INNER_ANGLE */:
+      case AL_CONE_INNER_ANGLE:
         if (!Number.isFinite(value)) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_CONE_INNER_ANGLE value ${value} is out of range`);
@@ -1242,7 +1242,7 @@ var LibraryOpenAL = {
           src.panner.coneInnerAngle = value % 360.0;
         }
         break;
-      case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+      case AL_CONE_OUTER_ANGLE:
         if (!Number.isFinite(value)) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_CONE_OUTER_ANGLE value ${value} is out of range`);
@@ -1256,7 +1256,7 @@ var LibraryOpenAL = {
           src.panner.coneOuterAngle = value % 360.0;
         }
         break;
-      case 0x1003 /* AL_PITCH */:
+      case AL_PITCH:
         if (!Number.isFinite(value) || value <= 0.0) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_PITCH value ${value} is out of range`);
@@ -1314,7 +1314,7 @@ var LibraryOpenAL = {
         src.velocity[2] = value[2];
         AL.updateSourceSpace(src);
         break;
-      case 0x1007 /* AL_LOOPING */:
+      case AL_LOOPING:
         if (value === AL_TRUE) {
           src.looping = true;
           AL.updateSourceTime(src);
@@ -1340,7 +1340,7 @@ var LibraryOpenAL = {
           return;
         }
         break;
-      case 0x1009 /* AL_BUFFER */:
+      case AL_BUFFER:
         if (src.state === AL_PLAYING || src.state === AL_PAUSED) {
 #if OPENAL_DEBUG
           dbg(`${funcname}(AL_BUFFER) called while source is playing or paused`);
@@ -1366,7 +1366,7 @@ var LibraryOpenAL = {
         src.bufsProcessed = 0;
 
         if (!value) {
-          src.type = 0x1030 /* AL_UNDETERMINED */;
+          src.type = AL_UNDETERMINED;
         } else {
           buf.refCount++;
           src.type = AL_STATIC;
@@ -1385,7 +1385,7 @@ var LibraryOpenAL = {
         }
         src.gain.gain.value = value;
         break;
-      case 0x100D /* AL_MIN_GAIN */:
+      case AL_MIN_GAIN:
         if (!Number.isFinite(value) || value < 0.0 || value > Math.min(src.maxGain, 1.0)) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_MIN_GAIN value ${value} is out of range`);
@@ -1398,7 +1398,7 @@ var LibraryOpenAL = {
 #endif
         src.minGain = value;
         break;
-      case 0x100E /* AL_MAX_GAIN */:
+      case AL_MAX_GAIN:
         if (!Number.isFinite(value) || value < Math.max(0.0, src.minGain) || value > 1.0) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_MAX_GAIN value ${value} is out of range`);
@@ -1411,7 +1411,7 @@ var LibraryOpenAL = {
 #endif
         src.maxGain = value;
         break;
-      case 0x1020 /* AL_REFERENCE_DISTANCE */:
+      case AL_REFERENCE_DISTANCE:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_REFERENCE_DISTANCE value ${value} is out of range`);
@@ -1424,7 +1424,7 @@ var LibraryOpenAL = {
           src.panner.refDistance = value;
         }
         break;
-      case 0x1021 /* AL_ROLLOFF_FACTOR */:
+      case AL_ROLLOFF_FACTOR:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_ROLLOFF_FACTOR value ${value} is out of range`);
@@ -1437,7 +1437,7 @@ var LibraryOpenAL = {
           src.panner.rolloffFactor = value;
         }
         break;
-      case 0x1022 /* AL_CONE_OUTER_GAIN */:
+      case AL_CONE_OUTER_GAIN:
         if (!Number.isFinite(value) || value < 0.0 || value > 1.0) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_CORE_OUTER_GAIN value ${value} is out of range`);
@@ -1450,7 +1450,7 @@ var LibraryOpenAL = {
           src.panner.coneOuterGain = value;
         }
         break;
-      case 0x1023 /* AL_MAX_DISTANCE */:
+      case AL_MAX_DISTANCE:
         if (!Number.isFinite(value) || value < 0.0) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_MAX_DISTANCE value ${value} is out of range`);
@@ -1463,7 +1463,7 @@ var LibraryOpenAL = {
           src.panner.maxDistance = value;
         }
         break;
-      case 0x1024 /* AL_SEC_OFFSET */:
+      case AL_SEC_OFFSET:
         if (value < 0.0 || value > AL.sourceDuration(src)) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_SEC_OFFSET value ${value} is out of range`);
@@ -1474,7 +1474,7 @@ var LibraryOpenAL = {
 
         AL.sourceSeek(src, value);
         break;
-      case 0x1025 /* AL_SAMPLE_OFFSET */:
+      case AL_SAMPLE_OFFSET:
         var srcLen = AL.sourceDuration(src);
         if (srcLen > 0.0) {
           var frequency;
@@ -1496,7 +1496,7 @@ var LibraryOpenAL = {
 
         AL.sourceSeek(src, value);
         break;
-      case 0x1026 /* AL_BYTE_OFFSET */:
+      case AL_BYTE_OFFSET:
         var srcLen = AL.sourceDuration(src);
         if (srcLen > 0.0) {
           var bytesPerSec;
@@ -1518,8 +1518,8 @@ var LibraryOpenAL = {
 
         AL.sourceSeek(src, value);
         break;
-      case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
-        if (value !== AL_FALSE && value !== AL_TRUE && value !== 2 /* AL_AUTO_SOFT */) {
+      case AL_SOURCE_SPATIALIZE_SOFT:
+        if (value !== AL_FALSE && value !== AL_TRUE && value !== AL_AUTO_SOFT) {
 #if OPENAL_DEBUG
           dbg(`${funcname}() param AL_SOURCE_SPATIALIZE_SOFT value ${value} is out of range`);
 #endif
@@ -1541,12 +1541,12 @@ var LibraryOpenAL = {
       case AL_DISTANCE_MODEL:
         switch (value) {
         case AL_NONE:
-        case 0xd001 /* AL_INVERSE_DISTANCE */:
-        case 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */:
-        case 0xd003 /* AL_LINEAR_DISTANCE */:
-        case 0xd004 /* AL_LINEAR_DISTANCE_CLAMPED */:
-        case 0xd005 /* AL_EXPONENT_DISTANCE */:
-        case 0xd006 /* AL_EXPONENT_DISTANCE_CLAMPED */:
+        case AL_INVERSE_DISTANCE:
+        case AL_INVERSE_DISTANCE_CLAMPED:
+        case AL_LINEAR_DISTANCE:
+        case AL_LINEAR_DISTANCE_CLAMPED:
+        case AL_EXPONENT_DISTANCE:
+        case AL_EXPONENT_DISTANCE_CLAMPED:
           src.distanceModel = value;
           if (AL.currentCtx.sourceDistanceModel) {
             AL.updateContextGlobal(AL.currentCtx);
@@ -1651,7 +1651,7 @@ var LibraryOpenAL = {
         // overloaded here, to mean:
         // 'The specified device is invalid, or can not capture audio.'
         // This may be misleading to API users, but well...
-        AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
+        AL.alcErr = ALC_OUT_OF_MEMORY;
         return 0;
       }
     }
@@ -1670,7 +1670,7 @@ var LibraryOpenAL = {
       dbg('alcCaptureOpenDevice() cannot capture audio, because your browser lacks a `getUserMedia()` implementation');
 #endif
       // See previously mentioned rationale for ALC_OUT_OF_MEMORY
-      AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
+      AL.alcErr = ALC_OUT_OF_MEMORY;
       return 0;
     }
 
@@ -1682,7 +1682,7 @@ var LibraryOpenAL = {
         dbg(`alcCaptureOpenDevice() could not create the shared capture AudioContext: ${e}`);
 #endif
         // See previously mentioned rationale for ALC_OUT_OF_MEMORY
-        AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
+        AL.alcErr = ALC_OUT_OF_MEMORY;
         return 0;
       }
     }
@@ -1692,14 +1692,14 @@ var LibraryOpenAL = {
     var outputChannelCount;
 
     switch (format) {
-    case 0x10010: /* AL_FORMAT_MONO_FLOAT32 */
-    case 0x1101:  /* AL_FORMAT_MONO16 */
-    case 0x1100:  /* AL_FORMAT_MONO8 */
+    case AL_FORMAT_MONO_FLOAT32:
+    case AL_FORMAT_MONO16:
+    case AL_FORMAT_MONO8:
       outputChannelCount = 1;
       break;
-    case 0x10011: /* AL_FORMAT_STEREO_FLOAT32 */
-    case 0x1103:  /* AL_FORMAT_STEREO16 */
-    case 0x1102:  /* AL_FORMAT_STEREO8 */
+    case AL_FORMAT_STEREO_FLOAT32:
+    case AL_FORMAT_STEREO16:
+    case AL_FORMAT_STEREO8:
       outputChannelCount = 2;
       break;
     default:
@@ -1718,18 +1718,18 @@ var LibraryOpenAL = {
     var newSampleArray;
 
     switch (format) {
-    case 0x10010: /* AL_FORMAT_MONO_FLOAT32 */
-    case 0x10011: /* AL_FORMAT_STEREO_FLOAT32 */
+    case AL_FORMAT_MONO_FLOAT32:
+    case AL_FORMAT_STEREO_FLOAT32:
       requestedSampleType = 'f32';
       newSampleArray = newF32Array;
       break;
-    case 0x1101:  /* AL_FORMAT_MONO16 */
-    case 0x1103:  /* AL_FORMAT_STEREO16 */
+    case AL_FORMAT_MONO16:
+    case AL_FORMAT_STEREO16:
       requestedSampleType = 'i16';
       newSampleArray = newI16Array;
       break;
-    case 0x1100:  /* AL_FORMAT_MONO8 */
-    case 0x1102:  /* AL_FORMAT_STEREO8 */
+    case AL_FORMAT_MONO8:
+    case AL_FORMAT_STEREO8:
       requestedSampleType = 'u8';
       newSampleArray = newU8Array;
       break;
@@ -1744,7 +1744,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg(`alcCaptureOpenDevice() failed to allocate internal buffers (is bufferSize low enough?): ${e}`);
 #endif
-      AL.alcErr = 0xA005 /* ALC_OUT_OF_MEMORY */;
+      AL.alcErr = ALC_OUT_OF_MEMORY;
       return 0;
     }
 
@@ -1842,14 +1842,14 @@ var LibraryOpenAL = {
         // Actually just copy srcBuf's channel data into
         // c.buffers, optimizing for each case.
         switch (format) {
-        case 0x10010: /* AL_FORMAT_MONO_FLOAT32 */
+        case AL_FORMAT_MONO_FLOAT32:
           var channel0 = srcBuf.getChannelData(0);
           for (var i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = channel0[i];
           }
           break;
-        case 0x10011: /* AL_FORMAT_STEREO_FLOAT32 */
+        case AL_FORMAT_STEREO_FLOAT32:
           var channel0 = srcBuf.getChannelData(0);
           var channel1 = srcBuf.getChannelData(1);
           for (var i = 0 ; i < srcBuf.length; ++i) {
@@ -1858,14 +1858,14 @@ var LibraryOpenAL = {
             c.buffers[1][wi] = channel1[i];
           }
           break;
-        case 0x1101:  /* AL_FORMAT_MONO16 */
+        case AL_FORMAT_MONO16:
           var channel0 = srcBuf.getChannelData(0);
           for (var i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = channel0[i] * 32767;
           }
           break;
-        case 0x1103:  /* AL_FORMAT_STEREO16 */
+        case AL_FORMAT_STEREO16:
           var channel0 = srcBuf.getChannelData(0);
           var channel1 = srcBuf.getChannelData(1);
           for (var i = 0 ; i < srcBuf.length; ++i) {
@@ -1874,14 +1874,14 @@ var LibraryOpenAL = {
             c.buffers[1][wi] = channel1[i] * 32767;
           }
           break;
-        case 0x1100:  /* AL_FORMAT_MONO8 */
+        case AL_FORMAT_MONO8:
           var channel0 = srcBuf.getChannelData(0);
           for (var i = 0 ; i < srcBuf.length; ++i) {
             var wi = (c.capturePlayhead + i) % c.bufferFrameCapacity;
             c.buffers[0][wi] = (channel0[i] + 1.0) * 127;
           }
           break;
-        case 0x1102:  /* AL_FORMAT_STEREO8 */
+        case AL_FORMAT_STEREO8:
           var channel0 = srcBuf.getChannelData(0);
           var channel1 = srcBuf.getChannelData(1);
           for (var i = 0 ; i < srcBuf.length; ++i) {
@@ -2113,14 +2113,14 @@ var LibraryOpenAL = {
         attrs.push(val);
 
         switch (attr) {
-        case 0x1007 /* ALC_FREQUENCY */:
+        case ALC_FREQUENCY:
           options.sampleRate = val;
           break;
-        case 0x1010 /* ALC_MONO_SOURCES */: // fallthrough
-        case 0x1011 /* ALC_STEREO_SOURCES */:
+        case ALC_MONO_SOURCES: // fallthrough
+        case ALC_STEREO_SOURCES:
           // Do nothing; these hints are satisfied by default
           break
-        case 0x1992 /* ALC_HRTF_SOFT */:
+        case ALC_HRTF_SOFT:
           switch (val) {
             case ALC_FALSE:
               hrtf = false;
@@ -2128,7 +2128,7 @@ var LibraryOpenAL = {
             case ALC_TRUE:
               hrtf = true;
               break;
-            case 2 /* ALC_DONT_CARE_SOFT */:
+            case ALC_DONT_CARE_SOFT:
               break;
             default:
 #if OPENAL_DEBUG
@@ -2138,7 +2138,7 @@ var LibraryOpenAL = {
               return 0;
           }
           break;
-        case 0x1996 /* ALC_HRTF_ID_SOFT */:
+        case ALC_HRTF_ID_SOFT:
           if (val) {
 #if OPENAL_DEBUG
             dbg(`Invalid ALC_HRTF_ID_SOFT index ${val}`);
@@ -2151,7 +2151,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
           dbg(`Unsupported context attribute ${ptrToString(attr)}`);
 #endif
-          AL.alcErr = 0xA004; /* ALC_INVALID_VALUE */
+          AL.alcErr = ALC_INVALID_VALUE;
           return 0;
         }
       }
@@ -2165,9 +2165,9 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
         dbg('Invalid or unsupported options');
 #endif
-        AL.alcErr = 0xA004; /* ALC_INVALID_VALUE */
+        AL.alcErr = ALC_INVALID_VALUE;
       } else {
-        AL.alcErr = 0xA001; /* ALC_INVALID_DEVICE */
+        AL.alcErr = ALC_INVALID_DEVICE;
       }
 
       return 0;
@@ -2196,13 +2196,13 @@ var LibraryOpenAL = {
       sources: new Map(),
       interval: setInterval(() => AL.scheduleContextAudio(ctx), AL_QUEUE_INTERVAL),
       gain,
-      distanceModel: 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */,
+      distanceModel: AL_INVERSE_DISTANCE_CLAMPED,
       speedOfSound: 343.3,
       dopplerFactor: 1.0,
       sourceDistanceModel: false,
       hrtf: hrtf || false,
 
-      _err: 0,
+      _err: AL_NO_ERROR,
       get err() {
         return this._err;
       },
@@ -2236,7 +2236,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       dbg('alcDestroyContext() called with an invalid context');
 #endif
-      AL.alcErr = 0xA002 /* ALC_INVALID_CONTEXT */;
+      AL.alcErr = ALC_INVALID_CONTEXT;
       return;
     }
 
@@ -2280,48 +2280,48 @@ var LibraryOpenAL = {
   alcIsExtensionPresent: (deviceId, pExtName) => {
     var name = UTF8ToString(pExtName);
 
-    return AL.ALC_EXTENSIONS[name] ? 1 : 0;
+    return AL.ALC_EXTENSIONS[name] ? ALC_TRUE : ALC_FALSE;
   },
 
   $alcEnumValues__internal: true,
   // Note: using template literal here instead of plain object because jsify
   // serializes identifier keys w/o quotes and Closure would mangle them.
   $alcEnumValues: `{
-    'ALC_NO_ERROR': 0,
-    'ALC_INVALID_DEVICE': 0xA001,
-    'ALC_INVALID_CONTEXT': 0xA002,
-    'ALC_INVALID_ENUM': 0xA003,
-    'ALC_INVALID_VALUE': 0xA004,
-    'ALC_OUT_OF_MEMORY': 0xA005,
-    'ALC_MAJOR_VERSION': 0x1000,
-    'ALC_MINOR_VERSION': 0x1001,
-    'ALC_ATTRIBUTES_SIZE': 0x1002,
-    'ALC_ALL_ATTRIBUTES': 0x1003,
-    'ALC_DEFAULT_DEVICE_SPECIFIER': 0x1004,
-    'ALC_DEVICE_SPECIFIER': 0x1005,
-    'ALC_EXTENSIONS': 0x1006,
-    'ALC_FREQUENCY': 0x1007,
-    'ALC_REFRESH': 0x1008,
-    'ALC_SYNC': 0x1009,
-    'ALC_MONO_SOURCES': 0x1010,
-    'ALC_STEREO_SOURCES': 0x1011,
-    'ALC_CAPTURE_DEVICE_SPECIFIER': 0x310,
-    'ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER': 0x311,
-    'ALC_CAPTURE_SAMPLES': 0x312,
+    'ALC_NO_ERROR': ALC_NO_ERROR,
+    'ALC_INVALID_DEVICE': ALC_INVALID_DEVICE,
+    'ALC_INVALID_CONTEXT': ALC_INVALID_CONTEXT,
+    'ALC_INVALID_ENUM': ALC_INVALID_ENUM,
+    'ALC_INVALID_VALUE': ALC_INVALID_VALUE,
+    'ALC_OUT_OF_MEMORY': ALC_OUT_OF_MEMORY,
+    'ALC_MAJOR_VERSION': ALC_MAJOR_VERSION,
+    'ALC_MINOR_VERSION': ALC_MINOR_VERSION,
+    'ALC_ATTRIBUTES_SIZE': ALC_ATTRIBUTES_SIZE,
+    'ALC_ALL_ATTRIBUTES': ALC_ALL_ATTRIBUTES,
+    'ALC_DEFAULT_DEVICE_SPECIFIER': ALC_DEFAULT_DEVICE_SPECIFIER,
+    'ALC_DEVICE_SPECIFIER': ALC_DEVICE_SPECIFIER,
+    'ALC_EXTENSIONS': ALC_EXTENSIONS,
+    'ALC_FREQUENCY': ALC_FREQUENCY,
+    'ALC_REFRESH': ALC_REFRESH,
+    'ALC_SYNC': ALC_SYNC,
+    'ALC_MONO_SOURCES': ALC_MONO_SOURCES,
+    'ALC_STEREO_SOURCES': ALC_STEREO_SOURCES,
+    'ALC_CAPTURE_DEVICE_SPECIFIER': ALC_CAPTURE_DEVICE_SPECIFIER,
+    'ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER': ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER,
+    'ALC_CAPTURE_SAMPLES': ALC_CAPTURE_SAMPLES,
 
     /* Extensions */
-    'ALC_HRTF_SOFT': 0x1992,
-    'ALC_HRTF_ID_SOFT': 0x1996,
-    'ALC_DONT_CARE_SOFT': 0x0002,
-    'ALC_HRTF_STATUS_SOFT': 0x1993,
-    'ALC_NUM_HRTF_SPECIFIERS_SOFT': 0x1994,
-    'ALC_HRTF_SPECIFIER_SOFT': 0x1995,
-    'ALC_HRTF_DISABLED_SOFT': 0x0000,
-    'ALC_HRTF_ENABLED_SOFT': 0x0001,
-    'ALC_HRTF_DENIED_SOFT': 0x0002,
-    'ALC_HRTF_REQUIRED_SOFT': 0x0003,
-    'ALC_HRTF_HEADPHONES_DETECTED_SOFT': 0x0004,
-    'ALC_HRTF_UNSUPPORTED_FORMAT_SOFT': 0x0005,
+    'ALC_HRTF_SOFT': ALC_HRTF_SOFT,
+    'ALC_HRTF_ID_SOFT': ALC_HRTF_ID_SOFT,
+    'ALC_DONT_CARE_SOFT': ALC_DONT_CARE_SOFT,
+    'ALC_HRTF_STATUS_SOFT': ALC_HRTF_STATUS_SOFT,
+    'ALC_NUM_HRTF_SPECIFIERS_SOFT': ALC_NUM_HRTF_SPECIFIERS_SOFT,
+    'ALC_HRTF_SPECIFIER_SOFT': ALC_HRTF_SPECIFIER_SOFT,
+    'ALC_HRTF_DISABLED_SOFT': ALC_HRTF_DISABLED_SOFT,
+    'ALC_HRTF_ENABLED_SOFT': ALC_HRTF_ENABLED_SOFT,
+    'ALC_HRTF_DENIED_SOFT': ALC_HRTF_DENIED_SOFT,
+    'ALC_HRTF_REQUIRED_SOFT': ALC_HRTF_REQUIRED_SOFT,
+    'ALC_HRTF_HEADPHONES_DETECTED_SOFT': ALC_HRTF_HEADPHONES_DETECTED_SOFT,
+    'ALC_HRTF_UNSUPPORTED_FORMAT_SOFT': ALC_HRTF_UNSUPPORTED_FORMAT_SOFT,
   }`,
 
   alcGetEnumValue__proxy: 'sync',
@@ -2366,7 +2366,7 @@ var LibraryOpenAL = {
     case ALC_INVALID_DEVICE:
       ret = 'Invalid Device';
       break;
-    case 0xA002 /* ALC_INVALID_CONTEXT */:
+    case ALC_INVALID_CONTEXT:
       ret = 'Invalid Context';
       break;
     case ALC_INVALID_ENUM:
@@ -2375,27 +2375,27 @@ var LibraryOpenAL = {
     case ALC_INVALID_VALUE:
       ret = 'Invalid Value';
       break;
-    case 0xA005 /* ALC_OUT_OF_MEMORY */:
+    case ALC_OUT_OF_MEMORY:
       ret = 'Out of Memory';
       break;
-    case 0x1004 /* ALC_DEFAULT_DEVICE_SPECIFIER */:
+    case ALC_DEFAULT_DEVICE_SPECIFIER:
       if (globalThis.AudioContext) {
         ret = AL_DEVICE_NAME;
       } else {
         return 0;
       }
       break;
-    case 0x1005 /* ALC_DEVICE_SPECIFIER */:
+    case ALC_DEVICE_SPECIFIER:
       if (globalThis.AudioContext) {
         ret = AL_DEVICE_NAME + '\0';
       } else {
         ret = '\0';
       }
       break;
-    case 0x311 /* ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER */:
+    case ALC_CAPTURE_DEFAULT_DEVICE_SPECIFIER:
       ret = AL_CAPTURE_DEVICE_NAME;
       break;
-    case 0x310 /* ALC_CAPTURE_DEVICE_SPECIFIER */:
+    case ALC_CAPTURE_DEVICE_SPECIFIER:
       if (!deviceId) {
         ret = AL_CAPTURE_DEVICE_NAME + '\0';
       } else {
@@ -2406,7 +2406,7 @@ var LibraryOpenAL = {
         ret = c.deviceName;
       }
       break;
-    case 0x1006 /* ALC_EXTENSIONS */:
+    case ALC_EXTENSIONS:
       if (!deviceId) {
         AL.alcErr = ALC_INVALID_DEVICE;
         return 0;
@@ -2432,29 +2432,29 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0x1000 /* ALC_MAJOR_VERSION */:
+    case ALC_MAJOR_VERSION:
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
-    case 0x1001 /* ALC_MINOR_VERSION */:
+    case ALC_MINOR_VERSION:
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
-    case 0x1002 /* ALC_ATTRIBUTES_SIZE */:
+    case ALC_ATTRIBUTES_SIZE:
       if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
       if (!AL.currentCtx) {
-        AL.alcErr = 0xA002 /* ALC_INVALID_CONTEXT */;
+        AL.alcErr = ALC_INVALID_CONTEXT;
         return;
       }
 
       {{{ makeSetValue('pValues', '0', 'AL.currentCtx.attrs.length', 'i32') }}};
       break;
-    case 0x1003 /* ALC_ALL_ATTRIBUTES */:
+    case ALC_ALL_ATTRIBUTES:
       if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
       if (!AL.currentCtx) {
-        AL.alcErr = 0xA002 /* ALC_INVALID_CONTEXT */;
+        AL.alcErr = ALC_INVALID_CONTEXT;
         return;
       }
 
@@ -2462,44 +2462,44 @@ var LibraryOpenAL = {
         {{{ makeSetValue('pValues', 'i*4', 'AL.currentCtx.attrs[i]', 'i32') }}};
       }
       break;
-    case 0x1007 /* ALC_FREQUENCY */:
+    case ALC_FREQUENCY:
       if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
       if (!AL.currentCtx) {
-        AL.alcErr = 0xA002 /* ALC_INVALID_CONTEXT */;
+        AL.alcErr = ALC_INVALID_CONTEXT;
         return;
       }
 
       {{{ makeSetValue('pValues', '0', 'AL.currentCtx.audioCtx.sampleRate', 'i32') }}};
       break;
-    case 0x1010 /* ALC_MONO_SOURCES */:
-    case 0x1011 /* ALC_STEREO_SOURCES */:
+    case ALC_MONO_SOURCES:
+    case ALC_STEREO_SOURCES:
       if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
       if (!AL.currentCtx) {
-        AL.alcErr = 0xA002 /* ALC_INVALID_CONTEXT */;
+        AL.alcErr = ALC_INVALID_CONTEXT;
         return;
       }
 
-      {{{ makeSetValue('pValues', '0', '0x7FFFFFFF', 'i32') }}};
+      {{{ makeSetValue('pValues', '0', cDefs.INT_MAX, 'i32') }}};
       break;
-    case 0x1992 /* ALC_HRTF_SOFT */:
-    case 0x1993 /* ALC_HRTF_STATUS_SOFT */:
+    case ALC_HRTF_SOFT:
+    case ALC_HRTF_STATUS_SOFT:
       if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
 
-      var hrtfStatus = 0 /* ALC_HRTF_DISABLED_SOFT */;
+      var hrtfStatus = ALC_HRTF_DISABLED_SOFT;
       for (var ctx of AL.contexts.values()) {
         if (ctx.deviceId === deviceId) {
-          hrtfStatus = ctx.hrtf ? 1 /* ALC_HRTF_ENABLED_SOFT */ : 0 /* ALC_HRTF_DISABLED_SOFT */;
+          hrtfStatus = ctx.hrtf ? ALC_HRTF_ENABLED_SOFT : ALC_HRTF_DISABLED_SOFT;
         }
       }
       {{{ makeSetValue('pValues', '0', 'hrtfStatus', 'i32') }}};
       break;
-    case 0x1994 /* ALC_NUM_HRTF_SPECIFIERS_SOFT */:
+    case ALC_NUM_HRTF_SPECIFIERS_SOFT:
       if (!AL.requireValidDevice(deviceId, 'alcGetIntegerv')) {
         return;
       }
@@ -2510,13 +2510,13 @@ var LibraryOpenAL = {
         return;
       }
       if (!AL.currentCtx) {
-        AL.alcErr = 0xA002 /* ALC_INVALID_CONTEXT */;
+        AL.alcErr = ALC_INVALID_CONTEXT;
         return;
       }
 
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
-    case 0x312 /* ALC_CAPTURE_SAMPLES */:
+    case ALC_CAPTURE_SAMPLES:
       var c = AL.requireValidCaptureDevice(deviceId, 'alcGetIntegerv');
       if (!c) {
         return;
@@ -2594,7 +2594,7 @@ var LibraryOpenAL = {
 
     var ret;
     switch (param) {
-    case 0x1995 /* ALC_HRTF_SPECIFIER_SOFT */:
+    case ALC_HRTF_SPECIFIER_SOFT:
       if (!index) {
         ret = 'Web Audio HRTF';
       } else {
@@ -2641,7 +2641,7 @@ var LibraryOpenAL = {
         val = HEAP32[pAttrList++];
 
         switch (attr) {
-        case 0x1992 /* ALC_HRTF_SOFT */:
+        case ALC_HRTF_SOFT:
           if (val === ALC_TRUE) {
             hrtf = true;
           } else if (val === ALC_FALSE) {
@@ -2751,7 +2751,7 @@ var LibraryOpenAL = {
       var src = {
         context: AL.currentCtx,
         id: AL.newId(),
-        type: 0x1030 /* AL_UNDETERMINED */,
+        type: AL_UNDETERMINED,
         state: AL_INITIAL,
         bufQueue: [AL.buffers[0]],
         audioQueue: [],
@@ -2767,7 +2767,7 @@ var LibraryOpenAL = {
         bufOffset: 0.0,
         relative: false,
         refDistance: 1.0,
-        maxDistance: 3.40282e38 /* FLT_MAX */,
+        maxDistance: FLT_MAX,
         rolloffFactor: 1.0,
         position: [0.0, 0.0, 0.0],
         velocity: [0.0, 0.0, 0.0],
@@ -2775,8 +2775,8 @@ var LibraryOpenAL = {
         coneOuterGain: 0.0,
         coneInnerAngle: 360.0,
         coneOuterAngle: 360.0,
-        distanceModel: 0xd002 /* AL_INVERSE_DISTANCE_CLAMPED */,
-        spatialize: 2 /* AL_AUTO_SOFT */,
+        distanceModel: AL_INVERSE_DISTANCE_CLAMPED,
+        spatialize: AL_AUTO_SOFT,
 
         get playbackRate() {
           return this.pitch * this.dopplerShift;
@@ -2796,7 +2796,7 @@ var LibraryOpenAL = {
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
       AL.setSourceState(AL.currentCtx.sources.get(srcId), AL_STOPPED);
-      _alSourcei(srcId, 0x1009 /* AL_BUFFER */, 0);
+      _alSourcei(srcId, AL_BUFFER, 0);
       AL.currentCtx.sources.delete(srcId);
       AL.freeIds.push(srcId);
     }
@@ -2821,7 +2821,7 @@ var LibraryOpenAL = {
   alIsExtensionPresent: (pExtName) => {
     var name = UTF8ToString(pExtName);
 
-    return AL.AL_EXTENSIONS[name] ? 1 : 0;
+    return AL.AL_EXTENSIONS[name] ? AL_TRUE : AL_FALSE;
   },
 
   $alEnumValues__internal: true,
@@ -2833,83 +2833,83 @@ var LibraryOpenAL = {
     // We should probably follow OpenAL-Soft's example and support all
     // of the names we know.
     // See http://repo.or.cz/openal-soft.git/blob/HEAD:/Alc/ALc.c
-    'AL_BITS': 0x2002,
-    'AL_BUFFER': 0x1009,
-    'AL_BUFFERS_PROCESSED': 0x1016,
-    'AL_BUFFERS_QUEUED': 0x1015,
-    'AL_BYTE_OFFSET': 0x1026,
-    'AL_CHANNELS': 0x2003,
-    'AL_CONE_INNER_ANGLE': 0x1001,
-    'AL_CONE_OUTER_ANGLE': 0x1002,
-    'AL_CONE_OUTER_GAIN': 0x1022,
-    'AL_DIRECTION': 0x1005,
-    'AL_DISTANCE_MODEL': 0xD000,
-    'AL_DOPPLER_FACTOR': 0xC000,
-    'AL_DOPPLER_VELOCITY': 0xC001,
-    'AL_EXPONENT_DISTANCE': 0xD005,
-    'AL_EXPONENT_DISTANCE_CLAMPED': 0xD006,
-    'AL_EXTENSIONS': 0xB004,
-    'AL_FORMAT_MONO16': 0x1101,
-    'AL_FORMAT_MONO8': 0x1100,
-    'AL_FORMAT_STEREO16': 0x1103,
-    'AL_FORMAT_STEREO8': 0x1102,
-    'AL_FREQUENCY': 0x2001,
-    'AL_GAIN': 0x100A,
-    'AL_INITIAL': 0x1011,
-    'AL_INVALID': -1,
-    'AL_ILLEGAL_ENUM': 0xA002,
-    'AL_INVALID_ENUM': 0xA002,
-    'AL_INVALID_NAME': 0xA001,
-    'AL_ILLEGAL_COMMAND': 0xA004,
-    'AL_INVALID_OPERATION': 0xA004,
-    'AL_INVALID_VALUE': 0xA003,
-    'AL_INVERSE_DISTANCE': 0xD001,
-    'AL_INVERSE_DISTANCE_CLAMPED': 0xD002,
-    'AL_LINEAR_DISTANCE': 0xD003,
-    'AL_LINEAR_DISTANCE_CLAMPED': 0xD004,
-    'AL_LOOPING': 0x1007,
-    'AL_MAX_DISTANCE': 0x1023,
-    'AL_MAX_GAIN': 0x100E,
-    'AL_MIN_GAIN': 0x100D,
-    'AL_NONE': 0,
-    'AL_NO_ERROR': 0,
-    'AL_ORIENTATION': 0x100F,
-    'AL_OUT_OF_MEMORY': 0xA005,
-    'AL_PAUSED': 0x1013,
-    'AL_PENDING': 0x2011,
-    'AL_PITCH': 0x1003,
-    'AL_PLAYING': 0x1012,
-    'AL_POSITION': 0x1004,
-    'AL_PROCESSED': 0x2012,
-    'AL_REFERENCE_DISTANCE': 0x1020,
-    'AL_RENDERER': 0xB003,
-    'AL_ROLLOFF_FACTOR': 0x1021,
-    'AL_SAMPLE_OFFSET': 0x1025,
-    'AL_SEC_OFFSET': 0x1024,
-    'AL_SIZE': 0x2004,
-    'AL_SOURCE_RELATIVE': 0x202,
-    'AL_SOURCE_STATE': 0x1010,
-    'AL_SOURCE_TYPE': 0x1027,
-    'AL_SPEED_OF_SOUND': 0xC003,
-    'AL_STATIC': 0x1028,
-    'AL_STOPPED': 0x1014,
-    'AL_STREAMING': 0x1029,
-    'AL_UNDETERMINED': 0x1030,
-    'AL_UNUSED': 0x2010,
-    'AL_VELOCITY': 0x1006,
-    'AL_VENDOR': 0xB001,
-    'AL_VERSION': 0xB002,
+    'AL_BITS': AL_BITS,
+    'AL_BUFFER': AL_BUFFER,
+    'AL_BUFFERS_PROCESSED': AL_BUFFERS_PROCESSED,
+    'AL_BUFFERS_QUEUED': AL_BUFFERS_QUEUED,
+    'AL_BYTE_OFFSET': AL_BYTE_OFFSET,
+    'AL_CHANNELS': AL_CHANNELS,
+    'AL_CONE_INNER_ANGLE': AL_CONE_INNER_ANGLE,
+    'AL_CONE_OUTER_ANGLE': AL_CONE_OUTER_ANGLE,
+    'AL_CONE_OUTER_GAIN': AL_CONE_OUTER_GAIN,
+    'AL_DIRECTION': AL_DIRECTION,
+    'AL_DISTANCE_MODEL': AL_DISTANCE_MODEL,
+    'AL_DOPPLER_FACTOR': AL_DOPPLER_FACTOR,
+    'AL_DOPPLER_VELOCITY': AL_DOPPLER_VELOCITY,
+    'AL_EXPONENT_DISTANCE': AL_EXPONENT_DISTANCE,
+    'AL_EXPONENT_DISTANCE_CLAMPED': AL_EXPONENT_DISTANCE_CLAMPED,
+    'AL_EXTENSIONS': AL_EXTENSIONS,
+    'AL_FORMAT_MONO16': AL_FORMAT_MONO16,
+    'AL_FORMAT_MONO8': AL_FORMAT_MONO8,
+    'AL_FORMAT_STEREO16': AL_FORMAT_STEREO16,
+    'AL_FORMAT_STEREO8': AL_FORMAT_STEREO8,
+    'AL_FREQUENCY': AL_FREQUENCY,
+    'AL_GAIN': AL_GAIN,
+    'AL_INITIAL': AL_INITIAL,
+    'AL_INVALID': AL_INVALID,
+    'AL_ILLEGAL_ENUM': AL_INVALID_ENUM,
+    'AL_INVALID_ENUM': AL_INVALID_ENUM,
+    'AL_INVALID_NAME': AL_INVALID_NAME,
+    'AL_ILLEGAL_COMMAND': AL_INVALID_OPERATION,
+    'AL_INVALID_OPERATION': AL_INVALID_OPERATION,
+    'AL_INVALID_VALUE': AL_INVALID_VALUE,
+    'AL_INVERSE_DISTANCE': AL_INVERSE_DISTANCE,
+    'AL_INVERSE_DISTANCE_CLAMPED': AL_INVERSE_DISTANCE_CLAMPED,
+    'AL_LINEAR_DISTANCE': AL_LINEAR_DISTANCE,
+    'AL_LINEAR_DISTANCE_CLAMPED': AL_LINEAR_DISTANCE_CLAMPED,
+    'AL_LOOPING': AL_LOOPING,
+    'AL_MAX_DISTANCE': AL_MAX_DISTANCE,
+    'AL_MAX_GAIN': AL_MAX_GAIN,
+    'AL_MIN_GAIN': AL_MIN_GAIN,
+    'AL_NONE': AL_NONE,
+    'AL_NO_ERROR': AL_NO_ERROR,
+    'AL_ORIENTATION': AL_ORIENTATION,
+    'AL_OUT_OF_MEMORY': AL_OUT_OF_MEMORY,
+    'AL_PAUSED': AL_PAUSED,
+    'AL_PENDING': AL_PENDING,
+    'AL_PITCH': AL_PITCH,
+    'AL_PLAYING': AL_PLAYING,
+    'AL_POSITION': AL_POSITION,
+    'AL_PROCESSED': AL_PROCESSED,
+    'AL_REFERENCE_DISTANCE': AL_REFERENCE_DISTANCE,
+    'AL_RENDERER': AL_RENDERER,
+    'AL_ROLLOFF_FACTOR': AL_ROLLOFF_FACTOR,
+    'AL_SAMPLE_OFFSET': AL_SAMPLE_OFFSET,
+    'AL_SEC_OFFSET': AL_SEC_OFFSET,
+    'AL_SIZE': AL_SIZE,
+    'AL_SOURCE_RELATIVE': AL_SOURCE_RELATIVE,
+    'AL_SOURCE_STATE': AL_SOURCE_STATE,
+    'AL_SOURCE_TYPE': AL_SOURCE_TYPE,
+    'AL_SPEED_OF_SOUND': AL_SPEED_OF_SOUND,
+    'AL_STATIC': AL_STATIC,
+    'AL_STOPPED': AL_STOPPED,
+    'AL_STREAMING': AL_STREAMING,
+    'AL_UNDETERMINED': AL_UNDETERMINED,
+    'AL_UNUSED': AL_UNUSED,
+    'AL_VELOCITY': AL_VELOCITY,
+    'AL_VENDOR': AL_VENDOR,
+    'AL_VERSION': AL_VERSION,
 
     /* Extensions */
-    'AL_AUTO_SOFT': 0x0002,
-    'AL_SOURCE_DISTANCE_MODEL': 0x200,
-    'AL_SOURCE_SPATIALIZE_SOFT': 0x1214,
-    'AL_LOOP_POINTS_SOFT': 0x2015,
+    'AL_AUTO_SOFT': AL_AUTO_SOFT,
+    'AL_SOURCE_DISTANCE_MODEL': AL_SOURCE_DISTANCE_MODEL,
+    'AL_SOURCE_SPATIALIZE_SOFT': AL_SOURCE_SPATIALIZE_SOFT,
+    'AL_LOOP_POINTS_SOFT': AL_LOOP_POINTS_SOFT,
     'AL_BYTE_LENGTH_SOFT': 0x2009,
     'AL_SAMPLE_LENGTH_SOFT': 0x200A,
     'AL_SEC_LENGTH_SOFT': 0x200B,
-    'AL_FORMAT_MONO_FLOAT32': 0x10010,
-    'AL_FORMAT_STEREO_FLOAT32': 0x10011,
+    'AL_FORMAT_MONO_FLOAT32': AL_FORMAT_MONO_FLOAT32,
+    'AL_FORMAT_STEREO_FLOAT32': AL_FORMAT_STEREO_FLOAT32,
   }`,
 
   alGetEnumValue__proxy: 'sync',
@@ -2951,19 +2951,19 @@ var LibraryOpenAL = {
     case AL_INVALID_OPERATION:
       ret = 'Invalid Operation';
       break;
-    case 0xA005 /* AL_OUT_OF_MEMORY */:
+    case AL_OUT_OF_MEMORY:
       ret = 'Out of Memory';
       break;
-    case 0xB001 /* AL_VENDOR */:
+    case AL_VENDOR:
       ret = 'Emscripten';
       break;
-    case 0xB002 /* AL_VERSION */:
+    case AL_VERSION:
       ret = '1.1';
       break;
-    case 0xB003 /* AL_RENDERER */:
+    case AL_RENDERER:
       ret = 'WebAudio';
       break;
-    case 0xB004 /* AL_EXTENSIONS */:
+    case AL_EXTENSIONS:
       ret = Object.keys(AL.AL_EXTENSIONS).join(' ');
       break;
     default:
@@ -2984,7 +2984,7 @@ var LibraryOpenAL = {
       return;
     }
     switch (param) {
-    case 0x200 /* AL_SOURCE_DISTANCE_MODEL */:
+    case AL_SOURCE_DISTANCE_MODEL:
       AL.currentCtx.sourceDistanceModel = true;
       AL.updateContextGlobal(AL.currentCtx);
       break;
@@ -3003,7 +3003,7 @@ var LibraryOpenAL = {
       return;
     }
     switch (param) {
-    case 0x200 /* AL_SOURCE_DISTANCE_MODEL */:
+    case AL_SOURCE_DISTANCE_MODEL:
       AL.currentCtx.sourceDistanceModel = false;
       AL.updateContextGlobal(AL.currentCtx);
       break;
@@ -3019,17 +3019,17 @@ var LibraryOpenAL = {
   alIsEnabled__proxy: 'sync',
   alIsEnabled: (param) => {
     if (!AL.requireValidContext('alIsEnabled')) {
-      return 0;
+      return AL_FALSE;
     }
     switch (param) {
-    case 0x200 /* AL_SOURCE_DISTANCE_MODEL */:
+    case AL_SOURCE_DISTANCE_MODEL:
       return AL.currentCtx.sourceDistanceModel ? AL_TRUE : AL_FALSE;
     default:
 #if OPENAL_DEBUG
       dbg(`alIsEnabled() with param ${ptrToString(param)} not implemented yet`);
 #endif
       AL.currentCtx.err = AL_INVALID_ENUM;
-      return 0;
+      return AL_FALSE;
     }
   },
 
@@ -3404,7 +3404,7 @@ var LibraryOpenAL = {
     var audioBuf = null;
     try {
       switch (format) {
-      case 0x1100 /* AL_FORMAT_MONO8 */:
+      case AL_FORMAT_MONO8:
         if (size > 0) {
           audioBuf = AL.currentCtx.audioCtx.createBuffer(1, size, freq);
           var channel0 = audioBuf.getChannelData(0);
@@ -3416,7 +3416,7 @@ var LibraryOpenAL = {
         buf.channels = 1;
         buf.length = size;
         break;
-      case 0x1101 /* AL_FORMAT_MONO16 */:
+      case AL_FORMAT_MONO16:
         if (size > 0) {
           audioBuf = AL.currentCtx.audioCtx.createBuffer(1, size >> 1, freq);
           var channel0 = audioBuf.getChannelData(0);
@@ -3429,7 +3429,7 @@ var LibraryOpenAL = {
         buf.channels = 1;
         buf.length = size >> 1;
         break;
-      case 0x1102 /* AL_FORMAT_STEREO8 */:
+      case AL_FORMAT_STEREO8:
         if (size > 0) {
           audioBuf = AL.currentCtx.audioCtx.createBuffer(2, size >> 1, freq);
           var channel0 = audioBuf.getChannelData(0);
@@ -3443,7 +3443,7 @@ var LibraryOpenAL = {
         buf.channels = 2;
         buf.length = size >> 1;
         break;
-      case 0x1103 /* AL_FORMAT_STEREO16 */:
+      case AL_FORMAT_STEREO16:
         if (size > 0) {
           audioBuf = AL.currentCtx.audioCtx.createBuffer(2, size >> 2, freq);
           var channel0 = audioBuf.getChannelData(0);
@@ -3458,7 +3458,7 @@ var LibraryOpenAL = {
         buf.channels = 2;
         buf.length = size >> 2;
         break;
-      case 0x10010 /* AL_FORMAT_MONO_FLOAT32 */:
+      case AL_FORMAT_MONO_FLOAT32:
         if (size > 0) {
           audioBuf = AL.currentCtx.audioCtx.createBuffer(1, size >> 2, freq);
           var channel0 = audioBuf.getChannelData(0);
@@ -3471,7 +3471,7 @@ var LibraryOpenAL = {
         buf.channels = 1;
         buf.length = size >> 2;
         break;
-      case 0x10011 /* AL_FORMAT_STEREO_FLOAT32 */:
+      case AL_FORMAT_STEREO_FLOAT32:
         if (size > 0) {
           audioBuf = AL.currentCtx.audioCtx.createBuffer(2, size >> 3, freq);
           var channel0 = audioBuf.getChannelData(0);
@@ -3551,10 +3551,10 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0x2001 /* AL_FREQUENCY */:
-    case 0x2002 /* AL_BITS */:
-    case 0x2003 /* AL_CHANNELS */:
-    case 0x2004 /* AL_SIZE */:
+    case AL_FREQUENCY:
+    case AL_BITS:
+    case AL_CHANNELS:
+    case AL_SIZE:
       {{{ makeSetValue('pValue', '0', 'val', 'i32') }}};
       break;
     default:
@@ -3587,13 +3587,13 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0x2001 /* AL_FREQUENCY */:
-    case 0x2002 /* AL_BITS */:
-    case 0x2003 /* AL_CHANNELS */:
-    case 0x2004 /* AL_SIZE */:
+    case AL_FREQUENCY:
+    case AL_BITS:
+    case AL_CHANNELS:
+    case AL_SIZE:
       {{{ makeSetValue('pValues', '0', 'val', 'i32') }}};
       break;
-    case 0x2015 /* AL_LOOP_POINTS_SOFT */:
+    case AL_LOOP_POINTS_SOFT:
       {{{ makeSetValue('pValues', '0', 'val[0]', 'i32') }}};
       {{{ makeSetValue('pValues', '4', 'val[1]', 'i32') }}};
       break;
@@ -3646,7 +3646,7 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0x2015 /* AL_LOOP_POINTS_SOFT */:
+    case AL_LOOP_POINTS_SOFT:
       AL.paramArray[0] = {{{ makeGetValue('pValues', '0', 'i32') }}};
       AL.paramArray[1] = {{{ makeGetValue('pValues', '4', 'i32') }}};
       AL.setBufferParam(bufferId, param, AL.paramArray, 'alBufferiv');
@@ -3726,7 +3726,7 @@ var LibraryOpenAL = {
       src.bufQueue.length = 0;
     }
 
-    src.type = 0x1029 /* AL_STREAMING */;
+    src.type = AL_STREAMING;
     for (var i = 0; i < count; ++i) {
       var bufId = {{{ makeGetValue('pBufferIds', 'i*4', 'i32') }}};
       var buf = AL.buffers[bufId];
@@ -3838,19 +3838,19 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    case 0x1003 /* AL_PITCH */:
+    case AL_CONE_INNER_ANGLE:
+    case AL_CONE_OUTER_ANGLE:
+    case AL_PITCH:
     case AL_GAIN:
-    case 0x100D /* AL_MIN_GAIN */:
-    case 0x100E /* AL_MAX_GAIN */:
-    case 0x1020 /* AL_REFERENCE_DISTANCE */:
-    case 0x1021 /* AL_ROLLOFF_FACTOR */:
-    case 0x1022 /* AL_CONE_OUTER_GAIN */:
-    case 0x1023 /* AL_MAX_DISTANCE */:
-    case 0x1024 /* AL_SEC_OFFSET */:
-    case 0x1025 /* AL_SAMPLE_OFFSET */:
-    case 0x1026 /* AL_BYTE_OFFSET */:
+    case AL_MIN_GAIN:
+    case AL_MAX_GAIN:
+    case AL_REFERENCE_DISTANCE:
+    case AL_ROLLOFF_FACTOR:
+    case AL_CONE_OUTER_GAIN:
+    case AL_MAX_DISTANCE:
+    case AL_SEC_OFFSET:
+    case AL_SAMPLE_OFFSET:
+    case AL_BYTE_OFFSET:
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
       {{{ makeSetValue('pValue', '0', 'val', 'float') }}};
       break;
@@ -3895,19 +3895,19 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    case 0x1003 /* AL_PITCH */:
+    case AL_CONE_INNER_ANGLE:
+    case AL_CONE_OUTER_ANGLE:
+    case AL_PITCH:
     case AL_GAIN:
-    case 0x100D /* AL_MIN_GAIN */:
-    case 0x100E /* AL_MAX_GAIN */:
-    case 0x1020 /* AL_REFERENCE_DISTANCE */:
-    case 0x1021 /* AL_ROLLOFF_FACTOR */:
-    case 0x1022 /* AL_CONE_OUTER_GAIN */:
-    case 0x1023 /* AL_MAX_DISTANCE */:
-    case 0x1024 /* AL_SEC_OFFSET */:
-    case 0x1025 /* AL_SAMPLE_OFFSET */:
-    case 0x1026 /* AL_BYTE_OFFSET */:
+    case AL_MIN_GAIN:
+    case AL_MAX_GAIN:
+    case AL_REFERENCE_DISTANCE:
+    case AL_ROLLOFF_FACTOR:
+    case AL_CONE_OUTER_GAIN:
+    case AL_MAX_DISTANCE:
+    case AL_SEC_OFFSET:
+    case AL_SAMPLE_OFFSET:
+    case AL_BYTE_OFFSET:
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
       {{{ makeSetValue('pValues', '0', 'val', 'float') }}};
       break;
@@ -3935,22 +3935,22 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0x202 /* AL_SOURCE_RELATIVE */:
-    case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    case 0x1007 /* AL_LOOPING */:
-    case 0x1009 /* AL_BUFFER */:
-    case 0x1010 /* AL_SOURCE_STATE */:
-    case 0x1015 /* AL_BUFFERS_QUEUED */:
-    case 0x1016 /* AL_BUFFERS_PROCESSED */:
-    case 0x1020 /* AL_REFERENCE_DISTANCE */:
-    case 0x1021 /* AL_ROLLOFF_FACTOR */:
-    case 0x1023 /* AL_MAX_DISTANCE */:
-    case 0x1024 /* AL_SEC_OFFSET */:
-    case 0x1025 /* AL_SAMPLE_OFFSET */:
-    case 0x1026 /* AL_BYTE_OFFSET */:
-    case 0x1027 /* AL_SOURCE_TYPE */:
-    case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
+    case AL_SOURCE_RELATIVE:
+    case AL_CONE_INNER_ANGLE:
+    case AL_CONE_OUTER_ANGLE:
+    case AL_LOOPING:
+    case AL_BUFFER:
+    case AL_SOURCE_STATE:
+    case AL_BUFFERS_QUEUED:
+    case AL_BUFFERS_PROCESSED:
+    case AL_REFERENCE_DISTANCE:
+    case AL_ROLLOFF_FACTOR:
+    case AL_MAX_DISTANCE:
+    case AL_SEC_OFFSET:
+    case AL_SAMPLE_OFFSET:
+    case AL_BYTE_OFFSET:
+    case AL_SOURCE_TYPE:
+    case AL_SOURCE_SPATIALIZE_SOFT:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
     case AL_DISTANCE_MODEL:
@@ -3997,22 +3997,22 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0x202 /* AL_SOURCE_RELATIVE */:
-    case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    case 0x1007 /* AL_LOOPING */:
-    case 0x1009 /* AL_BUFFER */:
-    case 0x1010 /* AL_SOURCE_STATE */:
-    case 0x1015 /* AL_BUFFERS_QUEUED */:
-    case 0x1016 /* AL_BUFFERS_PROCESSED */:
-    case 0x1020 /* AL_REFERENCE_DISTANCE */:
-    case 0x1021 /* AL_ROLLOFF_FACTOR */:
-    case 0x1023 /* AL_MAX_DISTANCE */:
-    case 0x1024 /* AL_SEC_OFFSET */:
-    case 0x1025 /* AL_SAMPLE_OFFSET */:
-    case 0x1026 /* AL_BYTE_OFFSET */:
-    case 0x1027 /* AL_SOURCE_TYPE */:
-    case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
+    case AL_SOURCE_RELATIVE:
+    case AL_CONE_INNER_ANGLE:
+    case AL_CONE_OUTER_ANGLE:
+    case AL_LOOPING:
+    case AL_BUFFER:
+    case AL_SOURCE_STATE:
+    case AL_BUFFERS_QUEUED:
+    case AL_BUFFERS_PROCESSED:
+    case AL_REFERENCE_DISTANCE:
+    case AL_ROLLOFF_FACTOR:
+    case AL_MAX_DISTANCE:
+    case AL_SEC_OFFSET:
+    case AL_SAMPLE_OFFSET:
+    case AL_BYTE_OFFSET:
+    case AL_SOURCE_TYPE:
+    case AL_SOURCE_SPATIALIZE_SOFT:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
     case AL_DISTANCE_MODEL:
@@ -4037,19 +4037,19 @@ var LibraryOpenAL = {
   alSourcef__proxy: 'sync',
   alSourcef: (sourceId, param, value) => {
     switch (param) {
-    case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    case 0x1003 /* AL_PITCH */:
+    case AL_CONE_INNER_ANGLE:
+    case AL_CONE_OUTER_ANGLE:
+    case AL_PITCH:
     case AL_GAIN:
-    case 0x100D /* AL_MIN_GAIN */:
-    case 0x100E /* AL_MAX_GAIN */:
-    case 0x1020 /* AL_REFERENCE_DISTANCE */:
-    case 0x1021 /* AL_ROLLOFF_FACTOR */:
-    case 0x1022 /* AL_CONE_OUTER_GAIN */:
-    case 0x1023 /* AL_MAX_DISTANCE */:
-    case 0x1024 /* AL_SEC_OFFSET */:
-    case 0x1025 /* AL_SAMPLE_OFFSET */:
-    case 0x1026 /* AL_BYTE_OFFSET */:
+    case AL_MIN_GAIN:
+    case AL_MAX_GAIN:
+    case AL_REFERENCE_DISTANCE:
+    case AL_ROLLOFF_FACTOR:
+    case AL_CONE_OUTER_GAIN:
+    case AL_MAX_DISTANCE:
+    case AL_SEC_OFFSET:
+    case AL_SAMPLE_OFFSET:
+    case AL_BYTE_OFFSET:
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
       AL.setSourceParam(sourceId, param, value, 'alSourcef');
       break;
@@ -4083,19 +4083,19 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    case 0x1003 /* AL_PITCH */:
+    case AL_CONE_INNER_ANGLE:
+    case AL_CONE_OUTER_ANGLE:
+    case AL_PITCH:
     case AL_GAIN:
-    case 0x100D /* AL_MIN_GAIN */:
-    case 0x100E /* AL_MAX_GAIN */:
-    case 0x1020 /* AL_REFERENCE_DISTANCE */:
-    case 0x1021 /* AL_ROLLOFF_FACTOR */:
-    case 0x1022 /* AL_CONE_OUTER_GAIN */:
-    case 0x1023 /* AL_MAX_DISTANCE */:
-    case 0x1024 /* AL_SEC_OFFSET */:
-    case 0x1025 /* AL_SAMPLE_OFFSET */:
-    case 0x1026 /* AL_BYTE_OFFSET */:
+    case AL_MIN_GAIN:
+    case AL_MAX_GAIN:
+    case AL_REFERENCE_DISTANCE:
+    case AL_ROLLOFF_FACTOR:
+    case AL_CONE_OUTER_GAIN:
+    case AL_MAX_DISTANCE:
+    case AL_SEC_OFFSET:
+    case AL_SAMPLE_OFFSET:
+    case AL_BYTE_OFFSET:
     case 0x200B /* AL_SEC_LENGTH_SOFT */:
       var val = {{{ makeGetValue('pValues', '0', 'float') }}};
       AL.setSourceParam(sourceId, param, val, 'alSourcefv');
@@ -4117,18 +4117,18 @@ var LibraryOpenAL = {
   alSourcei__proxy: 'sync',
   alSourcei: (sourceId, param, value) => {
     switch (param) {
-    case 0x202 /* AL_SOURCE_RELATIVE */:
-    case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    case 0x1007 /* AL_LOOPING */:
-    case 0x1009 /* AL_BUFFER */:
-    case 0x1020 /* AL_REFERENCE_DISTANCE */:
-    case 0x1021 /* AL_ROLLOFF_FACTOR */:
-    case 0x1023 /* AL_MAX_DISTANCE */:
-    case 0x1024 /* AL_SEC_OFFSET */:
-    case 0x1025 /* AL_SAMPLE_OFFSET */:
-    case 0x1026 /* AL_BYTE_OFFSET */:
-    case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
+    case AL_SOURCE_RELATIVE:
+    case AL_CONE_INNER_ANGLE:
+    case AL_CONE_OUTER_ANGLE:
+    case AL_LOOPING:
+    case AL_BUFFER:
+    case AL_REFERENCE_DISTANCE:
+    case AL_ROLLOFF_FACTOR:
+    case AL_MAX_DISTANCE:
+    case AL_SEC_OFFSET:
+    case AL_SAMPLE_OFFSET:
+    case AL_BYTE_OFFSET:
+    case AL_SOURCE_SPATIALIZE_SOFT:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
     case AL_DISTANCE_MODEL:
@@ -4164,18 +4164,18 @@ var LibraryOpenAL = {
     }
 
     switch (param) {
-    case 0x202 /* AL_SOURCE_RELATIVE */:
-    case 0x1001 /* AL_CONE_INNER_ANGLE */:
-    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
-    case 0x1007 /* AL_LOOPING */:
-    case 0x1009 /* AL_BUFFER */:
-    case 0x1020 /* AL_REFERENCE_DISTANCE */:
-    case 0x1021 /* AL_ROLLOFF_FACTOR */:
-    case 0x1023 /* AL_MAX_DISTANCE */:
-    case 0x1024 /* AL_SEC_OFFSET */:
-    case 0x1025 /* AL_SAMPLE_OFFSET */:
-    case 0x1026 /* AL_BYTE_OFFSET */:
-    case 0x1214 /* AL_SOURCE_SPATIALIZE_SOFT */:
+    case AL_SOURCE_RELATIVE:
+    case AL_CONE_INNER_ANGLE:
+    case AL_CONE_OUTER_ANGLE:
+    case AL_LOOPING:
+    case AL_BUFFER:
+    case AL_REFERENCE_DISTANCE:
+    case AL_ROLLOFF_FACTOR:
+    case AL_MAX_DISTANCE:
+    case AL_SEC_OFFSET:
+    case AL_SAMPLE_OFFSET:
+    case AL_BYTE_OFFSET:
+    case AL_SOURCE_SPATIALIZE_SOFT:
     case 0x2009 /* AL_BYTE_LENGTH_SOFT */:
     case 0x200A /* AL_SAMPLE_LENGTH_SOFT */:
     case AL_DISTANCE_MODEL:
