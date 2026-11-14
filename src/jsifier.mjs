@@ -34,7 +34,6 @@ import {
   extraLibraryFuncs,
   isDecorator,
   isJsOnlySymbol,
-  compileTimeContext,
   readFile,
   runInMacroContext,
   warn,
@@ -797,21 +796,12 @@ function(${args}) {
   function symbolHandler(symbol) {
     // In LLVM, exceptions generate a set of functions of form
     // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where
-    // the number specifies the number of arguments. In Emscripten, route all
-    // these to a single function 'findMatchingCatch' that takes an array
-    // of argument.
-    if (LINK_AS_CXX && !WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
-      if (DISABLE_EXCEPTION_THROWING) {
-        error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
-        return;
-      }
-      if (!(symbol in LibraryManager.library)) {
-        // Create a new __cxa_find_matching_catch variant on demand.
-        const num = +symbol.split('_').slice(-1)[0];
-        compileTimeContext.addCxaCatch(num);
-      }
-      // Continue, with the code below emitting the proper JavaScript based on
-      // what we just added to the library.
+    // the number specifies the number of arguments.  All variants are added in
+    // libexceptions.js, except when DISABLE_EXCEPTION_THROWING is set, in which
+    // case we report an error here.
+    if (LINK_AS_CXX && !WASM_EXCEPTIONS && DISABLE_EXCEPTION_THROWING && symbol.startsWith('__cxa_find_matching_catch_')) {
+      error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
+      return;
     }
 
     function addFromLibrary(symbol, dependent) {

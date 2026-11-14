@@ -411,7 +411,7 @@ var LibraryExceptions = {
 // number specifies the number of arguments.  In Emscripten, route all these to
 // a single function '__cxa_find_matching_catch' that variadically processes all
 // of these functions using JS 'arguments' object.
-addCxaCatch = (n) => {
+function addCxaCatch(n) {
   const args = [];
   // Confusingly, the actual number of argument is n - 2. According to the llvm
   // code in WebAssemblyLowerEmscriptenEHSjLj.cpp:
@@ -424,19 +424,24 @@ addCxaCatch = (n) => {
     args.push(`arg${i}`);
     sig += 'p';
   }
-  const argString = args.join();
-  LibraryManager.library[`__cxa_find_matching_catch_${n}__sig`] = sig;
-  LibraryManager.library[`__cxa_find_matching_catch_${n}`] = eval(`(${args}) => findMatchingCatch([${argString}])`);
-};
+  LibraryExceptions[`__cxa_find_matching_catch_${n}`] = eval(`(${args}) => findMatchingCatch([${args}])`);
+  LibraryExceptions[`__cxa_find_matching_catch_${n}__sig`] = sig;
+}
 
-// Add the first 2-5 catch handlers preemptively.  Others get added on demand in
-// jsifier.  This is done here primarily so that these symbols end up with the
-// correct deps in the stub library that we pass to wasm-ld.
+// Add the first 2-4 catch handlers preemptively so that these symbols end up
+// with the correct deps in the stub library that we pass to wasm-ld.
+// Add any larger handlers needed by DEFAULT_LIBRARY_FUNCS_TO_INCLUDE (e.g.
+// imports discovered from Wasm) before JS library loading finishes.
 // Note: __cxa_find_matching_catch_N function uses N = NumClauses + 2 so
 // __cxa_find_matching_catch_2 is the first such function with zero clauses.
 // See WebAssemblyLowerEmscriptenEHSjLj.cpp.
 for (let i = 2; i < 5; i++) {
-  addCxaCatch(i)
+  addCxaCatch(i);
+}
+for (const sym of DEFAULT_LIBRARY_FUNCS_TO_INCLUDE) {
+  if (sym.startsWith('__cxa_find_matching_catch_') && !(sym in LibraryExceptions)) {
+    addCxaCatch(+sym.split('_').at(-1));
+  }
 }
 #endif
 
