@@ -847,7 +847,7 @@ def metadce(js_file, wasm_file, debug_info, last):
   logger.debug('running meta-DCE')
   assert will_metadce()
   temp_files = shared.get_temp_files()
-  extra_info = {"exports": [[asmjs_mangle(x), x] for x in settings.WASM_EXPORTS]}
+  extra_info = {"exports": [[asmjs_mangle(x), x] for x in settings.WASM_EXPORTS if not shared.is_internal_global(x)]}
 
   txt = acorn_optimizer(js_file, ['emitDCEGraph', '--no-print'], return_output=True, extra_info=extra_info)
   if shared.SKIP_SUBPROCS:

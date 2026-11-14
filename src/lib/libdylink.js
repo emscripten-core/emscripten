@@ -195,6 +195,8 @@ var LibraryDylink = {
       '__stop_em_js',
       '__start_em_embind',
       '__stop_em_embind',
+      '__rodata_end',
+      '__rodata_start',
     ].includes(symName) || symName.startsWith('__em_js__')
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'

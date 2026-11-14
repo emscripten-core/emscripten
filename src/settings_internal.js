@@ -305,3 +305,7 @@ var EM_JS_SNIPPETS = [];
 
 // List of public setting names (Used by RETAIN_COMPILER_SETTINGS)
 var PUBLIC_SETTINGS = [];
+
+// Bounds of the static .rodata section extracted at link time for string caching.
+var RODATA_START = 0;
+var RODATA_END = 0;
