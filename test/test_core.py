@@ -3385,9 +3385,19 @@ Var: 42
       return data_exports
 
     data_exports = get_data_exports(wat)
+    shrinking = any(f in self.cflags for f in ('-Os', '-Oz')) or self.get_setting('SHRINK_LEVEL')
+    if shrinking:
+      self.assertNotIn('__rodata_start', data_exports)
+      self.assertNotIn('__rodata_end', data_exports)
+    else:
+      self.assertIn('__rodata_start', data_exports)
+      self.assertIn('__rodata_end', data_exports)
     # Certain exports are removed by wasm-emscripten-finalize, but this
     # tool is not run in all configurations, so ignore these exports.
-    data_exports = [d for d in data_exports if d not in {'__start_em_asm', '__stop_em_asm'}]
+    # __rodata_start and __rodata_end are only exported when SHRINK_LEVEL == 0
+    # (see https://github.com/llvm/llvm-project/issues/180632).
+    ignored_exports = {'__start_em_asm', '__stop_em_asm', '__rodata_start', '__rodata_end'}
+    data_exports = [d for d in data_exports if d not in ignored_exports]
     data_exports = '\n'.join(sorted(data_exports)) + '\n'
     self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
 
