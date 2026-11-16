@@ -135,7 +135,21 @@ addToLibrary({
    */
   $addFunction__docs: '/** @param {string=} sig */',
 
+#if ASSERTIONS && SHARED_MEMORY
   $addFunction: (func, sig) => {
+    if (!getFunctionAddress(func)) {
+      warnOnce('addFunction is not supported with threads: each thread has its own table, so the function pointer is only valid in the calling thread');
+    }
+    return addFunctionSynced(func, sig);
+  },
+
+  // For the dynamic linker, which adds its functions in every thread.
+  $addFunctionSynced__internal: true,
+  $addFunctionSynced__docs: '/** @param {string=} sig */',
+  $addFunctionSynced: (func, sig) => {
+#else
+  $addFunction: (func, sig) => {
+#endif
 #if ASSERTIONS
     assert(typeof func !== 'undefined');
 #endif // ASSERTIONS

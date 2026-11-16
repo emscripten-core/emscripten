@@ -231,7 +231,11 @@ var LibraryDylink = {
 #endif
         var newValue;
         if (typeof value === 'function') {
+#if ASSERTIONS && SHARED_MEMORY
+          newValue = {{{ to64('addFunctionSynced(value)') }}};
+#else
           newValue = {{{ to64('addFunction(value)') }}};
+#endif
         } else if (typeof value.value === POINTER_JS_TYPE) {
           newValue = value;
         } else {
@@ -329,7 +333,11 @@ var LibraryDylink = {
 #endif
         if (typeof value === 'function') {
           /** @suppress {checkTypes} */
+#if ASSERTIONS && SHARED_MEMORY
+          entry.value = {{{ to64('addFunctionSynced(value, value.sig)') }}};
+#else
           entry.value = {{{ to64('addFunction(value, value.sig)') }}};
+#endif
 #if DYLINK_DEBUG == 2
           dbg(`assigning table entry for : ${symName} -> ${entry.value}`);
 #endif
@@ -1296,7 +1304,11 @@ var LibraryDylink = {
     var symDict = lib.exports;
     var symName = Object.keys(symDict)[symbolIndex];
     var sym = symDict[symName];
+#if ASSERTIONS && SHARED_MEMORY
+    var result = addFunctionSynced(sym, sym.sig);
+#else
     var result = addFunction(sym, sym.sig);
+#endif
 #if DYLINK_DEBUG
     dbg(`_dlsym_catchup: result=${result}`);
 #endif
@@ -1350,7 +1362,11 @@ var LibraryDylink = {
         // function the second argument will not be needed.  If it's a JS
         // function we rely on the `sig` attribute being set based on the
         // `<func>__sig` specified in library JS file.
+#if ASSERTIONS && SHARED_MEMORY
+        result = addFunctionSynced(result, result.sig);
+#else
         result = addFunction(result, result.sig);
+#endif
 #if DYLINK_DEBUG
         dbg('adding symbol to table:',  symbol);
 #endif
