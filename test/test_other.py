@@ -15191,6 +15191,33 @@ throw_tag:
 
     self.do_runf('main.c', '')
 
+  def test_add_js_function_same_sig(self):
+    self.set_setting('ALLOW_TABLE_GROWTH')
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <assert.h>
+      #include <stdio.h>
+
+      EM_JS_DEPS(deps, "$addFunction");
+
+      typedef int (functype)(int);
+      typedef void (vfunctype)(int);
+
+      int main() {
+        functype* f1 = (functype *)EM_ASM_PTR(return addFunction((x) => x + 1, 'ii'));
+        functype* f2 = (functype *)EM_ASM_PTR(return addFunction((x) => x * 2, 'ii'));
+        vfunctype* f3 = (vfunctype *)EM_ASM_PTR(return addFunction((x) => out('f3: ' + x), 'vi'));
+        functype* f4 = (functype *)EM_ASM_PTR(return addFunction((x) => x - 3, 'ii'));
+        assert(f1 != f2 && f2 != f4 && f1 != f4);
+        assert(f1(10) == 11);
+        assert(f2(10) == 20);
+        assert(f4(10) == 7);
+        f3(42);
+        printf("done\n");
+      }
+    ''')
+    self.do_runf('main.c', 'f3: 42\ndone\n')
+
   @parameterized({
     '': ([],),
     'lz4': (['-sLZ4'],),
