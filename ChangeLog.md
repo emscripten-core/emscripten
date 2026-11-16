@@ -31,7 +31,7 @@ See docs/process.md for more on how version tagging works.
 - zlib port updated from 1.3.2 to 1.4. (#28210)
 - In multi-threaded builds with assertions enabled, `addFunction` now warns
   when it adds a function to the table: each thread has its own table, so the
-  function pointer is only valid in the calling thread.
+  function pointer is only valid in the calling thread. (#28275)
 
 7.0.0 - 11/06/26
 ----------------
