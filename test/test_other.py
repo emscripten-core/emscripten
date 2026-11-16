@@ -15210,7 +15210,9 @@ throw_tag:
       void func() {}
 
       int main() {
-        // A function that is already in the table gets no new slot.
+        emscripten_err("start");
+        // A function that is already in the table gets no new slot and no
+        // warning.
         EM_ASM({ addFunction(getWasmTableEntry($0)) }, func);
         emscripten_err("existing");
         EM_ASM({ addFunction(() => {}, 'v') });
@@ -15220,8 +15222,9 @@ throw_tag:
     warning = 'warning: addFunction is not supported with threads'
     output = self.do_runf('main.c', 'done\n', cflags=args)
     if args:
-      self.assertContained('existing\n' + warning, output)
+      self.assertContained('start\nexisting\n' + warning, output)
     else:
+      self.assertContained('start\nexisting\n', output)
       self.assertNotContained(warning, output)
 
   @parameterized({
