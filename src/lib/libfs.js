@@ -42,7 +42,14 @@ var LibraryFS = {
 FS.createPreloadedFile = FS_createPreloadedFile;
 FS.preloadFile = FS_preloadFile;
 #endif
-FS.staticInit();`;
+#if PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) {
+  FS.staticInit();
+}
+#else
+FS.staticInit();
+#endif
+`;
   },
   $FS: {
     root: null,
@@ -220,6 +227,9 @@ FS.staticInit();`;
     // paths
     //
     lookupPath(path, opts = {}) {
+#if PTHREADS && ASSERTIONS
+      assert(!ENVIRONMENT_IS_PTHREAD, 'FS is only available on the main thread');
+#endif
       if (!path) {
         throw new FS.ErrnoError(ENOENT);
       }
@@ -1574,6 +1584,9 @@ FS.staticInit();`;
 #endif
     },
     staticInit() {
+#if PTHREADS && ASSERTIONS
+      assert(!ENVIRONMENT_IS_PTHREAD, 'FS is only available on the main thread');
+#endif
       FS.nameTable.length = 4096;
 
       FS.mount(MEMFS, {}, '/');
@@ -1584,6 +1597,9 @@ FS.staticInit();`;
     },
     init(input = undefined, output = undefined, error = undefined) {
 #if ASSERTIONS
+#if PTHREADS
+      assert(!ENVIRONMENT_IS_PTHREAD, 'FS is only available on the main thread');
+#endif
       assert(!FS.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 #endif
       FS.initialized = true;

@@ -9488,6 +9488,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/pthread/test_pthread_dlsym.c')
 
   @needs_dylink
+  @parameterized({
+    '': (['-sPROXY_TO_PTHREAD'],),
+    'async': (['-DUSE_ASYNC_DLOPEN'],),
+  })
+  @requires_pthreads
+  def test_pthread_dlopen_embed(self, args):
+    create_file('embedded.txt', 'hello from embedded file\n')
+    self.cflags += ['-Wno-experimental', '-pthread']
+    self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_embed_side.c'),
+                         cflags=['--embed-file', 'embedded.txt'])
+
+    self.prep_dlfcn_main()
+    self.do_runf('core/pthread/test_pthread_dlopen_embed.c', 'done\n',
+                 cflags=args + ['-sEXIT_RUNTIME'])
+
+  @needs_dylink
   @requires_pthreads
   def test_pthread_dylink_tls(self):
     self.cflags += ['-Wno-experimental', '-pthread']
