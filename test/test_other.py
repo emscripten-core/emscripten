@@ -15205,14 +15205,14 @@ throw_tag:
       #include <emscripten.h>
       #include <emscripten/console.h>
 
-      EM_JS_DEPS(deps, "$addFunction");
+      EM_JS_DEPS(deps, "$addFunction,$getWasmTableEntry");
 
       void func() {}
 
       int main() {
         // A function that is already in the table gets no new slot.
         EM_ASM({ addFunction(getWasmTableEntry($0)) }, func);
-        emscripten_out("existing");
+        emscripten_err("existing");
         EM_ASM({ addFunction(() => {}, 'v') });
         emscripten_out("done");
       }
