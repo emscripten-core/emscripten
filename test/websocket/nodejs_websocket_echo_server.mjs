@@ -1,3 +1,5 @@
+import { WebSocketServer } from 'ws';
+
 function padHex(number, digits) {
   var s = number.toString(16);
   return Array(Math.max(digits - s.length + 1, 0)).join(0) + s;
@@ -18,8 +20,7 @@ function hexDump(bytes) {
 
 var decoder = new TextDecoder('utf-8');
 var port = 8089;
-var ws = require('ws');
-var wss = new ws.WebSocketServer({ port: port });
+var wss = new WebSocketServer({ port: port });
 console.log(`WebSocket server listening on ws://localhost:${port}/`);
 wss.on('connection', function(ws) {
   console.log('Client connected!');

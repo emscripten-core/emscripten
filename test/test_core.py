@@ -8055,7 +8055,7 @@ void* operator new(size_t size) {
       # needs to contain valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][src_index])
     mappings = json.loads(self.run_js(
-      path_from_root('test/sourcemap2json.js'),
+      path_from_root('test/sourcemap2json.mjs'),
       args=[map_filename]))
     seen_lines = set()
     for m in mappings:

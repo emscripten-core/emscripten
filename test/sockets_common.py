@@ -209,7 +209,7 @@ class BackgroundServerProcess:
 
 
 def NodeJsWebSocketEchoServerProcess():
-  return BackgroundServerProcess([*config.NODE_JS, test_file('websocket/nodejs_websocket_echo_server.js')])
+  return BackgroundServerProcess([*config.NODE_JS, test_file('websocket/nodejs_websocket_echo_server.mjs')])
 
 
 def PythonTcpEchoServerProcess(port):
