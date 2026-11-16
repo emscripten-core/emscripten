@@ -101,6 +101,14 @@ LLVM_PROFDATA = shared.llvm_tool_path('llvm-profdata')
 PYTHON = sys.executable
 
 
+def ensure_out_package_json():
+  """Isolate test outputs under `out/` from Emscripten's own `package.json` in the repo root."""
+  utils.safe_ensure_dirs(path_from_root('out'))
+  pkg_json = path_from_root('out/package.json')
+  if not os.path.exists(pkg_json):
+    utils.write_file(pkg_json, '{}\n')
+
+
 def setup_test_config():
   assert config.NODE_JS # assert for mypy's benefit
   # By default we run the tests in the same version of node as emscripten itself used.
@@ -810,6 +818,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       else:
         logger.debug('Creating new test output directory: %s', self.working_dir)
         ensure_dir(self.working_dir)
+      ensure_out_package_json()
       utils.write_file(LAST_TEST, self.id() + '\n')
     os.chdir(self.working_dir)
 

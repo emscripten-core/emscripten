@@ -23,7 +23,7 @@ globalThis.assert = (x, message) => {
 // where we return the decompressed data.
 console.log = printErr;
 
-const MiniLZ4 = await import('../third_party/mini-lz4.js');
+const MiniLZ4 = await import('../third_party/mini-lz4.cjs');
 
 function readBinary(filename) {
   filename = path.normalize(filename);

@@ -66,6 +66,7 @@ else:
   # The test framework depends on writing files to the `out/` directory.
   # For git checkouts the bootstrap.py script would take care of creating this.
   os.makedirs('out', exist_ok=True)
+common.ensure_out_package_json()
 
 EMCC_DEBUG = utils.get_env_bool('EMCC_DEBUG')
 RUNNING_IN_CI = utils.get_env_bool('CI')

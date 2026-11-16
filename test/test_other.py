@@ -3791,8 +3791,8 @@ More info: https://emscripten.org
 
   @requires_dev_dependency('typescript')
   @parameterized({
-    # Use `node16` to avoid the deprecated `node` moduleResolution in TS 6.0+. Since there is no
-    # `type: "module"` in package.json, this still tests CommonJS.
+    # Use `node16` to avoid the deprecated `node` moduleResolution in TS 6.0+. Since the test
+    # directory's `package.json` has no `type: "module"`, this still tests CommonJS.
     'commonjs': (['-sMODULARIZE'], ['--module', 'node16', '--moduleResolution', 'node16']),
     'esm': (['-sEXPORT_ES6'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']),
   })
