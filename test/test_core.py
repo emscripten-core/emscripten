@@ -3881,6 +3881,17 @@ caught outer int: 123
     self.run_process([EMCC, '-o', 'side.so', test_file('core/test_dlfcn_jspi_side.c'), '-sSIDE_MODULE'] + self.get_cflags())
     self.do_core_test('test_dlfcn_jspi.c', cflags=['side.so', '-sMAIN_MODULE=2'])
 
+  @requires_jspi
+  @needs_dylink
+  @no_asan('https://github.com/emscripten-core/emscripten/issues/24589')
+  def test_dlfcn_jspi_late_binding(self):
+    # side_a calls into side_b, which is loaded after side_a, so the call goes
+    # via a late-binding stub.  Test that we can suspend through that stub, and
+    # also that it works when called from a non-promising export.
+    self.run_process([EMCC, '-o', 'side_a.so', test_file('core/test_dlfcn_jspi_late_binding_side_a.c'), '-sSIDE_MODULE'] + self.get_cflags())
+    self.run_process([EMCC, '-o', 'side_b.so', test_file('core/test_dlfcn_jspi_late_binding_side_b.c'), '-sSIDE_MODULE'] + self.get_cflags())
+    self.do_core_test('test_dlfcn_jspi_late_binding.c', cflags=['side_a.so', 'side_b.so', '-sMAIN_MODULE=2'])
+
   @needs_dylink
   def test_dlfcn_rtld_local(self):
     # Create two shared libraries that both depend on a third.

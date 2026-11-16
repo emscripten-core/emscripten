@@ -29,6 +29,10 @@ See docs/process.md for more on how version tagging works.
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
   making unminified output more readable. (#28144)
 - zlib port updated from 1.3.2 to 1.4. (#28210)
+- Calls from a side module to a symbol that is provided by a library loaded
+  later now work with JSPI.  Such late-bound symbols are resolved via a stub
+  which was previously a JS function (and so could not be suspended through).
+  With `-sJSPI` these stubs are now generated as small wasm modules instead.
 
 7.0.0 - 11/06/26
 ----------------
