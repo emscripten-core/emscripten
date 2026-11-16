@@ -352,10 +352,7 @@ class Ports:
     fullpath = fullname + '.' + ext
 
     def retrieve():
-      # retrieve from remote server
-      logger.info(f'retrieving port: {name} from {url}')
-
-      def do_retrieve():
+      def do_retrieve(fetch_url):
         if utils.MACOS or os.environ.get('EMCC_USE_CURL'):
           # Use `curl` over `urllib` on macOS to avoid issues with
           # certificate verification.
@@ -363,29 +360,47 @@ class Ports:
           # Unlike on Windows or Linux, curl is guaranteed to always be
           # available on macOS.
           # EMCC_USE_CURL here is purely for testing and undocumented.
-          return utils.run_process(['curl', '-sSfL', '--connect-timeout', str(DOWNLOAD_TIMEOUT), url], stdout=subprocess.PIPE, text=False).stdout
+          return utils.run_process(['curl', '-sSfL', '--connect-timeout', str(DOWNLOAD_TIMEOUT), fetch_url], stdout=subprocess.PIPE, text=False).stdout
         else:
-          with urlopen(url, timeout=DOWNLOAD_TIMEOUT) as f:
+          with urlopen(fetch_url, timeout=DOWNLOAD_TIMEOUT) as f:
             return f.read()
 
-      retries = 3
-      for i in range(retries + 1):
-        try:
-          data = do_retrieve()
-          break
-        except (subprocess.CalledProcessError, OSError, http.client.HTTPException) as e:
-          if i == retries:
-            utils.exit_with_error(f'failed to download port "{name}" from {url}: {e}')
-          delay = 2 ** i
-          logger.warning(f'failed to download port "{name}" from {url} (attempt {i + 1}/{retries + 1}): {e}; retrying in {delay}s...')
-          time.sleep(delay)
+      # Try the mirror once (no retries) before falling back to upstream.
+      urls = [(url, 3)]
+      if config.PORTS_MIRROR and sha512hash and len(sha512hash) == 128 and not url.startswith(config.PORTS_MIRROR + '/'):
+        urls.insert(0, (f'{config.PORTS_MIRROR}/sha512/{sha512hash.lower()}', 0))
 
-      if sha512hash:
-        actual_hash = hashlib.sha512(data).hexdigest()
-        if actual_hash != sha512hash:
-          utils.exit_with_error(f'Unexpected hash: {actual_hash}\n'
-                                'If you are updating the port, please update the hash.')
-      utils.write_binary(fullpath, data)
+      for idx, (fetch_url, retries) in enumerate(urls):
+        is_last = idx == len(urls) - 1
+        logger.info(f'retrieving port: {name} from {fetch_url}')
+        data = None
+        for i in range(retries + 1):
+          try:
+            data = do_retrieve(fetch_url)
+            break
+          except (subprocess.CalledProcessError, OSError, http.client.HTTPException) as e:
+            if i == retries:
+              if is_last:
+                utils.exit_with_error(f'failed to download port "{name}" from {fetch_url}: {e}')
+              logger.warning(f'failed to download port "{name}" from mirror ({fetch_url}): {e}; falling back to {url}')
+              break
+            delay = 2 ** i
+            logger.warning(f'failed to download port "{name}" from {fetch_url} (attempt {i + 1}/{retries + 1}): {e}; retrying in {delay}s...')
+            time.sleep(delay)
+
+        if data is None:
+          continue
+
+        if sha512hash:
+          actual_hash = hashlib.sha512(data).hexdigest()
+          if actual_hash != sha512hash.lower():
+            if not is_last:
+              logger.warning(f'unexpected hash from mirror for port "{name}" ({actual_hash}); falling back to {url}')
+              continue
+            utils.exit_with_error(f'Unexpected hash: {actual_hash}\n'
+                                  'If you are updating the port, please update the hash.')
+        utils.write_binary(fullpath, data)
+        return
 
     marker = os.path.join(fullname, '.emscripten_url')
 

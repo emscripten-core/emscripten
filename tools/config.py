@@ -25,6 +25,7 @@ CONFIG_KEYS = {
   'FROZEN_CACHE',
   'CACHE',
   'PORTS',
+  'PORTS_MIRROR',
   'COMPILER_WRAPPER',
 }
 
@@ -36,6 +37,7 @@ CLOSURE_COMPILER = None
 FROZEN_CACHE = None
 CACHE = None
 PORTS = None
+PORTS_MIRROR = None
 COMPILER_WRAPPER = None
 LLVM_ROOT = None
 
@@ -50,7 +52,7 @@ def listify(x):
 
 
 def normalize_config_settings():
-  global CACHE, PORTS, CLOSURE_COMPILER, NODE_JS
+  global CACHE, PORTS, PORTS_MIRROR, CLOSURE_COMPILER, NODE_JS
 
   NODE_JS = listify(NODE_JS)
   CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
@@ -58,6 +60,11 @@ def normalize_config_settings():
     CACHE = path_from_root('cache')
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
+  if PORTS_MIRROR:
+    stripped = PORTS_MIRROR.rstrip('/')
+    if '://' not in stripped:
+      exit_with_error(f'PORTS_MIRROR must be a URL (e.g. https://...): {PORTS_MIRROR}')
+    PORTS_MIRROR = stripped
 
 
 def normalize_relative_python_path():

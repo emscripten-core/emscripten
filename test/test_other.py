@@ -16617,3 +16617,103 @@ EXTERNAL_PORT = URL
 ''')
     err = self.assert_fail([EMCC, test_file('hello_world.c'), f'--use-port={bad_port_path}'], 'failed to download port "bad_port"')
     self.assertContained('retrying in 1s', err)
+
+  @crossplatform
+  def test_ports_mirror(self):
+    import io
+    import threading
+    import zipfile
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w') as zf:
+      zf.writestr('mirror_test.h', '#define MIRROR_TEST_VALUE 42\n')
+      zf.writestr('port.py', '''
+def get(ports, settings, shared):
+  ports.install_headers(ports.get_dir('mirror_test_port'))
+  return []
+def clear(ports, settings, shared):
+  pass
+''')
+    zip_bytes = buf.getvalue()
+    zip_hash = hashlib.sha512(zip_bytes).hexdigest()
+    mirror_path = f'/mirror/sha512/{zip_hash}'
+
+    requests = []
+    mirror_mode = 'ok'
+
+    class Handler(BaseHTTPRequestHandler):
+      def do_GET(self):
+        requests.append(self.path)
+        if self.path == '/upstream/port.zip' or (self.path == mirror_path and mirror_mode == 'ok'):
+          body = zip_bytes
+          status = 200
+        elif self.path == mirror_path and mirror_mode == 'corrupt':
+          body = b'corrupt'
+          status = 200
+        else:
+          body = b'not found'
+          status = 404
+        self.send_response(status)
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+      def log_message(self, *_args):
+        pass
+
+    server = HTTPServer(('127.0.0.1', 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+      base_url = f'http://127.0.0.1:{server.server_port}'
+      upstream_url = f'{base_url}/upstream/port.zip'
+      mirror_url = f'{base_url}/mirror/'
+      port_stub = self.in_dir('mirror_test_port.py')
+      write_file(port_stub, f'''
+URL = '{upstream_url}'
+DESCRIPTION = 'Mirror Test Port'
+LICENSE = 'MIT'
+SHA512 = '{zip_hash}'
+PORT_FILE = 'port.py'
+EXTERNAL_PORT = URL
+''')
+      create_file('main.c', '#include <mirror_test.h>\n_Static_assert(MIRROR_TEST_VALUE == 42, "");\n')
+      base_env = {
+        'EM_CACHE': self.in_dir('test_cache'),
+        'EM_FROZEN_CACHE': '0',
+        'NO_PROXY': '127.0.0.1',
+        'no_proxy': '127.0.0.1',
+      }
+
+      def compile_port(ports_dir, obj, mirror=mirror_url):
+        requests.clear()
+        with env_modify({**base_env, 'EM_PORTS': ports_dir, 'EM_PORTS_MIRROR': mirror}):
+          return self.run_process([EMCC, '-c', 'main.c', f'--use-port={port_stub}', '-o', obj], stdout=PIPE, stderr=STDOUT).stdout
+
+      # Mirror hit: skips upstream, records canonical URL, stays cached without mirror.
+      ports_dir = self.in_dir('ports_hit')
+      compile_port(ports_dir, 'out1.o')
+      self.assertEqual(requests, [mirror_path])
+      self.assertEqual(read_file(os.path.join(ports_dir, 'mirror_test_port', '.emscripten_url')).strip(), upstream_url)
+      compile_port(ports_dir, 'out1b.o', mirror='0')
+      self.assertEqual(requests, [])
+
+      # Mirror 404 miss: falls back to upstream without retrying the mirror.
+      mirror_mode = '404'
+      out = compile_port(self.in_dir('ports_404'), 'out2.o')
+      self.assertEqual(requests, [mirror_path, '/upstream/port.zip'])
+      self.assertContained('falling back to', out)
+      self.assertNotContained('retrying in', out)
+
+      # Mirror hash mismatch: falls back to upstream.
+      mirror_mode = 'corrupt'
+      out = compile_port(self.in_dir('ports_corrupt'), 'out3.o')
+      self.assertEqual(requests, [mirror_path, '/upstream/port.zip'])
+      self.assertContained('unexpected hash from mirror', out)
+
+      # Invalid mirror URL (missing scheme): fails fast.
+      with env_modify({**base_env, 'EM_PORTS_MIRROR': '/not/a/url'}):
+        self.assert_fail([EMCC, '--version'], 'PORTS_MIRROR must be a URL')
+    finally:
+      server.shutdown()
+      server.server_close()
