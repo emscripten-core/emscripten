@@ -220,7 +220,7 @@ function calculateLibraries() {
   libraries.push(...JS_LIBRARIES);
 
   // Deduplicate libraries to avoid processing any library file multiple times
-  libraries = [...new Set(libraries)]
+  libraries = [...new Set(libraries)];
 
   return libraries;
 }
@@ -236,7 +236,7 @@ function getTempDir() {
 }
 
 function preprocessFiles(filenames) {
-  timer.start('preprocessFiles')
+  timer.start('preprocessFiles');
   const results = {};
   for (const filename of filenames) {
     debugLog(`pre-processing JS library: ${filename}`);
@@ -250,7 +250,7 @@ function preprocessFiles(filenames) {
       popCurrentFile();
     }
   }
-  timer.stop('preprocessFiles')
+  timer.stop('preprocessFiles');
   return results;
 }
 
@@ -276,7 +276,7 @@ export const LibraryManager = {
   },
 
   load() {
-    timer.start('load')
+    timer.start('load');
 
     assert(!this.loaded);
     this.loaded = true;
@@ -285,16 +285,16 @@ export const LibraryManager = {
 
     const preprocessed = preprocessFiles(this.libraries);
 
-    timer.start('executeJS')
+    timer.start('executeJS');
     for (const [filename, contents] of Object.entries(preprocessed)) {
       this.executeJSLibraryFile(filename, contents);
     }
-    timer.stop('executeJS')
+    timer.stop('executeJS');
 
     this.expandAsyncVariants();
     this.addAliasDependencies();
 
-    timer.stop('load')
+    timer.stop('load');
   },
 
   /**
@@ -316,8 +316,15 @@ export const LibraryManager = {
         error(`JS library error: '${key}' must be 'auto', or a non-empty array of variants`);
         continue;
       }
-      if (base[0] == '$' || typeof this.library[base] !== 'function' || !sig || !'vpi'.includes(sig[0])) {
-        error(`JS library error: async variants of '${base}' require a native function with a '__sig' returning 'v', 'p' or 'i'`);
+      if (
+        base[0] == '$' ||
+        typeof this.library[base] !== 'function' ||
+        !sig ||
+        !'vpi'.includes(sig[0])
+      ) {
+        error(
+          `JS library error: async variants of '${base}' require a native function with a '__sig' returning 'v', 'p' or 'i'`,
+        );
         continue;
       }
       if (forms.includes('auto')) {
@@ -335,7 +342,9 @@ export const LibraryManager = {
           continue;
         }
         if (Object.hasOwn(this.library, name)) {
-          error(`JS library error: '${name}' is defined explicitly, conflicting with the '${variant}' variant of '${base}'`);
+          error(
+            `JS library error: '${name}' is defined explicitly, conflicting with the '${variant}' variant of '${base}'`,
+          );
           continue;
         }
         this.library[name] = this.library[base];
@@ -350,14 +359,21 @@ export const LibraryManager = {
           // The proxying helper is found from the generated body, but the
           // symbols-only pass sees only the source, so its native entry is
           // declared here for the variant to be linked.
-          this.library[name + '__deps'] = [...(this.library[name + '__deps'] ?? []), `_emscripten_run_js_on_main_thread_${variant}`];
+          this.library[name + '__deps'] = [
+            ...(this.library[name + '__deps'] ?? []),
+            `_emscripten_run_js_on_main_thread_${variant}`,
+          ];
         }
       }
     }
   },
 
   isAlias(entry) {
-    return (typeof entry === 'string' && entry[0] != '=' && (Object.hasOwn(this.library, entry) || WASM_EXPORTS.has(entry)));
+    return (
+      typeof entry === 'string' &&
+      entry[0] != '=' &&
+      (Object.hasOwn(this.library, entry) || WASM_EXPORTS.has(entry))
+    );
   },
 
   /**
@@ -401,18 +417,18 @@ export const LibraryManager = {
       this.library = userLibraryProxy;
     }
     pushCurrentFile(filename);
-    let preprocessedName = filename.replace(/\.\w+$/, '.preprocessed$&')
+    let preprocessedName = filename.replace(/\.\w+$/, '.preprocessed$&');
     if (VERBOSE) {
       preprocessedName = path.join(getTempDir(), path.basename(filename));
     }
 
     try {
-      runInMacroContext(contents, {filename: preprocessedName})
+      runInMacroContext(contents, {filename: preprocessedName});
     } catch (e) {
       error(`failure to execute JS library "${filename}":`);
       if (VERBOSE) {
         fs.writeFileSync(preprocessedName, contents);
-        error(`preprocessed JS saved to ${preprocessedName}`)
+        error(`preprocessed JS saved to ${preprocessedName}`);
       } else {
         error('use -sVERBOSE to save preprocessed JS');
       }
@@ -424,9 +440,9 @@ export const LibraryManager = {
       }
     }
     if (VERBOSE) {
-      fs.rmSync(getTempDir(), { recursive: true, force: true });
+      fs.rmSync(getTempDir(), {recursive: true, force: true});
     }
-  }
+  },
 };
 
 // options is optional input object containing mergeInto params
@@ -577,14 +593,7 @@ function exportRuntimeSymbols() {
   }
 
   // All possible runtime elements that can be exported
-  let runtimeElements = [
-    'run',
-    'out',
-    'err',
-    'callMain',
-    'abort',
-    'wasmExports',
-  ];
+  let runtimeElements = ['run', 'out', 'err', 'callMain', 'abort', 'wasmExports'];
 
   if (SUPPORT_BIG_ENDIAN) {
     runtimeElements.push('HEAP_DATA_VIEW');

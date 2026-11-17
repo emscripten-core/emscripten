@@ -9,17 +9,11 @@
 
 import assert from 'node:assert';
 import {parseArgs} from 'node:util';
-import {
-  applySettings,
-  loadDefaultSettings,
-  printErr,
-  readFile,
-  timer,
-} from '../src/utility.mjs';
+import {applySettings, loadDefaultSettings, printErr, readFile, timer} from '../src/utility.mjs';
 import '../src/parseTools_legacy.mjs';
 import {runJSify} from '../src/jsifier.mjs';
 
-timer.start('startup')
+timer.start('startup');
 
 loadDefaultSettings();
 
@@ -40,7 +34,7 @@ Usage: compiler.mjs <settings.json> [-o out.js] [--symbols-only]`);
   process.exit(0);
 }
 
-timer.start('read settings')
+timer.start('read settings');
 
 // Load settings from JSON passed on the command line
 let settingsFile = positionals[0];
@@ -52,7 +46,7 @@ if (settingsFile == '-') {
 const userSettings = JSON.parse(readFile(settingsFile));
 applySettings(userSettings);
 
-timer.stop('read settings')
+timer.stop('read settings');
 
 export const symbolsOnly = values['symbols-only'];
 
@@ -75,16 +69,16 @@ assert(
   'JS compiler should only run on side modules if asyncify is used.',
 );
 
-timer.stop('startup')
+timer.stop('startup');
 
 // ===============================
 // Main
 // ===============================
 
 try {
-  timer.start('runJSify')
+  timer.start('runJSify');
   await runJSify(values.output, symbolsOnly);
-  timer.stop('runJSify')
+  timer.stop('runJSify');
 } catch (err) {
   if (err.toString().includes('Aborting compilation due to previous errors')) {
     // Compiler failed on user error, don't print the stacktrace in this case.

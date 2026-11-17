@@ -456,9 +456,7 @@ function isImportFromWasm(node) {
 // A sourceless `export { a as b, .. };` statement (not `export <decl>` and not
 // a re-export `export {..} from '..'`).
 function isExportSpecifierList(node) {
-  return (
-    node.type === 'ExportNamedDeclaration' && !node.declaration && !node.source
-  );
+  return node.type === 'ExportNamedDeclaration' && !node.declaration && !node.source;
 }
 
 function isExportUse(node) {
@@ -735,8 +733,7 @@ function emitDCEGraph(ast) {
         // acorn represents with distinct local/exported nodes; bare specifiers
         // reuse a single node for both sides.
         const importEdges = node.specifiers.filter(
-          (spec) =>
-            spec.local !== spec.exported && !wasmExportLocals.has(spec.local.name),
+          (spec) => spec.local !== spec.exported && !wasmExportLocals.has(spec.local.name),
         );
         if (importEdges.length) {
           // (a) `export { jsName as nativeName }` - jsName implements the import.
@@ -1098,12 +1095,10 @@ function littleEndianHeap(ast) {
   recursiveWalk(ast, {
     FunctionDeclaration(node, c) {
       // do not recurse into LE_HEAP_STORE, LE_HEAP_LOAD functions
-      if (
-        !(
-          node.id.type === 'Identifier' &&
-          (node.id.name.startsWith('LE_HEAP') || node.id.name.startsWith('LE_ATOMICS_'))
-        )
-      ) {
+      if (!(
+        node.id.type === 'Identifier' &&
+        (node.id.name.startsWith('LE_HEAP') || node.id.name.startsWith('LE_ATOMICS_'))
+      )) {
         c(node.body);
       }
     },
@@ -1201,12 +1196,12 @@ function growableHeap(ast) {
     },
     FunctionDeclaration(node, c) {
       // Do not recurse into the helper function itself.
-      if (
-        !(
-          node.id.type === 'Identifier' &&
-          (node.id.name === 'growMemViews' || node.id.name === 'updateMemoryViews' || node.id.name === 'LE_HEAP_UPDATE')
-        )
-      ) {
+      if (!(
+        node.id.type === 'Identifier' &&
+        (node.id.name === 'growMemViews' ||
+          node.id.name === 'updateMemoryViews' ||
+          node.id.name === 'LE_HEAP_UPDATE')
+      )) {
         c(node.body);
       }
     },
@@ -1353,7 +1348,11 @@ function isGrowHEAPAccess(node) {
 }
 
 function asanifyTransform(node, action) {
-  makeCallExpression(node.property, '_asan_js_check_index', [{ ...node.object }, { ...node.property }, makeIdentifier(action)]);
+  makeCallExpression(node.property, '_asan_js_check_index', [
+    {...node.object},
+    {...node.property},
+    makeIdentifier(action),
+  ]);
 }
 // Add ASan check to direct HEAP* loads/stores.
 // That lets ASan cover JS too.
@@ -1399,7 +1398,11 @@ function multiply(value, by) {
 }
 
 function safeHeapTransform(node, action) {
-  makeCallExpression(node.property, 'SAFE_HEAP_INDEX', [{ ...node.object }, { ...node.property }, createLiteral(action)]);
+  makeCallExpression(node.property, 'SAFE_HEAP_INDEX', [
+    {...node.object},
+    {...node.property},
+    createLiteral(action),
+  ]);
 }
 // Add SAFE_HEAP_INDEX check to heap access
 function safeHeap(ast) {

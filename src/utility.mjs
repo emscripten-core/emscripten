@@ -104,7 +104,9 @@ export function mergeInto(obj, other, options = null) {
     if (options.noOverride) {
       for (const key of Object.keys(other)) {
         if (Object.hasOwn(obj, key)) {
-          error(`Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`);
+          error(
+            `Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`,
+          );
           return;
         }
       }
@@ -163,11 +165,15 @@ export function mergeInto(obj, other, options = null) {
       if (decoratorName === '__deps') {
         const deps = other[key];
         if (!Array.isArray(deps)) {
-          error(`JS library directive ${key}=${deps} is of type '${type}', but it should be an array`);
+          error(
+            `JS library directive ${key}=${deps} is of type '${type}', but it should be an array`,
+          );
         }
         for (const dep of deps) {
           if (dep && typeof dep !== 'string' && typeof dep !== 'function') {
-            error(`__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`);
+            error(
+              `__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`,
+            );
           }
         }
       } else {
@@ -292,18 +298,18 @@ class Profiler {
   lastTime = 0;
 
   constructor() {
-    this.start('overall')
+    this.start('overall');
     this.startTime = performance.now();
   }
 
   log(msg) {
     const depth = this.ids.length;
-    const indent = ' '.repeat(depth)
+    const indent = ' '.repeat(depth);
     printErr('[prof] ' + indent + msg);
   }
 
   start(id) {
-    this.log(`-> ${id}`)
+    this.log(`-> ${id}`);
     const now = performance.now();
     this.ids.push([id, now]);
   }
@@ -313,7 +319,7 @@ class Profiler {
     assert(id === poppedId);
     const now = performance.now();
     const duration = now - startTime;
-    this.log(`<- ${id} [${duration.toFixed(1)} ms]`)
+    this.log(`<- ${id} [${duration.toFixed(1)} ms]`);
   }
 
   terminate() {
@@ -368,7 +374,7 @@ const setLikeSettings = [
   'ALL_INCOMING_MODULE_JS_API',
   'EXTRA_INCOMING_JS_API',
   'EXPORTED_RUNTIME_METHODS',
-  'WEAK_IMPORTS'
+  'WEAK_IMPORTS',
 ];
 
 const settingsCallbacks = [];
@@ -404,11 +410,11 @@ export function applySettings(obj) {
 }
 
 export function loadSettingsFile(f) {
-  timer.start('loadSettingsFile')
+  timer.start('loadSettingsFile');
   const settings = {};
   vm.runInNewContext(readFile(f), settings, {filename: f});
   setSettings(settings);
-  timer.stop('loadSettingsFile')
+  timer.stop('loadSettingsFile');
   return settings;
 }
 
