@@ -414,7 +414,7 @@ def run_js_optimizer(filename, passes):
 
 
 def acorn_optimizer(filename, passes, extra_info=None, return_output=False, worker_js=False):
-  optimizer = path_from_root('tools/acorn-optimizer.mjs')
+  optimizer = path_from_root('dist/acorn-optimizer.mjs')
   original_filename = filename
   if extra_info is not None and not shared.SKIP_SUBPROCS:
     temp_files = shared.get_temp_files()
@@ -1379,7 +1379,7 @@ def read_and_preprocess(filename, expand_macros=False):
   if expand_macros:
     args += ['--expand-macros']
 
-  return shared.run_js_tool(path_from_root('tools/preprocessor.mjs'), args, input=settings_json, stdout=subprocess.PIPE, cwd=dirname)
+  return shared.run_js_tool(path_from_root('dist/preprocessor.mjs'), args, input=settings_json, stdout=subprocess.PIPE, cwd=dirname)
 
 
 def js_legalization_pass_flags():

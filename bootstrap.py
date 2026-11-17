@@ -8,6 +8,7 @@ on the timestamps of various input files (kind of like a dumb version
 of a Makefile).
 """
 import argparse
+import glob
 import os
 import shutil
 import subprocess
@@ -85,14 +86,15 @@ def install_hooks():
   return 0
 
 
-def run_cmd(cmd):
+def run_cmd(cmd, quiet=False):
   orig_exe = cmd[0]
   if not os.path.isabs(orig_exe):
     cmd[0] = shutil.which(orig_exe)
     if not cmd[0]:
       utils.exit_with_error(f'command not found: {orig_exe}')
   print(f" -> {' '.join(cmd)}")
-  subprocess.run(cmd, check=True, text=True, encoding='utf-8', cwd=utils.path_from_root())
+  stdout = subprocess.DEVNULL if quiet else None
+  subprocess.run(cmd, check=True, text=True, encoding='utf-8', stdout=stdout, cwd=utils.path_from_root())
 
 
 actions = [
@@ -100,6 +102,14 @@ actions = [
      'package.json',
      'package-lock.json',
    ], ['npm', 'ci']),
+  ('bundle js', sorted([
+     'package.json',
+     'package-lock.json',
+     'rolldown.config.mjs',
+     'third_party/mini-lz4.js',
+     *glob.glob('src/*.mjs', root_dir=__rootdir__),
+     *glob.glob('tools/*.mjs', root_dir=__rootdir__),
+   ]), ['npm', 'run', 'build']),
   ('create entry points', [
      'tools/maint/create_entry_points.py',
      'tools/pylauncher/pylauncher.exe',
@@ -159,7 +169,7 @@ def main(args):
       print(f' (skipping: dry run) -> {action_str}')
       continue
     if isinstance(action, list):
-      run_cmd(action)
+      run_cmd(action, quiet=(name == 'bundle js' and not args.verbose))
     else:
       action()
     utils.safe_ensure_dirs(STAMP_DIR)

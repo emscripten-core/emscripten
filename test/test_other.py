@@ -3205,7 +3205,7 @@ More info: https://emscripten.org
     filename = test_file('js_optimizer', filename)
     expected_file = utils.unsuffixed(filename) + '-output.js'
     # test calling optimizer
-    js = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.mjs'), filename] + passes, stdin=PIPE, stdout=PIPE).stdout
+    js = self.run_process(config.NODE_JS + [path_from_root('dist/acorn-optimizer.mjs'), filename] + passes, stdin=PIPE, stdout=PIPE).stdout
     self.assertFileContents(expected_file, js)
 
   def test_js_optimizer_huge(self):
@@ -14465,7 +14465,7 @@ int main() {
   def test_unsafe_optimizations(self):
     # Note: Here we use config.NODE_JS (the version of node used by the compiler) rather than the
     # version of node in JS_ENGINES.
-    self.run_process(config.NODE_JS + [path_from_root('tools/unsafe_optimizations.mjs'), '--test'])
+    self.run_process(config.NODE_JS + [path_from_root('dist/unsafe_optimizations.mjs'), '--test'])
 
   @requires_v8
   def test_extended_const(self):

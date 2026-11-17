@@ -252,7 +252,7 @@ def compile_javascript(symbols_only=False):
   args = ['-']
   if symbols_only:
     args += ['--symbols-only']
-  return shared.run_js_tool(path_from_root('tools/compiler.mjs'),
+  return shared.run_js_tool(path_from_root('dist/compiler.mjs'),
                             args, input=settings_json, stdout=subprocess.PIPE)
 
 
