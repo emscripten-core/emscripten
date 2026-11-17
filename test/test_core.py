@@ -9487,6 +9487,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf('core/pthread/test_pthread_dlsym.c')
 
+  @crossplatform
   @needs_dylink
   @parameterized({
     '': (['-sPROXY_TO_PTHREAD'],),
@@ -9494,7 +9495,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   @requires_pthreads
   def test_pthread_dlopen_embed(self, args):
-    create_file('embedded.txt', 'hello from embedded file\n')
+    # Use binary=True to prevent Windows line-ending (\r\n) translation.
+    create_file('embedded.txt', b'hello from embedded file\n', binary=True)
     self.cflags += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_embed_side.c'),
                          cflags=['--embed-file', 'embedded.txt'])
