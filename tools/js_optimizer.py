@@ -22,7 +22,7 @@ from tools.utils import path_from_root
 temp_files = shared.get_temp_files()
 
 
-ACORN_OPTIMIZER = path_from_root('tools/acorn-optimizer.mjs')
+ACORN_OPTIMIZER = path_from_root('dist/acorn-optimizer.mjs')
 
 NUM_CHUNKS_PER_CORE = 3
 MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512 * 1024) # configuring this is just for debugging purposes

@@ -30,6 +30,9 @@ coverage.xml
 # Test output
 /out/
 
+# Bundled JS tools (created by ./bootstrap.py)
+/dist/
+
 # When updating the website we check it out here.
 /site/emscripten-site/
 

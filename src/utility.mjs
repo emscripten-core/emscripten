@@ -265,9 +265,10 @@ export function readFile(filename) {
 }
 
 // Use import.meta.dirname here once we drop support for node v18.
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
-export const srcDir = __dirname;
+export const srcDir =
+  path.basename(__dirname) === 'src' ? __dirname : path.join(__dirname, '../src');
 
 // Returns an absolute path for a file, resolving it relative to this script
 // (i.e. relative to the src/ directory).

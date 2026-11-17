@@ -21,6 +21,7 @@ export default [
   {
     ignores: [
       '**/out/',
+      '**/dist/',
       '**/site/',
       '**/cache/',
       '**/third_party/',

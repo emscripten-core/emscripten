@@ -7,7 +7,6 @@
 import * as os from 'node:os';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import {fileURLToPath} from 'node:url';
 import assert from 'node:assert';
 
 import {
@@ -23,6 +22,7 @@ import {
   runInMacroContext,
   mergeInto,
   localFile,
+  srcDir,
   timer,
 } from './utility.mjs';
 import {preprocess, processMacros} from './parseTools.mjs';
@@ -38,7 +38,6 @@ export const extraExports = new Set();
 // e.g. `wasmTable` -> `__indirect_function_table`
 export const nativeAliases = {};
 
-const srcDir = fileURLToPath(new URL('.', import.meta.url));
 const systemLibdir = path.join(srcDir, 'lib');
 
 // Return type of each async variant by suffix (see expandAsyncVariants).

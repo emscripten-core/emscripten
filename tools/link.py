@@ -2230,7 +2230,7 @@ def phase_final_emitting(target, js_target, wasm_target):
     args = [final_js, '-o', final_js]
     if not settings.MINIFY_WHITESPACE:
       args.append('--pretty')
-    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), args, cwd=utils.path_from_root('.'))
+    shared.run_js_tool(utils.path_from_root('dist/unsafe_optimizations.mjs'), args, cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations')
     # Finally, rerun Closure compile with simple optimizations. It will be able
     # to further minify the code. (n.b. it would not be safe to run in advanced
@@ -2238,7 +2238,7 @@ def phase_final_emitting(target, js_target, wasm_target):
     final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=settings.CLOSURE_ARGS)
     # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
     # unused things that closure compiler leaves behind (e.g `new Float64Array(x)`).
-    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
+    shared.run_js_tool(utils.path_from_root('dist/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations2')
 
   fix_js_mangling(final_js)
