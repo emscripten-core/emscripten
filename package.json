@@ -1,14 +1,10 @@
 {
   "private": true,
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.7",
-    "@eslint/js": "^10.0.1",
     "acorn": "^8.19.0",
     "acorn-import-phases": "^1.0.4",
     "es-check": "^9.8.1",
-    "eslint": "^10.13.0",
-    "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.13.0",
+    "oxlint": "^1.89.0",
     "prettier": "^3.9.10",
     "rolldown": "^1.2.16",
     "rollup": "^4.66.0",
@@ -26,7 +22,7 @@
   },
   "scripts": {
     "build": "rolldown -c rolldown.config.mjs",
-    "lint": "eslint .",
+    "lint": "oxlint",
     "fmt": "prettier --write '*.{mjs,mts,ts}' 'src/*.mjs' 'tools/*.mjs'",
     "check": "prettier --check '*.{mjs,mts,ts}' 'src/*.mjs' 'tools/*.mjs'"
   }
