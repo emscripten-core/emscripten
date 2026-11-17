@@ -414,9 +414,15 @@ def extract_func_ranges(text):
     if tag in {'compile_unit', 'skeleton_unit'}:
       unit = attributes(start, end)
       unit_file = os.path.join(die_string(unit, 'DW_AT_comp_dir') or '', die_string(unit, 'DW_AT_name') or '')
+      # Nothing carries over from the previous compile unit
+      namespaces.clear()
+      owner = None
       return
     if tag == 'namespace':
-      namespaces.append((depth, die_string(attributes(start, end), 'DW_AT_name') or ''))
+      # An anonymous namespace has no name; call it what llvm-cxxfilt does, so
+      # functions without a linkage name get the same names as the others
+      name = die_string(attributes(start, end), 'DW_AT_name') or '(anonymous namespace)'
+      namespaces.append((depth, name))
       return
     if tag not in {'subprogram', 'inlined_subroutine'}:
       return

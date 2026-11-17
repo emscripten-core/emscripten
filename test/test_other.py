@@ -10307,51 +10307,14 @@ int main(int argc, char **argv) {
       self.assertLessEqual(prev.high_pc, r.low_pc)
 
   def test_wasm_sourcemap_scopes_dump(self):
-    # DWARF that is hard to get from the compiler, added to foo.wasm's dump:
-    # a weak definition that the linker pointed at foo (inside foo's body,
+    # foo.wasm's dump with DWARF that is hard to get from the compiler: a
+    # weak definition that the linker pointed at foo (inside foo's body,
     # before it in the DWARF), a DWARF 3 linkage name, an assembly label, an
     # inlined call whose function is not in the dump and whose file index is
     # not in the line table, and a split DWARF unit.
-    dump = read_file(test_file('other/wasm_sourcemap/foo.wasm.dump'))
-    function = """0x00000026:   DW_TAG_subprogram
-                DW_AT_low_pc\t(0x0000000000000005)
-                DW_AT_high_pc\t(0x0000000000000010)
-                DW_AT_name\t("foo")
-                DW_AT_decl_file\t("/emscripten/test/other/wasm_sourcemap/no_main.c")
-                DW_AT_decl_line\t(3)
-"""
-    self.assertContained(function, dump)
-    dump = dump.replace(function, """0x00000010:   DW_TAG_label
-                DW_AT_name\t("asm_label")
-                DW_AT_low_pc\t(0x0000000000000002)
-
-0x00000014:   DW_TAG_subprogram
-                DW_AT_low_pc\t(0x0000000000000005)
-                DW_AT_high_pc\t(0x000000000000000c)
-                DW_AT_name\t("weak_foo")
-
-0x00000020:   DW_TAG_subprogram
-                DW_AT_MIPS_linkage_name\t("_Z3fooi")
-                DW_AT_name\t("foo")
-                DW_AT_decl_file\t("/emscripten/test/other/wasm_sourcemap/no_main.c")
-                DW_AT_decl_line\t(3)
-                DW_AT_declaration\t(true)
-
-0x00000026:   DW_TAG_subprogram
-                DW_AT_low_pc\t(0x0000000000000005)
-                DW_AT_high_pc\t(0x0000000000000010)
-                DW_AT_specification\t(0x00000020 "_Z3fooi")
-
-0x00000030:     DW_TAG_inlined_subroutine
-                  DW_AT_abstract_origin\t(0x00000100 "bar")
-                  DW_AT_low_pc\t(0x0000000000000007)
-                  DW_AT_high_pc\t(0x000000000000000c)
-                  DW_AT_call_file\t(0x00000009)
-                  DW_AT_call_line\t(4)
-""").replace('DW_AT_GNU_pubnames', 'DW_AT_GNU_dwo_name\t("no_main.dwo")\n              DW_AT_GNU_pubnames')
-    create_file('foo.wasm.dump', dump)
+    dump = test_file('other/wasm_sourcemap_scopes/foo.wasm.dump')
     wasm = test_file('other/wasm_sourcemap/foo.wasm')
-    cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'), wasm, '--dwarfdump-output=foo.wasm.dump']
+    cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'), wasm, f'--dwarfdump-output={dump}']
     self.run_process([*cmd, '-o', 'plain.wasm.map'])
     err = self.run_process([*cmd, '--scopes', '-o', 'a.wasm.map'], stderr=PIPE).stderr
     self.assertContained('function declarations not found (e.g. DIE 0x00000100)', err)
@@ -10360,7 +10323,7 @@ int main(int argc, char **argv) {
     self.assertEqual(read_file('a.wasm.map'), read_file('plain.wasm.map'))
 
     wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
-    options = wasm_sourcemap.parse_args([wasm, '--dwarfdump-output=foo.wasm.dump', '--scopes'])
+    options = wasm_sourcemap.parse_args([wasm, f'--dwarfdump-output={dump}', '--scopes'])
     with self.assertLogs('wasm-sourcemap', 'WARNING'):
       _, func_ranges = wasm_sourcemap.read_dwarf_info(wasm, options)
     # foo is named after its declaration, and the inlined call's function is
