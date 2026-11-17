@@ -830,11 +830,13 @@ var LibraryPThread = {
 #if ASSERTIONS
         assert(typeof GL === 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with \'-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$GL\')');
 #endif
-        if (GL.offscreenCanvases[name]) {
-          offscreenCanvasInfo = GL.offscreenCanvases[name];
-          GL.offscreenCanvases[name] = null; // This thread no longer owns this canvas.
-          if (Module['canvas'] instanceof OffscreenCanvas && name === Module['canvas'].id) Module['canvas'] = null;
-        } else if (!ENVIRONMENT_IS_PTHREAD) {
+        if (ENVIRONMENT_IS_PTHREAD) {
+          if (GL.offscreenCanvases[name]) {
+            offscreenCanvasInfo = GL.offscreenCanvases[name];
+            GL.offscreenCanvases[name] = null; // This thread no longer owns this canvas.
+            if (Module['canvas'] instanceof OffscreenCanvas && name === Module['canvas'].id) Module['canvas'] = null;
+          }
+        } else {
           var canvas = (Module['canvas'] && Module['canvas'].id === name) ? Module['canvas'] : document.querySelector(name);
           if (!canvas) {
             err(`pthread_create: could not find canvas with ID "${name}" to transfer to thread!`);
@@ -907,6 +909,9 @@ var LibraryPThread = {
     // Register for each of the transferred canvases that the new thread now
     // owns the OffscreenCanvas.
     for (var canvas of Object.values(offscreenCanvases)) {
+#if ASSERTIONS
+      assert(canvas.canvasSharedPtr);
+#endif
       // pthread ptr to the thread that owns this canvas.
       {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', '*') }}};
     }
