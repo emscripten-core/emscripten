@@ -13,10 +13,6 @@ import * as fs from 'node:fs';
 import * as vm from 'node:vm';
 import assert from 'node:assert';
 
-export function safeQuote(x) {
-  return x.replace(/"/g, '\\"').replace(/'/g, "\\'");
-}
-
 export function dump(item) {
   let funcData;
   try {
@@ -296,11 +292,9 @@ export function debugLog(...args) {
 
 class Profiler {
   ids = [];
-  lastTime = 0;
 
   constructor() {
     this.start('overall');
-    this.startTime = performance.now();
   }
 
   log(msg) {
@@ -328,8 +322,6 @@ class Profiler {
       const lastID = this.ids.at(-1)[0];
       this.stop(lastID);
     }
-    // const overall = performance.now() - this.startTime
-    // printErr(`overall total: ${overall.toFixed(1)} ms`);
   }
 }
 

@@ -257,7 +257,6 @@ export const LibraryManager = {
   library: {},
   // The JS and JS docs of each library definition indexed my mangled name.
   libraryDefinitions: {},
-  structs: {},
   loaded: false,
   libraries: [],
 
