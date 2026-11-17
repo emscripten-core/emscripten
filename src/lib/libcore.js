@@ -1449,7 +1449,7 @@ addToLibrary({
     // Audio Worklets enabled, do a dynamic check for its presence.
     if (globalThis.performance?.now) {
 #if PTHREADS
-      var timeOrigin = performance.timeOrigin;
+      const {timeOrigin} = performance;
       _emscripten_get_now = () => timeOrigin + performance.now();
 #else
       _emscripten_get_now = () => performance.now();
