@@ -2188,6 +2188,7 @@ addToLibrary({
 #endif
   },
 
+  _emscripten_fs_load_embedded_files__proxy: 'sync',
   _emscripten_fs_load_embedded_files: (ptr) => {
 #if RUNTIME_DEBUG
     dbg('preloading data files');
