@@ -12,6 +12,7 @@ files prefixes, and strip debug sections from a wasm file.
 """
 
 import argparse
+import bisect
 import json
 import logging
 import os
@@ -32,9 +33,6 @@ EMSCRIPTEN_PREFIX = utils.normalize_path(utils.path_from_root())
 
 logger = logging.getLogger('wasm-sourcemap')
 
-# FIXME: Generate Scopes info
-generate_scopes = False
-
 
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='wasm-sourcemap.py', description=__doc__)
@@ -49,6 +47,8 @@ def parse_args(args):
   parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
   parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
   parser.add_argument('--basepath', help='base path for source files, which will be relative to this')
+  # FIXME: Generate Scopes info. For now this only reads the functions.
+  parser.add_argument('--scopes', action='store_true', help=argparse.SUPPRESS)
   return parser.parse_args(args)
 
 
@@ -106,14 +106,18 @@ class SourceMapPrefixes:
     self.load = Prefixes(load, preserve_deterministic_prefix=False)
 
 
-def encode_vlq(n):
+def encode_unsigned_vlq(x):
+  assert x >= 0
   VLQ_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-  x = (n << 1) if n >= 0 else ((-n << 1) + 1)
   result = ""
   while x > 31:
     result += VLQ_CHARS[32 + (x & 31)]
     x >>= 5
   return result + VLQ_CHARS[x]
+
+
+def encode_vlq(n):
+  return encode_unsigned_vlq((n << 1) if n >= 0 else ((-n << 1) + 1))
 
 
 def read_var_uint(wasm, pos):
@@ -176,6 +180,18 @@ def get_code_section_offset(wasm):
     if section_id == 10:
       return pos
     pos += section_size
+
+
+# The [start, end) of each function body, as offsets in the code section like
+# DWARF addresses.
+def get_function_bodies(wasm, code_section_offset):
+  bodies = []
+  count, pos = read_var_uint(wasm, code_section_offset)
+  for _ in range(count):
+    size, body = read_var_uint(wasm, pos)
+    pos = body + size
+    bodies.append((body - code_section_offset, pos - code_section_offset))
+  return bodies
 
 
 def remove_dead_entries(entries):
@@ -250,7 +266,7 @@ def extract_comp_dir_map(text):
 
 def demangle_names(names):
   # Only demangle names that look mangled
-  mangled_names = sorted({n for n in names if n.startswith('_Z')})
+  mangled_names = sorted({n for n in names if n.startswith(('_Z', '_R'))})
   if not mangled_names:
     return {}
   if not os.path.exists(LLVM_CXXFILT):
@@ -273,17 +289,39 @@ def demangle_names(names):
 
 
 class FuncRange:
-  def __init__(self, name, low_pc, high_pc):
+  def __init__(self, name, low_pc, high_pc, die):
     self.name = name
     self.low_pc = low_pc
     self.high_pc = high_pc
+    # The DIE of the function (see extract_func_ranges). A function with
+    # several code ranges has a FuncRange for each.
+    self.die = die
+    # The range this one is inlined into, and the ranges inlined into it
+    self.parent = None
+    self.children = []
+
+
+def die_string(die, attr):
+  # A file index that the line table doesn't have reads (0x00000009)
+  value = die.get(attr)
+  if not value or value[0] != '"':
+    return None
+  if '\\' in value:
+    value = decode_octal_encoded_utf8(value)
+  return value[1:-1]
+
+
+def die_number(die, attr):
+  # Dead code reads "(dead code)"
+  value = die.get(attr)
+  return int(value, 0) if value and value[0].isdigit() else 0
 
 
 # This function parses DW_TAG_subprogram entries and gets low_pc and high_pc for
 # each function in a list of FuncRanges. The result list will be sorted in the
 # increasing order of low_pcs.
 def extract_func_ranges(text):
-  # This function handles four cases:
+  # This function handles five cases:
   # 1. DW_TAG_subprogram with DW_AT_name, DW_AT_low_pc, and DW_AT_high_pc.
   # 0x000000ba:   DW_TAG_subprogram
   #                 DW_AT_low_pc  (0x0000005f)
@@ -319,81 +357,213 @@ def extract_func_ranges(text):
   #
   # 4. DW_TAG_inlined_subroutine with DW_AT_abstract_origin, DW_AT_low_pc, and
   #    DW_AT_high_pc. This represents an inlined function. We parse
-  #    DW_AT_abstract_origin for the original function name.
+  #    DW_AT_abstract_origin for the original function name, and
+  #    DW_AT_call_file, DW_AT_call_line and DW_AT_call_column for the call.
   # 0x0000011a:   DW_TAG_inlined_subroutine
   #                 DW_AT_abstract_origin  (0x000000da "_ZN7MyClass3barEv")
   #                 DW_AT_low_pc  (0x00000078)
   #                 DW_AT_high_pc  (0x00000083)
+  #                 DW_AT_call_file  ("/src/t.cpp")
+  #                 DW_AT_call_line  (12)
+  #                 DW_AT_call_column  (10)
   #                 ...
+  #
+  # 5. DW_TAG_subprogram or DW_TAG_inlined_subroutine with DW_AT_ranges
+  #    instead of DW_AT_low_pc and DW_AT_high_pc, for code in several ranges.
+  #                 DW_AT_ranges  (0x00000000
+  #                    [0x00000002, 0x00000008)
+  #                    [0x0000000a, 0x0000000e))
+  #
+  # Each DIE is a dict of its attributes, with its offset, its kind, the names
+  # of the DW_TAG_namespace DIEs around it, the function it is in ('owner'),
+  # and 'key', the offset of the DIE that describes its source function: the
+  # end of the DW_AT_abstract_origin and DW_AT_specification chain, with its
+  # declaration ('decl'). Functions in dead code (tombstoned addresses) have
+  # no ranges.
 
-  # Pattern to find the start of the NEXT DWARF tag (boundary marker)
-  next_tag_pattern = re.compile(r'\n0x[0-9a-f]+:')
-  # Pattern to find DWARF tags for functions (Subprogram or Inlined) directly
-  func_pattern = re.compile(r'DW_TAG_(?:subprogram|inlined_subroutine)')
-
+  # Pattern to find DWARF tags (the dump has only the tags we need, see
+  # read_dwarf_info)
+  tag_pattern = re.compile(r'^0x([0-9a-f]+):( +)DW_TAG_(\w+)', re.MULTILINE)
+  # DWARF 2 and 3 have DW_AT_MIPS_linkage_name
+  attr_pattern = re.compile(r'DW_AT_(?:MIPS_)?(linkage_name|name|comp_dir|decl_file|decl_line|call_file|call_line|call_column)\s+\((.*)\)$', re.MULTILINE)
   low_pc_pattern = re.compile(r'DW_AT_low_pc\s+\(0x([0-9a-f]+)\)')
   high_pc_pattern = re.compile(r'DW_AT_high_pc\s+\(0x([0-9a-f]+)\)')
-  abstract_origin_pattern = re.compile(r'DW_AT_abstract_origin\s+\(0x[0-9a-f]+\s+"([^"]+)"\)')
-  linkage_name_pattern = re.compile(r'DW_AT_linkage_name\s+\("([^"]+)"\)')
-  name_pattern = re.compile(r'DW_AT_name\s+\("([^"]+)"\)')
-  specification_pattern = re.compile(r'DW_AT_specification\s+\(0x[0-9a-f]+\s+"([^"]+)"\)')
+  ranges_pattern = re.compile(r'^\s+\[0x([0-9a-f]+), 0x([0-9a-f]+)\)', re.MULTILINE)
+  origin_pattern = re.compile(r'DW_AT_(?:abstract_origin|specification)\s+\(0x([0-9a-f]+)')
 
-  def get_name_from_tag(start, end):
-    m = linkage_name_pattern.search(text, start, end)
-    if m:
-      return m.group(1)
-    m = name_pattern.search(text, start, end)
-    if m:
-      return m.group(1)
-    # If name is missing, check for DW_AT_specification annotation
-    m = specification_pattern.search(text, start, end)
-    if m:
-      return m.group(1)
-    return None
-
+  dies = {}
+  funcs = []
   func_ranges = []
-  for match in func_pattern.finditer(text):
-    # Search from the end of the tag name (e.g. after "DW_TAG_subprogram").
-    # Attributes are expected to follow.
-    search_start = match.end()
+  # (depth, name) of the DW_TAG_namespace DIEs around the current one
+  namespaces = []
+  # The function the following inlined calls are in
+  owner = None
+  # The main source file of the current compile unit
+  unit_file = None
 
-    # Search until the beginning of the next tag
-    m_next = next_tag_pattern.search(text, search_start)
-    search_end = m_next.start() if m_next else len(text)
+  def attributes(start, end):
+    return {'DW_AT_' + attr: value for attr, value in attr_pattern.findall(text, start, end)}
 
-    name = None
-    low_pc = None
-    high_pc = None
-    m = low_pc_pattern.search(text, search_start, search_end)
-    if m:
-      low_pc = int(m.group(1), 16)
-    m = high_pc_pattern.search(text, search_start, search_end)
-    if m:
-      high_pc = int(m.group(1), 16)
+  def parse_tag(match, end):
+    nonlocal owner, unit_file
+    depth = len(match.group(2))
+    tag = match.group(3)
+    while namespaces and namespaces[-1][0] >= depth:
+      namespaces.pop()
+    start = match.end()
+    if tag in {'compile_unit', 'skeleton_unit'}:
+      unit = attributes(start, end)
+      unit_file = os.path.join(die_string(unit, 'DW_AT_comp_dir') or '', die_string(unit, 'DW_AT_name') or '')
+      return
+    if tag == 'namespace':
+      namespaces.append((depth, die_string(attributes(start, end), 'DW_AT_name') or ''))
+      return
+    if tag not in {'subprogram', 'inlined_subroutine'}:
+      return
+    die = attributes(start, end)
+    die['offset'] = int(match.group(1), 16)
+    die['unit_file'] = unit_file
+    die['inlined'] = tag == 'inlined_subroutine'
+    die['namespaces'] = [name for _, name in namespaces]
+    m = origin_pattern.search(text, start, end)
+    die['origin'] = int(m.group(1), 16) if m else None
+    dies[die['offset']] = die
 
-    if 'DW_TAG_subprogram' in match.group(0):
-      name = get_name_from_tag(search_start, search_end)
-    else: # is_inlined
-      m = abstract_origin_pattern.search(text, search_start, search_end)
-      if m:
-        name = m.group(1)
+    ranges = [(int(low, 16), int(high, 16)) for low, high in ranges_pattern.findall(text, start, end)]
+    low_pc = low_pc_pattern.search(text, start, end)
+    high_pc = high_pc_pattern.search(text, start, end)
+    if low_pc and high_pc:
+      ranges.append((int(low_pc.group(1), 16), int(high_pc.group(1), 16)))
+    # Merge the ranges that touch, and drop dead code
+    merged = []
+    for low, high in sorted(r for r in ranges if 0 < r[0] < r[1] <= 0xffffffff):
+      if merged and low <= merged[-1][1]:
+        merged[-1] = (merged[-1][0], max(high, merged[-1][1]))
+      else:
+        merged.append((low, high))
+    if not die['inlined'] and (ranges or high_pc):
+      owner = die if merged else None
+    die['owner'] = owner
+    if merged and owner:
+      funcs.append(die)
+      func_ranges.extend(FuncRange(None, low, high, die) for low, high in merged)
 
-    if name and low_pc is not None and high_pc is not None:
-      func_ranges.append(FuncRange(name, low_pc, high_pc))
+  prev = None
+  for match in tag_pattern.finditer(text):
+    if prev:
+      parse_tag(prev, match.start())
+    prev = match
+  if prev:
+    parse_tag(prev, len(text))
 
-  # Demangle names
-  all_names = [item.name for item in func_ranges]
-  demangled_map = demangle_names(all_names)
+  # The end of the chain is the declaration, e.g. in a class. The definition
+  # on the way to it has the linkage name of lambdas and local classes and
+  # the declaration line of out-of-line methods, so take each attribute from
+  # the nearest DIE that has it (clang omits DW_AT_decl_file when unchanged).
+  missing = None
+  for func in funcs:
+    nearest = {}
+    die = func
+    for _ in range(16):
+      for attr in ('DW_AT_linkage_name', 'DW_AT_decl_file', 'DW_AT_decl_line'):
+        if attr not in nearest and attr in die:
+          nearest[attr] = die[attr]
+      origin = dies.get(die['origin'])
+      if die['origin'] is not None and not origin:
+        missing = missing or die['origin']
+      if not origin or origin['inlined']:
+        break
+      die = origin
+    func['key'] = die['offset']
+    die.update(nearest)
+  if missing:
+    # The DIE is in a tag that read_dwarf_info doesn't ask llvm-dwarfdump for
+    logger.warning(f'scopes: function declarations not found (e.g. DIE 0x{missing:08x}), so some functions have no name')
+  if re.search(r'DW_TAG_skeleton_unit|DW_AT_(?:GNU_)?dwo_name', text):
+    logger.warning('scopes: functions in split DWARF (-gsplit-dwarf) are not included')
+
+  # Name each source function after its demangled linkage name, or else its
+  # DW_AT_name in its namespaces ("main" has the linkage name
+  # "__main_argc_argv").
+  keys = dict.fromkeys(func['key'] for func in funcs)
+  linkage_names = {key: die_string(dies[key], 'DW_AT_linkage_name') for key in keys}
+  demangled_map = demangle_names(n for n in linkage_names.values() if n)
+  names = {}
+  decls = {}
+  for key in keys:
+    die = dies[key]
+    linkage_name = linkage_names[key]
+    name = die_string(die, 'DW_AT_name')
+    if name and die['namespaces']:
+      name = '::'.join([*die['namespaces'], name])
+    names[key] = demangled_map.get(linkage_name) or name or linkage_name
+    decl_file = die_string(die, 'DW_AT_decl_file')
+    if decl_file and die_number(die, 'DW_AT_decl_line'):
+      decls[key] = (decl_file, die_number(die, 'DW_AT_decl_line') - 1)
+  for func in funcs:
+    func['decl'] = decls.get(func['key'])
   for func_range in func_ranges:
-    if func_range.name in demangled_map:
-      func_range.name = demangled_map[func_range.name]
+    func_range.name = names[func_range.die['key']]
 
   # To correctly identify the innermost function for a given address,
   # func_ranges is sorted primarily by low_pc in ascending order and secondarily
-  # by high_pc in descending order. This ensures that for overlapping ranges,
-  # the more specific (inner) range appears later in the list.
-  func_ranges.sort(key=lambda item: (item.low_pc, -item.high_pc))
+  # by DIE offset. This ensures that for overlapping ranges, the more specific
+  # (inner) range appears later in the list, even when they start together.
+  func_ranges.sort(key=lambda item: (item.low_pc, item.die['offset']))
   return func_ranges
+
+
+# The ranges of the functions in the code: for each function body, those of
+# the DIE whose range is the body, or else of the first one inside it. C++
+# inline functions are in the DWARF of each compile unit that uses them, and
+# the linker points the copies it drops, and weak definitions that a strong
+# one overrides, at the code it keeps, with their own sizes.
+def code_func_ranges(func_ranges, function_bodies):
+  starts = [start for start, _ in function_bodies]
+  candidates = []
+  best = {}
+  for func_range in func_ranges:
+    func = func_range.die
+    body = bisect.bisect_right(starts, func_range.low_pc) - 1
+    if func['inlined'] or body < 0 or func_range.high_pc > function_bodies[body][1]:
+      continue
+    candidates.append((body, func_range))
+    rank = ((func_range.low_pc, func_range.high_pc) != function_bodies[body], func['offset'])
+    best[body] = min(best.get(body, rank), rank)
+  return {id(func_range) for body, func_range in candidates if func_range.die['offset'] == best[body][1]}
+
+
+# Nests each inlined range in the innermost range of its function around its
+# start, where DWARF has its parent DIE, and cuts it at that range's end.
+# The function ranges that code_func_ranges doesn't pick are dropped with the
+# calls inlined into them. Returns the ranges of the functions, and all the
+# ranges that are kept.
+def nest_func_ranges(func_ranges, function_bodies):
+  code_ranges = code_func_ranges(func_ranges, function_bodies)
+  top = []
+  kept = []
+  # The ranges of each function that are around the current address
+  active_funcs = {}
+  last_end = 0
+  for func_range in func_ranges:
+    func = func_range.die
+    active = active_funcs.setdefault(func['owner']['offset'], [])
+    active[:] = [f for f in active if f.high_pc > func_range.low_pc]
+    if func['inlined']:
+      if not active:
+        continue
+      func_range.parent = active[-1]
+      func_range.high_pc = min(func_range.high_pc, func_range.parent.high_pc)
+      func_range.parent.children.append(func_range)
+      func.setdefault('parent', func_range.parent.die)
+    elif id(func_range) not in code_ranges or func_range.low_pc < last_end:
+      continue
+    else:
+      top.append(func_range)
+      last_end = func_range.high_pc
+    active.append(func_range)
+    kept.append(func_range)
+  return top, kept
 
 
 def read_dwarf_info(wasm, options):
@@ -404,15 +574,25 @@ def read_dwarf_info(wasm, options):
     if not os.path.exists(options.dwarfdump):
       utils.exit_with_error('llvm-dwarfdump not found: ' + options.dwarfdump)
     dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm]
-    if generate_scopes:
-      # We need only three tags in the debug info: DW_TAG_compile_unit for
-      # source location, and DW_TAG_subprogram and DW_TAG_inlined_subroutine
-      # for the function ranges.
-      dwarfdump_cmd += ['-t', 'DW_TAG_compile_unit', '-t', 'DW_TAG_subprogram',
-                        '-t', 'DW_TAG_inlined_subroutine']
+    if options.scopes:
+      # llvm-dwarfdump only shows the children of the DIEs it shows, so ask
+      # for the functions and every tag LLVM puts them in (the scopes of
+      # DISubprograms):
+      #  - compile_unit: the source file (skeleton_unit: split DWARF)
+      #  - subprogram, inlined_subroutine: functions and inlined calls, and
+      #    lexical_block: inlined calls in a block
+      #  - namespace and module: functions in a namespace (Rust paths) or a
+      #    module (Clang modules, Fortran)
+      #  - class_type, structure_type, union_type, enumeration_type (methods
+      #    of C-like Rust enums) and interface_type: method declarations
+      # extract_func_ranges warns when a declaration is missing.
+      for tag in ['compile_unit', 'skeleton_unit', 'subprogram', 'inlined_subroutine', 'lexical_block',
+                  'namespace', 'module', 'class_type', 'structure_type', 'union_type', 'enumeration_type',
+                  'interface_type']:
+        dwarfdump_cmd += ['-t', 'DW_TAG_' + tag]
     else:
       # We only need the top-level DW_TAG_compile_unit tags when not generating
-      # the names field
+      # scopes
       dwarfdump_cmd += ['--recurse-depth=0']
     proc = shared.check_call(dwarfdump_cmd, stdout=shared.PIPE)
     output = proc.stdout
@@ -490,63 +670,27 @@ def read_dwarf_info(wasm, options):
   # return entries sorted by the address field
   entries = sorted(entries, key=lambda entry: entry['address'])
 
-  if generate_scopes:
+  if options.scopes:
     func_ranges = extract_func_ranges(debug_info)
   else:
     func_ranges = []
   return entries, func_ranges
 
 
-def build_sourcemap(entries, func_ranges, code_section_offset, options):
+def build_sourcemap(entries, func_ranges, code_section_offset, options, function_bodies=()):
   base_path = options.basepath
   collect_sources = options.sources
   prefixes = SourceMapPrefixes(options.prefix, options.load_prefix, base_path)
 
-  # Add code section offset to the low/high pc in the function PC ranges
-  for func_range in func_ranges:
-    func_range.low_pc += code_section_offset
-    func_range.high_pc += code_section_offset
-
   sources = []
   sources_content = []
-  # There can be duplicate names in case an original source function has
-  # multiple disjoint PC ranges or is inlined to multiple callsites. Make the
-  # 'names' list a unique list of names, and map the function ranges to the
-  # indices in that list.
-  names = sorted({item.name for item in func_ranges})
-  name_to_id = {name: i for i, name in enumerate(names)}
   mappings = []
   sources_map = {}
   last_address = 0
   last_source_id = 0
   last_line = 1
   last_column = 1
-  last_func_id = 0
   last_was_unmapped = False
-
-  active_funcs = []
-  next_func_range_id = 0
-
-  # Get the function name ID that the given address falls into
-  def get_function_id(address):
-    nonlocal active_funcs
-    nonlocal next_func_range_id
-
-    # Maintain a list of "active functions" whose ranges currently cover the
-    # address. As the address advances, it adds new functions that start and
-    # removes functions that end. The last function remaining in the active list
-    # at any point is the innermost function.
-    while next_func_range_id < len(func_ranges) and func_ranges[next_func_range_id].low_pc <= address:
-      # active_funcs contains (high_pc, id) pair
-      active_funcs.append((func_ranges[next_func_range_id].high_pc, next_func_range_id))
-      next_func_range_id += 1
-    active_funcs = [f for f in active_funcs if f[0] > address]
-
-    if active_funcs:
-      func_range_id = active_funcs[-1][1]
-      name = func_ranges[func_range_id].name
-      return name_to_id[name]
-    return None
 
   for entry in entries:
     line = entry['line']
@@ -584,7 +728,6 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
           sources_content.append(None)
     else:
       source_id = sources_map[source_name]
-    func_id = get_function_id(address)
 
     address_delta = address - last_address
     source_id_delta = source_id - last_source_id
@@ -594,17 +737,16 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
     last_source_id = source_id
     last_line = line
     last_column = column
-    mapping = encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta)
-    if func_id is not None:
-      func_id_delta = func_id - last_func_id
-      last_func_id = func_id
-      mapping += encode_vlq(func_id_delta)
-    mappings.append(mapping)
+    mappings.append(encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta))
+
+  if func_ranges:
+    top, kept = nest_func_ranges(func_ranges, function_bodies)
+    logger.debug(f'{len(top)} functions with code, {len(kept) - len(top)} inlined calls')
 
   return {'version': 3,
           'sources': sources,
           'sourcesContent': sources_content,
-          'names': names,
+          'names': [],
           'mappings': ','.join(mappings)}
 
 
@@ -618,9 +760,10 @@ def main(args):
   entries, func_ranges = read_dwarf_info(wasm_input, options)
 
   code_section_offset = get_code_section_offset(wasm)
+  function_bodies = get_function_bodies(wasm, code_section_offset) if func_ranges else []
 
   logger.debug(f'Saving to {options.output}')
-  map = build_sourcemap(entries, func_ranges, code_section_offset, options)
+  map = build_sourcemap(entries, func_ranges, code_section_offset, options, function_bodies)
   with open(options.output, 'w', encoding='utf-8') as outfile:
     json.dump(map, outfile, separators=(',', ':'), ensure_ascii=False)
 

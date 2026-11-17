@@ -10235,6 +10235,151 @@ console.log(JSON.stringify([0x14, 0x18, 0x1c, 0x20].map((pc) => sm.lookup(pc))))
       {'file': 'a.c', 'line': 6, 'column': 1},
     ])
 
+  def test_wasm_sourcemap_func_ranges(self):
+    # The function information that source map scopes are built from: the
+    # functions with code and the calls inlined into them, with their
+    # declarations and call sites, including functions in a namespace, calls
+    # in blocks, and the out-of-line copy of a function that is also inlined
+    create_file('funcs.cpp', '''\
+#include <stdio.h>
+
+__attribute__((noinline)) int sink(int x) { return printf("%d\\n", x); }
+
+static int triple(int x) {
+  return sink(x) * 3;
+}
+
+int (*triple_ptr)(int) = triple;
+
+namespace ns {
+__attribute__((always_inline)) inline int scale(int x) { return sink(x) * 2; }
+
+__attribute__((noinline)) int total(int n) {
+  int t = 0;
+  for (int i = 0; i < n; i++) {
+    int v = i + n;
+    t += scale(v) + triple(v);
+  }
+  return t;
+}
+}
+
+int main(int argc, char **argv) {
+  return ns::total(argc) + triple_ptr(argc);
+}
+''')
+    self.emcc('funcs.cpp', ['-O2', '-g', '-c'])
+    # Link without optimizations, so that Binaryen keeps the DWARF
+    self.emcc('funcs.o', ['-g', '-o', 'funcs.js'])
+    wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
+    options = wasm_sourcemap.parse_args(['funcs.wasm', '--dwarfdump', LLVM_DWARFDUMP, '--scopes'])
+    _, func_ranges = wasm_sourcemap.read_dwarf_info('funcs.wasm', options)
+    wasm = read_binary('funcs.wasm')
+    bodies = wasm_sourcemap.get_function_bodies(wasm, wasm_sourcemap.get_code_section_offset(wasm))
+    top, _ = wasm_sourcemap.nest_func_ranges(func_ranges, bodies)
+
+    def show(r):
+      func = r.die
+      call = None
+      if func['inlined']:
+        call = (os.path.basename(wasm_sourcemap.die_string(func, 'DW_AT_call_file')),
+                wasm_sourcemap.die_number(func, 'DW_AT_call_line'), wasm_sourcemap.die_number(func, 'DW_AT_call_column'))
+      # decl has the 0-based line
+      decl = (os.path.basename(func['decl'][0]), func['decl'][1] + 1)
+      return (r.name, decl, call, [show(c) for c in r.children])
+
+    funcs = [r for r in top if r.die['unit_file'].endswith('funcs.cpp')]
+    self.assertEqual([show(r) for r in funcs], [
+      ('sink(int)', ('funcs.cpp', 3), None, []),
+      ('triple(int)', ('funcs.cpp', 5), None, []),
+      ('ns::total(int)', ('funcs.cpp', 14), None, [
+        ('ns::scale(int)', ('funcs.cpp', 12), ('funcs.cpp', 18, 10), []),
+        ('triple(int)', ('funcs.cpp', 5), ('funcs.cpp', 18, 21), []),
+      ]),
+      ('main', ('funcs.cpp', 24), None, []),
+    ])
+    # Each function's range is its body, and the inlined calls are inside it
+    for r in funcs:
+      self.assertIn((r.low_pc, r.high_pc), bodies)
+      for child in r.children:
+        self.assertTrue(r.low_pc <= child.low_pc < child.high_pc <= r.high_pc)
+    for prev, r in itertools.pairwise(top):
+      self.assertLessEqual(prev.high_pc, r.low_pc)
+
+  def test_wasm_sourcemap_scopes_dump(self):
+    # DWARF that is hard to get from the compiler, added to foo.wasm's dump:
+    # a weak definition that the linker pointed at foo (inside foo's body,
+    # before it in the DWARF), a DWARF 3 linkage name, an assembly label, an
+    # inlined call whose function is not in the dump and whose file index is
+    # not in the line table, and a split DWARF unit.
+    dump = read_file(test_file('other/wasm_sourcemap/foo.wasm.dump'))
+    function = """0x00000026:   DW_TAG_subprogram
+                DW_AT_low_pc\t(0x0000000000000005)
+                DW_AT_high_pc\t(0x0000000000000010)
+                DW_AT_name\t("foo")
+                DW_AT_decl_file\t("/emscripten/test/other/wasm_sourcemap/no_main.c")
+                DW_AT_decl_line\t(3)
+"""
+    self.assertContained(function, dump)
+    dump = dump.replace(function, """0x00000010:   DW_TAG_label
+                DW_AT_name\t("asm_label")
+                DW_AT_low_pc\t(0x0000000000000002)
+
+0x00000014:   DW_TAG_subprogram
+                DW_AT_low_pc\t(0x0000000000000005)
+                DW_AT_high_pc\t(0x000000000000000c)
+                DW_AT_name\t("weak_foo")
+
+0x00000020:   DW_TAG_subprogram
+                DW_AT_MIPS_linkage_name\t("_Z3fooi")
+                DW_AT_name\t("foo")
+                DW_AT_decl_file\t("/emscripten/test/other/wasm_sourcemap/no_main.c")
+                DW_AT_decl_line\t(3)
+                DW_AT_declaration\t(true)
+
+0x00000026:   DW_TAG_subprogram
+                DW_AT_low_pc\t(0x0000000000000005)
+                DW_AT_high_pc\t(0x0000000000000010)
+                DW_AT_specification\t(0x00000020 "_Z3fooi")
+
+0x00000030:     DW_TAG_inlined_subroutine
+                  DW_AT_abstract_origin\t(0x00000100 "bar")
+                  DW_AT_low_pc\t(0x0000000000000007)
+                  DW_AT_high_pc\t(0x000000000000000c)
+                  DW_AT_call_file\t(0x00000009)
+                  DW_AT_call_line\t(4)
+""").replace('DW_AT_GNU_pubnames', 'DW_AT_GNU_dwo_name\t("no_main.dwo")\n              DW_AT_GNU_pubnames')
+    create_file('foo.wasm.dump', dump)
+    wasm = test_file('other/wasm_sourcemap/foo.wasm')
+    cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'), wasm, '--dwarfdump-output=foo.wasm.dump']
+    self.run_process([*cmd, '-o', 'plain.wasm.map'])
+    err = self.run_process([*cmd, '--scopes', '-o', 'a.wasm.map'], stderr=PIPE).stderr
+    self.assertContained('function declarations not found (e.g. DIE 0x00000100)', err)
+    self.assertContained('functions in split DWARF (-gsplit-dwarf) are not included', err)
+    # Reading the functions doesn't change the map
+    self.assertEqual(read_file('a.wasm.map'), read_file('plain.wasm.map'))
+
+    wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
+    options = wasm_sourcemap.parse_args([wasm, '--dwarfdump-output=foo.wasm.dump', '--scopes'])
+    with self.assertLogs('wasm-sourcemap', 'WARNING'):
+      _, func_ranges = wasm_sourcemap.read_dwarf_info(wasm, options)
+    # foo is named after its declaration, and the inlined call's function is
+    # unknown
+    no_main = ('/emscripten/test/other/wasm_sourcemap/no_main.c', 2)
+    self.assertEqual([(r.name, r.low_pc, r.high_pc, r.die['offset'], r.die['key'], r.die['decl']) for r in func_ranges], [
+      ('weak_foo', 0x5, 0xc, 0x14, 0x14, None),
+      ('foo(int)', 0x5, 0x10, 0x26, 0x20, no_main),
+      (None, 0x7, 0xc, 0x30, 0x30, None),
+    ])
+    inlined = func_ranges[2].die
+    self.assertIsNone(wasm_sourcemap.die_string(inlined, 'DW_AT_call_file'))
+    self.assertEqual(wasm_sourcemap.die_number(inlined, 'DW_AT_call_line'), 4)
+    # foo's range is the function body, so weak_foo's is dropped
+    code = read_binary(wasm)
+    bodies = wasm_sourcemap.get_function_bodies(code, wasm_sourcemap.get_code_section_offset(code))
+    top, _ = wasm_sourcemap.nest_func_ranges(func_ranges, bodies)
+    self.assertEqual([(r.die['offset'], [c.die['offset'] for c in r.children]) for r in top], [(0x26, [0x30])])
+
   def test_wasm_sourcemap_relative_paths(self):
     ensure_dir('build')
 
