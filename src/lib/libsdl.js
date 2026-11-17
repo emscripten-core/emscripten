@@ -1428,8 +1428,7 @@ var LibrarySDL = {
 
     // (0,0) means 'use fullscreen' in native; in Emscripten, use the current canvas size.
     if (width == 0 && height == 0) {
-      width = canvas.width;
-      height = canvas.height;
+      ({width, height} = canvas);
     }
 
     if (!SDL.addedResizeListener) {
@@ -1626,9 +1625,7 @@ var LibrarySDL = {
         }
       }
     } else {
-      var canvas = Browser.getCanvas();
-      var width = canvas.width;
-      var height = canvas.height;
+      const {width, height} = Browser.getCanvas();
       var s = surfData.buffer;
       var data = surfData.image.data;
       var colors = surfData.colors; // TODO: optimize using colors32

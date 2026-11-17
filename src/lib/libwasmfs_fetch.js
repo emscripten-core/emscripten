@@ -137,8 +137,7 @@ addToLibrary({
         if (length <= 0) {
           return 0;
         }
-        var chunks = fileInfo.chunks;
-        var chunkSize = fileInfo.chunkSize;
+        const {chunks, chunkSize} = fileInfo;
         var firstChunk = (offset / chunkSize) | 0;
         // See comments in getFileRange.
         var lastChunk = ((offset+length-1) / chunkSize) | 0;
