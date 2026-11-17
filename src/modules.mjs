@@ -132,6 +132,10 @@ function calculateLibraries() {
         libraries.push('libsockfs_node.js');
       }
 
+      if (WEBTRANSPORT_SOCKETS) {
+        libraries.push('libsockfs_webtransport.js');
+      }
+
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
         libraries.push('libnodefs.js');

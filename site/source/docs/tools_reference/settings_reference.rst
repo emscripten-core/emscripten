@@ -605,6 +605,58 @@ plain -pthread build (without PROXY_TO_PTHREAD) is not supported.
 
 Default value: false
 
+.. _webtransport_sockets:
+
+WEBTRANSPORT_SOCKETS
+====================
+
+If enabled, POSIX TCP sockets are emulated over WebTransport. Each connected 
+socket is a WebTransport session that opens one bidirectional stream. Only 
+outgoing TCP connections are supported: no datagram sockets, and no
+``listen()``/``accept()``.
+
+Default value: false
+
+.. _webtransport_url:
+
+WEBTRANSPORT_URL
+================
+
+The URL to connect to when :ref:`WEBTRANSPORT_SOCKETS` is enabled: either
+the prefix 'https://', which is completed with the address and port passed
+to ``connect()``, or a complete URL. It can be overridden at runtime with
+``Module['webtransport']['url']``, which may also be a function that maps
+the address and port to a URL. ``Module['webtransport']['options']`` is
+passed to the ``WebTransport`` constructor (e.g. ``serverCertificateHashes``).
+
+Default value: 'https://'
+
+.. _webtransport_send_buffer_size:
+
+WEBTRANSPORT_SEND_BUFFER_SIZE
+=============================
+
+The most data, in bytes, that may wait to be sent per socket when
+:ref:`WEBTRANSPORT_SOCKETS` is enabled: data passed to the WebTransport
+stream whose write hasn't completed yet. Once this is reached, ``send()``
+fails with ``EAGAIN`` and ``poll()`` stops reporting ``POLLOUT``, until
+writes complete. Must be greater than 0.
+
+Default value: 1048576
+
+.. _webtransport_recv_buffer_size:
+
+WEBTRANSPORT_RECV_BUFFER_SIZE
+=============================
+
+The most received data, in bytes, that may wait to be read with ``recv()``
+per socket when :ref:`WEBTRANSPORT_SOCKETS` is enabled. Once this is
+reached, the stream isn't read until the application has read some of it,
+so that WebTransport's flow control slows the peer down. Must be greater
+than 0.
+
+Default value: 1048576
+
 .. _websocket_subprotocol:
 
 WEBSOCKET_SUBPROTOCOL

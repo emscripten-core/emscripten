@@ -72,7 +72,7 @@ addToLibrary({
         throw new FS.ErrnoError(EAFNOSUPPORT);
       }
       var flags = O_RDWR;
-#if NODERAWSOCKETS
+#if NODERAWSOCKETS || WEBTRANSPORT_SOCKETS
       if (type & SOCK_NONBLOCK) flags |= O_NONBLOCK;
 #endif
       type &= ~(SOCK_CLOEXEC | SOCK_NONBLOCK); // SOCK_CLOEXEC makes no sense for a single process.
@@ -83,6 +83,12 @@ addToLibrary({
 #if NODERAWSOCKETS && NODERAWFS
       // node has no AF_UNIX datagram primitive; only stream unix sockets exist.
       if (family == AF_UNIX && type != SOCK_STREAM) {
+        throw new FS.ErrnoError(EPROTONOSUPPORT);
+      }
+#endif
+#if WEBTRANSPORT_SOCKETS
+      // The WebTransport backend only carries TCP, over a bidirectional stream.
+      if (type != SOCK_STREAM) {
         throw new FS.ErrnoError(EPROTONOSUPPORT);
       }
 #endif
@@ -109,6 +115,8 @@ addToLibrary({
         recv_queue: [],
 #if NODERAWSOCKETS
         sock_ops: nodeSockOps
+#elif WEBTRANSPORT_SOCKETS
+        sock_ops: webTransportSockOps
 #else
         sock_ops: SOCKFS.websocket_sock_ops
 #endif
