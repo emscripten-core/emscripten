@@ -916,7 +916,7 @@ Struct
     double beta
     double gamma
 
-    The `orientation <https://developer.mozilla.org/en-US/Apps/Build/gather_and_modify_data/responding_to_device_orientation_changes#Device_Orientation_API>`_ of the device in terms of the transformation from a coordinate frame fixed on the Earth to a coordinate frame fixed in the device.
+    The `orientation <https://developer.mozilla.org/en-US/docs/Web/API/Device_orientation_events/Orientation_and_motion_data_explained>`_ of the device in terms of the transformation from a coordinate frame fixed on the Earth to a coordinate frame fixed in the device.
 
     The image (source: `dev.opera.com <http://dev.opera.com/articles/view/w3c-device-orientation-api/>`_) and definitions below illustrate the coordinate frame:
 
@@ -925,7 +925,7 @@ Struct
       - :c:type:`~EmscriptenDeviceOrientationEvent.gamma`: the rotation of the device around the Y axis.
 
     .. image:: device-orientation-axes.png
-      :target: https://developer.mozilla.org/en-US/Apps/Build/gather_and_modify_data/responding_to_device_orientation_changes#Device_Orientation_API
+      :target: https://developer.mozilla.org/en-US/docs/Web/API/Device_orientation_events/Orientation_and_motion_data_explained
       :alt: Image of device showing X, Y, Z axes
 
 
