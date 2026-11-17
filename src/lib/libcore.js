@@ -1433,7 +1433,13 @@ addToLibrary({
   // Pthreads need their clocks synchronized to the execution of the main
   // thread, so, when using them, make sure to adjust all timings to the
   // respective time origins.
-  emscripten_get_now: () => performance.timeOrigin + performance.now(),
+  // performance.timeOrigin is read only once per thread: WebKit recomputes it
+  // on every access and the value can vary between reads, which would make
+  // emscripten_get_now() go backwards.
+  // https://bugs.webkit.org/show_bug.cgi?id=331772
+  $timeOrigin__internal: true,
+  $timeOrigin: '=performance.timeOrigin',
+  emscripten_get_now: () => timeOrigin + performance.now(),
 #else
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
   emscripten_get_now: `;
@@ -1443,7 +1449,8 @@ addToLibrary({
     // Audio Worklets enabled, do a dynamic check for its presence.
     if (globalThis.performance?.now) {
 #if PTHREADS
-      _emscripten_get_now = () => performance.timeOrigin + performance.now();
+      var timeOrigin = performance.timeOrigin;
+      _emscripten_get_now = () => timeOrigin + performance.now();
 #else
       _emscripten_get_now = () => performance.now();
 #endif
@@ -2181,6 +2188,7 @@ addToLibrary({
 #endif
   },
 
+  _emscripten_fs_load_embedded_files__proxy: 'sync',
   _emscripten_fs_load_embedded_files: (ptr) => {
 #if RUNTIME_DEBUG
     dbg('preloading data files');

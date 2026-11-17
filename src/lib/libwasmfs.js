@@ -75,6 +75,11 @@ addToLibrary({
       FS_createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
     },
     createPath(parent, path, canRead = undefined, canWrite = undefined) {
+#if PTHREADS && ASSERTIONS
+      // While it might be possible to make this API work in workers, the
+      // legacy API never supported it and we don't currently.
+      assert(!ENVIRONMENT_IS_PTHREAD, 'FS.createPath is only supported on the main thread');
+#endif
       // Cache file path directory names.
       var parts = path.split('/').reverse();
       while (parts.length) {
@@ -436,6 +441,11 @@ addToLibrary({
   $FS_createDataFile: (parent, name, fileData = undefined, canRead = undefined, canWrite = undefined, canOwn = undefined) => {
     var pathName = name ? parent + '/' + name : parent;
     var mode = FS_getMode(canRead, canWrite);
+#if PTHREADS && ASSERTIONS
+    // While it might be possible to make this API work in workers, the
+    // legacy API never supported it and we don't currently.
+    assert(!ENVIRONMENT_IS_PTHREAD, 'FS.createDataFile is only supported on the main thread');
+#endif
 
     if (!wasmFSPreloadingFlushed) {
       // WasmFS code in the wasm is not ready to be called yet. Cache the

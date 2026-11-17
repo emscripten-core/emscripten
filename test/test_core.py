@@ -3385,9 +3385,19 @@ Var: 42
       return data_exports
 
     data_exports = get_data_exports(wat)
+    shrinking = any(f in self.cflags for f in ('-Os', '-Oz')) or self.get_setting('SHRINK_LEVEL')
+    if shrinking:
+      self.assertNotIn('__rodata_start', data_exports)
+      self.assertNotIn('__rodata_end', data_exports)
+    else:
+      self.assertIn('__rodata_start', data_exports)
+      self.assertIn('__rodata_end', data_exports)
     # Certain exports are removed by wasm-emscripten-finalize, but this
     # tool is not run in all configurations, so ignore these exports.
-    data_exports = [d for d in data_exports if d not in {'__start_em_asm', '__stop_em_asm'}]
+    # __rodata_start and __rodata_end are only exported when SHRINK_LEVEL == 0
+    # (see https://github.com/llvm/llvm-project/issues/180632).
+    ignored_exports = {'__start_em_asm', '__stop_em_asm', '__rodata_start', '__rodata_end'}
+    data_exports = [d for d in data_exports if d not in ignored_exports]
     data_exports = '\n'.join(sorted(data_exports)) + '\n'
     self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
 
@@ -8045,7 +8055,7 @@ void* operator new(size_t size) {
       # needs to contain valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][src_index])
     mappings = json.loads(self.run_js(
-      path_from_root('test/sourcemap2json.js'),
+      path_from_root('test/sourcemap2json.mjs'),
       args=[map_filename]))
     seen_lines = set()
     for m in mappings:
@@ -9476,6 +9486,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf('core/pthread/test_pthread_dlsym.c')
+
+  @needs_dylink
+  @parameterized({
+    '': (['-sPROXY_TO_PTHREAD'],),
+    'async': (['-DUSE_ASYNC_DLOPEN'],),
+  })
+  @requires_pthreads
+  def test_pthread_dlopen_embed(self, args):
+    create_file('embedded.txt', 'hello from embedded file\n')
+    self.cflags += ['-Wno-experimental', '-pthread']
+    self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_embed_side.c'),
+                         cflags=['--embed-file', 'embedded.txt'])
+
+    self.prep_dlfcn_main()
+    self.do_runf('core/pthread/test_pthread_dlopen_embed.c', 'done\n',
+                 cflags=args + ['-sEXIT_RUNTIME'])
 
   @needs_dylink
   @requires_pthreads

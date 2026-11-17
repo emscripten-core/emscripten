@@ -29,6 +29,9 @@ See docs/process.md for more on how version tagging works.
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
   making unminified output more readable. (#28144)
 - zlib port updated from 1.3.2 to 1.4. (#28210)
+- `emscripten_get_now()` (and `clock_gettime(CLOCK_MONOTONIC)`) in pthreads
+  builds now reads `performance.timeOrigin` once per thread. In Safari its value
+  can vary between reads, which made the clock go backwards. (#28272)
 
 7.0.0 - 11/06/26
 ----------------

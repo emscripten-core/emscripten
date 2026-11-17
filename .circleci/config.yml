@@ -677,6 +677,7 @@ jobs:
             core2s.test_dylink_syslibs_missing_assertions
             core2s.test_module_wasm_memory
             cores.test_minimal_runtime_safe_heap
+            cores.test_dlfcn_self
             wasm2js0.test_autodebug_wasm
             wasm2js3.test_memorygrowth_2
             wasm2js2.test_pthread_proxying
@@ -720,6 +721,7 @@ jobs:
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
             wasmfs.test_dylink_basics
+            wasmfs.test_pthread_dlopen_embed*
             wasmfs.test_exit_status
             wasmfs.test_minimal_runtime_memorygrowth
             wasmfs.test_mmap_anon*
