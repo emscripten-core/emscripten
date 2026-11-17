@@ -54,7 +54,7 @@ var WebTransportSockFSLibrary = {
         return url(addr, port);
       }
       // A URL that is only a scheme is completed with the address and port.
-      return url === 'https://' ? `${url}${addr}:${port}/` : url;
+      return url === 'https://' ? `${url}${addr.includes(':') ? `[${addr}]` : addr}:${port}/` : url;
     },
     // Emits a readiness event, unless the socket has been closed: its fd may
     // already belong to another socket.
@@ -209,7 +209,7 @@ var WebTransportSockFSLibrary = {
     ioctl(sock, request, arg) {
       switch (request) {
         case FIONREAD:
-          var bytes = sock.recv_queue.length ? sock.recv_queue[0].data.length : 0;
+          var bytes = sock.recvBuffered || 0;
           {{{ makeSetValue('arg', '0', 'bytes', 'i32') }}};
           return 0;
         case FIONBIO:
