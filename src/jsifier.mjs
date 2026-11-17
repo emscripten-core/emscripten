@@ -292,7 +292,10 @@ function calcImplicitDeps(snippet, isUserSnippet = false) {
       continue;
     }
     // Ignore object literal property keys (e.g. `{ foo: 123 }`)
-    if (nextToken?.type.label === ':' && (prevToken?.type.label === '{' || prevToken?.type.label === ',')) {
+    if (
+      nextToken?.type.label === ':' &&
+      (prevToken?.type.label === '{' || prevToken?.type.label === ',')
+    ) {
       continue;
     }
     // Ignore object/class shorthand method definitions (e.g. `foo() { ... }`)
@@ -409,7 +412,7 @@ function checkShadowing(symbol, mangled, contentText) {
 }
 
 function sigToArgs(sig) {
-  const args = []
+  const args = [];
   for (var i = 1; i < sig.length; i++) {
     args.push(`a${i}`);
   }
@@ -427,7 +430,11 @@ function asyncVariantOf(symbol) {
 // suspends itself), or such a variant.
 function isAutoBody(symbol) {
   const lib = LibraryManager.library;
-  return lib[symbol + '__async'] == 'auto' || !!lib[symbol + '__async_variants'] || !!asyncVariantOf(symbol);
+  return (
+    lib[symbol + '__async'] == 'auto' ||
+    !!lib[symbol + '__async_variants'] ||
+    !!asyncVariantOf(symbol)
+  );
 }
 
 function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
@@ -450,7 +457,9 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
     const newArgs = [];
     let argConversions = '';
     if (sig.length > argNames.length + 1) {
-      error(`handleI64Signatures: signature '${sig}' too long for ${symbol}(${argNames.join(', ')})`);
+      error(
+        `handleI64Signatures: signature '${sig}' too long for ${symbol}(${argNames.join(', ')})`,
+      );
       return snippet;
     }
     for (const [i, name] of argNames.entries()) {
@@ -494,9 +503,10 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       // pthread's behalf, which awaits it), which must not be cast but
       // resolve to the cast value.
       const maybePromise = !isAsyncFunction && isAutoBody(symbol);
-      const convert = (v) => maybePromise ?
-        `(${v} instanceof Promise ? ${v}.then((v) => ${makeReturn64('v')}) : ${makeReturn64(v)})` :
-        makeReturn64(await_ + v);
+      const convert = (v) =>
+        maybePromise
+          ? `(${v} instanceof Promise ? ${v}.then((v) => ${makeReturn64('v')}) : ${makeReturn64(v)})`
+          : makeReturn64(await_ + v);
       if (oneliner) {
         // Special case for abort(), this a noreturn function and but closure
         // compiler doesn't have a way to express that, so it complains if we
@@ -541,13 +551,21 @@ ${body};
 // whose caller receives a promise of the result, nor on behalf of a
 // sync-proxied pthread caller, which awaits it; otherwise it is.
 function handleSyncArg(symbol, snippet, sig, proxyingMode, canWait) {
-  const sync = canWait ? 'false' :
-    PTHREADS && proxyingMode == 'sync' ? '!PThread.currentProxiedOperationCallerThread' : 'true';
+  const sync = canWait
+    ? 'false'
+    : PTHREADS && proxyingMode == 'sync'
+      ? '!PThread.currentProxiedOperationCallerThread'
+      : 'true';
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
-    const params = args.split(',').map((a) => a.trim()).filter((a) => a);
+    const params = args
+      .split(',')
+      .map((a) => a.trim())
+      .filter((a) => a);
     if (params.at(-1) != 'sync') return snippet;
     if (sig && params.length != sig.length) {
-      error(`JS library error: '${symbol}' must take 'sync' as parameter ${sig.length}, after the ${sig.length - 1} of its '__sig'`);
+      error(
+        `JS library error: '${symbol}' must take 'sync' as parameter ${sig.length}, after the ${sig.length - 1} of its '__sig'`,
+      );
       return snippet;
     }
     if (!oneliner) body = `{\n${body}\n}`;
@@ -560,8 +578,8 @@ function(${outer}) {
 }
 
 function handleAsyncFunction(snippet, sig, proxied) {
-  const return64 = sig && (MEMORY64 && sig.startsWith('p') || sig.startsWith('j'))
-  let handleAsync = 'Asyncify.handleAsync(innerFunc)'
+  const return64 = sig && ((MEMORY64 && sig.startsWith('p')) || sig.startsWith('j'));
+  let handleAsync = 'Asyncify.handleAsync(innerFunc)';
   if (return64 && ASYNCIFY == 1) {
     handleAsync = makeReturn64(handleAsync);
   }
@@ -689,14 +707,17 @@ function(${args}) {
     const isAsyncFunction = ASYNCIFY && !asyncVariant && LibraryManager.library[symbol + '__async'];
 
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
-    const needsI64Handling = sig &&
+    const needsI64Handling =
+      sig &&
       ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')));
     if (i53abi) {
       if (!sig) {
         error(`JS library error: '__i53abi' decorator requires '__sig' decorator: '${symbol}'`);
       }
       if (!sig.includes('j')) {
-        error(`JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`);
+        error(
+          `JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`,
+        );
       }
     }
     // A async variant's conversions wrap its final wrapper, below.
@@ -715,7 +736,9 @@ function(${args}) {
 
     if (proxyingMode) {
       if (!['sync', 'async', 'none'].includes(proxyingMode)) {
-        error(`JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`);
+        error(
+          `JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`,
+        );
       }
       if (SHARED_MEMORY && proxyingMode != 'none') {
         if (PTHREADS) {
@@ -734,7 +757,8 @@ function(${args}) {
               }
             }
             const rtnType = sig?.[0];
-            let proxyFunc = MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
+            let proxyFunc =
+              MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             let modeArg = `, ${proxyMode}`;
             if (asyncVariant == 'promise') {
               // The body returns a value or a Promise; a pthread caller gets an
@@ -799,8 +823,15 @@ function(${args}) {
     // the number specifies the number of arguments.  All variants are added in
     // libexceptions.js, except when DISABLE_EXCEPTION_THROWING is set, in which
     // case we report an error here.
-    if (LINK_AS_CXX && !WASM_EXCEPTIONS && DISABLE_EXCEPTION_THROWING && symbol.startsWith('__cxa_find_matching_catch_')) {
-      error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
+    if (
+      LINK_AS_CXX &&
+      !WASM_EXCEPTIONS &&
+      DISABLE_EXCEPTION_THROWING &&
+      symbol.startsWith('__cxa_find_matching_catch_')
+    ) {
+      error(
+        'DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.',
+      );
       return;
     }
 
@@ -822,7 +853,7 @@ function(${args}) {
       }
       addedLibraryItems[symbol] = true;
 
-      const deps = LibraryManager.library[symbol + '__deps'] ??= [];
+      const deps = (LibraryManager.library[symbol + '__deps'] ??= []);
       const explicitDeps = new Set(deps);
       let sig = LibraryManager.library[symbol + '__sig'];
       if (!WASM_BIGINT && sig && sig[0] == 'j') {
@@ -843,7 +874,11 @@ function(${args}) {
         for (const dep of calcImplicitDeps(snippet)) {
           if (dep === symbol) continue;
           if (explicitDeps.has(dep)) {
-            if (!symbolsOnly && (STRICT || !isUserSymbol) && LibraryManager.library[symbol] !== dep) {
+            if (
+              !symbolsOnly &&
+              (STRICT || !isUserSymbol) &&
+              LibraryManager.library[symbol] !== dep
+            ) {
               warn(`${symbol}: redundant __deps entry: ${dep}`);
               explicitDeps.delete(dep);
             }
@@ -926,7 +961,7 @@ function(${args}) {
         }
 
         // emit a stub that will fail at runtime
-        var stubFunctionBody = `abort('missing function: ${symbol}');`
+        var stubFunctionBody = `abort('missing function: ${symbol}');`;
         if (MAIN_MODULE) {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
@@ -992,7 +1027,9 @@ function(${args}) {
           const isSigRelevant = MAIN_MODULE || MEMORY64 || CAN_ADDRESS_2GB || sig?.includes('j');
           const targetSig = LibraryManager.library[aliasTarget + '__sig'];
           if (isSigRelevant && sig && targetSig && sig != targetSig) {
-            debugLog(`${symbol}: Alias target (${aliasTarget}) has different signature (${sig} vs ${targetSig})`)
+            debugLog(
+              `${symbol}: Alias target (${aliasTarget}) has different signature (${sig} vs ${targetSig})`,
+            );
             isFunction = true;
             snippet = `(${sigToArgs(sig)}) => ${snippet}(${sigToArgs(targetSig)})`;
           }
@@ -1022,7 +1059,10 @@ function(${args}) {
       // Check for dependencies on `__internal` symbols from user libraries.
       if (isUserSymbol) {
         for (const dep of deps) {
-          if (LibraryManager.library[dep + '__internal'] && !LibraryManager.library[dep + '__user']) {
+          if (
+            LibraryManager.library[dep + '__internal'] &&
+            !LibraryManager.library[dep + '__user']
+          ) {
             warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
           }
         }
@@ -1038,7 +1078,9 @@ function(${args}) {
         // in libcore.js and libpthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
         if (dep === '$noExitRuntime') {
-          error('noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS');
+          error(
+            'noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS',
+          );
         }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`);
       }
@@ -1065,14 +1107,19 @@ function(${args}) {
           contentText = `var ${mangled} = ` + contentText + ';';
         } else if (contentText.startsWith('class ')) {
           // Handle class declarations (which also have typeof == 'function'.)
-          contentText = contentText.replace(/^class(?:\s+(?!extends\b)[^{\s]+)?/, `class ${mangled}`);
+          contentText = contentText.replace(
+            /^class(?:\s+(?!extends\b)[^{\s]+)?/,
+            `class ${mangled}`,
+          );
         } else {
           // Handle regular (non-arrow) functions
           contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
         }
       } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
         if (isConst) {
-          error(`JS library error: '__const' decorator cannot be used with ';'-prefixed snippets: '${symbol}'`);
+          error(
+            `JS library error: '__const' decorator cannot be used with ';'-prefixed snippets: '${symbol}'`,
+          );
         }
         // In JS libraries
         //   foo: ';[code here verbatim]'
@@ -1084,7 +1131,9 @@ function(${args}) {
         }
       } else if (typeof snippet === 'undefined') {
         if (isConst) {
-          error(`JS library error: '__const' decorator cannot be used with undefined symbols: '${symbol}'`);
+          error(
+            `JS library error: '__const' decorator cannot be used with undefined symbols: '${symbol}'`,
+          );
         }
         // For JS library functions that are simply aliases of native symbols,
         // we don't need to generate anything here.  Instead these get included
@@ -1117,7 +1166,13 @@ function(${args}) {
         checkShadowing(symbol, mangled, contentText);
       }
 
-      if (contentText && MODULARIZE == 'instance' && shouldExportLibrarySymbol(mangled) && !isStub && !isConst) {
+      if (
+        contentText &&
+        MODULARIZE == 'instance' &&
+        shouldExportLibrarySymbol(mangled) &&
+        !isStub &&
+        !isConst
+      ) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
         // the point of declaration.
         contentText = 'export ' + contentText;
@@ -1301,9 +1356,9 @@ var proxiedFunctionTable = [
       }),
     );
   } else {
-    timer.start('finalCombiner')
+    timer.start('finalCombiner');
     finalCombiner();
-    timer.stop('finalCombiner')
+    timer.stop('finalCombiner');
   }
 
   if (errorOccured()) {
