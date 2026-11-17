@@ -875,24 +875,16 @@ var LibraryEmbind = {
   _embind_finalize_value_array: (tupleTypeID) => {
     var reg = tupleRegistrations[tupleTypeID];
     delete tupleRegistrations[tupleTypeID];
-    var elements = reg.elements;
+    const {elements, rawConstructor, rawDestructor, valueSize, isTrivial} = reg;
     var elementsLength = elements.length;
     var elementTypeIDs = elements.map((elt) => elt.getterReturnTypeID).
                 concat(elements.map((elt) => elt.setterArgumentTypeID));
 
-    var rawConstructor = reg.rawConstructor;
-    var rawDestructor = reg.rawDestructor;
-    var valueSize = reg.valueSize;
-    var isTrivial = reg.isTrivial;
-
     whenDependentTypesAreResolved([tupleTypeID], elementTypeIDs, (elementTypes) => {
       for (const [i, elt] of elements.entries()) {
         const getterReturnType = elementTypes[i];
-        const getter = elt.getter;
-        const getterContext = elt.getterContext;
         const setterArgumentType = elementTypes[i + elementsLength];
-        const setter = elt.setter;
-        const setterContext = elt.setterContext;
+        const {getter, getterContext, setter, setterContext} = elt;
         elt.read = (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr));
         if (!setterArgumentType.usesDestructor && !setterArgumentType.argStackAlloc) {
           // The element type never registers a destructor, so skip the
@@ -1001,22 +993,15 @@ var LibraryEmbind = {
     var reg = structRegistrations[structTypeID];
     delete structRegistrations[structTypeID];
 
-    var rawConstructor = reg.rawConstructor;
-    var rawDestructor = reg.rawDestructor;
-    var valueSize = reg.valueSize;
-    var isTrivial = reg.isTrivial;
-    var fieldRecords = reg.fields;
+    const {rawConstructor, rawDestructor, valueSize, isTrivial, fields: fieldRecords} = reg;
     var fieldTypeIDs = fieldRecords.map((field) => field.getterReturnTypeID).
               concat(fieldRecords.map((field) => field.setterArgumentTypeID));
     whenDependentTypesAreResolved([structTypeID], fieldTypeIDs, (fieldTypes) => {
       var fields = {};
       for (var [i, field] of fieldRecords.entries()) {
         const getterReturnType = fieldTypes[i];
-        const getter = field.getter;
-        const getterContext = field.getterContext;
         const setterArgumentType = fieldTypes[i + fieldRecords.length];
-        const setter = field.setter;
-        const setterContext = field.setterContext;
+        const {getter, getterContext, setter, setterContext} = field;
         var write;
         if (!setterArgumentType.usesDestructor && !setterArgumentType.argStackAlloc) {
           // See the matching element-write logic in _embind_finalize_value_array.
@@ -2053,8 +2038,7 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     properties = Emval.toValue(properties);
 
     var registeredClass = wrapperType.registeredClass;
-    var wrapperPrototype = registeredClass.instancePrototype;
-    var baseClass = registeredClass.baseClass;
+    const {instancePrototype: wrapperPrototype, baseClass} = registeredClass;
     var baseClassPrototype = baseClass.instancePrototype;
     var baseConstructor = registeredClass.baseClass.constructor;
     var ctor = createNamedFunction(constructorName, function(...args) {

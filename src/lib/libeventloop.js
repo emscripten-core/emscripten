@@ -238,12 +238,10 @@ LibraryJSEventLoop = {
 
     resume() {
       MainLoop.currentlyRunningMainloop++;
-      var timingMode = MainLoop.timingMode;
-      var timingValue = MainLoop.timingValue;
-      var func = MainLoop.func;
+      const {timingMode, timingValue, func, arg} = MainLoop;
       MainLoop.func = null;
       // do not set timing and call scheduler, we will do it on the next lines
-      setMainLoop(func, 0, false, MainLoop.arg, true);
+      setMainLoop(func, 0, false, arg, true);
       _emscripten_set_main_loop_timing(timingMode, timingValue);
       MainLoop.scheduler();
     },

@@ -1300,8 +1300,7 @@ addToLibrary({
 
     // Populate the protocol 'database'. The entries are limited to tcp and udp, though it is fairly trivial
     // to add extra entries from /etc/protocols if desired - though not sure if that'd actually be useful.
-    var list = Protocols.list;
-    var map  = Protocols.map;
+    const {list, map} = Protocols;
     if (!list.length) {
         var entry = allocprotoent('tcp', 6, ['TCP']);
         list.push(entry);
