@@ -601,6 +601,66 @@ const PROXY_ASYNC = 0;
 const PROXY_SYNC = 1;
 const PROXY_SYNC_ASYNC = 2;
 
+// Report diagnostics (when not weak/external) and emit a runtime stub for a
+// symbol that is not defined in any JS library.
+function createUndefinedStub(symbol, dependent) {
+  const mangled = mangleCSymbolName(symbol);
+  const isWeakImport = WEAK_IMPORTS.has(symbol);
+  if (!isDefined(symbol) && !isWeakImport) {
+    if (PROXY_TO_PTHREAD && !MAIN_MODULE && symbol == '__main_argc_argv') {
+      error('PROXY_TO_PTHREAD proxies main() for you, but no main exists');
+      return;
+    }
+    let undefinedSym = symbol;
+    if (symbol === '__main_argc_argv') {
+      undefinedSym = 'main/__main_argc_argv';
+    }
+    let msg = 'undefined symbol: ' + undefinedSym;
+    if (dependent) msg += ` (referenced by ${dependent})`;
+    if (ERROR_ON_UNDEFINED_SYMBOLS) {
+      error(msg);
+      warnOnce('To disable errors for undefined symbols use `-sERROR_ON_UNDEFINED_SYMBOLS=0`');
+      warnOnce(
+        `${mangled} may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library`,
+      );
+    } else if (WARN_ON_UNDEFINED_SYMBOLS) {
+      warn(msg);
+    } else {
+      debugLog(msg);
+    }
+    if (symbol === '__main_argc_argv' && STANDALONE_WASM) {
+      warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
+    }
+  }
+
+  // Emit a stub that will fail at runtime (or resolve from a side module
+  // under dynamic linking).
+  let stubFunctionBody = `abort('missing function: ${symbol}');`;
+  if (MAIN_MODULE) {
+    // Create a stub for this symbol which can later be replaced by the
+    // dynamic linker.  If this stub is called before the symbol is
+    // resolved assert in debug builds or trap in release builds.
+    let target = `wasmImports['${symbol}']`;
+    if (ASYNCIFY) {
+      // See the definition of asyncifyStubs in preamble.js for why this
+      // is needed.
+      target = `asyncifyStubs['${symbol}']`;
+    }
+    let assertion = '';
+    if (ASSERTIONS) {
+      assertion += `if (!${target} || ${target}.stub) abort("external symbol '${symbol}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
+    }
+    stubFunctionBody = assertion + `return ${target}(...args);`;
+  }
+
+  librarySymbols.push(mangled);
+  let stubText = `function ${mangled}(...args) {\n${stubFunctionBody}\n}\n${mangled}.stub = true;`;
+  if (ASYNCIFY && MAIN_MODULE) {
+    stubText += `\nasyncifyStubs['${symbol}'] = undefined;`;
+  }
+  return stubText;
+}
+
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
   const libraryAliases = [];
@@ -657,7 +717,7 @@ export async function runJSify(outputFile, symbolsOnly) {
     }
   }
 
-  function processLibraryFunction(snippet, symbol, mangled, isStub) {
+  function processLibraryFunction(snippet, symbol, mangled) {
     // It is possible that when printing the function as a string on Windows,
     // the js interpreter we are in returns the string with Windows line endings
     // \r\n. This is undesirable, since line endings are managed in the form \n
@@ -669,10 +729,6 @@ export async function runJSify(outputFile, symbolsOnly) {
     // If so, prepend a function keyword so that it's valid syntax when extracted.
     if (snippet.startsWith(symbol)) {
       snippet = 'function ' + snippet;
-    }
-
-    if (isStub) {
-      return snippet;
     }
 
     // apply LIBRARY_DEBUG if relevant
@@ -846,6 +902,13 @@ function(${args}) {
       }
       addedLibraryItems[symbol] = true;
 
+      if (!Object.hasOwn(LibraryManager.library, symbol)) {
+        if (symbolsOnly) {
+          return;
+        }
+        return createUndefinedStub(symbol, dependent);
+      }
+
       const deps = (LibraryManager.library[symbol + '__deps'] ??= []);
       const explicitDeps = new Set(deps);
       let sig = LibraryManager.library[symbol + '__sig'];
@@ -888,98 +951,37 @@ function(${args}) {
       const isConst = LibraryManager.library[symbol + '__const'];
 
       if (symbolsOnly) {
-        if (Object.hasOwn(LibraryManager.library, symbol)) {
-          let snippet = LibraryManager.library[symbol];
-          if (isConst || !LibraryManager.isAlias(snippet)) {
-            if (typeof snippet === 'object') {
-              snippet = stringifyWithFunctions(snippet);
-            } else if (typeof snippet === 'function') {
-              snippet = snippet.toString();
-            } else if (typeof snippet === 'string') {
-              if (!isConst || snippet.startsWith('=')) {
-                snippet = snippet.replace(/^[=;]/, '');
-              } else {
-                snippet = '';
-              }
-            }
-            if (typeof snippet === 'string' && snippet) {
-              addImplicitDeps(snippet);
+        let snippet = LibraryManager.library[symbol];
+        if (isConst || !LibraryManager.isAlias(snippet)) {
+          if (typeof snippet === 'object') {
+            snippet = stringifyWithFunctions(snippet);
+          } else if (typeof snippet === 'function') {
+            snippet = snippet.toString();
+          } else if (typeof snippet === 'string') {
+            if (!isConst || snippet.startsWith('=')) {
+              snippet = snippet.replace(/^[=;]/, '');
+            } else {
+              snippet = '';
             }
           }
-          if (typeof postset === 'string') {
-            addImplicitDeps(postset);
+          if (typeof snippet === 'string' && snippet) {
+            addImplicitDeps(snippet);
           }
+        }
+        if (typeof postset === 'string') {
+          addImplicitDeps(postset);
         }
         return;
       }
 
-      // This gets set to true in the case of dynamic linking for symbols that
-      // are undefined in the main module.  In this case we create a stub that
-      // will resolve the correct symbol at runtime, or assert if its missing.
-      let isStub = false;
-
       const mangled = mangleCSymbolName(symbol);
       let snippet = LibraryManager.library[symbol];
-
-      if (!Object.hasOwn(LibraryManager.library, symbol)) {
-        const isWeakImport = WEAK_IMPORTS.has(symbol);
-        if (!isDefined(symbol) && !isWeakImport) {
-          if (PROXY_TO_PTHREAD && !MAIN_MODULE && symbol == '__main_argc_argv') {
-            error('PROXY_TO_PTHREAD proxies main() for you, but no main exists');
-            return;
-          }
-          let undefinedSym = symbol;
-          if (symbol === '__main_argc_argv') {
-            undefinedSym = 'main/__main_argc_argv';
-          }
-          let msg = 'undefined symbol: ' + undefinedSym;
-          if (dependent) msg += ` (referenced by ${dependent})`;
-          if (ERROR_ON_UNDEFINED_SYMBOLS) {
-            error(msg);
-            warnOnce(
-              'To disable errors for undefined symbols use `-sERROR_ON_UNDEFINED_SYMBOLS=0`',
-            );
-            warnOnce(
-              mangled +
-                ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library',
-            );
-          } else if (WARN_ON_UNDEFINED_SYMBOLS) {
-            warn(msg);
-          } else {
-            debugLog(msg);
-          }
-          if (symbol === '__main_argc_argv' && STANDALONE_WASM) {
-            warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
-          }
-        }
-
-        // emit a stub that will fail at runtime
-        var stubFunctionBody = `abort('missing function: ${symbol}');`;
-        if (MAIN_MODULE) {
-          // Create a stub for this symbol which can later be replaced by the
-          // dynamic linker.  If this stub is called before the symbol is
-          // resolved assert in debug builds or trap in release builds.
-          let target = `wasmImports['${symbol}']`;
-          if (ASYNCIFY) {
-            // See the definition of asyncifyStubs in preamble.js for why this
-            // is needed.
-            target = `asyncifyStubs['${symbol}']`;
-          }
-          let assertion = '';
-          if (ASSERTIONS) {
-            assertion += `if (!${target} || ${target}.stub) abort("external symbol '${symbol}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
-          }
-          stubFunctionBody = assertion + `return ${target}(...args);`;
-        }
-        isStub = true;
-        snippet = new Function('...args', stubFunctionBody);
-      }
 
       if (!isConst) {
         librarySymbols.push(mangled);
       }
 
-      if (!isStub && LibraryManager.library[symbol + '__export']) {
+      if (LibraryManager.library[symbol + '__export']) {
         extraExports.add(mangled);
       }
 
@@ -1043,10 +1045,8 @@ function(${args}) {
       }
 
       if (isFunction) {
-        snippet = processLibraryFunction(snippet, symbol, mangled, isStub);
-        if (!isStub) {
-          addImplicitDeps(snippet);
-        }
+        snippet = processLibraryFunction(snippet, symbol, mangled);
+        addImplicitDeps(snippet);
       }
 
       // Check for dependencies on `__internal` symbols from user libraries.
@@ -1155,7 +1155,7 @@ function(${args}) {
         contentText = `${declType} ${mangled} = ${snippet};`;
       }
 
-      if (CHECK_DEPS && (STRICT || !isUserSymbol) && !isStub && contentText) {
+      if (CHECK_DEPS && (STRICT || !isUserSymbol) && contentText) {
         checkShadowing(symbol, mangled, contentText);
       }
 
@@ -1163,7 +1163,6 @@ function(${args}) {
         contentText &&
         MODULARIZE == 'instance' &&
         shouldExportLibrarySymbol(mangled) &&
-        !isStub &&
         !isConst
       ) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
@@ -1181,12 +1180,6 @@ function(${args}) {
       if (ASYNCIFY && isAsyncFunction) {
         assert(isFunction);
         contentText += `\n${mangled}.isAsync = true;`;
-      }
-      if (isStub) {
-        contentText += `\n${mangled}.stub = true;`;
-        if (ASYNCIFY && MAIN_MODULE) {
-          contentText += `\nasyncifyStubs['${symbol}'] = undefined;`;
-        }
       }
 
       // Add the docs if they exist and if we are actually emitting a declaration.
