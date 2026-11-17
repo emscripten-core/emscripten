@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <EGL/egl.h>
 
@@ -123,6 +124,13 @@ int main(int argc, char *argv[]) {
     assert(eglSwapInterval(display, 1) == EGL_TRUE);
     assert(eglGetError() == EGL_SUCCESS);
     assert(eglSwapInterval(display, 2) == EGL_TRUE);
+    assert(eglGetError() == EGL_SUCCESS);
+
+    assert(eglDestroySurface(display, EGL_NO_SURFACE) == EGL_FALSE);
+    assert(eglGetError() == EGL_BAD_SURFACE);
+    assert(eglDestroySurface(display, (EGLSurface)(intptr_t)123) == EGL_FALSE);
+    assert(eglGetError() == EGL_BAD_SURFACE);
+    assert(eglDestroySurface(display, surface) == EGL_TRUE);
     assert(eglGetError() == EGL_SUCCESS);
 
     ret = eglTerminate(display);

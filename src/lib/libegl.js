@@ -301,7 +301,7 @@ var LibraryEGL = {
     }
     if (surface != eglDefaultSurface) {
       EGL.setErrorCode(0x300D /* EGL_BAD_SURFACE */);
-      return 1;
+      return 0 /* EGL_FALSE */;
     }
     if (EGL.currentReadSurface == surface) {
       EGL.currentReadSurface = 0;
@@ -310,7 +310,7 @@ var LibraryEGL = {
       EGL.currentDrawSurface = 0;
     }
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    return 1; /* Magic ID for Emscripten 'default surface' */
+    return 1 /* EGL_TRUE */;
   },
 
 
