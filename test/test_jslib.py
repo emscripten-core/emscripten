@@ -1168,3 +1168,57 @@ addToLibrary({
     ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_obj', '--js-library', 'lib.js'],
                      "error: JS library error: '__const' decorator cannot be used with objects: '$bad_obj'")
+
+  def test_jslib_function_forms(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $destruct: ({a}) => a + 1,
+        $dollar_param: $ => $ + 1,
+        $async_nospace: async(x) => x,
+        $async_param: async => async + 1,
+        $str_arrow: 'x => x + 2',
+        $str_destruct: '({b}) => b + 3',
+        $str_async: 'async x => x',
+        $str_async_nospace: 'async(x) => x',
+        $str_ws_func: '  function(x) { return x + 5; }',
+        $str_async_func: '  async function(x) { return x + 6; }',
+        $named_func: function origName(x) { return x + 7; },
+        $named_async_func: async function origAsyncName(x) { return x; },
+        $str_named_func: 'function strOrigName (x) { return x + 8; }',
+        $str_named_async_func: '  async function strOrigAsync(x) { return x; }',
+        $CONST_ARROW_STR__const: true,
+        $CONST_ARROW_STR: 'x => y',
+        $CONST_FUNC_STR__const: true,
+        $CONST_FUNC_STR: 'function(x) { return x; }',
+        check_funcs: () => {
+          assert(destruct({a: 1}) === 2);
+          assert(dollar_param(1) === 2);
+          assert(async_nospace(1) instanceof Promise);
+          assert(async_param(1) === 2);
+          assert(str_arrow(1) === 3);
+          assert(str_destruct({b: 1}) === 4);
+          assert(str_async(1) instanceof Promise);
+          assert(str_async_nospace(1) instanceof Promise);
+          assert(str_ws_func(1) === 6);
+          assert(str_async_func(1) instanceof Promise);
+          assert(named_func(1) === 8);
+          assert(named_async_func(1) instanceof Promise);
+          assert(str_named_func(1) === 9);
+          assert(str_named_async_func(1) instanceof Promise);
+          assert(CONST_ARROW_STR === 'x => y');
+          assert(CONST_FUNC_STR === 'function(x) { return x; }');
+          return 1;
+        },
+      });
+    ''')
+    create_file('src.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      int check_funcs(void);
+      int main() {
+        assert(check_funcs() == 1);
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'done\n', cflags=['--js-library', 'lib.js'])

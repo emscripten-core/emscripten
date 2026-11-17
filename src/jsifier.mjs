@@ -57,6 +57,14 @@ import {
 // token-based `calcImplicitDeps` scanner above).
 const CHECK_DEPS = process.env.EMCC_CHECK_DEPS;
 
+// Matches arrow function signatures (including single-arg, destructured params,
+// and `async` forms) at the start of a snippet.
+const arrowFuncRe = /^\s*(?:async\b\s*)?(?:[$\w]+|\([^)]*\))\s*=>/;
+
+// Matches regular (non-arrow) functions (including `async` and named forms) at
+// the start of a snippet, capturing any leading whitespace and `async` prefix.
+const regularFuncRe = /^(\s*(?:async\s+)?)function(?:\s+[$\w]+)?\s*\(/;
+
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not
@@ -1041,7 +1049,7 @@ function(${args}) {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet);
       } else if (typeof snippet === 'string') {
-        if (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/)) {
+        if (!isConst && (arrowFuncRe.test(snippet) || regularFuncRe.test(snippet))) {
           // Support functions that are already "stringified"
           isFunction = true;
         } else if (!isConst || snippet.startsWith('=')) {
@@ -1102,7 +1110,7 @@ function(${args}) {
         // Give the function the correct (mangled) name. Overwrite it if it's
         // already named.  This must happen after the last call to
         // modifyJSFunction which could have changed or removed the name.
-        if (contentText.match(/^\s*([^}]*)\s*=>/s)) {
+        if (arrowFuncRe.test(contentText)) {
           // Handle arrow functions
           contentText = `var ${mangled} = ` + contentText + ';';
         } else if (contentText.startsWith('class ')) {
@@ -1113,7 +1121,7 @@ function(${args}) {
           );
         } else {
           // Handle regular (non-arrow) functions
-          contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
+          contentText = contentText.replace(regularFuncRe, `$1function ${mangled}(`);
         }
       } else if (typeof snippet === 'string' && snippet.startsWith(';')) {
         if (isConst) {
