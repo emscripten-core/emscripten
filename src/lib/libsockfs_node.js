@@ -860,7 +860,7 @@ var NodeSockFSLibrary = {
       // MSG_PEEK returns the data from the head of the queue without consuming
       // it: no shift, no recv_bytes/flow-control adjustment, so a later recv
       // sees the same bytes and poll still reports the socket readable.
-      var peek = flags & MSG_PEEK;
+      var peek = flags & {{{ cDefs.MSG_PEEK }}};
       if (sock.type === SOCK_DGRAM) {
         var dgram = sock.recv_queue[0];
         if (!dgram) {

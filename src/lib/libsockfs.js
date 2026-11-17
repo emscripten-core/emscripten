@@ -762,7 +762,7 @@ addToLibrary({
 
         // MSG_PEEK returns the head of the queue without consuming it, so a
         // later recv sees the same bytes and poll still reports it readable.
-        var peek = flags & MSG_PEEK;
+        var peek = flags & {{{ cDefs.MSG_PEEK }}};
         var queued = sock.recv_queue[0];
         if (!queued) {
           if (sock.type === SOCK_STREAM) {
