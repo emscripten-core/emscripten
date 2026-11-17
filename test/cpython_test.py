@@ -96,6 +96,9 @@ def build_env():
   """
   env = os.environ.copy()
   env['PATH'] = path_from_root() + os.pathsep + env.get('PATH', '')
+  # CircleCI's BASH_ENV resets PATH in every bash script, which would select
+  # the emscripten bundled with the emsdk instead.
+  env.pop('BASH_ENV', None)
   return env
 
 
