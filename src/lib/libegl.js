@@ -23,6 +23,8 @@ var LibraryEGL = {
     $eglDefaultConfig: 62002,
     // Magic ID for Emscripten EGLContext
     $eglDefaultContext: 62004,
+    // Magic ID for Emscripten EGLSurface
+    $eglDefaultSurface: 62006,
   }),
 
   $EGL__deps: ['$Browser'],
@@ -287,7 +289,7 @@ var LibraryEGL = {
     // - EGL_VG_COLORSPACE (can't be set)
     // - EGL_VG_ALPHA_FORMAT (can't be set)
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    return 62006; /* Magic ID for Emscripten 'default surface' */
+    return eglDefaultSurface;
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay display, EGLSurface surface);
@@ -297,7 +299,7 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if (surface != 62006 /* Magic ID for the only EGLSurface supported by Emscripten */) {
+    if (surface != eglDefaultSurface) {
       EGL.setErrorCode(0x300D /* EGL_BAD_SURFACE */);
       return 1;
     }
@@ -402,7 +404,7 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if (surface != 62006 /* Magic ID for Emscripten 'default surface' */) {
+    if (surface != eglDefaultSurface) {
       EGL.setErrorCode(0x300D /* EGL_BAD_SURFACE */);
       return 0;
     }
@@ -593,7 +595,7 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
       return 0;
     }
-    if ((read != 0 && read != 62006) || (draw != 0 && draw != 62006 /* Magic ID for Emscripten 'default surface' */)) {
+    if ((read != 0 && read != eglDefaultSurface) || (draw != 0 && draw != eglDefaultSurface)) {
       EGL.setErrorCode(0x300D /* EGL_BAD_SURFACE */);
       return 0;
     }
