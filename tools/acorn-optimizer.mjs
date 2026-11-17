@@ -664,7 +664,7 @@ function emitDCEGraph(ast) {
     nameToGraphName.set(name, graphName);
     modulePropertyToGraphName.set(name, graphName);
     exportNameToGraphName.set(asmName, graphName);
-    if (/^dynCall_/.test(name)) {
+    if (name.startsWith('dynCall_')) {
       dynCallNames.push(graphName);
     }
   }
@@ -951,12 +951,12 @@ function emitDCEGraph(ast) {
   fullWalk(ast, (node) => visitNode(node, null));
   // Final work: print out the graph
   // sort for determinism
-  const graph = Array.from(infos.values())
-    .sort((info1, info2) => (info1.name > info2.name ? 1 : -1))
-    .map((info) => ({
-      ...info,
-      reaches: Array.from(info.reaches).sort(),
-    }));
+  const graph = Array.from(infos.values()).sort((info1, info2) =>
+    info1.name > info2.name ? 1 : -1,
+  );
+  for (const info of graph) {
+    info.reaches = Array.from(info.reaches).sort();
+  }
   dump(graph);
 }
 
