@@ -762,6 +762,12 @@ addToLibrary({
 
         // MSG_PEEK returns the head of the queue without consuming it, so a
         // later recv sees the same bytes and poll still reports it readable.
+        // Note: this uses cDefs.MSG_PEEK rather than the bare MSG_PEEK constant.
+        // Bare constants are emitted as `const MSG_PEEK = 2;`, and Closure Compiler
+        // treats any MSG_-prefixed variable as a translatable message that must be
+        // initialized with goog.getMsg(). Builds that enable Closure's message checks
+        // (e.g. --jscomp_warning=messageConventions, or when using translations)
+        // reject it with JSC_MSG_NOT_INITIALIZED_CORRECTLY.
         var peek = flags & {{{ cDefs.MSG_PEEK }}};
         var queued = sock.recv_queue[0];
         if (!queued) {

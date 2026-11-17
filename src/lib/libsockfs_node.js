@@ -860,6 +860,12 @@ var NodeSockFSLibrary = {
       // MSG_PEEK returns the data from the head of the queue without consuming
       // it: no shift, no recv_bytes/flow-control adjustment, so a later recv
       // sees the same bytes and poll still reports the socket readable.
+      // Note: this uses cDefs.MSG_PEEK rather than the bare MSG_PEEK constant.
+      // Bare constants are emitted as `const MSG_PEEK = 2;`, and Closure Compiler
+      // treats any MSG_-prefixed variable as a translatable message that must be
+      // initialized with goog.getMsg(). Builds that enable Closure's message checks
+      // (e.g. --jscomp_warning=messageConventions, or when using translations)
+      // reject it with JSC_MSG_NOT_INITIALIZED_CORRECTLY.
       var peek = flags & {{{ cDefs.MSG_PEEK }}};
       if (sock.type === SOCK_DGRAM) {
         var dgram = sock.recv_queue[0];
