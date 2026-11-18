@@ -11210,6 +11210,7 @@ ok.
   def test_sin_zero(self):
     self.do_runf('sockets/test_sin_zero.c', 'done\n')
 
+  @also_with_wasm64
   def test_getaddrinfo(self):
     self.do_runf('sockets/test_getaddrinfo.c', 'done\n')
 
