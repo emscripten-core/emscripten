@@ -71,13 +71,11 @@ addToLibrary({
   },
   // The FS-using parts are split out into a separate object, so simple path
   // usage does not require the FS.
-  $PATH_FS__deps: [
 #if WASMFS
-    // In WasmFS, FS.cwd() is implemented via a call into wasm, so we need to
-    // add a dependency on that.
-    '_wasmfs_get_cwd',
+  // In WasmFS, FS.cwd() is implemented via a call into wasm, so we need to
+  // add a dependency on that.
+  $PATH_FS__deps: ['_wasmfs_get_cwd'],
 #endif
-  ],
   $PATH_FS: {
     resolve: (...args) => {
       var resolvedPath = '',

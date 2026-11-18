@@ -795,9 +795,7 @@ addToLibrary({
     return str;
   },
 
-  $readSockaddr__deps: [
-    'ntohs'
-  ],
+  $readSockaddr__deps: ['ntohs'],
   $readSockaddr: (sa, salen) => {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -851,9 +849,7 @@ addToLibrary({
     return { family: family, addr: addr, port: port };
   },
   $writeSockaddr__docs: '/** @param {number=} addrlen */',
-  $writeSockaddr__deps: [
-    'htons',
-  ],
+  $writeSockaddr__deps: ['htons'],
   $writeSockaddr: (sa, family, addr, port, addrlen) => {
     switch (family) {
 #if NODERAWSOCKETS
@@ -2096,11 +2092,9 @@ addToLibrary({
     }
   },
 
-  $maybeExit__deps: [
 #if PTHREADS
-    '_emscripten_thread_exit',
+  $maybeExit__deps: ['_emscripten_thread_exit'],
 #endif
-  ],
   $maybeExit: () => {
 #if EXIT_RUNTIME
     if (runtimeExited) {
@@ -2292,9 +2286,7 @@ addToLibrary({
   $runDependencyWatcher: null,
 #endif
 
-  $addRunDependency__deps: [
-    '$removeRunDependency',
-  ],
+  $addRunDependency__deps: ['$removeRunDependency'],
   $addRunDependency: (id) => {
     if (!runDependencies) {
       dependenciesPromise = new Promise((resolve) => dependenciesPromiseResolve = resolve);
