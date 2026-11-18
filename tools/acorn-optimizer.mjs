@@ -145,7 +145,6 @@ function hasSideEffects(node) {
         case 'UnaryExpression':
         case 'BinaryExpression':
         case 'LogicalExpression':
-        case 'UpdateOperator':
         case 'ConditionalExpression':
         case 'VariableDeclaration':
         case 'VariableDeclarator':

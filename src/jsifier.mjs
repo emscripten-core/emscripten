@@ -71,13 +71,6 @@ function mangleCSymbolName(f) {
   return f[0] == '$' ? f.slice(1) : '_' + f;
 }
 
-// Splits out items that pass filter. Returns also the original sans the filtered
-function splitter(array, filter) {
-  const splitOut = array.filter(filter);
-  const leftIn = array.filter((x) => !filter(x));
-  return {leftIn, splitOut};
-}
-
 function escapeJSONKey(x) {
   if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
   assert(!x.includes("'"), 'cannot have internal single quotes in keys: ' + x);
@@ -612,7 +605,7 @@ export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
   const libraryAliases = [];
   const asyncFuncs = [];
-  let postSets = [];
+  const postSets = [];
 
   LibraryManager.load();
 
@@ -664,7 +657,7 @@ export async function runJSify(outputFile, symbolsOnly) {
     }
   }
 
-  function processLibraryFunction(snippet, symbol, mangled, deps, isStub) {
+  function processLibraryFunction(snippet, symbol, mangled, isStub) {
     // It is possible that when printing the function as a string on Windows,
     // the js interpreter we are in returns the string with Windows line endings
     // \r\n. This is undesirable, since line endings are managed in the form \n
@@ -1050,7 +1043,7 @@ function(${args}) {
       }
 
       if (isFunction) {
-        snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
+        snippet = processLibraryFunction(snippet, symbol, mangled, isStub);
         if (!isStub) {
           addImplicitDeps(snippet);
         }
@@ -1242,27 +1235,6 @@ function(${args}) {
   }
 
   function finalCombiner() {
-    const splitPostSets = splitter(postSets, (x) => x.symbol && x.dependencies);
-    postSets = splitPostSets.leftIn;
-    const orderedPostSets = splitPostSets.splitOut;
-
-    let limit = orderedPostSets.length * orderedPostSets.length;
-    for (let i = 0; i < orderedPostSets.length; i++) {
-      for (let j = i + 1; j < orderedPostSets.length; j++) {
-        if (orderedPostSets[j].symbol in orderedPostSets[i].dependencies) {
-          const temp = orderedPostSets[i];
-          orderedPostSets[i] = orderedPostSets[j];
-          orderedPostSets[j] = temp;
-          i--;
-          limit--;
-          assert(limit > 0, 'could not sort postsets');
-          break;
-        }
-      }
-    }
-
-    postSets.push(...orderedPostSets);
-
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
     includeSystemFile(shellFile);
 
