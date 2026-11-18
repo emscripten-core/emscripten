@@ -813,6 +813,24 @@ window.close = () => {
     # create_file('shell.html', read_file(path_from_root('html/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     # test()
 
+  def test_capture_stdio_custom_print(self):
+    # When stdio capturing is enabled (which happens automatically when a flaky
+    # test gets retried), a custom Module.print handler defined by the page
+    # must still get called with the printed string.
+    create_file('shell.html', r'''
+      <html>
+        <body>
+          <script>
+            var Module = {
+              print: (text) => console.log(text.replace('Hello', 'Goodbye')),
+            };
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>''')
+    self.capture_stdio = True
+    self.btest_exit('hello_world.c', cflags=['--shell-file', 'shell.html'])
+
   @also_with_wasmfs
   def test_fs_dev_random(self):
     self.btest_exit('fs/test_fs_dev_random.c')
