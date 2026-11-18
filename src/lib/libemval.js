@@ -5,6 +5,42 @@
 
 const NUM_RESERVED_HANDLES = 5;
 
+// `toValue` defaults to 'Emval.toValue' for link-time invokers so Closure can
+// minify it directly; runtime MAIN_MODULE invokers pass 'toValue' as a
+// `new Function` parameter bound to `Emval.toValue`.
+function createEmvalInvokerBody(signature, toValue = 'Emval.toValue') {
+  const GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
+  var kind = Number(signature[0]);
+  var returns = signature[1] == 't';
+  var argCount = Number(signature.slice(2));
+
+  var params = returns ? ['toReturnWire'] : [];
+  var args = [];
+  for (var i = 0; i < argCount; ++i) {
+    params.push(`argFromPtr${i}`);
+    args.push(`argFromPtr${i}(args${i ? '+' + i * GenericWireTypeSize : ''})`);
+  }
+  var functionBody;
+  switch (kind) {
+    case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
+      functionBody = `${toValue}(handle)(${args})`;
+      break;
+    case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
+      functionBody = `new (${toValue}(handle))(${args})`;
+      break;
+    case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
+      functionBody = args[0];
+      break;
+    case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
+      functionBody = `${toValue}(handle)[getStringOrSymbol(methodName)](${args})`;
+      break;
+  }
+  if (returns) {
+    return `(${params}) => (handle, methodName, destructorsRef, args) => emval_returnValue(toReturnWire, destructorsRef, ${functionBody})`;
+  }
+  return `(${params}) => (handle, methodName, destructorsRef, args) => {\n${functionBody}\n}`;
+}
+
 var LibraryEmVal = {
   // Number of handles reserved for non-use (0) or common values w/o refcount.
   ...defineInternalConsts({
@@ -253,75 +289,31 @@ var LibraryEmVal = {
     return id;
   },
 
-  _emval_create_invoker: (argCount, argTypesPtr, kind) => {
-    const GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
+#if MAIN_MODULE && DYNAMIC_EXECUTION
+  $createEmvalInvokerBody: createEmvalInvokerBody,
+  $createEmvalInvoker: (signature) => new Function('toValue', 'getStringOrSymbol', 'emval_returnValue',
+    `return ${createEmvalInvokerBody(signature, 'toValue')}`
+  )(Emval.toValue, getStringOrSymbol, emval_returnValue),
+#endif
+  $emval_invokerFunctions: `{${EMVAL_INVOKERS.map((sig) => `'${sig}': ${createEmvalInvokerBody(sig)},`).join('\n')}}`,
 
+  _emval_create_invoker: (argCount, argTypesPtr, kind) => {
     var [retType, ...argTypes] = emval_lookupTypes(argCount, argTypesPtr);
-    var toReturnWire = retType.toWireType.bind(retType);
     var argFromPtr = argTypes.map(type => type.readValueFromPointer.bind(type));
     argCount--; // remove the extracted return type
 
-#if DYNAMIC_EXECUTION
-    var captures = {'toValue': Emval.toValue};
-    var args = argFromPtr.map((argFromPtr, i) => {
-      var captureName = `argFromPtr${i}`;
-      captures[captureName] = argFromPtr;
-      return `${captureName}(args${i ? '+' + i * GenericWireTypeSize : ''})`;
-    });
-    var functionBody;
-    switch (kind){
-      case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
-        functionBody = 'toValue(handle)';
-        break;
-      case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
-        functionBody = 'new (toValue(handle))';
-        break;
-      case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
-        functionBody = '';
-        break;
-      case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
-        captures['getStringOrSymbol'] = getStringOrSymbol;
-        functionBody = 'toValue(handle)[getStringOrSymbol(methodName)]';
-        break;
+    var signature = `${kind}${retType.isVoid ? 'f' : 't'}${argCount}`;
+    var invokerFactory = emval_invokerFunctions[signature];
+#if MAIN_MODULE
+    if (!invokerFactory) {
+      {{{ makeEval('invokerFactory = emval_invokerFunctions[signature] = createEmvalInvoker(signature);') }}}
     }
-    functionBody += `(${args})`;
-    if (!retType.isVoid) {
-      captures['toReturnWire'] = toReturnWire;
-      captures['emval_returnValue'] = emval_returnValue;
-      functionBody = `return emval_returnValue(toReturnWire, destructorsRef, ${functionBody})`;
-    }
-    functionBody = `return function (handle, methodName, destructorsRef, args) {
-${functionBody}
-}`;
-
-    var invokerFunction = new Function(Object.keys(captures), functionBody)(...Object.values(captures));
-#else
-    var argN = new Array(argCount);
-    var invokerFunction = (handle, methodName, destructorsRef, args) => {
-      var offset = 0;
-      for (var i = 0; i < argCount; ++i) {
-        argN[i] = argFromPtr[i](args + offset);
-        offset += GenericWireTypeSize;
-      }
-      var rv;
-      switch (kind) {
-        case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
-          rv = Emval.toValue(handle)(...argN);
-          break;
-        case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
-          rv = Reflect.construct(Emval.toValue(handle), argN);
-          break;
-        case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
-          // no-op, just return the argument
-          rv = argN[0];
-          break;
-        case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
-          rv = Emval.toValue(handle)[getStringOrSymbol(methodName)](...argN);
-          break;
-      }
-      return emval_returnValue(toReturnWire, destructorsRef, rv);
-    };
 #endif
+#if ASSERTIONS
+    assert(invokerFactory, `Missing emval invoker for signature: ${signature}`);
+#endif
+    var closureArgs = retType.isVoid ? argFromPtr : [retType.toWireType.bind(retType), ...argFromPtr];
+    var invokerFunction = invokerFactory(...closureArgs);
     var functionName = `methodCaller<(${argTypes.map(t => t.name)}) => ${retType.name}>`;
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
   },

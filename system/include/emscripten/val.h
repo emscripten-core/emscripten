@@ -263,6 +263,29 @@ private:
   std::array<GenericWireType, PackSize<Args...>::value> elements;
 };
 
+// Emits a null-terminated `v<kind><returns><arg_count>` descriptor string
+// (e.g. "v1f02") into the `em_embind` section so the linker knows which emval
+// JS invoker functions to generate at link time.
+template<EM_INVOKER_KIND Kind, char Returns, size_t ArgCount>
+struct EmvalInvokerDescriptor {
+  __attribute__((section("em_embind"), aligned(1)))
+  static constexpr char value[] = {
+    'v',
+    static_cast<char>('0' + static_cast<int>(Kind)),
+    Returns,
+    static_cast<char>('0' + (ArgCount / 10) % 10),
+    static_cast<char>('0' + (ArgCount % 10)),
+    '\0'
+  };
+};
+
+template<EM_INVOKER_KIND Kind, typename ReturnType, size_t ArgCount>
+inline void recordEmvalInvokerDescriptor() {
+  static_assert(ArgCount < 100, "functions with 100 or more arguments are not supported");
+  constexpr char returns = std::is_void<ReturnType>::value ? 'f' : 't';
+  __asm__ __volatile__("" : : "r"(&EmvalInvokerDescriptor<Kind, returns, ArgCount>::value[0]));
+}
+
 } // end namespace internal
 
 #define EMSCRIPTEN_SYMBOL(name)                                         \
@@ -602,7 +625,9 @@ private:
     using RetWire = typename BindingType<Ret>::WireType;
 
     static constexpr typename Policy::template ArgTypeList<Ret, Args...> argTypes;
-    thread_local EM_INVOKER mc = _emval_create_invoker(argTypes.getCount(), argTypes.getTypes(), Kind);
+    thread_local EM_INVOKER mc = (
+      recordEmvalInvokerDescriptor<Kind, Ret, sizeof...(Args)>(),
+      _emval_create_invoker(argTypes.getCount(), argTypes.getTypes(), Kind));
 
     WireTypePack<Args...> argv(std::forward<Args>(args)...);
     EM_DESTRUCTORS destructors = nullptr;

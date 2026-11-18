@@ -171,6 +171,8 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     # variants whenever value types or smart pointers are registered anywhere in
     # the module; at runtime, `craftInvokerFunction` selects the exact variant
     # for each binding's resolved argument types.
+    # Descriptors prefixed with `v` (`v<kind><returns><arg_count>`) come from
+    # `val.h` and map 1-to-1 to emval invoker factories.
     imports_set = set(metadata.imports)
     has_value_types = bool(imports_set & {
       '_embind_register_value_object',
@@ -178,7 +180,14 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     })
     has_smart_ptr = '_embind_register_smart_ptr' in imports_set
     expanded_invokers = set()
+    emval_invokers = set()
     for desc in metadata.embind_invokers:
+      if desc.startswith('v'):
+        kind = desc[1]
+        returns = desc[2]
+        arg_count = int(desc[3:])
+        emval_invokers.add(f'{kind}{returns}{arg_count}')
+        continue
       prefix = desc[:3]
       is_method, _returns, is_async = prefix
       arg_count = int(desc[3:])
@@ -188,6 +197,7 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
       if (has_value_types and arg_count > 0) or (has_smart_ptr and (arg_count > 0 or is_method == 't')):
         expanded_invokers.add(f'{prefix}d{arg_count}')
     settings.EMBIND_INVOKERS = sorted(expanded_invokers)
+    settings.EMVAL_INVOKERS = sorted(emval_invokers)
 
 
 def apply_static_code_hooks(forwarded_json, code):
