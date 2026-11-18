@@ -1534,6 +1534,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       '-Wno-gnu-offsetof-extensions',
       # And because gnu-offsetof-extensions is a new warning:
       '-Wno-unknown-warning-option',
+      '-Wno-unsequenced',
     ]
     return self.get_library(os.path.join('third_party', 'freetype'),
                             os.path.join('objs', '.libs', 'libfreetype.a'),
