@@ -536,7 +536,7 @@ ${body};
 // sync-proxied pthread caller, which awaits it; otherwise it is.
 function handleSyncArg(sym, snippet) {
   const sync =
-    sym.isAsync() || sym.asyncVariant
+    sym.isAsync() || sym.asyncVariantOf
       ? 'false'
       : PTHREADS && sym.proxy == 'sync'
         ? '!PThread.currentProxiedOperationCallerThread'
@@ -698,7 +698,7 @@ export async function runJSify(outputFile, symbolsOnly) {
 
   for (const sym of LibraryManager.symbols.values()) {
     // Async variants are included only where used (see expandAsyncVariants).
-    if (!sym.const && !(INCLUDE_FULL_LIBRARY && !symbolsOnly && sym.asyncVariant)) {
+    if (!sym.const && !(INCLUDE_FULL_LIBRARY && !symbolsOnly && sym.asyncVariantOf)) {
       if (INCLUDE_FULL_LIBRARY || EXPORTED_FUNCTIONS.has(mangleCSymbolName(sym.name))) {
         symbolsNeeded.push(sym.name);
       }
@@ -752,8 +752,8 @@ function(${args}) {
         );
       }
     }
-    // A async variant's conversions wrap its final wrapper, below.
-    if (needsI64Handling && !sym.asyncVariant) {
+    // An async variant's conversions wrap its final wrapper, below.
+    if (needsI64Handling && !sym.asyncVariantOf) {
       snippet = handleI64Signatures(sym, snippet);
     }
 
@@ -761,7 +761,7 @@ function(${args}) {
       snippet = handleSyncArg(sym, snippet);
     }
 
-    // A async variant hands its Promise over rather than suspending on it.
+    // An async variant hands its Promise over rather than suspending on it.
     if (sym.isAsync() && sym.async == 'auto') {
       snippet = handleAsyncFunction(sym, snippet);
     }
@@ -792,7 +792,7 @@ function(${args}) {
             let proxyFunc =
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             let modeArg = `, ${proxyMode}`;
-            if (sym.asyncVariant == 'promise') {
+            if (sym.asyncVariantKind == 'promise') {
               // The body returns a value or a Promise; a pthread caller gets an
               // em_promise_t of the main-thread result.
               proxyFunc = 'proxyToMainThreadPromise';
@@ -821,7 +821,7 @@ function(${args}) {
       }
     }
 
-    if (sym.asyncVariant == 'promise') {
+    if (sym.asyncVariantKind == 'promise') {
       // The result of the 'auto' body as an em_promise_t (addPromise of its
       // value-or-Promise) on the calling thread; a rejection becomes NULL, as
       // the body's own reason cannot reach C. This wraps outside the proxying:
@@ -842,7 +842,7 @@ function(${args}) {
 }\n`;
       });
     }
-    if (needsI64Handling && sym.asyncVariant) {
+    if (needsI64Handling && sym.asyncVariantOf) {
       snippet = handleI64Signatures(sym, snippet);
     }
 
