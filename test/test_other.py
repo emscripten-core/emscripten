@@ -10188,6 +10188,16 @@ int main() {
     # "mappings" contains valid Base64 VLQ segments.
     self.assertRegex(output, r'"mappings":\s*"(?:[A-Za-z0-9+\/]+[,;]?)+"')
 
+  @parameterized({
+    'nofs': (['-sFILESYSTEM=0'],),
+    'wasmfs': (['-sWASMFS'],),
+  })
+  def test_load_source_map_run_dependency(self, args):
+    # Loading the source map at runtime (which happens when sanitizers are used
+    # with -gsource-map) uses addRunDependency/removeRunDependency.  Verify that
+    # these get included also in different filesystem modes.
+    self.do_runf('hello_world.c', 'Hello, world!', cflags=['-fsanitize=null', '-gsource-map'] + args)
+
   def test_wasm_sourcemap_dead(self):
     wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
                     '--dwarfdump-output',
