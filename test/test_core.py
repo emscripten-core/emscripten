@@ -6118,6 +6118,7 @@ Module.onRuntimeInitialized = () => {
   def test_fs_readv_eagain(self):
     self.do_runf('fs/test_readv_eagain.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
+  @no_wasmfs('WasmFS writes each iovec separately rather than gathering them into a single write')
   def test_fs_writev_gather(self):
     self.do_runf('fs/test_writev_gather.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
