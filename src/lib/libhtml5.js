@@ -5,11 +5,9 @@
  */
 
 var LibraryHTML5 = {
-  $JSEvents__deps: [
 #if PTHREADS
-    '_emscripten_run_callback_on_thread',
+  $JSEvents__deps: ['_emscripten_run_callback_on_thread'],
 #endif
-  ],
   $JSEvents: {
 
 #if USE_CLOSURE_COMPILER

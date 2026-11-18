@@ -9,13 +9,9 @@ var LibraryBrowser = {
   $workerHandles__internal: true,
   $workerHandles: 'new HandleAllocator();',
 
-  $Browser__deps: [
-#if FILESYSTEM
-#if MAIN_MODULE
-    '$preloadedWasm',
+#if FILESYSTEM && MAIN_MODULE
+  $Browser__deps: ['$preloadedWasm'],
 #endif
-#endif
-  ],
 
   $Browser: {
     useWebGL: false,

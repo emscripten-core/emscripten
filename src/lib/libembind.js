@@ -511,9 +511,7 @@ var LibraryEmbind = {
     }
   },
 
-  _embind_register_std_string__deps: [
-    'malloc', 'free'
-  ],
+  _embind_register_std_string__deps: ['malloc', 'free'],
   _embind_register_std_string: (typeID, name) => {
     name = AsciiToString(name);
     const stdStringIsUTF8 = {{{ EMBIND_STD_STRING_IS_UTF8 }}};
