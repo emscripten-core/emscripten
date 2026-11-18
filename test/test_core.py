@@ -4419,7 +4419,8 @@ caught outer int: 123
       #include <stdint.h>
       int64_t sidey() {
         volatile int64_t x = 0x12345678abcdef12LL;
-        x += x % 17;
+        int64_t rem = x % 17;
+        x += rem;
         x = 18 - x;
         return x;
       }

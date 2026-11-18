@@ -244,7 +244,9 @@ class Ports:
           if ext in {'.c', '.cpp'} and not any((excluded in f) for excluded in exclude_files):
             srcs.append(os.path.join(root, f))
 
-    cflags = [*system_libs.get_base_cflags(build_dir), '-O2', '-I' + src_dir, *flags]
+    # Suppress -Wunsequenced for third-party port sources (e.g. multiple
+    # unsequenced accesses to volatile variables flagged by newer Clang).
+    cflags = [*system_libs.get_base_cflags(build_dir), '-O2', '-Wno-unsequenced', '-I' + src_dir, *flags]
 
     for include in includes:
       cflags.append('-I' + include)

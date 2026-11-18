@@ -25,12 +25,15 @@ void recurse(volatile unsigned long x) {
   buffer[x/2] = 0;
   buffer[(x-1)/2] = 0;
   EM_ASM({});
-  if (x*x < x) {
+  unsigned long cur = x;
+  if (cur*cur < cur) {
     act(&a);
-    if (a < x) x = a;
+    unsigned long av = a;
+    if (av < x) x = av;
     x--;
   }
-  x += buffer[x/2];
+  unsigned long idx = x / 2;
+  x += buffer[idx];
   if (x > 0) recurse(x-1);
 }
 

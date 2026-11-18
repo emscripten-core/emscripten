@@ -1531,6 +1531,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       '-Wno-unused-but-set-variable',
       '-Wno-pointer-bool-conversion',
       '-Wno-shift-negative-value',
+      '-Wno-unsequenced',
       '-Wno-gnu-offsetof-extensions',
       # And because gnu-offsetof-extensions is a new warning:
       '-Wno-unknown-warning-option',
