@@ -1,10 +1,10 @@
 {
   "a.out.js": 6829,
   "a.out.js.gz": 3357,
-  "a.out.nodebug.wasm": 18950,
-  "a.out.nodebug.wasm.gz": 8760,
-  "total": 25779,
-  "total_gz": 12117,
+  "a.out.nodebug.wasm": 18979,
+  "a.out.nodebug.wasm.gz": 8784,
+  "total": 25808,
+  "total_gz": 12141,
   "sent": [
     "a (memory)",
     "b (exit)",
@@ -108,6 +108,7 @@
     "$a_inc",
     "$a_store",
     "$add",
+    "$atomic_wait32",
     "$call_callback_then_free_ctx",
     "$call_cancel_then_free_ctx",
     "$call_then_finish_task",
