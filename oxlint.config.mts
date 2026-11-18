@@ -10,9 +10,10 @@ for (const name of Object.keys(settings)) {
 }
 
 export default defineConfig({
-  plugins: ['typescript', 'oxc'],
+  plugins: ['typescript', 'oxc', 'unicorn', 'node', 'import', 'promise'],
   categories: {
     correctness: 'error',
+    perf: 'error',
   },
   env: {
     browser: true,

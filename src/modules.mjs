@@ -619,7 +619,7 @@ function exportRuntimeSymbols() {
   // depend on the file being compiled. check for them
   // and add them.
   for (const name of EXPORTED_RUNTIME_METHODS) {
-    if (/^dynCall_/.test(name)) {
+    if (name.startsWith('dynCall_')) {
       // a specific dynCall; add to the list
       runtimeElements.push(name);
     }
