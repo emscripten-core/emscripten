@@ -101,6 +101,42 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
+def process_embind_metadata(metadata):
+  if not metadata.embind_invokers:
+    return
+
+  # Parse descriptors from the `em_embind` Wasm section:
+  # - `v<kind><returns><arg_count>`: emval invokers (from val.h), mapped 1-to-1.
+  # - `<is_method><returns><is_async><arg_count>`: embind invokers (from bind.h),
+  #   expanded with cleanup modes (`n`: none, `s`: stack frame, `d`: destructor
+  #   stack) since runtime type registration isn't known at compile time.
+  imports_set = set(metadata.imports)
+  has_value_types = bool(imports_set & {
+    '_embind_register_value_object',
+    '_embind_register_value_array',
+  })
+  has_smart_ptr = '_embind_register_smart_ptr' in imports_set
+  expanded_invokers = set()
+  emval_invokers = set()
+  for desc in metadata.embind_invokers:
+    if desc.startswith('v'):
+      kind = desc[1]
+      returns = desc[2]
+      arg_count = int(desc[3:])
+      emval_invokers.add(f'{kind}{returns}{arg_count}')
+      continue
+    prefix = desc[:3]
+    is_method, _returns, is_async = prefix
+    arg_count = int(desc[3:])
+    expanded_invokers.add(f'{prefix}n{arg_count}')
+    if has_value_types and arg_count > 0 and is_async == 'f' and settings.ASYNCIFY != 1:
+      expanded_invokers.add(f'{prefix}s{arg_count}')
+    if (has_value_types and arg_count > 0) or (has_smart_ptr and (arg_count > 0 or is_method == 't')):
+      expanded_invokers.add(f'{prefix}d{arg_count}')
+  settings.EMBIND_INVOKERS = sorted(expanded_invokers)
+  settings.EMVAL_INVOKERS = sorted(emval_invokers)
+
+
 def update_settings_glue(wasm_file, metadata, base_metadata):
   maybe_disable_filesystem(metadata.imports)
 
@@ -161,43 +197,7 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
   for deps in metadata.js_deps:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(deps.split(','))
 
-  if metadata.embind_invokers:
-    # Expand each `<is_method><returns><is_async><arg_count>` descriptor from the
-    # `em_embind` Wasm section with a cleanup mode (`n`: none, `s`: Wasm stack
-    # frame for trivial value types, `d`: destructor stack for non-trivial value
-    # types or smart pointers). Because C++ function bindings cannot tell at
-    # compile time whether a user type will be registered at runtime as a
-    # `class_`, `value_object`, or `value_array`, we emit the `s` and `d`
-    # variants whenever value types or smart pointers are registered anywhere in
-    # the module; at runtime, `craftInvokerFunction` selects the exact variant
-    # for each binding's resolved argument types.
-    # Descriptors prefixed with `v` (`v<kind><returns><arg_count>`) come from
-    # `val.h` and map 1-to-1 to emval invoker factories.
-    imports_set = set(metadata.imports)
-    has_value_types = bool(imports_set & {
-      '_embind_register_value_object',
-      '_embind_register_value_array',
-    })
-    has_smart_ptr = '_embind_register_smart_ptr' in imports_set
-    expanded_invokers = set()
-    emval_invokers = set()
-    for desc in metadata.embind_invokers:
-      if desc.startswith('v'):
-        kind = desc[1]
-        returns = desc[2]
-        arg_count = int(desc[3:])
-        emval_invokers.add(f'{kind}{returns}{arg_count}')
-        continue
-      prefix = desc[:3]
-      is_method, _returns, is_async = prefix
-      arg_count = int(desc[3:])
-      expanded_invokers.add(f'{prefix}n{arg_count}')
-      if has_value_types and arg_count > 0 and is_async == 'f' and settings.ASYNCIFY != 1:
-        expanded_invokers.add(f'{prefix}s{arg_count}')
-      if (has_value_types and arg_count > 0) or (has_smart_ptr and (arg_count > 0 or is_method == 't')):
-        expanded_invokers.add(f'{prefix}d{arg_count}')
-    settings.EMBIND_INVOKERS = sorted(expanded_invokers)
-    settings.EMVAL_INVOKERS = sorted(emval_invokers)
+  process_embind_metadata(metadata)
 
 
 def apply_static_code_hooks(forwarded_json, code):

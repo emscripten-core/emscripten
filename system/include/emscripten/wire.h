@@ -691,6 +691,27 @@ auto Filter(Args&&... args) {
     );
 }
 
+// Emits a null-terminated `<Prefix...><arg_count>` descriptor string into the
+// `em_embind` section so the linker knows which JS invoker functions to
+// generate at link time. See `process_embind_metadata` in tools/emscripten.py
+// for the descriptor format.
+template<size_t ArgCount, char... Prefix>
+struct InvokerDescriptor {
+    static_assert(ArgCount < 100, "functions with 100 or more arguments are not supported");
+    __attribute__((section("em_embind"), aligned(1)))
+    static constexpr char value[] = {
+        Prefix...,
+        static_cast<char>('0' + (ArgCount / 10) % 10),
+        static_cast<char>('0' + (ArgCount % 10)),
+        '\0'
+    };
+};
+
+template<size_t ArgCount, char... Prefix>
+inline void emitInvokerDescriptor() {
+    __asm__ __volatile__("" : : "r"(&InvokerDescriptor<ArgCount, Prefix...>::value[0]));
+}
+
 } // namespace internal
 
 } // namespace emscripten
