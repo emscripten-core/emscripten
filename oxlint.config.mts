@@ -1,5 +1,5 @@
 import {defineConfig} from 'oxlint';
-import {loadDefaultSettings} from './src/utility.mjs';
+import {loadDefaultSettings} from './src/utility.ts';
 
 // Emscripten settings are made available to the compiler as global
 // variables.  Make sure oxlint knows about them.

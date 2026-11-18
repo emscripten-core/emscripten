@@ -4,12 +4,12 @@
  * SPDX-License-Identifier: MIT
  */
 
-import {cDefs} from './modules.mjs';
-import {warn, addToCompileTimeContext, onSettingsLoaded} from './utility.mjs';
-import {POINTER_SIZE, POINTER_TYPE, runIfMainThread} from './parseTools.mjs';
+import {cDefs} from './modules.ts';
+import {warn, addToCompileTimeContext, onSettingsLoaded} from './utility.ts';
+import {POINTER_SIZE, POINTER_TYPE, runIfMainThread} from './parseTools.ts';
 
 // Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
-function buildStringArray(array) {
+function buildStringArray(array: string[]): string {
   warn('use of legacy parseTools function: buildStringArray');
   if (array.length > 0) {
     return "['" + array.join("','") + "']";
@@ -20,14 +20,14 @@ function buildStringArray(array) {
 
 // Legacy function that existed solely to give error message.  These are now
 // provided by the cDefs proxy object.
-function cDefine(key) {
+function cDefine(key: string): any {
   warn('use of legacy parseTools function: cDefine');
   return cDefs[key];
 }
 
 // Replaced (at least internally) with receiveI64ParamAsI53 that does
 // bounds checking.
-function receiveI64ParamAsDouble(name) {
+function receiveI64ParamAsDouble(name: string): string {
   warn('use of legacy parseTools function: receiveI64ParamAsDouble');
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
@@ -38,7 +38,7 @@ function receiveI64ParamAsDouble(name) {
   return `var ${name} = ${name}_high * 0x100000000 + (${name}_low >>> 0);`;
 }
 
-function receiveI64ParamAsI32s(name) {
+function receiveI64ParamAsI32s(name: string): string {
   warn('use of legacy parseTools function: receiveI64ParamAsI32s');
   if (WASM_BIGINT) {
     return `var ${name}_low = Number(${name} & 0xffffffffn) | 0, ${name}_high = Number(${name} >> 32n) | 0;`;
@@ -46,7 +46,7 @@ function receiveI64ParamAsI32s(name) {
   return '';
 }
 
-function makeMalloc(source, param) {
+function makeMalloc(_source: string, param: string): string {
   warn('use of legacy parseTools function: makeMalloc');
   return `_malloc(${param})`;
 }

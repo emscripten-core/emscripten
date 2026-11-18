@@ -24,31 +24,32 @@ import {
   localFile,
   srcDir,
   timer,
-} from './utility.mjs';
-import {preprocess, processMacros} from './parseTools.mjs';
+  type MergeIntoOptions,
+} from './utility.ts';
+import {preprocess, processMacros} from './parseTools.ts';
 
 // Various namespace-like modules
 
 // List of symbols that were added from the library.
-export const librarySymbols = [];
-export const addedLibraryItems = {};
+export const librarySymbols: string[] = [];
+export const addedLibraryItems: Record<string, boolean> = {};
 // Library symbols exported via the `__export` decorator.
-export const extraExports = new Set();
+export const extraExports = new Set<string>();
 // Map of library symbols which are aliases for native symbols
 // e.g. `wasmTable` -> `__indirect_function_table`
-export const nativeAliases = {};
+export const nativeAliases: Record<string, string> = {};
 
 const systemLibdir = path.join(srcDir, 'lib');
 
 // Return type of each async variant by suffix (see expandAsyncVariants).
 const ASYNC_VARIANTS = new Map([['promise', 'p']]);
 
-function isBeneath(childPath, parentPath) {
+function isBeneath(childPath: string, parentPath: string): boolean {
   const relativePath = path.relative(parentPath, childPath);
   return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
 }
 
-function calculateLibraries() {
+function calculateLibraries(): string[] {
   // Core system libraries (always linked against)
   let libraries = [
     'libint53.js',
@@ -224,9 +225,9 @@ function calculateLibraries() {
   return libraries;
 }
 
-let tempDir;
+let tempDir: string | undefined;
 
-function getTempDir() {
+function getTempDir(): string {
   if (!tempDir) {
     const tempRoot = os.tmpdir();
     tempDir = fs.mkdtempSync(path.join(tempRoot, 'emcc-jscompiler-'));
@@ -234,9 +235,9 @@ function getTempDir() {
   return tempDir;
 }
 
-function preprocessFiles(filenames) {
+function preprocessFiles(filenames: string[]): Record<string, string> {
   timer.start('preprocessFiles');
-  const results = {};
+  const results: Record<string, string> = {};
   for (const filename of filenames) {
     debugLog(`pre-processing JS library: ${filename}`);
     pushCurrentFile(filename);
@@ -253,14 +254,19 @@ function preprocessFiles(filenames) {
   return results;
 }
 
-export const LibraryManager = {
-  library: {},
-  // The JS and JS docs of each library definition indexed my mangled name.
-  libraryDefinitions: {},
-  loaded: false,
-  libraries: [],
+export interface LibraryDefinition {
+  docs: string | null;
+  snippet: any;
+}
 
-  has(name) {
+export const LibraryManager = {
+  library: {} as Record<string, any>,
+  // The JS and JS docs of each library definition indexed my mangled name.
+  libraryDefinitions: {} as Record<string, LibraryDefinition>,
+  loaded: false,
+  libraries: [] as string[],
+
+  has(name: string): boolean {
     if (!path.isAbsolute(name)) {
       // Our libraries used to be called `library_xxx.js` rather than
       // `lib_xx.js`.  In case we have external code using this function
@@ -273,7 +279,7 @@ export const LibraryManager = {
     return this.libraries.includes(name);
   },
 
-  load() {
+  load(): void {
     timer.start('load');
 
     assert(!this.loaded);
@@ -305,7 +311,7 @@ export const LibraryManager = {
    * pointer-sized value or nothing, or a Promise of either, unless its
    * trailing `sync` argument forbids (see jsifier).
    */
-  expandAsyncVariants() {
+  expandAsyncVariants(): void {
     for (const [key, forms] of Object.entries(this.library)) {
       if (!key.endsWith('__async') || typeof forms != 'object') continue;
       const base = key.slice(0, -'__async'.length);
@@ -366,7 +372,7 @@ export const LibraryManager = {
     }
   },
 
-  isAlias(entry) {
+  isAlias(entry: unknown): entry is string {
     return (
       typeof entry === 'string' &&
       entry[0] != '=' &&
@@ -377,8 +383,8 @@ export const LibraryManager = {
   /**
    * Automatically add the target of an alias to it's dependency list.
    */
-  addAliasDependencies() {
-    const aliases = {};
+  addAliasDependencies(): void {
+    const aliases: Record<string, string> = {};
     for (const [key, value] of Object.entries(this.library)) {
       if (this.isAlias(value)) {
         aliases[key] = value;
@@ -389,11 +395,11 @@ export const LibraryManager = {
     }
   },
 
-  executeJSLibraryFile(filename, contents) {
+  executeJSLibraryFile(filename: string, contents: string): void {
     const userLibraryProxy = new Proxy(this.library, {
-      set(target, prop, value) {
-        target[prop] = value;
-        if (!isDecorator(prop)) {
+      set(target, prop: string | symbol, value) {
+        target[prop as string] = value;
+        if (typeof prop === 'string' && !isDecorator(prop)) {
           target[prop + '__user'] = true;
         }
         return true;
@@ -407,7 +413,7 @@ export const LibraryManager = {
       debugLog(`exectuing system JS library: ${filename}`);
     }
 
-    let origLibrary;
+    let origLibrary: Record<string, any> | undefined;
     // When we parse user libraries also set `__user` attribute
     // on each element so that we can distinguish them later.
     if (isUserLibrary) {
@@ -453,18 +459,18 @@ export const LibraryManager = {
 // key: checkSig, value: true
 // if it is set, __sig is checked for functions and error is reported
 // if <function name>__sig is missing
-function addToLibrary(obj, options = null) {
+function addToLibrary(obj: Record<string, any>, options: MergeIntoOptions | null = null): void {
   mergeInto(LibraryManager.library, obj, options);
 }
 
-const structs = {};
-const defines = {};
+const structs: Record<string, any> = {};
+const defines: Record<string, any> = {};
 
 /**
  * Read JSON file containing struct and macro/define information
  * that can then be used in JavaScript via macros.
  */
-function loadStructInfo(filename) {
+function loadStructInfo(filename: string): void {
   const temp = JSON.parse(readFile(filename));
   Object.assign(structs, temp.structs);
   Object.assign(defines, temp.defines);
@@ -494,36 +500,36 @@ onSettingsLoaded(() => {
 // Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
 // error messages.
 const C_STRUCTS = new Proxy(structs, {
-  get(target, prop) {
+  get(target, prop: string | symbol) {
     if (!(prop in target)) {
       throw new Error(
-        `Missing C struct ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py (then run a second time with --wasm64)`,
+        `Missing C struct ${String(prop)}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py (then run a second time with --wasm64)`,
       );
     }
-    return target[prop];
+    return target[prop as string];
   },
 });
 
 const C_DEFINES = new Proxy(defines, {
-  get(target, prop) {
+  get(target, prop: string | symbol) {
     if (!(prop in target)) {
       throw new Error(
-        `Missing C define ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py (then run a second time with --wasm64)`,
+        `Missing C define ${String(prop)}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py (then run a second time with --wasm64)`,
       );
     }
-    return target[prop];
+    return target[prop as string];
   },
 });
 
 // shorter alias for C_DEFINES
 export const cDefs = C_DEFINES;
 
-function isInternalSymbol(ident) {
+function isInternalSymbol(ident: string): boolean {
   return ident + '__internal' in LibraryManager.library;
 }
 
-function getUnusedLibrarySymbols() {
-  const missingSyms = new Set();
+function getUnusedLibrarySymbols(): Set<string> {
+  const missingSyms = new Set<string>();
   for (const [ident, value] of Object.entries(LibraryManager.library)) {
     if (typeof value === 'function' || typeof value === 'number') {
       if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
@@ -542,7 +548,7 @@ function getUnusedLibrarySymbols() {
 // being added to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
 // TODO(sbc): These errors could potentially be generated at build time via
 // some kind of acorn pass that searched for uses of these missing symbols.
-function addMissingLibraryStubs(unusedLibSymbols) {
+function addMissingLibraryStubs(unusedLibSymbols: Set<string>): string {
   let rtn = '';
   rtn += 'var missingLibrarySymbols = [\n';
   for (const sym of unusedLibSymbols) {
@@ -553,11 +559,11 @@ function addMissingLibraryStubs(unusedLibSymbols) {
   return rtn;
 }
 
-export function shouldExportLibrarySymbol(name) {
-  return EXPORT_ALL || EXPORTED_FUNCTIONS.has(name) || extraExports.has(name);
+export function shouldExportLibrarySymbol(name: string): boolean {
+  return Boolean(EXPORT_ALL) || EXPORTED_FUNCTIONS.has(name) || extraExports.has(name);
 }
 
-function exportSymbol(name) {
+function exportSymbol(name: string): string {
   // In MODULARIZE=instance mode symbols are exported by being included in
   // an export { foo, bar } list so we build up the simple list of names
   if (MODULARIZE === 'instance') {
@@ -567,11 +573,11 @@ function exportSymbol(name) {
 }
 
 // export parts of the JS runtime that the user asked for
-function exportRuntimeSymbols() {
+function exportRuntimeSymbols(): string {
   const librarySymbolSet = new Set(librarySymbols);
 
   // optionally export something.
-  function shouldExport(name) {
+  function shouldExport(name: string): boolean {
     // Native exports are not available to be exported initially.  Instead,
     // they get exported later in `assignWasmExports`.
     if (nativeAliases[name]) {
@@ -591,7 +597,7 @@ function exportRuntimeSymbols() {
   }
 
   // All possible runtime elements that can be exported
-  let runtimeElements = ['run', 'out', 'err', 'callMain', 'abort', 'wasmExports'];
+  const runtimeElements = ['run', 'out', 'err', 'callMain', 'abort', 'wasmExports'];
 
   if (SUPPORT_BIG_ENDIAN) {
     runtimeElements.push('HEAP_DATA_VIEW');
@@ -662,7 +668,7 @@ function exportRuntimeSymbols() {
       results.push(addMissingLibraryStubs(unusedLibSymbols));
     }
 
-    const unexported = [];
+    const unexported: string[] = [];
     for (const name of runtimeElements) {
       if (
         !EXPORTED_RUNTIME_METHODS.has(name) &&
@@ -689,7 +695,7 @@ function exportRuntimeSymbols() {
   return results.join('\n  ') + '\n';
 }
 
-function exportLibrarySymbols() {
+function exportLibrarySymbols(): string {
   assert(MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
@@ -701,7 +707,7 @@ function exportLibrarySymbols() {
   return results.join('\n  ') + '\n';
 }
 
-function exportJSSymbols() {
+function exportJSSymbols(): string {
   // In MODULARIZE=instance mode JS library symbols are marked with `export`
   // at the point of declaration.
   if (MODULARIZE == 'instance') return exportRuntimeSymbols();

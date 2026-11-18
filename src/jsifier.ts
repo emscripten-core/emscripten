@@ -25,7 +25,7 @@ import {
   preprocess,
   processMacros,
   receiveI64ParamAsI53,
-} from './parseTools.mjs';
+} from './parseTools.ts';
 import {
   addToCompileTimeContext,
   debugLog,
@@ -41,7 +41,7 @@ import {
   warningOccured,
   localFile,
   timer,
-} from './utility.mjs';
+} from './utility.ts';
 import {
   addedLibraryItems,
   extraExports,
@@ -49,7 +49,7 @@ import {
   librarySymbols,
   nativeAliases,
   shouldExportLibrarySymbol,
-} from './modules.mjs';
+} from './modules.ts';
 
 // Debug-only mode (`EMCC_CHECK_DEPS=1` in the environment) that performs a full
 // AST parse on JS library items and reports an error if any local binding
@@ -69,17 +69,17 @@ const regularFuncRe = /^(\s*(?:async\s+)?)function(?:\s+[$\w]+)?\s*\(/;
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not
 // the same namespace as function pointers in general).
-const proxiedFunctionTable = [];
+const proxiedFunctionTable: string[] = [];
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
-function mangleCSymbolName(f) {
+function mangleCSymbolName(f: string): string {
   if (f === '__main_argc_argv') {
     f = 'main';
   }
   return f[0] == '$' ? f.slice(1) : '_' + f;
 }
 
-function escapeJSONKey(x) {
+function escapeJSONKey(x: string): string {
   if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
   assert(!x.includes("'"), 'cannot have internal single quotes in keys: ' + x);
   return "'" + x + "'";
@@ -87,7 +87,7 @@ function escapeJSONKey(x) {
 
 // JSON.stringify will completely omit function objects.  This function is
 // similar but preserves functions.
-function stringifyWithFunctions(obj) {
+function stringifyWithFunctions(obj: any): string {
   if (typeof obj === 'function') return obj.toString();
   if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
@@ -120,7 +120,7 @@ function stringifyWithFunctions(obj) {
   return rtn + '}';
 }
 
-function isDefined(symName) {
+function isDefined(symName: string): boolean {
   if (WASM_EXPORTS.has(symName) || SIDE_MODULE_EXPORTS.has(symName)) {
     return true;
   }
@@ -137,24 +137,24 @@ function isDefined(symName) {
 
 // Cache transitive dependencies per symbol to avoid re-walking shared
 // dependency subgraphs (which would otherwise lead to quadratic behavior).
-const transitiveDepsCache = new Map();
+const transitiveDepsCache = new Map<string, string[]>();
 
-function getTransitiveDeps(symbol) {
+function getTransitiveDeps(symbol: string): string[] {
   let result = transitiveDepsCache.get(symbol);
   if (result) {
     return result;
   }
-  const transitiveDeps = new Set();
-  const seen = new Set();
+  const transitiveDeps = new Set<string>();
+  const seen = new Set<string>();
   const toVisit = [symbol];
   while (toVisit.length) {
-    const sym = toVisit.pop();
+    const sym = toVisit.pop()!;
     if (!seen.has(sym)) {
       const cached = transitiveDepsCache.get(sym);
-      let deps = cached;
+      let deps: any[] | undefined = cached;
       if (!deps) {
         deps = LibraryManager.library[sym + '__deps'] ?? [];
-        deps = deps.filter((d) => typeof d === 'string');
+        deps = deps!.filter((d) => typeof d === 'string');
       }
       for (const dep of deps) {
         if (!transitiveDeps.has(dep)) {
@@ -173,12 +173,12 @@ function getTransitiveDeps(symbol) {
   return result;
 }
 
-function shouldPreprocess(fileName) {
+function shouldPreprocess(fileName: string): boolean {
   var content = readFile(fileName).trim();
   return content.startsWith('#preprocess\n') || content.startsWith('#preprocess\r\n');
 }
 
-function getIncludeFile(fileName, alwaysPreprocess, shortName) {
+function getIncludeFile(fileName: string, alwaysPreprocess?: boolean, shortName?: string): string {
   shortName ??= fileName;
   let result = `// include: ${shortName}\n`;
   const doPreprocess = alwaysPreprocess || shouldPreprocess(fileName);
@@ -191,11 +191,11 @@ function getIncludeFile(fileName, alwaysPreprocess, shortName) {
   return result;
 }
 
-function getSystemIncludeFile(fileName) {
+function getSystemIncludeFile(fileName: string): string {
   return getIncludeFile(localFile(fileName), /*alwaysPreprocess=*/ true, /*shortName=*/ fileName);
 }
 
-function preJS() {
+function preJS(): string {
   let result = '';
   for (const fileName of PRE_JS_FILES) {
     result += getIncludeFile(fileName);
@@ -203,8 +203,10 @@ function preJS() {
   return result;
 }
 
+type AcornToken = acorn.Token & {value?: any};
+
 // Check if tokens[i] is the name of an object/class method definition `foo(...) {`
-function isMethodDef(tokens, i) {
+function isMethodDef(tokens: AcornToken[], i: number): boolean {
   if (tokens[i + 1]?.type.label !== '(') {
     return false;
   }
@@ -250,8 +252,8 @@ const implicitSnippetDeps = new Set([
   'HEAPU64',
 ]);
 
-function findLibrarySymbol(name, isUserSnippet = false) {
-  let sym;
+function findLibrarySymbol(name: string, isUserSnippet = false): string | undefined {
+  let sym: string | undefined;
   if ('$' + name in LibraryManager.library) {
     sym = '$' + name;
   } else if (!isUserSnippet && name.startsWith('_') && name.slice(1) in LibraryManager.library) {
@@ -268,19 +270,19 @@ function findLibrarySymbol(name, isUserSnippet = false) {
 // Because this uses a flat token scan rather than full AST/scope analysis (for
 // speed and to handle partial JS fragments in `--pre-js`/`--post-js`), it is
 // conservative and can produce false positives if local variables or parameters
-// shadow a library symbol name.  (We use a full AST walk in EMCC_CHECK_DEPS to
+// shadows a library symbol name.  (We use a full AST walk in EMCC_CHECK_DEPS to
 // detect such shadowing in system libraries).
-function calcImplicitDeps(snippet, isUserSnippet = false) {
-  const found = new Set();
-  const typeofSyms = new Set();
-  const tokens = Array.from(acorn.tokenizer(snippet, {ecmaVersion: 2022}));
+function calcImplicitDeps(snippet: string, isUserSnippet = false): Set<string> {
+  const found = new Set<string>();
+  const typeofSyms = new Set<string>();
+  const tokens = Array.from(acorn.tokenizer(snippet, {ecmaVersion: 2022})) as AcornToken[];
 
   for (let i = 0; i < tokens.length; i++) {
     const tok = tokens[i];
     if (tok.type.label !== 'name') {
       continue;
     }
-    const name = tok.value;
+    const name: string = tok.value;
     const prevToken = tokens[i - 1];
     const nextToken = tokens[i + 1];
 
@@ -349,8 +351,8 @@ function calcImplicitDeps(snippet, isUserSnippet = false) {
   return found;
 }
 
-function checkShadowing(symbol, mangled, contentText) {
-  function checkBoundName(name) {
+function checkShadowing(symbol: string, mangled: string, contentText: string): void {
+  function checkBoundName(name: string): void {
     if (name === mangled) return;
     const shadowed = findLibrarySymbol(name);
     if (shadowed) {
@@ -358,7 +360,7 @@ function checkShadowing(symbol, mangled, contentText) {
     }
   }
 
-  function walkPattern(node) {
+  function walkPattern(node: any): void {
     if (!node) return;
     switch (node.type) {
       case 'Identifier':
@@ -371,7 +373,7 @@ function checkShadowing(symbol, mangled, contentText) {
         node.elements.forEach(walkPattern);
         break;
       case 'ObjectPattern':
-        node.properties.forEach((p) => walkPattern(p.value || p.argument));
+        node.properties.forEach((p: any) => walkPattern(p.value || p.argument));
         break;
       case 'RestElement':
         walkPattern(node.argument);
@@ -379,7 +381,7 @@ function checkShadowing(symbol, mangled, contentText) {
     }
   }
 
-  function walk(node) {
+  function walk(node: any): void {
     switch (node.type) {
       case 'VariableDeclarator':
         walkPattern(node.id);
@@ -398,7 +400,7 @@ function checkShadowing(symbol, mangled, contentText) {
         walkPattern(node.param);
         break;
     }
-    for (const child of Object.values(node)) {
+    for (const child of Object.values(node) as any[]) {
       if (typeof child?.type === 'string') {
         walk(child);
       } else if (Array.isArray(child)) {
@@ -412,8 +414,8 @@ function checkShadowing(symbol, mangled, contentText) {
   walk(acorn.parse(contentText, {ecmaVersion: 2022}));
 }
 
-function sigToArgs(sig) {
-  const args = [];
+function sigToArgs(sig: string): string {
+  const args: string[] = [];
   for (var i = 1; i < sig.length; i++) {
     args.push(`a${i}`);
   }
@@ -421,15 +423,15 @@ function sigToArgs(sig) {
 }
 
 // The async variant of an 'auto' function's body, where it hands the result
-// over rather than returning it (see expandAsyncVariants in modules.mjs).
-function asyncVariantOf(symbol) {
+// over rather than returning it (see expandAsyncVariants in modules.ts).
+function asyncVariantOf(symbol: string): string | undefined {
   return LibraryManager.library[symbol + '__async_variant'];
 }
 
 // Whether the body returns a value or a Promise as it can, told by a `sync`
 // argument: an 'auto' function, one with async variants (whether or not it
 // suspends itself), or such a variant.
-function isAutoBody(symbol) {
+function isAutoBody(symbol: string): boolean {
   const lib = LibraryManager.library;
   return (
     lib[symbol + '__async'] == 'auto' ||
@@ -438,7 +440,13 @@ function isAutoBody(symbol) {
   );
 }
 
-function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
+function handleI64Signatures(
+  symbol: string,
+  snippet: string,
+  sig: string,
+  i53abi: boolean,
+  isAsyncFunction: boolean | string,
+): string {
   // Handle i64 parameters and return values.
   //
   // When WASM_BIGINT is enabled these arrive as BigInt values which we
@@ -455,7 +463,7 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       .join(' ')
       .split(',')
       .map((name) => name.trim());
-    const newArgs = [];
+    const newArgs: string[] = [];
     let argConversions = '';
     if (sig.length > argNames.length + 1) {
       error(
@@ -504,7 +512,7 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       // pthread's behalf, which awaits it), which must not be cast but
       // resolve to the cast value.
       const maybePromise = !isAsyncFunction && isAutoBody(symbol);
-      const convert = (v) =>
+      const convert = (v: string) =>
         maybePromise
           ? `(${v} instanceof Promise ? ${v}.then((v) => ${makeReturn64('v')}) : ${makeReturn64(v)})`
           : makeReturn64(await_ + v);
@@ -551,7 +559,13 @@ ${body};
 // That is never the case for a function suspending under ASYNCIFY/JSPI or
 // whose caller receives a promise of the result, nor on behalf of a
 // sync-proxied pthread caller, which awaits it; otherwise it is.
-function handleSyncArg(symbol, snippet, sig, proxyingMode, canWait) {
+function handleSyncArg(
+  symbol: string,
+  snippet: string,
+  sig: string | undefined,
+  proxyingMode: string | undefined,
+  canWait: boolean | string | undefined,
+): string {
   const sync = canWait
     ? 'false'
     : PTHREADS && proxyingMode == 'sync'
@@ -578,7 +592,7 @@ function(${outer}) {
   });
 }
 
-function handleAsyncFunction(snippet, sig, proxied) {
+function handleAsyncFunction(snippet: string, sig: string | undefined, proxied: boolean): string {
   const return64 = sig && ((MEMORY64 && sig.startsWith('p')) || sig.startsWith('j'));
   let handleAsync = 'Asyncify.handleAsync(innerFunc)';
   if (return64 && ASYNCIFY == 1) {
@@ -611,7 +625,7 @@ const PROXY_SYNC_ASYNC = 2;
 
 // Report diagnostics (when not weak/external) and emit a runtime stub for a
 // symbol that is not defined in any JS library.
-function createUndefinedStub(symbol, dependent) {
+function createUndefinedStub(symbol: string, dependent: string): string | undefined {
   const mangled = mangleCSymbolName(symbol);
   const isWeakImport = WEAK_IMPORTS.has(symbol);
   if (!isDefined(symbol) && !isWeakImport) {
@@ -669,22 +683,23 @@ function createUndefinedStub(symbol, dependent) {
   return stubText;
 }
 
-export async function runJSify(outputFile, symbolsOnly) {
-  const libraryItems = [];
-  const libraryAliases = [];
-  const asyncFuncs = [];
-  const postSets = [];
+export async function runJSify(outputFile?: string, symbolsOnly?: boolean): Promise<void> {
+  const libraryItems: (string | undefined)[] = [];
+  const libraryAliases: string[] = [];
+  const asyncFuncs: string[] = [];
+  const postSets: string[] = [];
 
   LibraryManager.load();
 
-  let outputHandle = process.stdout;
+  let outputHandle: {write(str: string): Promise<any> | boolean; close?(): Promise<void>} =
+    process.stdout;
   if (outputFile) {
     outputHandle = await fs.open(outputFile, 'w');
   }
 
-  async function writeOutput(str) {
+  async function writeOutput(str: string): Promise<void> {
     // Unmangle previously mangled `import.meta` references.
-    // See also: `mangleUnsupportedSyntax` in parseTools.mjs.
+    // See also: `mangleUnsupportedSyntax` in parseTools.ts.
     if (EXPORT_ES6) {
       str = str.replaceAll('EMSCRIPTEN$IMPORT$META', 'import.meta');
     }
@@ -725,7 +740,7 @@ export async function runJSify(outputFile, symbolsOnly) {
     }
   }
 
-  function processLibraryFunction(snippet, symbol, mangled) {
+  function processLibraryFunction(snippet: any, symbol: string, mangled: string): string {
     // It is possible that when printing the function as a string on Windows,
     // the js interpreter we are in returns the string with Windows line endings
     // \r\n. This is undesirable, since line endings are managed in the form \n
@@ -742,7 +757,7 @@ export async function runJSify(outputFile, symbolsOnly) {
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
       snippet = modifyJSFunction(snippet, (args, body, _async, oneliner) => {
-        var run_func;
+        var run_func: string;
         if (oneliner) {
           run_func = `var ret = ${body}`;
         } else {
@@ -758,12 +773,13 @@ function(${args}) {
       });
     }
 
-    const sig = LibraryManager.library[symbol + '__sig'];
-    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+    const sig: string | undefined = LibraryManager.library[symbol + '__sig'];
+    const proxyingMode: string | undefined = LibraryManager.library[symbol + '__proxy'];
     const asyncVariant = asyncVariantOf(symbol);
-    const isAsyncFunction = ASYNCIFY && !asyncVariant && LibraryManager.library[symbol + '__async'];
+    const isAsyncFunction =
+      Boolean(ASYNCIFY) && !asyncVariant && LibraryManager.library[symbol + '__async'];
 
-    const i53abi = LibraryManager.library[symbol + '__i53abi'];
+    const i53abi: boolean = LibraryManager.library[symbol + '__i53abi'];
     const needsI64Handling =
       sig &&
       ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')));
@@ -771,7 +787,7 @@ function(${args}) {
       if (!sig) {
         error(`JS library error: '__i53abi' decorator requires '__sig' decorator: '${symbol}'`);
       }
-      if (!sig.includes('j')) {
+      if (!sig?.includes('j')) {
         error(
           `JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`,
         );
@@ -874,7 +890,7 @@ function(${args}) {
     return snippet;
   }
 
-  function symbolHandler(symbol) {
+  function symbolHandler(symbol: string): void {
     // In LLVM, exceptions generate a set of functions of form
     // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where
     // the number specifies the number of arguments.  All variants are added in
@@ -892,7 +908,7 @@ function(${args}) {
       return;
     }
 
-    function addFromLibrary(symbol, dependent) {
+    function addFromLibrary(symbol: string, dependent: string): string | undefined {
       // don't process any special identifiers. These are looked up when
       // processing the base name of the identifier.
       if (isDecorator(symbol)) {
@@ -917,9 +933,9 @@ function(${args}) {
         return createUndefinedStub(symbol, dependent);
       }
 
-      const deps = (LibraryManager.library[symbol + '__deps'] ??= []);
+      const deps: any[] = (LibraryManager.library[symbol + '__deps'] ??= []);
       const explicitDeps = new Set(deps);
-      let sig = LibraryManager.library[symbol + '__sig'];
+      let sig: string | undefined = LibraryManager.library[symbol + '__sig'];
       if (!WASM_BIGINT && sig && sig[0] == 'j') {
         // Without WASM_BIGINT functions that return i64 depend on setTempRet0
         // to return the upper 32-bits of the result.
@@ -934,7 +950,7 @@ function(${args}) {
 
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
 
-      function addImplicitDeps(snippet) {
+      function addImplicitDeps(snippet: string): void {
         for (const dep of calcImplicitDeps(snippet)) {
           if (dep === symbol) continue;
           if (explicitDeps.has(dep)) {
@@ -1008,7 +1024,7 @@ function(${args}) {
         }
       }
 
-      let aliasTarget;
+      let aliasTarget: string | undefined;
       if (!isConst && LibraryManager.isAlias(snippet)) {
         // Redirection for aliases. We include the parent, and at runtime
         // make ourselves equal to it.  This avoid having duplicate
@@ -1070,7 +1086,7 @@ function(${args}) {
       }
 
       debugLog(`adding ${symbol} (referenced by ${dependent})`);
-      function addDependency(dep) {
+      function addDependency(dep: string | (() => string | undefined)): string | undefined {
         // dependencies can be JS functions, which we just run
         if (typeof dep === 'function') {
           return dep();
@@ -1085,7 +1101,7 @@ function(${args}) {
         }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`);
       }
-      let contentText;
+      let contentText: string;
       if (isFunction) {
         if (isConst) {
           error(`JS library error: '__const' decorator cannot be used with functions: '${symbol}'`);
@@ -1193,7 +1209,7 @@ function(${args}) {
 
       // Add the docs if they exist and if we are actually emitting a declaration.
       // See the TODO about wasmTable above.
-      let docs = LibraryManager.library[symbol + '__docs'];
+      const docs: string | undefined = LibraryManager.library[symbol + '__docs'];
       const commentText = contentText && docs ? docs : '';
 
       if (EMIT_TSD) {
@@ -1203,13 +1219,13 @@ function(${args}) {
         };
       }
 
-      const joinChunks = (chunks) => chunks.filter(Boolean).join('\n');
+      const joinChunks = (chunks: (string | undefined)[]) => chunks.filter(Boolean).join('\n');
 
       // Sort string dependencies alphabetically for deterministic output order
       // regardless of how __deps are declared or discovered. Keep function
       // callbacks after string dependencies in their original order.
-      const stringDeps = deps.filter((d) => typeof d !== 'function').sort();
-      const funcDeps = deps.filter((d) => typeof d === 'function');
+      const stringDeps = deps.filter((d): d is string => typeof d !== 'function').sort();
+      const funcDeps = deps.filter((d): d is () => string | undefined => typeof d === 'function');
       const depsText = joinChunks([...stringDeps, ...funcDeps].map(addDependency));
 
       // Defer direct JS value aliases (`var _alias = _target;`) to `libraryAliases`
@@ -1228,15 +1244,15 @@ function(${args}) {
     libraryItems.push(JS);
   }
 
-  function includeSystemFile(fileName) {
+  function includeSystemFile(fileName: string): void {
     writeOutput(getSystemIncludeFile(fileName));
   }
 
-  function includeFile(fileName) {
+  function includeFile(fileName: string): void {
     writeOutput(getIncludeFile(fileName));
   }
 
-  function finalCombiner() {
+  function finalCombiner(): void {
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
     includeSystemFile(shellFile);
 
@@ -1313,7 +1329,7 @@ var proxiedFunctionTable = [
   timer.stop('symbolHandler');
 
   if (symbolsOnly) {
-    const symbolDeps = {};
+    const symbolDeps: Record<string, string[]> = {};
     for (const sym of Object.keys(LibraryManager.library)) {
       if (!isDecorator(sym) && !LibraryManager.library[sym + '__const']) {
         const transitiveDeps = getTransitiveDeps(sym);
@@ -1339,7 +1355,7 @@ var proxiedFunctionTable = [
     throw Error('Aborting compilation due to previous errors');
   }
 
-  if (outputFile) await outputHandle.close();
+  if (outputFile && outputHandle.close) await outputHandle.close();
 }
 
 addToCompileTimeContext({

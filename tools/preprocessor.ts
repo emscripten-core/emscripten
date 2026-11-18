@@ -13,22 +13,23 @@
 //    input file     This is the file that will be processed by the preprocessor
 
 import assert from 'node:assert';
+import * as fs from 'node:fs';
 import {parseArgs} from 'node:util';
 
-import {readFile, loadDefaultSettings, applySettings} from '../src/utility.mjs';
-import {preprocess, processMacros} from '../src/parseTools.mjs';
+import {readFile, loadDefaultSettings, applySettings} from '../src/utility.ts';
+import {preprocess, processMacros} from '../src/parseTools.ts';
 
 const options = {
   'expand-macros': {type: 'boolean'},
   help: {type: 'boolean', short: 'h'},
-};
+} as const;
 const {values, positionals} = parseArgs({options, allowPositionals: true});
 
 if (values.help) {
   console.log(`\
 Run JS preprocessor / macro processor on an input file
 
-Usage: preprocessor.mjs <settings.json> <input-file> [--expand-macros]`);
+Usage: preprocessor.ts <settings.json> <input-file> [--expand-macros]`);
   process.exit(0);
 }
 
@@ -37,7 +38,7 @@ loadDefaultSettings();
 assert(positionals.length == 2, 'Script requires 2 arguments');
 
 // Load settings from JSON passed on the command line
-let settingsFile = positionals[0];
+let settingsFile: fs.PathOrFileDescriptor = positionals[0];
 assert(settingsFile, 'settings file not specified');
 if (settingsFile == '-') {
   // Read settings json from stdin (FD 0)

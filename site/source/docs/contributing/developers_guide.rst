@@ -18,14 +18,14 @@ Setting up
 
 For contributing to core Emscripten code, such as ``emcc.py``, you don't need to
 build any binaries as ``emcc.py`` is in Python, and the core JS generation is
-in JavaScript. You do still need binaries for LLVM and Binaryen, which you can
+in TypeScript. You do still need binaries for LLVM and Binaryen, which you can
 get using the emsdk.
 
 After checking out the Emscripten repository, run ``./bootstrap.py`` (or ``python
 bootstrap.py`` on Windows) before invoking ``emcc`` or running tests.  This
-installs npm dependencies, bundles the link-time JavaScript tools into
-``dist/``, creates compiler entry points, and initializes test submodules (see
-:ref:`installing-from-source` for details).
+installs npm dependencies, transpiles and bundles the TypeScript tools into
+``dist/``, creates compiler entry points, and initializes test submodules
+(see :ref:`installing-from-source` for details).
 
 If you want to contribute back to Emscripten, it is recommended that you install
 the precise version of the emsdk binaries that are used by Emscripten CI when
@@ -101,7 +101,7 @@ The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that
 - **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/main/tools/emscripten.py>`_
   which performs the final transformation to Wasm (including invoking
   **wasm-emscripten-finalize** from Binaryen) and calls the JS compiler
-  (see ``tools/compiler.mjs`` and related files) which emits the JS.
+  (see ``tools/compiler.ts`` and related files) which emits the JS.
 - If optimizing Wasm, **emcc** will then call **wasm-opt**, run meta-dce, and
   other useful things. It will also run JS optimizations on the JS that is
   emitted alongside the Wasm.

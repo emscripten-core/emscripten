@@ -8,10 +8,11 @@
 // JavaScript compiler, main entry point
 
 import assert from 'node:assert';
+import * as fs from 'node:fs';
 import {parseArgs} from 'node:util';
-import {applySettings, loadDefaultSettings, printErr, readFile, timer} from '../src/utility.mjs';
-import '../src/parseTools_legacy.mjs';
-import {runJSify} from '../src/jsifier.mjs';
+import {applySettings, loadDefaultSettings, printErr, readFile, timer} from '../src/utility.ts';
+import '../src/parseTools_legacy.ts';
+import {runJSify} from '../src/jsifier.ts';
 
 timer.start('startup');
 
@@ -21,7 +22,7 @@ const options = {
   help: {type: 'boolean', short: 'h'},
   'symbols-only': {type: 'boolean'},
   output: {type: 'string', short: 'o'},
-};
+} as const;
 const {values, positionals} = parseArgs({options, allowPositionals: true});
 
 if (values.help) {
@@ -30,14 +31,14 @@ Main entry point for JS compiler
 
 If no -o file is specified then the generated code is written to stdout.
 
-Usage: compiler.mjs <settings.json> [-o out.js] [--symbols-only]`);
+Usage: compiler.ts <settings.json> [-o out.js] [--symbols-only]`);
   process.exit(0);
 }
 
 timer.start('read settings');
 
 // Load settings from JSON passed on the command line
-let settingsFile = positionals[0];
+let settingsFile: fs.PathOrFileDescriptor = positionals[0];
 assert(settingsFile, 'settings file not specified');
 if (settingsFile == '-') {
   // Read settings json from stdin (FD 0)
@@ -54,7 +55,7 @@ export const symbolsOnly = values['symbols-only'];
 // back when ran the JS compiler with overridden CWD.
 process.env['EMCC_BUILD_DIR'] = process.cwd();
 
-// In case compiler.mjs is run directly (as in gen_sig_info)
+// In case compiler.ts is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.
 if (!ALL_INCOMING_MODULE_JS_API.size) {
   ALL_INCOMING_MODULE_JS_API = new Set([...INCOMING_MODULE_JS_API, ...EXTRA_INCOMING_JS_API]);
@@ -79,7 +80,7 @@ try {
   timer.start('runJSify');
   await runJSify(values.output, symbolsOnly);
   timer.stop('runJSify');
-} catch (err) {
+} catch (err: any) {
   if (err.toString().includes('Aborting compilation due to previous errors')) {
     // Compiler failed on user error, don't print the stacktrace in this case.
     printErr(err);

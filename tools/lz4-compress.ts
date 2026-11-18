@@ -7,15 +7,15 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-function print(x) {
+function print(x: string): void {
   process.stdout.write(x + '\n');
 }
 
-function printErr(x) {
+function printErr(x: string): void {
   process.stderr.write(x + '\n');
 }
 
-globalThis.assert = (x, message) => {
+(globalThis as any).assert = (x: unknown, message?: string) => {
   if (!x) throw new Error(message);
 };
 
@@ -25,7 +25,7 @@ console.log = printErr;
 
 const MiniLZ4 = await import('../third_party/mini-lz4.js');
 
-function readBinary(filename) {
+function readBinary(filename: string): Buffer {
   filename = path.normalize(filename);
   return fs.readFileSync(filename);
 }
@@ -37,7 +37,7 @@ const output = arguments_[1];
 const data = new Uint8Array(readBinary(input)).buffer;
 const start = Date.now();
 const compressedData = MiniLZ4.compressPackage(data);
-fs.writeFileSync(output, Buffer.from(compressedData['data']));
+fs.writeFileSync(output, Buffer.from(compressedData['data']!));
 compressedData['data'] = null;
 printErr('compressed in ' + (Date.now() - start) + ' ms');
 print(JSON.stringify(compressedData));

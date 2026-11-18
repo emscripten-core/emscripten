@@ -8,9 +8,15 @@ import * as acorn from 'acorn';
 import {minify_sync} from 'terser';
 import {parseArgs} from 'node:util';
 
+type AstNode = Record<string, any>;
+
 // Starting at the AST node 'root', calls the given callback function 'func' on all children and grandchildren of 'root'
 // that are of any of the type contained in array 'types'.
-function visitNodes(root, types, func) {
+function visitNodes(
+  root: AstNode,
+  types: string[],
+  func: (node: AstNode) => boolean | void,
+): boolean | void {
   // Visit the given node if it is of desired type.
   if (types.includes(root.type)) {
     const continueTraversal = func(root);
@@ -33,7 +39,7 @@ function visitNodes(root, types, func) {
   }
 }
 
-function optPassSimplifyModularizeFunction(ast) {
+function optPassSimplifyModularizeFunction(ast: AstNode): void {
   visitNodes(ast, ['FunctionExpression'], (node) => {
     if (node.params.length == 1 && node.params[0].name == 'Module') {
       const body = node.body.body;
@@ -63,7 +69,7 @@ function optPassSimplifyModularizeFunction(ast) {
 
 // Finds redundant operator new statements that are not assigned anywhere.
 // (we aren't interested in side effects of the calls if no assignment)
-function optPassRemoveRedundantOperatorNews(ast) {
+function optPassRemoveRedundantOperatorNews(ast: AstNode): void {
   // Remove standalone operator new statements that don't have any meaning.
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
     const nodeArray = node.body;
@@ -102,7 +108,7 @@ function optPassRemoveRedundantOperatorNews(ast) {
 
 // Merges empty VariableDeclarators to previous VariableDeclarations.
 // 'var a,b; ...; var c,d;'' -> 'var a,b,c,d; ...;'
-function optPassMergeEmptyVarDeclarators(ast) {
+function optPassMergeEmptyVarDeclarators(ast: AstNode): boolean {
   let progress = false;
 
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
@@ -134,7 +140,7 @@ function optPassMergeEmptyVarDeclarators(ast) {
 
 // Finds multiple consecutive VariableDeclaration nodes, and fuses them together.
 // 'var a = 1; var b = 2;' -> 'var a = 1, b = 2;'
-function optPassMergeVarDeclarations(ast) {
+function optPassMergeVarDeclarations(ast: AstNode): boolean {
   let progress = false;
 
   visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
@@ -161,9 +167,12 @@ function optPassMergeVarDeclarations(ast) {
 }
 
 // Merges "var a,b;a = ...;" to "var b, a = ...;"
-function optPassMergeVarInitializationAssignments(ast) {
+function optPassMergeVarInitializationAssignments(ast: AstNode): boolean {
   // Tests if the assignment expression at nodeArray[i] is the first assignment to the given variable, and it was undefined before that.
-  function isUndefinedBeforeThisAssignment(nodeArray, i) {
+  function isUndefinedBeforeThisAssignment(
+    nodeArray: AstNode[],
+    i: number,
+  ): [AstNode, number] | [null, null] {
     const name = nodeArray[i].expression.left.name;
     for (let j = i - 1; j >= 0; --j) {
       const n = nodeArray[j];
@@ -209,8 +218,8 @@ function optPassMergeVarInitializationAssignments(ast) {
   return progress;
 }
 
-function runOnJsText(js, pretty = false) {
-  const ast = acorn.parse(js, {ecmaVersion: 2021});
+function runOnJsText(js: string, pretty = false): string {
+  const ast = acorn.parse(js, {ecmaVersion: 2021}) as AstNode;
 
   optPassRemoveRedundantOperatorNews(ast);
 
@@ -223,8 +232,8 @@ function runOnJsText(js, pretty = false) {
 
   optPassSimplifyModularizeFunction(ast);
 
-  const {code} = minify_sync(ast, {
-    parse: {spidermonkey: true},
+  const {code} = minify_sync(ast as any, {
+    parse: {spidermonkey: true} as any,
     compress: false,
     mangle: false,
     format: {
@@ -234,10 +243,10 @@ function runOnJsText(js, pretty = false) {
     },
   });
 
-  return code;
+  return code!;
 }
 
-function runOnFile(input, pretty = false, output = null) {
+function runOnFile(input: string, pretty = false, output: string | null = null): void {
   let js = fs.readFileSync(input).toString();
   js = runOnJsText(js, pretty);
   if (output) fs.writeFileSync(output, js);
@@ -246,7 +255,7 @@ function runOnFile(input, pretty = false, output = null) {
 
 let numTestFailures = 0;
 
-function test(input, expected) {
+function test(input: string, expected: string): void {
   const observed = runOnJsText(input);
   if (observed != expected) {
     console.error(`ERROR: Input: ${input}\nobserved: ${observed}\nexpected: ${expected}\n`);
@@ -256,7 +265,7 @@ function test(input, expected) {
   }
 }
 
-function runTests() {
+function runTests(): void {
   // optPassSimplifyModularizeFunction:
   test(
     'var Module = function(Module) {Module = Module || {};var f = Module;}',

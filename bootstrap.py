@@ -107,9 +107,14 @@ actions = [
      'package-lock.json',
      'rolldown.config.mjs',
      'third_party/mini-lz4.js',
-     *glob.glob('src/*.mjs', root_dir=__rootdir__),
-     *glob.glob('tools/*.mjs', root_dir=__rootdir__),
+     *glob.glob('src/*.ts', root_dir=__rootdir__),
+     *glob.glob('tools/*.ts', root_dir=__rootdir__),
    ]), ['npm', 'run', 'build']),
+  ('gen settings.d.ts', [
+     'src/settings.js',
+     'src/settings_internal.js',
+     'tools/maint/gen_settings_types.mjs',
+   ], ['npm', 'run', 'gen-types']),
   ('create entry points', [
      'tools/maint/create_entry_points.py',
      'tools/pylauncher/pylauncher.exe',
