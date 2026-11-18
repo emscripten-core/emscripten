@@ -966,13 +966,15 @@ function(${args}) {
           } else if (typeof snippet === 'function') {
             snippet = snippet.toString();
           } else if (typeof snippet === 'string') {
-            if (!isConst || snippet.startsWith('=')) {
-              snippet = snippet.replace(/^[=;]/, '');
+            if (isConst && !snippet.startsWith('=')) {
+              // Plain string `__const` values represent string literals, so we
+              // do not scan their contents as JS code for implicit deps.
+              snippet = null;
             } else {
-              snippet = '';
+              snippet = snippet.replace(/^[=;]/, '');
             }
           }
-          if (typeof snippet === 'string' && snippet) {
+          if (typeof snippet === 'string') {
             addImplicitDeps(snippet);
           }
         }
@@ -1048,6 +1050,8 @@ function(${args}) {
           // Support functions that are already "stringified"
           isFunction = true;
         } else if (!isConst || snippet.startsWith('=')) {
+          // Plain string `__const` values represent string literals, so we
+          // do not scan their contents as JS code for implicit deps.
           addImplicitDeps(snippet.replace(/^[=;]/, ''));
         }
       }
