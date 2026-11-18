@@ -53,6 +53,10 @@ const emscriptenMemoryProfiler = {
     // end: <int>
 
   sbrkSources: [],
+
+  // The current end of the dynamic memory area (i.e. the sbrk() limit), as last
+  // reported to onSbrkGrow().  Undefined until sbrk() gets called.
+  heapEnd: undefined,
     // stack: <string>,
     // begin: <int>,
     // end: <int>
@@ -120,6 +124,7 @@ const emscriptenMemoryProfiler = {
 
   onSbrkGrow(oldLimit, newLimit, loc) {
     const self = emscriptenMemoryProfiler;
+    self.heapEnd = newLimit;
     // On first sbrk(), account for the initial size.
     if (self.sbrkSources.length == 0) {
       self.sbrkSources.push({
@@ -512,7 +517,11 @@ const emscriptenMemoryProfiler = {
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(stackBase - stackCurrent) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(stackBase - self.stackTopWatermark);
 
     const heap_base = ___heap_base;
-    const heap_end = _sbrk({{{ to64('0') }}});
+    // Use the value that sbrk() last reported to onSbrkGrow(), rather than
+    // calling sbrk() here: the UI can still get updated after the runtime has
+    // exited, at which point we can no longer call into the Wasm module.  If
+    // sbrk() has not been called yet, the dynamic memory area is still empty.
+    const heap_end = self.heapEnd ?? heap_base;
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(heap_end - heap_base);
     html += ". start: " + toHex(heap_base, width);
     html += ". end: " + toHex(heap_end, width) + ".";

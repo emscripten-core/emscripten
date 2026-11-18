@@ -2477,6 +2477,18 @@ void *getBindBuffer() {
   def test_cpuprofiler_memoryprofiler(self, opts):
     self.btest_exit('hello_world_gles.c', cflags=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'] + opts)
 
+  def test_memoryprofiler_heap_end(self):
+    # The memory profiler tracks the end of the dynamic memory area via
+    # onSbrkGrow() rather than by calling sbrk(), since its UI keeps updating on
+    # a timer after the runtime has exited, at which point calling into the Wasm
+    # module would abort the page.
+    self.btest_exit('test_memoryprofiler_heap_end.c', cflags=['--memoryprofiler'])
+
+  def test_memoryprofiler_heap_end_pthread(self):
+    # Same as above, but with the dynamic memory area being grown by a pthread,
+    # in which case onSbrkGrow() gets forwarded to the main thread.
+    self.btest_exit('test_memoryprofiler_heap_end_pthread.c', cflags=['--memoryprofiler', '-pthread', '-sPTHREAD_POOL_SIZE=1'])
+
   def test_uuid(self):
     self.btest_exit('test_uuid.c', cflags=['-luuid'])
 

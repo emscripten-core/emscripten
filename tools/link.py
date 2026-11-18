@@ -1314,9 +1314,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.ALLOW_TABLE_GROWTH = 1
 
   # various settings require sbrk() access
-  if settings.EMSCRIPTEN_TRACING or \
-     settings.SAFE_HEAP or \
-     settings.MEMORYPROFILER:
+  if settings.EMSCRIPTEN_TRACING or settings.SAFE_HEAP:
     settings.REQUIRED_EXPORTS += ['sbrk']
 
   if settings.MEMORYPROFILER:
