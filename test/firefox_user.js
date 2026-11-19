@@ -95,3 +95,5 @@ user_pref("javascript.options.wasm_memory64", true);
 user_pref("media.autoplay.default", 0);
 // Enable JSPI support
 user_pref("javascript.options.wasm_js_promise_integration", true);
+// Disable Window Occlusion tracking so that rAF() and setTimeout() and page loads proceed even if page is hidden.
+user_pref("widget.windows.window_occlusion_tracking.enabled", false);
