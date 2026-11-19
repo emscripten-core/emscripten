@@ -121,9 +121,9 @@ export function mergeInto(obj, other, options = null) {
 
   if (!options || !options.allowMissing) {
     for (const ident of Object.keys(other)) {
-      if (isDecorator(ident)) {
-        const index = ident.lastIndexOf('__');
-        const basename = ident.slice(0, index);
+      const parts = splitDecorator(ident);
+      if (parts) {
+        const [basename] = parts;
         if (!(basename in obj) && !(basename in other)) {
           error(`Missing library element '${basename}' for library config '${ident}'`);
         }
@@ -132,8 +132,10 @@ export function mergeInto(obj, other, options = null) {
   }
 
   for (const key of Object.keys(other)) {
-    if (isDecorator(key)) {
-      if (key.endsWith('__sig')) {
+    const parts = splitDecorator(key);
+    if (parts) {
+      const [decorated, decoratorName] = parts;
+      if (decoratorName === '__sig') {
         if (Object.hasOwn(obj, key)) {
           const oldsig = obj[key];
           const newsig = other[key];
@@ -145,9 +147,6 @@ export function mergeInto(obj, other, options = null) {
         }
       }
 
-      const index = key.lastIndexOf('__');
-      const decorated = key.slice(0, index);
-      const decoratorName = key.slice(index);
       const type = typeof other[key];
 
       if (decoratorName == '__async') {
@@ -214,7 +213,7 @@ export function isJsOnlySymbol(symbol) {
 export const decoratorSuffixes = [
   '__sig',
   '__proxy',
-  '__asm',
+  '__asm', // Deprecated
   '__deps',
   '__postset',
   '__docs',
@@ -227,8 +226,6 @@ export const decoratorSuffixes = [
   '__export',
   '__force',
   '__const',
-  '__async_variant',
-  '__async_variants',
 ];
 
 const decoratorSuffixSet = new Set(decoratorSuffixes);
@@ -236,6 +233,21 @@ const decoratorSuffixSet = new Set(decoratorSuffixes);
 export function isDecorator(ident) {
   const index = ident.lastIndexOf('__');
   return index > 0 && decoratorSuffixSet.has(ident.slice(index));
+}
+
+/**
+ * If `ident` is a decorated library key (e.g. `foo__sig`), returns
+ * `[base, suffix]` (e.g. `['foo', '__sig']`), otherwise `null`.
+ */
+export function splitDecorator(ident) {
+  const index = ident.lastIndexOf('__');
+  if (index > 0) {
+    const suffix = ident.slice(index);
+    if (decoratorSuffixSet.has(suffix)) {
+      return [ident.slice(0, index), suffix];
+    }
+  }
+  return null;
 }
 
 export function defineConsts(consts) {
