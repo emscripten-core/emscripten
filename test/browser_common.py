@@ -939,7 +939,7 @@ class BrowserCore(RunnerCore):
 
   def compile_btest(self, filename, cflags, reporting=Reporting.FULL):
     # Avoid modifying the caller's list in place so we don't accumulate duplicate flags on retry.
-    cflags = cflags.copy()
+    cflags = list(cflags)
     # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in

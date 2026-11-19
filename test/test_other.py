@@ -8547,7 +8547,7 @@ int main() {
   })
   def test_output_eol(self, params):
     if '-sSINGLE_FILE' not in params:
-      params = params + ['-oa.out.html']
+      params = [*params, '-oa.out.html']
     for eol in ('windows', 'linux'):
       self.clear()
       print('checking eol: ', eol)
@@ -9686,9 +9686,9 @@ end
     # Enable as many features as possible in order to maximise
     # the amount of library code we include here.
     if '-sWASM=0' in args:
-      args = args + ['-sEXPORT_ALL']
+      args = [*args, '-sEXPORT_ALL']
     else:
-      args = args + ['-sMAIN_MODULE']
+      args = [*args, '-sMAIN_MODULE']
     output = self.build('hello_world.c', cflags=[
       '--closure=1',
       '--minify=0',
