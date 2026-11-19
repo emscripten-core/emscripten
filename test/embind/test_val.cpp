@@ -487,6 +487,7 @@ int main() {
     c = new C;
   );
   ensure(val::global("c").call<int>("method", val(2)) == 2);
+  ensure(val::global("Math").call<int>("max", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10) == 10);
 #if __cplusplus >= 201703L
   dummy = new Dummy();
   EM_ASM(

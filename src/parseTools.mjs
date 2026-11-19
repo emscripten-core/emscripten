@@ -25,7 +25,7 @@ import {
   srcDir,
 } from './utility.mjs';
 
-import { nativeAliases } from './modules.mjs';
+import {nativeAliases} from './modules.mjs';
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
 const WASM_PAGE_SIZE = 64 * 1024;
@@ -296,7 +296,6 @@ function castToBigInt(x) {
   }
   return `BigInt(${x})`;
 }
-
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an i64
 // value, represented by a low and high i32 pair.
@@ -1201,7 +1200,7 @@ function pthreadDetection() {
 }
 
 function makeExportAliases() {
-  var res = ''
+  var res = '';
   for (const [alias, ex] of Object.entries(nativeAliases)) {
     if (ASSERTIONS) {
       res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;

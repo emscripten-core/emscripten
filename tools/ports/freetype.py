@@ -99,6 +99,7 @@ def get(ports, settings, shared):
       '-I' + source_path + '/psnames',
       '-I' + source_path + '/truetype',
       '-pthread',
+      '-Wno-unsequenced',
     ]
 
     if settings.SUPPORT_LONGJMP == 'wasm':

@@ -285,8 +285,8 @@ window.close = () => {
     assert 'expected' not in kwargs
     expected = [str(i) for i in range(reference_slack + 1)]
     self.make_reftest(reference)
-    kwargs.setdefault('cflags', [])
-    kwargs['cflags'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+    # Create a new list here rather than modifying the caller's list in place.
+    kwargs['cflags'] = [*kwargs.get('cflags', []), '--pre-js', 'reftest.js', '-sGL_TESTING']
 
     try:
       return self.btest(filename, *args, expected=expected, **kwargs)
@@ -813,6 +813,26 @@ window.close = () => {
     # create_file('shell.html', read_file(path_from_root('html/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     # test()
 
+  def test_capture_stdio_custom_print(self):
+    # When stdio capturing is enabled (which happens automatically when a flaky
+    # test gets retried), a custom Module.print handler defined by the page
+    # must still get called with the printed string.  The handler reports the
+    # string that it produced as the test result, so that we verify its content.
+    create_file('shell.html', r'''
+      <html>
+        <body>
+          <script>
+            var Module = {
+              print: (text) => reportResultToServer(text.replace('Hello', 'Goodbye')),
+            };
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>''')
+    self.capture_stdio = True
+    self.btest('hello_world.c', expected='Goodbye, world!', reporting=Reporting.JS_ONLY,
+               cflags=['--shell-file', 'shell.html'])
+
   @also_with_wasmfs
   def test_fs_dev_random(self):
     self.btest_exit('fs/test_fs_dev_random.c')
@@ -1226,6 +1246,10 @@ window.close = () => {
   @requires_webgl2
   def test_webgl2_texsubimage3d(self):
     self.btest_exit('webgl2_texsubimage3d.c', cflags=['-sMIN_WEBGL_VERSION=2'])
+
+  @requires_webgl2
+  def test_webgl2_readpixels_pack_row_length(self):
+    self.btest_exit('webgl2_readpixels_pack_row_length.c', cflags=['-sMIN_WEBGL_VERSION=2'])
 
   # Test that -sGL_PREINITIALIZED_CONTEXT works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
@@ -1706,7 +1730,9 @@ window.close = () => {
     def book_path(path):
       return test_file('third_party/glbook', path)
 
-    cflags += ['-lGL', '-lEGL', '-lX11']
+    # Create a new list here rather than modifying the @parameterized list in
+    # place, which is shared between all runs of this test.
+    cflags = [*cflags, '-lGL', '-lEGL', '-lX11']
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
@@ -2476,6 +2502,14 @@ void *getBindBuffer() {
   })
   def test_cpuprofiler_memoryprofiler(self, opts):
     self.btest_exit('hello_world_gles.c', cflags=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'] + opts)
+
+  @also_with_proxy_to_pthread
+  def test_memoryprofiler_heap_end(self):
+    # The memory profiler tracks the end of the dynamic memory area via
+    # onSbrkGrow() rather than by calling sbrk(), since its UI keeps updating on
+    # a timer after the runtime has exited, at which point calling into the Wasm
+    # module would abort the page.
+    self.btest_exit('test_memoryprofiler_heap_end.c', cflags=['--memoryprofiler'])
 
   def test_uuid(self):
     self.btest_exit('test_uuid.c', cflags=['-luuid'])
@@ -4187,6 +4221,7 @@ Module["preRun"] = () => {
   # For testing WebGL draft extensions like this, if using chrome as the browser,
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
+  @requires_chrome_version(135, 'https://crbug.com/395670641')
   @parameterized({
     'arrays': (['-DMULTI_DRAW_ARRAYS'],),
     'arrays_instanced': (['-DMULTI_DRAW_ARRAYS_INSTANCED'],),
@@ -4212,6 +4247,8 @@ Module["preRun"] = () => {
     'drawelements': (1,),
   })
   def test_webgl_draw_base_vertex_base_instance(self, multi_draw, draw_elements):
+    if multi_draw and is_chrome() and get_chrome_version() < 135:
+      self.skipTest('https://crbug.com/395670641')
     self.reftest('test_webgl_draw_base_vertex_base_instance.c', 'test_webgl_draw_base_vertex_base_instance.png',
                  cflags=['-lGL',
                             '-sMAX_WEBGL_VERSION=2',

@@ -228,6 +228,8 @@ user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", fal
 user_pref("browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.max_resumed_crashes", -1);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
+user_pref("browser.startup.page", 0);
+user_pref("toolkit.winRegisterApplicationRestart", false);
 // Ease shutting down browser instances in the parallel browser harness
 user_pref("browser.warnOnQuit", false);
 user_pref("browser.warnOnQuitShortcut", false);
@@ -306,6 +308,8 @@ user_pref("gfx.offscreencanvas.enabled", true);
 user_pref("javascript.options.wasm_memory64", true);
 // Do not ask user consent to enable audio playback (0: Allow autoplay for all media)
 user_pref("media.autoplay.default", 0);
+// Disable Window Occlusion tracking so that rAF() and setTimeout() and page loads proceed even if page is hidden.
+user_pref("widget.windows.window_occlusion_tracking.enabled", false);
 ''')
     if emrun_options.private_browsing:
       f.write('''

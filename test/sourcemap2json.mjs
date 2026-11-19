@@ -7,10 +7,8 @@
 // Quick utility script USED ONLY FOR TESTING.
 // Could be replaced if a good python source map library is found.
 
-'use strict';
-
-var SourceMapConsumer = require('source-map').SourceMapConsumer;
-var fs = require('fs');
+import * as fs from 'node:fs';
+import { SourceMapConsumer } from 'source-map';
 
 new SourceMapConsumer(fs.readFileSync(process.argv[2], 'utf-8')).then((consumer) => {
   var mappings = [];

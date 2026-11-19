@@ -1063,6 +1063,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
     # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
     '-Wno-unused-variable',
+    '-Wno-unsequenced',
     '-mrelaxed-simd',
     '-ffp-contract=fast',
   ]

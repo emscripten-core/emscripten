@@ -3385,9 +3385,19 @@ Var: 42
       return data_exports
 
     data_exports = get_data_exports(wat)
+    shrinking = any(f in self.cflags for f in ('-Os', '-Oz')) or self.get_setting('SHRINK_LEVEL')
+    if shrinking:
+      self.assertNotIn('__rodata_start', data_exports)
+      self.assertNotIn('__rodata_end', data_exports)
+    else:
+      self.assertIn('__rodata_start', data_exports)
+      self.assertIn('__rodata_end', data_exports)
     # Certain exports are removed by wasm-emscripten-finalize, but this
     # tool is not run in all configurations, so ignore these exports.
-    data_exports = [d for d in data_exports if d not in {'__start_em_asm', '__stop_em_asm'}]
+    # __rodata_start and __rodata_end are only exported when SHRINK_LEVEL == 0
+    # (see https://github.com/llvm/llvm-project/issues/180632).
+    ignored_exports = {'__start_em_asm', '__stop_em_asm', '__rodata_start', '__rodata_end'}
+    data_exports = [d for d in data_exports if d not in ignored_exports]
     data_exports = '\n'.join(sorted(data_exports)) + '\n'
     self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
 
@@ -4409,7 +4419,8 @@ caught outer int: 123
       #include <stdint.h>
       int64_t sidey() {
         volatile int64_t x = 0x12345678abcdef12LL;
-        x += x % 17;
+        int64_t y = x % 17;
+        x += y;
         x = 18 - x;
         return x;
       }
@@ -6108,6 +6119,7 @@ Module.onRuntimeInitialized = () => {
   def test_fs_readv_eagain(self):
     self.do_runf('fs/test_readv_eagain.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
+  @no_wasmfs('WasmFS backends only see one write per iovec. https://github.com/emscripten-core/emscripten/issues/16269')
   def test_fs_writev_gather(self):
     self.do_runf('fs/test_writev_gather.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
@@ -8045,7 +8057,7 @@ void* operator new(size_t size) {
       # needs to contain valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][src_index])
     mappings = json.loads(self.run_js(
-      path_from_root('test/sourcemap2json.js'),
+      path_from_root('test/sourcemap2json.mjs'),
       args=[map_filename]))
     seen_lines = set()
     for m in mappings:
@@ -8063,6 +8075,7 @@ void* operator new(size_t size) {
     # Check that embind is usable from a library built with "-fvisibility=hidden"
 
     create_file('libside.cpp', r'''
+      #include <assert.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
       #define EXPORT __attribute__((visibility("default")))
@@ -8070,6 +8083,10 @@ void* operator new(size_t size) {
       EXPORT void liba_fun() {
         unsigned char buffer[1];
         val view(typed_memory_view(1, buffer));
+        assert(val::global("Math").call<int>("max", 1, 42, 3) == 42);
+        val arr = val::global("Array").new_(3);
+        arr.call<void>("fill", 7);
+        assert(arr[0].as<int>() == 7);
       }
       int side_add(int a, int b) {
         return a + b;
@@ -9476,6 +9493,24 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf('core/pthread/test_pthread_dlsym.c')
+
+  @crossplatform
+  @needs_dylink
+  @parameterized({
+    '': (['-sPROXY_TO_PTHREAD'],),
+    'async': (['-DUSE_ASYNC_DLOPEN'],),
+  })
+  @requires_pthreads
+  def test_pthread_dlopen_embed(self, args):
+    # Use binary=True to prevent Windows line-ending (\r\n) translation.
+    create_file('embedded.txt', b'hello from embedded file\n', binary=True)
+    self.cflags += ['-Wno-experimental', '-pthread']
+    self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_embed_side.c'),
+                         cflags=['--embed-file', 'embedded.txt'])
+
+    self.prep_dlfcn_main()
+    self.do_runf('core/pthread/test_pthread_dlopen_embed.c', 'done\n',
+                 cflags=args + ['-sEXIT_RUNTIME'])
 
   @needs_dylink
   @requires_pthreads

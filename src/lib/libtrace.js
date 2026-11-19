@@ -5,9 +5,7 @@
  */
 
 var LibraryTracing = {
-  $EmscriptenTrace__deps: [
-    '$jsStackTrace'
-  ],
+  $EmscriptenTrace__deps: ['$jsStackTrace'],
   $EmscriptenTrace__postset: 'EmscriptenTrace.init()',
   $EmscriptenTrace: {
     worker: null,

@@ -3205,7 +3205,7 @@ More info: https://emscripten.org
     filename = test_file('js_optimizer', filename)
     expected_file = utils.unsuffixed(filename) + '-output.js'
     # test calling optimizer
-    js = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.mjs'), filename] + passes, stdin=PIPE, stdout=PIPE).stdout
+    js = self.run_process(config.NODE_JS + [path_from_root('dist/acorn-optimizer.mjs'), filename] + passes, stdin=PIPE, stdout=PIPE).stdout
     self.assertFileContents(expected_file, js)
 
   def test_js_optimizer_huge(self):
@@ -8546,11 +8546,11 @@ int main() {
     'single_file': (['-sSINGLE_FILE'],),
   })
   def test_output_eol(self, params):
+    if '-sSINGLE_FILE' not in params:
+      params = [*params, '-oa.out.html']
     for eol in ('windows', 'linux'):
       self.clear()
       print('checking eol: ', eol)
-      if '-sSINGLE_FILE' not in params:
-        params.append('-oa.out.html')
       self.run_process([EMCC, test_file('hello_world.c'), '--output-eol', eol] + params)
       out_files = ['a.out.js']
       html_file = 'a.out.html'
@@ -9686,9 +9686,9 @@ end
     # Enable as many features as possible in order to maximise
     # the amount of library code we include here.
     if '-sWASM=0' in args:
-      args += ['-sEXPORT_ALL']
+      args = [*args, '-sEXPORT_ALL']
     else:
-      args += ['-sMAIN_MODULE']
+      args = [*args, '-sMAIN_MODULE']
     output = self.build('hello_world.c', cflags=[
       '--closure=1',
       '--minify=0',
@@ -11210,6 +11210,7 @@ ok.
   def test_sin_zero(self):
     self.do_runf('sockets/test_sin_zero.c', 'done\n')
 
+  @also_with_wasm64
   def test_getaddrinfo(self):
     self.do_runf('sockets/test_getaddrinfo.c', 'done\n')
 
@@ -14465,7 +14466,7 @@ int main() {
   def test_unsafe_optimizations(self):
     # Note: Here we use config.NODE_JS (the version of node used by the compiler) rather than the
     # version of node in JS_ENGINES.
-    self.run_process(config.NODE_JS + [path_from_root('tools/unsafe_optimizations.mjs'), '--test'])
+    self.run_process(config.NODE_JS + [path_from_root('dist/unsafe_optimizations.mjs'), '--test'])
 
   @requires_v8
   def test_extended_const(self):

@@ -677,6 +677,7 @@ jobs:
             core2s.test_dylink_syslibs_missing_assertions
             core2s.test_module_wasm_memory
             cores.test_minimal_runtime_safe_heap
+            cores.test_dlfcn_self
             wasm2js0.test_autodebug_wasm
             wasm2js3.test_memorygrowth_2
             wasm2js2.test_pthread_proxying
@@ -707,6 +708,7 @@ jobs:
             wasmfs.test_fs_readv
             wasmfs.test_fs_write
             wasmfs.test_fs_readv_rawfs
+            wasmfs.test_fs_readv_eagain
             wasmfs.test_fs_nodefs_nofollow
             wasmfs.test_fs_nodefs_readdir
             wasmfs.test_fs_nodefs_home
@@ -720,6 +722,7 @@ jobs:
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
             wasmfs.test_dylink_basics
+            wasmfs.test_pthread_dlopen_embed*
             wasmfs.test_exit_status
             wasmfs.test_minimal_runtime_memorygrowth
             wasmfs.test_mmap_anon*
@@ -740,6 +743,7 @@ jobs:
             wasmfs.test_minimal_runtime_hello_world*
             wasmfs.test_dlmalloc
             wasmfs.test_wrap_malloc_mimalloc
+            wasmfs.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_utf
             minimal0.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_static_variable

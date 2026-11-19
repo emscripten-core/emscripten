@@ -25,7 +25,9 @@ int run(int y) {
   printf("setjmp of %d\n", x);
   if (setjmp(buf) == 0) {
     printf("going\n");
-    x += run(x / 2);
+    // Read x first to avoid unsequenced access to a volatile.
+    int half = x / 2;
+    x += run(half);
     longjmp(buf, 1);
   }
   printf("back\n");

@@ -38,7 +38,7 @@ This build mode emulates some features of OpenGL ES 2.0/3.0 that are not part of
 
 In particular, this mode emulates client-side arrays that are missing [#f1]_ from the :ref:`opengl-support-webgl-subset`.
 
-This allows you to use functions `glDrawArrays <https://www.opengl.org/sdk/docs/man3/xhtml/glDrawArrays.xml>`_ and `glDrawElements <https://www.opengl.org/sdk/docs/man/html/glDrawElements.xhtml>`_ etc. without a bound buffer, and Emscripten's GL bindings will set up the buffer automatically (WebGL requires that a buffer be bound).
+This allows you to use functions `glDrawArrays <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawArrays.xhtml>`_ and `glDrawElements <https://www.opengl.org/sdk/docs/man/html/glDrawElements.xhtml>`_ etc. without a bound buffer, and Emscripten's GL bindings will set up the buffer automatically (WebGL requires that a buffer be bound).
 
 .. note:: This build mode has a limitation that the largest index in client-side index buffer must be smaller than the total number of indices in that buffer. See `issue #4214 <https://github.com/emscripten-core/emscripten/issues/4214>`_ for more details.
 
@@ -69,7 +69,7 @@ In this mode (``-sLEGACY_GL_EMULATION``), there are a few extra flags that can b
 What if my codebase depends on a desktop OpenGL feature that is currently unsupported?
 --------------------------------------------------------------------------------------
 
-You can consider building the codebase against the `Regal <https://github.com/p3/regal>`_ Desktop OpenGL emulation library, which aims to support Desktop OpenGL features on top of OpenGL ES 2.0. This may work better or worse than Emscripten's GL emulation depending on the project.
+You can consider building the codebase against the `Regal <https://github.com/emscripten-ports/regal>`_ Desktop OpenGL emulation library, which aims to support Desktop OpenGL features on top of OpenGL ES 2.0. This may work better or worse than Emscripten's GL emulation depending on the project.
 Another option is to use `gl4es <https://github.com/ptitSeb/gl4es>`_ which aims at fast OpenGL to GLES conversion for games. It targets OpenGL 2.1 profile on top of OpenGL ES 2.0 and has been used to port a few games with Emscripten already.
 
 OpenGL ES extensions
