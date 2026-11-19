@@ -546,6 +546,53 @@ module({
             assert.equal(0, cm.count_emval_handles());
         });
 
+        test("borrowed val args preserve handle counts", function() {
+            var receiver = {
+                combine: function(a, b, c, d) {
+                    return a.length + b.length + c.length + d.length;
+                },
+            };
+            // combine(4+4+6+3=17)
+            assert.equal(17, cm.emval_test_borrowed_val_args(receiver));
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("borrowed val args survive reentrant C++ destruction", function() {
+            var obj2 = { y: 32 };
+            var methodObj = {
+                x: 10,
+                combine: function(a, b) {
+                    cm.emval_test_clear_reentrant_holders();
+                    return this.x + a.x + b.y;
+                },
+            };
+            assert.equal(52, cm.emval_test_reentrant_val_destroy(methodObj, obj2));
+            assert.equal(0, cm.count_emval_handles());
+
+            var getterObj = {
+                x: 10,
+                get combine() {
+                    cm.emval_test_clear_reentrant_holders();
+                    return function(a, b) {
+                        return this.x + a.x + b.y;
+                    };
+                },
+            };
+            assert.equal(52, cm.emval_test_reentrant_val_destroy(getterObj, obj2));
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("deleted val arg throwing BindingError does not leak borrowed val handles", function() {
+            try {
+                assert.throws(cm.BindingError, function() {
+                    cm.emval_test_deleted_val_arg(function() {}, { x: 1 });
+                });
+            } finally {
+                cm.emval_test_clear_reentrant_holders();
+            }
+            assert.equal(0, cm.count_emval_handles());
+        });
+
         test("void return converts to undefined", function() {
             assert.equal(undefined, cm.emval_test_return_void());
         });

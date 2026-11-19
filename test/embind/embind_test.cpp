@@ -1428,6 +1428,37 @@ struct StructWithOptionalProperty {
 };
 void embind_test_optional_property(const StructWithOptionalProperty &arg) {
 }
+
+EMSCRIPTEN_DECLARE_VAL_TYPE(CustomValType);
+
+static std::optional<val> reentrant_holder1;
+static std::optional<val> reentrant_holder2;
+
+void emval_test_clear_reentrant_holders() {
+  reentrant_holder1.reset();
+  reentrant_holder2.reset();
+}
+
+int emval_test_reentrant_val_destroy(val obj1, val obj2) {
+  reentrant_holder1.emplace(std::move(obj1));
+  reentrant_holder2.emplace(std::move(obj2));
+  return reentrant_holder1->call<int>("combine", *reentrant_holder1, *reentrant_holder2);
+}
+
+int emval_test_borrowed_val_args(val receiver) {
+  val lval("lval");
+  CustomValType custom_val(val("custom"));
+  // Borrowed lvalue/rvalue val, custom val subtype, and owning std::optional<val>
+  return receiver.call<int>("combine", lval, val("rval"), custom_val, std::make_optional(val("opt")));
+}
+
+void emval_test_deleted_val_arg(val callback, val obj) {
+  reentrant_holder1.emplace(std::move(callback));
+  reentrant_holder2.emplace(std::move(obj));
+  // Decoding arg 0 throws BindingError before arg 1 is read; borrowed arg 1
+  // must not leak once holders are cleared.
+  (*reentrant_holder1)(val::take_ownership(nullptr), *reentrant_holder2);
+}
 #endif
 
 val embind_test_getglobal() {
@@ -2472,6 +2503,8 @@ EMSCRIPTEN_BINDINGS(tests) {
   register_optional<SmallClass>();
   register_optional<SmallClass*>();
   register_optional<std::string>();
+  register_optional<val>();
+  register_type<CustomValType>("any");
   function("embind_test_return_optional_int", &embind_test_return_optional_int);
   function("embind_test_return_optional_float", &embind_test_return_optional_float);
   function("embind_test_return_optional_small_class", &embind_test_return_optional_small_class);
@@ -2487,6 +2520,10 @@ EMSCRIPTEN_BINDINGS(tests) {
       .field("y", &StructWithOptionalProperty::y)
   ;
   function("embind_test_optional_property", &embind_test_optional_property);
+  function("emval_test_clear_reentrant_holders", &emval_test_clear_reentrant_holders);
+  function("emval_test_reentrant_val_destroy", &emval_test_reentrant_val_destroy);
+  function("emval_test_borrowed_val_args", &emval_test_borrowed_val_args);
+  function("emval_test_deleted_val_arg", &emval_test_deleted_val_arg);
 #endif
 
   register_map<std::string, int>("StringIntMap");
