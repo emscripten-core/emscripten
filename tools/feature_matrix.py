@@ -41,6 +41,7 @@ class Feature(IntEnum):
   GROWABLE_ARRAYBUFFERS = auto()
   EXTENDED_CONST = auto()
   JSPI = auto()
+  THREADS = auto()
 
 
 disable_override_features: set[Feature] = set()
@@ -134,6 +135,16 @@ min_browser_versions = {
     'safari': 270000,
     'node': 240000,
   },
+  # Wasm threads have been available since Chrome 74, but the Liftoff compiler
+  # in Chrome 110 - 114 miscompiles the atomic.wait instructions
+  # (https://crbug.com/1432453), so require the first version after those.
+  # https://caniuse.com/wasm-threads
+  Feature.THREADS: {
+    'chrome': 115,
+    'firefox': 79,
+    'safari': 140100,
+    'node': 160400,
+  },
 
 # The following features we now support unconditionally, but keeping them around
 # in code comments for future reference
@@ -171,13 +182,6 @@ min_browser_versions = {
 #    'firefox': 62,
 #    'safari': 140100,
 #    'node': 120000,
-#  },
-
-#  Feature.THREADS: {
-#    'chrome': 74,
-#    'firefox': 79,
-#    'safari': 140100,
-#    'node': 160400,
 #  },
 
 #  Feature.PROMISE_ANY: {
@@ -266,6 +270,8 @@ def apply_min_browser_versions():
     enable_feature(Feature.MEMORY64, 'MEMORY64')
   if settings.ASYNCIFY == 2:
     enable_feature(Feature.JSPI, 'JSPI')
+  if settings.SHARED_MEMORY:
+    enable_feature(Feature.THREADS, 'shared memory (-pthread or -sWASM_WORKERS)')
   if settings.EXPORT_ES6 and settings.PTHREADS:
     enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -pthread')
   if settings.EXPORT_ES6 and settings.WASM_WORKERS:

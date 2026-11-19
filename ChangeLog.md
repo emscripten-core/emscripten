@@ -43,6 +43,10 @@ See docs/process.md for more on how version tagging works.
 - Building with `-sJSPI` now bumps the default minimum supported browser
   versions to the first ones that support JSPI: Chrome 137, Firefox 153,
   Safari 27 and Node.js 24. (#28334)
+- Multithreaded builds (`-pthread` and `-sWASM_WORKERS`) now require Chrome 115
+  or newer by default (`MIN_CHROME_VERSION=115`). Chrome 110 - 114 miscompile
+  the wasm `memory.atomic.wait32` and `memory.atomic.wait64` instructions
+  (https://crbug.com/1432453).
 
 7.0.0 - 11/06/26
 ----------------
