@@ -266,6 +266,11 @@ class ChromeConfig:
     '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
     # Disable various background tasks downloads (e.g. updates).
     '--disable-background-networking',
+    # Keep running timers and requestAnimationFrame() at full rate in windows
+    # that are covered by another window. When tests run in parallel, each
+    # browser instance has its own window, and all but the topmost one of them
+    # are occluded.
+    '--disable-backgrounding-occluded-windows',
     # Disable native password pop-ups
     '--password-store=basic',
     # Send console messages to browser stderr
