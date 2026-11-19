@@ -974,7 +974,6 @@ addToLibrary({
     // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
     // really should provide a linked list of suitable addrinfo values.
     var addrs = [];
-    var canon = null;
     var addr = 0;
     var port = 0;
     var flags = 0;
@@ -983,7 +982,7 @@ addToLibrary({
     var proto = 0;
     var ai, last;
 
-    function allocaddrinfo(family, type, proto, canon, addr, port) {
+    function allocaddrinfo(family, type, proto, addr, port) {
       var sa, salen, ai;
       var errno;
 
@@ -1003,7 +1002,8 @@ addToLibrary({
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_socktype, 'type', 'i32') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_protocol, 'proto', 'i32') }}};
-      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, 'canon', '*') }}};
+      // TODO: Support AI_CANONNAME. For now ai_canonname is always NULL.
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, '0', '*') }}};
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addr, 'sa', '*') }}};
       if (family === AF_INET6) {
         {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
@@ -1023,7 +1023,7 @@ addToLibrary({
       if (typeof entries === 'number') return entries;
       var head = 0, prev = 0;
       for (var entry of entries) {
-        var ai = allocaddrinfo(entry.family, type, proto, null, entry.addr, port);
+        var ai = allocaddrinfo(entry.family, type, proto, entry.addr, port);
         if (prev) {
           {{{ makeSetValue('prev', C_STRUCTS.addrinfo.ai_next, 'ai', '*') }}};
         } else {
@@ -1104,7 +1104,7 @@ addToLibrary({
           addr = [0, 0, 0, _htonl(1)];
         }
       }
-      ai = allocaddrinfo(family, type, proto, null, addr, port);
+      ai = allocaddrinfo(family, type, proto, addr, port);
       {{{ makeSetValue('out', '0', 'ai', '*') }}};
       return 0;
     }
@@ -1137,7 +1137,7 @@ addToLibrary({
       }
     }
     if (addr != null) {
-      ai = allocaddrinfo(family, type, proto, node, addr, port);
+      ai = allocaddrinfo(family, type, proto, addr, port);
       {{{ makeSetValue('out', '0', 'ai', '*') }}};
       return 0;
     }
@@ -1175,7 +1175,7 @@ addToLibrary({
     } else if (family === AF_INET6) {
       addr = [0, 0, _htonl(0xffff), addr];
     }
-    ai = allocaddrinfo(family, type, proto, null, addr, port);
+    ai = allocaddrinfo(family, type, proto, addr, port);
     {{{ makeSetValue('out', '0', 'ai', '*') }}};
     return 0;
 #endif
