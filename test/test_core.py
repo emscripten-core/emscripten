@@ -8075,6 +8075,7 @@ void* operator new(size_t size) {
     # Check that embind is usable from a library built with "-fvisibility=hidden"
 
     create_file('libside.cpp', r'''
+      #include <assert.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
       #define EXPORT __attribute__((visibility("default")))
@@ -8082,6 +8083,10 @@ void* operator new(size_t size) {
       EXPORT void liba_fun() {
         unsigned char buffer[1];
         val view(typed_memory_view(1, buffer));
+        assert(val::global("Math").call<int>("max", 1, 42, 3) == 42);
+        val arr = val::global("Array").new_(3);
+        arr.call<void>("fill", 7);
+        assert(arr[0].as<int>() == 7);
       }
       int side_add(int a, int b) {
         return a + b;
