@@ -53,13 +53,13 @@ const emscriptenMemoryProfiler = {
     // end: <int>
 
   sbrkSources: [],
+    // stack: <string>,
+    // begin: <int>,
+    // end: <int>
 
   // The current end of the dynamic memory area (i.e. the sbrk() limit), as last
   // reported to onSbrkGrow().  Undefined until sbrk() gets called.
   heapEnd: undefined,
-    // stack: <string>,
-    // begin: <int>,
-    // end: <int>
 
   // Once set to true, preRun is finished and the above array is not touched anymore.
   pagePreRunIsFinished: false,
