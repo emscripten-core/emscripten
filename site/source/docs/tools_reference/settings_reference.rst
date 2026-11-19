@@ -2096,8 +2096,9 @@ WASM_ASYNC_COMPILATION
 ======================
 
 Whether to compile the wasm asynchronously, which is more efficient and does
-not block the main thread. This is currently required for all but the
-smallest modules to run in chrome.
+not block the main thread. Chrome refuses to synchronously compile modules
+larger than 8MB on the main thread (larger than 4KB in Chrome versions older
+than 115), so this is required for such modules to run in Chrome.
 
 (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 

@@ -3994,6 +3994,7 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
   @requires_wasm2js
+  @requires_chrome_version(115, 'older versions do not allow synchronous compilation of wasm modules larger than 4KB on the main thread (https://crbug.com/1378329)')
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=['-sWASM_ASYNC_COMPILATION=0', '-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
@@ -4122,6 +4123,8 @@ Module["preRun"] = () => {
     'off': (['-sWASM_ASYNC_COMPILATION=0'], 0),
   })
   def test_async_compile(self, opts, returncode):
+    if '-sWASM_ASYNC_COMPILATION=0' in opts and is_chrome() and get_chrome_version() < 115:
+      self.skipTest('Chrome older than 115 does not allow synchronous compilation of wasm modules larger than 4KB on the main thread (https://crbug.com/1378329)')
     # notice when we use async compilation
     create_file('pre.js', '''
       // note if we do async compilation
