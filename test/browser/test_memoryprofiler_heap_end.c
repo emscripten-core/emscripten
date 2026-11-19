@@ -22,18 +22,18 @@ EM_JS(void, check_heap_end, (double expected), {
 });
 
 // The memory profiler UI keeps updating on a timer after the runtime has
-// exited.  Delay reporting the exit until the UI has updated at least once
-// after it, and verify the heap end that the UI then displays.
+// exited.  onExit gets called once the runtime has exited, so update the UI
+// from there, the same way the timer would, and verify the heap end that the
+// UI then displays.
 EM_JS(void, verify_ui_after_exit, (void), {
   Module.onExit = (status) => {
-    setTimeout(() => {
-      var html = document.getElementById('memoryprofiler_summary').innerHTML;
-      var match = /DYNAMIC memory area size: .*? end: 0x([0-9a-f]+)[.]/.exec(html);
-      assert(match, 'heap end not found in: ' + html);
-      var displayed = parseInt(match[1], 16);
-      assert(displayed == expectedHeapEnd, `UI shows heap end ${displayed}, expected ${expectedHeapEnd}`);
-      reportResultToServer(`exit:${status}`);
-    }, emscriptenMemoryProfiler.uiUpdateIntervalMsecs + 500);
+    emscriptenMemoryProfiler.updateUi();
+    var html = document.getElementById('memoryprofiler_summary').innerHTML;
+    var match = /DYNAMIC memory area size: .*? end: 0x([0-9a-f]+)[.]/.exec(html);
+    assert(match, 'heap end not found in: ' + html);
+    var displayed = parseInt(match[1], 16);
+    assert(displayed == expectedHeapEnd, `UI shows heap end ${displayed}, expected ${expectedHeapEnd}`);
+    reportResultToServer(`exit:${status}`);
   };
 });
 

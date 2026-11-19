@@ -17,6 +17,14 @@
 #include <emscripten.h>
 #include <emscripten/heap.h>
 
+// How many times, at 10 msec intervals, to check for the notification from the
+// pthread before giving up.
+#define MAX_TRIES 500
+
+EM_JS(double, get_heap_end, (void), {
+  return emscriptenMemoryProfiler.heapEnd;
+});
+
 EM_JS(void, check_heap_end, (double expected), {
   var actual = emscriptenMemoryProfiler.heapEnd;
   assert(actual == expected, `heapEnd is ${actual}, expected ${expected}`);
@@ -30,9 +38,17 @@ void* thread_main(void* arg) {
 }
 
 void check(void* arg) {
+  static int tries = 0;
   // Read the sbrk limit directly, since calling sbrk(0) would itself report
   // the limit to the memory profiler.
-  check_heap_end((double)*emscripten_get_sbrk_ptr());
+  double expected = (double)*emscripten_get_sbrk_ptr();
+  // The notification from the pthread arrives asynchronously on the main
+  // thread, so poll for it rather than rely on it having arrived already.
+  if (get_heap_end() != expected && ++tries < MAX_TRIES) {
+    emscripten_async_call(check, NULL, 10);
+    return;
+  }
+  check_heap_end(expected);
   emscripten_force_exit(0);
 }
 
@@ -46,8 +62,6 @@ int main(void) {
   assert(rc == 0);
   assert(*emscripten_get_sbrk_ptr() > old_brk);
 
-  // The notification from the pthread arrives asynchronously on the main
-  // thread, so return to the event loop before checking.
-  emscripten_async_call(check, NULL, 100);
+  emscripten_async_call(check, NULL, 0);
   return 0;
 }
