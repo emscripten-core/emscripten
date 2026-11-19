@@ -58,6 +58,9 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
             dbg('asyncify: suspendOnReturnedPromise for', x, original);
 #endif
+#if JSPI_TRACK_SUSPEND
+            original = Asyncify.trackResume(original);
+#endif
             imports[x] = original = new WebAssembly.Suspending(original);
           }
 #endif
@@ -167,6 +170,11 @@ addToLibrary({
             Asyncify.asyncExports.add(original);
             original = Asyncify.makeAsyncFunction(original);
           }
+#if JSPI_TRACK_SUSPEND
+          else {
+            original = Asyncify.trackEntry(original, false);
+          }
+#endif
           ret[x] = original;
 #else
           var wrapper = Asyncify.instrumentFunction(original);
@@ -469,8 +477,45 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify: makeAsyncFunction for', original);
 #endif
+#if JSPI_TRACK_SUSPEND
+      return Asyncify.trackEntry(WebAssembly.promising(original.orig || original), true);
+#else
       return WebAssembly.promising(original);
+#endif
     },
+#if JSPI_TRACK_SUSPEND
+    // Whether a suspending import called now would suspend. Only the value
+    // seen by running wasm matters: every JS->wasm entry sets it for its
+    // duration, and every resume sets it before the activation continues.
+    canSuspend: false,
+    trackEntry(func, canSuspend) {
+      var wrapper = (...args) => {
+        var prev = Asyncify.canSuspend;
+        Asyncify.canSuspend = canSuspend;
+        try {
+          return func(...args);
+        } finally {
+          Asyncify.canSuspend = prev;
+        }
+      };
+      // Allows dynamic linking and the table map to see the wasm function.
+      wrapper.orig = func;
+      return wrapper;
+    },
+    // JSPI resumes a suspended activation from a microtask without going
+    // through any entry wrapper, so set the flag in a reaction on the promise
+    // that JSPI waits on.
+    trackResume(func) {
+      var resume = () => Asyncify.canSuspend = true;
+      return (...args) => {
+        var ret = func(...args);
+        if (ret instanceof Promise) {
+          ret = ret.then((v) => (resume(), v), (e) => { resume(); throw e; });
+        }
+        return ret;
+      };
+    },
+#endif
 #endif
   },
 

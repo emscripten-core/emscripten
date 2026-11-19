@@ -458,6 +458,7 @@
     "emscripten_async_wget2_data",
     "emscripten_async_wget_data",
     "emscripten_call_worker",
+    "emscripten_can_suspend",
     "emscripten_cancel_animation_frame",
     "emscripten_cancel_main_loop",
     "emscripten_clear_immediate",

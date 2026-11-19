@@ -159,6 +159,9 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
   settings.RODATA_END = metadata.rodata_end
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
+  if settings.ASYNCIFY == 2 and 'emscripten_can_suspend' in metadata.imports:
+    settings.JSPI_TRACK_SUSPEND = 1
+
   if settings.MAIN_MODULE and settings.ASYNCIFY == 1:
     # These will be exported from Wasm, but only once we run the asyncify pass.
     settings.WASM_EXPORTS += ['__asyncify_state', '__asyncify_data']

@@ -625,6 +625,7 @@ sigs = {
   emscripten_audio_worklet_post_function_vii__sig: 'vipii',
   emscripten_audio_worklet_post_function_viii__sig: 'vipiii',
   emscripten_call_worker__sig: 'vippipp',
+  emscripten_can_suspend__sig: 'i',
   emscripten_cancel_animation_frame__sig: 'vi',
   emscripten_cancel_main_loop__sig: 'v',
   emscripten_check_blocking_allowed__sig: 'v',
