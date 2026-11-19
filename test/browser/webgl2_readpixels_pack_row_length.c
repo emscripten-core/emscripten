@@ -2,7 +2,6 @@
 #include <GLES3/gl3.h>
 #include <emscripten/html5.h>
 #include <assert.h>
-#include <string.h>
 
 int main() {
   EmscriptenWebGLContextAttributes attrs;
@@ -17,8 +16,7 @@ int main() {
 
   // Read 8 pixels wide into a buffer with row length 32.
   glPixelStorei(GL_PACK_ROW_LENGTH, 32);
-  GLubyte buf[32 * 2 * 4];
-  memset(buf, 0, sizeof(buf));
+  GLubyte buf[32 * 2 * 4] = {0};
   glReadPixels(0, 0, 8, 2, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
   // Verify pixel at (0,0) is red.

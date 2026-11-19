@@ -1267,7 +1267,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     } else if (pname == GL_UNPACK_ROW_LENGTH) {
       GL.unpackRowLength = param;
 #if INCLUDE_WEBGL1_FALLBACK && MAX_WEBGL_VERSION >= 2
-    } else if (pname == {{{ cDefs.GL_PACK_ROW_LENGTH }}}) {
+    } else if (pname == GL_PACK_ROW_LENGTH) {
       GL.packRowLength = param;
 #endif
     }
