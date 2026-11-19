@@ -270,8 +270,7 @@ var LibraryPThread = {
     //                    the workers have been initialized and are
     //                    ready to host pthreads.
     loadWasmModuleToWorker: (worker) => new Promise((onFinishedLoading) => {
-      worker.onmessage = (e) => {
-        var d = e.data;
+      worker.onmessage = ({data: d}) => {
         var cmd = d.cmd;
 #if PTHREADS_DEBUG
         dbg(`main thread: received message '${cmd}' from worker. ${d}`);
