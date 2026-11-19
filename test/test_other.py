@@ -3758,6 +3758,34 @@ More info: https://emscripten.org
     self.do_runf('other/test_jspi_wildcard.c', 'done\n', cflags=args)
 
   @requires_jspi
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2'],),
+    'closure': (['-O2', '--closure=1'],),
+  })
+  def test_jspi_can_suspend(self, args):
+    self.do_runf('other/test_jspi_can_suspend.c', 'done\n', cflags=['-sJSPI_EXPORTS=promising_inner'] + args)
+
+  @requires_jspi
+  def test_jspi_can_suspend_not_linked(self):
+    # Without JSPI it always returns 0, and with JSPI nothing is tracked
+    # unless it is linked.
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+      int main() {
+        assert(!emscripten_can_suspend());
+        printf("done\n");
+      }
+    ''')
+    self.do_runf('hello_world.c')
+    self.assertNotContained('canSuspend', read_file('hello_world.js'))
+    self.clear_setting('JSPI')
+    self.do_runf('main.c', 'done\n')
+    self.assertNotContained('canSuspend', read_file('main.js'))
+
+  @requires_jspi
   def test_jspi_add_function(self):
     # make sure synchronous functions in the wasmTable aren't processed with Asyncify.makeAsyncFunction
     self.cflags += [

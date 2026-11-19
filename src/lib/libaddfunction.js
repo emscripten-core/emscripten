@@ -124,6 +124,9 @@ addToLibrary({
         var item = getWasmTableEntry(i);
         // Ignore null values.
         if (item) {
+#if JSPI_TRACK_SUSPEND
+          item = item.orig;
+#endif
           functionsInTableMap.set(item, i);
         }
       }
@@ -207,7 +210,11 @@ addToLibrary({
   },
 
   $removeFunction: (index) => {
+#if JSPI_TRACK_SUSPEND
+    functionsInTableMap.delete(getWasmTableEntry(index)?.orig);
+#else
     functionsInTableMap.delete(getWasmTableEntry(index));
+#endif
     setWasmTableEntry(index, null);
     freeTableIndexes.push(index);
   },

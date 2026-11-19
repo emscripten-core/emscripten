@@ -1552,6 +1552,12 @@ addToLibrary({
 
   emscripten_has_asyncify: () => {{{ ASYNCIFY }}},
 
+#if JSPI_TRACK_SUSPEND
+  emscripten_can_suspend: () => Asyncify.canSuspend,
+#else
+  emscripten_can_suspend: () => 0,
+#endif
+
   emscripten_debugger: () => { debugger },
 
   emscripten_print_double: (x, to, max) => {
@@ -1894,8 +1900,13 @@ addToLibrary({
     // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overridden to return wrapped
     // functions so we need to call it here to retrieve the potential wrapper correctly
     // instead of just storing 'func' directly into wasmTableMirror
+#if JSPI_TRACK_SUSPEND
+    // Instrumented lazily by getWasmTableEntry.
+    wasmTableMirror[idx] = null;
+#else
     /** @suppress {checkTypes} */
     wasmTableMirror[idx] = wasmTable.get({{{ toIndexType('idx') }}});
+#endif
   },
 
   $getWasmTableEntry: (funcPtr) => {
@@ -1913,6 +1924,11 @@ addToLibrary({
       if (Asyncify.isAsyncExport(func)) {
         wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
       }
+#if JSPI_TRACK_SUSPEND
+      else if (func) {
+        wasmTableMirror[funcPtr] = func = Asyncify.trackEntry(func, false);
+      }
+#endif
 #endif
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
