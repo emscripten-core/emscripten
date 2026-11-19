@@ -40,6 +40,9 @@ See docs/process.md for more on how version tagging works.
 - `emscripten_get_now()` (and `clock_gettime(CLOCK_MONOTONIC)`) in pthreads
   builds now reads `performance.timeOrigin` once per thread. In Safari its value
   can vary between reads, which made the clock go backwards. (#28272)
+- Building with `-sJSPI` now bumps the default minimum supported browser
+  versions to the first ones that support JSPI: Chrome 137, Firefox 153,
+  Safari 27 and Node.js 24.
 
 7.0.0 - 11/06/26
 ----------------
