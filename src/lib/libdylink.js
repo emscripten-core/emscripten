@@ -148,8 +148,8 @@ var LibraryDylink = {
 
   // Names of GOT entries that were created without a value (UNDEFINED_ADDR),
   // in creation order.
-  $pendingGOT__internal: true,
-  $pendingGOT: 'new Set()',
+  $unresolvedSymbols__internal: true,
+  $unresolvedSymbols: 'new Set()',
 
   // Proxy handler used for GOT.mem and GOT.func imports.  Each of these
   // imports is fulfilled dynamically via the `get` method of this proxy
@@ -164,7 +164,7 @@ var LibraryDylink = {
         dbg(`new GOT entry: ${symName}`);
 #endif
         rtn = GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, UNDEFINED_ADDR);
-        pendingGOT.add(symName);
+        unresolvedSymbols.add(symName);
       }
       if (!weakImports.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
@@ -313,7 +313,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('reportUndefinedSymbols');
 #endif
-    for (var symName of pendingGOT) {
+    for (var symName of unresolvedSymbols) {
       var entry = GOT[symName];
       if (entry.value == UNDEFINED_ADDR) {
 #if DYLINK_DEBUG
@@ -326,7 +326,7 @@ var LibraryDylink = {
           dbg('ignoring undefined weak symbol:', symName);
 #endif
           entry.value = {{{ to64(0) }}};
-          pendingGOT.delete(symName);
+          unresolvedSymbols.delete(symName);
           continue;
         }
 #if ASSERTIONS
@@ -349,7 +349,7 @@ var LibraryDylink = {
           throw new Error(`bad export type for '${symName}': ${typeof value} (${value})`);
         }
       }
-      pendingGOT.delete(symName);
+      unresolvedSymbols.delete(symName);
     }
 #if DYLINK_DEBUG
     dbg('done reportUndefinedSymbols');
