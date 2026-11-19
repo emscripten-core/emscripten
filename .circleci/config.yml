@@ -708,6 +708,7 @@ jobs:
             wasmfs.test_fs_readv
             wasmfs.test_fs_write
             wasmfs.test_fs_readv_rawfs
+            wasmfs.test_fs_readv_eagain
             wasmfs.test_fs_nodefs_nofollow
             wasmfs.test_fs_nodefs_readdir
             wasmfs.test_fs_nodefs_home
