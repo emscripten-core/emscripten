@@ -61,6 +61,7 @@ def get(ports, settings, shared):
     flags = [
       '-sUSE_SDL=2',
       '-DMUSIC_WAV',
+      '-Wno-unsequenced',
     ]
 
     if "ogg" in formats:

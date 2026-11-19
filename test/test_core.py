@@ -4419,7 +4419,8 @@ caught outer int: 123
       #include <stdint.h>
       int64_t sidey() {
         volatile int64_t x = 0x12345678abcdef12LL;
-        x += x % 17;
+        int64_t y = x % 17;
+        x += y;
         x = 18 - x;
         return x;
       }
@@ -6118,6 +6119,7 @@ Module.onRuntimeInitialized = () => {
   def test_fs_readv_eagain(self):
     self.do_runf('fs/test_readv_eagain.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
+  @no_wasmfs('WasmFS backends only see one write per iovec. https://github.com/emscripten-core/emscripten/issues/16269')
   def test_fs_writev_gather(self):
     self.do_runf('fs/test_writev_gather.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
