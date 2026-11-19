@@ -8546,11 +8546,11 @@ int main() {
     'single_file': (['-sSINGLE_FILE'],),
   })
   def test_output_eol(self, params):
+    if '-sSINGLE_FILE' not in params:
+      params = params + ['-oa.out.html']
     for eol in ('windows', 'linux'):
       self.clear()
       print('checking eol: ', eol)
-      if '-sSINGLE_FILE' not in params:
-        params.append('-oa.out.html')
       self.run_process([EMCC, test_file('hello_world.c'), '--output-eol', eol] + params)
       out_files = ['a.out.js']
       html_file = 'a.out.html'
@@ -9686,9 +9686,9 @@ end
     # Enable as many features as possible in order to maximise
     # the amount of library code we include here.
     if '-sWASM=0' in args:
-      args += ['-sEXPORT_ALL']
+      args = args + ['-sEXPORT_ALL']
     else:
-      args += ['-sMAIN_MODULE']
+      args = args + ['-sMAIN_MODULE']
     output = self.build('hello_world.c', cflags=[
       '--closure=1',
       '--minify=0',

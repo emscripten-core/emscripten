@@ -285,8 +285,8 @@ window.close = () => {
     assert 'expected' not in kwargs
     expected = [str(i) for i in range(reference_slack + 1)]
     self.make_reftest(reference)
-    kwargs.setdefault('cflags', [])
-    kwargs['cflags'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+    # Create a new list here rather than modifying the caller's list in place.
+    kwargs['cflags'] = kwargs.get('cflags', []) + ['--pre-js', 'reftest.js', '-sGL_TESTING']
 
     try:
       return self.btest(filename, *args, expected=expected, **kwargs)
@@ -1726,7 +1726,9 @@ window.close = () => {
     def book_path(path):
       return test_file('third_party/glbook', path)
 
-    cflags += ['-lGL', '-lEGL', '-lX11']
+    # Create a new list here rather than modifying the @parameterized list in
+    # place, which is shared between all runs of this test.
+    cflags = cflags + ['-lGL', '-lEGL', '-lX11']
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
