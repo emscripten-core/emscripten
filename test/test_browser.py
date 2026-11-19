@@ -816,20 +816,22 @@ window.close = () => {
   def test_capture_stdio_custom_print(self):
     # When stdio capturing is enabled (which happens automatically when a flaky
     # test gets retried), a custom Module.print handler defined by the page
-    # must still get called with the printed string.
+    # must still get called with the printed string.  The handler reports the
+    # string that it produced as the test result, so that we verify its content.
     create_file('shell.html', r'''
       <html>
         <body>
           <script>
             var Module = {
-              print: (text) => console.log(text.replace('Hello', 'Goodbye')),
+              print: (text) => reportResultToServer(text.replace('Hello', 'Goodbye')),
             };
           </script>
           {{{ SCRIPT }}}
         </body>
       </html>''')
     self.capture_stdio = True
-    self.btest_exit('hello_world.c', cflags=['--shell-file', 'shell.html'])
+    self.btest('hello_world.c', expected='Goodbye, world!', reporting=Reporting.JS_ONLY,
+               cflags=['--shell-file', 'shell.html'])
 
   @also_with_wasmfs
   def test_fs_dev_random(self):
