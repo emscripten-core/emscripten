@@ -6,6 +6,7 @@
 
 addToLibrary({
   $ICASEFS__deps: ['wasmfs_create_icase_backend'],
+  $ICASEFS__export: true,
   $ICASEFS: {
     createBackend(opts) {
       if (typeof opts.backend === 'undefined') {

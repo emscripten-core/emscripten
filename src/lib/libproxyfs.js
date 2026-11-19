@@ -5,6 +5,7 @@
  */
 
 addToLibrary({
+  $PROXYFS__export: true,
   $PROXYFS: {
     mount(mount) {
       return PROXYFS.createNode(null, '/', mount.opts.fs.lstat(mount.opts.root).mode, 0);

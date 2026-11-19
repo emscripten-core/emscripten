@@ -6,6 +6,7 @@
 
 addToLibrary({
   $JSFILEFS__deps: ['wasmfs_create_js_file_backend'],
+  $JSFILEFS__export: true,
   $JSFILEFS: {
     createBackend(opts) {
       return _wasmfs_create_js_file_backend();

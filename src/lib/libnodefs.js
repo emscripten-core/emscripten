@@ -5,6 +5,9 @@
  */
 
 addToLibrary({
+#if !LibraryManager.has('libnoderawfs.js')
+  $NODEFS__export: true,
+#endif
 #if WASMFS
   $NODEFS__deps: ['wasmfs_create_node_backend'],
   $NODEFS: {
