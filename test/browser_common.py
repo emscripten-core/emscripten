@@ -252,13 +252,21 @@ def browser_should_skip_feature(skip_env_var, feature):
 
 def uses_shared_memory(cflags):
   """Returns True if the given emcc flags produce a multithreaded build."""
+  prev = None
   for flag in cflags:
     if flag == '-pthread':
       return True
-    if flag.startswith('-s'):
-      key, _, value = flag[2:].partition('=')
-      if key in {'PTHREADS', 'USE_PTHREADS', 'WASM_WORKERS', 'SHARED_MEMORY'} and value != '0':
-        return True
+    # Settings can be passed either as `-sFOO=1`, or as two arguments `-s FOO=1`.
+    if prev == '-s':
+      setting = flag
+    elif flag.startswith('-s'):
+      setting = flag[2:]
+    else:
+      setting = ''
+    key, _, value = setting.partition('=')
+    if key in {'PTHREADS', 'USE_PTHREADS', 'WASM_WORKERS', 'SHARED_MEMORY'} and value != '0':
+      return True
+    prev = flag
   return False
 
 
