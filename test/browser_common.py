@@ -239,7 +239,7 @@ def browser_should_skip_feature(skip_env_var, feature):
   # Otherwise EMTEST_AUTOSKIP=1 or EMTEST_AUTOSKIP is not set: check whether
   # the current browser supports the test or not.
   min_required = feature_matrix.min_browser_versions[feature]
-  not_supported = get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
+  not_supported = get_chrome_version() < min_required['chrome'] or get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
 
   # Current browser does not support the test, and EMTEST_AUTOSKIP is not set?
   # Then error out to have end user decide what to do in this situation.

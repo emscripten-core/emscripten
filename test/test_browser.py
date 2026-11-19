@@ -3358,6 +3358,7 @@ Module["preRun"] = () => {
 
   @no_firefox('source phase imports not implemented yet in firefox')
   @no_safari('TODO: croaks on line "import source wasmModule from \'./out.wasm\';"') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
+  @requires_chrome_version(138, 'the JavaScriptSourcePhaseImports feature flag does not exist in older versions')
   def test_source_phase_imports(self):
     self.compile_btest('browser_test_hello_world.c', ['-sEXPORT_ES6', '-sSOURCE_PHASE_IMPORTS', '-Wno-experimental', '-o', 'out.mjs'])
     create_file('a.html', '''
