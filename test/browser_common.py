@@ -179,20 +179,35 @@ def get_firefox_version():
   if not is_firefox():
     return UNSUPPORTED
   exe_path = shutil.which(shlex.split(EMTEST_BROWSER)[0])
-  ini_path = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
-  # On Linux, Firefox system installation uses a specific directory structure,
-  # where platform.ini is not located in same directory as the browser executable.
-  if LINUX and exe_path.startswith('/usr/bin/'):
-    def find_system_firefox_platform_ini():
-      for path in ['/usr/lib/firefox-esr/', '/usr/lib/firefox/']:
-        ini = os.path.join(path, 'platform.ini')
-        if os.path.isfile(ini):
-          return ini
+  ini_path = None
+  if exe_path:
+    exe_path = os.path.realpath(exe_path)
+    candidate = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
+    if os.path.isfile(candidate):
+      ini_path = candidate
 
-    ini_path = find_system_firefox_platform_ini()
-    if not ini_path:
-      logger.warning(f'Firefox browser detected in {EMTEST_BROWSER}, but could not find Firefox platform.ini to detect Firefox version. Assuming OLDEST_SUPPORTED_FIREFOX={OLDEST_SUPPORTED_FIREFOX}')
-      return OLDEST_SUPPORTED_FIREFOX
+  # System and package-manager Firefox installations (e.g. /usr/bin/firefox
+  # wrapper scripts on Linux or Homebrew Cask shims at /opt/homebrew/bin/firefox
+  # on macOS) do not keep platform.ini next to the wrapper script.
+  if not ini_path:
+    if LINUX:
+      search_dirs = ['/usr/lib/firefox-esr/', '/usr/lib/firefox/']
+    elif MACOS:
+      search_dirs = [
+        '/Applications/Firefox.app/Contents/Resources',
+        os.path.expanduser('~/Applications/Firefox.app/Contents/Resources'),
+      ]
+    else:
+      search_dirs = []
+    for path in search_dirs:
+      candidate = os.path.join(path, 'platform.ini')
+      if os.path.isfile(candidate):
+        ini_path = candidate
+        break
+
+  if not ini_path:
+    logger.warning(f'Firefox browser detected in {EMTEST_BROWSER}, but could not find Firefox platform.ini to detect Firefox version. Assuming OLDEST_SUPPORTED_FIREFOX={OLDEST_SUPPORTED_FIREFOX}')
+    return OLDEST_SUPPORTED_FIREFOX
 
   # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
   m = re.search(r"^Milestone=(.*)$", read_file(ini_path), re.MULTILINE)
