@@ -7,7 +7,7 @@
 #include <SDL.h>
 #include <emscripten/em_asm.h>
 
-static void sdlError(const char* str) {
+void sdlError(const char* str) {
   fprintf(stderr, "Error at %s: %s\n", str, SDL_GetError());
   exit(1);
 }

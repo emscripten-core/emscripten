@@ -9,6 +9,8 @@ updates:
     directory: "/" # Look for `package.json` and `lock` files in the `root` directory
     schedule:
       interval: "monthly"
+    cooldown:
+      default-days: 21
     commit-message:
       prefix: "[deps]"
     groups:
@@ -21,5 +23,7 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "monthly"
+    cooldown:
+      default-days: 21
     commit-message:
       prefix: "[deps]"

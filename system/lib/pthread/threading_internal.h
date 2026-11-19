@@ -55,9 +55,7 @@ typedef struct thread_profiler_block {
 // argument.  This can save _emscripten_check_timers from needing to call out to
 // JS to get the current time.  Passing 0 means that caller doesn't know the
 // current time.
-//
-// Returns true is a timer was fired, false otherwise.
-bool _emscripten_yield(double now);
+void _emscripten_yield(double now);
 
 void _emscripten_init_main_thread_js(void* tb);
 void _emscripten_thread_profiler_enable();
@@ -82,6 +80,7 @@ void _emscripten_thread_set_strongref(pthread_t thread);
 int _emscripten_thread_is_valid(pthread_t thread);
 
 void _emscripten_thread_exit_joinable(pthread_t thread);
+void _emscripten_thread_free_tls(void);
 void _emscripten_thread_exit(void* result);
 void _emscripten_process_dlopen_queue(void);
 extern em_proxying_queue* _Atomic _dlopen_proxying_queue;
@@ -114,7 +113,7 @@ void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_bloc
 
 double _emscripten_receive_on_main_thread_js(int funcIndex, void* emAsmAddr, pthread_t callingThread, int numCallArgs, double* args, void* ctx, void* ctxArgs);
 
-void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result);
+void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result, bool fulfilled);
 
 // Return non-zero if the calling thread supports Atomic.wait (For example
 // if called from the main browser thread, this function will return zero

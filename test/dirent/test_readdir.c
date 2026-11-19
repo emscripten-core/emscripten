@@ -18,7 +18,7 @@
 
 #define CHECK(cond) if (!(cond)) { printf("errno: %s\n", strerror(errno)); assert(cond); }
 
-static void create_file(const char *path, const char *buffer, int mode) {
+void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   CHECK(fd >= 0);
 

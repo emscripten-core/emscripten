@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static const struct {
+const struct {
   const char *input;
   const char *format;
 } day_tests[] = {{"2000-01-01", "%Y-%m-%d"},

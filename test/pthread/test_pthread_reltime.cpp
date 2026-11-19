@@ -10,17 +10,17 @@
 #include <pthread.h>
 #include <emscripten.h>
 
-static long now() {
+long now() {
   struct timespec time;
   clock_gettime(CLOCK_MONOTONIC, &time);
   return time.tv_sec * 1000 + time.tv_nsec / 1000 / 1000;
 }
 
-static long ping, pong;
+long ping, pong;
 
-static std::mutex mutex;
-static std::condition_variable cond_var;
-static bool pong_requested = false;
+std::mutex mutex;
+std::condition_variable cond_var;
+bool pong_requested = false;
 
 void *thread_main(void *arg) {
   std::cout << "running thread ..." << std::endl;

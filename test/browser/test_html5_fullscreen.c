@@ -13,7 +13,7 @@
 #include <GLES2/gl2.h>
 #include <math.h>
 
-static inline const char *emscripten_event_type_to_string(int eventType) {
+const char *emscripten_event_type_to_string(int eventType) {
   const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize",
     "scroll", "blur", "focus", "focusin", "focusout", "deviceorientation", "devicemotion", "orientationchange", "fullscreenchange", "pointerlockchange",
     "visibilitychange", "touchstart", "touchend", "touchmove", "touchcancel", "gamepadconnected", "gamepaddisconnected", "beforeunload",

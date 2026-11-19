@@ -42,9 +42,9 @@ static char old_tz_buf[32];
 static char *old_tz = old_tz_buf;
 static size_t old_tz_size = sizeof old_tz_buf;
 
-static volatile int lock[1];
+static _Atomic int lock[1];
 #ifndef __EMSCRIPTEN__
-volatile int *const __timezone_lockptr = lock;
+_Atomic int *const __timezone_lockptr = lock;
 #endif
 
 #ifndef USE_EXTERNAL_ZONEINFO

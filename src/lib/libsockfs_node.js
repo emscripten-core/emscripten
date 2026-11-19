@@ -22,8 +22,10 @@
 // net.BoundSocket when the runtime offers it, else the private tcp_wrap binding
 // as a fallback (net.Server's listen is async and cannot report an assigned
 // ephemeral port up front, so it can't drive bind on its own). connect() goes
-// through net.Socket, adopting the bound handle when one exists so an explicit
-// source address/port is honored, and otherwise letting the kernel assign one.
+// through net.Socket, adopting the bound handle so an explicit source
+// address/port is honored; an unbound client binds an ephemeral port first,
+// since the kernel assigns the source port synchronously at connect() and
+// getsockname() must report it immediately.
 //
 // UDP uses the public node:dgram socket when it exposes a synchronous bindSync
 // (a recent node addition that ships alongside connectSync), giving the
@@ -41,20 +43,18 @@
 // shared) wasm memory before being handed to node, so a SharedArrayBuffer heap
 // is safe.
 
-{{{
-// sock.state lifecycle, substituted as numbers at build time. A fresh socket
-// has an undefined (falsy) state until its first bind/connect.
-const SOCK_STATE_CONNECTING = 1;
-const SOCK_STATE_CONNECTED = 2;
-const SOCK_STATE_BOUND = 3;
-const SOCK_STATE_LISTEN = 4;
-const SOCK_STATE_CLOSED = 5;
-null;
-}}}
-
 var NodeSockFSLibrary = {
+  // sock.state lifecycle. A fresh socket has an undefined (falsy) state until
+  // its first bind/connect.
+  ...defineInternalConsts({
+    $SOCK_STATE_CONNECTING: 1,
+    $SOCK_STATE_CONNECTED: 2,
+    $SOCK_STATE_BOUND: 3,
+    $SOCK_STATE_LISTEN: 4,
+    $SOCK_STATE_CLOSED: 5,
+  }),
+
   // Node plumbing shared by the interface methods below.
-  $nodeSockHelpers__deps: ['$SOCKFS', '$ERRNO_CODES'],
   $nodeSockHelpers: {
     // node builtins, resolved once each. getBuiltinModule works in both
     // CommonJS and ESM output, with require as the fallback.
@@ -66,6 +66,46 @@ var NodeSockFSLibrary = {
     },
     getDgram() {
       return nodeSockHelpers.dgramModule ??= (process.getBuiltinModule || require)('dgram');
+    },
+    getDns() {
+      return nodeSockHelpers.dnsModule ??= (process.getBuiltinModule || require)('dns');
+    },
+    // Resolve a hostname via node:dns for `family` (AF_UNSPEC for both).
+    // Resolves to a list of {family, addr} entries, or an EAI_* code: node:dns
+    // surfaces either getaddrinfo EAI_* names or libuv codes, of which the
+    // transient ones map to EAI_AGAIN and the rest to "name not found".
+    lookupHost(name, family) {
+      var opts = { all: true };
+      if (family === AF_INET) opts.family = 4;
+      else if (family === AF_INET6) opts.family = 6;
+      return new Promise((resolve) => {
+        nodeSockHelpers.getDns().lookup(name, opts, (err, addresses) => {
+          if (err) {
+            switch (err.code) {
+              case 'EAI_AGAIN':
+              case 'ETIMEDOUT':
+              case 'ESERVFAIL':
+              case 'EREFUSED':
+                return resolve(EAI_AGAIN);
+              default:
+                return resolve(EAI_NONAME);
+            }
+          }
+          if (!addresses.length) return resolve(EAI_NONAME);
+          resolve(addresses.map((a) => a.family === 6 ?
+            { family: AF_INET6, addr: inetPton6(a.address) } :
+            { family: AF_INET, addr: inetPton4(a.address) }));
+        });
+      });
+    },
+    // Reverse-resolve a numeric address via node:dns. Resolves to the host
+    // name, or null when there is none.
+    lookupService(addr, port) {
+      return new Promise((resolve) => {
+        nodeSockHelpers.getDns().lookupService(addr, port, (err, hostname) => {
+          resolve(err ? null : hostname);
+        });
+      });
     },
     // True when node:dgram exposes both synchronous bindSync and connectSync
     // (a recent addition), letting UDP run entirely on the public API. A runtime
@@ -91,15 +131,15 @@ var NodeSockFSLibrary = {
     // codes are errno names already; a few are node-specific and aliased here.
     nodeErrToErrno(e) {
       var code = e && e.code;
-      if (code === 'ERR_SOCKET_DGRAM_NOT_CONNECTED') return {{{ cDefs.ENOTCONN }}};
-      if (code === 'ERR_SOCKET_BAD_PORT') return {{{ cDefs.EINVAL }}};
-      return (code && ERRNO_CODES[code]) || {{{ cDefs.EIO }}};
+      if (code === 'ERR_SOCKET_DGRAM_NOT_CONNECTED') return ENOTCONN;
+      if (code === 'ERR_SOCKET_BAD_PORT') return EINVAL;
+      return (code && ERRNO_CODES[code]) || EIO;
     },
     // Map a libuv result code (negative errno, as returned by the low-level
     // handle's bind/getsockname) to an emscripten errno.
     codeToErrno(code) {
       var name = nodeSockHelpers.getUtil().getSystemErrorName(code);
-      return (name && ERRNO_CODES[name]) || {{{ cDefs.EINVAL }}};
+      return (name && ERRNO_CODES[name]) || EINVAL;
     },
     // TCP binds eagerly and synchronously, so there is no deferred bind and no
     // lazy handle promotion - the only difference between the two backends is how
@@ -136,7 +176,7 @@ var NodeSockFSLibrary = {
       try {
         tcp = process.binding('tcp_wrap');
       } catch (e) {
-        throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        throw new FS.ErrnoError(EOPNOTSUPP);
       }
       var handle = new tcp.TCP(tcp.constants.SOCKET);
       // bind6 for IPv6 literals, honoring IPV6_V6ONLY via the bind flags.
@@ -156,11 +196,75 @@ var NodeSockFSLibrary = {
       try { handle.close(); } catch (e) {}
       throw new FS.ErrnoError(nodeSockHelpers.codeToErrno(code));
     },
+    // AF_UNIX stream sockets bind through net.BoundSocket when node offers a
+    // path-capable one, else the private pipe_wrap binding - the same
+    // public-then-private choice bindHandle() makes for TCP (BoundSocket else
+    // tcp_wrap). The capability signal is the presence of the `isPipe` accessor
+    // on the prototype (a { path } bind reports isPipe true). Chosen once, like
+    // useBoundSocket().
+    useBoundPipe() {
+      var BoundSocket = nodeSockHelpers.getNet().BoundSocket;
+      return nodeSockHelpers.boundPipeOk ??= !!(BoundSocket && 'isPipe' in BoundSocket.prototype);
+    },
+    getPipe() {
+      if (!nodeSockHelpers.pipeModule) {
+        try {
+          nodeSockHelpers.pipeModule = process.binding('pipe_wrap');
+        } catch (e) {
+          throw new FS.ErrnoError(EOPNOTSUPP);
+        }
+      }
+      return nodeSockHelpers.pipeModule;
+    },
+    // Synchronously bind an AF_UNIX stream socket to a filesystem path,
+    // reserving the entry (EADDRINUSE if already in use) exactly when POSIX
+    // bind() would, and record the path. sock.bound is the resulting bound
+    // handle - a net.BoundSocket or a raw pipe_wrap Pipe - adopted as-is by
+    // listen() (server.listen). node reports no name back for a pipe, so the
+    // path we store here is authoritative for getsockname().
+    bindPipe(sock, path) {
+      if (nodeSockHelpers.useBoundPipe()) {
+        // The constructor binds synchronously and throws a conflict
+        // (EADDRINUSE etc.) right here, matching POSIX bind().
+        try {
+          var bh = new (nodeSockHelpers.getNet().BoundSocket)({ path });
+        }
+        catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
+        sock.bound = bh;
+        sock.saddr = path;
+        return;
+      }
+      var pipe = nodeSockHelpers.getPipe();
+      var handle = new pipe.Pipe(pipe.constants.SERVER);
+      var code = handle.bind(path);
+      if (code) {
+        try { handle.close(); } catch (e) {}
+        throw new FS.ErrnoError(nodeSockHelpers.codeToErrno(code));
+      }
+      sock.bound = handle;
+      sock.saddr = path;
+    },
     // The peer address is already a numeric IP (emscripten resolves names in
     // its own DNS layer), so skip node's async DNS lookup. The family follows
     // the literal: a colon means IPv6.
     noLookup(host, _opts, cb) {
       cb(null, host, host.includes(':') ? 6 : 4);
+    },
+    // The connection completes asynchronously. A blocking connect() cannot wait,
+    // so it keeps returning 0 (callers such as Rust std treat EINPROGRESS from a
+    // blocking connect as an error).
+    connectInProgress(sock) {
+      if (sock.stream.flags & O_NONBLOCK) throw new FS.ErrnoError(EINPROGRESS);
+    },
+    // Operations that would block return EAGAIN even on a blocking fd, since
+    // there is no way to block here.
+    wouldBlock(sock) {
+#if ASSERTIONS
+      if (!(sock.stream.flags & O_NONBLOCK)) {
+        warnOnce('NODERAWSOCKETS: a blocking socket operation would block, returning EAGAIN instead (blocking I/O is not supported, use O_NONBLOCK with poll/epoll)');
+      }
+#endif
+      return new FS.ErrnoError(EAGAIN);
     },
     // The UDP backing object. With a synchronous dgram bindSync available we use
     // a public node:dgram socket (sock.udpPublic); otherwise we fall back to a
@@ -170,7 +274,15 @@ var NodeSockFSLibrary = {
     ensureUdpHandle(sock) {
       if (sock.udp) return sock.udp;
       if (nodeSockHelpers.useDgram()) {
-        var socket = nodeSockHelpers.getDgram().createSocket(sock.family === {{{ cDefs.AF_INET6 }}} ? 'udp6' : 'udp4');
+        var o = sock.opts ?? {};
+        var v6 = sock.family === AF_INET6;
+        // The bind-time flags are constructor options here, applied by bindSync.
+        var socket = nodeSockHelpers.getDgram().createSocket({
+          type: v6 ? 'udp6' : 'udp4',
+          reuseAddr: !!o.reuseAddr,
+          reusePort: !!o.reusePort,
+          ipv6Only: v6 && !!o.ipv6Only,
+        });
         socket.on('message', (msg, rinfo) => {
           var data = new Uint8Array(msg.length);
           data.set(msg);
@@ -183,7 +295,7 @@ var NodeSockFSLibrary = {
         sock.udpPublic = true;
         return sock.udp = socket;
       }
-      var udp = process.binding('udp_wrap');
+      var udp = nodeSockHelpers.udpWrap ??= process.binding('udp_wrap');
       var handle = new udp.UDP();
       sock.sendWrap = udp.SendWrap;
       handle.onmessage = (nread, _h, buf, rinfo) => {
@@ -204,10 +316,10 @@ var NodeSockFSLibrary = {
     // never called bind() auto-binds to an ephemeral port here so getsockname
     // reports the assigned local address.
     startUdpRecv(sock) {
-      if (!sock.udp || sock.udpReceiving) return;
+      if (!sock.udp || sock.udpBound) return;
       if (sock.udpPublic) {
         if (sock.sport === undefined) {
-          var a = sock.udp.bindSync({ address: sock.family === {{{ cDefs.AF_INET6 }}} ? '::' : '0.0.0.0', port: 0 });
+          var a = sock.udp.bindSync({ address: sock.family === AF_INET6 ? '::' : '0.0.0.0', port: 0 });
           sock.saddr = a.address;
           sock.sport = a.port;
         }
@@ -215,37 +327,112 @@ var NodeSockFSLibrary = {
         sock.udp.recvStart();
         if (sock.sport === undefined) {
           var name = {};
-          if (sock.udp.getsockname(name) === 0) {
+          if (!sock.udp.getsockname(name)) {
             sock.saddr = name.address;
             sock.sport = name.port;
           }
         }
       }
-      sock.udpReceiving = true;
+      sock.udpBound = true;
       // node only honors these once the socket is bound, so (re)apply any
       // options that were set earlier.
       nodeSockHelpers.applyUdpOptions(sock);
+      nodeSockHelpers.applyMemberships(sock);
     },
-    // Apply the buffered datagram options to a bound UDP socket.
+    // Apply the buffered datagram options to a bound UDP socket, returning the
+    // errno of the first rejected value (0 on success) so setsockopt can report
+    // an out-of-range option instead of silently dropping it. An unbound socket
+    // has no live handle yet, so options are just cached and validated later
+    // when this runs at bind. libuv's multicast TTL/loopback setters are
+    // family-agnostic, so the v4 and v6 optnames share one cached value each
+    // (multicastTtl for IP_MULTICAST_TTL/IPV6_MULTICAST_HOPS, multicastLoop for
+    // the two *_MULTICAST_LOOP options).
     applyUdpOptions(sock) {
       var h = sock.udp;
       var o = sock.opts;
-      if (!h || !o || !sock.udpReceiving) return;
+      if (!h || !o || !sock.udpBound) return 0;
+      var err = 0;
+      // The public dgram setters throw on a bad value; the udp_wrap handle
+      // setters instead return a negative libuv code. Capture both, and drop a
+      // rejected value so it neither takes effect nor re-fails a later replay.
+      var set = (fn, ...keys) => {
+        var bad = false;
+        try {
+          var r = fn();
+          if (typeof r === 'number' && r < 0) { bad = true; err ||= nodeSockHelpers.codeToErrno(r); }
+        } catch (e) {
+          bad = true;
+          err ||= nodeSockHelpers.nodeErrToErrno(e);
+        }
+        if (bad) for (var k of keys) delete o[k];
+      };
       if (sock.udpPublic) {
-        if (o.ttl !== undefined) { try { h.setTTL(o.ttl); } catch (e) {} }
-        if (o.broadcast !== undefined) { try { h.setBroadcast(!!o.broadcast); } catch (e) {} }
-        if (o.recvBuf !== undefined) { try { h.setRecvBufferSize(o.recvBuf); } catch (e) {} }
-        if (o.sendBuf !== undefined) { try { h.setSendBufferSize(o.sendBuf); } catch (e) {} }
+        if (o.ttl !== undefined) set(() => h.setTTL(o.ttl), 'ttl');
+        if (o.broadcast !== undefined) set(() => h.setBroadcast(!!o.broadcast), 'broadcast');
+        if (o.recvBuf !== undefined) set(() => h.setRecvBufferSize(o.recvBuf), 'recvBuf');
+        if (o.sendBuf !== undefined) set(() => h.setSendBufferSize(o.sendBuf), 'sendBuf');
+        if (o.multicastTtl !== undefined) set(() => h.setMulticastTTL(o.multicastTtl), 'multicastTtl');
+        if (o.multicastLoop !== undefined) set(() => h.setMulticastLoopback(!!o.multicastLoop), 'multicastLoop');
       } else {
-        if (o.ttl !== undefined) { try { h.setTTL(o.ttl); } catch (e) {} }
-        if (o.broadcast !== undefined) { try { h.setBroadcast(o.broadcast ? 1 : 0); } catch (e) {} }
-        if (o.recvBuf !== undefined) { try { h.bufferSize(o.recvBuf, true, {}); } catch (e) {} }
-        if (o.sendBuf !== undefined) { try { h.bufferSize(o.sendBuf, false, {}); } catch (e) {} }
+        if (o.ttl !== undefined) set(() => h.setTTL(o.ttl), 'ttl');
+        if (o.broadcast !== undefined) set(() => h.setBroadcast(o.broadcast ? 1 : 0), 'broadcast');
+        if (o.recvBuf !== undefined) set(() => h.bufferSize(o.recvBuf, true, {}), 'recvBuf');
+        if (o.sendBuf !== undefined) set(() => h.bufferSize(o.sendBuf, false, {}), 'sendBuf');
+        if (o.multicastTtl !== undefined) set(() => h.setMulticastTTL(o.multicastTtl), 'multicastTtl');
+        if (o.multicastLoop !== undefined) set(() => h.setMulticastLoopback(o.multicastLoop ? 1 : 0), 'multicastLoop');
+      }
+      return err;
+    },
+    // Multicast joins are tracked so that one made before bind() can be
+    // applied once the socket is bound (libuv would otherwise auto-bind it to
+    // an ephemeral port). Returns an errno, or 0.
+    setMembership(sock, add, group, iface) {
+      var m = sock.memberships ??= new Map();
+      var key = group + '%' + (iface ?? '');
+      // Once bound the kernel decides, and the map just follows it.
+      if (sock.udpBound) {
+        var err = nodeSockHelpers.udpMembership(sock, group, iface, add);
+        if (err) return err;
+      } else if (add ? m.has(key) : !m.has(key)) {
+        return add ? EADDRINUSE : EADDRNOTAVAIL;
+      }
+      if (add) {
+        m.set(key, [group, iface]);
+      } else if (!m.delete(key)) {
+        // A leave can match a join made under another key, and the kernel
+        // doesn't say which one it dropped.
+        for (var [k, v] of m) {
+          if (v[0] === group) {
+            m.delete(k);
+            break;
+          }
+        }
+      }
+      return 0;
+    },
+    udpMembership(sock, group, iface, add = true) {
+      var h = sock.udp;
+      try {
+        var r = add ? h.addMembership(group, iface) : h.dropMembership(group, iface);
+        if (typeof r === 'number' && r < 0) return nodeSockHelpers.codeToErrno(r);
+      } catch (e) {
+        return nodeSockHelpers.nodeErrToErrno(e);
+      }
+      return 0;
+    },
+    applyMemberships(sock) {
+      // A join made before bind() returned 0 without reaching the kernel. If the
+      // kernel rejects it now, forget it, so a later join gets the real error
+      // rather than looking like a duplicate.
+      for (var [key, [group, iface]] of sock.memberships ?? []) {
+        if (nodeSockHelpers.udpMembership(sock, group, iface)) {
+          sock.memberships.delete(key);
+        }
       }
     },
     // The live OS buffer size from a bound UDP socket, or undefined.
     udpBufferSize(sock, recv) {
-      if (!sock.udp || !sock.udpReceiving) return undefined;
+      if (!sock.udp || !sock.udpBound) return undefined;
       try {
         if (sock.udpPublic) return recv ? sock.udp.getRecvBufferSize() : sock.udp.getSendBufferSize();
         return sock.udp.bufferSize(0, recv, {});
@@ -256,9 +443,7 @@ var NodeSockFSLibrary = {
       var conn = sock.connection;
       var o = sock.opts;
       if (!conn || !o) return;
-      if (o.noDelay !== undefined) {
-        try { conn.setNoDelay(!!o.noDelay); } catch (e) {}
-      }
+      if (o.noDelay !== undefined) conn.setNoDelay(!!o.noDelay);
       nodeSockHelpers.applyKeepAlive(sock);
     },
     // The keepalive tunables arrive from C in seconds, but node wants
@@ -268,13 +453,11 @@ var NodeSockFSLibrary = {
       var conn = sock.connection;
       var o = sock.opts;
       if (!conn || !o || o.keepAlive === undefined) return;
-      try {
-        conn.setKeepAlive(
-          !!o.keepAlive,
-          (o.keepAliveIdle || 0) * 1000,
-          (o.keepAliveIntvl || 0) * 1000,
-          o.keepAliveCnt || 0);
-      } catch (e) {}
+      conn.setKeepAlive(
+        !!o.keepAlive,
+        (o.keepAliveIdle || 0) * 1000,
+        (o.keepAliveIntvl || 0) * 1000,
+        o.keepAliveCnt || 0);
     },
     // Forward a connected node socket's events onto sock.
     wireConnection(sock, conn) {
@@ -286,7 +469,7 @@ var NodeSockFSLibrary = {
         sock.recv_bytes = (sock.recv_bytes || 0) + data.length;
         // If the peer outruns the reader, pause node and resume in recvmsg.
         if (sock.recv_bytes >= 262144 /* 256 KiB */) {
-          try { conn.pause(); } catch (e) {}
+          conn.pause();
           sock.paused = true;
         }
         SOCKFS.emit('message', sock.stream.fd);
@@ -298,7 +481,7 @@ var NodeSockFSLibrary = {
       });
       conn.on('close', () => {
         sock.readClosed = true;
-        sock.state = {{{ SOCK_STATE_CLOSED }}};
+        sock.state = SOCK_STATE_CLOSED;
         SOCKFS.emit('close', sock.stream.fd);
       });
       // Backpressure relieved, so we are writable again.
@@ -309,61 +492,66 @@ var NodeSockFSLibrary = {
       conn.on('error', (e) => {
         sock.error = nodeSockHelpers.nodeErrToErrno(e);
         // Let a failed connect resolve so SO_ERROR can be read.
-        if (sock.state === {{{ SOCK_STATE_CONNECTING }}}) sock.state = {{{ SOCK_STATE_CONNECTED }}};
+        if (sock.state === SOCK_STATE_CONNECTING) sock.state = SOCK_STATE_CONNECTED;
         SOCKFS.emit('error', [sock.stream.fd, sock.error, (e && e.message) || 'socket error']);
       });
     },
   },
-  $nodeSockOps__deps: ['$nodeSockHelpers', '$SOCKFS', '$ERRNO_CODES'],
   $nodeSockOps__postset: `
     if (!ENVIRONMENT_IS_NODE) {
-      throw new Error("NODERAWSOCKETS is currently only supported on Node.js environment.")
+      throw new Error('NODERAWSOCKETS is currently only supported on Node.js environment.')
     }`,
   $nodeSockOps: {
     poll(sock) {
       // A listener is readable when a connection is waiting to be accepted.
       if (sock.server) {
-        return sock.pending.length ? ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}}) : 0;
+        return sock.pending.length ? (POLLRDNORM | POLLIN) : 0;
       }
       // UDP is connectionless: always writable, readable when a datagram waits.
-      if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
-        var dmask = {{{ cDefs.POLLOUT }}};
-        if (sock.recv_queue.length || sock.error) dmask |= ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+      if (sock.type === SOCK_DGRAM) {
+        var dmask = POLLOUT;
+        if (sock.recv_queue.length || sock.error) dmask |= (POLLRDNORM | POLLIN);
         return dmask;
       }
       var mask = 0;
       if (sock.recv_queue.length || sock.readClosed || sock.error) {
-        mask |= ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+        mask |= (POLLRDNORM | POLLIN);
       }
       if (sock.error) {
-        // Mark writable on error so SO_ERROR can be read.
-        mask |= {{{ cDefs.POLLOUT }}};
-      } else if (sock.connection && sock.state === {{{ SOCK_STATE_CONNECTED }}} && !sock.writeBlocked) {
-        mask |= {{{ cDefs.POLLOUT }}};
+        // A pending socket error (e.g. a refused connect) is Linux's
+        // POLLERR|POLLHUP, plus writable so SO_ERROR can be read. POLLOUT|POLLERR
+        // also satisfies epoll's is_write_closed() mapping.
+        mask |= POLLOUT | POLLERR | POLLHUP;
+      } else if (sock.connection && sock.state === SOCK_STATE_CONNECTED && !sock.writeBlocked) {
+        mask |= POLLOUT;
       }
-      // A peer FIN / read-side hangup (recv will see EOF) is POLLRDHUP; only a
-      // fully closed connection is a POLLHUP.
-      if (sock.readClosed) mask |= {{{ cDefs.POLLRDHUP }}};
-      if (sock.state === {{{ SOCK_STATE_CLOSED }}}) mask |= {{{ cDefs.POLLHUP }}};
+      // A peer FIN / read-side hangup (recv will see EOF) is POLLRDHUP. POLLHUP
+      // means both halves are hung up: either the connection is fully closed, or
+      // we locally shut down both directions (shutdown(SHUT_RDWR)), which Linux
+      // epoll reports as a hangup even though the node connection is still live.
+      if (sock.readClosed) mask |= POLLRDHUP;
+      if (sock.state === SOCK_STATE_CLOSED || (sock.readClosed && sock.writeShutdown)) {
+        mask |= POLLHUP;
+      }
       return mask;
     },
     ioctl(sock, request, arg) {
       switch (request) {
-        case {{{ cDefs.FIONREAD }}}:
+        case FIONREAD:
           var bytes = sock.recv_queue.length ? sock.recv_queue[0].data.length : 0;
           {{{ makeSetValue('arg', '0', 'bytes', 'i32') }}};
           return 0;
-        case {{{ cDefs.FIONBIO }}}:
+        case FIONBIO:
           var on = {{{ makeGetValue('arg', '0', 'i32') }}};
-          if (on) sock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
-          else sock.stream.flags &= ~{{{ cDefs.O_NONBLOCK }}};
+          if (on) sock.stream.flags |= O_NONBLOCK;
+          else sock.stream.flags &= ~O_NONBLOCK;
           return 0;
         default:
-          return {{{ cDefs.EINVAL }}};
+          return EINVAL;
       }
     },
     close(sock) {
-      sock.state = {{{ SOCK_STATE_CLOSED }}};
+      sock.state = SOCK_STATE_CLOSED;
       if (sock.udp) {
         try {
           if (sock.udpPublic) sock.udp.close();
@@ -371,8 +559,25 @@ var NodeSockFSLibrary = {
         } catch (e) {}
         sock.udp = null;
       }
-      if (sock.server) { try { sock.server.close(); } catch (e) {} sock.server = null; }
-      if (sock.connection) { try { sock.connection.destroy(); } catch (e) {} sock.connection = null; }
+      if (sock.server) { sock.server.close(); sock.server = null; }
+      if (sock.connection) {
+        var conn = sock.connection;
+        var linger = sock.opts?.linger;
+        if (linger?.onoff && !linger.linger && conn.resetAndDestroy) {
+          // SO_LINGER with a zero timeout: abortive close - send RST and
+          // discard any unsent data.
+          conn.resetAndDestroy();
+        } else if (linger?.onoff && linger.linger > 0) {
+          // Positive timeout: flush gracefully, but node has no blocking
+          // close, so force the connection down once the interval elapses.
+          conn.end();
+          var timer = setTimeout(() => conn.destroy(), linger.linger * 1000);
+          timer.unref?.();
+        } else {
+          conn.destroy();
+        }
+        sock.connection = null;
+      }
       // A bound handle that was never adopted by listen()/connect() is ours to
       // release; once adopted the server/connection owns it.
       if (sock.bound && !sock.server && !sock.connection) {
@@ -381,26 +586,32 @@ var NodeSockFSLibrary = {
       sock.bound = null;
       return 0;
     },
-    // how: SHUT_RD 0, SHUT_WR 1, SHUT_RDWR 2 (musl sys/socket.h).
     shutdown(sock, how) {
-      if (!sock.connection) throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
-      if (how === 0 || how === 2) {
+      if (!sock.connection) throw new FS.ErrnoError(ENOTCONN);
+      if (how === SHUT_RD || how === SHUT_RDWR) {
         // No more reads: subsequent recv returns EOF.
         sock.readClosed = true;
       }
-      if (how === 1 || how === 2) {
+      if (how === SHUT_WR || how === SHUT_RDWR) {
         // Half-close the write side (sends FIN); later sends fail with EPIPE.
         sock.writeShutdown = true;
-        try { sock.connection.end(); } catch (e) {}
+        sock.connection.end();
       }
       SOCKFS.emit('message', sock.stream.fd);
       return 0;
     },
     bind(sock, addr, port) {
       if (sock.saddr !== undefined || sock.sport !== undefined) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}}); // already bound
+        throw new FS.ErrnoError(EINVAL); // already bound
       }
-      if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
+      if (sock.family === AF_UNIX) {
+        // addr is a filesystem path (or an abstract '\0...' name). Bind
+        // synchronously so EADDRINUSE surfaces here and getsockname() works.
+        nodeSockHelpers.bindPipe(sock, addr);
+        sock.state = SOCK_STATE_BOUND;
+        return;
+      }
+      if (sock.type === SOCK_DGRAM) {
         var udp = nodeSockHelpers.ensureUdpHandle(sock);
         if (sock.udpPublic) {
           var a;
@@ -411,7 +622,12 @@ var NodeSockFSLibrary = {
           sock.saddr = a.address;
           sock.sport = a.port;
         } else {
-          var ucode = addr.includes(':') ? udp.bind6(addr, port, 0) : udp.bind(addr, port, 0);
+          var o = sock.opts ?? {};
+          var uc = nodeSockHelpers.udpWrap.constants;
+          var flags = (o.reuseAddr ? uc.UV_UDP_REUSEADDR : 0) | (o.reusePort ? uc.UV_UDP_REUSEPORT : 0);
+          var ucode = addr.includes(':')
+            ? udp.bind6(addr, port, flags | (o.ipv6Only ? uc.UV_UDP_IPV6ONLY : 0))
+            : udp.bind(addr, port, flags);
           if (ucode) throw new FS.ErrnoError(nodeSockHelpers.codeToErrno(ucode));
           var uname = {};
           ucode = udp.getsockname(uname);
@@ -419,7 +635,7 @@ var NodeSockFSLibrary = {
           sock.saddr = uname.address;
           sock.sport = uname.port;
         }
-        sock.state = {{{ SOCK_STATE_BOUND }}};
+        sock.state = SOCK_STATE_BOUND;
         nodeSockHelpers.startUdpRecv(sock);
         return;
       }
@@ -427,10 +643,34 @@ var NodeSockFSLibrary = {
       // a bind(:0)) is known immediately, getsockname() needs no promotion, and a
       // conflict surfaces right here as EADDRINUSE.
       nodeSockHelpers.bindHandle(sock, addr, port);
-      sock.state = {{{ SOCK_STATE_BOUND }}};
+      sock.state = SOCK_STATE_BOUND;
     },
     connect(sock, addr, port) {
-      if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
+      if (sock.family === AF_UNIX) {
+        if (sock.server) throw new FS.ErrnoError(EOPNOTSUPP);
+        if (sock.connection) {
+          throw new FS.ErrnoError(sock.state === SOCK_STATE_CONNECTING ? EALREADY : EISCONN);
+        }
+        // addr is the peer path. node reports no name back, so record it as the
+        // peer name ourselves; the local end is unnamed unless bind() named it.
+        sock.daddr = addr;
+        sock.state = SOCK_STATE_CONNECTING;
+        var uconn = new (nodeSockHelpers.getNet().Socket)({ allowHalfOpen: true });
+        uconn.once('connect', () => {
+          sock.state = SOCK_STATE_CONNECTED;
+          sock.saddr ??= '';
+          try { uconn.resume(); } catch (e) {}
+          SOCKFS.emit('open', sock.stream.fd);
+        });
+        // A missing path surfaces as ENOENT and a non-socket path as
+        // ECONNREFUSED, both through wireConnection's 'error' handler and the
+        // same SO_ERROR/poll seam as TCP.
+        nodeSockHelpers.wireConnection(sock, uconn);
+        uconn.connect({ path: addr });
+        nodeSockHelpers.connectInProgress(sock);
+        return;
+      }
+      if (sock.type === SOCK_DGRAM) {
         sock.daddr = addr;
         sock.dport = port;
         var udp = nodeSockHelpers.ensureUdpHandle(sock);
@@ -439,15 +679,17 @@ var NodeSockFSLibrary = {
           // async errors (e.g. ICMP ECONNREFUSED) on the socket. connectSync
           // binds first if needed and throws synchronously; a re-connect just
           // replaces the peer.
-          if (sock.udpConnected) { try { udp.disconnect(); } catch (e) {} }
+          if (sock.udpConnected) udp.disconnect();
           try { udp.connectSync(port, addr); }
           catch (e) { throw new FS.ErrnoError(nodeSockHelpers.nodeErrToErrno(e)); }
           sock.udpConnected = true;
           var a = udp.address();
           sock.saddr = a.address;
           sock.sport = a.port;
-          sock.udpReceiving = true; // a bound dgram socket already receives
+          var wasBound = sock.udpBound;
+          sock.udpBound = true; // a bound dgram socket already receives
           nodeSockHelpers.applyUdpOptions(sock);
+          if (!wasBound) nodeSockHelpers.applyMemberships(sock);
           return;
         }
         // Older node has no synchronous dgram connect, so just record the peer
@@ -455,63 +697,80 @@ var NodeSockFSLibrary = {
         // the socket is bound (an explicit bind or the auto-bind on first send).
         return;
       }
-      if (sock.server) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+      if (sock.server) throw new FS.ErrnoError(EOPNOTSUPP);
       if (sock.connection) {
-        throw new FS.ErrnoError(sock.state === {{{ SOCK_STATE_CONNECTING }}} ? {{{ cDefs.EALREADY }}} : {{{ cDefs.EISCONN }}});
+        throw new FS.ErrnoError(sock.state === SOCK_STATE_CONNECTING ? EALREADY : EISCONN);
       }
       sock.daddr = addr;
       sock.dport = port;
-      sock.state = {{{ SOCK_STATE_CONNECTING }}};
+      sock.state = SOCK_STATE_CONNECTING;
       var net = nodeSockHelpers.getNet();
-      var conn;
-      if (sock.bound) {
-        // A prior bind() produced a real, already-bound handle; connect through
-        // it so the bound source address/port is honored by the kernel.
-        conn = new net.Socket({ handle: sock.bound, pauseOnCreate: true, allowHalfOpen: true });
-      } else {
-        // Unbound client: let the kernel assign the source address/port.
-        conn = new net.Socket({ allowHalfOpen: true });
+      if (!sock.bound) {
+        // The kernel assigns the ephemeral source port synchronously at
+        // connect(), so an unbound client binds an ephemeral port first (the
+        // same eager bindHandle path an explicit bind() takes) and getsockname()
+        // is correct immediately, not only once the async connect completes.
+        nodeSockHelpers.bindHandle(sock, addr.includes(':') ? '::' : '0.0.0.0', 0);
       }
+      // Connect through the bound handle so the bound source address/port is
+      // honored by the kernel.
+      var conn = new net.Socket({ handle: sock.bound, pauseOnCreate: true, allowHalfOpen: true });
       conn.once('connect', () => {
-        sock.state = {{{ SOCK_STATE_CONNECTED }}};
+        sock.state = SOCK_STATE_CONNECTED;
         sock.saddr = conn.localAddress;
         sock.sport = conn.localPort;
         sock.daddr = conn.remoteAddress || addr;
         sock.dport = conn.remotePort || port;
-        try { conn.resume(); } catch (e) {}
+        conn.resume();
         nodeSockHelpers.applyOptions(sock);
         SOCKFS.emit('open', sock.stream.fd);
       });
       nodeSockHelpers.wireConnection(sock, conn);
       conn.connect({ host: addr, port, lookup: nodeSockHelpers.noLookup });
+      // BoundSocket connects in-tick, so the kernel-assigned source address is
+      // already known (node >= 26.7).
+      sock.saddr = conn.address().address;
+      nodeSockHelpers.connectInProgress(sock);
     },
     listen(sock, backlog) {
-      if (sock.type !== {{{ cDefs.SOCK_STREAM }}}) throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}}); // not a stream socket
-      if (sock.server) throw new FS.ErrnoError({{{ cDefs.EINVAL }}}); // already listening
-      if (sock.connection) throw new FS.ErrnoError({{{ cDefs.EINVAL }}}); // a connected socket cannot listen
-      // POSIX listen without a prior bind auto-binds an ephemeral port. The bind
-      // is eager and synchronous (bindHandle), so the assigned port is known and
-      // any conflict surfaces before we listen.
-      if (!sock.bound) {
+      if (sock.type !== SOCK_STREAM) throw new FS.ErrnoError(EOPNOTSUPP); // not a stream socket
+      if (sock.server) throw new FS.ErrnoError(EINVAL); // already listening
+      if (sock.connection) throw new FS.ErrnoError(EINVAL); // a connected socket cannot listen
+      // AF_UNIX has no autobind for listen(): the socket must have been named by
+      // a prior bind() (which produced the bound Pipe handle we listen on).
+      var isUnix = sock.family === AF_UNIX;
+      if (isUnix) {
+        if (!sock.bound) throw new FS.ErrnoError(EINVAL);
+      } else if (!sock.bound) {
+        // POSIX listen without a prior bind auto-binds an ephemeral port. The
+        // bind is eager and synchronous (bindHandle), so the assigned port is
+        // known and any conflict surfaces before we listen.
         nodeSockHelpers.bindHandle(sock, '0.0.0.0', 0);
-        sock.state = {{{ SOCK_STATE_BOUND }}};
+        sock.state = SOCK_STATE_BOUND;
       }
       var server = new (nodeSockHelpers.getNet().Server)({ pauseOnConnect: true, allowHalfOpen: true });
       sock.server = server;
-      sock.state = {{{ SOCK_STATE_LISTEN }}};
+      sock.state = SOCK_STATE_LISTEN;
       server.on('connection', (conn) => {
         var newsock = SOCKFS.createSocket(sock.family, sock.type, sock.protocol);
-        newsock.state = {{{ SOCK_STATE_CONNECTED }}};
-        newsock.saddr = conn.localAddress;
-        newsock.sport = conn.localPort;
-        newsock.daddr = conn.remoteAddress;
-        newsock.dport = conn.remotePort;
+        newsock.state = SOCK_STATE_CONNECTED;
+        if (isUnix) {
+          // node reports no name for a pipe: the accepted socket's local name is
+          // the listener's path, the peer is unnamed (the client rarely binds).
+          newsock.saddr = sock.saddr;
+          newsock.daddr = '';
+        } else {
+          newsock.saddr = conn.localAddress;
+          newsock.sport = conn.localPort;
+          newsock.daddr = conn.remoteAddress;
+          newsock.dport = conn.remotePort;
+        }
         nodeSockHelpers.wireConnection(newsock, conn);
-        try { conn.resume(); } catch (e) {} // paused by pauseOnConnect
+        conn.resume(); // paused by pauseOnConnect
         sock.pending.push(newsock);
         SOCKFS.emit('connection', newsock.stream.fd);
         // A queued client makes the listening socket readable (POLLIN).
-        sock.stream.node.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+        sock.stream.node.notifyListeners(POLLRDNORM | POLLIN);
       });
       server.on('error', (e) => {
         sock.error = nodeSockHelpers.nodeErrToErrno(e);
@@ -522,7 +781,7 @@ var NodeSockFSLibrary = {
       server.listen(sock.bound, backlog || 511);
     },
     accept(listensock) {
-      if (!listensock.server) throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      if (!listensock.server) throw new FS.ErrnoError(EINVAL);
       // Surface a real listen error (e.g. late address-in-use) rather than
       // masking it as would-block.
       if (listensock.error) {
@@ -530,21 +789,19 @@ var NodeSockFSLibrary = {
         listensock.error = null;
         throw new FS.ErrnoError(e);
       }
-      if (!listensock.pending.length) throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
-      var newsock = listensock.pending.shift();
-      newsock.stream.flags = listensock.stream.flags;
-      return newsock;
+      if (!listensock.pending.length) throw nodeSockHelpers.wouldBlock(listensock);
+      return listensock.pending.shift();
     },
     sendmsg(sock, buffer, offset, length, addr, port) {
-      if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
+      if (sock.type === SOCK_DGRAM) {
         // A connected datagram socket rejects an explicit destination.
         if (sock.daddr !== undefined && addr !== undefined) {
-          throw new FS.ErrnoError({{{ cDefs.EISCONN }}});
+          throw new FS.ErrnoError(EISCONN);
         }
         if (addr === undefined || port === undefined) {
           addr = sock.daddr;
           port = sock.dport;
-          if (addr === undefined || port === undefined) throw new FS.ErrnoError({{{ cDefs.EDESTADDRREQ }}});
+          if (addr === undefined || port === undefined) throw new FS.ErrnoError(EDESTADDRREQ);
         }
         var handle = nodeSockHelpers.ensureUdpHandle(sock);
         // A public dgram send() would do an async implicit bind, so bind (and
@@ -573,18 +830,18 @@ var NodeSockFSLibrary = {
       }
       // Writing after a write-shutdown is a broken pipe, regardless of peer.
       if (sock.writeShutdown) {
-        throw new FS.ErrnoError({{{ cDefs.EPIPE }}});
+        throw new FS.ErrnoError(EPIPE);
       }
       var conn = sock.connection;
-      if (!conn || sock.state === {{{ SOCK_STATE_CLOSED }}}) {
-        throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
+      if (!conn || sock.state === SOCK_STATE_CLOSED) {
+        throw new FS.ErrnoError(ENOTCONN);
       }
       // Bound node's write buffer to its high-water mark: a non-blocking socket
       // only accepts up to the remaining headroom, would-blocking when there is
       // none, and short-writes the rest (which POSIX send() is allowed to do).
-      if (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}) {
+      if (sock.stream.flags & O_NONBLOCK) {
         var headroom = conn.writableHighWaterMark - conn.writableLength;
-        if (headroom <= 0) throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+        if (headroom <= 0) throw new FS.ErrnoError(EAGAIN);
         if (length > headroom) length = headroom;
       }
       offset += buffer.byteOffset;
@@ -599,9 +856,19 @@ var NodeSockFSLibrary = {
       if (!ok) sock.writeBlocked = true; // cleared on 'drain', gates poll's POLLOUT
       return length;
     },
-    recvmsg(sock, length) {
-      if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
-        var dgram = sock.recv_queue.shift();
+    recvmsg(sock, length, flags) {
+      // MSG_PEEK returns the data from the head of the queue without consuming
+      // it: no shift, no recv_bytes/flow-control adjustment, so a later recv
+      // sees the same bytes and poll still reports the socket readable.
+      // Note: this uses cDefs.MSG_PEEK rather than the bare MSG_PEEK constant.
+      // Bare constants are emitted as `const MSG_PEEK = 2;`, and Closure Compiler
+      // treats any MSG_-prefixed variable as a translatable message that must be
+      // initialized with goog.getMsg(). Builds that enable Closure's message checks
+      // (e.g. --jscomp_warning=messageConventions, or when using translations)
+      // reject it with JSC_MSG_NOT_INITIALIZED_CORRECTLY.
+      var peek = flags & {{{ cDefs.MSG_PEEK }}};
+      if (sock.type === SOCK_DGRAM) {
+        var dgram = sock.recv_queue[0];
         if (!dgram) {
           // poll reports the socket readable on a pending error, so surface
           // (and clear) it here rather than spinning on EAGAIN.
@@ -610,23 +877,32 @@ var NodeSockFSLibrary = {
             sock.error = null;
             throw new FS.ErrnoError(derr);
           }
-          throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+          throw nodeSockHelpers.wouldBlock(sock);
         }
         // A datagram is atomic: return up to length bytes and drop the rest.
         var dd = dgram.data;
-        return { buffer: dd.subarray(0, Math.min(length, dd.length)), addr: dgram.addr, port: dgram.port };
+        var res = { buffer: dd.subarray(0, Math.min(length, dd.length)), addr: dgram.addr, port: dgram.port };
+        if (!peek) sock.recv_queue.shift();
+        return res;
       }
-      var queued = sock.recv_queue.shift();
+      var queued = sock.recv_queue[0];
       if (!queued) {
+        if (sock.error) {
+          var serr = sock.error;
+          sock.error = null;
+          throw new FS.ErrnoError(serr);
+        }
         if (sock.readClosed) return null; // EOF
         if (!sock.connection) {
-          throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
+          throw new FS.ErrnoError(ENOTCONN);
         }
-        throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+        throw nodeSockHelpers.wouldBlock(sock);
       }
       var q = queued.data;
       var bytesRead = Math.min(length, q.length);
       var res = { buffer: q.subarray(0, bytesRead), addr: queued.addr, port: queued.port };
+      if (peek) return res;
+      sock.recv_queue.shift();
       if (bytesRead < q.length) {
         queued.data = q.subarray(bytesRead);
         sock.recv_queue.unshift(queued);
@@ -634,114 +910,209 @@ var NodeSockFSLibrary = {
       sock.recv_bytes = Math.max(0, (sock.recv_bytes || 0) - bytesRead);
       if (sock.paused && sock.recv_bytes < 262144 && sock.connection) {
         sock.paused = false;
-        try { sock.connection.resume(); } catch (e) {}
+        sock.connection.resume();
       }
       return res;
     },
     setsockopt(sock, level, optname, optval, optlen) {
       sock.opts ||= {};
       var val = {{{ makeGetValue('optval', 0, 'i32') }}};
-      if (level === {{{ cDefs.SOL_SOCKET }}}) {
+      if (level === SOL_SOCKET) {
         switch (optname) {
-          case 9: // SO_KEEPALIVE
+          case SO_KEEPALIVE:
             sock.opts.keepAlive = !!val;
             nodeSockHelpers.applyKeepAlive(sock);
             return 0;
-          case 8: // SO_RCVBUF. Applied to the udp_wrap handle; Node TCP cannot.
+          case SO_RCVBUF: // Applied to the udp_wrap handle; Node TCP cannot.
             sock.opts.recvBuf = val;
-            nodeSockHelpers.applyUdpOptions(sock);
-            return 0;
-          case 7: // SO_SNDBUF. Applied to the udp_wrap handle; Node TCP cannot.
+            return -nodeSockHelpers.applyUdpOptions(sock);
+          case SO_SNDBUF: // Applied to the udp_wrap handle; Node TCP cannot.
             sock.opts.sendBuf = val;
-            nodeSockHelpers.applyUdpOptions(sock);
-            return 0;
-          case 6: // SO_BROADCAST (datagram sockets)
+            return -nodeSockHelpers.applyUdpOptions(sock);
+          case SO_BROADCAST: // (datagram sockets)
             sock.opts.broadcast = !!val;
-            nodeSockHelpers.applyUdpOptions(sock);
+            return -nodeSockHelpers.applyUdpOptions(sock);
+          case SO_REUSEADDR: // Bind-time: passed to the UDP bind. libuv forces
+            // it on for TCP at bind regardless, so there it is only recorded.
+            sock.opts.reuseAddr = !!val;
             return 0;
-          case 2: // SO_REUSEADDR. libuv forces SO_REUSEADDR on at bind, so this
-            // is effectively always enabled; accept and ignore (getsockopt
-            // reports 1). It cannot be turned off.
-            return 0;
-          case {{{ cDefs.SO_REUSEPORT }}}: // SO_REUSEPORT. Bind-time: cached and
-            // passed to the BoundSocket at bind. Set after bind has no effect.
+          case SO_REUSEPORT: // SO_REUSEPORT. Bind-time: cached and
+            // passed to the BoundSocket / UDP bind. Set after bind has no effect.
             sock.opts.reusePort = !!val;
             return 0;
-        }
-      } else if (level === {{{ cDefs.IPPROTO_IP }}}) {
-        if (optname === 2 /* IP_TTL */) {
-          sock.opts.ttl = val;
-          nodeSockHelpers.applyUdpOptions(sock);
-          return 0;
-        }
-      } else if (level === {{{ cDefs.IPPROTO_IPV6 }}}) {
-        if (optname === {{{ cDefs.IPV6_V6ONLY }}}) {
-          // Bind-time only: IPV6_V6ONLY cannot change once the socket is bound,
-          // so reject a late change (POSIX returns EINVAL). Before any
-          // bind/connect/listen we cache it for the BoundSocket constructor.
-          if (sock.state) return -{{{ cDefs.EINVAL }}};
-          sock.opts.ipv6Only = !!val;
-          return 0;
-        }
-      } else if (level === {{{ cDefs.IPPROTO_TCP }}}) {
-        switch (optname) {
-          case 1: // TCP_NODELAY
-            sock.opts.noDelay = !!val;
-            if (sock.connection) { try { sock.connection.setNoDelay(!!val); } catch (e) {} }
+          case SO_LINGER: // (struct linger: l_onoff, l_linger)
+            sock.opts.linger = {
+              onoff: val,
+              linger: {{{ makeGetValue('optval', 4, 'i32') }}},
+            };
             return 0;
-          case 4: // TCP_KEEPIDLE (seconds)
+          case SO_RCVTIMEO:
+          case SO_SNDTIMEO: {
+            // Nothing here blocks, so like the kernel on an O_NONBLOCK socket the
+            // timeout is stored and reported but never fires. Validated as the
+            // kernel does; a negative tv_sec clears the timeout.
+            if (optlen < {{{ C_STRUCTS.timeval.__size__ }}}) return -EINVAL;
+            var sec = {{{ makeGetValue('optval', C_STRUCTS.timeval.tv_sec, 'i53') }}};
+            var usec = {{{ makeGetValue('optval', C_STRUCTS.timeval.tv_usec, 'i32') }}};
+            if (usec < 0 || usec >= 1000000) return -EDOM;
+            if (sec < 0) sec = usec = 0;
+            sock.opts[optname === SO_RCVTIMEO ? 'rcvTimeo' : 'sndTimeo'] = [sec, usec];
+            return 0;
+          }
+        }
+      } else if (level === IPPROTO_IP) {
+        switch (optname) {
+          case IP_TTL:
+            sock.opts.ttl = val;
+            return -nodeSockHelpers.applyUdpOptions(sock);
+          case IP_MULTICAST_TTL:
+            sock.opts.multicastTtl = val;
+            return -nodeSockHelpers.applyUdpOptions(sock);
+          case IP_MULTICAST_LOOP:
+            sock.opts.multicastLoop = !!val;
+            return -nodeSockHelpers.applyUdpOptions(sock);
+          case IP_ADD_MEMBERSHIP: // (struct ip_mreq, or ip_mreqn)
+          case IP_DROP_MEMBERSHIP: {
+            if (sock.type !== SOCK_DGRAM) return -EPROTO;
+            if (optlen < 8) return -EINVAL;
+            // The kernel's first check, needed here as a join before bind()
+            // reaches the kernel only later.
+            if (optname === IP_ADD_MEMBERSHIP && ({{{ makeGetValue('optval', 0, 'u8') }}} & 0xf0) !== 0xe0) return -EINVAL; // 224.0.0.0/4
+            var iface = {{{ makeGetValue('optval', 4, 'i32') }}};
+            // node selects the interface by address only, so an ip_mreqn that
+            // names it by index alone cannot be honored.
+            if (!iface && optlen >= 12 && {{{ makeGetValue('optval', 8, 'i32') }}}) return -ENODEV;
+            return -nodeSockHelpers.setMembership(sock, optname === IP_ADD_MEMBERSHIP, inetNtop4(val), iface ? inetNtop4(iface) : undefined);
+          }
+        }
+      } else if (level === IPPROTO_IPV6) {
+        switch (optname) {
+          case IPV6_V6ONLY:
+            // Bind-time only: IPV6_V6ONLY cannot change once the socket is bound,
+            // so reject a late change (POSIX returns EINVAL). Before any
+            // bind/connect/listen we cache it for the BoundSocket constructor.
+            if (sock.state) return -EINVAL;
+            sock.opts.ipv6Only = !!val;
+            return 0;
+          case IPV6_MULTICAST_HOPS: // (same libuv setting as IP_MULTICAST_TTL)
+            sock.opts.multicastTtl = val;
+            return -nodeSockHelpers.applyUdpOptions(sock);
+          case IPV6_MULTICAST_LOOP: // (same libuv setting as IP_MULTICAST_LOOP)
+            sock.opts.multicastLoop = !!val;
+            return -nodeSockHelpers.applyUdpOptions(sock);
+          case IPV6_JOIN_GROUP: // (struct ipv6_mreq)
+          case IPV6_LEAVE_GROUP: {
+            if (sock.type !== SOCK_DGRAM) return -EPROTO;
+            if (optlen < 20) return -EINVAL;
+            // As for IP_ADD_MEMBERSHIP above, though here a leave is refused too.
+            if ({{{ makeGetValue('optval', 0, 'u8') }}} !== 0xff) return -EINVAL; // ff00::/8
+            // node selects the interface by name and has no index-to-name
+            // lookup, so only the default interface (index 0) is supported.
+            if ({{{ makeGetValue('optval', 16, 'i32') }}}) return -ENODEV;
+            var src32 = {{{ getHeapOffset('optval', 'i32') }}};
+            var group = inetNtop6(HEAP32.subarray(src32, src32 + 4));
+            return -nodeSockHelpers.setMembership(sock, optname === IPV6_JOIN_GROUP, group, undefined);
+          }
+        }
+      } else if (level === IPPROTO_TCP) {
+        switch (optname) {
+          case TCP_NODELAY:
+            sock.opts.noDelay = !!val;
+            if (sock.connection) sock.connection.setNoDelay(!!val);
+            return 0;
+          case TCP_KEEPIDLE: // (seconds)
             sock.opts.keepAliveIdle = val;
             nodeSockHelpers.applyKeepAlive(sock);
             return 0;
-          case 5: // TCP_KEEPINTVL (seconds)
+          case TCP_KEEPINTVL: // (seconds)
             sock.opts.keepAliveIntvl = val;
             nodeSockHelpers.applyKeepAlive(sock);
             return 0;
-          case 6: // TCP_KEEPCNT (probe count)
+          case TCP_KEEPCNT: // (probe count)
             sock.opts.keepAliveCnt = val;
             nodeSockHelpers.applyKeepAlive(sock);
             return 0;
         }
       }
-      // Accept unknown options silently, like a permissive stack.
-      return 0;
+      // Anything not modelled above is rejected, so that every option accepted
+      // here can also be read back by getsockopt.
+      return -ENOPROTOOPT;
     },
     getsockopt(sock, level, optname, optval, optlen) {
       sock.opts ||= {};
       var val;
-      if (level === {{{ cDefs.SOL_SOCKET }}}) {
+      if (level === SOL_SOCKET) {
         switch (optname) {
-          case {{{ cDefs.SO_ERROR }}}:
+          case SO_ERROR:
             {{{ makeSetValue('optval', 0, 'sock.error || 0', 'i32') }}};
             {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
             sock.error = null; // SO_ERROR reads and clears
             return 0;
-          case 9: val = sock.opts.keepAlive ? 1 : 0; break; // SO_KEEPALIVE
+          case SO_TYPE: val = sock.type; break;
+          case SO_LINGER: { // (struct linger: l_onoff, l_linger)
+            var linger = sock.opts.linger || { onoff: 0, linger: 0 };
+            {{{ makeSetValue('optval', 0, 'linger.onoff', 'i32') }}};
+            {{{ makeSetValue('optval', 4, 'linger.linger', 'i32') }}};
+            {{{ makeSetValue('optlen', 0, 8, 'i32') }}};
+            return 0;
+          }
+          case SO_RCVTIMEO:
+          case SO_SNDTIMEO: {
+            if ({{{ makeGetValue('optlen', 0, 'i32') }}} < {{{ C_STRUCTS.timeval.__size__ }}}) return -EINVAL;
+            var tv = sock.opts[optname === SO_RCVTIMEO ? 'rcvTimeo' : 'sndTimeo'] || [0, 0];
+            {{{ makeSetValue('optval', C_STRUCTS.timeval.tv_sec, 'tv[0]', 'i53') }}};
+            {{{ makeSetValue('optval', C_STRUCTS.timeval.tv_usec, 'tv[1]', 'i32') }}};
+            {{{ makeSetValue('optlen', 0, C_STRUCTS.timeval.__size__, 'i32') }}};
+            return 0;
+          }
+          case SO_KEEPALIVE: val = sock.opts.keepAlive ? 1 : 0; break;
           // SO_RCVBUF/SO_SNDBUF: report the live value from the udp_wrap handle
           // when bound, else the stored/default.
-          case 8: val = nodeSockHelpers.udpBufferSize(sock, true) ?? (sock.opts.recvBuf || 65536); break;
-          case 7: val = nodeSockHelpers.udpBufferSize(sock, false) ?? (sock.opts.sendBuf || 65536); break;
-          case 6: val = sock.opts.broadcast ? 1 : 0; break; // SO_BROADCAST
-          case 2: val = 1; break; // SO_REUSEADDR: libuv forces it on at bind
-          case {{{ cDefs.SO_REUSEPORT }}}: val = sock.opts.reusePort ? 1 : 0; break;
-          default: return -{{{ cDefs.ENOPROTOOPT }}};
+          case SO_RCVBUF: val = nodeSockHelpers.udpBufferSize(sock, true) ?? (sock.opts.recvBuf || 65536); break;
+          case SO_SNDBUF: val = nodeSockHelpers.udpBufferSize(sock, false) ?? (sock.opts.sendBuf || 65536); break;
+          case SO_BROADCAST: val = sock.opts.broadcast ? 1 : 0; break;
+          // SO_REUSEADDR: libuv turns it on when it binds a TCP socket, so report
+          // it set once a TCP socket is bound or listening even if never asked for.
+          case SO_REUSEADDR: val = (sock.opts.reuseAddr || (sock.type === SOCK_STREAM
+                && sock.family !== AF_UNIX && (sock.bound || sock.server))) ? 1 : 0; break;
+          case SO_REUSEPORT: val = sock.opts.reusePort ? 1 : 0; break;
+          case SO_ACCEPTCONN: val = sock.server ? 1 : 0; break;
+          case SO_DOMAIN: val = sock.family; break;
+          case SO_PROTOCOL:
+            // Protocol 0 at socket() resolves to the type's default protocol.
+            val = sock.protocol || (sock.family === AF_UNIX ? 0
+                : sock.type === SOCK_STREAM ? IPPROTO_TCP : IPPROTO_UDP);
+            break;
+          default: return -ENOPROTOOPT;
         }
-      } else if (level === {{{ cDefs.IPPROTO_IP }}}) {
-        if (optname !== 2 /* IP_TTL */) return -{{{ cDefs.ENOPROTOOPT }}};
-        val = sock.opts.ttl || 64;
-      } else if (level === {{{ cDefs.IPPROTO_IPV6 }}}) {
-        if (optname !== {{{ cDefs.IPV6_V6ONLY }}}) return -{{{ cDefs.ENOPROTOOPT }}};
-        val = sock.opts.ipv6Only ? 1 : 0;
-      } else if (level === {{{ cDefs.IPPROTO_TCP }}}) {
+      } else if (level === IPPROTO_IP) {
         switch (optname) {
-          case 1: val = sock.opts.noDelay ? 1 : 0; break;    // TCP_NODELAY
-          case 4: val = sock.opts.keepAliveIdle || 0; break; // TCP_KEEPIDLE
-          case 5: val = sock.opts.keepAliveIntvl || 0; break;// TCP_KEEPINTVL
-          case 6: val = sock.opts.keepAliveCnt || 0; break;  // TCP_KEEPCNT
-          default: return -{{{ cDefs.ENOPROTOOPT }}};
+          case IP_TTL: val = sock.opts.ttl || 64; break;
+          case IP_MULTICAST_TTL: val = sock.opts.multicastTtl ?? 1; break;
+          case IP_MULTICAST_LOOP: val = sock.opts.multicastLoop === undefined ? 1 : (sock.opts.multicastLoop ? 1 : 0); break;
+          default: return -ENOPROTOOPT;
+        }
+      } else if (level === IPPROTO_IPV6) {
+        switch (optname) {
+          case IPV6_V6ONLY: val = sock.opts.ipv6Only ? 1 : 0; break;
+          case IPV6_MULTICAST_HOPS: val = sock.opts.multicastTtl ?? 1; break;
+          case IPV6_MULTICAST_LOOP: val = sock.opts.multicastLoop === undefined ? 1 : (sock.opts.multicastLoop ? 1 : 0); break;
+          default: return -ENOPROTOOPT;
+        }
+      } else if (level === IPPROTO_TCP) {
+        switch (optname) {
+          // TCP_MAXSEG: node exposes no MSS, so report RFC 879's 536-byte default
+          // before the handshake and the (large) loopback-negotiated value once
+          // connected. Enough for callers that only compare pre/post-connect MSS.
+          case TCP_MAXSEG: val = (sock.state === SOCK_STATE_CONNECTED) ? 65483 : 536; break;
+          case TCP_NODELAY: val = sock.opts.noDelay ? 1 : 0; break;
+          case TCP_KEEPIDLE: val = sock.opts.keepAliveIdle || 0; break;
+          case TCP_KEEPINTVL: val = sock.opts.keepAliveIntvl || 0; break;
+          case TCP_KEEPCNT: val = sock.opts.keepAliveCnt || 0; break;
+          default: return -ENOPROTOOPT;
         }
       } else {
-        return -{{{ cDefs.ENOPROTOOPT }}};
+        return -ENOPROTOOPT;
       }
       {{{ makeSetValue('optval', 0, 'val', 'i32') }}};
       {{{ makeSetValue('optlen', 0, 4, 'i32') }}};

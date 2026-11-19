@@ -13,8 +13,8 @@
 #include <assert.h>
 #include <math.h>
 
-static const time_t xmas2002 = 1040786563ll;
-static const time_t summer2002 = 1025528525ll;
+const time_t xmas2002 = 1040786563ll;
+const time_t summer2002 = 1025528525ll;
 
 void check_gmtime_localtime(time_t time) {
   char gmbuf[32], locbuf[32];

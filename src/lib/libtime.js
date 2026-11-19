@@ -4,11 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-assert(!STANDALONE_WASM, "library_time.js should not be included in standalone mode");
+assert(!STANDALONE_WASM, 'library_time.js should not be included in standalone mode');
 
 addToLibrary({
   _mktime_js__i53abi: true,
-  _mktime_js__deps: ['$ydayFromDate'],
   _mktime_js: (tmPtr) => {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -37,7 +36,7 @@ addToLibrary({
       var nonDstOffset = Math.max(winterOffset, summerOffset);
       var trueOffset = dst > 0 ? dstOffset : nonDstOffset;
       // Don't try setMinutes(date.getMinutes() + ...) -- it's messed up.
-      date.setTime(date.getTime() + (trueOffset - guessedOffset)*60000);
+      date.setTime(date.getTime() + (trueOffset - guessedOffset)*60_000);
       if (isNaN(date.getTime())) {
         return -1;
       }
@@ -101,7 +100,6 @@ addToLibrary({
   },
 
   _localtime_js__i53abi: true,
-  _localtime_js__deps: ['$ydayFromDate'],
   _localtime_js: (time, tmPtr) => {
     var date = new Date(time*1000);
     if (isNaN(date.getTime())) {
@@ -139,15 +137,15 @@ addToLibrary({
       tm_year: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}},
       tm_wday: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'i32') }}}
     };
-    var days = [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ];
-    var months = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
+    var days = [ 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat' ];
+    var months = [ 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ];
     var s = days[date.tm_wday] + ' ' + months[date.tm_mon] +
         (date.tm_mday < 10 ? '  ' : ' ') + date.tm_mday +
         (date.tm_hour < 10 ? ' 0' : ' ') + date.tm_hour +
         (date.tm_min < 10 ? ':0' : ':') + date.tm_min +
         (date.tm_sec < 10 ? ':0' : ':') + date.tm_sec +
-        ' ' + (1900 + date.tm_year) + "\n";
+        ' ' + (1900 + date.tm_year) + '\n';
 
     // asctime_r is specced to behave in an undefined manner if the algorithm would attempt
     // to write out more than 26 bytes (including the null terminator).
@@ -157,11 +155,6 @@ addToLibrary({
     return buf;
   },
 
-  _tzset_js__deps: ['$stringToUTF8',
-#if ASSERTIONS
-    '$lengthBytesUTF8',
-#endif
-  ],
   _tzset_js__internal: true,
   _tzset_js: (timezone, daylight, std_name, dst_name) => {
     // TODO: Use (malleable) environment variables instead of system settings.
@@ -191,11 +184,11 @@ addToLibrary({
     var extractZone = (timezoneOffset) => {
       // Why inverse sign?
       // Read here https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/getTimezoneOffset
-      var sign = timezoneOffset >= 0 ? "-" : "+";
+      var sign = timezoneOffset >= 0 ? '-' : '+';
 
       var absOffset = Math.abs(timezoneOffset)
-      var hours = String(Math.floor(absOffset / 60)).padStart(2, "0");
-      var minutes = String(absOffset % 60).padStart(2, "0");
+      var hours = String(Math.floor(absOffset / 60)).padStart(2, '0');
+      var minutes = String(absOffset % 60).padStart(2, '0');
 
       return `UTC${sign}${hours}${minutes}`;
     }
@@ -205,16 +198,16 @@ addToLibrary({
 #if ASSERTIONS
     assert(winterName);
     assert(summerName);
-    assert(lengthBytesUTF8(winterName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${winterName})`);
-    assert(lengthBytesUTF8(summerName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${summerName})`);
+    assert(lengthBytesUTF8(winterName) <= TZNAME_MAX, `timezone name truncated to fit in TZNAME_MAX (${winterName})`);
+    assert(lengthBytesUTF8(summerName) <= TZNAME_MAX, `timezone name truncated to fit in TZNAME_MAX (${summerName})`);
 #endif
     if (summerOffset < winterOffset) {
       // Northern hemisphere
-      stringToUTF8(winterName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
-      stringToUTF8(summerName, dst_name, {{{ cDefs.TZNAME_MAX + 1 }}});
+      stringToUTF8(winterName, std_name, TZNAME_MAX + 1);
+      stringToUTF8(summerName, dst_name, TZNAME_MAX + 1);
     } else {
-      stringToUTF8(winterName, dst_name, {{{ cDefs.TZNAME_MAX + 1 }}});
-      stringToUTF8(summerName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
+      stringToUTF8(winterName, dst_name, TZNAME_MAX + 1);
+      stringToUTF8(summerName, std_name, TZNAME_MAX + 1);
     }
   },
 
@@ -225,7 +218,6 @@ addToLibrary({
 
   $isLeapYear: (year) => year%4 === 0 && (year%100 !== 0 || year%400 === 0),
 
-  $ydayFromDate__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP_CUMULATIVE', '$MONTH_DAYS_REGULAR_CUMULATIVE'],
   $ydayFromDate: (date) => {
     var leap = isLeapYear(date.getFullYear());
     var monthDaysCumulative = (leap ? MONTH_DAYS_LEAP_CUMULATIVE : MONTH_DAYS_REGULAR_CUMULATIVE);
@@ -242,7 +234,6 @@ addToLibrary({
     return sum;
   },
 
-  $addDays__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP', '$MONTH_DAYS_REGULAR'],
   $addDays: (date, days) => {
     var newDate = new Date(date.getTime());
     while (days > 0) {
@@ -270,8 +261,6 @@ addToLibrary({
     return newDate;
   },
 
-  strptime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
-                   '$lengthBytesUTF8'],
   strptime: (buf, format, tm) => {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
@@ -343,11 +332,11 @@ addToLibrary({
         /\s+/g,'\\s*'
       );
 
-    var matches = new RegExp('^'+pattern_out, "i").exec(UTF8ToString(buf))
+    var matches = new RegExp('^'+pattern_out, 'i').exec(UTF8ToString(buf))
 
     function initDate() {
       function fixup(value, min, max) {
-        return (typeof value != 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
+        return (typeof value !== 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
       };
       return {
         year: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900 , 1970, 9999),
@@ -529,6 +518,5 @@ addToLibrary({
 
     return 0;
   },
-  strptime_l__deps: ['strptime'],
   strptime_l: (buf, format, tm, locale) => _strptime(buf, format, tm), // no locale support yet
 });

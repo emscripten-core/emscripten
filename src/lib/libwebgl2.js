@@ -5,16 +5,15 @@
  */
 
 var LibraryWebGL2 = {
-  glGetStringi__deps: ['$webglGetExtensions', '$stringToNewUTF8'],
   glGetStringi: (name, index) => {
     if (GL.currentContext.version < 2) {
-      GL.recordError(0x502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
+      GL.recordError(GL_INVALID_OPERATION); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
       return 0;
     }
     var stringiCache = GL.stringiCache[name];
     if (stringiCache) {
       if (index < 0 || index >= stringiCache.length) {
-        GL.recordError(0x501/*GL_INVALID_VALUE*/);
+        GL.recordError(GL_INVALID_VALUE);
 #if GL_ASSERTIONS
         err(`GL_INVALID_VALUE in glGetStringi: index out of range (${index})!`);
 #endif
@@ -23,11 +22,11 @@ var LibraryWebGL2 = {
       return stringiCache[index];
     }
     switch (name) {
-      case 0x1F03 /* GL_EXTENSIONS */:
+      case GL_EXTENSIONS:
         var exts = webglGetExtensions().map(stringToNewUTF8);
         stringiCache = GL.stringiCache[name] = exts;
         if (index < 0 || index >= stringiCache.length) {
-          GL.recordError(0x501/*GL_INVALID_VALUE*/);
+          GL.recordError(GL_INVALID_VALUE);
 #if GL_ASSERTIONS
           err(`GL_INVALID_VALUE in glGetStringi: index out of range (${index}) in a call to GL_EXTENSIONS!`);
 #endif
@@ -35,7 +34,7 @@ var LibraryWebGL2 = {
         }
         return stringiCache[index];
       default:
-        GL.recordError(0x500/*GL_INVALID_ENUM*/);
+        GL.recordError(GL_INVALID_ENUM);
 #if GL_ASSERTIONS
         err(`GL_INVALID_ENUM in glGetStringi: Unknown parameter ${name}!`);
 #endif
@@ -43,9 +42,8 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetInteger64v__deps: ['$emscriptenWebGLGet'],
   glGetInteger64v: (name_, p) => {
-    emscriptenWebGLGet(name_, p, {{{ cDefs.EM_FUNC_SIG_PARAM_J }}});
+    emscriptenWebGLGet(name_, p, EM_FUNC_SIG_PARAM_J);
   },
 
   glGetInternalformativ: (target, internalformat, pname, bufSize, params) => {
@@ -54,7 +52,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetInternalformativ(target=${target}, internalformat=${internalformat}, pname=${pname}, bufSize=${bufSize}, params=${params}): Function called with bufSize < 0!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
     if (!params) {
@@ -63,7 +61,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetInternalformativ(target=${target}, internalformat=${internalformat}, pname=${pname}, bufSize=${bufSize}, params=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -90,7 +88,6 @@ var LibraryWebGL2 = {
     }
   },
 
-  glGetBufferParameteri64v__deps: ['$writeI53ToI64'],
   glGetBufferParameteri64v: (target, value, data) => {
 #if GL_TRACK_ERRORS
     if (!data) {
@@ -99,7 +96,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetBufferParameteri64v(target=${target}, value=${value}, data=0): Function called with null out data pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -114,7 +111,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetBufferSubData(target=${target}, offset=${offset}, size=${size}, data=0): Function called with null out data pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -125,7 +122,6 @@ var LibraryWebGL2 = {
 #endif
   },
 
-  glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
   glInvalidateFramebuffer: (target, numAttachments, attachments) => {
 #if GL_ASSERTIONS
     assert(numAttachments < tempFixedLengthArray.length, `Invalid count of numAttachments=${numAttachments} passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)`);
@@ -138,7 +134,6 @@ var LibraryWebGL2 = {
     GLctx.invalidateFramebuffer(target, list);
   },
 
-  glInvalidateSubFramebuffer__deps: ['$tempFixedLengthArray'],
   glInvalidateSubFramebuffer: (target, numAttachments, attachments, x, y, width, height) => {
 #if GL_ASSERTIONS
     assert(numAttachments < tempFixedLengthArray.length, `Invalid count of numAttachments=${numAttachments} passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)`);
@@ -151,11 +146,6 @@ var LibraryWebGL2 = {
     GLctx.invalidateSubFramebuffer(target, list, x, y, width, height);
   },
 
-  glTexImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
-#if !WEBGL_USE_GARBAGE_FREE_APIS
-    '$emscriptenWebGLGetTexPixelData',
-#endif
-  ],
   glTexImage3D: (target, level, internalFormat, width, height, depth, border, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixels);
@@ -172,11 +162,6 @@ var LibraryWebGL2 = {
     }
   },
 
-  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
-#if !WEBGL_USE_GARBAGE_FREE_APIS
-    '$emscriptenWebGLGetTexPixelData',
-#endif
-  ],
   glTexSubImage3D: (target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
@@ -233,7 +218,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetQueryiv(target=${target}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -248,7 +233,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetQueryObjectuiv(id=${id}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -258,7 +243,7 @@ var LibraryWebGL2 = {
     var query = GL.queries[id];
     var param = GLctx.getQueryParameter(query, pname);
     var ret;
-    if (typeof param == 'boolean') {
+    if (typeof param === 'boolean') {
       ret = param ? 1 : 0;
     } else {
       ret = param;
@@ -337,7 +322,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetSamplerParameterfv(sampler=${sampler}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -352,7 +337,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetSamplerParameteriv(sampler=${sampler}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -419,7 +404,6 @@ var LibraryWebGL2 = {
     if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
 
-  $emscriptenWebGLGetIndexed__deps: ['$writeI53ToI64'],
   $emscriptenWebGLGetIndexed: (target, index, data, type) => {
 #if GL_TRACK_ERRORS
     if (!data) {
@@ -428,7 +412,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetInteger(64)i_v(target=${target}, index=${index}, data=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -444,12 +428,12 @@ var LibraryWebGL2 = {
       case 'object':
         if (result === null) {
           switch (target) {
-            case 0x8C8F: // TRANSFORM_FEEDBACK_BUFFER_BINDING
-            case 0x8A28: // UNIFORM_BUFFER_BINDING
+            case GL_TRANSFORM_FEEDBACK_BUFFER_BINDING:
+            case GL_UNIFORM_BUFFER_BINDING:
               ret = 0;
               break;
             default: {
-              GL.recordError(0x500); // GL_INVALID_ENUM
+              GL.recordError(GL_INVALID_ENUM);
 #if GL_ASSERTIONS
               err('GL_INVALID_ENUM in glGetInteger(64)i_v(' + target + ') and it returns null!');
 #endif
@@ -459,7 +443,7 @@ var LibraryWebGL2 = {
         } else if (result instanceof WebGLBuffer) {
           ret = result.name | 0;
         } else {
-          GL.recordError(0x500); // GL_INVALID_ENUM
+          GL.recordError(GL_INVALID_ENUM);
 #if GL_ASSERTIONS
           err('GL_INVALID_ENUM in glGetInteger(64)i_v: Unknown object returned from WebGL getIndexedParameter(' + target + ')!');
 #endif
@@ -467,7 +451,7 @@ var LibraryWebGL2 = {
         }
         break;
       default:
-        GL.recordError(0x500); // GL_INVALID_ENUM
+        GL.recordError(GL_INVALID_ENUM);
 #if GL_ASSERTIONS
         err('GL_INVALID_ENUM in glGetInteger(64)i_v: Native code calling glGetInteger(64)i_v(' + target + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
 #endif
@@ -475,21 +459,19 @@ var LibraryWebGL2 = {
     }
 
     switch (type) {
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_J }}}: writeI53ToI64(data, ret); break;
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
-      case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      case EM_FUNC_SIG_PARAM_J: writeI53ToI64(data, ret); break;
+      case EM_FUNC_SIG_PARAM_I: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
+      case EM_FUNC_SIG_PARAM_F: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
+      case EM_FUNC_SIG_PARAM_B: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
       default: abort('internal emscriptenWebGLGetIndexed() error, bad type: ' + type);
     }
   },
 
-  glGetIntegeri_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetIntegeri_v: (target, index, data) =>
-    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}),
+    emscriptenWebGLGetIndexed(target, index, data, EM_FUNC_SIG_PARAM_I),
 
-  glGetInteger64i_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetInteger64i_v: (target, index, data) =>
-    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefs.EM_FUNC_SIG_PARAM_J }}}),
+    emscriptenWebGLGetIndexed(target, index, data, EM_FUNC_SIG_PARAM_J),
 
   // Uniform Buffer objects
   glBindBufferBase: (target, index, buffer) => {
@@ -517,11 +499,11 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetUniformIndices(program=${program}, uniformCount=${uniformCount}, uniformNames=${uniformNames}, uniformIndices=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
     if (uniformCount > 0 && (uniformNames == 0 || uniformIndices == 0)) {
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -550,11 +532,11 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetActiveUniformsiv(program=${program}, uniformCount=${uniformCount}, uniformIndices=${uniformIndices}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
     if (uniformCount > 0 && uniformIndices == 0) {
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -588,7 +570,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetActiveUniformBlockiv(program=${program}, uniformBlockIndex=${uniformBlockIndex}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -597,7 +579,7 @@ var LibraryWebGL2 = {
 #endif
     program = GL.programs[program];
 
-    if (pname == 0x8A41 /* GL_UNIFORM_BLOCK_NAME_LENGTH */) {
+    if (pname == GL_UNIFORM_BLOCK_NAME_LENGTH) {
       var name = GLctx.getActiveUniformBlockName(program, uniformBlockIndex);
       {{{ makeSetValue('params', 0, 'name.length+1', 'i32') }}};
       return;
@@ -605,7 +587,7 @@ var LibraryWebGL2 = {
 
     var result = GLctx.getActiveUniformBlockParameter(program, uniformBlockIndex, pname);
     if (result === null) return; // If an error occurs, nothing should be written to params.
-    if (pname == 0x8A43 /*GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES*/) {
+    if (pname == GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES) {
       for (var i = 0; i < result.length; i++) {
         {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
       }
@@ -678,7 +660,7 @@ var LibraryWebGL2 = {
     if (!id) return;
     var sync = GL.syncs[id];
     if (!sync) { // glDeleteSync signals an error when deleting a nonexisting object, unlike some other GL delete functions.
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
     GLctx.deleteSync(sync);
@@ -686,9 +668,6 @@ var LibraryWebGL2 = {
     GL.syncs[id] = null;
   },
 
-#if !WASM_BIGINT
-  glClientWaitSync__deps: ['$convertI32PairToI53'],
-#endif
   glClientWaitSync: (sync, flags, {{{ defineI64Param('timeout') }}}) => {
     // WebGL2 vs GLES3 differences: in GLES3, the timeout parameter is a uint64, where 0xFFFFFFFFFFFFFFFFULL means GL_TIMEOUT_IGNORED.
     // In JS, there's no 64-bit value types, so instead timeout is taken to be signed, and GL_TIMEOUT_IGNORED is given value -1.
@@ -698,9 +677,6 @@ var LibraryWebGL2 = {
     return GLctx.clientWaitSync(GL.syncs[sync], flags, timeout);
   },
 
-#if !WASM_BIGINT
-  glWaitSync__deps: ['$convertI32PairToI53'],
-#endif
   glWaitSync: (sync, flags, {{{ defineI64Param('timeout') }}}) => {
     // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
     {{{ receiveI64ParamAsI53Unchecked('timeout'); }}}
@@ -715,7 +691,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetSynciv(sync=${sync}, pname=${pname}, bufSize=${bufSize}, length=${length}, values=${values}): Function called with bufSize < 0!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
     if (!values) {
@@ -724,7 +700,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err(`GL_INVALID_VALUE in glGetSynciv(sync=${sync}, pname=${pname}, bufSize=${bufSize}, length=${length}, values=0): Function called with null out pointer!`);
 #endif
-      GL.recordError(0x501 /* GL_INVALID_VALUE */);
+      GL.recordError(GL_INVALID_VALUE);
       return;
     }
 #endif
@@ -737,9 +713,8 @@ var LibraryWebGL2 = {
 
   glIsSync: (sync) => GLctx.isSync(GL.syncs[sync]),
 
-  glGetUniformuiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformuiv: (program, location, params) =>
-    emscriptenWebGLGetUniform(program, location, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}),
+    emscriptenWebGLGetUniform(program, location, params, EM_FUNC_SIG_PARAM_I),
 
   glGetFragDataLocation: (program, name) => {
 #if GL_ASSERTIONS
@@ -748,19 +723,16 @@ var LibraryWebGL2 = {
     return GLctx.getFragDataLocation(GL.programs[program], UTF8ToString(name));
   },
 
-  glGetVertexAttribIiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribIiv: (index, pname, params) => {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4iv(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefs.EM_FUNC_SIG_PARAM_I }}});
+    emscriptenWebGLGetVertexAttrib(index, pname, params, EM_FUNC_SIG_PARAM_I);
   },
 
   // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4uiv(),
   // otherwise the results are undefined. (GLES3 spec 6.1.12)
-  glGetVertexAttribIuiv__deps: ['$emscriptenWebGLGetVertexAttrib'],
   glGetVertexAttribIuiv: 'glGetVertexAttribIiv',
 
-  glUniform1ui__deps: ['$webglGetUniformLocation'],
   glUniform1ui: (location, v0) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1ui', 'location');
@@ -768,7 +740,6 @@ var LibraryWebGL2 = {
     GLctx.uniform1ui(webglGetUniformLocation(location), v0);
   },
 
-  glUniform2ui__deps: ['$webglGetUniformLocation'],
   glUniform2ui: (location, v0, v1) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2ui', 'location');
@@ -776,7 +747,6 @@ var LibraryWebGL2 = {
     GLctx.uniform2ui(webglGetUniformLocation(location), v0, v1);
   },
 
-  glUniform3ui__deps: ['$webglGetUniformLocation'],
   glUniform3ui: (location, v0, v1, v2) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3ui', 'location');
@@ -784,7 +754,6 @@ var LibraryWebGL2 = {
     GLctx.uniform3ui(webglGetUniformLocation(location), v0, v1, v2);
   },
 
-  glUniform4ui__deps: ['$webglGetUniformLocation'],
   glUniform4ui: (location, v0, v1, v2, v3) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4ui', 'location');
@@ -792,7 +761,6 @@ var LibraryWebGL2 = {
     GLctx.uniform4ui(webglGetUniformLocation(location), v0, v1, v2, v3);
   },
 
-  glUniform1uiv__deps: ['$webglGetUniformLocation'],
   glUniform1uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1uiv', 'location');
@@ -801,7 +769,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniform1uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count);
   },
 
-  glUniform2uiv__deps: ['$webglGetUniformLocation'],
   glUniform2uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2uiv', 'location');
@@ -810,7 +777,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniform2uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*2);
   },
 
-  glUniform3uiv__deps: ['$webglGetUniformLocation'],
   glUniform3uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3uiv', 'location');
@@ -819,7 +785,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniform3uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*3);
   },
 
-  glUniform4uiv__deps: ['$webglGetUniformLocation'],
   glUniform4uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4uiv', 'location');
@@ -828,7 +793,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniform4uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*4);
   },
 
-  glUniformMatrix2x3fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix2x3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x3fv', 'location');
@@ -837,7 +801,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix2x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*6);
   },
 
-  glUniformMatrix3x2fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix3x2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x2fv', 'location');
@@ -846,7 +809,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix3x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*6);
   },
 
-  glUniformMatrix2x4fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix2x4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x4fv', 'location');
@@ -855,7 +817,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix2x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*8);
   },
 
-  glUniformMatrix4x2fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix4x2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x2fv', 'location');
@@ -864,7 +825,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix4x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*8);
   },
 
-  glUniformMatrix3x4fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix3x4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x4fv', 'location');
@@ -873,7 +833,6 @@ var LibraryWebGL2 = {
     count && GLctx.uniformMatrix3x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*12);
   },
 
-  glUniformMatrix4x3fv__deps: ['$webglGetUniformLocation'],
   glUniformMatrix4x3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x3fv', 'location');
@@ -899,23 +858,23 @@ var LibraryWebGL2 = {
   },
 
   glProgramParameteri: (program, pname, value) => {
-    GL.recordError(0x500/*GL_INVALID_ENUM*/);
+    GL.recordError(GL_INVALID_ENUM);
 #if GL_ASSERTIONS
-    err("GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 
   glGetProgramBinary: (program, bufSize, length, binaryFormat, binary) => {
-    GL.recordError(0x502/*GL_INVALID_OPERATION*/);
+    GL.recordError(GL_INVALID_OPERATION);
 #if GL_ASSERTIONS
-    err("GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 
   glProgramBinary: (program, binaryFormat, binary, length) => {
-    GL.recordError(0x500/*GL_INVALID_ENUM*/);
+    GL.recordError(GL_INVALID_ENUM);
 #if GL_ASSERTIONS
-    err("GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+    err('GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4');
 #endif
   },
 
@@ -954,7 +913,6 @@ var LibraryWebGL2 = {
 
 #if !LEGACY_GL_EMULATION
   // Defined in library_glemu.js when LEGACY_GL_EMULATION is set
-  glDrawRangeElements__deps: ['glDrawElements'],
   glDrawRangeElements: (mode, start, end, count, type, indices) => {
     // TODO: This should be a trivial pass-through function registered at the bottom of this page as
     // glFuncs[6][1] += ' drawRangeElements';
@@ -981,7 +939,6 @@ var LibraryWebGL2 = {
     // Closure is expected to be allowed to minify the '.dibvbi' property, so not accessing it quoted.
     !!(ctx.dibvbi = ctx.getExtension('WEBGL_draw_instanced_base_vertex_base_instance')),
 
-  emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance__deps: ['$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance'],
   emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: (ctx) =>
     webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx),
 
@@ -1025,7 +982,6 @@ var LibraryWebGL2 = {
     return !!(ctx.mdibvbi = ctx.getExtension('WEBGL_multi_draw_instanced_base_vertex_base_instance'));
   },
 
-  emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance__deps: ['$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance'],
   emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: (ctx) =>
     webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx),
 };
@@ -1047,7 +1003,7 @@ var webgl2PassthroughFuncs = [
 
 // If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in
 // WebGL 1), then WebGL2 library should not be linked in as well.
-if (typeof createGLPassthroughFunctions == 'undefined') {
+if (typeof createGLPassthroughFunctions === 'undefined') {
   error('In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL');
 }
 

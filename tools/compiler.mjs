@@ -9,15 +9,11 @@
 
 import assert from 'node:assert';
 import {parseArgs} from 'node:util';
-import {
-  applySettings,
-  loadDefaultSettings,
-  printErr,
-  readFile,
-  timer,
-} from '../src/utility.mjs';
+import {applySettings, loadDefaultSettings, printErr, readFile, timer} from '../src/utility.mjs';
+import '../src/parseTools_legacy.mjs';
+import {runJSify} from '../src/jsifier.mjs';
 
-timer.start('startup')
+timer.start('startup');
 
 loadDefaultSettings();
 
@@ -38,7 +34,7 @@ Usage: compiler.mjs <settings.json> [-o out.js] [--symbols-only]`);
   process.exit(0);
 }
 
-timer.start('read settings')
+timer.start('read settings');
 
 // Load settings from JSON passed on the command line
 let settingsFile = positionals[0];
@@ -50,7 +46,7 @@ if (settingsFile == '-') {
 const userSettings = JSON.parse(readFile(settingsFile));
 applySettings(userSettings);
 
-timer.stop('read settings')
+timer.stop('read settings');
 
 export const symbolsOnly = values['symbols-only'];
 
@@ -73,32 +69,16 @@ assert(
   'JS compiler should only run on side modules if asyncify is used.',
 );
 
-// Load compiler code
-
-timer.start('dynamic imports')
-
-// We can't use static import statements here because several of these
-// file depend on having the settings defined in the global scope (which
-// we do dynamically above.
-await import('../src/modules.mjs');
-await import('../src/parseTools.mjs');
-if (!STRICT) {
-  await import('../src/parseTools_legacy.mjs');
-}
-const jsifier = await import('../src/jsifier.mjs');
-
-timer.stop('dynamic imports')
-
-timer.stop('startup')
+timer.stop('startup');
 
 // ===============================
 // Main
 // ===============================
 
 try {
-  timer.start('runJSify')
-  await jsifier.runJSify(values.output, symbolsOnly);
-  timer.stop('runJSify')
+  timer.start('runJSify');
+  await runJSify(values.output, symbolsOnly);
+  timer.stop('runJSify');
 } catch (err) {
   if (err.toString().includes('Aborting compilation due to previous errors')) {
     // Compiler failed on user error, don't print the stacktrace in this case.

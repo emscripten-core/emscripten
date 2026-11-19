@@ -31,7 +31,6 @@ from retryable_unittest import RetryableTestCase
 from tools import building, config, shared, utils
 from tools.feature_matrix import Feature
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir
 from tools.utils import (
   WINDOWS,
   exe_path_from_root,
@@ -68,15 +67,37 @@ TEST_ROOT = path_from_root('test')
 LAST_TEST = path_from_root('out/last_test.txt')
 PREVIOUS_TEST_RUN_RESULTS_FILE = path_from_root('out/previous_test_run_results.json')
 
-WEBIDL_BINDER = exe_path_from_root('tools/webidl_binder')
-
+# emscripten tools
 EMBUILDER = exe_path_from_root('embuilder')
 EMMAKE = exe_path_from_root('emmake')
 EMCMAKE = exe_path_from_root('emcmake')
 EMCONFIGURE = exe_path_from_root('emconfigure')
+EMCONFIG = exe_path_from_root('em-config')
 EMRUN = exe_path_from_root('emrun')
+EMCC = exe_path_from_root('emcc')
+EMXX = exe_path_from_root('em++')
+EMAR = exe_path_from_root('emar')
+EMRANLIB = exe_path_from_root('emranlib')
+FILE_PACKAGER = exe_path_from_root('tools/file_packager')
+WEBIDL_BINDER = exe_path_from_root('tools/webidl_binder')
+
+# binaryen tools
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
+WASM_SPLIT = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+WASM_OPT = os.path.join(building.get_binaryen_bin(), 'wasm-opt')
+
+# llvm tools
+WASM_LD = shared.llvm_tool_path('wasm-ld')
+LLVM_DWARFDUMP = shared.llvm_tool_path('llvm-dwarfdump')
+LLVM_AR = shared.llvm_tool_path('llvm-ar')
+LLVM_NM = shared.llvm_tool_path('llvm-nm')
+LLVM_DWP = shared.llvm_tool_path('llvm-dwp')
+LLVM_COV = shared.llvm_tool_path('llvm-cov')
+CLANG_CC = shared.clang_tool_path('clang')
+CLANG_CXX = shared.clang_tool_path('clang++')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
+LLVM_PROFDATA = shared.llvm_tool_path('llvm-profdata')
+
 PYTHON = sys.executable
 
 
@@ -372,7 +393,7 @@ def clean_js_output(output):
       line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
     return line
 
-  lines = [cleanup(l) for l in lines]
+  lines = [cleanup(line) for line in lines]
   if not long_lines:
     # No long lines found just return the unmodified output
     return output
@@ -422,11 +443,11 @@ class RunnerMeta(type):
         # If it does, we extract the parameterization information, build new test functions.
         for suffix, args in value._parameterize.items():
           new_name, func = mcs.make_test(attr_name, value, suffix, args)
-          assert new_name not in new_attrs, 'Duplicate attribute name generated when parameterizing %s' % attr_name
+          assert new_name not in new_attrs, f'Duplicate attribute name generated when parameterizing {attr_name}'
           new_attrs[new_name] = func
       else:
         # If not, we just copy it over to new_attrs verbatim.
-        assert attr_name not in new_attrs, '%s collided with an attribute from parameterization' % attr_name
+        assert attr_name not in new_attrs, f'{attr_name} collided with an attribute from parameterization'
         new_attrs[attr_name] = value
 
     # We invoke type, the default metaclass, to actually create the new class, with new_attrs.
@@ -437,11 +458,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
   temp_dir = shared.TEMP_DIR
-  canonical_temp_dir = get_canonical_temp_dir(shared.TEMP_DIR)
-
-  # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
-  # Change this to None to get stderr reporting, for debugging purposes
-  stderr_redirect = STDOUT
+  canonical_temp_dir = shared.get_canonical_temp_dir(shared.TEMP_DIR)
 
   library_cache: dict[str, tuple[str, object]] = {}
 
@@ -602,17 +619,14 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def require_wasm_eh(self):
     if 'EMTEST_SKIP_WASM_EH' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_WASM_EH is set)')
+      self.skipTest('test requires node v24.15 or d8 (and EMTEST_SKIP_WASM_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
 
     if self.is_browser_test():
       self.check_browser_feature('EMTEST_SKIP_WASM_EH', Feature.WASM_EXCEPTIONS, 'test requires Wasm EH')
       return
 
-    if self.try_require_node_version(22):
-      # v25 and up don't require a flag at all
-      if not self.try_require_node_version(25):
-        self.node_args.append('--experimental-wasm-exnref')
+    if self.try_require_node_version(24, 15):
       return
 
     deno = get_deno()
@@ -631,14 +645,11 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.require_engine(v8)
       return
 
-    self.fail('either d8, deno, bun or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
+    self.fail('either d8, deno, bun or node v24.15 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
 
   def require_jspi(self):
     if 'EMTEST_SKIP_JSPI' in os.environ:
       self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
-    # emcc warns about stack switching being experimental, and we build with
-    # warnings-as-errors, so disable that warning
-    self.cflags += ['-Wno-experimental']
     self.set_setting('JSPI')
     if self.is_wasm2js():
       self.skipTest('JSPI is not currently supported for WASM2JS')
@@ -677,6 +688,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.skipTest('wasm2js does not support over 2gb of memory')
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('wasm2js is not compatible with WASM_ESM_INTEGRATION')
+    if '-Wno-deprecated' not in self.cflags:
+      self.cflags.append('-Wno-deprecated')
 
   def setup_nodefs_test(self):
     self.require_node()
@@ -696,7 +709,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
-    self.canonical_temp_dir = get_canonical_temp_dir(self.temp_dir)
+    self.canonical_temp_dir = shared.get_canonical_temp_dir(self.temp_dir)
     # Explicitly set dedicated temporary directory for parallel tests
     os.environ['EMCC_TEMP_DIR'] = self.temp_dir
 
@@ -712,7 +725,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         parts = line.split()
         module = parts[1].strip('"')
         name = parts[2].strip('"')
-        imports.append('%s.%s' % (module, name))
+        imports.append(f'{module}.{name}')
       if line.startswith('(export '):
         line = line.strip('()')
         name = line.split()[1].strip('"')
@@ -739,11 +752,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.skip_exec = None
     self.flaky = False
     self.cflags = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
-    # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-    # For historical reasons emcc compiles and links as C++ by default.
-    # However we want to run our tests in a more strict manner.  We can
-    # remove this if the issue above is ever fixed.
-    self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
     # Increase the stack trace limit to maximise usefulness of test failure reports.
     # Also, include backtrace for all uncaught exceptions (not just Error).
@@ -763,7 +771,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         int(emcc_min_node_version_str[4:6]),
       )
       if node_version < emcc_min_node_version:
-        self.cflags.append('-sMIN_NODE_VERSION=%02d%02d%02d' % node_version)
+        self.cflags.append('-sMIN_NODE_VERSION={:02d}{:02d}{:02d}'.format(*node_version))
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
@@ -877,17 +885,17 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def add_pre_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
-    create_file('prerun.js', 'Module.preRun = function() { %s }\n' % code)
+    create_file('prerun.js', f'Module.preRun = () => {{ {code} }}\n')
     self.cflags += ['--pre-js', 'prerun.js', '-sINCOMING_MODULE_JS_API=preRun']
 
   def add_post_run(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
-    create_file('postrun.js', 'Module.postRun = function() { %s }\n' % code)
+    create_file('postrun.js', f'Module.postRun = () => {{ {code} }}\n')
     self.cflags += ['--pre-js', 'postrun.js', '-sINCOMING_MODULE_JS_API=postRun']
 
   def add_on_exit(self, code):
     assert not self.get_setting('MINIMAL_RUNTIME')
-    create_file('onexit.js', 'Module.onExit = function() { %s }\n' % code)
+    create_file('onexit.js', f'Module.onExit = () => {{ {code} }}\n')
     self.cflags += ['--pre-js', 'onexit.js', '-sINCOMING_MODULE_JS_API=onExit']
 
   # returns the full list of arguments to pass to emcc
@@ -898,7 +906,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     def is_ldflag(f):
       return f.startswith(('-l', '-sEXPORT_ES6', '-sGL_TESTING', '-sPROXY_TO_PTHREAD',
                            '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE=',
-                           '--profiling-funcs'))
+                           '--profiling-funcs', '--closure'))
 
     args = self.serialize_settings(compile_only or asm_only) + self.cflags
     if asm_only:
@@ -911,7 +919,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       for i, arg in enumerate(args):
         if arg in {'--pre-js', '--post-js'}:
           args[i] = None
-          args[i + 1] = None # noqa: B909
+          args[i + 1] = None # ruff: ignore[loop-iterator-mutation]
       args = [arg for arg in args if arg is not None]
     return args
 
@@ -964,7 +972,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if includes:
       cmd += ['-I' + str(include) for include in includes]
 
-    self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
+    self.run_process(cmd)
     self.assertExists(output)
 
     if output_suffix in {'.js', '.mjs'}:
@@ -992,7 +1000,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def is_exported_in_wasm(self, name, wasm):
     wat = self.get_wasm_text(wasm)
-    return ('(export "%s"' % name) in wat
+    return (f'(export "{name}"') in wat
 
   def measure_wasm_code_lines(self, wasm):
     wat_lines = self.get_wasm_text(wasm).splitlines()
@@ -1076,9 +1084,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if error:
       ret = limit_size(ret)
       if assert_returncode == NON_ZERO:
-        self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
+        self.fail(f'JS subprocess unexpectedly succeeded ({error.cmd}):  Output:\n{ret}')
       else:
-        self.fail('JS subprocess failed (%s): %s (expected=%s).  Output:\n%s' % (error.cmd, error.returncode, assert_returncode, ret))
+        self.fail(f'JS subprocess failed ({error.cmd}): {error.returncode} (expected={assert_returncode}).  Output:\n{ret}')
 
     return ret
 
@@ -1117,7 +1125,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
                                       fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
     if EMTEST_VERBOSE:
-      print("Expected to have '%s' == '%s'" % (values[0], y))
+      print(f"Expected to have '{values[0]}' == '{y}'")
     else:
       diff = limit_size(diff)
       diff += '\nFor full output run with --verbose.'
@@ -1153,10 +1161,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     if regex:
       if type(values) is str:
-        self.assertTrue(re.search(values, string, re.DOTALL), 'Expected regex "%s" to match on:\n%s' % (values, limit_size(string)))
+        self.assertTrue(re.search(values, string, re.DOTALL), f'Expected regex "{values}" to match on:\n{limit_size(string)}')
       else:
         match_any = any(re.search(o, string, re.DOTALL) for o in values)
-        self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, limit_size(string)))
+        self.assertTrue(match_any, f'Expected at least one of "{values}" to match on:\n{limit_size(string)}')
       return
 
     if type(values) not in {list, tuple}:
@@ -1165,10 +1173,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if not any(v in string for v in values):
       diff = difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')
       diff = ''.join(a.rstrip() + '\n' for a in diff)
-      self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
-        limit_size(values[0]), limit_size(string), limit_size(diff),
-        additional_info,
-      ))
+      self.fail(f"Expected to find '{limit_size(values[0])}' in '{limit_size(string)}', diff:\n\n{limit_size(diff)}\n{additional_info}")
 
   def assertNotContained(self, value, string, regex=False):
     if callable(value):
@@ -1176,10 +1181,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if callable(string):
       string = string()
     if regex:
-      self.assertFalse(re.search(value, string, re.DOTALL), 'Expected regex "%s" NOT to match on:\n%s' % (value, limit_size(string)))
-    else:
-      if value in string:
-        self.fail("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
+      self.assertFalse(re.search(value, string, re.DOTALL), f'Expected regex "{value}" NOT to match on:\n{limit_size(string)}')
+    elif value in string:
+      self.fail(f"Expected to NOT find '{limit_size(value)}' in '{limit_size(string)}'")
 
   def assertContainedIf(self, value, string, condition):
     if condition:
@@ -1198,7 +1202,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     ensure_dir(ret)
     return ret
 
-  def get_library(self, name, generated_libs, configure=['sh', './configure'],  # noqa
+  def get_library(self, name, generated_libs, configure=['sh', './configure'],  # ruff: ignore[mutable-argument-default]
                   configure_args=None, make=None, make_args=None,
                   env_init=None, cache_name_extra='', native=False,
                   force_rebuild=False):
@@ -1206,6 +1210,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       make = ['make']
     if env_init is None:
       env_init = {}
+    else:
+      env_init = env_init.copy()
     if make_args is None:
       make_args = ['-j', str(utils.get_num_cores())]
 
@@ -1221,11 +1227,11 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     hash_input = (str(cflags) + ' $ ' + str(env_init)).encode('utf-8')
     cache_name = name + ','.join([opt for opt in cflags if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
 
-    valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
+    valid_chars = f"_{string.ascii_letters}{string.digits}"
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
     if not force_rebuild and self.library_cache.get(cache_name):
-      errlog('<load %s from cache> ' % cache_name)
+      errlog(f'<load {cache_name} from cache> ')
       generated_libs = []
       for basename, contents in self.library_cache[cache_name]:
         bc_file = os.path.join(build_dir, cache_name + '_' + basename)
@@ -1240,8 +1246,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       configure += configure_args
 
     cflags = ' '.join(cflags)
-    env_init.setdefault('CFLAGS', cflags)
-    env_init.setdefault('CXXFLAGS', cflags)
+    # Append library-specific cflags without overwriting caller-provided optimizations
+    env_init['CFLAGS'] = f"{env_init.get('CFLAGS', '')} {cflags}".strip()
+    env_init['CXXFLAGS'] = f"{env_init.get('CXXFLAGS', '')} {cflags}".strip()
     return self.build_library(name, build_dir, generated_libs, configure,
                               make, make_args, cache_name, env_init=env_init, native=native)
 
@@ -1287,7 +1294,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       rtn.stderr = None
     return rtn
 
-  def emcc(self, filename, args=[], **kwargs):  # noqa
+  def emcc(self, filename, args=[], **kwargs):  # ruff: ignore[mutable-argument-default]
     filename = maybe_test_file(filename)
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
     cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args
@@ -1433,10 +1440,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         cfunc_ptr();
         return 0;
       }
-    ''' % locals(),
-           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', cflags=extra_args)
+    ''', 'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', cflags=extra_args)
 
-  def do_run(self, src, expected_output=None, force_c=False, **kwargs):
+  def do_run(self, src, *args, force_c=False, **kwargs):
     if 'no_build' in kwargs:
       filename = src
     else:
@@ -1445,12 +1451,12 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       else:
         filename = 'src.cpp'
       create_file(filename, src)
-    return self._build_and_run(filename, expected_output, **kwargs)
+    return self._build_and_run(filename, *args, **kwargs)
 
-  def do_runf(self, filename, expected_output=None, **kwargs):
-    return self._build_and_run(filename, expected_output, **kwargs)
+  def do_runf(self, filename, *args, **kwargs):
+    return self._build_and_run(filename, *args, **kwargs)
 
-  def do_run_in_out_file_test(self, srcfile, **kwargs):
+  def do_runf_out_file(self, srcfile, *args, **kwargs):
     srcfile = maybe_test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = utils.unsuffixed(srcfile) + out_suffix + '.out'
@@ -1458,13 +1464,13 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       expected = None
     else:
       expected = read_file(outfile)
-    output = self._build_and_run(srcfile, expected, **kwargs)
+    output = self._build_and_run(srcfile, expected, *args, **kwargs)
     if EMTEST_REBASELINE:
       utils.write_file(outfile, output)
     return output
 
   # Does a complete test - builds, runs, checks output, etc.
-  def _build_and_run(self, filename, expected_output, args=None,
+  def _build_and_run(self, filename, expected_output=None, args=None,
                      no_build=False,
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True,
@@ -1494,7 +1500,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
           logger.warning('no wasm engine was found to run the standalone part of this test (Use EMTEST_SKIP_WASM_ENGINE to skip)')
       engines += self.wasm_engines
     if len(engines) == 0:
-      self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
+      self.fail(f'No JS engine present to run this test with. Check {config.EM_CONFIG} and the paths therein.')
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
                               input=input,
@@ -1515,11 +1521,11 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
             if assert_returncode == 0 and check_for_error:
               self.assertNotContained('ERROR', js_output)
         except self.failureException:
-          print('(test did not pass in JS engine: %s)' % engine)
+          print(f'(test did not pass in JS engine: {engine})')
           raise
     return js_output
 
-  def get_freetype_library(self):
+  def get_freetype_library(self, env_init=None):
     self.cflags += [
       '-Wno-misleading-indentation',
       '-Wno-unused-but-set-variable',
@@ -1528,13 +1534,15 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       '-Wno-gnu-offsetof-extensions',
       # And because gnu-offsetof-extensions is a new warning:
       '-Wno-unknown-warning-option',
+      '-Wno-unsequenced',
     ]
     return self.get_library(os.path.join('third_party', 'freetype'),
                             os.path.join('objs', '.libs', 'libfreetype.a'),
+                            env_init=env_init,
                             configure_args=['--disable-shared', '--without-zlib'])
 
   def get_poppler_library(self, env_init=None):
-    freetype = self.get_freetype_library()
+    freetype = self.get_freetype_library(env_init=env_init)
 
     self.cflags += [
       '-I' + test_file('third_party/freetype/include'),

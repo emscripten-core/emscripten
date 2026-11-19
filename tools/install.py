@@ -18,6 +18,11 @@ import shutil
 import subprocess
 import sys
 
+__rootdir__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, __rootdir__)
+
+import bootstrap
+
 WINDOWS = sys.platform.startswith('win')
 MSYS2 = 'MSYSTEM' in os.environ
 
@@ -56,12 +61,9 @@ def add_revision_file(target):
 
 
 def copy_emscripten(target):
-  script_dir = os.path.dirname(os.path.abspath(__file__))
-  emscripten_root = os.path.dirname(script_dir)
-
   excludes = EXCLUDES
 
-  os.chdir(emscripten_root)
+  os.chdir(__rootdir__)
   for root, dirs, files in os.walk('.'):
     # Handle the case where the target directory is underneath emscripten_root
     if os.path.abspath(root) == os.path.abspath(target):
@@ -106,15 +108,19 @@ def main():
                       default=int(os.environ.get('EMCC_DEBUG', '0')))
   parser.add_argument('target', help='target directory')
   args = parser.parse_args()
+
+  # Before we can install emscripten we need to have bootstrapped this checkout
+  bootstrap.check()
+
   target = os.path.abspath(args.target)
   if os.path.exists(target):
-    print('target directory already exists: %s' % target)
+    print(f'target directory already exists: {target}')
     return 1
   logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
   os.makedirs(target)
   copy_emscripten(target)
   npm_install(target)
-  if os.path.isdir('.git'):
+  if os.path.exists('.git'):
     # Add revision flag only if the source directory is a Git repository
     # and not a source archive
     add_revision_file(target)

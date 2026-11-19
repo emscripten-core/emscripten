@@ -1,2 +1,6 @@
-get_foo_from_js: 4
-g_foo: 4
+get_var_from_js: 4
+g_var: 4
+call_func_from_js: 14
+get_ns_var_from_js: 42
+ns_var: 42
+call_cpp_func_from_js: 10

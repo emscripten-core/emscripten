@@ -13,14 +13,10 @@ import * as fs from 'node:fs';
 import * as vm from 'node:vm';
 import assert from 'node:assert';
 
-export function safeQuote(x) {
-  return x.replace(/"/g, '\\"').replace(/'/g, "\\'");
-}
-
 export function dump(item) {
   let funcData;
   try {
-    if (typeof item == 'object' && item != null && item.funcData) {
+    if (typeof item === 'object' && item != null && item.funcData) {
       funcData = item.funcData;
       item.funcData = null;
     }
@@ -28,7 +24,7 @@ export function dump(item) {
   } catch {
     const ret = [];
     for (const [i, j] of Object.entries(item)) {
-      if (typeof j == 'string' || typeof j == 'number') {
+      if (typeof j === 'string' || typeof j === 'number') {
         ret.push(`${i}: ${j}`);
       } else {
         ret.push(`${i}: [?]`);
@@ -58,7 +54,7 @@ export function popCurrentFile() {
 
 function errorPrefix(lineNo) {
   if (!currentFile.length) return '';
-  const filename = currentFile[currentFile.length - 1];
+  const filename = currentFile.at(-1);
   if (lineNo) {
     return `${filename}:${lineNo}: `;
   } else {
@@ -96,12 +92,14 @@ function range(size) {
   return Array.from(Array(size).keys());
 }
 
+export const extraLibraryFuncs = [];
+
 export function mergeInto(obj, other, options = null) {
   if (options) {
     // check for unintended symbol redefinition
     if (options.noOverride) {
       for (const key of Object.keys(other)) {
-        if (obj.hasOwnProperty(key)) {
+        if (Object.hasOwn(obj, key)) {
           error(
             `Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`,
           );
@@ -113,7 +111,7 @@ export function mergeInto(obj, other, options = null) {
     // check if sig is missing for added functions
     if (options.checkSig) {
       for (const [key, value] of Object.entries(other)) {
-        if (typeof value === 'function' && !other.hasOwnProperty(key + '__sig')) {
+        if (typeof value === 'function' && !Object.hasOwn(other, key + '__sig')) {
           error(`__sig is missing for function: ${key}. Do not use checkSig if this is intended`);
           return;
         }
@@ -123,9 +121,9 @@ export function mergeInto(obj, other, options = null) {
 
   if (!options || !options.allowMissing) {
     for (const ident of Object.keys(other)) {
-      if (isDecorator(ident)) {
-        const index = ident.lastIndexOf('__');
-        const basename = ident.slice(0, index);
+      const parts = splitDecorator(ident);
+      if (parts) {
+        const [basename] = parts;
         if (!(basename in obj) && !(basename in other)) {
           error(`Missing library element '${basename}' for library config '${ident}'`);
         }
@@ -134,9 +132,11 @@ export function mergeInto(obj, other, options = null) {
   }
 
   for (const key of Object.keys(other)) {
-    if (isDecorator(key)) {
-      if (key.endsWith('__sig')) {
-        if (obj.hasOwnProperty(key)) {
+    const parts = splitDecorator(key);
+    if (parts) {
+      const [decorated, decoratorName] = parts;
+      if (decoratorName === '__sig') {
+        if (Object.hasOwn(obj, key)) {
           const oldsig = obj[key];
           const newsig = other[key];
           if (oldsig == newsig) {
@@ -147,12 +147,9 @@ export function mergeInto(obj, other, options = null) {
         }
       }
 
-      const index = key.lastIndexOf('__');
-      const decoratorName = key.slice(index);
       const type = typeof other[key];
 
       if (decoratorName == '__async') {
-        const decorated = key.slice(0, index);
         if (isJsOnlySymbol(decorated)) {
           error(`__async decorator applied to JS symbol: ${decorated}`);
         }
@@ -186,13 +183,20 @@ export function mergeInto(obj, other, options = null) {
           __noleakcheck: 'boolean',
           __internal: 'boolean',
           __user: 'boolean',
-          __async: ['string', 'boolean'],
+          __async: ['string', 'boolean', 'object'],
           __i53abi: 'boolean',
+          __export: 'boolean',
+          __force: 'boolean',
+          __const: 'boolean',
         };
         const expected = decoratorTypes[decoratorName];
         if (type !== expected && !expected.includes(type)) {
           error(`Decorator (${key}) has wrong type. Expected '${expected}' not '${type}'`);
         }
+      }
+
+      if (decoratorName === '__force' && other[key]) {
+        extraLibraryFuncs.push(decorated);
       }
     }
   }
@@ -209,7 +213,7 @@ export function isJsOnlySymbol(symbol) {
 export const decoratorSuffixes = [
   '__sig',
   '__proxy',
-  '__asm',
+  '__asm', // Deprecated
   '__deps',
   '__postset',
   '__docs',
@@ -219,10 +223,49 @@ export const decoratorSuffixes = [
   '__user',
   '__async',
   '__i53abi',
+  '__export',
+  '__force',
+  '__const',
 ];
 
+const decoratorSuffixSet = new Set(decoratorSuffixes);
+
 export function isDecorator(ident) {
-  return decoratorSuffixes.some((suffix) => ident.endsWith(suffix));
+  const index = ident.lastIndexOf('__');
+  return index > 0 && decoratorSuffixSet.has(ident.slice(index));
+}
+
+/**
+ * If `ident` is a decorated library key (e.g. `foo__sig`), returns
+ * `[base, suffix]` (e.g. `['foo', '__sig']`), otherwise `null`.
+ */
+export function splitDecorator(ident) {
+  const index = ident.lastIndexOf('__');
+  if (index > 0) {
+    const suffix = ident.slice(index);
+    if (decoratorSuffixSet.has(suffix)) {
+      return [ident.slice(0, index), suffix];
+    }
+  }
+  return null;
+}
+
+export function defineConsts(consts) {
+  const rtn = {};
+  for (const [key, value] of Object.entries(consts)) {
+    assert(isJsOnlySymbol(key), `expected JS-only symbol (starting with '$'): ${key}`);
+    rtn[key] = value;
+    rtn[key + '__const'] = true;
+  }
+  return rtn;
+}
+
+export function defineInternalConsts(consts) {
+  const rtn = defineConsts(consts);
+  for (const key of Object.keys(consts)) {
+    rtn[key + '__internal'] = true;
+  }
+  return rtn;
 }
 
 export function readFile(filename) {
@@ -230,9 +273,10 @@ export function readFile(filename) {
 }
 
 // Use import.meta.dirname here once we drop support for node v18.
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
-export const srcDir = __dirname;
+export const srcDir =
+  path.basename(__dirname) === 'src' ? __dirname : path.join(__dirname, '../src');
 
 // Returns an absolute path for a file, resolving it relative to this script
 // (i.e. relative to the src/ directory).
@@ -260,21 +304,19 @@ export function debugLog(...args) {
 
 class Profiler {
   ids = [];
-  lastTime = 0;
 
   constructor() {
-    this.start('overall')
-    this.startTime = performance.now();
+    this.start('overall');
   }
 
   log(msg) {
     const depth = this.ids.length;
-    const indent = ' '.repeat(depth)
+    const indent = ' '.repeat(depth);
     printErr('[prof] ' + indent + msg);
   }
 
   start(id) {
-    this.log(`-> ${id}`)
+    this.log(`-> ${id}`);
     const now = performance.now();
     this.ids.push([id, now]);
   }
@@ -284,16 +326,14 @@ class Profiler {
     assert(id === poppedId);
     const now = performance.now();
     const duration = now - startTime;
-    this.log(`<- ${id} [${duration.toFixed(1)} ms]`)
+    this.log(`<- ${id} [${duration.toFixed(1)} ms]`);
   }
 
   terminate() {
     while (this.ids.length) {
-      const lastID = this.ids[this.ids.length - 1][0];
+      const lastID = this.ids.at(-1)[0];
       this.stop(lastID);
     }
-    // const overall = performance.now() - this.startTime
-    // printErr(`overall total: ${overall.toFixed(1)} ms`);
   }
 }
 
@@ -339,10 +379,18 @@ const setLikeSettings = [
   'ALL_INCOMING_MODULE_JS_API',
   'EXTRA_INCOMING_JS_API',
   'EXPORTED_RUNTIME_METHODS',
-  'WEAK_IMPORTS'
+  'WEAK_IMPORTS',
 ];
 
-export function applySettings(obj) {
+const settingsCallbacks = [];
+let settingsLoaded = false;
+
+export function onSettingsLoaded(cb) {
+  assert(!settingsLoaded);
+  settingsCallbacks.push(cb);
+}
+
+function setSettings(obj) {
   // Certain settings are read in as lists, but we convert them to Set
   // within the compiler, for efficiency.
   for (const key of setLikeSettings) {
@@ -357,12 +405,21 @@ export function applySettings(obj) {
   addToCompileTimeContext(obj);
 }
 
+export function applySettings(obj) {
+  assert(!settingsLoaded);
+  settingsLoaded = true;
+  setSettings(obj);
+  for (const cb of settingsCallbacks) {
+    cb();
+  }
+}
+
 export function loadSettingsFile(f) {
-  timer.start('loadSettingsFile')
+  timer.start('loadSettingsFile');
   const settings = {};
   vm.runInNewContext(readFile(f), settings, {filename: f});
-  applySettings(settings);
-  timer.stop('loadSettingsFile')
+  setSettings(settings);
+  timer.stop('loadSettingsFile');
   return settings;
 }
 
@@ -381,6 +438,8 @@ export function runInMacroContext(code, options) {
 addToCompileTimeContext({
   assert,
   decoratorSuffixes,
+  defineConsts,
+  defineInternalConsts,
   error,
   isDecorator,
   isJsOnlySymbol,

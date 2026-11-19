@@ -36,7 +36,8 @@ var SIDE_MODULE_IMPORTS = [];
 // won't exist.
 var EXPORT_IF_DEFINED = ['__start_em_asm', '__stop_em_asm',
                          '__start_em_lib_deps', '__stop_em_lib_deps',
-                         '__start_em_js', '__stop_em_js'];
+                         '__start_em_js', '__stop_em_js',
+                         '__start_em_embind', '__stop_em_embind'];
 
 // Like EXPORTED_FUNCTIONS, but symbol is required to exist in native code.
 // This means wasm-ld will fail if these symbols are missing.
@@ -87,6 +88,9 @@ var EMIT_TSD = false;
 // This will be true during the generation of code in run_embind_gen. Helpful
 // for detecting if either TSD file or embind AOT JS generation is running.
 var EMBIND_GEN_MODE = false;
+
+// List of 5-tuple embind invoker signatures expanded from the em_embind section.
+var EMBIND_INVOKERS = [];
 
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = true;
@@ -152,8 +156,6 @@ var MINIFY_WASM_IMPORTED_MODULES = false;
 // Whether to minify exports from the Wasm module.
 var MINIFY_WASM_EXPORT_NAMES = true;
 
-// Internal: value of -flto argument (either full or thin)
-var LTO = 0;
 
 // Whether we may be accessing the address 2GB or higher. If so, then we need
 // to interpret incoming i32 pointers as unsigned.
@@ -295,5 +297,15 @@ var LOAD_SOURCE_MAP = false;
 
 var ALIASES = [];
 
+// Internal setting for passing EM_JS and EM_ASM function code snippets to JSifier so that
+// implicit heap dependencies (e.g. HEAP8, HEAP32) can be scanned and included automatically
+// without needing to search for them in Python.
+// This could be removed if/when we require explicit heap dependencies (via EM_JS_DEPS).
+var EM_JS_SNIPPETS = [];
+
 // List of public setting names (Used by RETAIN_COMPILER_SETTINGS)
 var PUBLIC_SETTINGS = [];
+
+// Bounds of the static .rodata section extracted at link time for string caching.
+var RODATA_START = 0;
+var RODATA_END = 0;

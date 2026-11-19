@@ -21,4 +21,6 @@ newargs = cmdline.parse_arguments(argv)
 # Add any clang flags that emcc would add.
 newargs += compile.get_cflags(tuple(argv))
 
-shared.exec_process([shared.CLANG_SCAN_DEPS, *newargs])
+CLANG_SCAN_DEPS = shared.llvm_tool_path('clang-scan-deps')
+
+shared.exec_process([CLANG_SCAN_DEPS, *newargs])

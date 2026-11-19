@@ -1,27 +1,41 @@
-// XXX EMSCRIPTEN ASAN: build an uninstrumented version of memmove
-#if defined(__EMSCRIPTEN__) && defined(__has_feature)
+/*
+ * Copyright 2019 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+#include <stdint.h>
+#include <string.h>
+#include "libc.h"
+
+// Use the simple/naive version of memmove when building with asan
 #if __has_feature(address_sanitizer)
-#define memmove __attribute__((no_sanitize("address"))) emscripten_builtin_memmove
-#endif
-#endif
 
-#ifdef EMSCRIPTEN_OPTIMIZE_FOR_OZ
-
-#include <stddef.h>
-
-void *memcpy(void *dest, const void *src, size_t n);
-
-void *memmove(void *dest, const void *src, size_t n) {
-  if (dest < src) return memcpy(dest, src, n);
-  unsigned char *d = (unsigned char *)dest + n;
-  const unsigned char *s = (const unsigned char *)src + n;
-#pragma clang loop unroll(disable)
-  while(n--) *--d = *--s;
+static void *__memmove(void *dest, const void *src, size_t n) {
+  unsigned char *d = (unsigned char *)dest;
+  const unsigned char *s = (const unsigned char *)src;
+  if (d < s) {
+    while (n--) *d++ = *s++;
+  } else {
+    d += n;
+    s += n;
+    while (n--) *--d = *--s;
+  }
   return dest;
 }
 
 #else
 
-#include "musl/src/string/memmove.c"
+static void *__memmove(void *dest, const void *src, size_t n) {
+  // memory.copy traps on OOB zero-length copies, but memmove must not.
+  if (n) {
+    __builtin_wasm_memory_copy(0, 0, dest, src, n);
+  }
+  return dest;
+}
 
 #endif
+
+weak_alias(__memmove, emscripten_builtin_memmove);
+weak_alias(__memmove, memmove);

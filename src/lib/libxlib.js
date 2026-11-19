@@ -8,7 +8,6 @@ var LibraryXlib = {
   // We support 1 display, the canvas
   XOpenDisplay: (name) => 1,
 
-  XCreateWindow__deps: ['$Browser'],
   XCreateWindow: (display, parent, x, y, width, height, border_width, depth, class_, visual, valuemask, attributes) => {
     // All we can do is set the width and height
     Browser.setCanvasSize(width, height);

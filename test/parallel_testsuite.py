@@ -21,7 +21,7 @@ from tools.utils import WINDOWS
 
 EMTEST_VISUALIZE = os.getenv('EMTEST_VISUALIZE')
 NUM_CORES = None
-seen_class = set()
+seen_class: set[str] = set()
 torn_down = False
 
 

@@ -27,7 +27,7 @@ struct f_fi {POS int r; float x; float y; float dy; long long i; int e; };
 #define inf INFINITY
 #define nan NAN
 
-static struct f_fi t[] = {
+struct f_fi t[] = {
 T(RN,   -0x1.02239f3c6a8f1p+3,   -0x1.0120f61b63d5ep+3,   0x1.89ccc4p-6,          -1, INEXACT)
 T(RN,    0x1.161868e18bc67p+2,    0x1.1ef3b263fd60bp+1,  -0x1.6d0264p-3,           1, INEXACT)
 T(RN,   -0x1.0c34b3e01e6e7p+3,   -0x1.46d73255263d9p+3,   0x1.e0ec76p-3,          -1, INEXACT)
@@ -49,7 +49,7 @@ T(RN,                    -inf,                     inf,          0x0p+0,        
 T(RN,                     nan,                     nan,          0x0p+0,           1, 0)
 };
 
-static int eulpf(float x)
+int eulpf(float x)
 {
   union { float f; uint32_t i; } u = { x };
   int e = u.i>>23 & 0xff;
@@ -59,7 +59,7 @@ static int eulpf(float x)
   return e - 0x7f - 23;
 }
 
-static int checkulp(float d, int r)
+int checkulp(float d, int r)
 {
   // TODO: we only care about >=1.5 ulp errors for now, should be 1.0
   if (r == RN)
@@ -67,7 +67,7 @@ static int checkulp(float d, int r)
   return 1;
 }
 
-static float ulperrf(float got, float want, float dwant)
+float ulperrf(float got, float want, float dwant)
 {
   if (isnan(got) && isnan(want))
     return 0;

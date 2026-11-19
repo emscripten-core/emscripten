@@ -15,7 +15,7 @@ var LibraryIDBStore = {
   // extra code; or you could implement a file b-tree using posix-compliant
   // filesystem on top.
   $IDBStore: IDBStore,
-  emscripten_idb_async_load__deps: ['$UTF8ToString', '$callUserCallback', 'malloc', 'free'],
+  emscripten_idb_async_load__deps: ['malloc', 'free'],
   emscripten_idb_async_load: (db, id, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}};
     IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), (error, byteArray) => {
@@ -32,7 +32,6 @@ var LibraryIDBStore = {
       });
     });
   },
-  emscripten_idb_async_store__deps: ['$UTF8ToString', '$callUserCallback'],
   emscripten_idb_async_store: (db, id, ptr, num, arg, onstore, onerror) => {
     // note that we copy the data here, as these are async operations - changes
     // to HEAPU8 meanwhile should not affect us!
@@ -48,7 +47,6 @@ var LibraryIDBStore = {
       });
     });
   },
-  emscripten_idb_async_delete__deps: ['$UTF8ToString', '$callUserCallback'],
   emscripten_idb_async_delete: (db, id, arg, ondelete, onerror) => {
     {{{ runtimeKeepalivePush() }}};
     IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), (error) => {
@@ -62,7 +60,6 @@ var LibraryIDBStore = {
       });
     });
   },
-  emscripten_idb_async_exists__deps: ['$UTF8ToString', '$callUserCallback'],
   emscripten_idb_async_exists: (db, id, arg, oncheck, onerror) => {
     {{{ runtimeKeepalivePush() }}};
     IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), (error, exists) => {
@@ -76,7 +73,6 @@ var LibraryIDBStore = {
       });
     });
   },
-  emscripten_idb_async_clear__deps: ['$UTF8ToString', '$callUserCallback'],
   emscripten_idb_async_clear: (db, arg, onclear, onerror) => {
     {{{ runtimeKeepalivePush() }}};
     IDBStore.clearStore(UTF8ToString(db), (error) => {
@@ -163,5 +159,4 @@ var LibraryIDBStore = {
 #endif // ASYNCIFY
 };
 
-autoAddDeps(LibraryIDBStore, '$IDBStore');
 addToLibrary(LibraryIDBStore);

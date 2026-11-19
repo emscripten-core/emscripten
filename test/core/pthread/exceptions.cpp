@@ -16,8 +16,8 @@
 #define THREAD_ADDS 750
 #define MAIN_ADDS 5
 
-static std::atomic<int> sum;
-static std::atomic<int> total;
+std::atomic<int> sum;
+std::atomic<int> total;
 
 void *ThreadMain(void *arg) {
   for (int i = 0; i < TOTAL; i++) {

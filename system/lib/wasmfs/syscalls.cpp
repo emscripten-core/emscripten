@@ -7,16 +7,17 @@
 
 #define _LARGEFILE64_SOURCE // For F_GETLK64 etc
 
+#include <cerrno>
+#include <cmath>
+#include <cstdarg>
+#include <cstdlib>
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
 #include <emscripten/html5.h>
 #include <emscripten/syscalls.h>
-#include <errno.h>
 #include <mutex>
 #include <poll.h>
-#include <stdarg.h>
-#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -111,6 +112,12 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_ISDIR;
   }
 
+  // A file opened for reading only (O_RDONLY) cannot be written. POSIX write(2)
+  // returns EBADF when the file descriptor is not open for writing.
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_RDONLY) {
+    return __WASI_ERRNO_BADF;
+  }
+
   auto lockedFile = file->locked();
 
   if (setOffset == OffsetHandling::OpenFileState) {
@@ -127,12 +134,26 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     }
   }
 
-  // TODO: Check open file access mode for write permissions.
+  // A non-blocking write takes only what the file can take right now.
+  off_t budget = -1;
+  if (lockedOpenFile.getFlags() & O_NONBLOCK) {
+    size_t total = 0;
+    for (size_t i = 0; i < iovs_len; i++) {
+      total += iovs[i].buf_len;
+    }
+    budget = lockedFile.writableBytes(total);
+    if (budget < 0) {
+      return -budget;
+    }
+  }
 
   size_t bytesWritten = 0;
-  for (size_t i = 0; i < iovs_len; i++) {
+  for (size_t i = 0; i < iovs_len && budget != 0; i++) {
     const uint8_t* buf = iovs[i].buf;
     off_t len = iovs[i].buf_len;
+    if (budget > 0 && len > budget) {
+      len = budget;
+    }
 
     // Check if buf_len specifies a positive length buffer but buf is a
     // null pointer
@@ -156,7 +177,10 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     }
     // The write was successful.
     bytesWritten += result;
-    if (result < len) {
+    if (budget > 0) {
+      budget -= result;
+    }
+    if (result < (off_t)iovs[i].buf_len) {
       // The write was short, so stop here.
       break;
     }
@@ -197,13 +221,17 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  // TODO: Check open file access mode for read permissions.
-
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
+  }
+
+  // A file opened for writing only (O_WRONLY) cannot be read. POSIX read(2)
+  // returns EBADF when the file descriptor is not open for reading.
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
+    return __WASI_ERRNO_BADF;
   }
 
   auto lockedFile = file->locked();
@@ -321,7 +349,8 @@ __wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd) {
 
 int __syscall_fdatasync(int fd) {
   // TODO: Optimize this to avoid unnecessarily flushing unnecessary metadata.
-  return __wasi_fd_sync(fd);
+  // Translate from WASI positive error codes to negative error codes.
+  return -__wasi_fd_sync(fd);
 }
 
 backend_t wasmfs_get_backend_by_fd(int fd) {
@@ -541,6 +570,15 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -ENOTDIR;
   }
 
+  if (flags & O_TRUNC) {
+    if (!child->is<DataFile>()) {
+      return -EISDIR;
+    }
+    if ((fileMode & WASMFS_PERM_WRITE) == 0) {
+      return -EACCES;
+    }
+  }
+
   // Note that we open the file before truncating it because some backends may
   // truncate opened files more efficiently (e.g. OPFS).
   std::shared_ptr<OpenFileState> openFile;
@@ -549,16 +587,13 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return err;
   }
 
-  // If O_TRUNC, truncate the file if possible.
-  if (flags & O_TRUNC) {
-    if (!child->is<DataFile>()) {
-      return -EISDIR;
+  // Ignore truncation if it is a device or FIFO
+  if ((flags & O_TRUNC) && S_ISREG(fileMode)) {
+    auto lockedFile = child->cast<DataFile>()->locked();
+    if (auto err = lockedFile.setSize(0)) {
+      (void)lockedFile.close();
+      return err;
     }
-    if ((fileMode & WASMFS_PERM_WRITE) == 0) {
-      return -EACCES;
-    }
-    // Try to truncate the file, continuing silently if we cannot.
-    (void)child->cast<DataFile>()->locked().setSize(0);
   }
 
   return wasmFS.getFileTable().locked().addEntry(openFile);
@@ -569,7 +604,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 int wasmfs_create_file(const char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
-  return doOpen(path::parseParent(pathname), O_CREAT | O_EXCL, mode, backend);
+  return doOpen(
+    path::parseParent(pathname), O_CREAT | O_EXCL | O_RDWR, mode, backend);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -1128,7 +1164,7 @@ static double timespec_to_ms(timespec ts) {
   if (ts.tv_nsec == UTIME_NOW) {
     return emscripten_date_now();
   }
-  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec / (1000 * 1000));
 }
 
 // TODO: Test this with non-AT_FDCWD values.
@@ -1357,6 +1393,11 @@ int __syscall_ioctl(int fd, int request, ...) {
       // TTY operations that we do nothing for anyhow can just be ignored.
       return 0;
     }
+    case TIOCGPGRP: {
+      // Set argp to 0 just like in JS FS
+      *static_cast<int*>(argp) = 0;
+      return 0;
+    }
     default: {
       return -EINVAL; // not supported
     }
@@ -1365,7 +1406,12 @@ int __syscall_ioctl(int fd, int request, ...) {
 
 int __syscall_pipe2(int fd[2], int flags) {
   auto* fds = (__wasi_fd_t*)fd;
-  if (flags && flags != O_CLOEXEC) {
+  
+  if (!fds) {
+    return -EFAULT;
+  }
+
+  if (flags & ~(O_CLOEXEC | O_NONBLOCK)) {
     return -ENOTSUP;
   }
 
@@ -1377,9 +1423,11 @@ int __syscall_pipe2(int fd[2], int flags) {
   auto reader = std::make_shared<PipeFile>(S_IRUGO, data);
   auto writer = std::make_shared<PipeFile>(S_IWUGO, data);
 
+  oflags_t nonBlock = flags & O_NONBLOCK;
+
   std::shared_ptr<OpenFileState> openReader, openWriter;
-  (void)OpenFileState::create(reader, O_RDONLY, openReader);
-  (void)OpenFileState::create(writer, O_WRONLY, openWriter);
+  (void)OpenFileState::create(reader, O_RDONLY | nonBlock, openReader);
+  (void)OpenFileState::create(writer, O_WRONLY | nonBlock, openWriter);
 
   auto fileTable = wasmFS.getFileTable().locked();
   fds[0] = fileTable.addEntry(openReader);
@@ -1406,27 +1454,11 @@ int __syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout) {
     auto mask = POLLNVAL;
     auto openFile = fileTable.getEntry(fd);
     if (openFile) {
-      mask = 0;
       auto flags = openFile->locked().getFlags();
-      auto accessMode = flags & O_ACCMODE;
-      auto readBit = pollfd->events & POLLOUT;
-      if (readBit && (accessMode == O_WRONLY || accessMode == O_RDWR)) {
-        mask |= readBit;
-      }
-      auto writeBit = pollfd->events & POLLIN;
-      if (writeBit && (accessMode == O_RDONLY || accessMode == O_RDWR)) {
-        // If there is data in the file, then there is also the ability to read.
-        // TODO: Does this need to consider the position as well? That is, if
-        // the position is at the end, we can't read from the current position
-        // at least. If we update this, make sure the size isn't an error!
-        if (openFile->locked().getFile()->locked().getSize() > 0) {
-          mask |= writeBit;
-        }
-      }
-      // TODO: get mask from File dynamically using a poll() hook?
+      auto file = openFile->locked().getFile();
+      // POLLERR and POLLHUP are reported whether or not they were requested.
+      mask = file->locked().poll(flags) & (pollfd->events | POLLERR | POLLHUP);
     }
-    // TODO: set the state based on the state of the other end of the pipe, for
-    //       pipes (POLLERR | POLLHUP)
     if (mask) {
       nonzero++;
     }
@@ -1453,7 +1485,12 @@ int __syscall_fallocate(int fd, int mode, off_t offset, off_t len) {
     return -EBADF;
   }
 
-  auto dataFile = openFile->locked().getFile()->dynCast<DataFile>();
+  auto file = openFile->locked().getFile();
+  if (!file->isSeekable()) {
+    return -ESPIPE;
+  }
+
+  auto dataFile = file->dynCast<DataFile>();
   // TODO: support for symlinks.
   if (!dataFile) {
     return -ENODEV;
@@ -1571,17 +1608,16 @@ doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   }
 
   // NOTE: None of the constants here are true. We're just returning safe and
-  //       sane values, that match the long-existing JS FS behavior (except for
-  //       the inode number, where we can do better).
+  //       sane values, that match the long-existing JS FS behavior.
   buf->f_type = 0;
   buf->f_bsize = 4096;
   buf->f_frsize = 4096;
   buf->f_blocks = 1000000;
   buf->f_bfree = 500000;
   buf->f_bavail = 500000;
-  buf->f_files = file->getIno();
-  buf->f_ffree = 1000000;
-  buf->f_fsid = {0, 0};
+  buf->f_files = 1000000;
+  buf->f_ffree = 500000;
+  buf->f_fsid = {42, 0};
   buf->f_flags = ST_NOSUID;
   buf->f_namelen = 255;
   return 0;
@@ -1842,8 +1878,24 @@ int __syscall_recvmsg(int sockfd,
 }
 
 int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
+  auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
+  if (!openFile) {
+    return -EBADF;
+  }
+  if (!openFile->locked().getFile()->isSeekable()) {
+    return -ESPIPE;
+  }
   // Advice is currently ignored. TODO some backends might use it
   return 0;
+}
+
+int __syscall_linkat(int olddirfd,
+                     const char* oldpath,
+                     int newdirfd,
+                     const char* newpath,
+                     int flags) {
+  // Hardlinks are not supported in WASMFS.
+  return -EMLINK;
 }
 
 // epoll is implemented in the legacy (non-WASMFS) JS syscall layer only.
@@ -1859,6 +1911,12 @@ int __syscall_epoll_pwait(int epfd,
                           int timeout,
                           const sigset_t* sigmask,
                           size_t sigsetsize) {
+  return -ENOSYS;
+}
+
+int __syscall_epoll_pwait_nonblocking(int epfd,
+                                      struct epoll_event* ev,
+                                      int maxevents) {
   return -ENOSYS;
 }
 

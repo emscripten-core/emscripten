@@ -20,8 +20,11 @@ const sx = {
 
 const sar = [ 1, 2, 3 ];
 
+const computedKey = "foo";
+
 Module["spread"] = {
   b: 2,
+  [computedKey]: 3,
   ...sx
 };
 

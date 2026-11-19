@@ -86,10 +86,8 @@ typedef void (*emscripten_async_wait_volatile_callback_t)(volatile void* address
 // https://github.com/WebAssembly/threads/issues/175 for more information.
 // NOTE: This function can be called in both main thread and in Workers.
 // NOTE 2: This function will always acquire the lock asynchronously. That is,
-//         the lock will only be attempted to acquire after current control flow
-//         yields back to the browser, so that the Wasm call stack is empty.
-//         This is to guarantee a uniform control flow. If you use this API in
-//         a Worker, you cannot utilise an infinite loop programming model.
+//         control flow will always return the event loop before the lock
+//         is acquired.
 void emscripten_lock_async_acquire(emscripten_lock_t * _Nonnull lock,
                                    emscripten_async_wait_volatile_callback_t _Nonnull asyncWaitFinished,
                                    void *userData,
@@ -122,7 +120,10 @@ void emscripten_semaphore_init(emscripten_semaphore_t * _Nonnull sem, int num);
 int emscripten_semaphore_try_acquire(emscripten_semaphore_t * _Nonnull sem, int num);
 
 // main thread, poll to try acquire num instances. Returns idx that was
-// acquired. If you use this API in Worker, you cannot run an infinite loop.
+// acquired.
+// NOTE: This function will always acquire the semaphore asynchronously. That
+//       is, control flow will always return the event loop before the semaphore
+//       is acquired.
 void emscripten_semaphore_async_acquire(emscripten_semaphore_t * _Nonnull sem,
                                         int num,
                                         emscripten_async_wait_volatile_callback_t _Nonnull asyncWaitFinished,
@@ -190,15 +191,20 @@ void emscripten_condvar_signal(emscripten_condvar_t * _Nonnull condvar, uint32_t
 // sleep waiting for that address to be notified. Like the linux futex syscall
 // this function returns negative errno values on failure.
 // Pass maxWaitMilliseconds = INFINITY (or __builtin_inf()) to sleep indefinitely.
+//
+// Like the Linux futex(2) syscall, this function can experience spurious
+// wakeups (e.g. from side-channel notifications or async wait cancellations).
+// Callers should always call this function in a loop that checks the
+// application-level condition.
+//
 // Returns:
 // * negative value -EINVAL if addr is null.
 // * negative value -ETIMEDOUT if the maxWaitMilliseconds timeout was exceeded.
-// * negative value -EINTR if the operation was interrupted (e.g. a timer fired, or an
-//   async signal was received).
 // * negative value -EWOULDBLOCK if the value of the memory address 'addr' was
 //   not equal to 'val' to begin with.
 // * negative value -ECANCELED if the calling thread has been canceled.
-// * the value 0 on success (i.e. another thread signaled this address)
+// * the value 0 on success (i.e. another thread signaled this address, or a
+//   spurious wakeup occurred)
 int emscripten_futex_wait(volatile void/*uint32_t*/ * _Nonnull addr, uint32_t val, double maxWaitMilliseconds);
 
 // Wakes the given number of threads waiting on a location. Pass count ==

@@ -32,7 +32,7 @@ def create_response_file_contents(args):
   # Arguments containing spaces need to be quoted.
   for arg in args:
     if ' ' in arg:
-      arg = '"%s"' % arg
+      arg = f'"{arg}"'
     contents += arg + '\n'
 
   return contents
@@ -99,7 +99,7 @@ def expand_response_file(arg):
     if DEBUG:
       logging.warning(f'failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...')
     # If that fails, try with the Python default locale.getpreferredencoding()
-    with open(response_filename) as f:  # noqa: PLW1514
+    with open(response_filename, encoding=None) as f:
       args = f.read()
 
   args = shlex.split(args)

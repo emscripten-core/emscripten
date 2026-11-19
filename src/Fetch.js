@@ -156,6 +156,7 @@ class FetchXHR {
       credentials: this.withCredentials ? 'include' : 'same-origin',
     };
 
+    let failure = null;
     try {
       const response = await fetch(this._url, fetchOptions);
 
@@ -218,23 +219,23 @@ class FetchXHR {
         this.response = allChunks.buffer;
       }
     } catch (error) {
+      failure = error;
+      this.status = 0;
+      this.response = null;
       this.statusText = error.message;
-
-      if (error.name === 'AbortError') {
-        // Do nothing.
-      } else if (error.name === 'TimeoutError') {
-        this.ontimeout?.();
-      } else {
-        // This is a network error
-        this.onerror?.();
-      }
     } finally {
       clearTimeout(timeoutID);
       if (!this._aborted) {
         this._changeReadyState(4); // 4: DONE
         // The XHR 'load' event fires for successful HTTP statuses (2xx) as well as
         // unsuccessful ones (4xx, 5xx). The 'error' event is for network failures.
-        this.onload?.();
+        if (!failure) {
+          this.onload?.();
+        } else if (failure.name === 'TimeoutError') {
+          this.ontimeout?.();
+        } else {
+          this.onerror?.();
+        }
       }
     }
   }
@@ -507,9 +508,9 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   var dataLength = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestDataSize, '*') }}};
 
   var fetchAttributes = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.attributes, 'u32') }}};
-  var fetchAttrLoadToMemory = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_LOAD_TO_MEMORY }}});
-  var fetchAttrStreamData = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_STREAM_DATA }}});
-  var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_SYNCHRONOUS }}});
+  var fetchAttrLoadToMemory = !!(fetchAttributes & EMSCRIPTEN_FETCH_LOAD_TO_MEMORY);
+  var fetchAttrStreamData = !!(fetchAttributes & EMSCRIPTEN_FETCH_STREAM_DATA);
+  var fetchAttrSynchronous = !!(fetchAttributes & EMSCRIPTEN_FETCH_SYNCHRONOUS);
 
   var userNameStr = userName ? UTF8ToString(userName) : undefined;
   var passwordStr = password ? UTF8ToString(password) : undefined;
@@ -568,7 +569,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   dbg(`fetch: id=${id}`);
 #endif
   {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.id, 'id', 'u32') }}};
-  var data = (dataPtr && dataLength) ? HEAPU8.subarray(dataPtr, dataPtr + dataLength) : null;
+  var data = (dataPtr && dataLength) ? {{{ getHeapViewOrCopy('HEAPU8', 'dataPtr', 'dataPtr + dataLength') }}} : null;
   // TODO: Support specifying custom headers to the request.
 
   // Share the code to save the response, as we need to do so both on success
@@ -665,7 +666,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     // Specifies the maximum chunk size that a streaming fetch will transfer from
     // JS over to WebAssembly side. Used to cap a streaming fetch to avoid
     // overallocating WebAssembly memory needlessly.
-    var FETCH_STREAMING_MAX_CHUNK_SIZE = 8*1024*1024;
+    const FETCH_STREAMING_MAX_CHUNK_SIZE = 8*1024*1024;
 
     for (var bytePos = 0; bytePos < ptrLen || !ptrLen;) {
       var sz = Math.min(ptrLen - bytePos, FETCH_STREAMING_MAX_CHUNK_SIZE);
@@ -745,7 +746,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   var onprogress = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.onprogress, '*') }}};
   var onreadystatechange = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.onreadystatechange, '*') }}};
   var fetchAttributes = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.attributes, '*') }}};
-  var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_SYNCHRONOUS }}});
+  var fetchAttrSynchronous = !!(fetchAttributes & EMSCRIPTEN_FETCH_SYNCHRONOUS);
 
   function doCallback(f) {
     if (fetchAttrSynchronous) {
@@ -837,14 +838,17 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   };
 
   var requestMethod = UTF8ToString(fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestMethod }}});
-  var fetchAttrReplace = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_REPLACE }}});
-  var fetchAttrPersistFile = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_PERSIST_FILE }}});
-  var fetchAttrNoDownload = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_NO_DOWNLOAD }}});
+  var fetchAttrReplace = !!(fetchAttributes & EMSCRIPTEN_FETCH_REPLACE);
+  var fetchAttrPersistFile = !!(fetchAttributes & EMSCRIPTEN_FETCH_PERSIST_FILE);
+  var fetchAttrNoDownload = !!(fetchAttributes & EMSCRIPTEN_FETCH_NO_DOWNLOAD);
   if (requestMethod === 'EM_IDB_STORE') {
-    // TODO(?): Here we perform a clone of the data, because storing shared typed arrays to IndexedDB does not seem to be allowed.
     var ptr = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestData, '*') }}};
     var size = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestDataSize, '*') }}};
-    fetchCacheData(Fetch.dbInstance, fetch, HEAPU8.subarray(ptr, ptr + size), reportSuccess, reportError);
+    // We cannot use subarray() / getHeapViewOrCopy() here because structured
+    // cloning (used by IndexedDB) clones the entire underlying ArrayBuffer, not
+    // just the view. slice() copies only the requested range into a new
+    // unshared, non-resizable Uint8Array.
+    fetchCacheData(Fetch.dbInstance, fetch, HEAPU8.slice(ptr, ptr + size), reportSuccess, reportError);
   } else if (requestMethod === 'EM_IDB_DELETE') {
     fetchDeleteCachedData(Fetch.dbInstance, fetch, reportSuccess, reportError);
   } else if (!fetchAttrReplace) {

@@ -15,6 +15,9 @@
 #include "cxxabi.h"
 
 #include <exception>        // for std::terminate
+#if __EMSCRIPTEN__
+#include <stdlib.h>         // for malloc, free
+#endif
 #include "cxa_exception.h"
 #include "cxa_handlers.h"
 

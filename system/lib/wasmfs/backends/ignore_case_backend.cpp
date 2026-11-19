@@ -13,6 +13,8 @@
 // See the comment in virtual.h for an explanation of why DataFiles and Symlinks
 // must have no-op wrappers.
 
+#include <functional>
+
 #include "backend.h"
 #include "file.h"
 #include "virtual.h"

@@ -6,8 +6,8 @@
 import os
 import shutil
 
-VERSION = '1.3.2'
-HASH = '16fea4df307a68cf0035858abe2fd550250618a97590e202037acd18a666f57afc10f8836cbbd472d54a0e76539d0e558cb26f059d53de52ff90634bbf4f47d4'
+VERSION = '1.4'
+HASH = '67f3ce120210a69aa05cece6f76d5f45b50d947c095169f0d699732d0182d7d04aec1af56a3fc6bbcc2af91a57e099cd73980b17f7d96ad90aeabbeaafbf1cbc'
 
 
 def needed(settings):

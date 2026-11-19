@@ -8,7 +8,7 @@
 #pragma once
 
 #include "file.h"
-#include <assert.h>
+#include <cassert>
 #include <fcntl.h>
 #include <mutex>
 #include <utility>

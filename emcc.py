@@ -37,12 +37,12 @@ from subprocess import PIPE
 assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 from tools import (
-  building,
   cache,
   cmdline,
   compile,
   config,
   diagnostics,
+  ports,
   shared,
   system_libs,
   utils,
@@ -77,13 +77,13 @@ SOURCE_EXTENSIONS = {
 } | PREPROCESSED_EXTENSIONS
 
 LINK_ONLY_FLAGS = {
-    '--bind', '--closure', '--cpuprofiler', '--embed-file',
-    '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
-    '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
-    '--js-transform', '--oformat', '--output_eol', '--output-eol',
-    '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
-    '--proxy-to-worker', '--shell-file', '--source-map-base',
-    '--threadprofiler', '--use-preload-plugins',
+  '--bind', '--closure', '--cpuprofiler', '--embed-file',
+  '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
+  '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
+  '--js-transform', '--oformat', '--output_eol', '--output-eol',
+  '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
+  '--proxy-to-worker', '--shell-file', '--source-map-base',
+  '--threadprofiler', '--use-preload-plugins',
 }
 
 PASSTHROUGH_FLAGS = {
@@ -191,16 +191,102 @@ def get_clang_resource_dir(args):
   if resource_dir:
     return resource_dir[-1].split('=')[1]
   else:
-    output = utils.run_process([shared.CLANG_CC, '-print-resource-dir'], stdout=PIPE).stdout
+    output = shared.run_process([get_clang(), *compile.get_target_flags(), '-print-resource-dir'], stdout=PIPE).stdout
     return output.strip()
+
+
+def get_clang():
+  if shared.run_via_emxx:
+    return shared.CLANG_CXX
+  else:
+    return shared.CLANG_CC
+
+
+def handle_early_exit_flags(args, newargs):
+  if '--version' in args:
+    print(cmdline.version_string())
+    print('''\
+Copyright (C) 2026 the Emscripten authors (see AUTHORS.txt)
+This is free and open source software under the MIT license.
+There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+''')
+    return True
+
+  if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
+    print(utils.EMSCRIPTEN_VERSION)
+    return True
+
+  # Sadly we cannot rely on PASSTHROUGH_FLAGS for -print-search-dirs or -print-libgcc-file-name
+  # because there is no way to tell clang today about our custom library paths.
+  # TODO: Teach clang about emscripten's library layout so we can remove this code.
+  if '-print-search-dirs' in args or '--print-search-dirs' in args:
+    print(f'programs: ={config.LLVM_ROOT}')
+    resource_dir = get_clang_resource_dir(args)
+    libdir = cache.get_lib_dir(absolute=True)
+    print(f'libraries: ={resource_dir}{os.pathsep}{libdir}')
+    return True
+
+  if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
+    settings.limit_settings(None)
+    clang_rt = system_libs.Library.get_usable_variations()['libclang_rt.builtins']
+    print(clang_rt.get_path(absolute=True))
+    return True
+
+  print_file_name = [a for a in args if a.startswith(('-print-file-name=', '--print-file-name='))]
+  if print_file_name:
+    libname = print_file_name[-1].split('=')[1]
+    resource_dir = get_clang_resource_dir(args)
+    system_libpath = cache.get_lib_dir(absolute=True)
+    for dirname in (resource_dir, system_libpath):
+      fullpath = os.path.join(dirname, libname)
+      if os.path.isfile(fullpath):
+        print(fullpath)
+        break
+    else:
+      print(libname)
+    return True
+
+  if any(a in PASSTHROUGH_FLAGS for a in args) or any(a.startswith(p) for p in PASSTHROUGH_PREFIXES for a in args):
+    # For several -print-xxx-name flags we just defer to clang rather than
+    # trying to re-implement the logic.
+    shared.exec_process([get_clang(), *compile.get_target_flags(), *newargs])
+    assert False, 'exec_process should not return'
+
+  if options.clear_cache:
+    logger.info('clearing cache as requested by --clear-cache: `%s`', cache.cachedir)
+    cache.erase()
+    shared.perform_sanity_checks() # this is a good time for a sanity check
+    return True
+
+  if options.clear_ports:
+    logger.info('clearing ports and cache as requested by --clear-ports')
+    ports.clear()
+    cache.erase()
+    shared.perform_sanity_checks() # this is a good time for a sanity check
+    return True
+
+  if options.check:
+    print(cmdline.version_string(), file=sys.stderr)
+    shared.check_sanity(force=True)
+    return True
+
+  if options.show_ports:
+    ports.show_ports()
+    return True
+
+  if '--cflags' in args:
+    # Just print the flags we pass to clang and exit.  We need to do this after
+    # phase_setup because the setup sets things like SUPPORT_LONGJMP.
+    cflags = compile.get_cflags(x for x in args if x != '--cflags')
+    print(shlex.join(cflags))
+    return True
+
+  return False
 
 
 @ToolchainProfiler.profile()
 def main(args):
-  if shared.run_via_emxx:
-    clang = shared.CLANG_CXX
-  else:
-    clang = shared.CLANG_CC
+  shared.run_via_emxx = os.path.basename(args[0]).startswith('em++')
 
   # Special case the handling of `-v` because it has a special/different meaning
   # when used with no other arguments.  In particular, we must handle this early
@@ -210,7 +296,7 @@ def main(args):
   if len(args) == 2 and args[1] == '-v':
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print(cmdline.version_string(), file=sys.stderr)
-    return shared.check_call([clang, '-v', *compile.get_target_flags()], check=False).returncode
+    return shared.check_call([get_clang(), *compile.get_target_flags(), '-v'], check=False).returncode
 
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
@@ -255,84 +341,17 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if not shared.SKIP_SUBPROCS:
     shared.check_sanity()
 
+  for port in options.use_ports:
+    ports.handle_use_port_arg(settings, port)
+
   # For internal consistency, ensure we don't attempt to read or write any link time
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
   phase_setup(state)
 
-  # Begin early-exit flag handling.
-
-  if '--version' in args:
-    print(cmdline.version_string())
-    print('''\
-Copyright (C) 2026 the Emscripten authors (see AUTHORS.txt)
-This is free and open source software under the MIT license.
-There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-''')
+  if handle_early_exit_flags(args, newargs):
     return 0
-
-  if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
-    print(utils.EMSCRIPTEN_VERSION)
-    return 0
-
-  # Sadly we cannot rely on PASSTHROUGH_FLAGS for -print-search-dirs or -print-libgcc-file-name
-  # because there is no way to tell clang today about our custom library paths.
-  # TODO: Teach clang about emscripten's library layout so we can remove this code.
-  if '-print-search-dirs' in args or '--print-search-dirs' in args:
-    print(f'programs: ={config.LLVM_ROOT}')
-    resource_dir = get_clang_resource_dir(args)
-    libdir = cache.get_lib_dir(absolute=True)
-    print(f'libraries: ={resource_dir}{os.pathsep}{libdir}')
-    return 0
-
-  if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
-    settings.limit_settings(None)
-    clang_rt = system_libs.Library.get_usable_variations()['libclang_rt.builtins']
-    print(clang_rt.get_path(absolute=True))
-    return 0
-
-  print_file_name = [a for a in args if a.startswith(('-print-file-name=', '--print-file-name='))]
-  if print_file_name:
-    libname = print_file_name[-1].split('=')[1]
-    resource_dir = get_clang_resource_dir(args)
-    system_libpath = cache.get_lib_dir(absolute=True)
-    for dirname in (resource_dir, system_libpath):
-      fullpath = os.path.join(dirname, libname)
-      if os.path.isfile(fullpath):
-        print(fullpath)
-        break
-    else:
-      print(libname)
-    return 0
-
-  if 'EMMAKEN_NO_SDK' in os.environ:
-    exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
-
-  if 'EMMAKEN_COMPILER' in os.environ:
-    exit_with_error('`EMMAKEN_COMPILER` is no longer supported.\n' +
-                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instead')
-
-  if 'EMMAKEN_CFLAGS' in os.environ:
-    exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
-
-  if 'EMCC_REPRODUCE' in os.environ:
-    options.reproduce = os.environ['EMCC_REPRODUCE']
-
-  if any(a in PASSTHROUGH_FLAGS for a in args) or any(a.startswith(p) for p in PASSTHROUGH_PREFIXES for a in args):
-    # For several -print-xxx-name flags we just defer to clang rather than
-    # trying to re-implement the logic.
-    shared.exec_process([clang, *compile.get_cflags(tuple(args)), *newargs])
-    assert False, 'exec_process should not return'
-
-  if '--cflags' in args:
-    # Just print the flags we pass to clang and exit.  We need to do this after
-    # phase_setup because the setup sets things like SUPPORT_LONGJMP.
-    cflags = compile.get_cflags(x for x in args if x != '--cflags')
-    print(shlex.join(cflags))
-    return 0
-
-  # End early-exit flag handling
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -344,17 +363,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    link.run_post_link(options.input_files[0], options, linker_args)
+    link.run_post_link(options.input_files[0], linker_args)
     return 0
 
   # Compile source code to object files
   # When only compiling this function never returns.
-  linker_args = phase_compile_inputs(options, state, newargs)
+  linker_args = phase_compile_inputs(state, newargs)
 
   if state.mode == Mode.COMPILE_AND_LINK:
     # Delay import of link.py to avoid processing this file when only compiling
     from tools import link
-    return link.run(options, linker_args)
+    return link.run(linker_args)
   else:
     logger.debug('stopping after compile phase')
     return 0
@@ -425,12 +444,12 @@ def phase_setup(state):
       if key not in COMPILE_TIME_SETTINGS:
         diagnostics.warning(
             'unused-command-line-argument',
-            "linker setting ignored during compilation: '%s'" % key)
+            f"linker setting ignored during compilation: '{key}'")
     for arg in state.orig_args:
-      if arg in LINK_ONLY_FLAGS:
+      if arg.split('=')[0] in LINK_ONLY_FLAGS:
         diagnostics.warning(
             'unused-command-line-argument',
-            "linker flag ignored during compilation: '%s'" % arg)
+            f"linker flag ignored during compilation: '{arg}'")
 
   if 'USE_PTHREADS' in user_settings:
     settings.PTHREADS = settings.USE_PTHREADS
@@ -502,11 +521,8 @@ def phase_setup(state):
 
 
 @ToolchainProfiler.profile_block('compile inputs')
-def phase_compile_inputs(options, state, newargs):
-  if shared.run_via_emxx:
-    compiler = [shared.CLANG_CXX]
-  else:
-    compiler = [shared.CLANG_CC]
+def phase_compile_inputs(state, newargs):
+  compiler = [get_clang()]
 
   if config.COMPILER_WRAPPER:
     logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
@@ -524,8 +540,6 @@ def phase_compile_inputs(options, state, newargs):
     return compiler + compile.get_target_flags()
 
   if state.mode == Mode.COMPILE_ONLY:
-    if options.output_file and get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
-      diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
     if all(get_file_suffix(i) in ASSEMBLY_EXTENSIONS for i in options.input_files):
       cmd = get_clang_command_asm() + newargs
     else:
@@ -550,7 +564,7 @@ def phase_compile_inputs(options, state, newargs):
       seen_names[name] = 1
       return name
 
-    unique_suffix = '_%d' % seen_names[name]
+    unique_suffix = f'_{seen_names[name]}'
     seen_names[name] += 1
     base, ext = os.path.splitext(name)
     return base + unique_suffix + ext
@@ -572,14 +586,16 @@ def phase_compile_inputs(options, state, newargs):
       if ext == '.pcm':
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
     cmd += [*compile_args, '-c', input_file, '-o', output_file]
-    if options.requested_debug == '-gsplit-dwarf':
+    if ext not in ASSEMBLY_EXTENSIONS:
       # When running in COMPILE_AND_LINK mode we compile objects to a temporary location
-      # but we want the `.dwo` file to be generated in the current working directory,
-      # like it is under clang.  We could avoid this hack if we use the clang driver
-      # to generate the temporary files, but that would also involve using the clang
-      # driver to perform linking which would be a big change.
-      cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
-      cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
+      # but we want side-effect files (such as `.dwo` or `-ftime-trace` `.json` files)
+      # to be generated in the current working directory, like they are under clang.
+      # We could avoid this hack if we use the clang driver to generate the temporary
+      # files, but that would also involve using the clang driver to perform linking
+      # which would be a big change.
+      # See https://github.com/emscripten-core/emscripten/pull/27866
+      target = options.output_file or 'a.out.js'
+      cmd += ['-dumpdir', f'{target}-']
     shared.check_call(cmd)
     if not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
@@ -597,7 +613,7 @@ def phase_compile_inputs(options, state, newargs):
       arg.value = compile_source_file(input_file)
     elif file_suffix in DYLIB_EXTENSIONS:
       logger.debug(f'using shared library: {input_file}')
-    elif building.is_ar(input_file):
+    elif utils.is_ar(input_file):
       logger.debug(f'using static library: {input_file}')
     elif options.input_language:
       arg.value = compile_source_file(input_file)

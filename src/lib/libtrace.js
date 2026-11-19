@@ -5,13 +5,7 @@
  */
 
 var LibraryTracing = {
-  $EmscriptenTrace__deps: [
-    '$traceConfigure', 'emscripten_trace_configure_for_google_wtf',
-    '$traceEnterContext', 'emscripten_trace_exit_context',
-    '$traceLogMessage', '$traceMark',
-    'emscripten_get_now',
-    '$jsStackTrace'
-  ],
+  $EmscriptenTrace__deps: ['$jsStackTrace'],
   $EmscriptenTrace__postset: 'EmscriptenTrace.init()',
   $EmscriptenTrace: {
     worker: null,
@@ -106,7 +100,18 @@ var LibraryTracing = {
         EmscriptenTrace.worker.postMessage({ 'cmd': 'post',
                                              'entry': entry });
       } else if (EmscriptenTrace.postEnabled && EmscriptenTrace.testingEnabled) {
-        out('Tracing ' + entry);
+        out(
+          "Tracing " +
+            (Array.isArray(entry)
+              ? Array.from(entry, (entryVal) =>
+                  typeof entryVal === "object" && entryVal !== null
+                    ? JSON.stringify(entryVal, (_, v) =>
+                        typeof v === "bigint" ? v.toString() + "n" : v,
+                      )
+                    : entryVal,
+                )
+              : entry),
+        );
       }
     },
 
@@ -186,7 +191,7 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
-                            "MARK", message]);
+                            'MARK', message]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
       window['wtf'].trace.mark(message);
@@ -197,7 +202,7 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_LOG_MESSAGE, now,
-                            "MARK", UTF8ToString(message)]);
+                            'MARK', UTF8ToString(message)]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
       window['wtf'].trace.mark(UTF8ToString(message));
@@ -279,7 +284,7 @@ var LibraryTracing = {
 
   emscripten_trace_report_off_heap_data: () => {
     function openal_audiodata_size() {
-      if (typeof AL == 'undefined' || !AL.currentContext) {
+      if (typeof AL === 'undefined' || !AL.currentContext) {
         return 0;
       }
       var totalMemory = 0;
@@ -381,5 +386,4 @@ var LibraryTracing = {
   },
 };
 
-autoAddDeps(LibraryTracing, '$EmscriptenTrace');
 addToLibrary(LibraryTracing);

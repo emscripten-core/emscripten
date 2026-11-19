@@ -30,7 +30,7 @@ addToLibrary({
     assert(wasmFS$backends[backend]);
 #endif
     if (!wasmFS$backends[backend].write) {
-      return -{{{ cDefs.EINVAL }}};
+      return -EINVAL;
     }
     return wasmFS$backends[backend].write(file, buffer, length, offset);
   },
@@ -41,7 +41,7 @@ addToLibrary({
     assert(wasmFS$backends[backend]);
 #endif
     if (!wasmFS$backends[backend].read) {
-      return -{{{ cDefs.EINVAL }}};
+      return -EINVAL;
     }
     return wasmFS$backends[backend].read(file, buffer, length, offset);
   },

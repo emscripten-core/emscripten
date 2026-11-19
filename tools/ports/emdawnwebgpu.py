@@ -151,14 +151,14 @@ if __name__ == '__main__':
     print('Please see documentation inside this file for details on how to use this port.')
     sys.exit(1)
 
-_VERSION = 'v20260423.175430'
+_VERSION = 'v20261105.214757'
 
 # Remote-specific port information
 
 # - Where to download the port
 EXTERNAL_PORT = f'https://github.com/google/dawn/releases/download/{_VERSION}/emdawnwebgpu_pkg-{_VERSION}.zip'
 # - Hash to verify the download integrity
-SHA512 = '42784f70b67197c614322f9fabb0f1dc64228a0de10e88f99941fa9d29bee9ad6683f4651d4eefd5a7a9fbd1f976eb522b190b683219ed1793e9b531c602ffa6'
+SHA512 = 'ad5cfd55ee87d4b878360a180295e368eca53677c97029e7ab40f6a1b655b41d40579f3290edc9d4ba4d48246367860c893dd475bb0a71dd78c491a0e69a364c'
 # - Path of the port inside the zip file
 PORT_FILE = 'emdawnwebgpu_pkg/emdawnwebgpu.port.py'
 

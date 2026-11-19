@@ -65,9 +65,9 @@ static void init_file_lock(FILE *f) {
 }
 
 static int tl_lock_count;
-static int tl_lock_waiters;
+static _Atomic int tl_lock_waiters;
 
-volatile int __thread_list_lock;
+_Atomic int __thread_list_lock;
 
 void __tl_lock(void) {
   int tid = __pthread_self()->tid;
@@ -125,11 +125,15 @@ int __pthread_create(pthread_t* restrict res,
     libc.threaded = 1;
   }
 
+  int c11 = (attrp == __ATTRP_C11_THREAD);
   pthread_attr_t attr = { 0 };
-  if (attrp && attrp != __ATTRP_C11_THREAD) attr = *attrp;
-  if (!attr._a_stacksize) {
+  if (attrp && !c11) attr = *attrp;
+  if (!attrp || c11) {
     attr._a_stacksize = __default_stacksize;
+    attr._a_guardsize = __default_guardsize;
   }
+
+  size_t guard_size = 0;
 
   // Allocate memory for new thread.  The layout of the thread block is
   // as follows.  From low to high address:
@@ -137,7 +141,8 @@ int __pthread_create(pthread_t* restrict res,
   // 1. pthread struct (sizeof struct pthread)
   // 2. tls data       (__builtin_wasm_tls_size())
   // 3. tsd pointers   (__pthread_tsd_size)
-  // 4. stack          (__default_stacksize AKA -sDEFAULT_PTHREAD_STACK_SIZE)
+  // 4. guard area     (guard_size)
+  // 5. stack          (__default_stacksize AKA -sDEFAULT_PTHREAD_STACK_SIZE)
   size_t size = sizeof(struct pthread);
   if (__builtin_wasm_tls_size()) {
     size += __builtin_wasm_tls_size() + __builtin_wasm_tls_align() - 1;
@@ -145,7 +150,9 @@ int __pthread_create(pthread_t* restrict res,
   size += __pthread_tsd_size + TSD_ALIGN - 1;
   size_t zero_size = size;
   if (!attr._a_stackaddr) {
-    size += attr._a_stacksize + STACK_ALIGN - 1;
+    guard_size = attr._a_guardsize;
+    size += guard_size + attr._a_stacksize + STACK_ALIGN - 1;
+    zero_size += guard_size;
   }
 
   // Allocate all the data for the new thread and zero-initialize all parts
@@ -176,6 +183,7 @@ int __pthread_create(pthread_t* restrict res,
     new->detach_state = DT_JOINABLE;
   }
   new->stack_size = attr._a_stacksize;
+  new->guard_size = guard_size;
 
   // 2. tls data
   if (__builtin_wasm_tls_size()) {
@@ -197,12 +205,13 @@ int __pthread_create(pthread_t* restrict res,
   if (attr._a_stackaddr) {
     new->stack = (void*)attr._a_stackaddr;
   } else {
+    offset += guard_size;
     offset = ROUND_UP(offset + new->stack_size, STACK_ALIGN);
     new->stack = (void*)offset;
   }
 
   // Check that we didn't use more data than we allocated.
-  assert(offset < (uintptr_t)block + size);
+  assert(offset <= (uintptr_t)block + size);
 
 #ifndef NDEBUG
   _emscripten_thread_profiler_init(new);
@@ -330,7 +339,7 @@ void _emscripten_thread_exit(void* result) {
    * and the detached thread case where the robust list head will
    * be invalid when the kernel would process it. */
   __vm_lock();
-  volatile void *volatile *rp;
+  void **rp;
   while ((rp=self->robust_list.head) && rp != &self->robust_list.head) {
     pthread_mutex_t *m = (void *)((char *)rp
       - offsetof(pthread_mutex_t, _m_next));
@@ -356,6 +365,11 @@ void _emscripten_thread_exit(void* result) {
   self->prev = self->next = self;
 
   __tl_unlock();
+
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+  // Free the TLS data of all loaded side modules.
+  _emscripten_thread_free_tls();
+#endif
 
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
   __set_thread_state(NULL, 0, 0, 1);

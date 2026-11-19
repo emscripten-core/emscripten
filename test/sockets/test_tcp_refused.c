@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +29,7 @@
 int fd = -1;
 
 void test_success(void) {
-  printf("REFUSED PASS\n");
+  printf("done\n");
   if (fd >= 0) close(fd);
 #ifdef __EMSCRIPTEN__
   emscripten_cancel_main_loop();
@@ -45,10 +46,17 @@ void main_loop(void) {
   select(64, NULL, &fdw, NULL, &tv);
 
   if (FD_ISSET(fd, &fdw)) {
+    // Poll before reading SO_ERROR (which clears the pending error). A refused
+    // connect is Linux POLLERR|POLLHUP (plus writable).
+    struct pollfd pfd = {fd, POLLIN | POLLOUT, 0};
+    assert(poll(&pfd, 1, 0) == 1);
+    printf("poll revents 0x%x\n", pfd.revents);
+    assert(pfd.revents & POLLERR);
+    assert(pfd.revents & POLLHUP);
+
     int err = 0;
     socklen_t l = sizeof(err);
     getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &l);
-    if (err == 0) return; // not resolved yet
     printf("connect resolved with errno %d (%s)\n", err, strerror(err));
     assert(err == ECONNREFUSED && "expected ECONNREFUSED");
     test_success();
@@ -66,9 +74,8 @@ int main(void) {
   dest.sin_port = htons(1); // nothing listens on loopback port 1
   inet_pton(AF_INET, "127.0.0.1", &dest.sin_addr);
 
-  // A non-blocking connect may return 0 (emscripten) or -1/EINPROGRESS
-  // (native), or refuse synchronously. The async failure is checked via
-  // SO_ERROR in the main loop below.
+  // A non-blocking connect may return -1/EINPROGRESS, or refuse synchronously.
+  // The async failure is checked via SO_ERROR in the main loop below.
   int r = connect(fd, (struct sockaddr*)&dest, sizeof(dest));
   if (r == -1 && errno == ECONNREFUSED) {
     printf("connect resolved with errno %d (%s)\n", errno, strerror(errno));

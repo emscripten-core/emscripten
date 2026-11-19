@@ -14,13 +14,13 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-var Module = typeof Module != "undefined" ? Module : {};
+var Module = typeof Module !== "undefined" ? Module : {};
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
-var ENVIRONMENT_IS_WEB = true;
+const ENVIRONMENT_IS_WEB = true;
 
-var ENVIRONMENT_IS_WORKER = false;
+const ENVIRONMENT_IS_WORKER = false;
 
 var quit_ = (status, toThrow) => {
   throw toThrow;
@@ -91,8 +91,6 @@ var ABORT = false;
 var EXITSTATUS;
 
 // include: runtime_common.js
-// include: runtime_stack_check.js
-// end include: runtime_stack_check.js
 // include: runtime_exceptions.js
 // Base Emscripten EH error class
 class EmscriptenEH {}
@@ -107,16 +105,8 @@ var runtimeInitialized = false;
 
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
-  HEAP8 = new Int8Array(b);
-  HEAP16 = new Int16Array(b);
   HEAPU8 = new Uint8Array(b);
-  HEAPU16 = new Uint16Array(b);
-  HEAP32 = new Int32Array(b);
   HEAPU32 = new Uint32Array(b);
-  HEAPF32 = new Float32Array(b);
-  HEAPF64 = new Float64Array(b);
-  HEAP64 = new BigInt64Array(b);
-  HEAPU64 = new BigUint64Array(b);
 }
 
 // include: memoryprofiler.js
@@ -149,15 +139,7 @@ function postRun() {}
   // a trap or not based on a hidden field within the object. So at the moment
   // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
   // allows this in the wasm spec.
-  // Suppress closure compiler warning here. Closure compiler's builtin extern
-  // definition for WebAssembly.RuntimeError claims it takes no arguments even
-  // though it can.
-  // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-  /** @suppress {checkTypes} */ var e = new WebAssembly.RuntimeError(what);
-  // Throw the error whether or not MODULARIZE is set because abort is used
-  // in code paths apart from instantiation where an exception is expected
-  // to be thrown when abort is called.
-  throw e;
+  throw new WebAssembly.RuntimeError(what);
 }
 
 var wasmBinaryFile;
@@ -180,8 +162,8 @@ async function getWasmBinary(binaryFile) {
   if (!wasmBinary) {
     // Fetch the binary using readAsync
     try {
-      var response = await readAsync(binaryFile);
-      return new Uint8Array(response);
+      // Await so a rejection is caught and falls back to getBinarySync.
+      return await readAsync(binaryFile);
     } catch {}
   }
   // Otherwise, getBinarySync should be able to get it synchronously
@@ -262,27 +244,9 @@ class ExitStatus {
   }
 }
 
-/** @type {!Int16Array} */ var HEAP16;
-
-/** @type {!Int32Array} */ var HEAP32;
-
-/** not-@type {!BigInt64Array} */ var HEAP64;
-
-/** @type {!Int8Array} */ var HEAP8;
-
-/** @type {!Float32Array} */ var HEAPF32;
-
-/** @type {!Float64Array} */ var HEAPF64;
-
-/** @type {!Uint16Array} */ var HEAPU16;
-
 /** @type {!Uint32Array} */ var HEAPU32;
 
-/** not-@type {!BigUint64Array} */ var HEAPU64;
-
 /** @type {!Uint8Array} */ var HEAPU8;
-
-var printCharBuffers = [ null, [], [] ];
 
 var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
@@ -350,9 +314,11 @@ var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
   return str;
 };
 
+var printCharBuffers = [ null, [], [] ];
+
 var printChar = (stream, curr) => {
   var buffer = printCharBuffers[stream];
-  if (curr === 0 || curr === 10) {
+  if (!curr || curr === 10) {
     (stream === 1 ? out : err)(UTF8ArrayToString(buffer));
     buffer.length = 0;
   } else {

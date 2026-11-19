@@ -20,7 +20,7 @@ pthread_cond_t condvar = PTHREAD_COND_INITIALIZER;
 _Atomic bool th_cancelled = false;
 _Atomic int result = 0;
 
-static void cleanup_handler(void *arg) {
+void cleanup_handler(void *arg) {
   emscripten_outf("Called clean-up handler with arg %p", arg);
   result = (intptr_t)(arg);
   assert(result == 42);
@@ -29,7 +29,7 @@ static void cleanup_handler(void *arg) {
   pthread_barrier_wait(&barrier);
 }
 
-static void *thread_start(void *arg) {
+void *thread_start(void *arg) {
   pthread_cleanup_push(cleanup_handler, (void*)42);
   emscripten_outf("Thread started!");
   pthread_mutex_lock(&mutex);

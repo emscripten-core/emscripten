@@ -9,7 +9,7 @@ void on_acquire(volatile void* address, uint32_t value,
   printf("on_acquire: releasing lock.\n");
   emscripten_lock_release(&lock);
   printf("on_acquire: released lock.\n");
-  exit(0);
+  emscripten_force_exit(0);
 }
 
 int main() {

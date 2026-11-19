@@ -3,13 +3,21 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 var LibraryEmbindShared = {
-  $InternalError: "= class InternalError extends Error { constructor(message) { super(message); this.name = 'InternalError'; }}",
-  $BindingError: "= class BindingError extends Error { constructor(message) { super(message); this.name = 'BindingError'; }}",
+  $InternalError: class extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'InternalError';
+    }
+  },
+  $BindingError: class extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'BindingError';
+    }
+  },
 
-  $throwInternalError__deps: ['$InternalError'],
   $throwInternalError: (message) => { throw new InternalError(message); },
 
-  $throwBindingError__deps: ['$BindingError'],
   $throwBindingError: (message) => { throw new BindingError(message); },
 
   // typeID -> { toWireType: ..., fromWireType: ... }
@@ -25,16 +33,13 @@ var LibraryEmbindShared = {
 
   $structRegistrations: {},
 
-  $sharedRegisterType__deps: [
-    '$awaitingDependencies', '$registeredTypes',
-    '$typeDependencies', '$throwBindingError' ],
   $sharedRegisterType__docs: '/** @param {Object=} options */',
-  $sharedRegisterType: function(rawType, registeredInstance, options = {}) {
+  $sharedRegisterType: function(typeID, registeredInstance, options = {}) {
     var name = registeredInstance.name;
-    if (!rawType) {
+    if (!typeID) {
       throwBindingError(`type "${name}" must have a positive integer typeid pointer`);
     }
-    if (registeredTypes.hasOwnProperty(rawType)) {
+    if (registeredTypes[typeID]) {
       if (options.ignoreDuplicateRegistrations) {
         return;
       } else {
@@ -42,19 +47,16 @@ var LibraryEmbindShared = {
       }
     }
 
-    registeredTypes[rawType] = registeredInstance;
-    delete typeDependencies[rawType];
+    registeredTypes[typeID] = registeredInstance;
+    delete typeDependencies[typeID];
 
-    if (awaitingDependencies.hasOwnProperty(rawType)) {
-      var callbacks = awaitingDependencies[rawType];
-      delete awaitingDependencies[rawType];
+    if (awaitingDependencies[typeID]) {
+      var callbacks = awaitingDependencies[typeID];
+      delete awaitingDependencies[typeID];
       callbacks.forEach((cb) => cb());
     }
   },
 
-  $whenDependentTypesAreResolved__deps: [
-    '$awaitingDependencies', '$registeredTypes',
-    '$typeDependencies', '$throwInternalError'],
   $whenDependentTypesAreResolved: (myTypes, dependentTypes, getTypeConverters) => {
     myTypes.forEach((type) => typeDependencies[type] = dependentTypes);
 
@@ -72,14 +74,11 @@ var LibraryEmbindShared = {
     var unregisteredTypes = [];
     var registered = 0;
     for (let [i, dt] of dependentTypes.entries()) {
-      if (registeredTypes.hasOwnProperty(dt)) {
+      if (registeredTypes[dt]) {
         typeConverters[i] = registeredTypes[dt];
       } else {
         unregisteredTypes.push(dt);
-        if (!awaitingDependencies.hasOwnProperty(dt)) {
-          awaitingDependencies[dt] = [];
-        }
-        awaitingDependencies[dt].push(() => {
+        (awaitingDependencies[dt] ??= []).push(() => {
           typeConverters[i] = registeredTypes[dt];
           ++registered;
           if (registered === unregisteredTypes.length) {
@@ -93,9 +92,9 @@ var LibraryEmbindShared = {
     }
   },
 
-  $getTypeName__deps: ['$AsciiToString', '__getTypeName', 'free'],
-  $getTypeName: (type) => {
-    var ptr = ___getTypeName(type);
+  $getTypeName__deps: ['__getTypeName', 'free'],
+  $getTypeName: (typeID) => {
+    var ptr = ___getTypeName(typeID);
     var rv = AsciiToString(ptr);
     _free(ptr);
     return rv;
@@ -103,22 +102,22 @@ var LibraryEmbindShared = {
   $getFunctionName__deps: [],
   $getFunctionName: (signature) => {
     signature = signature.trim();
-    const argsIndex = signature.indexOf("(");
+    const argsIndex = signature.indexOf('(');
     if (argsIndex === -1) return signature;
 #if ASSERTIONS
-    assert(signature.endsWith(")"), "Parentheses for argument names should match.");
+    assert(signature.endsWith(')'), 'Parentheses for argument names should match.');
 #endif
     return signature.slice(0, argsIndex);
   },
   $getFunctionArgsName__deps: [],
   $getFunctionArgsName: (signature) => {
     signature = signature.trim();
-    const argsIndex = signature.indexOf("(");
+    const argsIndex = signature.indexOf('(');
     if (argsIndex == -1) return; // Return undefined to mean we don't have any argument names
 #if ASSERTIONS
-    assert(signature.endsWith(")"), "Parentheses for argument names should match.");
+    assert(signature.endsWith(')'), 'Parentheses for argument names should match.');
 #endif
-    return signature.slice(argsIndex + 1, -1).replaceAll(" ", "").split(",").filter(n => n.length);
+    return signature.slice(argsIndex + 1, -1).replaceAll(' ', '').split(',').filter(n => n.length);
   },
   $heap32VectorToArray: (count, firstElement) => {
     var array = [];
@@ -130,12 +129,10 @@ var LibraryEmbindShared = {
     return array;
   },
 
-  $requireRegisteredType__deps: [
-    '$registeredTypes', '$getTypeName', '$throwBindingError'],
-  $requireRegisteredType: (rawType, humanName) => {
-    var impl = registeredTypes[rawType];
+  $requireRegisteredType: (typeID, humanName) => {
+    var impl = registeredTypes[typeID];
     if (undefined === impl) {
-      throwBindingError(`${humanName} has unknown type ${getTypeName(rawType)}`);
+      throwBindingError(`${humanName} has unknown type ${getTypeName(typeID)}`);
     }
     return impl;
   },
@@ -143,37 +140,25 @@ var LibraryEmbindShared = {
   $usesDestructorStack(argTypes) {
     // Skip return value at index 0 - it's not deleted here.
     for (var i = 1; i < argTypes.length; ++i) {
-      // The type does not define a destructor function - must use dynamic stack
-      if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) {
+      if (argTypes[i]?.usesDestructor) {
         return true;
       }
     }
     return false;
   },
 
-  // Many of the JS invoker functions are generic and can be reused for multiple
-  // function bindings. This function needs to match createJsInvoker and create
-  // a unique signature for any inputs that will create different invoker
-  // function outputs.
-  $createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync) {
-    const signature = [
-      isClassMethodFunc ? 't' : 'f',
-      returns ? 't' : 'f',
-      isAsync ? 't' : 'f'
-    ];
-    for (let i = isClassMethodFunc ? 1 : 2; i < argTypes.length; ++i) {
-      const arg = argTypes[i];
-      let destructorSig = '';
-      if (arg.destructorFunction === undefined) {
-        destructorSig = 'u';
-      } else if (arg.destructorFunction === null) {
-        destructorSig = 'n';
-      } else {
-        destructorSig = 't';
+  // Trivially constructible/destructible value types (argStackAlloc) place
+  // their argument temporaries on the wasm stack when the invoker brackets
+  // the call in stackSave/stackRestore, skipping the per-call heap temp and
+  // destructor bookkeeping entirely.
+  $argsUseStackAlloc(argTypes) {
+    // Skip return value at index 0 - only arguments stack-allocate.
+    for (var i = 1; i < argTypes.length; ++i) {
+      if (argTypes[i] !== null && argTypes[i].argStackAlloc) {
+        return true;
       }
-      signature.push(destructorSig);
     }
-    return signature.join('');
+    return false;
   },
 
   $checkArgCount(numArgs, minArgs, maxArgs, humanName, throwBindingError) {
@@ -185,7 +170,7 @@ var LibraryEmbindShared = {
 
   $getEnumValueType(rawValueType) {
     // This must match the values of enum_value_type in wire.h
-    return rawValueType === 0 ? 'object' : (rawValueType === 1 ? 'number' : 'string');
+    return !rawValueType ? 'object' : (rawValueType === 1 ? 'number' : 'string');
   },
 
   $getRequiredArgCount(argTypes) {
@@ -198,108 +183,6 @@ var LibraryEmbindShared = {
     }
     return requiredArgCount;
   },
-
-  $createJsInvoker__deps: ['$usesDestructorStack',
-#if ASSERTIONS
-    '$checkArgCount',
-#endif
-  ],
-  $createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync) {
-    var needsDestructorStack = usesDestructorStack(argTypes);
-    var argCount = argTypes.length - 2;
-    var argsList = [];
-    var argsListWired = ['fn'];
-    if (isClassMethodFunc) {
-      argsListWired.push('thisWired');
-    }
-    for (var i = 0; i < argCount; ++i) {
-      argsList.push(`arg${i}`)
-      argsListWired.push(`arg${i}Wired`)
-    }
-    argsList = argsList.join()
-    argsListWired = argsListWired.join()
-
-    var invokerFnBody = `return function (${argsList}) {\n`;
-
-#if ASSERTIONS
-    invokerFnBody += "checkArgCount(arguments.length, minArgs, maxArgs, humanName, throwBindingError);\n";
-#endif
-
-#if EMSCRIPTEN_TRACING
-    invokerFnBody += `Module.emscripten_trace_enter_context('embind::' + humanName );\n`;
-#endif
-
-    if (needsDestructorStack) {
-      invokerFnBody += "var destructors = [];\n";
-    }
-
-    var dtorStack = needsDestructorStack ? "destructors" : "null";
-    var args1 = ["humanName", "throwBindingError", "invoker", "fn", "runDestructors", "fromRetWire", "toClassParamWire"];
-
-#if EMSCRIPTEN_TRACING
-    args1.push("Module");
-#endif
-
-    if (isClassMethodFunc) {
-      invokerFnBody += `var thisWired = toClassParamWire(${dtorStack}, this);\n`;
-    }
-
-    for (var i = 0; i < argCount; ++i) {
-      var argName = `toArg${i}Wire`;
-      invokerFnBody += `var arg${i}Wired = ${argName}(${dtorStack}, arg${i});\n`;
-      args1.push(argName);
-    }
-
-    invokerFnBody += (returns || isAsync ? "var rv = ":"") + `invoker(${argsListWired});\n`;
-
-    var returnVal = returns ? "rv" : "";
-#if ASYNCIFY == 1
-    args1.push("Asyncify");
-#endif
-#if ASYNCIFY
-    invokerFnBody += `function onDone(${returnVal}) {\n`;
-#endif
-
-    if (needsDestructorStack) {
-      invokerFnBody += "runDestructors(destructors);\n";
-    } else {
-      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
-        var paramName = (i === 1 ? "thisWired" : ("arg"+(i - 2)+"Wired"));
-        if (argTypes[i].destructorFunction !== null) {
-          invokerFnBody += `${paramName}_dtor(${paramName});\n`;
-          args1.push(`${paramName}_dtor`);
-        }
-      }
-    }
-
-    if (returns) {
-      invokerFnBody += "var ret = fromRetWire(rv);\n" +
-#if EMSCRIPTEN_TRACING
-                       "Module.emscripten_trace_exit_context();\n" +
-#endif
-                       "return ret;\n";
-    } else {
-#if EMSCRIPTEN_TRACING
-      invokerFnBody += "Module.emscripten_trace_exit_context();\n";
-#endif
-    }
-
-#if ASYNCIFY == 1
-    invokerFnBody += "}\n";
-    invokerFnBody += `return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(${returnVal});\n`
-#elif ASYNCIFY == 2
-    invokerFnBody += "}\n";
-    invokerFnBody += "return " + (isAsync ? "rv.then(onDone)" : `onDone(${returnVal})`) + ";";
-#endif
-
-    invokerFnBody += "}\n";
-
-#if ASSERTIONS
-    args1.push('checkArgCount', 'minArgs', 'maxArgs');
-    invokerFnBody = `if (arguments.length !== ${args1.length}){ throw new Error(humanName + "Expected ${args1.length} closure arguments " + arguments.length + " given."); }\n${invokerFnBody}`;
-#endif
-    return new Function(args1, invokerFnBody);
-  }
 };
 
 addToLibrary(LibraryEmbindShared);

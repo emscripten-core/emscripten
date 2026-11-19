@@ -4,15 +4,37 @@
 preamble.js
 ===========
 
-The JavaScript APIs in `preamble.js <https://github.com/emscripten-core/emscripten/blob/main/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
+The JavaScript APIs in `preamble.js
+<https://github.com/emscripten-core/emscripten/blob/main/src/preamble.js>`_
+provide programmatic access for interacting with the compiled C code, including:
+calling compiled C functions, accessing memory, converting pointers to
+JavaScript ``Strings`` and ``Strings`` to pointers (with different
+encodings/formats), and other convenience functions.
 
-We call this "``preamble.js``" because Emscripten's output JS, at a high level, contains the preamble (from ``src/preamble.js``), then the compiled code, then the postamble. (In slightly more detail, the preamble contains utility functions and setup, while the postamble connects things and handles running the application.)
+We call this "``preamble.js``" because Emscripten's output JS, at a high level,
+contains the preamble (from ``src/preamble.js``), then the compiled code, then
+the postamble. (In slightly more detail, the preamble contains utility functions
+and setup, while the postamble connects things and handles running the
+application.)
 
-The preamble code is included in the output JS, which is then optimized all together by the compiler, together with any ``--pre-js`` and ``--post-js`` files you added and code from any JavaScript libraries (``--js-library``). That means that you can call methods from the preamble directly, and the compiler will see that you need them, and not remove them as being unused.
+The preamble code is included in the output JS, which is then optimized all
+together by the compiler, together with any ``--pre-js`` and ``--post-js`` files
+you added and code from any JavaScript libraries (``--js-library``). That means
+that you can call methods from the preamble directly, and the compiler will see
+that you need them, and not remove them as being unused.
 
-If you want to call preamble methods from somewhere the compiler can't see, like another script tag on the HTML, you need to **export** them. To do so, add them to ``EXPORTED_RUNTIME_METHODS`` (for example, ``-sEXPORTED_RUNTIME_METHODS=ccall,cwrap`` will export ``ccall`` and ``cwrap``). Once exported, you can access them on the ``Module`` object (as ``Module.ccall``, for example).
+If you want to call preamble methods from somewhere the compiler can't see, like
+another script tag on the HTML, you need to **export** them. To do so, add them
+to ``EXPORTED_RUNTIME_METHODS`` (for example,
+``-sEXPORTED_RUNTIME_METHODS=ccall,cwrap`` will export ``ccall`` and ``cwrap``).
+Once exported, you can access them on the ``Module`` object (as
+``Module.ccall``, for example).
 
-.. note:: If you try to use ``Module.ccall`` or another runtime method without exporting it, you will get an error. In a build with ``-sASSERTIONS``, the compiler emits code to show you a useful error message, which will explain that you need to export it. In general, if you see something odd, it's useful to build with assertions.
+.. note:: If you try to use ``Module.ccall`` or another runtime method without
+   exporting it, you will get an error. In a build with ``-sASSERTIONS``, the
+   compiler emits code to show you a useful error message, which will explain
+   that you need to export it. In general, if you see something odd, it's useful
+   to build with assertions.
 
 
 .. contents:: Table of Contents
@@ -28,9 +50,22 @@ Calling compiled C functions from JavaScript
 
   Call a compiled C function from JavaScript.
 
-  The function executes a compiled C function from JavaScript and returns the result. C++ name mangling means that "normal" C++ functions cannot be called; the function must either be defined in a **.c** file or be a C++ function defined with ``extern "C"``.
+  The function executes a compiled C function from JavaScript and returns the
+  result. C++ name mangling means that "normal" C++ functions cannot be called;
+  the function must either be defined in a **.c** file or be a C++ function
+  defined with ``extern "C"``.
 
-  ``returnType`` and ``argTypes`` let you specify the types of parameters and the return value. The possible types are ``"number"``, ``"string"``, ``"array"``, or ``"boolean"``, which correspond to the appropriate JavaScript types. Use ``"number"`` for any numeric type or C pointer, ``string`` for C ``char*`` that represent strings, ``"boolean"`` for a boolean type, ``"array"`` for JavaScript arrays and typed arrays, containing 8-bit integer data - that is, the data is written into a C array of 8-bit integers; and in particular if you provide a typed array here, it must be a Uint8Array or Int8Array. If you want to receive an array of another type of data, you can manually allocate memory and write to it, then provide a pointer here (as a ``"number"``, as pointers are just numbers).
+  ``returnType`` and ``argTypes`` let you specify the types of parameters and
+  the return value. The possible types are ``"number"``, ``"string"``,
+  ``"array"``, or ``"boolean"``, which correspond to the appropriate JavaScript
+  types. Use ``"number"`` for any numeric type or C pointer, ``string`` for C
+  ``char*`` that represent strings, ``"boolean"`` for a boolean type,
+  ``"array"`` for JavaScript arrays and typed arrays, containing 8-bit integer
+  data - that is, the data is written into a C array of 8-bit integers; and in
+  particular if you provide a typed array here, it must be a Uint8Array or
+  Int8Array. If you want to receive an array of another type of data, you can
+  manually allocate memory and write to it, then provide a pointer here (as a
+  ``"number"``, as pointers are just numbers).
 
   .. code-block:: javascript
 
@@ -45,9 +80,17 @@ Calling compiled C functions from JavaScript
   .. COMMENT (not rendered): There is more complete documentation in the guide: **HamishW** — add link to guide when it exists (currently in wiki at "Interacting with code").
 
   .. note::
-    - ``ccall`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data.
-    - If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it manually!
-    - LLVM optimizations can inline and remove functions, after which you will not be able to call them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc*:
+    - ``ccall`` uses the C stack for temporary values. If you pass a string then
+      it is only "alive" until the call is complete. If the code being called
+      saves the pointer to be used later, it may point to invalid data.
+    - If you need a string to live forever, you can create it, for example,
+      using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later
+      delete it manually!
+    - LLVM optimizations can inline and remove functions, after which you will
+      not be able to call them. Similarly, function names minified by the
+      *Closure Compiler* are inaccessible. In either case, the solution is to
+      add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke
+      *emcc*:
 
       .. code-block:: none
 
@@ -81,7 +124,10 @@ Calling compiled C functions from JavaScript
 
   Returns a native JavaScript wrapper for a C function.
 
-  This is similar to :js:func:`ccall`, but returns a JavaScript function that can be reused as many times as needed. The C function can be defined in a C file, or be a C-compatible C++ function defined using ``extern "C"`` (to prevent name mangling).
+  This is similar to :js:func:`ccall`, but returns a JavaScript function that
+  can be reused as many times as needed. The C function can be defined in a C
+  file, or be a C-compatible C++ function defined using ``extern "C"`` (to
+  prevent name mangling).
 
 
   .. code-block:: javascript
@@ -98,9 +144,25 @@ Calling compiled C functions from JavaScript
   .. COMMENT (not rendered): There is more complete documentation in the guide: **HamishW** — add link to guide when it exists (currently in wiki at "Interacting with code").
 
   .. note::
-    - ``cwrap`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it manually!
-    - To wrap a function it must be exported by adding it to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc*. If a function is not exported, optimizations may remove it, and ``cwrap`` will not be able to find it at runtime. (In builds with ``ASSERTIONS`` enabled, ``cwrap`` will show an error in such a situation; in release builds without assertions, trying to wrap a non-existent function will error, either by returning `undefined` or by returning a function that will error when actually called, depending on how ``cwrap`` optimizes.)
-    - ``cwrap`` does not actually call compiled code (only calling the wrapper it returns does that). That means that it is safe to call ``cwrap`` early, before the runtime is fully initialized (but calling the returned wrapped function must wait for the runtime, of course, like calling compiled code in general).
+    - ``cwrap`` uses the C stack for temporary values. If you pass a string then
+      it is only "alive" until the call is complete. If the code being called
+      saves the pointer to be used later, it may point to invalid data. If you
+      need a string to live forever, you can create it, for example, using
+      ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it
+      manually!
+    - To wrap a function it must be exported by adding it to the
+      ``EXPORTED_FUNCTIONS`` list when you invoke *emcc*. If a function is not
+      exported, optimizations may remove it, and ``cwrap`` will not be able to
+      find it at runtime. (In builds with ``ASSERTIONS`` enabled, ``cwrap`` will
+      show an error in such a situation; in release builds without assertions,
+      trying to wrap a non-existent function will error, either by returning
+      `undefined` or by returning a function that will error when actually
+      called, depending on how ``cwrap`` optimizes.)
+    - ``cwrap`` does not actually call compiled code (only calling the wrapper
+      it returns does that). That means that it is safe to call ``cwrap`` early,
+      before the runtime is fully initialized (but calling the returned wrapped
+      function must wait for the runtime, of course, like calling compiled code
+      in general).
 
       .. code-block:: none
 
@@ -270,7 +332,8 @@ Conversion functions — strings, pointers and arrays
 Run dependencies
 ================
 
-Note that generally run dependencies are managed by the file packager and other parts of the system. It is rare for developers to use this API directly.
+Note that generally run dependencies are managed by the file packager and other
+parts of the system. It is rare for developers to use this API directly.
 
 
 .. js:function:: addRunDependency(id)
@@ -312,7 +375,9 @@ Stack trace
 Type accessors for the memory model
 ===================================
 
-The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) to represent memory, with different views into it giving access to the different types. The views for accessing different types of memory are listed below.
+The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``)
+to represent memory, with different views into it giving access to the different
+types. The views for accessing different types of memory are listed below.
 
 
 .. js:data:: HEAP8
@@ -360,17 +425,11 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
 
 
 .. COMMENT (not rendered) : The following methods are explicitly not part of the public API and not documented. Note that in some case referred to by function name, other cases by Module assignment.
-
-  function allocate(slab, types, allocator, ptr) — Internal and use is discouraged. Documentation can remain in source code but not here.
-    associated constants ALLOC_NORMAL, ALLOC_STACK
-
   function addOnPreRun
   function addOnInit
   function addOnPreMain
   function addOnExit
   function addOnPostRun
-  Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
-  Module['ALLOC_STACK'] = ALLOC_STACK;
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
   function demangle(func)

@@ -57,7 +57,7 @@ target_compile_options(std
     -Wno-reserved-module-identifier
     -Wno-reserved-user-defined-literal
 )
-target_link_options(std PUBLIC -nostdlib++ -Wl,-rpath,/tmp/tmpuful_rzi/out/dist/lib/emscripten -L/tmp/tmpuful_rzi/out/dist/lib/emscripten)
+target_link_options(std PUBLIC -nostdlib++ -Wl,-rpath,/usr/local/google/home/aheejin/emscripten/out/libcxx/modules/out/dist/lib/emscripten -L/usr/local/google/home/aheejin/emscripten/out/libcxx/modules/out/dist/lib/emscripten)
 target_link_libraries(std c++)
 set_target_properties(std
   PROPERTIES

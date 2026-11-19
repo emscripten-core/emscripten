@@ -1,0 +1,49 @@
+/*
+ * Copyright 2026 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * Closing the watched fd from inside the callback: the PIPEFS close wakes the
+ * epoll (POLLNVAL), which evicts the now-stale registration rather than
+ * delivering, and with nothing held the process exits with the listener still
+ * registered and no explicit unregister.
+ */
+
+#include <sys/epoll.h>
+#include <emscripten.h>
+#include <emscripten/epoll.h>
+#include <emscripten/eventloop.h>
+#include <unistd.h>
+#include <assert.h>
+#include <stdio.h>
+
+int rfd, wfd;
+
+void on_ready(int ep, void* ud) {
+  struct epoll_event ev[4];
+  assert(epoll_wait(ep, ev, 4, 0) == 1 && (ev[0].events & EPOLLIN));
+  char b[1];
+  assert(read(rfd, b, 1) == 1);
+  printf("done\n");
+  // Exit with the listener still registered.
+  close(rfd);
+  close(wfd);
+  emscripten_runtime_keepalive_pop();
+}
+
+int main() {
+  int ep = epoll_create1(0);
+  int p[2];
+  assert(pipe(p) == 0);
+  rfd = p[0];
+  wfd = p[1];
+  struct epoll_event ev = { .events = EPOLLIN };
+  ev.data.fd = rfd;
+  assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
+
+  assert(emscripten_epoll_listener_add(ep, on_ready, 0) == 0);
+  assert(write(wfd, "x", 1) == 1);
+  emscripten_runtime_keepalive_push();
+  return 0;
+}

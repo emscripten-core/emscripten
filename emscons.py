@@ -14,7 +14,9 @@ import os
 import subprocess
 import sys
 
-from tools import building, utils
+from tools import building, diagnostics, utils
+
+diagnostics.warn('emscons is deprecated (see https://github.com/emscripten-core/emscripten/issues/27835)')
 
 tool_path = utils.path_from_root('tools/scons/site_scons/site_tools/emscripten')
 building_env = building.get_building_env()

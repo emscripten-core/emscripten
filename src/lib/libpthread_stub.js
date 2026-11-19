@@ -15,7 +15,7 @@ var LibraryPThreadStub = {
 
   emscripten_is_main_browser_thread: () =>
 #if MINIMAL_RUNTIME
-    typeof WorkerGlobalScope == 'undefined'
+    typeof WorkerGlobalScope === 'undefined'
 #else
     !ENVIRONMENT_IS_WORKER
 #endif

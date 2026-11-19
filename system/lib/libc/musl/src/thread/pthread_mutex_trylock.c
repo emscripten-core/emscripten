@@ -6,7 +6,7 @@ int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
 	int type = m->_m_type;
 	pthread_t self = __pthread_self();
 	int tid = self->tid;
-	volatile void *next;
+	void *next;
 
 	old = m->_m_lock;
 	own = old & 0x3fffffff;
@@ -62,7 +62,7 @@ success:
 	next = self->robust_list.head;
 	m->_m_next = next;
 	m->_m_prev = &self->robust_list.head;
-	if (next != &self->robust_list.head) *(volatile void *volatile *)
+	if (next != &self->robust_list.head) *(void **)
 		((char *)next - sizeof(void *)) = &m->_m_next;
 	self->robust_list.head = &m->_m_next;
 	self->robust_list.pending = 0;

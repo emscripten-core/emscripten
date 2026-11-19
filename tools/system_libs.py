@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# ruff: noqa: RUF005
+# ruff: file-ignore[collection-literal-concatenation]
 
 import itertools
 import logging
@@ -15,9 +15,11 @@ import subprocess
 import textwrap
 from enum import IntEnum, auto
 from glob import iglob
+from pathlib import Path
 from time import time
 
 from . import building, cache, diagnostics, shared, utils
+from .cmdline import options
 from .settings import settings
 from .toolchain_profiler import ToolchainProfiler
 from .utils import get_env_bool, read_file
@@ -51,7 +53,7 @@ def files_in_path(path: str, filenames: list[str]):
   return [os.path.join(srcdir, f) for f in filenames]
 
 
-def glob_in_path(path: str, glob_pattern: str, excludes: set[str] = set()): # noqa: B006
+def glob_in_path(path: str, glob_pattern: str, excludes: set[str] = set()): # ruff: ignore[mutable-argument-default]
   srcdir = utils.path_from_root(path)
   files = iglob(os.path.join(srcdir, glob_pattern), recursive=True)
   return sorted(f for f in files if os.path.basename(f) not in excludes)
@@ -61,8 +63,8 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
   flags = ['-g', '-sSTRICT', '-Werror']
-  if settings.LTO and not force_object_files:
-    flags += ['-flto=' + settings.LTO]
+  if options.lto and not force_object_files:
+    flags += ['-flto=' + options.lto]
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
     # Explicitly include `-sMAIN_MODULE` when building system libraries.
     # `-fPIC` alone is not enough to configure trigger the building and
@@ -83,7 +85,7 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
 
 
 def get_build_dir():
-  return cache.get_path('build')
+  return cache.get_path(Path('build', cache.get_lib_dir_relative()))
 
 
 def clean_env():
@@ -97,7 +99,6 @@ def clean_env():
               'EMCC_CFLAGS',
               'EMCC_AUTODEBUG',
               'EMCC_FORCE_STDLIBS',
-              'EMCC_ONLY_FORCED_STDLIBS',
               'EMMAKEN_JUST_CONFIGURE']:
     if opt in safe_env:
       del safe_env[opt]
@@ -178,6 +179,7 @@ def run_ninja(build_dir):
 def ensure_target_in_ninja_file(ninja_file, target):
   if os.path.isfile(ninja_file) and target in read_file(ninja_file):
     return
+  utils.safe_ensure_dirs(os.path.dirname(ninja_file))
   with open(ninja_file, 'a', encoding='utf-8') as f:
     f.write(target + '\n')
 
@@ -360,6 +362,9 @@ class Library:
   # and left as None in an abstract library class, e.g. MTLibrary.
   name: str | None = None
 
+  # Experimental libs are not included in `embuilder build SYSTEM`
+  experimental = False
+
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
 
@@ -443,16 +448,12 @@ class Library:
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def get_link_flag(self):
-    """Get the link flags needed to use the library.
-
-    This will trigger a build if this library is not in the cache.
-    """
-    fullpath = self.build()
+    """Get the link flags needed to use the library."""
     # For non-libraries (e.g. crt1.o) we pass the entire path to the linker
     if self.get_ext() != '.a':
-      return fullpath
+      return self.get_path(absolute=True)
     # For libraries (.a) files, we pass the abbreviated `-l` form.
-    base = utils.unsuffixed_basename(fullpath)
+    base = utils.unsuffixed_basename(self.get_filename())
     return '-l' + base.removeprefix('lib')
 
   def get_files(self):
@@ -710,8 +711,13 @@ class MTLibrary(Library):
     cflags = super().get_cflags()
     if self.is_mt:
       cflags += ['-pthread']
-    if self.is_ww:
+    elif self.is_ww:
       cflags += ['-sWASM_WORKERS']
+    else:
+      # Posix thread model is the default even without the -pthread flag. This
+      # is safe because non-mt versions of MT libraries never get linked into
+      # MT binaries.
+      cflags += ['-mthread-model', 'single', '-fno-threadsafe-statics']
     return cflags
 
   def get_base_name(self):
@@ -946,28 +952,44 @@ class AsanInstrumentedLibrary(Library):
     return super().get_default_variation(is_asan=settings.USE_ASAN, **kwargs)
 
 
-# Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
-class libclang_rt_builtins(MTLibrary, SjLjLibrary):
-  name = 'libclang_rt.builtins'
+class CompilerRTLibrary(Library):
+  cflags = ['-fno-builtin']
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
-  cflags = [
-      '-fno-builtin',
-      '-DNDEBUG',
-      '-DCOMPILER_RT_HAS_ATOMICS=1',
-      # TODO: Remove this if the emutls_key_created variable in emutls.c is
-      # fixed or if the scope of the warning is modified again (see
-      # https://github.com/llvm/llvm-project/pull/178342)
-      '-Wno-unused-but-set-variable',
+
+# Low-level Emscripten runtime library below libc (like libclang_rt.builtins,
+# but only linked into the main module rather than into each side module).
+# Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support.
+class libemcc(CompilerRTLibrary, MTLibrary, SjLjLibrary):
+  name = 'libemcc'
+
+  cflags = ['-DNDEBUG']
+  src_dir = 'system/lib/libemcc'
+  includes = ['system/lib/libc']
+  src_files = [
+    'stack_ops.S',
+    'stack_limits.S',
+    'emscripten_setjmp.c',
+    'emscripten_exception_builtins.c',
+    'emscripten_tempret.s',
+    '__c_longjmp.S',
+    '__trap.c',
   ]
+
+
+class libclang_rt_builtins(CompilerRTLibrary, MTLibrary):
+  name = 'libclang_rt.builtins'
+
+  cflags = ['-DNDEBUG', '-fvisibility=hidden']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
-  profile_src_dir = 'system/lib/compiler-rt/lib/profile'
-  includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
+  includes = ['system/lib/libc']
   excludes = {
     # gcc_personality_v0.c depends on libunwind, which don't include by default.
     'gcc_personality_v0.c',
+    # Emscripten uses native Wasm TLS rather than emulated TLS.
+    'emutls.c',
     # bfloat16
     'extendbfsf2.c',
     'truncdfbf2.c',
@@ -996,19 +1018,25 @@ class libclang_rt_builtins(MTLibrary, SjLjLibrary):
     'truncxfhf2.c',
   }
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
-  src_files += glob_in_path(profile_src_dir, '*.c')
-  src_files += glob_in_path(profile_src_dir, '*.cpp')
-  src_files += files_in_path(
-      path='system/lib/compiler-rt',
-      filenames=[
-        'stack_ops.S',
-        'stack_limits.S',
-        'emscripten_setjmp.c',
-        'emscripten_exception_builtins.c',
-        'emscripten_tempret.s',
-        '__c_longjmp.S',
-        '__trap.c',
-      ])
+
+
+class libclang_rt_profile(CompilerRTLibrary, MTLibrary):
+  name = 'libclang_rt.profile'
+  never_force = True
+
+  cflags = ['-DNDEBUG', '-DCOMPILER_RT_HAS_ATOMICS=1']
+  src_dir = 'system/lib/compiler-rt/lib/profile'
+  includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
+  src_files = glob_in_path(src_dir, '*.c')
+  src_files += glob_in_path(
+      src_dir,
+      '*.cpp',
+      excludes={
+        # These are only part of upstream's separate profile_rocm runtime.
+        'InstrProfilingPlatformROCm.cpp',
+        'InstrProfilingPlatformROCmHSA.cpp',
+      },
+  )
 
 
 class libnoexit(Library):
@@ -1019,26 +1047,35 @@ class libnoexit(Library):
 
 class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libllvmlibc'
+  experimental = True
   never_force = True
   includes = ['system/lib/llvm-libc']
   cflags = [
-      '-Os',
-      '-DLIBC_NAMESPACE=__llvm_libc',
-      '-DLLVM_LIBC',
-      '-DLIBC_COPT_PUBLIC_PACKAGING',
-      # Disable accurate pass to speed up certain math operations
-      '-DLIBC_MATH=LIBC_MATH_FAST',
-      '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
-      # Reduce size bloats from string conversions.
-      '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
-      # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
-      # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
-      '-Wno-unused-variable',
-      '-mrelaxed-simd',
-      '-ffp-contract=fast',
+    '-Os',
+    '-DLIBC_NAMESPACE=__llvm_libc',
+    '-DLLVM_LIBC',
+    '-DLIBC_COPT_PUBLIC_PACKAGING',
+    # Disable accurate pass to speed up certain math operations
+    '-DLIBC_MATH=LIBC_MATH_FAST',
+    '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
+    # Reduce size bloats from string conversions.
+    '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
+    # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
+    # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
+    '-Wno-unused-variable',
+    '-Wno-unsequenced',
+    '-mrelaxed-simd',
+    '-ffp-contract=fast',
   ]
 
   def get_files(self):
+    # Overlay mode doesn't support mbstate_t which is used by these sources.
+    mbstate_t_excludes = {
+      'wcrtomb.cpp', 'mbrtowc.cpp', 'mbrlen.cpp', 'mbsinit.cpp',
+      'mbsnrtowcs.cpp', 'mbsrtowcs.cpp', 'wcsnrtombs.cpp', 'wcsrtombs.cpp',
+      'mblen.cpp', 'mbtowc.cpp', 'wctomb.cpp', 'mbstowcs.cpp', 'wcstombs.cpp',
+    }
+
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/complex', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp', excludes={'memset.cpp', 'memcpy.cpp'} if self.is_asan else set())
@@ -1046,8 +1083,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
-    # Overlay mode doesn't support mbstate_t which is used by these wchar sources.
-    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes={'wcrtomb.cpp', 'mbrtowc.cpp', 'wctomb.cpp', 'mbtowc.cpp'})
+    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes=mbstate_t_excludes)
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes={'at_quick_exit.cpp',
@@ -1055,7 +1091,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
                                                                                 'atexit.cpp',
                                                                                 'exit.cpp',
                                                                                 '_Exit.cpp',
-                                                                                'getenv.cpp'})
+                                                                                'getenv.cpp'} | mbstate_t_excludes)
     files += glob_in_path('system/lib/llvm-libc/src/math/generic', '**/*.cpp', excludes={'atan2l.cpp', 'exp_utils.cpp'})
     files += glob_in_path('system/lib/llvm-libc/src/__support/StringUtil', '**/*.cpp')
     return files
@@ -1136,7 +1172,6 @@ class libc(MuslInternalLibrary,
     other_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-                 'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S',
                  'emscripten_scan_stack.c',
                  'emscripten_get_heap_size.c',  # needed by malloc
                  'emscripten_memmove.c'])
@@ -1171,27 +1206,27 @@ class libc(MuslInternalLibrary,
 
     # musl modules
     ignore = [
-        'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'legacy', 'mq', 'setjmp',
-        'ldso', 'malloc',
+      'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
+      'aio', 'legacy', 'mq', 'setjmp',
+      'ldso', 'malloc',
     ]
 
     # individual files
     ignore += [
-        'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'res_query.c', 'res_querydomain.c',
-        'proto.c',
-        'syscall.c', 'popen.c', 'pclose.c',
-        'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
-        'getauxval.c',
-        'lookup_name.c',
-        # 'process' exclusions
-        'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
-        '_Fork.c',
-        # 'env' exclusions
-        '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
-        # 'exit' exclusions
-        'assert.c', 'exit.c',
+      'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
+      'res_query.c', 'res_querydomain.c',
+      'proto.c',
+      'syscall.c', 'popen.c', 'pclose.c',
+      'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
+      'getauxval.c',
+      'lookup_name.c',
+      # 'process' exclusions
+      'fork.c', 'vfork.c', 'posix_spawn.c', 'execve.c', 'waitid.c', 'system.c',
+      '_Fork.c',
+      # 'env' exclusions
+      '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
+      # 'exit' exclusions
+      'assert.c', 'exit.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -1334,7 +1369,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
-        filenames=['getpagesize.c', 'err.c', 'euidaccess.c'])
+        filenames=['getpagesize.c', 'err.c', 'euidaccess.c', 'getpass.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',
@@ -1385,8 +1420,6 @@ class libc(MuslInternalLibrary,
           'emscripten_memcpy.c',
           'emscripten_memmove.c',
           'emscripten_memset.c',
-          'emscripten_memcpy_bulkmem.S',
-          'emscripten_memset_bulkmem.S',
           'emscripten_mmap.c',
           'emscripten_scan_stack.c',
           'emscripten_time.c',
@@ -1442,19 +1475,9 @@ class libc_optz(libc):
 
   def get_libcall_files(self):
     # see comments in libc.customize_build_cmd
-
-    # some files also appear in libc, and a #define affects them
-    mem_files = files_in_path(
-      path='system/lib/libc',
-      filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-                 'emscripten_memmove.c'])
-
-    # some functions have separate files
-    math_files = files_in_path(
+    return files_in_path(
       path='system/lib/libc/musl/src/math',
       filenames=['pow_small.c', 'log_small.c', 'log2_small.c'])
-
-    return mem_files + math_files
 
   def get_files(self):
     libcall_files = self.get_libcall_files()
@@ -1629,15 +1652,16 @@ class crtbegin_mt(MuslInternalLibrary):
 class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
-      '-Oz',
-      '-D_LIBCXXABI_USE_FUTEX',
-      '-D_LIBCPP_BUILDING_LIBRARY',
-      '-D_LIBCXXABI_BUILDING_LIBRARY',
-      '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
-      '-std=c++23',
-      '-Wno-unused-but-set-variable',
-    ]
-  includes = ['system/lib/libcxx/src']
+    '-Oz',
+    '-D_LIBCXXABI_USE_FUTEX',
+    '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCPP_AVAILABILITY_MINIMUM_HEADER_VERSION=23',
+    '-D_LIBCXXABI_BUILDING_LIBRARY',
+    '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
+    '-std=c++23',
+    '-Wno-unused-but-set-variable',
+  ]
+  includes = ['system/lib/libcxx/src', 'system/lib/libunwind/include']
 
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
@@ -1679,7 +1703,6 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
       'cxa_exception_js_utils.cpp',
-      '__cpp_exception.S',
     ]
     match self.eh_mode:
       case Exceptions.NONE:
@@ -1707,12 +1730,14 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     '-Oz',
     '-DLIBCXX_BUILDING_LIBCXXABI=1',
     '-D_LIBCPP_BUILDING_LIBRARY',
+    '-D_LIBCPP_AVAILABILITY_MINIMUM_HEADER_VERSION=23',
     '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+    '-D_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER',
     # TODO(sbc): clang recently introduced this new warning which is triggered
     # by `filesystem/directory_iterator.cpp`: https://reviews.llvm.org/D119670
     '-Wno-unqualified-std-cast-call',
     '-Wno-unknown-warning-option',
-    '-std=c++23',
+    '-std=c++26',
     '-DLIBC_NAMESPACE=__llvm_libc',
   ]
 
@@ -1736,13 +1761,13 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     'time_zone.cpp',
     'tzdb.cpp',
     'tzdb_list.cpp',
-    }
+  }
 
 
 class libunwind(ExceptionLibrary, MTLibrary):
   name = 'libunwind'
-  # Because calls to _Unwind_CallPersonality are generated during LTO, libunwind
-  # can't currently be part of LTO.
+  # Because calls to _Unwind_GetWasmLPadContext are generated during LTO,
+  # libunwind can't currently be part of LTO.
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
@@ -1819,7 +1844,7 @@ class libmalloc(MTLibrary):
     return cflags
 
   def get_base_name_prefix(self):
-    return 'lib%s' % self.malloc
+    return f'lib{self.malloc}'
 
   def get_base_name(self):
     name = super().get_base_name()
@@ -1891,6 +1916,14 @@ class libmimalloc(MTLibrary):
     '-DMI_LIBC_MUSL',
     # enable use of `__builtin_thread_pointer()`
     '-DMI_USE_BUILTIN_THREAD_POINTER',
+    # always use the page map when free-ing a pointer, as we don't support
+    # large OS aligned allocations well
+    '-DMI_FREE_USE_PAGEMAP=1',
+    # to reduce code size, disable environ customization, profiling and
+    # nonessential stats
+    '-DMI_NO_GETENV',
+    '-DMI_PROFILE=0',
+    '-DMI_STATS=0',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
@@ -1903,12 +1936,18 @@ class libmimalloc(MTLibrary):
   # allocator underneath it.
   src_dir = 'system/lib/'
   src_files = glob_in_path(
-    path='system/lib/mimalloc/src',
+    path='system/lib/mimalloc/src/alloc',
     glob_pattern='*.c',
-    # mimalloc includes some files at the source level, so exclude them here.
-    excludes={'alloc-override.c', 'free.c', 'page-queue.c', 'static.c'},
+    # included from alloc.c, so exclude them here.
+    excludes={'alloc-override.c', 'free.c'},
   )
+  src_files += glob_in_path('system/lib/mimalloc/src/arena', '*.c')
+  src_files += glob_in_path('system/lib/mimalloc/src/heap', '*.c')
+  src_files += glob_in_path('system/lib/mimalloc/src/profile', '*.c')
+  src_files += glob_in_path('system/lib/mimalloc/src/util', '*.c')
+  src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/os.c')]
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
+  src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim-tls.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
   # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
   src_files += [utils.path_from_root('system/lib/libc/sbrk.c')]
@@ -2130,13 +2169,6 @@ class libhtml5(Library):
   src_glob = '*.c'
 
 
-class CompilerRTLibrary(Library):
-  cflags = ['-fno-builtin']
-  # compiler_rt files can't currently be part of LTO although we are hoping to remove this
-  # restriction soon: https://reviews.llvm.org/D71738
-  force_object_files = True
-
-
 class libclang_rt_ubsan_minimal(CompilerRTLibrary, MTLibrary):
   name = 'libclang_rt.ubsan_minimal'
   never_force = True
@@ -2304,7 +2336,43 @@ class libstubs(DebugLibrary):
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
 
-def get_libs_to_link(options):
+class libopenmp(Library):
+  name = 'libopenmp'
+  includes = [
+    'system/lib/openmp/src',
+    'system/lib/openmp/src/i18n',
+    'system/lib/openmp/src/thirdparty/ittnotify',
+    'system/lib/openmp/prebuilt',
+  ]
+  # This needs to come from the flags. If it does not, llvm won't add proper magic symbols
+  never_force = True
+  cflags = [
+    '-O3', '-DNDEBUG', '-pthread',
+    '-D_GNU_SOURCE', '-U_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_NO_ASSERTIONS',
+    '-fno-exceptions', '-fno-rtti',
+    '-Wall', '-Wformat-pedantic',
+    '-Wimplicit-fallthrough', '-Wsign-compare',
+    '-Wno-covered-switch-default',
+    '-Wno-frame-address', '-Wno-strict-aliasing', '-Wno-switch',
+    '-Wno-uninitialized', '-Wno-return-type-c-linkage', '-Wno-cast-qual',
+    '-Wno-int-to-void-pointer-cast', '-Wno-#warnings', '-Wno-unused-function',
+    '-Wno-sign-compare', '-Wno-comment', '-Wno-unused-variable', '-Wno-unused-but-set-global',
+  ]
+  src_dir = 'system/lib/openmp/src'
+  src_files = [
+    'kmp_adt.cpp', 'kmp_alloc.cpp', 'kmp_atomic.cpp', 'kmp_csupport.cpp',
+    'kmp_debug.cpp', 'kmp_device_env.cpp', 'kmp_itt.cpp', 'kmp_invoke_microtask.cpp',
+    'kmp_environment.cpp', 'kmp_error.cpp', 'kmp_global.cpp',
+    'kmp_i18n.cpp', 'kmp_io.cpp', 'kmp_runtime.cpp', 'kmp_settings.cpp',
+    'kmp_str.cpp', 'kmp_tasking.cpp', 'kmp_threadprivate.cpp', 'kmp_traits.cpp',
+    'kmp_utility.cpp', 'kmp_barrier.cpp', 'kmp_wait_release.cpp', 'kmp_affinity.cpp',
+    'kmp_dispatch.cpp', 'kmp_lock.cpp', 'kmp_sched.cpp', 'kmp_collapse.cpp',
+    'z_Linux_util.cpp', 'kmp_gsupport.cpp', 'kmp_taskdeps.cpp', 'kmp_cancel.cpp',
+    'kmp_ftn_cdecl.cpp', 'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S',
+  ]
+
+
+def get_libs_to_link():
   libs_to_link = []
 
   if options.nostdlib:
@@ -2320,15 +2388,6 @@ def get_libs_to_link(options):
   # ones you want
   force_include = []
   force = os.environ.get('EMCC_FORCE_STDLIBS')
-  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This
-  # avoids spending time checking for unresolved symbols in your project files,
-  # which can speed up linking, but if you do not have the proper list of
-  # actually needed libraries, errors can occur.
-  only_forced = utils.get_env_bool('EMCC_ONLY_FORCED_STDLIBS')
-  if only_forced:
-    # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
-    # of the input files for reverse dependencies.
-    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries')
   if force == '1':
     force_include = [name for name, lib in system_libs_map.items() if not lib.never_force]
   elif force:
@@ -2336,16 +2395,19 @@ def get_libs_to_link(options):
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
 
+  if utils.get_env_bool('EMCC_ONLY_FORCED_STDLIBS'):
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is no longer supported.  Use `-nostdlib` to avoid linking standard libraries')
+
   def add_library(libname, whole_archive=False):
     lib = system_libs_map[libname]
     if lib.name in already_included:
       return
     already_included.add(lib.name)
 
-    logger.debug('including %s (%s)' % (lib.name, lib.get_filename()))
+    logger.debug(f'including {lib.name} ({lib.get_filename()})')
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
-    libs_to_link.append((lib.get_link_flag(), whole_archive or need_whole_archive))
+    libs_to_link.append((lib, whole_archive or need_whole_archive))
 
   if not options.nostartfiles:
     if settings.PTHREADS:
@@ -2361,6 +2423,10 @@ def get_libs_to_link(options):
         add_library('crt1_proxy_main')
 
   if settings.SIDE_MODULE:
+    if not options.nodefaultlibs:
+      add_library('libclang_rt.builtins')
+      if options.profile:
+        add_library('libclang_rt.profile')
     return libs_to_link
 
   # We add the forced libs last so that any libraries that are added in the normal
@@ -2371,10 +2437,6 @@ def get_libs_to_link(options):
       if forced not in system_libs_map:
         utils.exit_with_error('invalid forced library: %s', forced)
       add_library(forced)
-
-  if options.nodefaultlibs:
-    add_forced_libs()
-    return libs_to_link
 
   sanitize = settings.USE_LSAN or settings.USE_ASAN or settings.UBSAN_RUNTIME
 
@@ -2397,8 +2459,7 @@ def get_libs_to_link(options):
     if sanitize:
       add_library('libclang_rt.sanitizer_common')
 
-  if only_forced:
-    add_library('libclang_rt.builtins')
+  if options.nodefaultlibs:
     add_sanitizer_libs()
     add_forced_libs()
     return libs_to_link
@@ -2412,6 +2473,12 @@ def get_libs_to_link(options):
   # libc math.
   if settings.JS_MATH:
     add_library('libjsmath')
+
+  if options.openmp:
+    add_library('libopenmp')
+
+  if options.profile:
+    add_library('libclang_rt.profile')
 
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
@@ -2434,13 +2501,16 @@ def get_libs_to_link(options):
         utils.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
+  add_library('libemcc')
   add_library('libclang_rt.builtins')
   if settings.LINK_AS_CXX:
     add_library('libc++')
   if settings.LINK_AS_CXX or sanitize:
     add_library('libc++abi')
-    if settings.WASM_EXCEPTIONS:
-      add_library('libunwind')
+  if settings.WASM_EXCEPTIONS:
+    # libunwind is implemented in JS, and not natively, when Emscripten EH is
+    # used.
+    add_library('libunwind')
 
   if settings.PROXY_POSIX_SOCKETS:
     add_library('libsockets_proxy')
@@ -2468,27 +2538,40 @@ def get_libs_to_link(options):
   return libs_to_link
 
 
-def calculate(options):
-  libs_to_link = get_libs_to_link(options)
+def ensure_libraries(libs):
+  """Ensure all required system libraries in `libs` exist in the cache."""
+  for lib in libs:
+    lib.build()
+
+
+def calculate():
+  libs_to_link = get_libs_to_link()
+  ensure_libraries([lib for lib, _ in libs_to_link])
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we
   # shouldn't add any extra `--no-whole-archive` or we will undo the intent of building.link_ldd.
+  # However, in SIDE_MODULE builds we never want system libraries (such as libclang_rt.builtins)
+  # to be linked with --whole-archive, so we prepend --no-whole-archive before them.
+  # See https://github.com/llvm/llvm-project/issues/238581
   if settings.LINKABLE or settings.SIDE_MODULE:
-    return [l[0] for l in libs_to_link]
+    ret = [lib.get_link_flag() for lib, _ in libs_to_link]
+    if settings.SIDE_MODULE and settings.LINKABLE and ret:
+      ret.insert(0, '--no-whole-archive')
+    return ret
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
   ret = []
   in_group = False
-  for name, need_whole_archive in libs_to_link:
+  for lib, need_whole_archive in libs_to_link:
     if need_whole_archive and not in_group:
       ret.append('--whole-archive')
       in_group = True
     if in_group and not need_whole_archive:
       ret.append('--no-whole-archive')
       in_group = False
-    ret.append(name)
+    ret.append(lib.get_link_flag())
   if in_group:
     ret.append('--no-whole-archive')
 
@@ -2528,6 +2611,8 @@ def install_system_headers(stamp):
     'system/lib/libcxx/include': 'c++/v1',
     'system/lib/libcxxabi/include': 'c++/v1',
     'system/lib/mimalloc/include': '',
+    # Install openmp headers
+    'system/lib/openmp/include': '',
     'system/lib/libcxx/modules/prebuilt/lib/emscripten': cache.get_lib_dir(absolute=True),
     'system/lib/libcxx/modules/prebuilt/share': cache.get_sysroot_dir('share'),
     'system/lib/libcxx/modules/std': cache.get_sysroot_dir('share/libc++/v1/std'),

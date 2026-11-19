@@ -32,17 +32,10 @@ var Module;
 // if (!Module) is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 #elif ENVIRONMENT_MAY_BE_AUDIO_WORKLET
-var Module = globalThis.Module || (typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {});
+var Module = globalThis.Module || (typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {});
 #else
-var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
+var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #endif // USE_CLOSURE_COMPILER
-
-#if POLYFILL
-#if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
-// See https://caniuse.com/mdn-javascript_builtins_bigint64array
-#include "polyfill/bigint64array.js"
-#endif
-#endif // POLYFILL
 
 #if WASM_WORKERS
 // The way we signal to a worker that it is hosting a pthread is to construct
@@ -63,16 +56,18 @@ if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
 #if ENVIRONMENT.length == 1 && !ASSERTIONS
-var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
+const ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE
 // node+pthreads always supports workers; detect which we are at runtime
 var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
-#else
+#elif PTHREADS || WASM_WORKERS
 var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT[0] === 'worker' }}};
+#else
+const ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT[0] === 'worker' }}};
 #endif
-var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT[0] === 'node' }}};
-var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT[0] === 'shell' }}};
-#else // ENVIRONMENT.length == 1
+const ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT[0] === 'node' }}};
+const ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT[0] === 'shell' }}};
+#else // ENVIRONMENT.length == 1 && !ASSERTIONS
 // Attempt to auto-detect the environment
 var ENVIRONMENT_IS_WEB = !!globalThis.window;
 var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
@@ -84,7 +79,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 #else
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 #endif
-#endif // ENVIRONMENT
+#endif // ENVIRONMENT.length == 1 && !ASSERTIONS
 
 #if PTHREADS
 // Three configurations we can be running in:
@@ -158,7 +153,7 @@ var _scriptName;
 #endif // ENVIRONMENT_MAY_BE_WEB
 
 #if ENVIRONMENT_MAY_BE_NODE
-if (typeof __filename != 'undefined') { // Node
+if (typeof __filename !== 'undefined') { // Node
   _scriptName = __filename;
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
@@ -217,7 +212,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 #if !MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
-  if (typeof module != 'undefined') {
+  if (typeof module !== 'undefined') {
     module['exports'] = Module;
   }
 #endif
@@ -245,7 +240,7 @@ if (ENVIRONMENT_IS_SHELL) {
       return new Uint8Array(readbuffer(f));
     }
     let data = read(f, 'binary');
-    assert(typeof data == 'object');
+    assert(typeof data === 'object');
     return data;
   };
 
@@ -270,7 +265,7 @@ if (ENVIRONMENT_IS_SHELL) {
       setTimeout(() => {
         if (!(toThrow instanceof ExitStatus)) {
           let toLog = toThrow;
-          if (toThrow && typeof toThrow == 'object' && toThrow.stack) {
+          if (toThrow && typeof toThrow === 'object' && toThrow.stack) {
             toLog = [toThrow, toThrow.stack];
           }
           err(`exiting due to exception: ${toLog}`);
@@ -347,7 +342,7 @@ var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
   var utils = require('node:util');
-  var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
+  var stringify = (a) => typeof a === 'object' ? utils.inspect(a) : a;
   defaultPrint = (...args) => fs.writeSync(1, args.map(stringify).join(' ') + '\n');
   defaultPrintErr = (...args) => fs.writeSync(2, args.map(stringify).join(' ') + '\n');
 }

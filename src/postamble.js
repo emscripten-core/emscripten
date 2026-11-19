@@ -6,6 +6,10 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if PTHREADS
+#include "runtime_pthread.js"
+#endif
+
 #if LOAD_SOURCE_MAP
 #include "source_map_support.js"
 #endif
@@ -83,7 +87,7 @@ var mainArgs = undefined;
     // and a plain value otherwise. This will likely change:
     // https://github.com/WebAssembly/js-promise-integration/issues/11
     ret = await ret;
-#endif // ASYNCIFY == 2
+#endif // ASYNCIFY == 2 && !PROXY_TO_PTHREAD
     // if we're not running an evented main loop, it's time to exit
     exitJS(ret, /* implicit = */ true);
     return ret;
@@ -212,15 +216,10 @@ function checkUnflushedContent() {
 #elif hasExportedSymbol('fflush')
     _fflush(0);
 #endif
-#if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
+#if '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
-    for (var name of ['stdout', 'stderr']) {
-      var info = FS.analyzePath('/dev/' + name);
-      if (!info) return;
-      var stream = info.object;
-      var rdev = stream.rdev;
-      var tty = TTY.ttys[rdev];
-      if (tty?.output?.length) {
+    for (var tty of Object.values(TTY.ttys)) {
+      if (tty.output.length) {
         has = true;
       }
     }
@@ -244,6 +243,11 @@ var wasmRawExports;
 #endif
 
 #if MODULARIZE == 'instance'
+#if EMBIND_AOT
+// The embind exports are declared here so that their post-ctor registration
+// precedes any self-initialization below.  See phase_embind_aot in link.py.
+<<< EMBIND_AOT_EXPORTS >>>
+#endif
 // In MODULARIZE=instance mode we delay most of the initialization work until
 // the `init` function is called.
 #if ASSERTIONS

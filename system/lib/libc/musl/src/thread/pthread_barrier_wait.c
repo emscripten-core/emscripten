@@ -58,10 +58,10 @@ static int pshared_barrier_wait(pthread_barrier_t *b)
 
 struct instance
 {
-	volatile int count;
-	volatile int last;
-	volatile int waiters;
-	volatile int finished;
+	_Atomic int count;
+	_Atomic int last;
+	_Atomic int waiters;
+	_Atomic int finished;
 };
 
 int pthread_barrier_wait(pthread_barrier_t *b)

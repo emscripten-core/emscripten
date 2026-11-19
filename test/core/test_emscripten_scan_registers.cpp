@@ -5,7 +5,7 @@
 
 std::set<int> seenInts;
 
-static int scans = 0;
+int scans = 0;
 
 #define DO_SCAN { emscripten_scan_registers(scan); emscripten_scan_stack(scan); }
 

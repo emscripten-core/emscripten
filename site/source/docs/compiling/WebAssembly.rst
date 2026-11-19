@@ -110,24 +110,11 @@ Examples:
 
 * Exception handling (see :ref:`exceptions` for details).
 * SIMD (see :ref:`Porting SIMD code` for details).
-* Nontrapping float-to-int conversion (enabled by default, use
-  ``-mno-nontrapping-fptoint`` to disable).
-  Clang will generate nontrapping (saturating) float-to-int conversion instructions for
-  C typecasts. This should have no effect on programs that do not have
-  undefined behavior but if the casted floating-point value is outside the range
-  of the target integer type, the result will be a number of the max or min value
-  instead of a trap. This also results in a small code size improvement because
-  of details of the LLVM IR semantics.
-* Bulk memory operations (enabled by default, use
-  ``-mno-bulk-memory-opt -mno-bulk-memory`` to disable). ``memory.copy``
-  and ``memory.fill`` instructions are used in the implementation of C
-  ``memcpy`` and ``memset``, and Clang may generate them elsewhere.
 * JS BigInt integration (enabled by default, use the
   ``-sWASM_BIGINT=0`` :ref:`setting <wasm_bigint>`
   to disable). This has the effect that Wasm i64 values are passed and returned
   between Wasm and JS as BigInt values rather than being split by Binaryen into
   pairs of Numbers.
-* Sign-extension operators (enabled by default)
 
 For the features that are enabled by default (or will be when sufficient
 browser support exists), it's also possible to control them by specifying
@@ -142,6 +129,14 @@ can be used such as COEP headers). These are not controlled by the browser
 version flags and must be enabled explicitly.
 See the :ref:`settings <min_firefox_version>` page for details of the default
 browser versions Emscripten targets.
+
+Some features are available even in the oldest supported browser versions, and are
+enabled by default.  They can be turned of for specific compilation units using
+standard clang flags, but since they are present in the system libraries they
+will almost always be used in the final binary:
+
+* Nontrapping float-to-int conversion (``-mno-nontrapping-fptoint`` to disable)
+* Bulk memory operations. (``-mno-bulk-memory`` to disable)
 
 
 ``.wasm`` files and compilation

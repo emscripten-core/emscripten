@@ -15,4 +15,6 @@ sys.path.insert(0, __rootdir__)
 
 from tools import shared
 
-shared.exec_process([shared.LLVM_DWP, *sys.argv[1:]])
+LLVM_DWP = shared.llvm_tool_path('llvm-dwp')
+
+shared.exec_process([LLVM_DWP, *sys.argv[1:]])

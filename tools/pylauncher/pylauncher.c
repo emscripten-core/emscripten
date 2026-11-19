@@ -10,8 +10,8 @@
  * The binary will look for a python script that matches its own name and run
  * that using python.exe.
  *
- * Built with /NODEFAULTLIB linking only against ucrt.lib (ucrtbase.dll) to
- * avoid any dependency on a specific Visual C++ Redistributable version.
+ * Built with /MT dynamically linking ucrt.lib (ucrtbase.dll) to avoid any
+ * dependency on a specific Visual C++ Redistributable version.
  */
 
 // Define _WIN32_WINNT to Windows 7 for max portability
@@ -23,11 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
-
-// ZeroMemory expands to memset which lives in vcruntime, not ucrt.
-// SecureZeroMemory is an inline in <winnt.h> with no runtime dependency.
-#undef ZeroMemory
-#define ZeroMemory SecureZeroMemory
 
 #define WLEN(lit) (sizeof(lit) / sizeof(wchar_t) - 1)
 
@@ -159,13 +154,11 @@ static wchar_t* get_script_path() {
   return script_path_tools;
 }
 
-// This gets a name other than main() as a reminder that its return value is not sent anywhere
-// (because this file is compiled without a CRT).
-void launcher_main() {
+int main() {
   // Setting EMCC_LAUNCHER_DEBUG enabled debug output for the launcher itself.
   launcher_debug = GetEnvironmentVariableW(L"EMCC_LAUNCHER_DEBUG", NULL, 0);
 
-  dbg("pylauncher: launcher_main\n");
+  dbg("pylauncher: main\n");
 
   const wchar_t* ccache_prefix = L"";
   DWORD env_len = GetEnvironmentVariableW(L"_EMCC_CCACHE", NULL, 0);
@@ -226,5 +219,5 @@ void launcher_main() {
   CloseHandle(pi.hThread);
 
   dbg("pylauncher: done: %d\n", exit_code);
-  ExitProcess(exit_code);
+  return exit_code;
 }

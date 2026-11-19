@@ -9,16 +9,17 @@
 double acosh(double x)
 {
 	union {double f; uint64_t i;} u = {.f = x};
-	unsigned e = u.i >> 52 & 0x7ff;
-
-	/* x < 1 domain error is handled in the called functions */
+	unsigned e = u.i >> 52;
 
 	if (e < 0x3ff + 1)
-		/* |x| < 2, up to 2ulp error in [1,1.125] */
+		/* 0 <= x < 2, up to 2ulp error in [1,1.125] */
 		return log1p(x-1 + sqrt((x-1)*(x-1)+2*(x-1)));
 	if (e < 0x3ff + 26)
-		/* |x| < 0x1p26 */
+		/* 2 <= x < 0x1p26 */
 		return log(2*x - 1/(x+sqrt(x*x-1)));
-	/* |x| >= 0x1p26 or nan */
+	if (e & 0x800)
+		/* x < 0 or x = -0, invalid */
+		return (x-x)/(x-x);
+	/* x >= 0x1p26 or nan */
 	return log(x) + 0.693147180559945309417232121458176568;
 }

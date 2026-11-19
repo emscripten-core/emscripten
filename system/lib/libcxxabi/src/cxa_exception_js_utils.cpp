@@ -6,8 +6,7 @@
 #include "private_typeinfo.h"
 #include <assert.h>
 #include <stdio.h>
-// #include <stdint.h>
-// #include <stdlib.h>
+#include <stdlib.h>
 #include <string.h>
 
 namespace __cxxabiv1 {

@@ -340,7 +340,11 @@ struct BindingType<std::basic_string<T>> {
         return wt;
     }
     static String fromWireType(WireType v) {
-        return String(v->data, v->length);
+        String rv(v->data, v->length);
+        // Free the wire buffer allocated by JS toWireType here in C++ after
+        // copying so JS invokers do not need a post-call destructor for strings.
+        free(v);
+        return rv;
     }
 };
 

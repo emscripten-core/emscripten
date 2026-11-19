@@ -53,7 +53,8 @@ that is what the core tests are for).  The non-core test suites include
 
  * `other`: Non-core tests running in the shell.
  * `browser`: Tests that run in a browser.
- * `sockets`: Networking tests that run in a browser.
+ * `sockets_node`: Networking tests that run under node.
+ * `sockets_browser`: Networking tests that run in a browser.
  * `interactive`: Browser tests that are not fully automated, and require user interaction (these should be automated eventually).
  * `sanity`: Tests for emscripten setting itself up. This modifies your `.emscripten` file temporarily.
  * `benchmark`: Runs benchmarks, measuring speed and code size.
@@ -145,8 +146,8 @@ commands:
   # Run "browser" test suite - this requires a web browser
   test/runner browser
 
-  # Run "sockets" test suite - this requires a web browser too
-  test/runner sockets
+  # Run the sockets test suites - "sockets_browser" requires a web browser too
+  test/runner sockets_node sockets_browser
 
   # Run "sanity" test suite - this tests setting up emscripten during
   # first run, etc., and so it modifies your .emscripten file temporarily.

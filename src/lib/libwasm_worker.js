@@ -22,11 +22,7 @@
 #endif // ~WASM_WORKERS
 
 {{{
-#if !PTHREADS
-  // In pthread builds this gets defined in libpthread.js
-  const CMD_UNCAUGHT_EXN = 8;
-#endif
-  const workerSupportsFutexWait = () => AUDIO_WORKLET ? "!ENVIRONMENT_IS_AUDIO_WORKLET" : '1';
+  const workerSupportsFutexWait = () => AUDIO_WORKLET ? '!ENVIRONMENT_IS_AUDIO_WORKLET' : '1';
   const wasmWorkerJs = `
 #if MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
@@ -62,7 +58,17 @@
 
 
 addToLibrary({
+#if !PTHREADS
+  ...defineInternalConsts({
+    $CMD_UNCAUGHT_EXN: 8,
+  }),
+#endif
+
   $_wasmWorkers: {},
+#if TRUSTED_TYPES
+  // Cached Trusted Types policy for Wasm Worker creation.
+  $_emscriptenWasmWorkerPolicy: null,
+#endif
 
   // Starting up a Wasm Worker is an asynchronous operation, hence if the parent
   // thread performs any postMessage()-based wasm function calls to the
@@ -75,7 +81,6 @@ addToLibrary({
   },
 
   // Executes a wasm function call received via a postMessage.
-  $_wasmWorkerRunPostMessage__deps: ['$callUserCallback'],
   $_wasmWorkerRunPostMessage: (e) => {
     // '_wsc' is short for 'wasm call', trying to use an identifier name that
     // will never conflict with user code
@@ -87,9 +92,6 @@ addToLibrary({
   // src/postamble_minimal.js brings this symbol in to the build, and calls this
   // function synchronously from main JS file at the startup of each Worker.
   $_wasmWorkerInitializeRuntime__deps: [
-    '$_wasmWorkerDelayedMessageQueue',
-    '$_wasmWorkerRunPostMessage',
-    '$_wasmWorkerAppendToQueue',
     '_emscripten_wasm_worker_initialize',
 #if PTHREADS
     '__set_thread_state',
@@ -100,11 +102,11 @@ addToLibrary({
 #if ASSERTIONS
     assert(wwParams);
     assert(wwParams.wwID);
-    assert(wwParams.stackLowestAddress % {{{ STACK_ALIGN }}} == 0);
-    assert(wwParams.stackSize % {{{ STACK_ALIGN }}} == 0);
+    assert(wwParams.stackLowestAddress % STACK_ALIGN == 0);
+    assert(wwParams.stackSize % STACK_ALIGN == 0);
 #endif
 #if RUNTIME_DEBUG
-    dbg("wasmWorkerInitializeRuntime wwID:", wwParams.wwID);
+    dbg('wasmWorkerInitializeRuntime wwID:', wwParams.wwID);
 #endif
 
 #if !MINIMAL_RUNTIME && isSymbolNeeded('$noExitRuntime')
@@ -166,13 +168,6 @@ addToLibrary({
 #endif
   },
 
-  _emscripten_create_wasm_worker__deps: [
-    '$_wasmWorkers',
-    '$_wasmWorkerAppendToQueue', '$_wasmWorkerRunPostMessage',
-#if ASSERTIONS
-    'emscripten_has_threading_support',
-#endif
-  ],
   _emscripten_create_wasm_worker__postset: `
 if (ENVIRONMENT_IS_WASM_WORKER
 // AudioWorkletGlobalScope does not contain addEventListener
@@ -181,7 +176,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #endif
   ) {
   _wasmWorkers[0] = globalThis;
-  addEventListener("message", _wasmWorkerAppendToQueue);
+  addEventListener('message', _wasmWorkerAppendToQueue);
 }`,
   _emscripten_create_wasm_worker: (wwID, stackLowestAddress, stackSize, pthreadPtr) => {
 #if ASSERTIONS
@@ -194,10 +189,8 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #if TRUSTED_TYPES
     // Use Trusted Types compatible wrappers.
     if (globalThis.trustedTypes?.createPolicy) {
-      var p = trustedTypes.createPolicy(
-          'emscripten#workerPolicy1', { createScriptURL: (ignored) => {{{ wasmWorkerJs }}}}
-      );
-      worker = _wasmWorkers[wwID] = new Worker(p.createScriptURL('ignored'), {{{ wasmWorkerOptions }}});
+      _emscriptenWasmWorkerPolicy ??= trustedTypes.createPolicy('emscripten#workerPolicy', { createScriptURL: (url) => url });
+      worker = _wasmWorkers[wwID] = new Worker(_emscriptenWasmWorkerPolicy.createScriptURL({{{ wasmWorkerJs }}}), {{{ wasmWorkerOptions }}});
     } else
 #endif
     worker = _wasmWorkers[wwID] = new Worker({{{ wasmWorkerJs }}}, {{{ wasmWorkerOptions }}});
@@ -219,7 +212,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     if (ENVIRONMENT_IS_NODE) {
       /** @suppress {checkTypes} */
       worker.on('message', (msg) => {
-        if (msg.cmd == {{{ CMD_UNCAUGHT_EXN }}}) {
+        if (msg.cmd == CMD_UNCAUGHT_EXN) {
           // Message handler for Node.js specific out-of-order behavior:
           // https://github.com/nodejs/node/issues/59617
           // A worker sent an uncaught exception event. Re-raise it on the main thread.
@@ -232,7 +225,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     }
 #endif
 #if RUNTIME_DEBUG
-    dbg("done _emscripten_create_wasm_worker", wwID)
+    dbg('done _emscripten_create_wasm_worker', wwID)
 #endif
     return true;
   },
@@ -281,7 +274,6 @@ if (ENVIRONMENT_IS_WASM_WORKER
   emscripten_wasm_worker_post_function_viii: '$_wasmWorkerPostFunction3',
   emscripten_wasm_worker_post_function_vddd: '$_wasmWorkerPostFunction3',
 
-  emscripten_wasm_worker_post_function_sig__deps: ['$readEmAsmArgs'],
   emscripten_wasm_worker_post_function_sig: (id, funcPtr, sigPtr, varargs) => {
 #if ASSERTIONS
     assert(id >= 0);
@@ -305,14 +297,14 @@ if (ENVIRONMENT_IS_WASM_WORKER
     let tryAcquireLock = () => {
       do {
         var val = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
-        if (!val) return {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, 0, 0/*'ok'*/, userData);
+        if (!val) return callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, lock, 0, 0/*'ok'*/, userData);
         var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, val, maxWaitMilliseconds);
       } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
 #endif
       if (wait.async) wait.value.then(tryAcquireLock);
-      else return {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, val, 2/*'timed-out'*/, userData);
+      else return callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, lock, val, 2/*'timed-out'*/, userData);
     };
     // Asynchronously dispatch acquiring the lock so that we have uniform control flow in both
     // cases when the lock is acquired, and when it needs to wait.
@@ -321,18 +313,13 @@ if (ENVIRONMENT_IS_WASM_WORKER
 
   emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_semaphore_async_acquire: (sem, num, asyncWaitFinished, userData, maxWaitMilliseconds) => {
-    let dispatch = (idx, ret) => {
-      setTimeout(() => {
-        {{{ makeDynCall('viiii', 'asyncWaitFinished') }}}(sem, /*val=*/idx, /*waitResult=*/ret, userData);
-      }, 0);
-    };
     let tryAcquireSemaphore = () => {
       let val = num;
       do {
         let ret = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('sem', 'i32') }}},
                                           val, /* We expect this many semaphore resources to be available*/
                                           val - num /* Acquire 'num' of them */);
-        if (ret == val) return dispatch(ret/*index of resource acquired*/, 0/*'ok'*/);
+        if (ret == val) return callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, sem, /*val=*/ret/*index of resource acquired*/, /*waitResult=*/ATOMICS_WAIT_OK, userData);
         val = ret;
         let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('sem', 'i32') }}}, ret, maxWaitMilliseconds);
       } while (wait.value === 'not-equal');
@@ -340,9 +327,11 @@ if (ENVIRONMENT_IS_WASM_WORKER
       assert(wait.async || wait.value === 'timed-out');
 #endif
       if (wait.async) wait.value.then(tryAcquireSemaphore);
-      else dispatch(-1/*idx*/, 2/*'timed-out'*/);
+      else return callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, sem, /*val=*/-1/*idx*/, /*waitResult=*/ATOMICS_WAIT_TIMED_OUT, userData);
     };
-    tryAcquireSemaphore();
+    // Asynchronously dispatch acquiring the semaphore so that we have uniform control flow in both
+    // cases when the semaphore is acquired, and when it needs to wait.
+    setTimeout(tryAcquireSemaphore);
   },
 
 #if !PTHREADS

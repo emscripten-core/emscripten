@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -20,6 +21,11 @@ int main() {
   assert(err == 0);
 
   close(fd);
+
+  errno = 0;
+  err = fdatasync(42);
+  assert(err == -1);
+  assert(errno == EBADF);
 
   printf("ok\n");
 }

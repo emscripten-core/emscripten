@@ -34,7 +34,7 @@ struct Fiber {
     }
 };
 
-static struct Globals {
+struct Globals {
     emscripten_fiber_t main;
     char asyncify_stack[1024];
     Fiber fibers[2];
@@ -44,11 +44,11 @@ static struct Globals {
     }
 } G;
 
-static void leaf(void) {
+void leaf(void) {
     printf("leaf-");
 }
 
-static void fib(void * arg) {
+void fib(void * arg) {
     int *p = (int*)arg;
     int cur = 1;
     int next = 1;
@@ -62,7 +62,7 @@ static void fib(void * arg) {
 }
 
 [[noreturn]]
-static void f(void *arg) {
+void f(void *arg) {
     int *p = (int*)arg;
     *p = 0;
     leaf();
@@ -75,7 +75,7 @@ static void f(void *arg) {
 }
 
 [[noreturn]]
-static void g(void *arg) {
+void g(void *arg) {
     int *p = (int*)arg;
     for(int i = 0; i < 10; ++i) {
         *p = 100+i;

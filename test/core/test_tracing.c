@@ -18,5 +18,7 @@ int main(int argc, const char* argv[]) {
   emscripten_trace_record_frame_start();
   emscripten_trace_record_frame_end();
 
+  emscripten_trace_report_off_heap_data();
+
   return 0;
 }

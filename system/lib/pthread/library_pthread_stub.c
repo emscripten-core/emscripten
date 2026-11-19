@@ -49,11 +49,11 @@ bool emscripten_is_main_runtime_thread() {
   return true;
 }
 
-void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
+void __wait(_Atomic int *addr, _Atomic int *waiters, int val, int priv) {}
 
-void __lock(void* ptr) {}
+void __lock(_Atomic int *ptr) {}
 
-void __unlock(void* ptr) {}
+void __unlock(_Atomic int *ptr) {}
 
 void __inhibit_ptc() {}
 

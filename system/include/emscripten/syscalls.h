@@ -103,9 +103,7 @@ int __syscall_utimensat(int dirfd, const char *path, const struct timespec times
 int __syscall_fallocate(int fd, int mode, off_t offset, off_t len);
 int __syscall_dup3(int oldfd, int newfd, int flags);
 int __syscall_pipe2(int fd[2], int flags);
-int __syscall_recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags, struct timespec *timeout);
 int __syscall_prlimit64(pid_t pid, int resource, const struct rlimit *new_limit, struct rlimit *old_limit);
-int __syscall_sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
 int __syscall_socket(int domain, int type, int protocol, int unused1, int unused2, int unused3);
 int __syscall_socketpair(int domain, int type, int protocol, int fd[2], int unused1, int unused2);
 int __syscall_bind(int sockfd, const struct sockaddr *addr, socklen_t len, int unused1, int unused2, int unused3);
@@ -124,6 +122,7 @@ int __syscall_shutdown(int sockfd, int how, int unused1, int unused2, int unused
 int __syscall_epoll_create1(int flags);
 int __syscall_epoll_ctl(int epfd, int op, int fd, struct epoll_event *ev);
 int __syscall_epoll_pwait(int epfd, struct epoll_event *ev, int maxevents, int timeout, const sigset_t *sigmask, size_t sigsetsize);
+int __syscall_epoll_pwait_nonblocking(int epfd, struct epoll_event *ev, int maxevents);
 
 #ifdef __cplusplus
 }

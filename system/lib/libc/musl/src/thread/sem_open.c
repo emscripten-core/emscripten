@@ -24,8 +24,8 @@ static struct {
 	sem_t *sem;
 	int refcnt;
 } *semtab;
-static volatile int lock[1];
-volatile int *const __sem_open_lockptr = lock;
+static _Atomic int lock[1];
+_Atomic int *const __sem_open_lockptr = lock;
 
 #define FLAGS (O_RDWR|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
 

@@ -27,10 +27,22 @@
     {
         "file": "emscripten/val.h",
         "defines": [
+            "emscripten::internal::_EMVAL_UNDEFINED",
+            "emscripten::internal::_EMVAL_NULL",
+            "emscripten::internal::_EMVAL_TRUE",
+            "emscripten::internal::_EMVAL_FALSE",
             "emscripten::internal::EM_INVOKER_KIND::FUNCTION",
             "emscripten::internal::EM_INVOKER_KIND::METHOD",
             "emscripten::internal::EM_INVOKER_KIND::CONSTRUCTOR",
             "emscripten::internal::EM_INVOKER_KIND::CAST"
+        ]
+    },
+    {
+        "file": "emscripten/bind.h",
+        "defines": [
+            "emscripten::sharing_policy::NONE",
+            "emscripten::sharing_policy::INTRUSIVE",
+            "emscripten::sharing_policy::BY_EMVAL"
         ]
     }
 ]

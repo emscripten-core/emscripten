@@ -18,7 +18,6 @@ from functools import wraps
 import common
 from common import test_file
 
-from tools.shared import DEBUG
 from tools.utils import MACOS, WINDOWS
 
 requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This test requires network access')
@@ -38,7 +37,7 @@ def skip_if_simple(name, condition, note=''):
       if condition(self):
         explanation_str = name
         if note:
-          explanation_str += ': %s' % note
+          explanation_str += f': {note}'
         self.skipTest(explanation_str)
       return func(self, *args, **kwargs)
 
@@ -104,8 +103,6 @@ no_mac = skip_if('no_mac', lambda _: MACOS)
 
 no_windows = skip_if('no_windows', lambda _: WINDOWS)
 
-no_wasm64 = skip_if('no_wasm64', lambda t: t.is_wasm64())
-
 no_bun = skip_if('no_bun', lambda t: t.engine_is_bun())
 
 no_deno = skip_if('no_deno', lambda t: t.engine_is_deno())
@@ -122,6 +119,8 @@ only_windows = skip_if('only_windows', lambda _: not WINDOWS)
 requires_native_clang = skip_if_simple('native clang tests are disabled', lambda _: common.EMTEST_LACKS_NATIVE_CLANG)
 
 needs_make = skip_if('tool not available on windows bots', lambda _: WINDOWS)
+
+requires_login_tty = skip_if_simple('requires os.login_tty (python 3.11+)', lambda _: not hasattr(os, 'login_tty'))
 
 
 def requires_node(func):
@@ -300,8 +299,8 @@ def also_with_wasmfs(func):
 
   @wraps(func)
   def metafunc(self, wasmfs, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:wasmfs=%d' % wasmfs)
+    if common.EMTEST_VERBOSE:
+      print(f'parameterize:wasmfs={wasmfs}')
     if wasmfs:
       self.setup_wasmfs_test()
     else:
@@ -316,8 +315,8 @@ def also_with_wasmfs(func):
 def also_with_nodefs(func):
   @wraps(func)
   def metafunc(self, fs, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:fs=%s' % (fs))
+    if common.EMTEST_VERBOSE:
+      print(f'parameterize:fs={fs}')
     if fs == 'nodefs':
       self.setup_nodefs_test()
     else:
@@ -333,8 +332,8 @@ def also_with_nodefs(func):
 def also_with_nodefs_both(func):
   @wraps(func)
   def metafunc(self, fs, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:fs=%s' % (fs))
+    if common.EMTEST_VERBOSE:
+      print(f'parameterize:fs={fs}')
     if fs == 'nodefs':
       self.setup_nodefs_test()
     elif fs == 'rawfs':
@@ -353,8 +352,8 @@ def also_with_nodefs_both(func):
 def with_all_fs(func):
   @wraps(func)
   def metafunc(self, wasmfs, fs, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:fs=%s' % (fs))
+    if common.EMTEST_VERBOSE:
+      print(f'parameterize:fs={fs}')
     if wasmfs:
       self.setup_wasmfs_test()
     if fs == 'nodefs':
@@ -380,8 +379,8 @@ def also_with_noderawfs(func):
 
   @wraps(func)
   def metafunc(self, rawfs, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:rawfs=%d' % rawfs)
+    if common.EMTEST_VERBOSE:
+      print(f'parameterize:rawfs={rawfs}')
     if rawfs:
       self.setup_noderawfs_test()
     else:
@@ -398,8 +397,8 @@ def also_with_minimal_runtime(func):
 
   @wraps(func)
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
+    if common.EMTEST_VERBOSE:
+      print(f'parameterize:minimal_runtime={with_minimal_runtime}')
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('MINIMAL_RUNTIME already enabled in test config')
     if with_minimal_runtime:
@@ -416,31 +415,13 @@ def also_with_minimal_runtime(func):
   return metafunc
 
 
-def also_without_bigint(func):
-  assert callable(func)
-
-  @wraps(func)
-  def metafunc(self, no_bigint, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:no_bigint=%s' % no_bigint)
-    if no_bigint:
-      if self.get_setting('WASM_BIGINT') is not None:
-        self.skipTest('redundant in bigint test config')
-      self.set_setting('WASM_BIGINT', 0)
-    return func(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (False,),
-                          'no_bigint': (True,)})
-  return metafunc
-
-
 def also_with_wasm64(func):
   assert callable(func)
 
   @wraps(func)
   def metafunc(self, with_wasm64, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:wasm64=%s' % with_wasm64)
+    if common.EMTEST_VERBOSE:
+      print(f'parameterize:wasm64={with_wasm64}')
     if with_wasm64:
       self.require_wasm64()
       self.cflags += ['-m64']
@@ -472,11 +453,12 @@ def also_with_wasm2js(func):
   @wraps(func)
   def metafunc(self, with_wasm2js, *args, **kwargs):
     assert self.get_setting('WASM') is None
-    if DEBUG:
-      print('parameterize:wasm2js=%s' % with_wasm2js)
+    if common.EMTEST_VERBOSE:
+      print(f'parameterize:wasm2js={with_wasm2js}')
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
+      self.cflags.append('-Wno-deprecated')
     return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -507,8 +489,8 @@ def also_with_standalone_wasm(impure=False):
   def decorated(func):
     @wraps(func)
     def metafunc(self, standalone, *args, **kwargs):
-      if DEBUG:
-        print('parameterize:standalone=%s' % standalone)
+      if common.EMTEST_VERBOSE:
+        print(f'parameterize:standalone={standalone}')
       if standalone:
         if not can_do_standalone(self, impure):
           self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
@@ -576,10 +558,9 @@ def with_all_eh_sjlj(func):
 
   @wraps(func)
   def metafunc(self, mode, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:eh_mode=%s' % mode)
+    if common.EMTEST_VERBOSE:
+      print(f'parameterize:eh_mode={mode}')
     if mode in {'wasm', 'wasm_legacy'}:
-      # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
       self.cflags.append('-fwasm-exceptions')
@@ -638,7 +619,9 @@ def parameterize(func, parameters):
   """
   prev = getattr(func, '_parameterize', None)
   assert not any(p.startswith('_') for p in parameters), 'test variant names should not start with _'
+  assert all(isinstance(v, tuple) for v in parameters.values()), f'parameter values must be tuples: {parameters}'
   if prev:
+    assert all(isinstance(v, tuple) for v in prev.values()), f'previous parameter values must be tuples: {prev}'
     # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
     func._parameterize = {
       '_'.join(filter(None, [k1, k2])): v2 + v1 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())

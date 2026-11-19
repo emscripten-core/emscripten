@@ -23,7 +23,7 @@ ports = [int(sys.argv[1]), int(sys.argv[2])]
 
 
 class Listener(threading.Thread):
-  other: Listener | None = None  # noqa: F821
+  other: Listener | None = None  # ruff: ignore[undefined-name]
 
   def run(self):
     self.conn = None

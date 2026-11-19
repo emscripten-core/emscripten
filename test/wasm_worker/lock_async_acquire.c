@@ -1,6 +1,8 @@
 #include <emscripten/console.h>
 #include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
+#include <stdatomic.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <assert.h>
 
@@ -12,7 +14,7 @@ emscripten_lock_t lock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
 volatile int sharedState0 = 0;
 volatile int sharedState1 = 1;
 
-bool testFinished = false;
+_Atomic bool testFinished = false;
 
 int numTimesMainThreadAcquiredLock = 0;
 int numTimesWasmWorkerAcquiredLock = 0;
@@ -52,7 +54,11 @@ void work() {
       if (!testFinished) {
         testFinished = true;
         emscripten_out("test finished");
-        emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
+        if (emscripten_current_thread_is_wasm_worker()) {
+          emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
+        } else {
+          do_exit();
+        }
       }
     }
   }

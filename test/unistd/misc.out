@@ -35,6 +35,8 @@ fork: -1, errno: 52
 vfork: -1, errno: 52
 popen: 0, errno: 52
 pclose: -1, errno: 52
+posix_spawn: 52, errno: 0
+posix_spawnp: 52, errno: 0
 crypt: ba4TuD1iozTxw, errno: 0
 encrypt, errno: 0
 getgid: 0, errno: 0

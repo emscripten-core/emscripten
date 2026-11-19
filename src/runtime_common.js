@@ -4,12 +4,23 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "runtime_stack_check.js"
 #include "runtime_exceptions.js"
 #include "runtime_debug.js"
 
+#if STACK_OVERFLOW_CHECK
+#include "runtime_stack_check.js"
+#endif
+
 #if SAFE_HEAP
 #include "runtime_safe_heap.js"
+#endif
+
+#if USE_ASAN
+#include "runtime_asan.js"
+#endif
+
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#include "binaryDecode.js"
 #endif
 
 #if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS != 2
@@ -21,14 +32,6 @@ function growMemViews() {
     updateMemoryViews();
   }
 }
-#endif
-
-#if USE_ASAN
-#include "runtime_asan.js"
-#endif
-
-#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
-#include "binaryDecode.js"
 #endif
 
 #if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
@@ -52,7 +55,7 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #if PTHREADS_DEBUG
     dbg(`uncaughtException on worker thread: ${err.message}`);
 #endif
-    postMessage({ cmd: {{{ CMD_UNCAUGHT_EXN }}}, error: err });
+    postMessage({ cmd: CMD_UNCAUGHT_EXN, error: err });
     // Also shut down the Worker to match the same semantics as if this uncaughtException
     // handler was not registered.
     // (n.b. this will not shut down the whole Node.js app process, but just the Worker)
@@ -60,10 +63,6 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   });
 }
 #endif // (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
-
-#if PTHREADS
-#include "runtime_pthread.js"
-#endif
 
 #if WASM_WORKERS
 #include "wasm_worker.js"
@@ -93,16 +92,25 @@ var runtimeExited = false;
   // if requested.
   const shouldExportHeap = (x) => {
     let shouldExport = false;
-    if (MODULARIZE && EXPORT_ALL) {
+    if (EXPORT_ALL) {
       shouldExport = true;
     } else if (EXPORTED_RUNTIME_METHODS.has(x)) {
       shouldExport = true;
     }
     return shouldExport;
-  }
+  };
   const maybeExportHeap = (x) => {
     if (shouldExportHeap(x) && MODULARIZE != 'instance') {
       return `Module['${x}'] = `;
+    }
+    return '';
+  };
+  const isHeapNeeded = (x) => {
+    return shouldExportHeap(x) || addedLibraryItems['$' + x];
+  };
+  const updateHeap = (x, type) => {
+    if (isHeapNeeded(x)) {
+      return `${maybeExportHeap(x)}${x} = new ${type}(b);`;
     }
     return '';
   };
@@ -161,17 +169,17 @@ function updateMemoryViews() {
 #endif
   var b = wasmMemory.buffer;
 #endif
-  {{{ maybeExportHeap('HEAP8')   }}}HEAP8 = new Int8Array(b);
-  {{{ maybeExportHeap('HEAP16')  }}}HEAP16 = new Int16Array(b);
-  {{{ maybeExportHeap('HEAPU8')  }}}HEAPU8 = new Uint8Array(b);
-  {{{ maybeExportHeap('HEAPU16') }}}HEAPU16 = new Uint16Array(b);
-  {{{ maybeExportHeap('HEAP32')  }}}HEAP32 = new Int32Array(b);
-  {{{ maybeExportHeap('HEAPU32') }}}HEAPU32 = new Uint32Array(b);
-  {{{ maybeExportHeap('HEAPF32') }}}HEAPF32 = new Float32Array(b);
-  {{{ maybeExportHeap('HEAPF64') }}}HEAPF64 = new Float64Array(b);
+  {{{ updateHeap('HEAP8',   'Int8Array')      }}}
+  {{{ updateHeap('HEAP16',  'Int16Array')     }}}
+  {{{ updateHeap('HEAPU8',  'Uint8Array')     }}}
+  {{{ updateHeap('HEAPU16', 'Uint16Array')    }}}
+  {{{ updateHeap('HEAP32',  'Int32Array')     }}}
+  {{{ updateHeap('HEAPU32', 'Uint32Array')    }}}
+  {{{ updateHeap('HEAPF32', 'Float32Array')   }}}
+  {{{ updateHeap('HEAPF64', 'Float64Array')   }}}
 #if WASM_BIGINT
-  {{{ maybeExportHeap('HEAP64')  }}}HEAP64 = new BigInt64Array(b);
-  {{{ maybeExportHeap('HEAPU64') }}}HEAPU64 = new BigUint64Array(b);
+  {{{ updateHeap('HEAP64',  'BigInt64Array')  }}}
+  {{{ updateHeap('HEAPU64', 'BigUint64Array') }}}
 #endif
 #if SUPPORT_BIG_ENDIAN
   {{{ maybeExportHeap('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);
@@ -182,7 +190,7 @@ function updateMemoryViews() {
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
-#endif // !IMPORTED_MEMORY && ASSERTIONS
+#endif
 
 #include "memoryprofiler.js"
 

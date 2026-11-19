@@ -4,15 +4,19 @@
  * SPDX-License-Identifier: MIT
  */
 
+{{{
+  // Under PTHREADS the wasmfs_opfs_* functions never suspend since they are
+  // proxied to a dedicated worker, with completion signalled via
+  // emscripten_proxy_finish rather than by awaiting the returned promise.
+  globalThis.ASYNCIFY_NEEDED = PTHREADS ? 'false' : "'auto'";
+  null;
+}}}
+
 addToLibrary({
-  $wasmfsOPFSDirectoryHandles__deps: ['$HandleAllocator'],
-  $wasmfsOPFSDirectoryHandles: "new HandleAllocator()",
-  $wasmfsOPFSFileHandles__deps: ['$HandleAllocator'],
-  $wasmfsOPFSFileHandles: "new HandleAllocator()",
-  $wasmfsOPFSAccessHandles__deps: ['$HandleAllocator'],
-  $wasmfsOPFSAccessHandles: "new HandleAllocator()",
-  $wasmfsOPFSBlobs__deps: ["$HandleAllocator"],
-  $wasmfsOPFSBlobs: "new HandleAllocator()",
+  $wasmfsOPFSDirectoryHandles: 'new HandleAllocator()',
+  $wasmfsOPFSFileHandles: 'new HandleAllocator()',
+  $wasmfsOPFSAccessHandles: 'new HandleAllocator()',
+  $wasmfsOPFSBlobs: 'new HandleAllocator()',
 
 #if !PTHREADS
   // OPFS will only be used on modern browsers that supports JS classes.
@@ -52,7 +56,6 @@ addToLibrary({
     }
   },
 
-  $wasmfsOPFSCreateAsyncAccessHandle__deps: ['$FileSystemAsyncAccessHandle'],
   $wasmfsOPFSCreateAsyncAccessHandle: (fileHandle) => new FileSystemAsyncAccessHandle(fileHandle),
 #endif
 
@@ -68,8 +71,7 @@ addToLibrary({
 #endif
   },
 
-  _wasmfs_opfs_init_root_directory__deps: ['$wasmfsOPFSDirectoryHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_init_root_directory__async: 'auto',
+  _wasmfs_opfs_init_root_directory__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_init_root_directory: async (ctx) => {
     // allocated.length starts off as 1 since 0 is a reserved handle
     if (wasmfsOPFSDirectoryHandles.allocated.length == 1) {
@@ -87,24 +89,22 @@ addToLibrary({
   // Return the file ID for the file with `name` under `parent`, creating it if
   // it doesn't exist and `create` or otherwise return a negative error code
   // corresponding to the error.
-  $wasmfsOPFSGetOrCreateFile__deps: ['$wasmfsOPFSDirectoryHandles',
-                                     '$wasmfsOPFSFileHandles'],
   $wasmfsOPFSGetOrCreateFile: async (parent, name, create) => {
     let parentHandle = wasmfsOPFSDirectoryHandles.get(parent);
     let fileHandle;
     try {
       fileHandle = await parentHandle.getFileHandle(name, {create: create});
     } catch (e) {
-      if (e.name === "NotFoundError") {
-        return -{{{ cDefs.EEXIST }}};
+      if (e.name === 'NotFoundError') {
+        return -EEXIST;
       }
-      if (e.name === "TypeMismatchError") {
-        return -{{{ cDefs.EISDIR }}};
+      if (e.name === 'TypeMismatchError') {
+        return -EISDIR;
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefs.EIO }}};
+      return -EIO;
     }
     return wasmfsOPFSFileHandles.allocate(fileHandle);
   },
@@ -112,7 +112,6 @@ addToLibrary({
   // Return the file ID for the directory with `name` under `parent`, creating
   // it if it doesn't exist and `create` or otherwise return a negative error
   // code corresponding to the error.
-  $wasmfsOPFSGetOrCreateDir__deps: ['$wasmfsOPFSDirectoryHandles'],
   $wasmfsOPFSGetOrCreateDir: async (parent, name, create) => {
     let parentHandle = wasmfsOPFSDirectoryHandles.get(parent);
     let childHandle;
@@ -120,28 +119,26 @@ addToLibrary({
       childHandle =
           await parentHandle.getDirectoryHandle(name, {create: create});
     } catch (e) {
-      if (e.name === "NotFoundError") {
-        return -{{{ cDefs.EEXIST }}};
+      if (e.name === 'NotFoundError') {
+        return -EEXIST;
       }
-      if (e.name === "TypeMismatchError") {
-        return -{{{ cDefs.ENOTDIR }}};
+      if (e.name === 'TypeMismatchError') {
+        return -ENOTDIR;
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefs.EIO }}};
+      return -EIO;
     }
     return wasmfsOPFSDirectoryHandles.allocate(childHandle);
   },
 
-  _wasmfs_opfs_get_child__deps: ['$wasmfsOPFSGetOrCreateFile',
-                                 '$wasmfsOPFSGetOrCreateDir', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_get_child__async: 'auto',
+  _wasmfs_opfs_get_child__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_get_child: async (ctx, parent, namePtr, childTypePtr, childIDPtr) => {
     let name = UTF8ToString(namePtr);
     let childType = 1;
     let childID = await wasmfsOPFSGetOrCreateFile(parent, name, false);
-    if (childID == -{{{ cDefs.EISDIR }}}) {
+    if (childID == -EISDIR) {
       childType = 2;
       childID = await wasmfsOPFSGetOrCreateDir(parent, name, false);
     }
@@ -150,13 +147,8 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_get_entries__deps: [
-    '$wasmfsOPFSProxyFinish',
-    '$stackSave',
-    '$stackRestore',
-    '_wasmfs_opfs_record_entry',
-  ],
-  _wasmfs_opfs_get_entries__async: 'auto',
+  _wasmfs_opfs_get_entries__deps: ['_wasmfs_opfs_record_entry'],
+  _wasmfs_opfs_get_entries__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_get_entries: async (ctx, dirID, entriesPtr, errPtr) => {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
 
@@ -167,21 +159,20 @@ addToLibrary({
         let [name, child] = entry.value;
         let sp = stackSave();
         let namePtr = stringToUTF8OnStack(name);
-        let type = child.kind == "file" ?
+        let type = child.kind == 'file' ?
             {{{ cDefs['File::DataFileKind'] }}} :
             {{{ cDefs['File::DirectoryKind'] }}};
           __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
         stackRestore(sp);
       }
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_insert_file__deps: ['$wasmfsOPFSGetOrCreateFile', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_insert_file__async: 'auto',
+  _wasmfs_opfs_insert_file__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_insert_file: async (ctx, parent, namePtr, childIDPtr) => {
     let name = UTF8ToString(namePtr);
     let childID = await wasmfsOPFSGetOrCreateFile(parent, name, true);
@@ -189,8 +180,7 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_insert_directory__deps: ['$wasmfsOPFSGetOrCreateDir', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_insert_directory__async: 'auto',
+  _wasmfs_opfs_insert_directory__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_insert_directory: async (ctx, parent, namePtr, childIDPtr) => {
     let name = UTF8ToString(namePtr);
     let childID = await wasmfsOPFSGetOrCreateDir(parent, name, true);
@@ -198,10 +188,7 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_move_file__deps: ['$wasmfsOPFSFileHandles',
-                                 '$wasmfsOPFSDirectoryHandles',
-                                 '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_move_file__async: 'auto',
+  _wasmfs_opfs_move_file__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_move_file: async (ctx, fileID, newParentID, namePtr, errPtr) => {
     let name = UTF8ToString(namePtr);
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
@@ -209,83 +196,119 @@ addToLibrary({
     try {
       await fileHandle.move(newDirHandle, name);
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_remove_child__deps: ['$wasmfsOPFSDirectoryHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_remove_child__async: 'auto',
+  _wasmfs_opfs_remove_child__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_remove_child: async (ctx, dirID, namePtr, errPtr) => {
     let name = UTF8ToString(namePtr);
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
     try {
       await dirHandle.removeEntry(name);
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_free_file__deps: ['$wasmfsOPFSFileHandles'],
   _wasmfs_opfs_free_file: (fileID) => {
     wasmfsOPFSFileHandles.free(fileID);
   },
 
-  _wasmfs_opfs_free_directory__deps: ['$wasmfsOPFSDirectoryHandles'],
   _wasmfs_opfs_free_directory: (dirID) => {
     wasmfsOPFSDirectoryHandles.free(dirID);
   },
 
-  _wasmfs_opfs_open_access__deps: ['$wasmfsOPFSFileHandles',
-                                   '$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish',
-#if !PTHREADS
-                                   '$wasmfsOPFSCreateAsyncAccessHandle'
+#if PTHREADS
+  $wasmfsOPFSModeSupported__internal: true,
+  $wasmfsOPFSModeSupported: undefined,
+
+  // Open a sync access handle using 'readwrite-unsafe' if supported
+  $wasmfsOPFSCreateSyncAccessHandle__internal: true,
+  $wasmfsOPFSCreateSyncAccessHandle: async (fileHandle) => {
+    // Check if `mode` is supported by the browser by seeing if the browser
+    // reads it from options. A TypeError means the browser rejected the value.
+    async function checkForModeSupport() {
+      let modeRead = false;
+      const options = {
+        get mode() { modeRead = true; return 'readwrite-unsafe'; }
+      };
+      try {
+        let handle = await fileHandle.createSyncAccessHandle(options);
+        await handle.close();
+      } catch (e) {
+        if (e.name === 'TypeError') return false;
+      }
+      return modeRead;
+    }
+    if (wasmfsOPFSModeSupported ??= await checkForModeSupport()) {
+      return fileHandle.createSyncAccessHandle({mode: 'readwrite-unsafe'});
+    }
+    return fileHandle.createSyncAccessHandle();
+  },
+
+  // Open an access handle for reading only if it does not lock the file for
+  // other tabs and workers. Otherwise report -1
+  _wasmfs_opfs_open_shared_access: async (ctx, fileID, accessIDPtr) => {
+    let accessID = -1;
+    if (wasmfsOPFSModeSupported !== false) {
+      let fileHandle = wasmfsOPFSFileHandles.get(fileID);
+      try {
+        let accessHandle = await wasmfsOPFSCreateSyncAccessHandle(fileHandle);
+        if (wasmfsOPFSModeSupported) {
+          accessID = wasmfsOPFSAccessHandles.allocate(accessHandle);
+        } else {
+          // Without 'mode' support this handle is exclusive, so release it.
+          await accessHandle.close();
+        }
+      } catch (e) {
+        // Fall back to a blob.
+#if ASSERTIONS
+        if (e.name !== 'NoModificationAllowedError' &&
+            e.name !== 'InvalidStateError') {
+          err('unexpected error:', e, e.stack);
+        }
 #endif
-                                  ],
-  _wasmfs_opfs_open_access__async: 'auto',
+      }
+    }
+    {{{ makeSetValue('accessIDPtr', 0, 'accessID', 'i32') }}};
+    wasmfsOPFSProxyFinish(ctx);
+  },
+#endif
+
+  _wasmfs_opfs_open_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_open_access: async (ctx, fileID, accessIDPtr) => {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     let accessID;
     try {
       let accessHandle;
 #if PTHREADS
-      // TODO: Remove this once the Access Handles API has settled.
-      // TODO: Closure is confused by this code that supports two versions of
-      //       the same API, so suppress type checking on it.
-      /** @suppress {checkTypes} */
-      var len = FileSystemFileHandle.prototype.createSyncAccessHandle.length;
-      if (len == 0) {
-        accessHandle = await fileHandle.createSyncAccessHandle();
-      } else {
-        accessHandle = await fileHandle.createSyncAccessHandle(
-            {mode: "in-place"});
-      }
+      accessHandle = await wasmfsOPFSCreateSyncAccessHandle(fileHandle);
 #else
       accessHandle = await wasmfsOPFSCreateAsyncAccessHandle(fileHandle);
 #endif
       accessID = wasmfsOPFSAccessHandles.allocate(accessHandle);
     } catch (e) {
       // TODO: Presumably only one of these will appear in the final API?
-      if (e.name === "InvalidStateError" ||
-          e.name === "NoModificationAllowedError") {
-        accessID = -{{{ cDefs.EACCES }}};
+      if (e.name === 'InvalidStateError' ||
+          e.name === 'NoModificationAllowedError') {
+        accessID = -EACCES;
       } else {
 #if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
-        accessID = -{{{ cDefs.EIO }}};
+        accessID = -EIO;
       }
     }
     {{{ makeSetValue('accessIDPtr', 0, 'accessID', 'i32') }}};
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_open_blob__deps: ['$wasmfsOPFSFileHandles',
-                                 '$wasmfsOPFSBlobs', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_open_blob__async: 'auto',
+  _wasmfs_opfs_open_blob__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_open_blob: async (ctx, fileID, blobIDPtr) => {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     let blobID;
@@ -293,60 +316,56 @@ addToLibrary({
       let blob = await fileHandle.getFile();
       blobID = wasmfsOPFSBlobs.allocate(blob);
     } catch (e) {
-      if (e.name === "NotAllowedError") {
-        blobID = -{{{ cDefs.EACCES }}};
+      if (e.name === 'NotAllowedError') {
+        blobID = -EACCES;
       } else {
 #if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
-        blobID = -{{{ cDefs.EIO }}};
+        blobID = -EIO;
       }
     }
     {{{ makeSetValue('blobIDPtr', 0, 'blobID', 'i32') }}};
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_close_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_close_access__async: 'auto',
+  _wasmfs_opfs_close_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_close_access: async (ctx, accessID, errPtr) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     try {
       await accessHandle.close();
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSAccessHandles.free(accessID);
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_close_blob__deps: ['$wasmfsOPFSBlobs'],
   _wasmfs_opfs_close_blob: (blobID) => {
     wasmfsOPFSBlobs.free(blobID);
   },
 
   _wasmfs_opfs_read_access__i53abi: true,
-  _wasmfs_opfs_read_access__deps: ['$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_read_access__async: 'auto',
+  _wasmfs_opfs_read_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_read_access: {{{ asyncIf(!PTHREADS) }}}(accessID, bufPtr, len, pos) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let data = HEAPU8.subarray(bufPtr, bufPtr + len);
     try {
       return {{{ awaitIf(!PTHREADS) }}}accessHandle.read(data, {at: pos});
     } catch (e) {
-      if (e.name == "TypeError") {
-        return -{{{ cDefs.EINVAL }}};
+      if (e.name == 'TypeError') {
+        return -EINVAL;
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefs.EIO }}};
+      return -EIO;
     }
   },
 
   _wasmfs_opfs_read_blob__i53abi: true,
-  _wasmfs_opfs_read_blob__deps: ['$wasmfsOPFSBlobs', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_read_blob__async: 'auto',
+  _wasmfs_opfs_read_blob__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_read_blob: async (ctx, blobID, bufPtr, len, pos, nreadPtr) => {
     let blob = wasmfsOPFSBlobs.get(blobID);
     let slice = blob.slice(pos, pos + len);
@@ -362,12 +381,12 @@ addToLibrary({
       nread += data.length;
     } catch (e) {
       if (e instanceof RangeError) {
-        nread = -{{{ cDefs.EFAULT }}};
+        nread = -EFAULT;
       } else {
 #if ASSERTIONS
         err('unexpected error:', e, e.stack);
 #endif
-        nread = -{{{ cDefs.EIO }}};
+        nread = -EIO;
       }
     }
 
@@ -376,76 +395,70 @@ addToLibrary({
   },
 
   _wasmfs_opfs_write_access__i53abi: true,
-  _wasmfs_opfs_write_access__deps: ['$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_write_access__async: 'auto',
+  _wasmfs_opfs_write_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_write_access: {{{ asyncIf(!PTHREADS) }}}(accessID, bufPtr, len, pos) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let data = HEAPU8.subarray(bufPtr, bufPtr + len);
     try {
       return {{{ awaitIf(!PTHREADS) }}}accessHandle.write(data, {at: pos});
     } catch (e) {
-      if (e.name == "TypeError") {
-        return -{{{ cDefs.EINVAL }}};
+      if (e.name == 'TypeError') {
+        return -EINVAL;
       }
 #if ASSERTIONS
       err('unexpected error:', e, e.stack);
 #endif
-      return -{{{ cDefs.EIO }}};
+      return -EIO;
     }
   },
 
-  _wasmfs_opfs_get_size_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_get_size_access__async: 'auto',
+  _wasmfs_opfs_get_size_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_get_size_access: async (ctx, accessID, sizePtr) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let size;
     try {
       size = await accessHandle.getSize();
     } catch {
-      size = -{{{ cDefs.EIO }}};
+      size = -EIO;
     }
     {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
     wasmfsOPFSProxyFinish(ctx);
   },
 
   _wasmfs_opfs_get_size_blob__i53abi: true,
-  _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSBlobs'],
   _wasmfs_opfs_get_size_blob: (blobID) => {
     // This cannot fail.
 	  return wasmfsOPFSBlobs.get(blobID).size;
   },
 
-  _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_get_size_file__async: 'auto',
+  _wasmfs_opfs_get_size_file__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_get_size_file: async (ctx, fileID, sizePtr) => {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     let size;
     try {
       size = (await fileHandle.getFile()).size;
     } catch {
-      size = -{{{ cDefs.EIO }}};
+      size = -EIO;
     }
     {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
     wasmfsOPFSProxyFinish(ctx);
   },
 
   _wasmfs_opfs_set_size_access__i53abi: true,
-  _wasmfs_opfs_set_size_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_set_size_access__async: 'auto',
+  _wasmfs_opfs_set_size_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_set_size_access: async (ctx, accessID, size, errPtr) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     try {
       await accessHandle.truncate(size);
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
   },
 
   _wasmfs_opfs_set_size_file__i53abi: true,
-  _wasmfs_opfs_set_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_set_size_file__async: 'auto',
+  _wasmfs_opfs_set_size_file__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_set_size_file: async (ctx, fileID, size, errPtr) => {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     try {
@@ -453,20 +466,19 @@ addToLibrary({
       await writable.truncate(size);
       await writable.close();
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_flush_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
-  _wasmfs_opfs_flush_access__async: 'auto',
+  _wasmfs_opfs_flush_access__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_flush_access: async (ctx, accessID, errPtr) => {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     try {
       await accessHandle.flush();
     } catch {
-      let err = -{{{ cDefs.EIO }}};
+      let err = -EIO;
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSProxyFinish(ctx);

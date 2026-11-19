@@ -28,7 +28,7 @@ char *dlerror()
  * is in a highly restrictive context where it cannot call (even the
  * libc-internal) free. It also can't take locks; thus the atomic list. */
 
-static void *volatile freebuf_queue;
+static void * _Atomic freebuf_queue;
 
 void __dl_thread_cleanup(void)
 {

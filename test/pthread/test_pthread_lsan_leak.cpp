@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <atomic>
 #include <thread>
 #include <emscripten.h>
 #include <sanitizer/lsan_interface.h>

@@ -6,9 +6,9 @@
 #include "emscripten/threading.h"
 #include "emscripten.h"
 
-static _Atomic int doneShutdown;
-static _Atomic int doneEntry;
-static pthread_t mythread;
+_Atomic int doneShutdown;
+_Atomic int doneEntry;
+pthread_t mythread;
 
 void *ThreadMain(void *threadid) {
   puts("Hello, world!");

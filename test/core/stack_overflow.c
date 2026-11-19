@@ -3,37 +3,30 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <inttypes.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <emscripten/emscripten.h>
+#include <string.h>
 #include <emscripten/stack.h>
 
-void recurse(unsigned long x);
+// Allocate more than the default 64KB stack per frame so that even when
+// static data sits below the stack, the stack pointer jumps past zero and
+// traps rather than overwriting the stack cookie.
+#define FRAME_SIZE (128 * 1024)
 
-void act(volatile unsigned long *a) {
-  printf("act     %ld\n", *a);
-  unsigned long b = (long)(intptr_t)(alloca(*a));
-  if (b < *a) *a--;
-  recurse(*a);
-}
-
-void recurse(volatile unsigned long x) {
-  printf("recurse %ld sp=%#lx\n", x, emscripten_stack_get_current());
-  volatile unsigned long a = x;
-  volatile char buffer[1000*1000];
-  buffer[x/2] = 0;
-  buffer[(x-1)/2] = 0;
-  EM_ASM({});
-  if (x*x < x) {
-    act(&a);
-    if (a < x) x = a;
-    x--;
+int recurse(int depth, unsigned char* prev) {
+  unsigned char buffer[FRAME_SIZE];
+  memset(buffer, depth, sizeof(buffer));
+  printf("recurse %d sp=%#" PRIxPTR "\n", depth, emscripten_stack_get_current());
+  if (prev) {
+    prev[0] += depth;
+    prev[FRAME_SIZE - 1] += depth;
   }
-  x += buffer[x/2];
-  if (x > 0) recurse(x-1);
+  if (depth > 0) {
+    return recurse(depth - 1, buffer) + buffer[0] + buffer[FRAME_SIZE - 1];
+  }
+  return buffer[0] + buffer[FRAME_SIZE - 1];
 }
 
 int main() {
-  recurse(1000*1000);
+  return recurse(1000, NULL);
 }

@@ -35,7 +35,6 @@ addToLibrary({
   }`,
 
   $generateTypePack__internal: true,
-  $generateTypePack__deps: ['$uleb128EncodeWithLen', '$wasmTypeCodes'],
   $generateTypePack: (types) => uleb128EncodeWithLen(Array.from(types, (type) => {
     var code = wasmTypeCodes[type];
 #if ASSERTIONS
@@ -45,55 +44,60 @@ addToLibrary({
   })),
 
 #if !WASM2JS || WASM == 2
+  // Compiled wrapper modules used by convertJsFunctionToWasm, keyed by
+  // signature. The module bytes depend only on the signature, so each one only
+  // needs to be compiled once.
+  $wrapperModuleCache__internal: true,
+  $wrapperModuleCache: {},
+
   // Wraps a JS function as a wasm function with a given signature.
-  $convertJsFunctionToWasm__deps: [
-    '$uleb128EncodeWithLen',
-    '$generateTypePack'
-  ],
   $convertJsFunctionToWasm: (func, sig) => {
 #if ASSERTIONS && !WASM_BIGINT
     assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
 #endif
-    // TODO: If the type reflection proposal ever makes progress we can use
-    // it here instead of creatign a new module.
-    var bytes = Uint8Array.of(
-      0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
-      0x01, 0x00, 0x00, 0x00, // version: 1
-      0x01, // Type section code
-        // The module is static, with the exception of the type section, which is
-        // generated based on the signature passed in.
-        ...uleb128EncodeWithLen([
-          0x01, // count: 1
-          0x60 /* form: func */,
-          // param types
-          ...generateTypePack(sig.slice(1)),
-          // return types (for now only supporting [] if `void` and single [T] otherwise)
-          ...generateTypePack(sig[0] === 'v' ? '' : sig[0])
-        ]),
-      // The rest of the module is static
-      0x02, 0x07, // import section
-        // (import "e" "f" (func 0 (type 0)))
-        0x01, 0x01, 0x65, 0x01, 0x66, 0x00, 0x00,
-      0x07, 0x05, // export section
-        // (export "f" (func 0 (type 0)))
-        0x01, 0x01, 0x66, 0x00, 0x00,
-    );
+    var module = wrapperModuleCache[sig];
+    if (!module) {
+      // TODO: If the type reflection proposal ever makes progress we can use
+      // it here instead of creatign a new module.
+      var bytes = Uint8Array.of(
+        0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
+        0x01, 0x00, 0x00, 0x00, // version: 1
+        0x01, // Type section code
+          // The module is static, with the exception of the type section, which is
+          // generated based on the signature passed in.
+          ...uleb128EncodeWithLen([
+            0x01, // count: 1
+            0x60 /* form: func */,
+            // param types
+            ...generateTypePack(sig.slice(1)),
+            // return types (for now only supporting [] if `void` and single [T] otherwise)
+            ...generateTypePack(sig[0] === 'v' ? '' : sig[0])
+          ]),
+        // The rest of the module is static
+        0x02, 0x07, // import section
+          // (import "e" "f" (func 0 (type 0)))
+          0x01, 0x01, 0x65, 0x01, 0x66, 0x00, 0x00,
+        0x07, 0x05, // export section
+          // (export "f" (func 0 (type 0)))
+          0x01, 0x01, 0x66, 0x00, 0x00,
+      );
 
-    // We can compile this wasm module synchronously because it is very small.
-    // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
-    var module = new WebAssembly.Module(bytes);
+      // We can compile this wasm module synchronously because it is very small.
+      // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
+      module = wrapperModuleCache[sig] = new WebAssembly.Module(bytes);
+    }
+
     var instance = new WebAssembly.Instance(module, { 'e': { 'f': func } });
     var wrappedFunc = instance.exports['f'];
     return wrappedFunc;
   },
-#endif // !WASM2JS && WASM != 2
+#endif // !WASM2JS || WASM == 2
 
   $freeTableIndexes: [],
 
   // Weak map of functions in the table to their indexes, created on first use.
   $functionsInTableMap: undefined,
 
-  $getEmptyTableSlot__deps: ['$freeTableIndexes', '$wasmTable'],
   $getEmptyTableSlot: () => {
     // Reuse a free index if there is one, otherwise grow.
     if (freeTableIndexes.length) {
@@ -114,7 +118,6 @@ addToLibrary({
 #endif
   },
 
-  $updateTableMap__deps: ['$getWasmTableEntry'],
   $updateTableMap: (offset, count) => {
     if (functionsInTableMap) {
       for (var i = offset; i < offset + count; i++) {
@@ -127,7 +130,6 @@ addToLibrary({
     }
   },
 
-  $getFunctionAddress__deps: ['$updateTableMap', '$functionsInTableMap', '$wasmTable'],
   $getFunctionAddress: (func) => {
     // First, create the map if this is the first use.
     if (!functionsInTableMap) {
@@ -142,20 +144,10 @@ addToLibrary({
    * 'sig' parameter is required if the function being added is a JS function.
    */
   $addFunction__docs: '/** @param {string=} sig */',
-  $addFunction__deps: ['$getFunctionAddress',
-                       '$functionsInTableMap', '$getEmptyTableSlot',
-                       '$setWasmTableEntry',
-#if !WASM2JS || WASM == 2
-                       '$convertJsFunctionToWasm',
-#endif
-#if ASSERTIONS >= 2
-                       '$getWasmTableEntry', '$wasmTable',
-#endif
-  ],
 
   $addFunction: (func, sig) => {
 #if ASSERTIONS
-    assert(typeof func != 'undefined');
+    assert(typeof func !== 'undefined');
 #endif // ASSERTIONS
     // Check if the function is already in the table, to ensure each function
     // gets a unique index.
@@ -189,7 +181,7 @@ addToLibrary({
         throw err;
       }
 #if ASSERTIONS
-      assert(typeof sig != 'undefined', 'Missing signature argument to addFunction: ' + func);
+      assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction: ' + func);
 #endif
       var wrapped = convertJsFunctionToWasm(func, sig);
       setWasmTableEntry(ret, wrapped);
@@ -201,8 +193,6 @@ addToLibrary({
     return ret;
   },
 
-  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes',
-                          '$getWasmTableEntry', '$setWasmTableEntry'],
   $removeFunction: (index) => {
     functionsInTableMap.delete(getWasmTableEntry(index));
     setWasmTableEntry(index, null);

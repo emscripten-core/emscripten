@@ -12,10 +12,8 @@
 int main() {
   printf("*\n");
 #define MAX 100
-  long ptrs[MAX];
-  int groups[MAX];
-  memset(ptrs, 0, MAX * sizeof(long));
-  memset(groups, 0, MAX * sizeof(int));
+  long ptrs[MAX] = {0};
+  int groups[MAX] = {0};
   int next_group = 1;
 #define TEST(X)                         \
   {                                     \

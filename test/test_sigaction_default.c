@@ -11,11 +11,11 @@
 #include <assert.h>
 #include <emscripten.h>
 
-static void delayedWork(void *unused) {
+void delayedWork(void *unused) {
   puts("3");
 }
 
-static void cleanExit() {
+void cleanExit() {
   puts("4");
 }
 

@@ -12,7 +12,7 @@ pthread_t thread;
 
 _Atomic int tries;
 
-static const int EXPECTED_TRIES = 7;
+const int EXPECTED_TRIES = 7;
 
 void loop() {
   void* retval;

@@ -18,7 +18,7 @@
 #include "src/__support/macros/config.h"
 #include "src/__support/macros/optimization.h" // LIBC_UNLIKELY
 
-#include "common_constants.h"
+#include "src/__support/math/common_constants.h"
 
 namespace LIBC_NAMESPACE_DECL {
 
@@ -28,6 +28,8 @@ using Float128 = typename fputil::DyadicFloat<128>;
 using LIBC_NAMESPACE::operator""_u128;
 
 namespace {
+
+using namespace common_constants_internal;
 
 // R1[i] = 2^-8 * nearestint( 2^8 / (1 + i * 2^-7) )
 constexpr double R1[129] = {
@@ -933,13 +935,15 @@ LLVM_LIBC_FUNCTION(double, log1p, (double x)) {
       //   log(1 + x) = nextafter(x, -inf) for FE_DOWNWARD, or
       //                                       FE_TOWARDZERO and x > 0,
       //              = x                  otherwise.
-      if (x == 0.0)
+      if (x + x == 0.0)
         return x + x; // Handle FTZ/DAZ correctly.
 
-      volatile float tp = 1.0f;
-      volatile float tn = -1.0f;
-      bool rdp = (tp - 0x1p-25f != tp);
-      bool rdn = (tn - 0x1p-24f != tn);
+      volatile float tpv = 1.0f;
+      volatile float tnv = -1.0f;
+      float tp = tpv - 0x1p-25f;
+      float tn = tnv - 0x1p-24f;
+      bool rdp = (tp != tpv);
+      bool rdn = (tn != tnv);
 
       if (x > 0 && rdp) {
         return FPBits_t(x_u - 1).get_val();
@@ -949,7 +953,7 @@ LLVM_LIBC_FUNCTION(double, log1p, (double x)) {
         return FPBits_t(x_u + 1).get_val();
       }
 
-      return (x + x == 0.0) ? x + x : x;
+      return x;
     }
     x_dd = fputil::exact_add(1.0, x);
   }

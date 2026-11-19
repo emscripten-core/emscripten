@@ -44,7 +44,7 @@ function createWasmAudioWorkletProcessor() {
       // be full if we allocate all the available space) leaving room for a
       // single AudioSampleFrame as a minimum. There's an arbitrary maximum of
       // 64 frames, for the case where a multi-MB stack is passed.
-      this.outputViews = new Array(Math.min(((wwParams.stackSize - {{{ STACK_ALIGN }}}) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
+      this.outputViews = new Array(Math.min(((wwParams.stackSize - STACK_ALIGN) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
 #if ASSERTIONS
       assert(this.outputViews.length > 0, `AudioWorklet needs more stack allocating (at least ${this.bytesPerChannel})`);
 #endif
@@ -123,13 +123,15 @@ function createWasmAudioWorkletProcessor() {
         outputViewsNeeded += entry.length;
       }
       stackMemoryData += outputViewsNeeded * this.bytesPerChannel;
-      var numParams = 0;
 #if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
+      var numParams = 0;
       for (entry in parameters) {
         ++numParams;
         stackMemoryStruct += {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
         stackMemoryData += parameters[entry].byteLength;
       }
+#else
+      const numParams = 0;
 #endif
       var oldStackPtr = stackSave();
 #if ASSERTIONS
@@ -185,7 +187,7 @@ function createWasmAudioWorkletProcessor() {
         dataPtr += subentry.length * {{{ getNativeTypeSize('float') }}};
       }
 #else
-      var paramsPtr = 0;
+      const paramsPtr = 0;
 #endif
 
       // Copy output audio descriptor structs to Wasm. 'outputsPtr' is the start
@@ -328,7 +330,7 @@ port.onmessage = async (msg) => {
     // Note: we convert the pointer arg manually here since the call site
     // ($_EmAudioDispatchProcessorCallback) is used with various signatures
     // and we do not know the types in advance.
-    port.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ to64('d.userData') }}}] });
+    port.postMessage({'_wsc': d.callback, args: [d.contextHandle, {{{ cDefs.EM_TRUE }}}, {{{ to64('d.userData') }}}] });
   } else if (d['_wsc']) {
     getWasmTableEntry(d['_wsc'])(...d.args);
   };

@@ -9,8 +9,6 @@
 #error "this file should not be included when IMPORTED_MEMORY is set"
 #endif
 
-// check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-
 function initMemory() {
 #if WASM_ESM_INTEGRATION && PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) {

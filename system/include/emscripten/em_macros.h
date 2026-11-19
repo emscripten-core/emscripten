@@ -31,10 +31,10 @@
  * setting.
  *
  * For example, if your code contains an EM_ASM or EM_JS block that make use of
- * the allocate and stackSave JS library functions then you might write this in
+ * the stringToNewUTF8 and stackSave JS library functions then you might write this in
  * your library source code:
  *
- *   EM_JS_DEPS(mylib_dep, "$allocate,$stackSave");
+ *   EM_JS_DEPS(mylib_dep, "$stringToNewUTF8,$stackSave");
  *
  * The emscripten linker will then pick this up and make sure those symbols get
  * included in the JS support library.

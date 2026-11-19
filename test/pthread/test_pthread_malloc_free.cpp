@@ -17,7 +17,7 @@
 pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
 std::vector<void*> allocatedMemory;
 
-static void *thread_start(void *arg) {
+void *thread_start(void *arg) {
   for (int i = 0; i < NUM_BLOCKS_TO_ALLOC; ++i) {
     void *mem = malloc(4);
     pthread_mutex_lock(&vectorMutex);

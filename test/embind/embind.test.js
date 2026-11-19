@@ -146,7 +146,7 @@ module({
             });
             assert.equal('Cannot pass "true" as a Derived*', e.message);
 
-            if (cm.getCompilerSetting('STRICT_JS') && !cm.getCompilerSetting('DYNAMIC_EXECUTION')) {
+            if (cm.getCompilerSetting('STRICT_JS')) {
               var e = assert.throws(TypeError, function() {
                   cm.Derived.prototype.setMember.call(null, "foo");
               });
@@ -988,15 +988,15 @@ module({
             var dummy_overloads = cm.MultipleOverloadsDependingOnDummy.prototype.dummy;
             // check if the overloadTable is correctly named
             // it can be minimized if using closure compiler
-            if (dummy_overloads.hasOwnProperty('overloadTable')) {
-                assert.false(dummy_overloads.overloadTable.hasOwnProperty('undefined'));
+            if (Object.hasOwn(dummy_overloads, 'overloadTable')) {
+                assert.false(Object.hasOwn(dummy_overloads.overloadTable, 'undefined'));
             }
 
             var dummy_static_overloads = cm.MultipleOverloadsDependingOnDummy.staticDummy;
             // check if the overloadTable is correctly named
             // it can be minimized if using closure compiler
-            if (dummy_static_overloads.hasOwnProperty('overloadTable')) {
-                assert.false(dummy_static_overloads.overloadTable.hasOwnProperty('undefined'));
+            if (Object.hasOwn(dummy_static_overloads, 'overloadTable')) {
+                assert.false(Object.hasOwn(dummy_static_overloads.overloadTable, 'undefined'));
             }
 
             // this part should fail anyway if there is no overloadTable
@@ -1016,8 +1016,8 @@ module({
             var dummy_free_func = cm.getDummy;
             console.log(dummy_free_func);
 
-            if (dummy_free_func.hasOwnProperty('overloadTable')) {
-                assert.false(dummy_free_func.overloadTable.hasOwnProperty('undefined'));
+            if (Object.hasOwn(dummy_free_func, 'overloadTable')) {
+                assert.false(Object.hasOwn(dummy_free_func.overloadTable, 'undefined'));
             }
 
             var dummy = cm.getDummy();

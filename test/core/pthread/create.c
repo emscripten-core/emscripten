@@ -14,7 +14,7 @@
 #define NUM_THREADS 2
 #define TOTAL 100
 
-static _Atomic int sum;
+_Atomic int sum;
 
 void *ThreadMain(void *arg) {
   for (int i = 0; i < TOTAL; i++) {

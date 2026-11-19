@@ -8,16 +8,16 @@
 
 #define TOTAL_RUNS 20
 
-static SDL_Window *window;
-static SDL_Surface *surface;
+SDL_Window *window;
+SDL_Surface *surface;
 
-static void sdlError(const char *str) 
+void sdlError(const char *str)
 {
     fprintf(stderr, "Error at %s: %s\n", str, SDL_GetError());
     emscripten_force_exit(1);
 }
 
-static void main_loop(void)
+void main_loop(void)
 {
     static unsigned int runs = 0;
 

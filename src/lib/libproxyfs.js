@@ -5,14 +5,13 @@
  */
 
 addToLibrary({
-  $PROXYFS__deps: ['$FS', '$PATH', '$ERRNO_CODES'],
   $PROXYFS: {
     mount(mount) {
       return PROXYFS.createNode(null, '/', mount.opts.fs.lstat(mount.opts.root).mode, 0);
     },
-    createNode(parent, name, mode, dev) {
+    createNode(parent, name, mode, dev = undefined) {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError(EINVAL);
       }
       var node = FS.createNode(parent, name, mode);
       node.node_ops = PROXYFS.node_ops;
@@ -196,9 +195,9 @@ addToLibrary({
       },
       llseek(stream, offset, whence) {
         var position = offset;
-        if (whence === {{{ cDefs.SEEK_CUR }}}) {
+        if (whence === SEEK_CUR) {
           position += stream.position;
-        } else if (whence === {{{ cDefs.SEEK_END }}}) {
+        } else if (whence === SEEK_END) {
           if (FS.isFile(stream.node.mode)) {
             try {
               var stat = stream.node.node_ops.getattr(stream.node);
@@ -210,7 +209,7 @@ addToLibrary({
         }
 
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError(EINVAL);
         }
 
         return position;
@@ -220,5 +219,5 @@ addToLibrary({
 });
 
 if (WASMFS) {
-  error("using -lproxyfs is not currently supported in WasmFS.");
+  error('using -lproxyfs is not currently supported in WasmFS.');
 }

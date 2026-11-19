@@ -35,9 +35,9 @@ def check_defines(info):
     if ':' in define:
       key = fr"cDefs\['{define}'\]"
     else:
-      key = fr'cDefs\.{define}\>'
+      key = fr'\<{define}\>'
     # grep --quiet returns 0 when there is a match
-    if subprocess.run(['git', 'grep', '--quiet', key], check=False).returncode != 0:
+    if subprocess.run(['git', 'grep', '--quiet', key, '--', 'src/', ':!src/struct_info*'], check=False).returncode != 0:
       print(define)
 
 

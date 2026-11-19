@@ -20,9 +20,8 @@ mechanisms to work.
     you, so that it is asynchronous (hence the name "Asyncify") even though you
     wrote it in a normal synchronous way. This works in most environments, but
     can cause the Wasm output to be much larger.
-  * `JSPI` (experimental) - Uses the VM's support for JavaScript Promise
-    Integration (JSPI) for interacting with async JavaScript. The code size will
-    remain the same, but support for this feature is still experimental.
+  * `JSPI` - Uses the VM's support for JavaScript Promise Integration (JSPI)
+    for interacting with async JavaScript. The code size will remain the same.
 
 For more on Asyncify see the
 `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_
@@ -169,7 +168,7 @@ Marking JS library functions as async
 If you mark a JS library function as async using the ``__async`` decorator then
 the compiler will take a care of all the details of using the ``Asyncify`` API
 for you.  The function will also automatically be included in
-:ref:`ASYNCIFY_IMPORTS`.  All you need to do is write normal async JS function
+:ref:`ASYNCIFY_IMPORTS`.  All you need to do is write a normal async JS function
 (either using the explict ``async`` JS keyword or returning a ``Promise``
 object).  For example:
 
@@ -201,6 +200,63 @@ You can use ``__async: 1`` if you just want to include the function in
 :ref:`ASYNCIFY_IMPORTS` or ``__async: 'auto'`` if you also want the function to
 wrapper in ``Asyncify.handleAsync``.
 
+``__async: 'auto'`` allows the same function to work synchronously without
+``ASYNCIFY``.  A function whose last parameter is named ``sync`` is told there
+whether it must return synchronously.  This is ``false`` under
+``ASYNCIFY``/JSPI, and when called from a pthread with ``__proxy: 'sync'`` (the
+main thread awaits the result on its behalf); it is ``true`` otherwise, where a
+returned ``Promise`` could not be waited for:
+
+.. code-block:: js
+
+   addToLibrary({
+     lookup__sig: 'pp',
+     lookup__async: 'auto',
+     lookup__proxy: 'sync',
+     lookup: (name, sync) => {
+       if (sync) return -EAGAIN;
+       return fetchSomething(name);  // returns a Promise
+     },
+   });
+
+In the above example, the same ``lookup`` supports the async promise-returning
+path for ``ASYNCIFY`` and a pthread, while returning the ``EAGAIN`` error when
+called synchronously.  As ``sync`` is always ``false`` under ``ASYNCIFY``/JSPI,
+the function must then be called from a stack that can suspend, as with any
+other async import (under JSPI, within one of the :ref:`JSPI_EXPORTS`).
+
+.. _async_auto_call_variants:
+
+Async auto call variants
+########################
+
+Instead of ``'auto'``, ``__async`` can be given a list of the forms in which
+the function waits.  ``'auto'`` is the function itself, behaving as ``__async:
+'auto'``; the other entries are call variants generated alongside it.  The
+``'promise'`` variant is the function called with a ``_promise`` suffix,
+obtaining the promise value directly without suspending, so it can be called
+from any stack.
+
+Changing the ``lookup`` definition from the example in the previous section
+above to ``lookup__async: ['auto', 'promise']`` defines both C variants:
+
+.. code-block:: c
+
+   intptr_t lookup(const char* name);
+   em_promise_t lookup_promise(const char* name);
+
+Calling ``lookup_promise()`` runs the same body (with ``sync`` always
+``false``) and returns a promise handle (``em_promise_t``, see
+``<emscripten/promise.h>``) on the calling thread, fulfilled with the result or
+rejected with ``NULL``.  The function may also return ``void``, in which case
+the result is ``NULL``.  These variants are only generated when explicitly used.
+
+Without ``'auto'`` in the list, as ``lookup__async: ['promise']``, ``lookup``
+itself never suspends: it stays a plain import under ``ASYNCIFY``/JSPI, where
+``sync`` is then ``true`` as well (``false`` only when proxied from a pthread),
+and ``lookup_promise`` is the way to wait for it.  This suits functions that
+must stay callable from stacks that cannot suspend, where a suspending import
+would trap under JSPI.
 
 Ways to use Asyncify APIs in older engines
 ##########################################

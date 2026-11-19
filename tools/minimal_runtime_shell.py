@@ -8,6 +8,7 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from . import building, shared, utils
+from .cmdline import options
 from .settings import settings
 
 logger = logging.getLogger('minimal_runtime_shell')
@@ -26,21 +27,12 @@ def generate_minimal_runtime_load_statement(target_basename):
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in
   # the template directly)
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
-    if settings.MIN_SAFARI_VERSION < 150000:
-      # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
-      download_wasm = f"WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{target_basename}.wasm')) : binary('{target_basename}.wasm')"
-    else:
-      # WebAssembly.compileStreaming() is unconditionally supported:
-      download_wasm = f"WebAssembly.compileStreaming(fetch('{target_basename}.wasm'))"
+    # WebAssembly.compileStreaming() is unconditionally supported:
+    download_wasm = f"WebAssembly.compileStreaming(fetch('{target_basename}.wasm'))"
   elif settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
-    # Same compatibility story as above for
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-    if settings.MIN_SAFARI_VERSION < 150000:
-      download_wasm = f"!WebAssembly.instantiateStreaming && binary('{target_basename}.wasm')"
-    else:
-      # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm
-      # in the .html file, but leave it to the .js file to download
-      download_wasm = None
+    # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm
+    # in the .html file, but leave it to the .js file to download
+    download_wasm = None
   else:
     download_wasm = f"binary('{target_basename}.wasm')"
 
@@ -72,23 +64,23 @@ def generate_minimal_runtime_load_statement(target_basename):
   if settings.MODULARIZE:
     modularize_imports = ',\n  '.join(modularize_imports)
     if settings.WASM_WORKERS:
-      then_statements += ['''\
+      then_statements += [f'''\
   // Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this"
   // directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see
   // https://bugzil.la/1540101
-  var js = URL.createObjectURL(new Blob([r[0]], { type: \'application/javascript\' }));
-  script(js).then((c) => c({
-  %s
-  }));''' % modularize_imports]
+  var js = URL.createObjectURL(new Blob([r[0]], {{ type: \'application/javascript\' }}));
+  script(js).then((c) => c({{
+  {modularize_imports}
+  }}));''']
     else:
-      then_statements += ['''\
+      then_statements += [f'''\
   // Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this"
   // directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see
   // https://bugzil.la/1540101
   var js = r[0];
-  js({
-  %s
-  });''' % modularize_imports]
+  js({{
+  {modularize_imports}
+  }});''']
 
   binary_xhr = '  var binary = (url) => fetch(url).then((rsp) => rsp.arrayBuffer());'
 
@@ -101,10 +93,9 @@ def generate_minimal_runtime_load_statement(target_basename):
 #if MODULARIZE
 #if WASM == 2
         // In MODULARIZEd WASM==2 builds, we use this same function to download
-        // both .js and .asm.js that are structured with {{{ EXPORT_NAME }}}
-        // at the top level, but also use this function to download the Wasm2JS
-        // file that does not have an {{{ EXPORT_NAME }}} function, hence the
-        // variable typeof check:
+        // both the main .js file (structured with {{{ EXPORT_NAME }}} at the
+        // top level) and the Wasm2JS file (which does not have an
+        // {{{ EXPORT_NAME }}} function), hence the variable typeof check:
         if (typeof {{{ EXPORT_NAME }}} !== 'undefined') {
           var c = {{{ EXPORT_NAME }}};
           delete {{{ EXPORT_NAME }}};
@@ -134,7 +125,7 @@ def generate_minimal_runtime_load_statement(target_basename):
       return script_xhr + files_to_load[0] + ";"
 
   if not settings.MODULARIZE or settings.WASM_WORKERS:
-    # If downloading multiple files like .wasm or .mem, those need to be loaded in
+    # If downloading multiple files like .wasm, those need to be loaded in
     # before we can add the main runtime script to the DOM, so convert the main .js
     # script load from direct script() load to a binary() load so we can still
     # immediately start the download, but can control when we add the script to the
@@ -151,7 +142,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
     files_to_load[0] = f"binary('{settings.TARGET_JS_NAME}')"
     if not settings.MODULARIZE:
-      then_statements += ["var url = %sURL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));" % save_js,
+      then_statements += [f"var url = {save_js}URL.createObjectURL(new Blob([r[0]], {{ type: 'application/javascript' }}));",
                           script_load]
 
   # Add in binary() XHR loader if used:
@@ -164,11 +155,12 @@ def generate_minimal_runtime_load_statement(target_basename):
   load = '\n'.join(prefix_statements)
   load += "Promise.all([" + ', '.join(files_to_load) + "])"
   if len(then_statements) > 0:
-    load += '.then((r) => {\n  %s\n});' % '\n  '.join(then_statements)
+    statements_str = '\n  '.join(then_statements)
+    load += f'.then((r) => {{\n  {statements_str}\n}});'
   return load
 
 
-def generate_minimal_runtime_html(target, options, js_target, target_basename):
+def generate_minimal_runtime_html(target, js_target, target_basename):
   logger.debug('generating HTML for minimal runtime')
   shell = utils.read_file(options.shell_html)
   if settings.SINGLE_FILE:

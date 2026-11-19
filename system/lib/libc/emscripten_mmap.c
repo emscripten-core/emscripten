@@ -32,7 +32,7 @@ struct map {
 #define ALIGN_TO(value,alignment) (((value) + ((alignment) - 1)) & ~((alignment) - 1))
 
 // Linked list of all mapping, guarded by a musl-style lock (LOCK/UNLOCK)
-static volatile int lock[1];
+static _Atomic int lock[1];
 static struct map* mappings;
 
 static struct map* find_mapping(void *addr, struct map** prev) {

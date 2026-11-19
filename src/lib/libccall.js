@@ -19,7 +19,6 @@ addToLibrary({
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack', '$stackSave', '$stackRestore', '$stackAlloc'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
@@ -70,7 +69,7 @@ addToLibrary({
       for (var i = 0; i < args.length; i++) {
         var converter = toC[argTypes[i]];
         if (converter) {
-          if (stack === 0) stack = stackSave();
+          if (!stack) stack = stackSave();
           cArgs[i] = converter(args[i]);
         } else {
           cArgs[i] = args[i];
@@ -86,7 +85,7 @@ addToLibrary({
 #if ASYNCIFY == 1
       runtimeKeepalivePop();
 #endif
-      if (stack !== 0) stackRestore(stack);
+      if (stack) stackRestore(stack);
       return convertReturnValue(ret);
     }
 #if ASYNCIFY
@@ -136,11 +135,6 @@ addToLibrary({
    * @param {Array=} argTypes
    * @param {Object=} opts
    */`,
-  $cwrap__deps: [ '$ccall',
-#if !ASSERTIONS
-    '$getCFunc',
-#endif
-  ],
   $cwrap: (ident, returnType, argTypes, opts) => {
 #if !ASSERTIONS
     // When the function takes numbers and returns a number, we can just return

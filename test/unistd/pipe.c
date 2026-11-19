@@ -73,8 +73,7 @@ void test_select(int *fd, bool data_available) {
 }
 
 void test_poll(int *fd, int data_available) {
-  struct pollfd pfds[2];
-  memset(pfds, 0, sizeof pfds);
+  struct pollfd pfds[2] = {0};
   pfds[0].fd = fd[0];
   pfds[0].events = POLLIN | POLLOUT;
   pfds[1].fd = fd[1];
@@ -101,9 +100,12 @@ void test_most() {
 
   assert(pipe(fd) == 0);
 
-  // Test that pipe is statable
+  // Test that both ends of the pipe are statable and are FIFOs
   struct stat st;
   assert(fstat(fd[0], &st) == 0);
+  assert(S_ISFIFO(st.st_mode));
+  assert(fstat(fd[1], &st) == 0);
+  assert(S_ISFIFO(st.st_mode));
 
   // Test that pipe is not seekable
 
@@ -212,8 +214,7 @@ void test_redirect_stderr_to_pipe() {
   assert(dup2(original_fd, stderrfd) == stderrfd); //  restore fd (stderr) to its original state
   assert(close(original_fd) == 0);
 
-  char buffer[10];
-  memset(buffer, 0, 10);
+  char buffer[10] = {0};
   assert(read(read_end_fd, buffer, 10) == 3);
   assert(strcmp(buffer, "xyz") == 0);
   assert(close(read_end_fd) == 0); // Close the read end of the pipe

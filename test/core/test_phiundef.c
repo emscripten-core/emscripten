@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static int state;
+int state;
 
 struct my_struct {
   union {

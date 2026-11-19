@@ -1,3 +1,5 @@
+#include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -114,6 +116,9 @@ EMSCRIPTEN_KEEPALIVE int myreade() {
 
 EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
   FILE* in = fopen("/working2/hoge.txt","r");
+
+  assert(fseek(in, -1L, SEEK_SET) == -1);
+  assert(errno == EINVAL);
 
   fseek(in, 0L, SEEK_END);
   int fileSize = ftell(in);

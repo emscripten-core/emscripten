@@ -9,12 +9,13 @@ assert(SHARED_MEMORY);
 addToLibrary({
 // Chrome 87 shipped Atomics.waitAsync:
 //   https://www.chromestatus.com/feature/6243382101803008
-// However its implementation is faulty:
+// However its implementation is faulty until Chrome 91:
 //   https://bugs.chromium.org/p/chromium/issues/detail?id=1167541
-// Firefox Nightly 86.0a1 (2021-01-15) does not yet have it:
+// Firefox added support in 145:
 //   https://bugzilla.mozilla.org/show_bug.cgi?id=1467846
-// And at the time of writing, no other browser has it either.
-#if MIN_CHROME_VERSION < 91 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED || ENVIRONMENT_MAY_BE_NODE
+// Safari added support in 16.4, and Node.js in 16.0.0:
+//   https://caniuse.com/mdn-javascript_builtins_atomics_waitasync
+#if MIN_CHROME_VERSION < 91 || MIN_SAFARI_VERSION < 160400 || MIN_FIREFOX_VERSION < 145
   // Partially polyfill Atomics.waitAsync() if not available in the browser.
   // Also polyfill for old Chrome-based browsers, where Atomics.waitAsync is
   // broken until Chrome 91, see:
@@ -22,8 +23,11 @@ addToLibrary({
   //   https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the
   // target memory location.
+#if MIN_CHROME_VERSION < 91
   $waitAsyncPolyfilled: '=(!Atomics.waitAsync || (globalThis.navigator?.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91));',
-  $polyfillWaitAsync__deps: ['$waitAsyncPolyfilled'],
+#else
+  $waitAsyncPolyfilled: '=!Atomics.waitAsync;',
+#endif
   $polyfillWaitAsync__postset: `if (waitAsyncPolyfilled) {
   let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
   function __Atomics_pollWaitAsyncAddresses() {
@@ -69,7 +73,7 @@ addToLibrary({
   },
 
 #if ASYNCIFY
-  _emscripten_atomic_wait_promise__deps: ['$polyfillWaitAsync', '$atomicWaitStates', '$addPromise'],
+  _emscripten_atomic_wait_promise__deps: ['$polyfillWaitAsync'],
   _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
     var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (wait.async) {
@@ -89,12 +93,12 @@ addToLibrary({
 
   $atomicWaitStates__internal: true,
   $atomicWaitStates: ['ok', 'not-equal', 'timed-out'],
-  $liveAtomicWaitAsyncs: {},
+  $liveAtomicWaitAsyncs: new Map(),
   $liveAtomicWaitAsyncs__internal: true,
   $liveAtomicWaitAsyncCounter: 0,
   $liveAtomicWaitAsyncCounter__internal: true,
 
-  emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$polyfillWaitAsync', '$callUserCallback'],
+  emscripten_atomic_wait_async__deps: ['$polyfillWaitAsync'],
   emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (!wait.async) return atomicWaitStates.indexOf(wait.value);
@@ -104,30 +108,28 @@ addToLibrary({
     // Valid counter range: 0...2^31-1
     let counter = liveAtomicWaitAsyncCounter;
     liveAtomicWaitAsyncCounter = Math.max(0, (liveAtomicWaitAsyncCounter+1)|0);
-    liveAtomicWaitAsyncs[counter] = addr;
+    liveAtomicWaitAsyncs.set(counter, addr);
     {{{ runtimeKeepalivePush() }}}
     wait.value.then((value) => {
-      if (liveAtomicWaitAsyncs[counter]) {
+      if (liveAtomicWaitAsyncs.delete(counter)) {
         {{{ runtimeKeepalivePop() }}}
-        delete liveAtomicWaitAsyncs[counter];
-        callUserCallback(() => {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(addr, val, atomicWaitStates.indexOf(value), userData));
+        callUserCallback({{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}, addr, val, atomicWaitStates.indexOf(value), userData);
       }
     });
     return -counter;
   },
 
-  emscripten_atomic_cancel_wait_async__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_wait_async: (waitToken) => {
 #if ASSERTIONS
-    if (waitToken == {{{ cDefs.ATOMICS_WAIT_NOT_EQUAL }}}) {
+    if (waitToken == ATOMICS_WAIT_NOT_EQUAL) {
       warnOnce('Attempted to call emscripten_atomic_cancel_wait_async() with a value ATOMICS_WAIT_NOT_EQUAL (1) that is not a valid wait token! Check success in return value from call to emscripten_atomic_wait_async()');
-    } else if (waitToken == {{{ cDefs.ATOMICS_WAIT_TIMED_OUT }}}) {
+    } else if (waitToken == ATOMICS_WAIT_TIMED_OUT) {
       warnOnce('Attempted to call emscripten_atomic_cancel_wait_async() with a value ATOMICS_WAIT_TIMED_OUT (2) that is not a valid wait token! Check success in return value from call to emscripten_atomic_wait_async()');
     } else if (waitToken > 0) {
       warnOnce(`Attempted to call emscripten_atomic_cancel_wait_async() with an invalid wait token value ${waitToken}`);
     }
 #endif
-    var address = liveAtomicWaitAsyncs[waitToken];
+    var address = liveAtomicWaitAsyncs.get(waitToken);
     if (address) {
       // Notify the waitAsync waiters on the memory location, so that JavaScript
       // garbage collection can occur.
@@ -135,31 +137,29 @@ addToLibrary({
       // This has the unfortunate effect of causing spurious wakeup of all other
       // waiters at the address (which causes a small performance loss).
       Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
-      delete liveAtomicWaitAsyncs[waitToken];
+      liveAtomicWaitAsyncs.delete(waitToken);
       {{{ runtimeKeepalivePop() }}}
-      return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+      return EMSCRIPTEN_RESULT_SUCCESS;
     }
     // This waitToken does not exist.
-    return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
+    return EMSCRIPTEN_RESULT_INVALID_PARAM;
   },
 
-  emscripten_atomic_cancel_all_wait_asyncs__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs: () => {
-    let waitAsyncs = Object.values(liveAtomicWaitAsyncs);
-    for (var address of waitAsyncs) {
+    for (var address of liveAtomicWaitAsyncs.values()) {
       Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
     }
-    liveAtomicWaitAsyncs = {};
-    return waitAsyncs.length;
+    var count = liveAtomicWaitAsyncs.size;
+    liveAtomicWaitAsyncs.clear();
+    return count;
   },
 
-  emscripten_atomic_cancel_all_wait_asyncs_at_address__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs_at_address: (address) => {
     let numCancelled = 0;
-    for (var [waitToken, waitAddress] of Object.entries(liveAtomicWaitAsyncs)) {
+    for (var [waitToken, waitAddress] of liveAtomicWaitAsyncs) {
       if (waitAddress == address) {
         Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
-        delete liveAtomicWaitAsyncs[waitToken];
+        liveAtomicWaitAsyncs.delete(waitToken);
         numCancelled++;
       }
     }

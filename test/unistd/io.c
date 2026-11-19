@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -16,7 +17,7 @@
 EM_JS_DEPS(main, "$ERRNO_CODES");
 
 int main() {
-  EM_ASM(
+  MAIN_THREAD_EM_ASM(
     FS.mkdir('/working');
 #if NODEFS
     FS.mount(NODEFS, { root: '.' }, '/working');
@@ -74,41 +75,72 @@ int main() {
   char writeBuffer[] = "writeme";
 
   int fl = open("/working/folder", O_RDWR);
-  printf("read from folder: %zd\n", read(fl, readBuffer, sizeof readBuffer));
+  assert(fl == -1);
+  errno = 0;
+  ssize_t rtn = read(fl, readBuffer, sizeof readBuffer);
+  assert(rtn == -1);
+  assert(errno == EBADF);
+  printf("read from folder: %zd\n", rtn);
   printf("errno: %d\n", errno);
   errno = 0;
-  printf("write to folder: %zd\n", write(fl, writeBuffer, sizeof writeBuffer));
+  rtn = write(fl, writeBuffer, sizeof writeBuffer);
+  assert(rtn == -1);
+  assert(errno == EBADF);
+  printf("write to folder: %zd\n", rtn);
   printf("errno: %d\n\n", errno);
   errno = 0;
 
   int bd = open("/broken-device", O_RDWR);
-  printf("read from broken device: %zd\n", read(bd, readBuffer, sizeof readBuffer));
+  assert(bd >= 0);
+  rtn = read(bd, readBuffer, sizeof readBuffer);
+  assert(rtn == -1);
+  assert(errno == EIO);
+  printf("read from broken device: %zd\n", rtn);
   printf("errno: %d\n", errno);
   errno = 0;
-  printf("write to broken device: %zd\n", write(bd, writeBuffer, sizeof writeBuffer));
+  rtn = write(bd, writeBuffer, sizeof writeBuffer);
+  assert(rtn == -1);
+  assert(errno == EIO);
+  printf("write to broken device: %zd\n", rtn);
   printf("errno: %d\n\n", errno);
   errno = 0;
 
   int d = open("/device", O_RDWR);
-  printf("read from device: %zd\n", read(d, readBuffer, sizeof readBuffer));
+  assert(d >= 0);
+  rtn = read(d, readBuffer, sizeof readBuffer);
+  assert(rtn == 4);
+  assert(strcmp(readBuffer, "ABCD") == 0);
+  assert(errno == 0);
+  printf("read from device: %zd\n", rtn);
   printf("data: %s\n", readBuffer);
   memset(readBuffer, 0, sizeof readBuffer);
   printf("errno: %d\n", errno);
   errno = 0;
-  printf("write to device: %zd\n", write(d, writeBuffer, sizeof writeBuffer));
+  rtn = write(d, writeBuffer, sizeof writeBuffer);
+  assert(rtn == sizeof writeBuffer);
+  assert(errno == 0);
+  printf("write to device: %zd\n", rtn);
   printf("errno: %d\n\n", errno);
   errno = 0;
 
   int cd_ro_r = open("/createDevice-read-only", O_RDONLY);
+  assert(cd_ro_r >= 0);
+  assert(errno == 0);
   printf("open read-only device from createDevice for read, errno: %d\n", errno);
   errno = 0;
   int cd_ro_w = open("/createDevice-read-only", O_WRONLY);
+  assert(cd_ro_w == -1);
+  assert(errno == EACCES);
   printf("open read-only device from createDevice for write, errno: %d\n", errno);
   errno = 0;
   int cd_wo_r = open("/createDevice-write-only", O_RDONLY);
+  assert(cd_wo_r == -1);
+  assert(errno == EACCES);
   printf("open write-only device from createDevice for read, errno: %d\n", errno);
   errno = 0;
   int cd_wo_w = open("/createDevice-write-only", O_WRONLY);
+  assert(cd_wo_w >= 0);
+  assert(errno == 0);
   printf("open write-only device from createDevice for write, errno: %d\n\n", errno);
   errno = 0;
 

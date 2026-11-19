@@ -1,10 +1,10 @@
 {
-  "a.out.js": 5717,
-  "a.out.js.gz": 2279,
-  "a.out.nodebug.wasm": 2544,
-  "a.out.nodebug.wasm.gz": 1436,
-  "total": 8261,
-  "total_gz": 3715,
+  "a.out.js": 5514,
+  "a.out.js.gz": 2252,
+  "a.out.nodebug.wasm": 2094,
+  "a.out.nodebug.wasm.gz": 1257,
+  "total": 7608,
+  "total_gz": 3509,
   "sent": [
     "fd_write"
   ],
@@ -13,12 +13,15 @@
   ],
   "exports": [
     "__indirect_function_table",
+    "__rodata_end",
+    "__rodata_start",
     "__wasm_call_ctors",
     "_emscripten_stack_alloc",
     "_emscripten_stack_restore",
     "emscripten_stack_get_current",
     "main",
-    "memory"
+    "memory",
+    "setThrew"
   ],
   "funcs": [
     "$__emscripten_stdout_close",
@@ -32,7 +35,6 @@
     "$__towrite",
     "$__wasi_syscall_ret",
     "$__wasm_call_ctors",
-    "$_emscripten_memcpy_bulkmem",
     "$_emscripten_stack_alloc",
     "$_emscripten_stack_restore",
     "$emscripten_stack_get_current",
@@ -40,6 +42,7 @@
     "$fwrite",
     "$main",
     "$puts",
+    "$setThrew",
     "$strlen"
   ]
 }

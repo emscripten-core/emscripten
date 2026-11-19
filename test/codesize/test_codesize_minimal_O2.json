@@ -1,27 +1,31 @@
 {
-  "a.out.js": 2269,
-  "a.out.js.gz": 1125,
-  "a.out.nodebug.wasm": 280,
-  "a.out.nodebug.wasm.gz": 226,
-  "total": 2549,
-  "total_gz": 1351,
+  "a.out.js": 2031,
+  "a.out.js.gz": 1063,
+  "a.out.nodebug.wasm": 368,
+  "a.out.nodebug.wasm.gz": 284,
+  "total": 2399,
+  "total_gz": 1347,
   "sent": [],
   "imports": [],
   "exports": [
     "__indirect_function_table",
+    "__rodata_end",
+    "__rodata_start",
     "__wasm_call_ctors",
     "_emscripten_stack_alloc",
     "_emscripten_stack_restore",
     "add",
     "emscripten_stack_get_current",
     "global_val",
-    "memory"
+    "memory",
+    "setThrew"
   ],
   "funcs": [
     "$__wasm_call_ctors",
     "$_emscripten_stack_alloc",
     "$_emscripten_stack_restore",
     "$add",
-    "$emscripten_stack_get_current"
+    "$emscripten_stack_get_current",
+    "$setThrew"
   ]
 }

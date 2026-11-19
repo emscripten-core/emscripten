@@ -15,9 +15,9 @@
 
 // overall structure based on test_pthread_reltime.cpp
 
-static pthread_key_t key;
+pthread_key_t key;
 
-static pthread_barrier_t sync_barrier;
+pthread_barrier_t sync_barrier;
 
 void *thread_main(void *arg) {
   assert(pthread_getspecific(key) == 0);

@@ -6,13 +6,13 @@
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
 #include <cstdio>
-static void set_bind_f64(emscripten::val val) {
+void set_bind_f64(emscripten::val val) {
     printf("set_bind_f64: %x\n", (uint32_t)val.as<double>());
 }
-static void set_bind_u64(emscripten::val val) {
+void set_bind_u64(emscripten::val val) {
     printf("set_bind_u64: %x\n", (uint32_t)val.as<uint64_t>());
 }
-static void set_bind_u32(emscripten::val val) {
+void set_bind_u32(emscripten::val val) {
     printf("set_bind_u32: %x\n", val.as<uint32_t>());
 }
 extern "C" {

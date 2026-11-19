@@ -16,7 +16,6 @@
 #include <string.h>
 #include <emscripten/syscalls.h>
 #include <emscripten/console.h>
-#include <emscripten/version.h>
 #include <emscripten/stack.h>
 
 static pid_t g_pid = 42;
@@ -36,29 +35,6 @@ static pid_t g_sid = 42;
     REPORT(name); \
     return -ENOSYS; \
   }
-
-#define STRINGIFY(s) #s
-#define STR(s) STRINGIFY(s)
-
-weak int __syscall_uname(struct utsname *buf) {
-  if (!buf) {
-    return -EFAULT;
-  }
-  const char* full_version = STR(__EMSCRIPTEN_MAJOR__) "." \
-                             STR(__EMSCRIPTEN_MINOR__) "." \
-                             STR(__EMSCRIPTEN_TINY__);
-
-  strcpy(buf->sysname, "Emscripten");
-  strcpy(buf->nodename, "emscripten");
-  strcpy(buf->release, full_version);
-  strcpy(buf->version, "#1");
-#ifdef __wasm64__
-  strcpy(buf->machine, "wasm64");
-#else
-  strcpy(buf->machine, "wasm32");
-#endif
-  return 0;
-}
 
 weak int __syscall_setpgid(pid_t pid, pid_t pgid) {
   if (pid && pid != g_pid) {
@@ -96,10 +72,6 @@ weak pid_t __syscall_getppid() {
   return g_ppid;
 }
 
-weak int __syscall_linkat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath, int flags) {
-  return -EMLINK; // no hardlinks for us
-}
-
 weak int __syscall_getgroups32(int count, gid_t list[]) {
   if (count < 1) {
     return -EINVAL;
@@ -133,22 +105,6 @@ weak int __syscall_setdomainname(const char *name, size_t len) {
   return -EPERM;
 }
 
-weak uid_t __syscall_getuid32(void) {
-  return 0;
-}
-
-weak gid_t __syscall_getgid32(void) {
-  return 0;
-}
-
-weak uid_t __syscall_geteuid32(void) {
-  return 0;
-}
-
-weak gid_t __syscall_getegid32(void) {
-  return 0;
-}
-
 weak int __syscall_getresuid32(uid_t *ruid, uid_t *euid, uid_t *suid) {
   *ruid = 0;
   *euid = 0;
@@ -167,11 +123,6 @@ weak int __syscall_getresgid32(gid_t *rgid, gid_t *egid, gid_t *sgid) {
 weak int __syscall_madvise(void *addr, size_t length, int advice) {
   REPORT(madvise);
   // advice is welcome, but ignored
-  return 0;
-}
-
-weak int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
-  // this is purely advisory, so we don't warn
   return 0;
 }
 
@@ -238,6 +189,4 @@ weak pid_t __syscall_wait4(pid_t pid, int *wstatus, int options, struct rusage *
 
 UNIMPLEMENTED(acct, (const char *filename))
 UNIMPLEMENTED(mincore, (void *addr, size_t length, unsigned char *vec))
-UNIMPLEMENTED(recvmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags, struct timespec *timeout))
-UNIMPLEMENTED(sendmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags))
 UNIMPLEMENTED(socketpair, (int domain, int type, int protocol, int fd[2], int unused1, int unused2))

@@ -15,9 +15,9 @@
 // That doesn't work for Chrome in turn, so need to resort to user agent
 // sniffing.. (sad :/)
 if (!performance.realNow) {
-  var isSafari = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isSafari = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   if (isSafari) {
-    var realPerformance = performance;
+    const realPerformance = performance;
     performance = {
       realNow: () => realPerformance.now(),
       now: () => realPerformance.now()
@@ -27,7 +27,7 @@ if (!performance.realNow) {
   }
 }
 
-var emscriptenCpuProfiler = {
+const emscriptenCpuProfiler = {
   // UI update interval in milliseconds.
   uiUpdateInterval: 1,
 
@@ -92,59 +92,59 @@ var emscriptenCpuProfiler = {
   // to periodically update the FPS counter display.
   fpsCounter() {
     // Record the new frame time sample, and prune the history to K most recent frames.
-    var now = performance.realNow();
+    const now = performance.realNow();
     if (this.fpsCounterTicks.length < this.fpsCounterNumMostRecentFrames) {
       this.fpsCounterTicks.push(now);
     } else {
-      for (var i = 0; i < this.fpsCounterTicks.length-1; ++i) this.fpsCounterTicks[i] = this.fpsCounterTicks[i+1];
+      for (let i = 0; i < this.fpsCounterTicks.length-1; ++i) this.fpsCounterTicks[i] = this.fpsCounterTicks[i+1];
       this.fpsCounterTicks[this.fpsCounterTicks.length-1] = now;
     }
 
     if (now - this.fpsCounterLastPrint > this.fpsCounterUpdateInterval) {
-      var fps = ((this.fpsCounterTicks.length - 1) * 1000.0 / (this.fpsCounterTicks[this.fpsCounterTicks.length - 1] - this.fpsCounterTicks[0]));
-      var totalDt = 0;
-      var totalRAFDt = 0;
-      var minDt = 99999999;
-      var maxDt = 0;
-      var nSamples = 0;
+      const fps = ((this.fpsCounterTicks.length - 1) * 1000.0 / (this.fpsCounterTicks[this.fpsCounterTicks.length - 1] - this.fpsCounterTicks[0]));
+      let totalDt = 0;
+      let totalRAFDt = 0;
+      let minDt = 99999999;
+      let maxDt = 0;
+      let nSamples = 0;
 
-      var numSamplesToAccount = Math.min(this.timeSpentInMainloop.length, 120);
-      var startX = (this.currentHistogramX - numSamplesToAccount + this.canvas.width) % this.canvas.width;
-      for (var i = 0; i < numSamplesToAccount; ++i) {
-        var x = (startX + i) % this.canvas.width;
-        var dt = this.timeSpentInMainloop[x] + this.timeSpentOutsideMainloop[x];
+      const numSamplesToAccount = Math.min(this.timeSpentInMainloop.length, 120);
+      const startX = (this.currentHistogramX - numSamplesToAccount + this.canvas.width) % this.canvas.width;
+      for (let i = 0; i < numSamplesToAccount; ++i) {
+        const x = (startX + i) % this.canvas.width;
+        const dt = this.timeSpentInMainloop[x] + this.timeSpentOutsideMainloop[x];
         totalRAFDt += this.timeSpentInMainloop[x];
         if (dt > 0) ++nSamples;
         totalDt += dt;
         minDt = Math.min(minDt, dt);
         maxDt = Math.max(maxDt, dt);
       }
-      var avgDt = totalDt / nSamples;
-      var avgFps = 1000.0 / avgDt;
-      var dtVariance = 0;
-      for (var i = 1; i < numSamplesToAccount; ++i) {
-        var x = (startX + i) % this.canvas.width;
-        var dt = this.timeSpentInMainloop[x] + this.timeSpentOutsideMainloop[x];
-        var d = dt - avgDt;
+      const avgDt = totalDt / nSamples;
+      const avgFps = 1000.0 / avgDt;
+      let dtVariance = 0;
+      for (let i = 1; i < numSamplesToAccount; ++i) {
+        const x = (startX + i) % this.canvas.width;
+        const dt = this.timeSpentInMainloop[x] + this.timeSpentOutsideMainloop[x];
+        const d = dt - avgDt;
         dtVariance += d*d;
       }
       dtVariance /= nSamples;
 
-      var asmJSLoad = totalRAFDt * 100.0 / totalDt;
+      const asmJSLoad = totalRAFDt * 100.0 / totalDt;
 
       // Compute the overhead added by WebGL:
-      var hotGL = this.sections[0];
-      var coldGL = this.sections[1];
-      var webGLMSecsInsideMainLoop = (hotGL ? hotGL.accumulatedFrameTimeInsideMainLoop(startX, numSamplesToAccount) : 0) + (coldGL ? coldGL.accumulatedFrameTimeInsideMainLoop(startX, numSamplesToAccount) : 0);
-      var webGLMSecsOutsideMainLoop = (hotGL ? hotGL.accumulatedFrameTimeOutsideMainLoop(startX, numSamplesToAccount) : 0) + (coldGL ? coldGL.accumulatedFrameTimeOutsideMainLoop(startX, numSamplesToAccount) : 0);
-      var webGLMSecs = webGLMSecsInsideMainLoop + webGLMSecsOutsideMainLoop;
+      const hotGL = this.sections[0];
+      const coldGL = this.sections[1];
+      const webGLMSecsInsideMainLoop = (hotGL ? hotGL.accumulatedFrameTimeInsideMainLoop(startX, numSamplesToAccount) : 0) + (coldGL ? coldGL.accumulatedFrameTimeInsideMainLoop(startX, numSamplesToAccount) : 0);
+      const webGLMSecsOutsideMainLoop = (hotGL ? hotGL.accumulatedFrameTimeOutsideMainLoop(startX, numSamplesToAccount) : 0) + (coldGL ? coldGL.accumulatedFrameTimeOutsideMainLoop(startX, numSamplesToAccount) : 0);
+      const webGLMSecs = webGLMSecsInsideMainLoop + webGLMSecsOutsideMainLoop;
 
-      var setIntervalSection = this.sections[2];
-      var setTimeoutSection = this.sections[3];
-      var totalCPUMsecs = totalRAFDt + setIntervalSection.accumulatedFrameTimeOutsideMainLoop(startX, numSamplesToAccount) + setTimeoutSection.accumulatedFrameTimeOutsideMainLoop(startX, numSamplesToAccount);
+      const setIntervalSection = this.sections[2];
+      const setTimeoutSection = this.sections[3];
+      const totalCPUMsecs = totalRAFDt + setIntervalSection.accumulatedFrameTimeOutsideMainLoop(startX, numSamplesToAccount) + setTimeoutSection.accumulatedFrameTimeOutsideMainLoop(startX, numSamplesToAccount);
 
       // Update full FPS counter
-      var str = 'Last FPS: ' + fps.toFixed(2) + ', avg FPS:' + avgFps.toFixed(2) + ', min/avg/max dt: '
+      let str = 'Last FPS: ' + fps.toFixed(2) + ', avg FPS:' + avgFps.toFixed(2) + ', min/avg/max dt: '
        + minDt.toFixed(2) + '/' + avgDt.toFixed(2) + '/' + maxDt.toFixed(2) + ' msecs, dt variance: ' + dtVariance.toFixed(3)
        + ', JavaScript CPU load: ' + asmJSLoad.toFixed(2) + '%';
 
@@ -169,7 +169,7 @@ var emscriptenCpuProfiler = {
     while (this.sections.length <= number) {
       this.sections.push(null); // Keep an array structure.
     }
-    var sect = this.sections[number];
+    let sect = this.sections[number];
     sect ||= {
       count: 0,
       name,
@@ -181,19 +181,19 @@ var emscriptenCpuProfiler = {
       drawColor,
       traceable,
       accumulatedFrameTimeInsideMainLoop: function(startX, numSamples) {
-        var total = 0;
+        let total = 0;
         numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
-        for (var i = 0; i < numSamples; ++i) {
-          var x = (startX + i) % this.frametimesInsideMainLoop.length;
+        for (let i = 0; i < numSamples; ++i) {
+          const x = (startX + i) % this.frametimesInsideMainLoop.length;
           if (this.frametimesInsideMainLoop[x]) total += this.frametimesInsideMainLoop[x];
         }
         return total;
       },
       accumulatedFrameTimeOutsideMainLoop: function(startX, numSamples) {
-        var total = 0;
+        let total = 0;
         numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
-        for (var i = 0; i < numSamples; ++i) {
-          var x = (startX + i) % this.frametimesInsideMainLoop.length;
+        for (let i = 0; i < numSamples; ++i) {
+          const x = (startX + i) % this.frametimesInsideMainLoop.length;
           if (this.frametimesOutsideMainLoop[x]) total += this.frametimesOutsideMainLoop[x];
         }
         return total;
@@ -205,7 +205,7 @@ var emscriptenCpuProfiler = {
 
   // Call at runtime whenever the code execution enter a given profiling section.
   enterSection(sectionNumber) {
-    var sect = this.sections[sectionNumber];
+    const sect = this.sections[sectionNumber];
     // Handle recursive entering without getting confused (subsequent re-entering is ignored)
     ++sect.count;
     if (sect.count == 1) sect.startTick = performance.realNow();
@@ -214,17 +214,17 @@ var emscriptenCpuProfiler = {
   // Call at runtime when the code execution exits the given profiling section.
   // Be sure to match each startSection(x) call with a call to endSection(x).
   endSection(sectionNumber) {
-    var sect = this.sections[sectionNumber];
+    const sect = this.sections[sectionNumber];
     --sect.count;
     if (sect.count == 0) {
-      var timeInSection = performance.realNow() - sect.startTick;
+      const timeInSection = performance.realNow() - sect.startTick;
       if (sect.traceable && timeInSection > this.logWebGLCallsSlowerThan) {
-        var funcs = new Error().stack.toString().split('\n');
-        var cs = '';
-        for (var i = 2; i < 5 && i < funcs.length; ++i) {
+        const funcs = new Error().stack.toString().split('\n');
+        let cs = '';
+        for (let i = 2; i < 5 && i < funcs.length; ++i) {
           if (i != 2) cs += ' <- ';
-          var fn = funcs[i];
-          var at = fn.indexOf('@');
+          let fn = funcs[i];
+          const at = fn.indexOf('@');
           if (at != -1) fn = fn.slice(0, at);
           fn = fn.trim();
           cs += '"' + fn + '"';
@@ -255,8 +255,7 @@ var emscriptenCpuProfiler = {
     if (this.insideMainLoopRecursionCounter != 0) return;
 
     // Aggregate total times spent in each section to memory store to wait until the next stats UI redraw period.
-    for (var i = 0; i < this.sections.length; ++i) {
-      var sect = this.sections[i];
+    for (const sect of this.sections) {
       if (!sect) continue;
       sect.frametimesInsideMainLoop[this.currentHistogramX] = sect.accumulatedTimeInsideMainLoop;
       sect.frametimesOutsideMainLoop[this.currentHistogramX] = sect.accumulatedTimeOutsideMainLoop;
@@ -264,9 +263,9 @@ var emscriptenCpuProfiler = {
       sect.accumulatedTimeOutsideMainLoop = 0;
     }
 
-    var t = performance.realNow();
-    var cpuMainLoopDuration = t - this.currentFrameStartTime;
-    var durationBetweenFrameUpdates = t - this.previousFrameEndTime;
+    const t = performance.realNow();
+    const cpuMainLoopDuration = t - this.currentFrameStartTime;
+    const durationBetweenFrameUpdates = t - this.previousFrameEndTime;
     this.previousFrameEndTime = t;
 
     this.timeSpentInMainloop[this.currentHistogramX] = cpuMainLoopDuration;
@@ -319,7 +318,7 @@ var emscriptenCpuProfiler = {
   logWebGLCallsSlowerThan: Infinity,
 
   toggleHelpTextVisible() {
-    var help = document.getElementById('cpuprofiler_help_text');
+    const help = document.getElementById('cpuprofiler_help_text');
     if (help.style) help.style.display = (help.style.display == 'none') ? 'block' : 'none';
   },
 
@@ -343,16 +342,16 @@ var emscriptenCpuProfiler = {
     // Create the UI display if it doesn't yet exist. If you want to customize
     // the location/style of the cpuprofiler UI, you can manually create this
     // beforehand.
-    var cpuprofiler = document.getElementById('cpuprofiler');
+    let cpuprofiler = document.getElementById('cpuprofiler');
     if (!cpuprofiler) {
-      var css = '.colorbox { border: solid 1px black; margin-left: 10px; margin-right: 3px; display: inline-block; width: 20px; height: 10px; }  .hastooltip:hover .tooltip { display: block; } .tooltip { display: none; background: #FFFFFF; margin-left: 28px; padding: 5px; position: absolute; z-index: 1000; width:200px; } .hastooltip { margin:0px; }';
-      var style = document.createElement('style');
+      const css = '.colorbox { border: solid 1px black; margin-left: 10px; margin-right: 3px; display: inline-block; width: 20px; height: 10px; }  .hastooltip:hover .tooltip { display: block; } .tooltip { display: none; background: #FFFFFF; margin-left: 28px; padding: 5px; position: absolute; z-index: 1000; width:200px; } .hastooltip { margin:0px; }';
+      const style = document.createElement('style');
       style.type = 'text/css';
       style.appendChild(document.createTextNode(css));
       document.head.appendChild(style);
 
       // Users can provide a container element where to place this if desired.
-      var div = document.getElementById('cpuprofiler_container');
+      let div = document.getElementById('cpuprofiler_container');
       if (!div) {
         div = document.createElement("div");
         document.body.appendChild(div);
@@ -362,7 +361,7 @@ var emscriptenCpuProfiler = {
         // text on the page, so force-enable scrolling.
         document.body.style.overflow = '';
       }
-      var helpText = "<div style='margin-left: 10px;'>Color Legend:";
+      let helpText = "<div style='margin-left: 10px;'>Color Legend:";
       helpText += "<div class='colorbox' style='background-color: " + this.colorCpuTimeSpentInUserCode + ";'></div>Main Loop (C/C++) Code"
       helpText += "<div class='colorbox' style='background-color: " + this.colorHotGLFunction + ";'></div>Hot WebGL Calls"
       helpText += "<div class='colorbox' style='background-color: " + this.colorColdGLFunction + ";'></div>Cold WebGL Calls"
@@ -413,16 +412,16 @@ var emscriptenCpuProfiler = {
     this.canvas.width = document.documentElement.clientWidth - 32;
     this.drawContext = this.canvas.getContext('2d');
 
-    var webglCanvas = document.getElementById('canvas') || document.querySelector('canvas');
+    const webglCanvas = document.getElementById('canvas') || document.querySelector('canvas');
 
     if (webglCanvas) {
       // Create lite FPS overlay element
-      var fpsOverlay = document.createElement('div');
+      const fpsOverlay = document.createElement('div');
       fpsOverlay.classList.add("hastooltip");
       fpsOverlay.innerHTML = '<div id="fpsOverlay1" style="font-size: 1.5em; color: lightgreen; text-shadow: 3px 3px black;"></div><div id="fpsOverlay2" style="font-size: 1em; color: lightgrey; text-shadow: 3px 3px black;"></div> <span class="tooltip">FPS (CPU usage %)<br>Min/Avg/Max frame times (msecs)</span>';
       fpsOverlay.style = 'position: fixed; font-weight: bold; padding: 3px; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; cursor: pointer;';
       fpsOverlay.onclick = () => {
-        var view = document.getElementById('cpuprofiler_canvas');
+        const view = document.getElementById('cpuprofiler_canvas');
         view?.scrollIntoView();
       };
       fpsOverlay.oncontextmenu = (e) => e.preventDefault();
@@ -430,8 +429,8 @@ var emscriptenCpuProfiler = {
       this.fpsOverlay1 = document.getElementById('fpsOverlay1');
       this.fpsOverlay2 = document.getElementById('fpsOverlay2');
       function positionOverlay() {
-        var rect = webglCanvas.getBoundingClientRect();
-        var overlayHeight = fpsOverlay.getBoundingClientRect().height || fpsOverlay.height;
+        const rect = webglCanvas.getBoundingClientRect();
+        const overlayHeight = fpsOverlay.getBoundingClientRect().height || fpsOverlay.height;
         fpsOverlay.height = overlayHeight; // Remember the overlay height when it was visible, if it is hidden.
         fpsOverlay.style.display = (rect.bottom >= overlayHeight) ? 'block' : 'none';
         fpsOverlay.style.top = Math.max(rect.top, 0) + 'px';
@@ -450,7 +449,7 @@ var emscriptenCpuProfiler = {
   },
 
   drawHorizontalLine(startX, endX, pixelThickness, msecs) {
-    var height = msecs * this.canvas.height / this.verticalTimeScale;
+    const height = msecs * this.canvas.height / this.verticalTimeScale;
     this.drawContext.fillRect(startX,this.canvas.height - height, endX - startX, pixelThickness);
   },
 
@@ -474,20 +473,18 @@ var emscriptenCpuProfiler = {
   },
 
   drawBar(x) {
-    var timeSpentInSectionsInsideMainLoop = 0;
-    for (var i = 0; i < this.sections.length; ++i) {
-      var sect = this.sections[i];
+    let timeSpentInSectionsInsideMainLoop = 0;
+    for (const sect of this.sections) {
       if (!sect) continue;
       timeSpentInSectionsInsideMainLoop += sect.frametimesInsideMainLoop[x];
     }
-    var scale = this.canvas.height / this.verticalTimeScale;
-    var y = this.canvas.height;
-    var h = (this.timeSpentInMainloop[x]-timeSpentInSectionsInsideMainLoop) * scale;
+    const scale = this.canvas.height / this.verticalTimeScale;
+    let y = this.canvas.height;
+    let h = (this.timeSpentInMainloop[x]-timeSpentInSectionsInsideMainLoop) * scale;
     y -= h;
     this.drawContext.fillStyle = this.colorCpuTimeSpentInUserCode;
     this.drawContext.fillRect(x, y, 1, h);
-    for (var i = 0; i < this.sections.length; ++i) {
-      var sect = this.sections[i];
+    for (const sect of this.sections) {
       if (!sect) continue;
       h = (sect.frametimesInsideMainLoop[x] + sect.frametimesOutsideMainLoop[x]) * scale;
       y -= h;
@@ -496,8 +493,8 @@ var emscriptenCpuProfiler = {
     }
     h = this.timeSpentOutsideMainloop[x] * scale;
     y -= h;
-    var fps60Limit = this.canvas.height - (16.666666666 + 1.0) * this.canvas.height / this.verticalTimeScale; // Be very lax, allow 1msec extra jitter.
-    var fps30Limit = this.canvas.height - (33.333333333 + 1.0) * this.canvas.height / this.verticalTimeScale; // Be very lax, allow 1msec extra jitter.
+    const fps60Limit = this.canvas.height - (16.666666666 + 1.0) * this.canvas.height / this.verticalTimeScale; // Be very lax, allow 1msec extra jitter.
+    const fps30Limit = this.canvas.height - (33.333333333 + 1.0) * this.canvas.height / this.verticalTimeScale; // Be very lax, allow 1msec extra jitter.
     if (y < fps30Limit) this.drawContext.fillStyle = this.colorWorseThan30FPS;
     else if (y < fps60Limit) this.drawContext.fillStyle = this.colorWorseThan60FPS;
     else this.drawContext.fillStyle = this.color60FPS;
@@ -515,8 +512,7 @@ var emscriptenCpuProfiler = {
       if (this.timeSpentOutsideMainloop.length > this.canvas.width) this.timeSpentOutsideMainloop.length = this.canvas.width;
       if (this.lastUiUpdateEndX >= this.canvas.width) this.lastUiUpdateEndX = 0;
       if (this.currentHistogramX >= this.canvas.width) this.currentHistogramX = 0;
-      for (var i in this.sections) {
-        var sect = this.sections[i];
+      for (const sect of this.sections) {
         if (!sect) continue;
         if (sect.frametimesInsideMainLoop.length > this.canvas.width) sect.frametimesInsideMainLoop.length = this.canvas.width;
         if (sect.frametimesOutsideMainLoop.length > this.canvas.width) sect.frametimesOutsideMainLoop.length = this.canvas.width;
@@ -534,17 +530,17 @@ var emscriptenCpuProfiler = {
     if (location.search.includes('webglprofiler') && !this.automaticallyHookedWebGLProfiler) {
       this.hookWebGL();
       if (location.search.includes('tracegl')) {
-        var res = location.search.match(/tracegl=(\d+)/);
-        var traceGl = res[1];
+        const res = location.search.match(/tracegl=(\d+)/);
+        const traceGl = res[1];
         document.getElementById('trace_limit').value = traceGl;
         this.enableTraceWebGL();
       }
       if (this.hookedWebGLContexts.length > 0) this.automaticallyHookedWebGLProfiler = true;
     }
 
-    var clearDistance = this.uiUpdateInterval * 2 + 1;
-    var clearStart = endX + clearDistance;
-    var clearEnd = clearStart + this.uiUpdateInterval;
+    const clearDistance = this.uiUpdateInterval * 2 + 1;
+    const clearStart = endX + clearDistance;
+    const clearEnd = clearStart + this.uiUpdateInterval;
     if (endX < startX) {
       this.clearUi(clearStart, clearEnd);
       this.clearUi(0, endX + clearDistance+this.uiUpdateInterval);
@@ -554,27 +550,27 @@ var emscriptenCpuProfiler = {
     }
 
     if (endX < startX) {
-      for (var x = startX; x < this.canvas.width; ++x) this.drawBar(x);
+      for (let x = startX; x < this.canvas.width; ++x) this.drawBar(x);
       startX = 0;
     }
-    for (var x = startX; x < endX; ++x) this.drawBar(x);
+    for (let x = startX; x < endX; ++x) this.drawBar(x);
   },
 
   // Work around Microsoft Edge bug where webGLContext.function.length always
   // returns 0.
   webGLFunctionLength(f) {
-    var l0 = ['getContextAttributes','isContextLost','getSupportedExtensions','createBuffer','createFramebuffer','createProgram','createRenderbuffer','createTexture','finish','flush','getError', 'createVertexArray', 'createQuery', 'createSampler', 'createTransformFeedback', 'endTransformFeedback', 'pauseTransformFeedback', 'resumeTransformFeedback', 'makeXRCompatible'];
-    var l1 = ['getExtension','activeTexture','blendEquation','checkFramebufferStatus','clear','clearDepth','clearStencil','compileShader','createShader','cullFace','deleteBuffer','deleteFramebuffer','deleteProgram','deleteRenderbuffer','deleteShader','deleteTexture','depthFunc','depthMask','disable','disableVertexAttribArray','enable','enableVertexAttribArray','frontFace','generateMipmap','getAttachedShaders','getParameter','getProgramInfoLog','getShaderInfoLog','getShaderSource','isBuffer','isEnabled','isFramebuffer','isProgram','isRenderbuffer','isShader','isTexture','lineWidth','linkProgram','stencilMask','useProgram','validateProgram', 'deleteQuery', 'isQuery', 'deleteVertexArray', 'bindVertexArray', 'isVertexArray', 'drawBuffers', 'readBuffer', 'endQuery', 'deleteSampler', 'isSampler', 'isSync', 'deleteSync', 'deleteTransformFeedback', 'isTransformFeedback', 'beginTransformFeedback'];
-    var l2 = ['attachShader','bindBuffer','bindFramebuffer','bindRenderbuffer','bindTexture','blendEquationSeparate','blendFunc','depthRange','detachShader','getActiveAttrib','getActiveUniform','getAttribLocation','getBufferParameter','getProgramParameter','getRenderbufferParameter','getShaderParameter','getShaderPrecisionFormat','getTexParameter','getUniform','getUniformLocation','getVertexAttrib','getVertexAttribOffset','hint','pixelStorei','polygonOffset','sampleCoverage','shaderSource','stencilMaskSeparate','uniform1f','uniform1fv','uniform1i','uniform1iv','uniform2fv','uniform2iv','uniform3fv','uniform3iv','uniform4fv','uniform4iv','vertexAttrib1f','vertexAttrib1fv','vertexAttrib2fv','vertexAttrib3fv','vertexAttrib4fv', 'vertexAttribDivisor', 'beginQuery', 'invalidateFramebuffer', 'getFragDataLocation', 'uniform1ui', 'uniform1uiv', 'uniform2uiv', 'uniform3uiv', 'uniform4uiv', 'vertexAttribI4iv', 'vertexAttribI4uiv', 'getQuery', 'getQueryParameter', 'bindSampler', 'getSamplerParameter', 'fenceSync', 'getSyncParameter', 'bindTransformFeedback', 'getTransformFeedbackVarying', 'getIndexedParameter', 'getUniformIndices', 'getUniformBlockIndex', 'getActiveUniformBlockName'];
-    var l3 = ['bindAttribLocation','bufferData','bufferSubData','drawArrays','getFramebufferAttachmentParameter','stencilFunc','stencilOp','texParameterf','texParameteri','uniform2f','uniform2i','uniformMatrix2fv','uniformMatrix3fv','uniformMatrix4fv','vertexAttrib2f', 'getBufferSubData', 'getInternalformatParameter', 'uniform2ui', 'uniformMatrix2x3fv', 'uniformMatrix3x2fv', 'uniformMatrix2x4fv', 'uniformMatrix4x2fv', 'uniformMatrix3x4fv', 'uniformMatrix4x3fv', 'clearBufferiv', 'clearBufferuiv', 'clearBufferfv', 'samplerParameteri', 'samplerParameterf', 'clientWaitSync', 'waitSync', 'transformFeedbackVaryings', 'bindBufferBase', 'getActiveUniforms', 'getActiveUniformBlockParameter', 'uniformBlockBinding'];
-    var l4 = ['blendColor','blendFuncSeparate','clearColor','colorMask','drawElements','framebufferRenderbuffer','renderbufferStorage','scissor','stencilFuncSeparate','stencilOpSeparate','uniform3f','uniform3i','vertexAttrib3f','viewport', 'drawArraysInstanced', 'uniform3ui', 'clearBufferfi'];
-    var l5 = ['framebufferTexture2D','uniform4f','uniform4i','vertexAttrib4f', 'drawElementsInstanced', 'copyBufferSubData', 'framebufferTextureLayer', 'renderbufferStorageMultisample', 'texStorage2D', 'uniform4ui', 'vertexAttribI4i', 'vertexAttribI4ui', 'vertexAttribIPointer', 'bindBufferRange'];
-    var l6 = ['texImage2D', 'vertexAttribPointer', 'invalidateSubFramebuffer', 'texStorage3D', 'drawRangeElements'];
-    var l7 = ['compressedTexImage2D', 'readPixels', 'texSubImage2D'];
-    var l8 = ['compressedTexSubImage2D', 'copyTexImage2D', 'copyTexSubImage2D', 'compressedTexImage3D'];
-    var l9 = ['copyTexSubImage3D'];
-    var l10 = ['blitFramebuffer', 'texImage3D', 'compressedTexSubImage3D'];
-    var l11 = ['texSubImage3D'];
+    const l0 = ['getContextAttributes','isContextLost','getSupportedExtensions','createBuffer','createFramebuffer','createProgram','createRenderbuffer','createTexture','finish','flush','getError', 'createVertexArray', 'createQuery', 'createSampler', 'createTransformFeedback', 'endTransformFeedback', 'pauseTransformFeedback', 'resumeTransformFeedback', 'makeXRCompatible'];
+    const l1 = ['getExtension','activeTexture','blendEquation','checkFramebufferStatus','clear','clearDepth','clearStencil','compileShader','createShader','cullFace','deleteBuffer','deleteFramebuffer','deleteProgram','deleteRenderbuffer','deleteShader','deleteTexture','depthFunc','depthMask','disable','disableVertexAttribArray','enable','enableVertexAttribArray','frontFace','generateMipmap','getAttachedShaders','getParameter','getProgramInfoLog','getShaderInfoLog','getShaderSource','isBuffer','isEnabled','isFramebuffer','isProgram','isRenderbuffer','isShader','isTexture','lineWidth','linkProgram','stencilMask','useProgram','validateProgram', 'deleteQuery', 'isQuery', 'deleteVertexArray', 'bindVertexArray', 'isVertexArray', 'drawBuffers', 'readBuffer', 'endQuery', 'deleteSampler', 'isSampler', 'isSync', 'deleteSync', 'deleteTransformFeedback', 'isTransformFeedback', 'beginTransformFeedback'];
+    const l2 = ['attachShader','bindBuffer','bindFramebuffer','bindRenderbuffer','bindTexture','blendEquationSeparate','blendFunc','depthRange','detachShader','getActiveAttrib','getActiveUniform','getAttribLocation','getBufferParameter','getProgramParameter','getRenderbufferParameter','getShaderParameter','getShaderPrecisionFormat','getTexParameter','getUniform','getUniformLocation','getVertexAttrib','getVertexAttribOffset','hint','pixelStorei','polygonOffset','sampleCoverage','shaderSource','stencilMaskSeparate','uniform1f','uniform1fv','uniform1i','uniform1iv','uniform2fv','uniform2iv','uniform3fv','uniform3iv','uniform4fv','uniform4iv','vertexAttrib1f','vertexAttrib1fv','vertexAttrib2fv','vertexAttrib3fv','vertexAttrib4fv', 'vertexAttribDivisor', 'beginQuery', 'invalidateFramebuffer', 'getFragDataLocation', 'uniform1ui', 'uniform1uiv', 'uniform2uiv', 'uniform3uiv', 'uniform4uiv', 'vertexAttribI4iv', 'vertexAttribI4uiv', 'getQuery', 'getQueryParameter', 'bindSampler', 'getSamplerParameter', 'fenceSync', 'getSyncParameter', 'bindTransformFeedback', 'getTransformFeedbackVarying', 'getIndexedParameter', 'getUniformIndices', 'getUniformBlockIndex', 'getActiveUniformBlockName'];
+    const l3 = ['bindAttribLocation','bufferData','bufferSubData','drawArrays','getFramebufferAttachmentParameter','stencilFunc','stencilOp','texParameterf','texParameteri','uniform2f','uniform2i','uniformMatrix2fv','uniformMatrix3fv','uniformMatrix4fv','vertexAttrib2f', 'getBufferSubData', 'getInternalformatParameter', 'uniform2ui', 'uniformMatrix2x3fv', 'uniformMatrix3x2fv', 'uniformMatrix2x4fv', 'uniformMatrix4x2fv', 'uniformMatrix3x4fv', 'uniformMatrix4x3fv', 'clearBufferiv', 'clearBufferuiv', 'clearBufferfv', 'samplerParameteri', 'samplerParameterf', 'clientWaitSync', 'waitSync', 'transformFeedbackVaryings', 'bindBufferBase', 'getActiveUniforms', 'getActiveUniformBlockParameter', 'uniformBlockBinding'];
+    const l4 = ['blendColor','blendFuncSeparate','clearColor','colorMask','drawElements','framebufferRenderbuffer','renderbufferStorage','scissor','stencilFuncSeparate','stencilOpSeparate','uniform3f','uniform3i','vertexAttrib3f','viewport', 'drawArraysInstanced', 'uniform3ui', 'clearBufferfi'];
+    const l5 = ['framebufferTexture2D','uniform4f','uniform4i','vertexAttrib4f', 'drawElementsInstanced', 'copyBufferSubData', 'framebufferTextureLayer', 'renderbufferStorageMultisample', 'texStorage2D', 'uniform4ui', 'vertexAttribI4i', 'vertexAttribI4ui', 'vertexAttribIPointer', 'bindBufferRange'];
+    const l6 = ['texImage2D', 'vertexAttribPointer', 'invalidateSubFramebuffer', 'texStorage3D', 'drawRangeElements'];
+    const l7 = ['compressedTexImage2D', 'readPixels', 'texSubImage2D'];
+    const l8 = ['compressedTexSubImage2D', 'copyTexImage2D', 'copyTexSubImage2D', 'compressedTexImage3D'];
+    const l9 = ['copyTexSubImage3D'];
+    const l10 = ['blitFramebuffer', 'texImage3D', 'compressedTexSubImage3D'];
+    const l11 = ['texSubImage3D'];
     if (l0.includes(f)) return 0;
     if (l1.includes(f)) return 1;
     if (l2.includes(f)) return 2;
@@ -592,7 +588,7 @@ var emscriptenCpuProfiler = {
 
   detectWebGLContext() {
     if (Module['canvas']?.GLctxObject?.GLctx) return Module['canvas'].GLctxObject.GLctx;
-    else if (typeof GLctx != 'undefined') return GLctx;
+    else if (typeof GLctx !== 'undefined') return GLctx;
     else if (Module['ctx']) return Module['ctx'];
     return null;
   },
@@ -628,33 +624,33 @@ var emscriptenCpuProfiler = {
     this.hookedWebGLContexts.splice(this.hookedWebGLContexts.indexOf(glCtx), 1);
     document.getElementById("toggle_webgl_profile").style.background = '#E1E1E1';
 
-    for (var f in glCtx) {
-      if (typeof glCtx[f] != 'function' || f.startsWith('real_')) continue;
-      var realf = 'real_' + f;
+    for (const f in glCtx) {
+      if (typeof glCtx[f] !== 'function' || f.startsWith('real_')) continue;
+      const realf = 'real_' + f;
       glCtx[f] = glCtx[realf];
       delete glCtx[realf];
     }
   },
 
   hookWebGLFunction(f, glCtx) {
-    var section = (this.hotGLFunctions.includes(f) || f.startsWith('uniform') || f.startsWith('vertexAttrib')) ? 0 : 1;
-    var realf = 'real_' + f;
+    const section = (this.hotGLFunctions.includes(f) || f.startsWith('uniform') || f.startsWith('vertexAttrib')) ? 0 : 1;
+    const realf = 'real_' + f;
     glCtx[realf] = glCtx[f];
-    var numArgs = this.webGLFunctionLength(f); // On Firefox & Chrome, could do "glCtx[realf].length", but that doesn't work on Edge, which always reports 0.
+    const numArgs = this.webGLFunctionLength(f); // On Firefox & Chrome, could do "glCtx[realf].length", but that doesn't work on Edge, which always reports 0.
     // Accessing 'arguments'/'...' is super slow, so to avoid overhead, statically reason the number of arguments.
     switch (numArgs) {
-      case 0: glCtx[f] = () => { this.enterSection(section); var ret = glCtx[realf](); this.endSection(section); return ret; }; break;
-      case 1: glCtx[f] = (a1) => { this.enterSection(section); var ret =  glCtx[realf](a1); this.endSection(section); return ret; }; break;
-      case 2: glCtx[f] = (a1, a2) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2); this.endSection(section); return ret; }; break;
-      case 3: glCtx[f] = (a1, a2, a3) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3); this.endSection(section); return ret; }; break;
-      case 4: glCtx[f] = (a1, a2, a3, a4) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4); this.endSection(section); return ret; }; break;
-      case 5: glCtx[f] = (a1, a2, a3, a4, a5) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5); this.endSection(section); return ret; }; break;
-      case 6: glCtx[f] = (a1, a2, a3, a4, a5, a6) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6); this.endSection(section); return ret; }; break;
-      case 7: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7); this.endSection(section); return ret; }; break;
-      case 8: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8); this.endSection(section); return ret; }; break;
-      case 9: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9); this.endSection(section); return ret; }; break;
-      case 10: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10); this.endSection(section); return ret; }; break;
-      case 11: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11); this.endSection(section); return ret; }; break;
+      case 0: glCtx[f] = () => { this.enterSection(section); const ret = glCtx[realf](); this.endSection(section); return ret; }; break;
+      case 1: glCtx[f] = (a1) => { this.enterSection(section); const ret =  glCtx[realf](a1); this.endSection(section); return ret; }; break;
+      case 2: glCtx[f] = (a1, a2) => { this.enterSection(section); const ret =  glCtx[realf](a1, a2); this.endSection(section); return ret; }; break;
+      case 3: glCtx[f] = (a1, a2, a3) => { this.enterSection(section); const ret =  glCtx[realf](a1, a2, a3); this.endSection(section); return ret; }; break;
+      case 4: glCtx[f] = (a1, a2, a3, a4) => { this.enterSection(section); const ret =  glCtx[realf](a1, a2, a3, a4); this.endSection(section); return ret; }; break;
+      case 5: glCtx[f] = (a1, a2, a3, a4, a5) => { this.enterSection(section); const ret =  glCtx[realf](a1, a2, a3, a4, a5); this.endSection(section); return ret; }; break;
+      case 6: glCtx[f] = (a1, a2, a3, a4, a5, a6) => { this.enterSection(section); const ret =  glCtx[realf](a1, a2, a3, a4, a5, a6); this.endSection(section); return ret; }; break;
+      case 7: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7) => { this.enterSection(section); const ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7); this.endSection(section); return ret; }; break;
+      case 8: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8) => { this.enterSection(section); const ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8); this.endSection(section); return ret; }; break;
+      case 9: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9) => { this.enterSection(section); const ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9); this.endSection(section); return ret; }; break;
+      case 10: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => { this.enterSection(section); const ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10); this.endSection(section); return ret; }; break;
+      case 11: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) => { this.enterSection(section); const ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11); this.endSection(section); return ret; }; break;
       default: throw new Error('hookWebGL failed! Unexpected length ' + glCtx[realf].length);
     }
   },
@@ -662,8 +658,8 @@ var emscriptenCpuProfiler = {
   hookWebGL(glCtx) {
     glCtx ||= this.detectWebGLContext();
     if (!glCtx) return;
-    if (!((typeof WebGLRenderingContext != 'undefined' && glCtx instanceof WebGLRenderingContext)
-     || (typeof WebGL2RenderingContext != 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
+    if (!((typeof WebGLRenderingContext !== 'undefined' && glCtx instanceof WebGLRenderingContext)
+     || (typeof WebGL2RenderingContext !== 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
       document.getElementById("toggle_webgl_profile").disabled = true;
       return;
     }
@@ -680,56 +676,56 @@ var emscriptenCpuProfiler = {
     // troublesome GL usage that might cause performance issues.
     this.createSection(0, 'Hot GL', this.colorHotGLFunction, /*traceable=*/true);
     this.createSection(1, 'Cold GL', this.colorColdGLFunction, /*traceable=*/true);
-    for (var f in glCtx) {
-      if (typeof glCtx[f] != 'function' || f.startsWith('real_')) continue;
+    for (const f in glCtx) {
+      if (typeof glCtx[f] !== 'function' || f.startsWith('real_')) continue;
       this.hookWebGLFunction(f, glCtx);
     }
     // The above injection won't work for texImage2D and texSubImage2D, which have multiple overloads.
     glCtx['texImage2D'] = (a1, a2, a3, a4, a5, a6, a7, a8, a9) => {
       this.enterSection(1);
-      var ret = (a7 !== undefined) ? glCtx['real_texImage2D'](a1, a2, a3, a4, a5, a6, a7, a8, a9) : glCtx['real_texImage2D'](a1, a2, a3, a4, a5, a6);
+      const ret = (a7 !== undefined) ? glCtx['real_texImage2D'](a1, a2, a3, a4, a5, a6, a7, a8, a9) : glCtx['real_texImage2D'](a1, a2, a3, a4, a5, a6);
       this.endSection(1);
       return ret;
     };
     glCtx['texSubImage2D'] = (a1, a2, a3, a4, a5, a6, a7, a8, a9) => {
       this.enterSection(0);
-      var ret = (a8 !== undefined) ? glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8, a9) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7);
+      const ret = (a8 !== undefined) ? glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8, a9) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7);
       this.endSection(0);
       return ret;
     };
     glCtx['texSubImage3D'] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) => {
       this.enterSection(0);
-      var ret = (a9 !== undefined) ? glCtx['real_texSubImage3D'](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8);
+      const ret = (a9 !== undefined) ? glCtx['real_texSubImage3D'](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8);
       this.endSection(0);
       return ret;
     };
     glCtx['bufferData'] = (a1, a2, a3, a4, a5) => {
       // WebGL1/2 versions have different parameters (not just extra ones)
-      var ret = (a4 !== undefined) ? glCtx['real_bufferData'](a1, a2, a3, a4, a5) : glCtx['real_bufferData'](a1, a2, a3);
+      const ret = (a4 !== undefined) ? glCtx['real_bufferData'](a1, a2, a3, a4, a5) : glCtx['real_bufferData'](a1, a2, a3);
       return ret;
     };
     const matrixFuncs = ['uniformMatrix2fv', 'uniformMatrix3fv', 'uniformMatrix4fv'];
-    matrixFuncs.forEach(f => {
+    for (const f of matrixFuncs) {
       glCtx[f] = (a1, a2, a3, a4, a5) => {
         // WebGL2 version has 2 extra optional parameters, ensure we forward them
-        var ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4, a5) : glCtx['real_' + f](a1, a2, a3);
+        const ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4, a5) : glCtx['real_' + f](a1, a2, a3);
         return ret;
       }
-    });
+    }
     const ndvFuncs = ['uniform1fv', 'uniform1iv', 'uniform2fv', 'uniform2iv', 'uniform3fv', 'uniform3iv', 'uniform4fv', 'uniform4iv'];
-    ndvFuncs.forEach(f => {
+    for (const f of ndvFuncs) {
       glCtx[f] = (a1, a2, a3, a4) => {
         // WebGL2 version has 1 extra parameter, ensure we forward them
-        var ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4) : glCtx['real_' + f](a1, a2, a3);
+        const ret = (a4 !== undefined) ? glCtx['real_' + f](a1, a2, a3, a4) : glCtx['real_' + f](a1, a2, a3);
         return ret;
       }
-    });
+    }
   }
 };
 
 // Hook into setInterval to be able to capture the time spent executing them.
 emscriptenCpuProfiler.createSection(2, 'setInterval', emscriptenCpuProfiler.colorSetIntervalSection, /*traceable=*/true);
-var realSetInterval = setInterval;
+const realSetInterval = setInterval;
 setInterval = (fn, delay) => {
   function wrappedSetInterval() {
     emscriptenCpuProfiler.enterSection(2);
@@ -741,7 +737,7 @@ setInterval = (fn, delay) => {
 
 // Hook into setTimeout to be able to capture the time spent executing them.
 emscriptenCpuProfiler.createSection(3, 'setTimeout', emscriptenCpuProfiler.colorSetTimeoutSection, /*traceable=*/true);
-var realSetTimeout = setTimeout;
+const realSetTimeout = setTimeout;
 setTimeout = (fn, delay, ...args) => {
   function wrappedSetTimeout(...args) {
     emscriptenCpuProfiler.enterSection(3);
@@ -749,11 +745,6 @@ setTimeout = (fn, delay, ...args) => {
     emscriptenCpuProfiler.endSection(3);
   };
   return realSetTimeout(wrappedSetTimeout, delay, ...args);
-}
-
-// Backwards compatibility with previously compiled code. Don't call this anymore!
-function cpuprofiler_add_hooks() {
-  emscriptenCpuProfiler.initialize();
 }
 
 if (globalThis.document) {

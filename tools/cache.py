@@ -109,17 +109,17 @@ def get_sysroot_dir(*parts):
   return str(Path(get_sysroot(absolute=True), *parts))
 
 
-def get_lib_dir(absolute):
-  ensure_setup()
-  path = Path(get_sysroot(absolute=absolute), 'lib')
+def get_lib_dir_relative():
+  from .cmdline import options
+
   if settings.MEMORY64:
-    path = Path(path, 'wasm64-emscripten')
+    path = Path('wasm64-emscripten')
   else:
-    path = Path(path, 'wasm32-emscripten')
+    path = Path('wasm32-emscripten')
   # if relevant, use a subdir of the cache
   subdir = []
-  if settings.LTO:
-    if settings.LTO == 'thin':
+  if options.lto:
+    if options.lto == 'thin':
       subdir.append('thinlto')
     else:
       subdir.append('lto')
@@ -128,6 +128,11 @@ def get_lib_dir(absolute):
   if subdir:
     path = Path(path, '-'.join(subdir))
   return path
+
+
+def get_lib_dir(absolute):
+  ensure_setup()
+  return Path(get_sysroot(absolute=absolute), 'lib', get_lib_dir_relative())
 
 
 def get_lib_name(name, absolute=False):

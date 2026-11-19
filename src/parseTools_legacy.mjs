@@ -4,8 +4,26 @@
  * SPDX-License-Identifier: MIT
  */
 
-import {warn, addToCompileTimeContext} from './utility.mjs';
-import {POINTER_SIZE, runIfMainThread} from './parseTools.mjs';
+import {cDefs} from './modules.mjs';
+import {warn, addToCompileTimeContext, onSettingsLoaded} from './utility.mjs';
+import {POINTER_SIZE, POINTER_TYPE, runIfMainThread} from './parseTools.mjs';
+
+// Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
+function buildStringArray(array) {
+  warn('use of legacy parseTools function: buildStringArray');
+  if (array.length > 0) {
+    return "['" + array.join("','") + "']";
+  } else {
+    return '[]';
+  }
+}
+
+// Legacy function that existed solely to give error message.  These are now
+// provided by the cDefs proxy object.
+function cDefine(key) {
+  warn('use of legacy parseTools function: cDefine');
+  return cDefs[key];
+}
 
 // Replaced (at least internally) with receiveI64ParamAsI53 that does
 // bounds checking.
@@ -33,18 +51,45 @@ function makeMalloc(source, param) {
   return `_malloc(${param})`;
 }
 
-const Runtime = {
-  POINTER_SIZE,
-  QUANTUM_SIZE: POINTER_SIZE,
-};
-
 // Legacy name for runIfMainThread.
 const runOnMainThread = runIfMainThread;
 
-addToCompileTimeContext({
-  Runtime,
-  makeMalloc,
-  receiveI64ParamAsDouble,
-  receiveI64ParamAsI32s,
-  runOnMainThread,
+onSettingsLoaded(() => {
+  if (STRICT) {
+    return;
+  }
+  const Runtime = {
+    POINTER_SIZE,
+    QUANTUM_SIZE: POINTER_SIZE,
+  };
+
+  const STACK_ALIGN = 16;
+  const POINTER_BITS = POINTER_SIZE * 8;
+  const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+  const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
+  const POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
+  const POINTER_SHIFT = MEMORY64 ? '3' : '2';
+  // Similar to POINTER_TYPE, but this is the actual wasm type that is
+  // used in practice, while POINTER_TYPE is the more refined internal
+  // type (that is unsigned, where as core wasm does not have unsigned
+  // types).
+  const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
+
+  addToCompileTimeContext({
+    POINTER_BITS,
+    POINTER_HEAP,
+    POINTER_JS_TYPE,
+    POINTER_MAX,
+    POINTER_SHIFT,
+    POINTER_TYPE,
+    POINTER_WASM_TYPE,
+    Runtime,
+    STACK_ALIGN,
+    buildStringArray,
+    cDefine,
+    makeMalloc,
+    receiveI64ParamAsDouble,
+    receiveI64ParamAsI32s,
+    runOnMainThread,
+  });
 });

@@ -3,10 +3,6 @@ addToLibrary({
   // entries here that contain typed arrays.
   $wasmFS$JSMemoryFiles: {},
 
-  _wasmfs_create_js_file_backend_js__deps: [
-    '$wasmFS$backends',
-    '$wasmFS$JSMemoryFiles',
-  ],
   _wasmfs_create_js_file_backend_js: (backend) => {
     wasmFS$backends[backend] = {
       allocFile: (file) => {
@@ -32,7 +28,7 @@ addToLibrary({
           wasmFS$JSMemoryFiles[file].set(HEAPU8.subarray(buffer, buffer + length), offset);
           return length;
         } catch (err) {
-          return -{{{ cDefs.EIO }}};
+          return -EIO;
         }
       },
       read: (file, buffer, length, offset) => {

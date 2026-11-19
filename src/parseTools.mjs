@@ -15,6 +15,7 @@ import assert from 'node:assert';
 import {
   addToCompileTimeContext,
   error,
+  onSettingsLoaded,
   readFile,
   runInMacroContext,
   pushCurrentFile,
@@ -24,7 +25,7 @@ import {
   srcDir,
 } from './utility.mjs';
 
-import { nativeAliases } from './modules.mjs';
+import {nativeAliases} from './modules.mjs';
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
 const WASM_PAGE_SIZE = 64 * 1024;
@@ -48,7 +49,10 @@ function mangleUnsupportedSyntax(text) {
     // See also: `fix_js_mangling` in link.py.
     // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
     if (EXPORT_ES6) {
-      text = text.replaceAll('await import', 'EMSCRIPTEN$AWAIT$IMPORT');
+      // Use a low-precedence `||` pattern so Closure doesn't strip parentheses.
+      // High-precedence placeholders trick Closure into optimizing `(PLACEHOLDER).y`
+      // into `PLACEHOLDER.y`, breaking execution order once swapped back to `await`.
+      text = text.replaceAll('await import', 'EMSCRIPTEN$AWAIT||import');
     }
     text = text.replaceAll('await createWasm()', 'EMSCRIPTEN$AWAIT(createWasm())');
     text = text.replaceAll('await run()', 'EMSCRIPTEN$AWAIT(run())');
@@ -117,7 +121,7 @@ export function preprocess(filename) {
   let inStyle = false;
   const lines = text.split('\n');
   // text.split yields an extra empty element at the end if text itself ends with a newline.
-  if (!lines[lines.length - 1]) {
+  if (!lines.at(-1)) {
     lines.pop();
   }
 
@@ -229,7 +233,7 @@ export function preprocess(filename) {
     assert(
       showStack.length == 0,
       `preprocessing error in file ${filename}, \
-no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`,
+no matching #endif found (${showStack.length} unmatched preprocessing directives on stack)`,
     );
     return ret;
   } finally {
@@ -242,23 +246,22 @@ function isNiceIdent(ident) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
-export const POINTER_SIZE = MEMORY64 ? 8 : 4;
-const POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
-const STACK_ALIGN = 16;
-const POINTER_BITS = POINTER_SIZE * 8;
-const POINTER_TYPE = `u${POINTER_BITS}`;
-const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
-const POINTER_SHIFT = MEMORY64 ? '3' : '2';
-const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
-const LONG_TYPE = `i${POINTER_BITS}`;
+export let POINTER_SIZE;
+export let POINTER_TYPE;
 
-const SIZE_TYPE = POINTER_TYPE;
+onSettingsLoaded(() => {
+  POINTER_SIZE = MEMORY64 ? 8 : 4;
+  const POINTER_BITS = POINTER_SIZE * 8;
+  POINTER_TYPE = `u${POINTER_BITS}`;
+  const LONG_TYPE = `i${POINTER_BITS}`;
+  const SIZE_TYPE = POINTER_TYPE;
 
-// Similar to POINTER_TYPE, but this is the actual wasm type that is
-// used in practice, while POINTER_TYPE is the more refined internal
-// type (that is unsigned, where as core wasm does not have unsigned
-// types).
-const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
+  addToCompileTimeContext({
+    LONG_TYPE,
+    POINTER_SIZE,
+    SIZE_TYPE,
+  });
+});
 
 function isPointerType(type) {
   return type.endsWith('*');
@@ -293,7 +296,6 @@ function castToBigInt(x) {
   }
   return `BigInt(${x})`;
 }
-
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an i64
 // value, represented by a low and high i32 pair.
@@ -343,13 +345,13 @@ function splitI64(value) {
 
 export function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
-  if (text.length > 1024 * 1024) return text;
+  if (!text || text.length > 1024 * 1024) return text;
 
   indent = ' '.repeat(indent);
 
   // Perform indentation in a smart fashion that does not leak indentation
   // inside multiline strings enclosed in `` characters.
-  let out = '';
+  let out = indent;
   for (let i = 0; i < text.length; ++i) {
     // Output a C++ comment as-is, don't get confused by ` inside a C++ comment.
     if (text[i] == '/' && text[i + 1] == '/') {
@@ -434,7 +436,7 @@ function ensureDot(value) {
 
 export function isNumber(x) {
   // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
-  return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
+  return x == parseFloat(x) || (typeof x === 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
 // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
@@ -570,13 +572,13 @@ function getFastValue(a, op, b) {
 
   let aNumber = null;
   let bNumber = null;
-  if (typeof a == 'number') {
+  if (typeof a === 'number') {
     aNumber = a;
     a = a.toString();
   } else if (isNumber(a)) {
     aNumber = parseFloat(a);
   }
-  if (typeof b == 'number') {
+  if (typeof b === 'number') {
     bNumber = b;
     b = b.toString();
   } else if (isNumber(b)) {
@@ -661,7 +663,7 @@ export function makeReturn64(value) {
   return `(setTempRet0(${pair[1]}), ${pair[0]})`;
 }
 
-function makeThrow() {
+function makeThrow(exc) {
   if (DISABLE_EXCEPTION_CATCHING) {
     if (ASSERTIONS) {
       var assertInfo =
@@ -675,7 +677,7 @@ function makeThrow() {
       return 'abort()';
     }
   }
-  return 'throw exceptionLast;';
+  return `throw ${exc};`;
 }
 
 function charCode(char) {
@@ -982,15 +984,6 @@ function makeRemovedFSAssert(fsName) {
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
-// Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
-function buildStringArray(array) {
-  if (array.length > 0) {
-    return "['" + array.join("','") + "']";
-  } else {
-    return '[]';
-  }
-}
-
 function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
@@ -1060,13 +1053,20 @@ function awaitIf(condition) {
   return condition ? 'await ' : '';
 }
 
+function useRuntimeKeepaliveStack() {
+  return !(MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0));
+}
+
 // Adds a call to runtimeKeepalivePush, if needed by the current build
 // configuration.
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
 // don't ever need to exit the runtime.
 function runtimeKeepalivePush() {
-  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0)) return '';
-  return 'runtimeKeepalivePush();';
+  if (useRuntimeKeepaliveStack()) {
+    return 'runtimeKeepalivePush();';
+  } else {
+    return '';
+  }
 }
 
 // Adds a call to runtimeKeepalivePush, if needed by the current build
@@ -1074,31 +1074,49 @@ function runtimeKeepalivePush() {
 // We skip this completely in MINIMAL_RUNTIME and also in builds that
 // don't ever need to exit the runtime.
 function runtimeKeepalivePop() {
-  if (MINIMAL_RUNTIME || (EXIT_RUNTIME == 0 && PTHREADS == 0)) return '';
-  return 'runtimeKeepalivePop();';
+  if (useRuntimeKeepaliveStack()) {
+    return 'runtimeKeepalivePop();';
+  } else {
+    return '';
+  }
 }
 
-// Some web functions like TextDecoder.decode() may not work with a view of a
-// SharedArrayBuffer, see https://github.com/whatwg/encoding/issues/172
-// To avoid that, this function allows obtaining an unshared copy of an
-// ArrayBuffer.
-function getUnsharedTextDecoderView(heap, start, end) {
-  const shared = `${heap}.slice(${start}, ${end})`;
-  const unshared = `${heap}.subarray(${start}, ${end})`;
+// Some web APIs like TextDecoder.decode() and XMLHttpRequest.send() do not
+// work with a view of a SharedArrayBuffer (see
+// https://github.com/whatwg/encoding/issues/172) or of a resizable ArrayBuffer
+// (see https://github.com/emscripten-core/emscripten/issues/27241).
+// To avoid that, this function allows obtaining a copy in those cases, or a view
+// otherwise.
+function getHeapViewOrCopy(heap, start, end) {
+  const copy = `${heap}.slice(${start}, ${end})`;
+  const view = `${heap}.subarray(${start}, ${end})`;
 
-  // No need to worry about this in non-shared memory builds
-  if (!SHARED_MEMORY) return unshared;
+  // No need to worry about this in builds where the buffer can be neither
+  // shared nor resizable.
+  if (!SHARED_MEMORY && !(ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS)) return view;
 
-  // If asked to get an unshared view to what we know will be a shared view, or
-  // if in -Oz, then unconditionally do a .slice() for smallest code size.
+  // If in -Oz, then unconditionally do a .slice() for smallest code size.
   // This is guaranteed to work but could be slower since it performs a copy.
-  if (SHRINK_LEVEL == 2 || heap.startsWith('HEAP')) return shared;
+  if (SHRINK_LEVEL == 2) return copy;
 
-  // Otherwise, generate a runtime type check: must do a .slice() if looking at
-  // a SAB, or can use .subarray() otherwise.  Note: We compare with
-  // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could be
-  // undefined.
-  return `${heap}.buffer instanceof ArrayBuffer ? ${unshared} : ${shared}`;
+  if (SHARED_MEMORY) {
+    // If asked to get an unshared view to what we know will be a shared view,
+    // then unconditionally do a .slice().
+    if (heap.startsWith('HEAP')) return copy;
+
+    // Otherwise, generate a runtime type check: must do a .slice() if looking
+    // at a SAB, or can use .subarray() otherwise.  Note: We compare with
+    // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could
+    // be undefined.
+    return `${heap}.buffer instanceof ArrayBuffer ? ${view} : ${copy}`;
+  }
+
+  // With GROWABLE_ARRAYBUFFERS == 2 the heap is always resizable; with
+  // GROWABLE_ARRAYBUFFERS == 1 resizability is feature-detected at runtime,
+  // and non-heap views passed to UTF8ArrayToString may not be resizable at
+  // all, so generate a runtime check in those cases.
+  if (GROWABLE_ARRAYBUFFERS == 2 && heap.startsWith('HEAP')) return copy;
+  return `${heap}.buffer.resizable ? ${copy} : ${view}`;
 }
 
 function getEntryFunction() {
@@ -1118,13 +1136,6 @@ function getEntryFunction() {
     return `resolveGlobalSymbol('${entryFunction}').sym;`;
   }
   return `_${entryFunction}`;
-}
-
-function formattedMinNodeVersion() {
-  var major = MIN_NODE_VERSION / 10000;
-  var minor = (MIN_NODE_VERSION / 100) % 100;
-  var rev = MIN_NODE_VERSION % 100;
-  return `v${major}.${minor}.${rev}`;
 }
 
 function ENVIRONMENT_IS_MAIN_THREAD() {
@@ -1189,7 +1200,7 @@ function pthreadDetection() {
 }
 
 function makeExportAliases() {
-  var res = ''
+  var res = '';
   for (const [alias, ex] of Object.entries(nativeAliases)) {
     if (ASSERTIONS) {
       res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
@@ -1207,17 +1218,6 @@ addToCompileTimeContext({
   ATMAINS,
   ATPOSTRUNS,
   FOUR_GB,
-  LONG_TYPE,
-  POINTER_HEAP,
-  POINTER_BITS,
-  POINTER_JS_TYPE,
-  POINTER_MAX,
-  POINTER_SHIFT,
-  POINTER_SIZE,
-  POINTER_TYPE,
-  POINTER_WASM_TYPE,
-  SIZE_TYPE,
-  STACK_ALIGN,
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,
   ENVIRONMENT_IS_MAIN_THREAD,
@@ -1231,18 +1231,16 @@ addToCompileTimeContext({
   addAtPostRun,
   asyncIf,
   awaitIf,
-  buildStringArray,
   charCode,
   defineI64Param,
   expectToReceiveOnModule,
-  formattedMinNodeVersion,
   from64,
   from64Expr,
   getEntryFunction,
   getHeapForType,
   getHeapOffset,
   getNativeTypeSize,
-  getUnsharedTextDecoderView,
+  getHeapViewOrCopy,
   hasExportedSymbol,
   isSymbolNeeded,
   makeDynCall,
@@ -1273,4 +1271,5 @@ addToCompileTimeContext({
   nodeWWDetection,
   wasmWorkerDetection,
   pthreadDetection,
+  useRuntimeKeepaliveStack,
 });

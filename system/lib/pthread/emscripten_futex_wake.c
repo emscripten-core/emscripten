@@ -16,7 +16,7 @@
 
 // Stores the memory address that the main thread is waiting on, if any. If
 // the main thread is waiting, we wake it up before waking up any workers.
-void* _emscripten_main_thread_futex;
+void* _Atomic _emscripten_main_thread_futex;
 
 // Returns the number of threads (>= 0) woken up, or the value -EINVAL on error.
 // Pass count == INT_MAX to wake up all threads.

@@ -30,12 +30,12 @@ static const char envvars[][12] = {
 	"LC_MESSAGES",
 };
 
-volatile int __locale_lock[1];
-volatile int *const __locale_lockptr = __locale_lock;
+_Atomic int __locale_lock[1];
+_Atomic int *const __locale_lockptr = __locale_lock;
 
 const struct __locale_map *__get_locale(int cat, const char *val)
 {
-	static void *volatile loc_head;
+	static void *loc_head;
 	const struct __locale_map *p;
 	struct __locale_map *new = 0;
 	const char *path = 0, *z;

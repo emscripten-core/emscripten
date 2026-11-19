@@ -31,12 +31,7 @@ int main(int argc, char* argv[]){
         return 100;
     }
     int const frequency = EM_ASM_INT({
-        var context;
-        try {
-            context = new AudioContext();
-        } catch (e) {
-            context = new webkitAudioContext(); // safari only
-        }
+        var context = new AudioContext();
         return context.sampleRate;
     });
     if(Mix_OpenAudio(frequency, MIX_DEFAULT_FORMAT, 2, 1024) == -1) {

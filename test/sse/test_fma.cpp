@@ -17,10 +17,10 @@
 #include <stdio.h>
 #include <string.h>
 
-static int tests_passed = 0;
-static int tests_failed = 0;
+int tests_passed = 0;
+int tests_failed = 0;
 
-static void check_f(const char* name, float got, float expected) {
+void check_f(const char* name, float got, float expected) {
   if (got == expected || (isnan(got) && isnan(expected))) {
     tests_passed++;
   } else {
@@ -29,7 +29,7 @@ static void check_f(const char* name, float got, float expected) {
   }
 }
 
-static void check_d(const char* name, double got, double expected) {
+void check_d(const char* name, double got, double expected) {
   if (got == expected || (isnan(got) && isnan(expected))) {
     tests_passed++;
   } else {
@@ -40,7 +40,7 @@ static void check_d(const char* name, double got, double expected) {
 
 /* Bit-exact comparison. Unlike check_f/check_d (which use ==), this
    distinguishes +0.0 from -0.0, so it can verify sign-of-zero results. */
-static void check_f_bits(const char* name, float got, float expected) {
+void check_f_bits(const char* name, float got, float expected) {
   if (memcmp(&got, &expected, sizeof(float)) == 0) {
     tests_passed++;
   } else {
@@ -49,7 +49,7 @@ static void check_f_bits(const char* name, float got, float expected) {
   }
 }
 
-static void check_d_bits(const char* name, double got, double expected) {
+void check_d_bits(const char* name, double got, double expected) {
   if (memcmp(&got, &expected, sizeof(double)) == 0) {
     tests_passed++;
   } else {
@@ -59,8 +59,8 @@ static void check_d_bits(const char* name, double got, double expected) {
 }
 
 /* Helper to extract float lanes */
-static void storeu_ps(float* out, __m128 v) { _mm_storeu_ps(out, v); }
-static void storeu_pd(double* out, __m128d v) { _mm_storeu_pd(out, v); }
+void storeu_ps(float* out, __m128 v) { _mm_storeu_ps(out, v); }
+void storeu_pd(double* out, __m128d v) { _mm_storeu_pd(out, v); }
 
 /* ============================================================
  * 128-bit packed float tests

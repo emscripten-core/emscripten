@@ -15,7 +15,7 @@ void changedir(const char *dir) {
   assert(rtn == 0);
 }
 
-static void create_file(const char *path) {
+void create_file(const char *path) {
   printf("creating: %s\n", path);
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0777);
   assert(fd >= 0);

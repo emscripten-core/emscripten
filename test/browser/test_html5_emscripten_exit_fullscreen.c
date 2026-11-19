@@ -14,7 +14,7 @@ bool fullscreen_change(int eventType, const EmscriptenFullscreenChangeEvent *ful
     return 0;
 }
 
-static int resizes = 0;
+int resizes = 0;
 
 bool canvas_resize(int eventType, const void *reserved, void *userData) {
     double css_w, css_h;

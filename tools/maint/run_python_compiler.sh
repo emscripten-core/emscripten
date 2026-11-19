@@ -30,9 +30,9 @@ if [ -z "$_EM_PY" ]; then
   exit 1
 fi
 
-if [ -z "$_EMCC_CCACHE" ]; then
-  exec "$_EM_PY" -E "$0.py" "$@"
-else
-  unset _EMCC_CCACHE
-  exec ccache "$0" "$@"
+_CCACHE=
+if [ -n "$_EMCC_CCACHE" ]; then
+  _CCACHE=ccache
 fi
+
+exec $_CCACHE "$_EM_PY" -E "$0.py" "$@"
