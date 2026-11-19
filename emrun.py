@@ -228,6 +228,8 @@ user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", fal
 user_pref("browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.max_resumed_crashes", -1);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
+user_pref("browser.startup.page", 0);
+user_pref("toolkit.winRegisterApplicationRestart", false);
 // Ease shutting down browser instances in the parallel browser harness
 user_pref("browser.warnOnQuit", false);
 user_pref("browser.warnOnQuitShortcut", false);
