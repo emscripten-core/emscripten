@@ -136,11 +136,16 @@ min_browser_versions = {
     'node': 240000,
   },
   # Wasm threads have been available since Chrome 74, but the Liftoff compiler
-  # in Chrome 110 - 114 miscompiles the atomic.wait instructions
-  # (https://crbug.com/1432453), so require the first version after those.
+  # of older Chrome versions miscompiles some of the atomic instructions:
+  # - Chrome 110 - 114 miscompile the atomic.wait instructions
+  #   (https://crbug.com/1432453).
+  # - Chrome versions before 132 miscompile the atomic.rmw.and/or/xor
+  #   instructions when they access a constant memory address at 2GB or above
+  #   (https://crbug.com/378779897).
+  # So require the first version that has neither of these bugs.
   # https://caniuse.com/wasm-threads
   Feature.THREADS: {
-    'chrome': 115,
+    'chrome': 132,
     'firefox': 79,
     'safari': 140100,
     'node': 160400,
