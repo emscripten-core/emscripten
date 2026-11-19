@@ -1973,6 +1973,7 @@
           "GL_OPERAND1_RGB",
           "GL_OPERAND2_ALPHA",
           "GL_OPERAND2_RGB",
+          "GL_PACK_ROW_LENGTH",
           "GL_PIXEL_PACK_BUFFER",
           "GL_PIXEL_PACK_BUFFER_BINDING",
           "GL_PIXEL_UNPACK_BUFFER",
