@@ -20,6 +20,19 @@ function createEmvalInvokerBody(signature, toValue = 'Emval.toValue') {
     params.push(`argFromPtr${i}`);
     args.push(`argFromPtr${i}(args${i ? '+' + i * GenericWireTypeSize : ''})`);
   }
+  // Decode receiver and arguments before the property lookup so a getter or
+  // Proxy trap cannot invalidate a borrowed `val` handle before it is read.
+  if (kind == {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}} && argCount > 0) {
+    var argNames = [];
+    var decls = [`var obj = ${toValue}(handle);`];
+    for (var i = 0; i < argCount; ++i) {
+      argNames.push(`a${i}`);
+      decls.push(`var a${i} = ${args[i]};`);
+    }
+    var call = `obj[getStringOrSymbol(methodName)](${argNames})`;
+    var ret = returns ? `return emval_returnValue(toReturnWire, destructorsRef, ${call});` : `${call};`;
+    return `(${params}) => (handle, methodName, destructorsRef, args) => {\n${decls.join('\n')}\n${ret}\n}`;
+  }
   var functionBody;
   switch (kind) {
     case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
@@ -32,7 +45,7 @@ function createEmvalInvokerBody(signature, toValue = 'Emval.toValue') {
       functionBody = args[0];
       break;
     case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
-      functionBody = `${toValue}(handle)[getStringOrSymbol(methodName)](${args})`;
+      functionBody = `${toValue}(handle)[getStringOrSymbol(methodName)]()`;
       break;
   }
   if (returns) {
@@ -297,9 +310,16 @@ var LibraryEmVal = {
 #endif
   $emval_invokerFunctions: `{${EMVAL_INVOKERS.map((sig) => `'${sig}': ${createEmvalInvokerBody(sig)},`).join('\n')}}`,
 
+  $readEmValFromPointer__internal: true,
+  $readEmValFromPointer: (pointer) => Emval.toValue({{{ makeGetValue('pointer', '0', '*') }}}),
+
   _emval_create_invoker: (argCount, argTypesPtr, kind) => {
     var [retType, ...argTypes] = emval_lookupTypes(argCount, argTypesPtr);
-    var argFromPtr = argTypes.map(type => type.readValueFromPointer.bind(type));
+    // WireTypePack borrows `val` handles without incref, so read EmValType
+    // without decref. std::optional uses EmValOptionalType (a distinct object)
+    // and still decrefs via readPointer.
+    var argFromPtr = argTypes.map(type =>
+      type == EmValType ? readEmValFromPointer : type.readValueFromPointer.bind(type));
     argCount--; // remove the extracted return type
 
     var signature = `${kind}${retType.isVoid ? 'f' : 't'}${argCount}`;
