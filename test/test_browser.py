@@ -23,7 +23,6 @@ from urllib.request import urlopen
 
 import common
 from browser_common import (
-  CHROMIUM_BASED_BROWSERS,
   EMTEST_COS_EXTENSION_PATH,
   BrowserCore,
   HttpServerThread,
@@ -245,8 +244,7 @@ class browser(BrowserCore):
       print()
 
   def require_jspi(self):
-    if not is_chrome() and not is_firefox():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) and firefox support JSPI today.')
+    self.check_browser_feature('EMTEST_LACKS_JSPI', Feature.JSPI, 'This test requires a browser that supports JSPI')
     super().require_jspi()
 
   def post_manual_reftest(self):
@@ -3236,8 +3234,8 @@ Module["preRun"] = () => {
     'jspi': (['-sJSPI'],),
   })
   def test_async(self, opt, args):
-    if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+    if is_jspi(args):
+      self.require_jspi()
 
     self.btest_exit('test_async.c', cflags=[opt, '-g2'] + args)
 
@@ -4928,8 +4926,8 @@ Module["preRun"] = () => {
     'jspi': (['-sJSPI'],),
   })
   def test_embind(self, args):
-    if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+    if is_jspi(args):
+      self.require_jspi()
     if is_jspi(args) and self.is_wasm64():
       self.skipTest('_emval_await fails')
 
