@@ -3757,6 +3757,20 @@ More info: https://emscripten.org
   def test_jspi_wildcard(self, args):
     self.do_runf('other/test_jspi_wildcard.c', 'done\n', cflags=args)
 
+  @parameterized({
+    '': (False, []),
+    'jspi': (True, []),
+    'jspi_O2': (True, ['-O2']),
+    'jspi_closure': (True, ['-O2', '--closure=1']),
+  })
+  def test_can_suspend(self, jspi, args):
+    if jspi:
+      self.require_jspi()
+      self.set_setting('JSPI_EXPORTS', 'promising_inner')
+    else:
+      self.set_setting('ASYNCIFY')
+    self.do_runf('other/test_can_suspend.c', 'done\n', cflags=args)
+
   @requires_jspi
   def test_jspi_add_function(self):
     # make sure synchronous functions in the wasmTable aren't processed with Asyncify.makeAsyncFunction

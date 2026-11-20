@@ -1848,7 +1848,7 @@ addToLibrary({
     var func = getWasmTableEntry(ptr);
 #if JSPI
     if (promising) {
-      func = WebAssembly.promising(func);
+      func = Asyncify.makeAsyncFunction(func);
     }
 #endif
     var rtn = func(...args);
@@ -1894,8 +1894,13 @@ addToLibrary({
     // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overridden to return wrapped
     // functions so we need to call it here to retrieve the potential wrapper correctly
     // instead of just storing 'func' directly into wasmTableMirror
+#if ASYNCIFY == 2
+    // Instrumented lazily by getWasmTableEntry.
+    wasmTableMirror[idx] = null;
+#else
     /** @suppress {checkTypes} */
     wasmTableMirror[idx] = wasmTable.get({{{ toIndexType('idx') }}});
+#endif
   },
 
   $getWasmTableEntry: (funcPtr) => {
@@ -1912,6 +1917,8 @@ addToLibrary({
 #if ASYNCIFY == 2
       if (Asyncify.isAsyncExport(func)) {
         wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
+      } else if (func) {
+        wasmTableMirror[funcPtr] = func = Asyncify.trackEntry(func, false);
       }
 #endif
     }

@@ -43,6 +43,10 @@ See docs/process.md for more on how version tagging works.
 - Building with `-sJSPI` now bumps the default minimum supported browser
   versions to the first ones that support JSPI: Chrome 137, Firefox 153,
   Safari 27 and Node.js 24. (#28334)
+- Added `emscripten_can_suspend()`, which returns whether an async operation
+  such as `emscripten_sleep()` would suspend from the current point. To track
+  this under JSPI, wasm exports and table entries called from JS are now wrapped
+  in JS functions, as exports already are with `-sASYNCIFY=1`. (#28323)
 
 7.0.0 - 11/06/26
 ----------------
