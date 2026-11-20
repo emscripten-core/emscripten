@@ -86,7 +86,7 @@ EMTEST_RESTART_BROWSER_EVERY_N_TESTS = int(os.getenv('EMTEST_RESTART_BROWSER_EVE
 DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
 # The data directories of currently launched browsers.
-browser_data_dirs_in_use = set()
+browser_data_dirs_in_use: set[str] = set()
 
 browser_spawn_lock_filename = path_from_root('out/browser_spawn_lock')
 
