@@ -33,13 +33,6 @@ See docs/process.md for more on how version tagging works.
   `{{{ cDefs.FOO }}}`) are now exposed as `const` JavaScript library symbols
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
   making unminified output more readable. (#28144)
-- In pthreads builds with `MAIN_MODULE`, workers no longer walk the main
-  module's whole function table, which created a JS function object for every
-  table entry in every worker.  The main thread now passes them the table slots
-  of the main module's exported functions.  As a result, calling `addFunction`
-  in a worker on a main-module function that is not exported (for example one
-  obtained with `getWasmTableEntry`) now allocates a new table slot instead of
-  returning its existing address. (#28105)
 - zlib port updated from 1.3.2 to 1.4. (#28210)
 - In multi-threaded builds with assertions enabled, `addFunction` now warns
   when it adds a function to the table: each thread has its own table, so the
@@ -50,6 +43,11 @@ See docs/process.md for more on how version tagging works.
 - Building with `-sJSPI` now bumps the default minimum supported browser
   versions to the first ones that support JSPI: Chrome 137, Firefox 153,
   Safari 27 and Node.js 24. (#28334)
+- In pthreads builds with `MAIN_MODULE`, workers no longer create a JS function
+  object for every entry of the main module's table: the main thread passes
+  them the table slots of the main module's exported functions. `addFunction`
+  in a worker now gives a main-module function that is not exported a new
+  table slot instead of returning its existing address. (#28105)
 
 7.0.0 - 11/06/26
 ----------------
