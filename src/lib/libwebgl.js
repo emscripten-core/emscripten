@@ -194,6 +194,8 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       'EXT_texture_norm16',
       'NV_shader_noperspective_interpolation',
       'WEBGL_clip_cull_distance',
+      'WEBGL_draw_instanced_base_vertex_base_instance',
+      'WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
       // WebGL 1 and WebGL 2 extensions
       'EXT_clip_control',

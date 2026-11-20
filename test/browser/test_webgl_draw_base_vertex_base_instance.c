@@ -66,14 +66,9 @@ int main() {
 #endif
 
   GLboolean extAvailable = emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(ctx);
-  extAvailable &= emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(ctx);
-
-  if (!extAvailable) {
-    EM_ASM({
-      skipTest('WEBGL_draw_instanced_base_vertex_base_instance is not supported');
-    });
-    return 0;
-  }
+  assert(extAvailable && "WEBGL_draw_instanced_base_vertex_base_instance is not supported");
+  extAvailable = emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(ctx);
+  assert(extAvailable && "WEBGL_multi_draw_instanced_base_vertex_base_instance is not supported");
 
   static const char vertex_shader[] =
     "#version 300 es\n"
