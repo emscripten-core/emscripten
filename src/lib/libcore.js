@@ -1848,7 +1848,7 @@ addToLibrary({
     var func = getWasmTableEntry(ptr);
 #if JSPI
     if (promising) {
-      func = WebAssembly.promising(func);
+      func = Asyncify.makeAsyncFunction(func);
     }
 #endif
     var rtn = func(...args);
