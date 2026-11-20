@@ -174,7 +174,7 @@ class codesize(RunnerCore):
     # c) rebaselining is trivial (just run with --rebaseline)
     # Note that we do not compare the full wasm output since that is
     # even more fragile and can change with LLVM updates.
-    if compare_js_output:
+    if compare_js_output and 'EMTEST_SKIP_NODE_DEV_PACKAGES' not in os.environ:
       expected_js = test_file('codesize', test_name + '.expected.js')
       terser = shared.get_npm_cmd('terser')
       # N.b. this requires node in PATH, it does not run against NODE from

@@ -232,6 +232,12 @@ inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<Ele
   ++cursor;
 }
 
+inline void writeGenericWireType(GenericWireType*& cursor, const clamped_memory_view& wt) {
+  cursor->w[0].s = wt.size;
+  cursor->w[1].p = (void*)wt.data;
+  ++cursor;
+}
+
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T wt) {
   static_assert(sizeof(T) <= sizeof(cursor->w[0].u), "Generic wire type must be smaller than unsigned.");
@@ -262,6 +268,13 @@ struct WireTypePack {
 private:
   std::array<GenericWireType, PackSize<Args...>::value> elements;
 };
+
+template<EM_INVOKER_KIND Kind, typename ReturnType, size_t ArgCount>
+inline void recordEmvalInvokerDescriptor() {
+  constexpr char kind = static_cast<char>('0' + static_cast<int>(Kind));
+  constexpr char returns = std::is_void<ReturnType>::value ? 'f' : 't';
+  emitInvokerDescriptor<ArgCount, 'v', kind, returns>();
+}
 
 } // end namespace internal
 
@@ -602,7 +615,9 @@ private:
     using RetWire = typename BindingType<Ret>::WireType;
 
     static constexpr typename Policy::template ArgTypeList<Ret, Args...> argTypes;
-    thread_local EM_INVOKER mc = _emval_create_invoker(argTypes.getCount(), argTypes.getTypes(), Kind);
+    thread_local EM_INVOKER mc = (
+      recordEmvalInvokerDescriptor<Kind, Ret, sizeof...(Args)>(),
+      _emval_create_invoker(argTypes.getCount(), argTypes.getTypes(), Kind));
 
     WireTypePack<Args...> argv(std::forward<Args>(args)...);
     EM_DESTRUCTORS destructors = nullptr;

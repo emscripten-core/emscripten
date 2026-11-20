@@ -120,7 +120,7 @@ var LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
     dbg('emscripten_resume_audio_context_async() resuming...');
 #endif
-    emAudio[contextHandle].resume().then(() => { cb(1/*running*/) }).catch(() => { cb(0/*suspended*/) });
+    emAudio[contextHandle].resume().then(() => { cb(AUDIO_CONTEXT_STATE_RUNNING) }).catch(() => { cb(AUDIO_CONTEXT_STATE_SUSPENDED) });
   },
 
   emscripten_resume_audio_context_sync: (contextHandle) => {
@@ -195,7 +195,7 @@ var LibraryWebAudio = {
 #if ASSERTIONS || WEBAUDIO_DEBUG
       dbg(`_emscripten_create_audio_worklet() addModule() failed!`);
 #endif
-      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
+      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, EM_FALSE, userData);
     };
 
     // Does browser not support AudioWorklets?
@@ -260,7 +260,7 @@ var LibraryWebAudio = {
 #endif
       });
       audioWorklet.port.onmessage = _emAudioDispatchProcessorCallback;
-      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
+      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, EM_TRUE, userData);
     }).catch(audioWorkletCreationFailed);
   },
 

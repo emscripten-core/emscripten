@@ -7,17 +7,17 @@
 
 #define _LARGEFILE64_SOURCE // For F_GETLK64 etc
 
+#include <cerrno>
+#include <cmath>
+#include <cstdarg>
+#include <cstdlib>
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
 #include <emscripten/html5.h>
 #include <emscripten/syscalls.h>
-#include <errno.h>
-#include <math.h>
 #include <mutex>
 #include <poll.h>
-#include <stdarg.h>
-#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>

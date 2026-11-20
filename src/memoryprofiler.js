@@ -32,20 +32,20 @@ const emscriptenMemoryProfiler = {
   uiUpdateIntervalMsecs: 2000,
 
   // Tracks data for the allocation statistics.
-  allocationsAtLoc: {},
-  allocationSitePtrs: {},
+  allocationsAtLoc: new Map(),
+  allocationSitePtrs: new Map(),
 
   // Stores an associative array of records HEAP ptr -> size so that we can
   // retrieve how much memory was freed in calls to _free() and decrement the
   // tracked usage accordingly.
-  // E.g. sizeOfAllocatedPtr[address] returns the size of the heap pointer
+  // E.g. sizeOfAllocatedPtr.get(address) returns the size of the heap pointer
   // starting at 'address'.
-  sizeOfAllocatedPtr: {},
+  sizeOfAllocatedPtr: new Map(),
 
   // Conceptually same as the above array, except this one tracks only pointers
   // that were allocated during the application preRun step, which corresponds
   // to the data added to the VFS with --preload-file.
-  sizeOfPreRunAllocatedPtr: {},
+  sizeOfPreRunAllocatedPtr: new Map(),
 
   resizeMemorySources: [],
     // stack: <string>,
@@ -56,6 +56,10 @@ const emscriptenMemoryProfiler = {
     // stack: <string>,
     // begin: <int>,
     // end: <int>
+
+  // The current end of the dynamic memory area (i.e. the sbrk() limit), as last
+  // reported to onSbrkGrow().  Undefined until sbrk() gets called.
+  heapEnd: undefined,
 
   // Once set to true, preRun is finished and the above array is not touched anymore.
   pagePreRunIsFinished: false,
@@ -120,6 +124,7 @@ const emscriptenMemoryProfiler = {
 
   onSbrkGrow(oldLimit, newLimit, loc) {
     const self = emscriptenMemoryProfiler;
+    self.heapEnd = newLimit;
     // On first sbrk(), account for the initial size.
     if (self.sbrkSources.length == 0) {
       self.sbrkSources.push({
@@ -171,11 +176,11 @@ const emscriptenMemoryProfiler = {
 
   onMalloc(ptr, size, loc) {
     if (!ptr) return;
-    if (emscriptenMemoryProfiler.sizeOfAllocatedPtr[ptr])
+    if (emscriptenMemoryProfiler.sizeOfAllocatedPtr.has(ptr))
     {
 // Uncomment to debug internal workings of tracing:
 //      console.error(`Allocation error in onMalloc! Pointer ${ptr} had already been tracked as allocated!`);
-//      console.error(`Previous site of allocation: ${emscriptenMemoryProfiler.allocationSitePtrs[ptr]}`);
+//      console.error(`Previous site of allocation: ${emscriptenMemoryProfiler.allocationSitePtrs.get(ptr)}`);
 //      console.error(`This doubly attempted site of allocation: ${new Error().stack.toString()}`);
 //      abort('malloc internal inconsistency!');
       return;
@@ -188,17 +193,21 @@ const emscriptenMemoryProfiler = {
     self.recordStackWatermark();
 
     // Remember the size of the allocated block to know how much will be _free()d later.
-    self.sizeOfAllocatedPtr[ptr] = size;
+    self.sizeOfAllocatedPtr.set(ptr, size);
     // Also track if this was a _malloc performed at preRun time.
-    if (!self.pagePreRunIsFinished) self.sizeOfPreRunAllocatedPtr[ptr] = size;
+    if (!self.pagePreRunIsFinished) self.sizeOfPreRunAllocatedPtr.set(ptr, size);
 
 #if ASSERTIONS
     assert(loc)
 #endif
-    self.allocationsAtLoc[loc] ||= [0, 0, self.filterCallstackForMalloc(loc)];
-    self.allocationsAtLoc[loc][0] += 1;
-    self.allocationsAtLoc[loc][1] += size;
-    self.allocationSitePtrs[ptr] = loc;
+    let allocsAtThisLoc = self.allocationsAtLoc.get(loc);
+    if (!allocsAtThisLoc) {
+      allocsAtThisLoc = [0, 0, self.filterCallstackForMalloc(loc)];
+      self.allocationsAtLoc.set(loc, allocsAtThisLoc);
+    }
+    allocsAtThisLoc[0] += 1;
+    allocsAtThisLoc[1] += size;
+    self.allocationSitePtrs.set(ptr, loc);
   },
 
   onFree(ptr) {
@@ -207,7 +216,7 @@ const emscriptenMemoryProfiler = {
     const self = emscriptenMemoryProfiler;
 
     // Decrement global stats.
-    const sz = self.sizeOfAllocatedPtr[ptr];
+    const sz = self.sizeOfAllocatedPtr.get(ptr);
     if (!isNaN(sz)) self.totalMemoryAllocated -= sz;
     else
     {
@@ -219,18 +228,18 @@ const emscriptenMemoryProfiler = {
 
     self.recordStackWatermark();
 
-    const loc = self.allocationSitePtrs[ptr];
+    const loc = self.allocationSitePtrs.get(ptr);
     if (loc) {
-      const allocsAtThisLoc = self.allocationsAtLoc[loc];
+      const allocsAtThisLoc = self.allocationsAtLoc.get(loc);
       if (allocsAtThisLoc) {
         allocsAtThisLoc[0] -= 1;
         allocsAtThisLoc[1] -= sz;
-        if (allocsAtThisLoc[0] <= 0) delete self.allocationsAtLoc[loc];
+        if (allocsAtThisLoc[0] <= 0) self.allocationsAtLoc.delete(loc);
       }
     }
-    delete self.allocationSitePtrs[ptr];
-    delete self.sizeOfAllocatedPtr[ptr];
-    delete self.sizeOfPreRunAllocatedPtr[ptr]; // Also free if this happened to be a _malloc performed at preRun time.
+    self.allocationSitePtrs.delete(ptr);
+    self.sizeOfAllocatedPtr.delete(ptr);
+    self.sizeOfPreRunAllocatedPtr.delete(ptr); // Also free if this happened to be a _malloc performed at preRun time.
     ++self.totalTimesFreeCalled;
   },
 
@@ -300,7 +309,7 @@ const emscriptenMemoryProfiler = {
 
       document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", function(e) { self.trackedCallstackMinSizeBytes=parseInt(this.value, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */); });
       document.getElementById('memoryprofiler_min_tracked_alloc_count').addEventListener("change", function(e) { self.trackedCallstackMinAllocCount=parseInt(this.value, undefined); });
-      document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", (e) => {self.allocationsAtLoc = {}; self.allocationSitePtrs = {};});
+      document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", (e) => {self.allocationsAtLoc.clear(); self.allocationSitePtrs.clear();});
       self.canvas = document.getElementById('memoryprofiler_canvas');
       self.canvas.width = document.documentElement.clientWidth - 32;
       self.drawContext = self.canvas.getContext('2d');
@@ -390,11 +399,9 @@ const emscriptenMemoryProfiler = {
   // Warning: This will walk through all allocations, so it is slow!
   printAllocsWithCyclingColors(colors, allocs) {
     let colorIndex = 0;
-    for (const i in allocs) {
+    for (const [start, sz] of allocs) {
       emscriptenMemoryProfiler.drawContext.fillStyle = colors[colorIndex];
       colorIndex = (colorIndex + 1) % colors.length;
-      const start = i|0;
-      const sz = allocs[start]|0;
       emscriptenMemoryProfiler.fillLine(start, start + sz);
     }
   },
@@ -510,7 +517,11 @@ const emscriptenMemoryProfiler = {
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(stackBase - stackCurrent) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(stackBase - self.stackTopWatermark);
 
     const heap_base = ___heap_base;
-    const heap_end = _sbrk({{{ to64('0') }}});
+    // Use the value that sbrk() last reported to onSbrkGrow(), rather than
+    // calling sbrk() here: the UI can still get updated after the runtime has
+    // exited, at which point we can no longer call into the Wasm module.  If
+    // sbrk() has not been called yet, the dynamic memory area is still empty.
+    const heap_end = self.heapEnd ?? heap_base;
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(heap_end - heap_base);
     html += ". start: " + toHex(heap_base, width);
     html += ". end: " + toHex(heap_end, width) + ".";
@@ -518,7 +529,7 @@ const emscriptenMemoryProfiler = {
     html += "<br />Free memory: " + colorBar("#70FF70") + "DYNAMIC: " + self.formatBytes(heap_end - heap_base - self.totalMemoryAllocated) + ", " + colorBar('#FFFFFF') + 'Unallocated HEAP: ' + self.formatBytes(HEAP8.length - heap_end) + " (" + ((HEAP8.length - heap_base - self.totalMemoryAllocated) * 100 / (HEAP8.length - heap_base)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
 
     let preloadedMemoryUsed = 0;
-    for (const sz of Object.values(self.sizeOfPreRunAllocatedPtr)) preloadedMemoryUsed += sz|0;
+    for (const sz of self.sizeOfPreRunAllocatedPtr.values()) preloadedMemoryUsed += sz|0;
     html += '<br />' + colorBar('#FF9900') + colorBar('#FFDD33') + 'Preloaded memory used, most likely memory reserved by files in the virtual filesystem : ' + self.formatBytes(preloadedMemoryUsed);
 
     html += '<br />OpenAL audio data: ' + self.formatBytes(self.countOpenALAudioDataSize()) + ' (outside HEAP)';
@@ -557,7 +568,7 @@ const emscriptenMemoryProfiler = {
       }
 
       // Print sbrk() traces.
-      const uniqueSources = {};
+      const uniqueSources = new Map();
       const filterWords = document.getElementById('sbrkFilter').value.split(',');
       for (const sbrk of self.sbrkSources) {
         let stack = sbrk.stack;
@@ -567,8 +578,12 @@ const emscriptenMemoryProfiler = {
           stack = self.filterCallstackAfterFunctionName(stack, s);
         }
         sbrk.filteredStack = stack;
-        uniqueSources[stack] ||= self.hsvToRgb(Object.keys(uniqueSources).length * 0.618033988749895 % 1, 0.5, 0.95);
-        self.drawContext.fillStyle = sbrk.color = uniqueSources[stack];
+        let color = uniqueSources.get(stack);
+        if (!color) {
+          color = self.hsvToRgb(uniqueSources.size * 0.618033988749895 % 1, 0.5, 0.95);
+          uniqueSources.set(stack, color);
+        }
+        self.drawContext.fillStyle = sbrk.color = color;
         self.fillRect(sbrk.begin, sbrk.end, 0.25);
       }
 
@@ -604,9 +619,9 @@ const emscriptenMemoryProfiler = {
       html += '</div>'
     } else {
       // Print out statistics of individual allocations if they were tracked.
-      if (Object.keys(self.allocationsAtLoc).length > 0) {
+      if (self.allocationsAtLoc.size > 0) {
         const calls = [];
-        for (const alloc of Object.values(self.allocationsAtLoc)) {
+        for (const alloc of self.allocationsAtLoc.values()) {
           if (alloc[0] >= self.trackedCallstackMinAllocCount || alloc[1] >= self.trackedCallstackMinSizeBytes) {
             calls.push(alloc);
           }

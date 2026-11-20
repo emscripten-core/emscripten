@@ -68,8 +68,11 @@ def get_const_expr_value(expr):
         exit_with_error('unexpected opcode in const expr: %s', opcode)
 
 
-def get_global_value(globl):
-  return get_const_expr_value(globl.init)
+def get_addr_from_export(module, export):
+  assert export.kind == webassembly.ExternType.GLOBAL
+  globl = module.get_global(export.index)
+  val = get_const_expr_value(globl.init)
+  return to_unsigned(val)
 
 
 def parse_function_for_memory_inits(module, func_index, offset_map):
@@ -203,10 +206,8 @@ def get_section_strings(module, export_map, section_name):
 
   start = export_map[start_name]
   end = export_map[stop_name]
-  start_global = module.get_global(start.index)
-  end_global = module.get_global(end.index)
-  start_addr = to_unsigned(get_global_value(start_global))
-  end_addr = to_unsigned(get_global_value(end_global))
+  start_addr = get_addr_from_export(module, start)
+  end_addr = get_addr_from_export(module, end)
 
   seg = find_segment_with_address(module, start_addr)
   if not seg:
@@ -302,6 +303,7 @@ class Metadata:
   export: list[str]
   em_asm_consts: dict[int, str]
   js_deps: list[str]
+  embind_invokers: set[str]
   em_js_funcs: dict[str, str]
   em_js_func_types: dict[str, webassembly.FuncType]
   features: list[str]
@@ -310,6 +312,8 @@ class Metadata:
   function_exports: dict[str, webassembly.FuncType]
   other_exports: list[webassembly.Export]
   all_exports: list[str]
+  rodata_start: int
+  rodata_end: int
 
 
 def extract_metadata(filename):
@@ -322,8 +326,7 @@ def extract_metadata(filename):
     for e in exports:
       if e.kind == webassembly.ExternType.GLOBAL and e.name.startswith('__em_js__'):
         name = e.name.removeprefix('__em_js__')
-        globl = module.get_global(e.index)
-        string_address = to_unsigned(get_global_value(globl))
+        string_address = get_addr_from_export(module, e)
         em_js_funcs[name] = get_string_at(module, string_address)
 
     features = module.get_target_features()
@@ -340,9 +343,16 @@ def extract_metadata(filename):
     metadata.all_exports = [e.name.removeprefix('__em_js__') for e in exports]
     metadata.em_asm_consts = get_section_strings(module, export_map, 'em_asm')
     metadata.js_deps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
+    metadata.embind_invokers = {d for d in get_section_strings(module, export_map, 'em_embind').values() if d}
     metadata.em_js_funcs = em_js_funcs
     metadata.features = features
     metadata.main_reads_params = get_main_reads_params(module, export_map)
+    if '__rodata_start' in export_map and '__rodata_end' in export_map:
+      metadata.rodata_start = get_addr_from_export(module, export_map['__rodata_start'])
+      metadata.rodata_end = get_addr_from_export(module, export_map['__rodata_end'])
+    else:
+      metadata.rodata_start = 0
+      metadata.rodata_end = 0
 
     read_module_imports(module, metadata)
 

@@ -389,14 +389,25 @@ var NodeSockFSLibrary = {
     setMembership(sock, add, group, iface) {
       var m = sock.memberships ??= new Map();
       var key = group + '%' + (iface ?? '');
-      if (add && m.has(key)) return EADDRINUSE;
-      if (!add && !m.has(key)) return EADDRNOTAVAIL;
+      // Once bound the kernel decides, and the map just follows it.
       if (sock.udpBound) {
         var err = nodeSockHelpers.udpMembership(sock, group, iface, add);
         if (err) return err;
+      } else if (add ? m.has(key) : !m.has(key)) {
+        return add ? EADDRINUSE : EADDRNOTAVAIL;
       }
-      if (add) m.set(key, [group, iface]);
-      else m.delete(key);
+      if (add) {
+        m.set(key, [group, iface]);
+      } else if (!m.delete(key)) {
+        // A leave can match a join made under another key, and the kernel
+        // doesn't say which one it dropped.
+        for (var [k, v] of m) {
+          if (v[0] === group) {
+            m.delete(k);
+            break;
+          }
+        }
+      }
       return 0;
     },
     udpMembership(sock, group, iface, add = true) {
@@ -410,8 +421,13 @@ var NodeSockFSLibrary = {
       return 0;
     },
     applyMemberships(sock) {
-      for (var [group, iface] of sock.memberships?.values() ?? []) {
-        nodeSockHelpers.udpMembership(sock, group, iface);
+      // A join made before bind() returned 0 without reaching the kernel. If the
+      // kernel rejects it now, forget it, so a later join gets the real error
+      // rather than looking like a duplicate.
+      for (var [key, [group, iface]] of sock.memberships ?? []) {
+        if (nodeSockHelpers.udpMembership(sock, group, iface)) {
+          sock.memberships.delete(key);
+        }
       }
     },
     // The live OS buffer size from a bound UDP socket, or undefined.
@@ -570,14 +586,13 @@ var NodeSockFSLibrary = {
       sock.bound = null;
       return 0;
     },
-    // how: SHUT_RD 0, SHUT_WR 1, SHUT_RDWR 2 (musl sys/socket.h).
     shutdown(sock, how) {
       if (!sock.connection) throw new FS.ErrnoError(ENOTCONN);
-      if (!how || how === 2) {
+      if (how === SHUT_RD || how === SHUT_RDWR) {
         // No more reads: subsequent recv returns EOF.
         sock.readClosed = true;
       }
-      if (how === 1 || how === 2) {
+      if (how === SHUT_WR || how === SHUT_RDWR) {
         // Half-close the write side (sends FIN); later sends fail with EPIPE.
         sock.writeShutdown = true;
         sock.connection.end();
@@ -845,7 +860,13 @@ var NodeSockFSLibrary = {
       // MSG_PEEK returns the data from the head of the queue without consuming
       // it: no shift, no recv_bytes/flow-control adjustment, so a later recv
       // sees the same bytes and poll still reports the socket readable.
-      var peek = flags & MSG_PEEK;
+      // Note: this uses cDefs.MSG_PEEK rather than the bare MSG_PEEK constant.
+      // Bare constants are emitted as `const MSG_PEEK = 2;`, and Closure Compiler
+      // treats any MSG_-prefixed variable as a translatable message that must be
+      // initialized with goog.getMsg(). Builds that enable Closure's message checks
+      // (e.g. --jscomp_warning=messageConventions, or when using translations)
+      // reject it with JSC_MSG_NOT_INITIALIZED_CORRECTLY.
+      var peek = flags & {{{ cDefs.MSG_PEEK }}};
       if (sock.type === SOCK_DGRAM) {
         var dgram = sock.recv_queue[0];
         if (!dgram) {
@@ -866,6 +887,11 @@ var NodeSockFSLibrary = {
       }
       var queued = sock.recv_queue[0];
       if (!queued) {
+        if (sock.error) {
+          var serr = sock.error;
+          sock.error = null;
+          throw new FS.ErrnoError(serr);
+        }
         if (sock.readClosed) return null; // EOF
         if (!sock.connection) {
           throw new FS.ErrnoError(ENOTCONN);
@@ -893,20 +919,20 @@ var NodeSockFSLibrary = {
       var val = {{{ makeGetValue('optval', 0, 'i32') }}};
       if (level === SOL_SOCKET) {
         switch (optname) {
-          case 9: // SO_KEEPALIVE
+          case SO_KEEPALIVE:
             sock.opts.keepAlive = !!val;
             nodeSockHelpers.applyKeepAlive(sock);
             return 0;
-          case 8: // SO_RCVBUF. Applied to the udp_wrap handle; Node TCP cannot.
+          case SO_RCVBUF: // Applied to the udp_wrap handle; Node TCP cannot.
             sock.opts.recvBuf = val;
             return -nodeSockHelpers.applyUdpOptions(sock);
-          case 7: // SO_SNDBUF. Applied to the udp_wrap handle; Node TCP cannot.
+          case SO_SNDBUF: // Applied to the udp_wrap handle; Node TCP cannot.
             sock.opts.sendBuf = val;
             return -nodeSockHelpers.applyUdpOptions(sock);
-          case 6: // SO_BROADCAST (datagram sockets)
+          case SO_BROADCAST: // (datagram sockets)
             sock.opts.broadcast = !!val;
             return -nodeSockHelpers.applyUdpOptions(sock);
-          case 2: // SO_REUSEADDR. Bind-time: passed to the UDP bind. libuv forces
+          case SO_REUSEADDR: // Bind-time: passed to the UDP bind. libuv forces
             // it on for TCP at bind regardless, so there it is only recorded.
             sock.opts.reuseAddr = !!val;
             return 0;
@@ -914,7 +940,7 @@ var NodeSockFSLibrary = {
             // passed to the BoundSocket / UDP bind. Set after bind has no effect.
             sock.opts.reusePort = !!val;
             return 0;
-          case 13: // SO_LINGER (struct linger: l_onoff, l_linger)
+          case SO_LINGER: // (struct linger: l_onoff, l_linger)
             sock.opts.linger = {
               onoff: val,
               linger: {{{ makeGetValue('optval', 4, 'i32') }}},
@@ -936,24 +962,27 @@ var NodeSockFSLibrary = {
         }
       } else if (level === IPPROTO_IP) {
         switch (optname) {
-          case 2: // IP_TTL
+          case IP_TTL:
             sock.opts.ttl = val;
             return -nodeSockHelpers.applyUdpOptions(sock);
-          case 33: // IP_MULTICAST_TTL
+          case IP_MULTICAST_TTL:
             sock.opts.multicastTtl = val;
             return -nodeSockHelpers.applyUdpOptions(sock);
-          case 34: // IP_MULTICAST_LOOP
+          case IP_MULTICAST_LOOP:
             sock.opts.multicastLoop = !!val;
             return -nodeSockHelpers.applyUdpOptions(sock);
-          case 35: // IP_ADD_MEMBERSHIP (struct ip_mreq, or ip_mreqn)
-          case 36: { // IP_DROP_MEMBERSHIP
+          case IP_ADD_MEMBERSHIP: // (struct ip_mreq, or ip_mreqn)
+          case IP_DROP_MEMBERSHIP: {
             if (sock.type !== SOCK_DGRAM) return -EPROTO;
             if (optlen < 8) return -EINVAL;
+            // The kernel's first check, needed here as a join before bind()
+            // reaches the kernel only later.
+            if (optname === IP_ADD_MEMBERSHIP && ({{{ makeGetValue('optval', 0, 'u8') }}} & 0xf0) !== 0xe0) return -EINVAL; // 224.0.0.0/4
             var iface = {{{ makeGetValue('optval', 4, 'i32') }}};
             // node selects the interface by address only, so an ip_mreqn that
             // names it by index alone cannot be honored.
             if (!iface && optlen >= 12 && {{{ makeGetValue('optval', 8, 'i32') }}}) return -ENODEV;
-            return -nodeSockHelpers.setMembership(sock, optname === 35, inetNtop4(val), iface ? inetNtop4(iface) : undefined);
+            return -nodeSockHelpers.setMembership(sock, optname === IP_ADD_MEMBERSHIP, inetNtop4(val), iface ? inetNtop4(iface) : undefined);
           }
         }
       } else if (level === IPPROTO_IPV6) {
@@ -965,39 +994,41 @@ var NodeSockFSLibrary = {
             if (sock.state) return -EINVAL;
             sock.opts.ipv6Only = !!val;
             return 0;
-          case 18: // IPV6_MULTICAST_HOPS (same libuv setting as IP_MULTICAST_TTL)
+          case IPV6_MULTICAST_HOPS: // (same libuv setting as IP_MULTICAST_TTL)
             sock.opts.multicastTtl = val;
             return -nodeSockHelpers.applyUdpOptions(sock);
-          case 19: // IPV6_MULTICAST_LOOP (same libuv setting as IP_MULTICAST_LOOP)
+          case IPV6_MULTICAST_LOOP: // (same libuv setting as IP_MULTICAST_LOOP)
             sock.opts.multicastLoop = !!val;
             return -nodeSockHelpers.applyUdpOptions(sock);
-          case 20: // IPV6_JOIN_GROUP (struct ipv6_mreq)
-          case 21: { // IPV6_LEAVE_GROUP
+          case IPV6_JOIN_GROUP: // (struct ipv6_mreq)
+          case IPV6_LEAVE_GROUP: {
             if (sock.type !== SOCK_DGRAM) return -EPROTO;
             if (optlen < 20) return -EINVAL;
+            // As for IP_ADD_MEMBERSHIP above, though here a leave is refused too.
+            if ({{{ makeGetValue('optval', 0, 'u8') }}} !== 0xff) return -EINVAL; // ff00::/8
             // node selects the interface by name and has no index-to-name
             // lookup, so only the default interface (index 0) is supported.
             if ({{{ makeGetValue('optval', 16, 'i32') }}}) return -ENODEV;
             var src32 = {{{ getHeapOffset('optval', 'i32') }}};
             var group = inetNtop6(HEAP32.subarray(src32, src32 + 4));
-            return -nodeSockHelpers.setMembership(sock, optname === 20, group, undefined);
+            return -nodeSockHelpers.setMembership(sock, optname === IPV6_JOIN_GROUP, group, undefined);
           }
         }
       } else if (level === IPPROTO_TCP) {
         switch (optname) {
-          case 1: // TCP_NODELAY
+          case TCP_NODELAY:
             sock.opts.noDelay = !!val;
             if (sock.connection) sock.connection.setNoDelay(!!val);
             return 0;
-          case 4: // TCP_KEEPIDLE (seconds)
+          case TCP_KEEPIDLE: // (seconds)
             sock.opts.keepAliveIdle = val;
             nodeSockHelpers.applyKeepAlive(sock);
             return 0;
-          case 5: // TCP_KEEPINTVL (seconds)
+          case TCP_KEEPINTVL: // (seconds)
             sock.opts.keepAliveIntvl = val;
             nodeSockHelpers.applyKeepAlive(sock);
             return 0;
-          case 6: // TCP_KEEPCNT (probe count)
+          case TCP_KEEPCNT: // (probe count)
             sock.opts.keepAliveCnt = val;
             nodeSockHelpers.applyKeepAlive(sock);
             return 0;
@@ -1017,8 +1048,8 @@ var NodeSockFSLibrary = {
             {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
             sock.error = null; // SO_ERROR reads and clears
             return 0;
-          case 3: val = sock.type; break; // SO_TYPE
-          case 13: { // SO_LINGER (struct linger: l_onoff, l_linger)
+          case SO_TYPE: val = sock.type; break;
+          case SO_LINGER: { // (struct linger: l_onoff, l_linger)
             var linger = sock.opts.linger || { onoff: 0, linger: 0 };
             {{{ makeSetValue('optval', 0, 'linger.onoff', 'i32') }}};
             {{{ makeSetValue('optval', 4, 'linger.linger', 'i32') }}};
@@ -1034,15 +1065,15 @@ var NodeSockFSLibrary = {
             {{{ makeSetValue('optlen', 0, C_STRUCTS.timeval.__size__, 'i32') }}};
             return 0;
           }
-          case 9: val = sock.opts.keepAlive ? 1 : 0; break; // SO_KEEPALIVE
+          case SO_KEEPALIVE: val = sock.opts.keepAlive ? 1 : 0; break;
           // SO_RCVBUF/SO_SNDBUF: report the live value from the udp_wrap handle
           // when bound, else the stored/default.
-          case 8: val = nodeSockHelpers.udpBufferSize(sock, true) ?? (sock.opts.recvBuf || 65536); break;
-          case 7: val = nodeSockHelpers.udpBufferSize(sock, false) ?? (sock.opts.sendBuf || 65536); break;
-          case 6: val = sock.opts.broadcast ? 1 : 0; break; // SO_BROADCAST
+          case SO_RCVBUF: val = nodeSockHelpers.udpBufferSize(sock, true) ?? (sock.opts.recvBuf || 65536); break;
+          case SO_SNDBUF: val = nodeSockHelpers.udpBufferSize(sock, false) ?? (sock.opts.sendBuf || 65536); break;
+          case SO_BROADCAST: val = sock.opts.broadcast ? 1 : 0; break;
           // SO_REUSEADDR: libuv turns it on when it binds a TCP socket, so report
           // it set once a TCP socket is bound or listening even if never asked for.
-          case 2: val = (sock.opts.reuseAddr || (sock.type === SOCK_STREAM
+          case SO_REUSEADDR: val = (sock.opts.reuseAddr || (sock.type === SOCK_STREAM
                 && sock.family !== AF_UNIX && (sock.bound || sock.server))) ? 1 : 0; break;
           case SO_REUSEPORT: val = sock.opts.reusePort ? 1 : 0; break;
           case SO_ACCEPTCONN: val = sock.server ? 1 : 0; break;
@@ -1056,16 +1087,16 @@ var NodeSockFSLibrary = {
         }
       } else if (level === IPPROTO_IP) {
         switch (optname) {
-          case 2: val = sock.opts.ttl || 64; break; // IP_TTL
-          case 33: val = sock.opts.multicastTtl ?? 1; break; // IP_MULTICAST_TTL
-          case 34: val = sock.opts.multicastLoop === undefined ? 1 : (sock.opts.multicastLoop ? 1 : 0); break; // IP_MULTICAST_LOOP
+          case IP_TTL: val = sock.opts.ttl || 64; break;
+          case IP_MULTICAST_TTL: val = sock.opts.multicastTtl ?? 1; break;
+          case IP_MULTICAST_LOOP: val = sock.opts.multicastLoop === undefined ? 1 : (sock.opts.multicastLoop ? 1 : 0); break;
           default: return -ENOPROTOOPT;
         }
       } else if (level === IPPROTO_IPV6) {
         switch (optname) {
           case IPV6_V6ONLY: val = sock.opts.ipv6Only ? 1 : 0; break;
-          case 18: val = sock.opts.multicastTtl ?? 1; break; // IPV6_MULTICAST_HOPS
-          case 19: val = sock.opts.multicastLoop === undefined ? 1 : (sock.opts.multicastLoop ? 1 : 0); break; // IPV6_MULTICAST_LOOP
+          case IPV6_MULTICAST_HOPS: val = sock.opts.multicastTtl ?? 1; break;
+          case IPV6_MULTICAST_LOOP: val = sock.opts.multicastLoop === undefined ? 1 : (sock.opts.multicastLoop ? 1 : 0); break;
           default: return -ENOPROTOOPT;
         }
       } else if (level === IPPROTO_TCP) {
@@ -1073,11 +1104,11 @@ var NodeSockFSLibrary = {
           // TCP_MAXSEG: node exposes no MSS, so report RFC 879's 536-byte default
           // before the handshake and the (large) loopback-negotiated value once
           // connected. Enough for callers that only compare pre/post-connect MSS.
-          case 2: val = (sock.state === SOCK_STATE_CONNECTED) ? 65483 : 536; break;
-          case 1: val = sock.opts.noDelay ? 1 : 0; break;    // TCP_NODELAY
-          case 4: val = sock.opts.keepAliveIdle || 0; break; // TCP_KEEPIDLE
-          case 5: val = sock.opts.keepAliveIntvl || 0; break;// TCP_KEEPINTVL
-          case 6: val = sock.opts.keepAliveCnt || 0; break;  // TCP_KEEPCNT
+          case TCP_MAXSEG: val = (sock.state === SOCK_STATE_CONNECTED) ? 65483 : 536; break;
+          case TCP_NODELAY: val = sock.opts.noDelay ? 1 : 0; break;
+          case TCP_KEEPIDLE: val = sock.opts.keepAliveIdle || 0; break;
+          case TCP_KEEPINTVL: val = sock.opts.keepAliveIntvl || 0; break;
+          case TCP_KEEPCNT: val = sock.opts.keepAliveCnt || 0; break;
           default: return -ENOPROTOOPT;
         }
       } else {

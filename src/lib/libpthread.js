@@ -102,7 +102,7 @@ var LibraryPThread = {
     // pthread.
     pthreads: {},
 #if MAIN_MODULE
-    outstandingPromises: {},
+    outstandingPromises: new Map(),
     // Finished threads are threads that have finished running but we are not yet
     // joined.
     finishedThreads: new Set(),
@@ -152,13 +152,13 @@ var LibraryPThread = {
 
     threadStatusToString(threadStatus) {
       switch (threadStatus) {
-        case 0: return 'not yet started';
-        case 1: return 'running';
-        case 2: return 'sleeping';
-        case 3: return 'waiting for a futex';
-        case 4: return 'waiting for a mutex';
-        case 5: return 'waiting for a proxied operation';
-        case 6: return 'finished execution';
+        case EM_THREAD_STATUS_NOTSTARTED: return 'not yet started';
+        case EM_THREAD_STATUS_RUNNING: return 'running';
+        case EM_THREAD_STATUS_SLEEPING: return 'sleeping';
+        case EM_THREAD_STATUS_WAITFUTEX: return 'waiting for a futex';
+        case EM_THREAD_STATUS_WAITMUTEX: return 'waiting for a mutex';
+        case EM_THREAD_STATUS_WAITPROXY: return 'waiting for a proxied operation';
+        case EM_THREAD_STATUS_FINISHED: return 'finished execution';
         default: return 'unknown (corrupt?!)';
       }
     },
@@ -643,9 +643,7 @@ var LibraryPThread = {
     var worker = PThread.pthreads[pthread_ptr];
 #if MAIN_MODULE
     PThread.finishedThreads.delete(pthread_ptr);
-    if (pthread_ptr in PThread.outstandingPromises) {
-      PThread.outstandingPromises[pthread_ptr].resolve();
-    }
+    PThread.outstandingPromises.get(pthread_ptr)?.resolve();
 #endif
 #if ASSERTIONS
     assert(worker);
@@ -773,12 +771,8 @@ var LibraryPThread = {
   // pthread's internal allocations as leaks.  If/when we remove all the
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
+  __pthread_create_js__deps: ['malloc'],
 #endif
-  __pthread_create_js__deps: [
-#if OFFSCREENCANVAS_SUPPORT
-    'malloc',
-#endif
-  ],
   __pthread_create_js: (pthread_ptr, attr, startRoutine, arg) => {
     if (!_emscripten_has_threading_support()) {
 #if ASSERTIONS
@@ -978,31 +972,17 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['_emscripten_run_js_on_main_thread'],
-  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
-  $proxyToMainThread: (funcIndex, emAsmAddr, proxyMode, ...callArgs) => {
-    // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
-    // content as `emAsmAddr`.  JS library proxying is done by passing an index
-    // into `proxiedJSCallArgs` as `funcIndex`. If `emAsmAddr` is non-zero then
-    // `funcIndex` will be ignored.
-    // Additional arguments are passed after the first three are the actual
-    // function arguments.
-    // The serialization buffer contains the number of call params, and then
-    // all the args here.
-    //
-    // We also pass 'proxyMode' to C separately, since C needs to look at it.
-    //
-    // Allocate a buffer (on the stack), which will be copied if necessary by
-    // the C code.
-    //
-    // First passed parameter specifies the number of arguments to the function.
-    // When BigInt support is enabled, we must handle types in a more complex
-    // way, detecting at runtime if a value is a BigInt or not (as we have no
-    // type info here). To do that, add a "prefix" before each value that
-    // indicates if it is a BigInt, which effectively doubles the number of
-    // values we serialize for proxying. TODO: pack this?
+  // Serializes proxied call arguments to a stack buffer (8 bytes per argument,
+  // 16 with BigInt support), returning its address and size. The C code copies
+  // it if necessary; the caller restores the stack after the call.
+  // When BigInt support is enabled, we must handle types in a more complex
+  // way, detecting at runtime if a value is a BigInt or not (as we have no
+  // type info here). To do that, add a "prefix" before each value that
+  // indicates if it is a BigInt, which effectively doubles the number of
+  // values we serialize for proxying. TODO: pack this?
+  $serializeProxiedArgs__internal: true,
+  $serializeProxiedArgs: (callArgs) => {
     var bufSize = 8 * callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
-    var sp = stackSave();
     var args = stackAlloc(bufSize);
     var b = {{{ getHeapOffset('args', 'i64') }}};
     for (var arg of callArgs) {
@@ -1020,10 +1000,33 @@ var LibraryPThread = {
       HEAPF64[b++] = arg;
 #endif
     }
-    var rtn = __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, bufSize, args, proxyMode);
-    stackRestore(sp);
-    return rtn;
+    return [args, bufSize];
   },
+
+  // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
+  // content as `emAsmAddr`.  JS library proxying is done by passing an index
+  // into `proxiedJSCallArgs` as `funcIndex`. If `emAsmAddr` is non-zero then
+  // `funcIndex` will be ignored.
+  // Additional arguments are passed after the first three are the actual
+  // function arguments.
+  //
+  // We also pass 'proxyMode' to C separately, since C needs to look at it.
+  $proxyToMainThread__deps: ['_emscripten_run_js_on_main_thread'],
+  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
+  $proxyToMainThread: (funcIndex, emAsmAddr, proxyMode, ...callArgs) => withStackSave(() => {
+    var [bufPtr, bufSize] = serializeProxiedArgs(callArgs);
+    return __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, bufSize, bufPtr, proxyMode);
+  }),
+
+  // As proxyToMainThread, returning an em_promise_t of the main-thread result
+  // (the _promise variant), settled once this thread next runs its proxying
+  // queue. Separate so the promise machinery is only linked when used.
+  $proxyToMainThreadPromise__deps: ['_emscripten_run_js_on_main_thread_promise'],
+  $proxyToMainThreadPromise__docs: '/** @type{function(number, (number|boolean), ...number)} */',
+  $proxyToMainThreadPromise: (funcIndex, emAsmAddr, ...callArgs) => withStackSave(() => {
+    var [bufPtr, bufSize] = serializeProxiedArgs(callArgs);
+    return __emscripten_run_js_on_main_thread_promise(funcIndex, emAsmAddr, bufSize, bufPtr);
+  }),
 
   // Reuse global JS array to avoid creating JS garbage for each proxied call
   $proxiedJSCallArgs: [],
@@ -1079,8 +1082,11 @@ var LibraryPThread = {
     var coerceRtn = (rtn) => rtn;
 #endif
     if (ctx) {
-      // A PROXY_SYNC_ASYNC function may complete synchronously with a plain value.
-      Promise.resolve(rtn).then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn)));
+      // A PROXY_SYNC_ASYNC / PROXY_PROMISE function may complete synchronously
+      // with a plain value, so we cannot just do `rtn.then(..)` here.
+      Promise.resolve(rtn).then(
+        (resolvedRtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(resolvedRtn), true),
+        () => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, 0, false));
       return;
     }
     rtn = coerceRtn(rtn);
@@ -1125,9 +1131,7 @@ var LibraryPThread = {
 #endif
   },
 
-  $invokeEntryPoint__deps: [
-    '_emscripten_thread_exit',
-  ],
+  $invokeEntryPoint__deps: ['_emscripten_thread_exit'],
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);
@@ -1205,9 +1209,7 @@ var LibraryPThread = {
     dbg(`markAsFinished: ${ptrToString(pthread_ptr)}`);
 #endif
     PThread.finishedThreads.add(pthread_ptr);
-    if (pthread_ptr in PThread.outstandingPromises) {
-      PThread.outstandingPromises[pthread_ptr].resolve();
-    }
+    PThread.outstandingPromises.get(pthread_ptr)?.resolve();
   },
 
   // Asynchronous version _emscripten_dlsync_threads.
@@ -1220,7 +1222,7 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'dlsyncThreadsAsync() should only be called from the main thread');
-    assert(!Object.keys(PThread.outstandingPromises).length);
+    assert(!PThread.outstandingPromises.size);
 #endif
 
     const promises = [];
@@ -1241,7 +1243,7 @@ var LibraryPThread = {
       if (pthread_ptr !== caller && !PThread.finishedThreads.has(pthread_ptr)) {
         info = makePromise();
         __emscripten_proxy_dlsync_async(pthread_ptr, info.id);
-        PThread.outstandingPromises[pthread_ptr] = info;
+        PThread.outstandingPromises.set(pthread_ptr, info);
         promises.push(info.promise);
       }
     }
@@ -1251,7 +1253,7 @@ var LibraryPThread = {
 #endif
     await Promise.all(promises);
 
-    PThread.outstandingPromises = {};
+    PThread.outstandingPromises.clear();
 #if PTHREADS_DEBUG
     dbg('dlsyncThreadsAsync done');
 #endif
@@ -1279,10 +1281,7 @@ var LibraryPThread = {
   },
 #endif // MAIN_MODULE
 
-  $checkMailbox__deps: [
-                        'pthread_self',
-                        '_emscripten_check_mailbox',
-  ],
+  $checkMailbox__deps: ['pthread_self', '_emscripten_check_mailbox'],
   $checkMailbox: () => {
     // checkMailbox can be called after the pthread has shut down. See
     // Pthread.terminateRuntime().

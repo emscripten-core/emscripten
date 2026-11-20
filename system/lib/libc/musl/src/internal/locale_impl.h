@@ -15,7 +15,7 @@ struct __locale_map {
 	const struct __locale_map *next;
 };
 
-extern hidden volatile int __locale_lock[1];
+extern hidden _Atomic int __locale_lock[1];
 
 extern hidden const struct __locale_map __c_dot_utf8;
 extern hidden const struct __locale_struct __c_locale;

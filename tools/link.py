@@ -167,14 +167,6 @@ def align_to_wasm_page_boundary(address):
   return ((address + (page_size - 1)) // page_size) * page_size
 
 
-def will_metadce():
-  # The metadce JS parsing code does not currently support the JS that gets generated
-  # when assertions are enabled.
-  if settings.ASSERTIONS:
-    return False
-  return settings.OPT_LEVEL >= 3 or settings.SHRINK_LEVEL >= 1
-
-
 def setup_environment_settings():
   # The worker environment is automatically added if any of the pthread or Worker features are used.
   # Note: we need to actually modify ENVIRONMENTS variable here before the parsing,
@@ -419,7 +411,7 @@ def get_binaryen_passes():
   # restructures the code). We could re-run those opts, but it is most efficient
   # to just not do them now if we'll invoke other tools later, and we'll do them
   # only in the very last invocation.
-  if will_metadce():
+  if building.will_metadce():
     passes += ['--no-stack-ir']
 
   return passes
@@ -748,6 +740,9 @@ def setup_sanitizers():
 
   if settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
+    if not settings.MINIMAL_RUNTIME:
+      # Loading the source map uses the addRunDependency/removeRunDependency system.
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
 
 
 def get_dylibs(linker_args):
@@ -1023,6 +1018,10 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       exit_with_error('AUTO_INIT is not compatible with INCOMING_MODULE_JS_API')
     settings.INCOMING_MODULE_JS_API = []
 
+  if settings.EMBIND_AOT and settings.MODULARIZE != 'instance' and not settings.WASM_ESM_INTEGRATION:
+    diagnostics.warning('unused-command-line-argument', 'EMBIND_AOT is only meaningful with MODULARIZE=instance or WASM_ESM_INTEGRATION')
+    settings.EMBIND_AOT = False
+
   if settings.MINIMAL_RUNTIME and options.preload_files:
     exit_with_error('MINIMAL_RUNTIME is not compatible with --preload-file')
 
@@ -1270,10 +1269,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
-    if settings.LOAD_SOURCE_MAP:
-      # Loading the source map uses the addRunDependency/removeRunDependency system.
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
-
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
 
@@ -1291,6 +1286,10 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     # symbols like `__heap_base`).
     # See https://github.com/llvm/llvm-project/issues/180632
     settings.REQUIRED_EXPORTS += ['__stack_pointer', '__heap_base']
+
+  if settings.SHRINK_LEVEL == 0 and not settings.STANDALONE_WASM:
+    # Remove once we fix https://github.com/llvm/llvm-project/issues/180632
+    settings.REQUIRED_EXPORTS += ['__rodata_start', '__rodata_end']
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -1316,9 +1315,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.ALLOW_TABLE_GROWTH = 1
 
   # various settings require sbrk() access
-  if settings.EMSCRIPTEN_TRACING or \
-     settings.SAFE_HEAP or \
-     settings.MEMORYPROFILER:
+  if settings.EMSCRIPTEN_TRACING or settings.SAFE_HEAP:
     settings.REQUIRED_EXPORTS += ['sbrk']
 
   if settings.MEMORYPROFILER:
@@ -1617,15 +1614,10 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   # Things that process the JS after this operation would be done must disable this.
   # JSPI does not support this optimization yet as it has a hardcoded check for 'main' as an
   # export name. TODO
-  if will_metadce() and \
-      settings.OPT_LEVEL >= 2 and \
-      settings.DEBUG_LEVEL <= 2 and \
-      options.oformat not in {OFormat.WASM, OFormat.BARE} and \
+  if building.will_metadce() and \
       settings.ASYNCIFY != 2 and \
-      not settings.LINKABLE and \
       not settings.STANDALONE_WASM and \
       not settings.AUTODEBUG and \
-      not settings.ASSERTIONS and \
       not settings.MAIN_MODULE and \
           settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
@@ -2083,9 +2075,8 @@ def phase_embind_aot(wasm_target, js_syms):
   if DEBUG:
     write_file(in_temp('embind_aot.json'), out)
   out = json.loads(out)
-  src = read_file(final_js)
-  src = do_replace(src, '<<< EMBIND_AOT_INVOKERS >>>', out['invokers'])
   if settings.MODULARIZE == 'instance':
+    src = read_file(final_js)
     # Add ES module exports for the embind exports.
     decls = '\n'.join([f'export var {name};' for name in out['publicSymbols']])
     # Assign the runtime exports from Module to the ES export.
@@ -2097,7 +2088,7 @@ addOnPostCtor(assignEmbindExports);
 {decls}
 // end embind exports'''
     src = do_replace(src, '<<< EMBIND_AOT_EXPORTS >>>', exports)
-  write_file(final_js, src)
+    write_file(final_js, src)
   if settings.WASM_ESM_INTEGRATION:
     # With ESM integration the embind exports also need to be exported by the main file.
     settings.EXPORTED_RUNTIME_METHODS.extend(out['publicSymbols'])
@@ -2238,7 +2229,7 @@ def phase_final_emitting(target, js_target, wasm_target):
     args = [final_js, '-o', final_js]
     if not settings.MINIFY_WHITESPACE:
       args.append('--pretty')
-    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), args, cwd=utils.path_from_root('.'))
+    shared.run_js_tool(utils.path_from_root('dist/unsafe_optimizations.mjs'), args, cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations')
     # Finally, rerun Closure compile with simple optimizations. It will be able
     # to further minify the code. (n.b. it would not be safe to run in advanced
@@ -2246,7 +2237,7 @@ def phase_final_emitting(target, js_target, wasm_target):
     final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=settings.CLOSURE_ARGS)
     # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
     # unused things that closure compiler leaves behind (e.g `new Float64Array(x)`).
-    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
+    shared.run_js_tool(utils.path_from_root('dist/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations2')
 
   fix_js_mangling(final_js)
@@ -2372,7 +2363,7 @@ def phase_binaryen(target, wasm_target):
       with ToolchainProfiler.profile_block('little_endian_heap'):
         final_js = building.little_endian_heap(final_js)
 
-    if settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL <= 2:
+    if building.will_minify_wasm_js():
       # minify the JS. Do not minify whitespace if Closure is used, so that
       # Closure can print out readable error messages (Closure will then
       # minify whitespace afterwards)
@@ -2380,7 +2371,6 @@ def phase_binaryen(target, wasm_target):
         save_intermediate_with_wasm('preclean', wasm_target)
         final_js = building.minify_wasm_js(js_file=final_js,
                                            wasm_file=wasm_target,
-                                           expensive_optimizations=will_metadce(),
                                            debug_info=intermediate_debug_info)
         save_intermediate_with_wasm('postclean', wasm_target)
 

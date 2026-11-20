@@ -59,6 +59,11 @@ Almost all PRs should be accompanied by some kind of test.
  * For simple tests, always prefer C over C++ since it comes with less baggage
    (i.e. it minimizes the scope of the system under test) and can be compiled
    very fast.
+ * When using `@parameterized`, make the first (default) variant key an empty
+   string (`''`) where possible.
+ * Prefer passing compiler/linker flags via inline `cflags=` arguments to test
+   methods (e.g. `do_runf(..., cflags=[...])`) rather than calling
+   `self.set_setting(...)` or mutating `self.cflags`.
  * When testing changes to system libraries, remember to rebuild the libraries
    you touch (e.g. using `./embuilder`) before running tests (or use `emcc
    --clear-cache` as a blunt implement for forcing a rebuild of all libraries).

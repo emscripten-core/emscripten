@@ -1,15 +1,15 @@
 {
   "private": true,
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.7",
-    "@eslint/js": "^10.0.1",
+    "acorn": "^8.19.0",
+    "acorn-import-phases": "^1.0.4",
     "es-check": "^9.8.1",
-    "eslint": "^10.13.0",
-    "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.13.0",
+    "oxlint": "^1.89.0",
     "prettier": "^3.9.10",
+    "rolldown": "^1.2.16",
     "rollup": "^4.66.0",
     "source-map": "0.8.0",
+    "terser": "^5.51.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "webpack": "^5.112.2",
@@ -17,15 +17,13 @@
     "ws": "^8.22.0"
   },
   "dependencies": {
-    "acorn": "^8.19.0",
-    "acorn-import-phases": "^1.0.4",
     "google-closure-compiler": "20261007.0.0",
-    "html-minifier-terser": "7.2.0",
-    "terser": "^5.51.2"
+    "html-minifier-terser": "7.2.0"
   },
   "scripts": {
-    "lint": "eslint .",
-    "fmt": "prettier --write src/*.mjs tools/*.mjs --ignore-path src/pthread_esm_startup.mjs",
-    "check": "prettier --check src/*.mjs tools/*.mjs --ignore-path src/pthread_esm_startup.mjs"
+    "build": "rolldown -c rolldown.config.mjs",
+    "lint": "oxlint",
+    "fmt": "prettier --write '*.{mjs,mts,ts}' 'src/*.mjs' 'tools/*.mjs'",
+    "check": "prettier --check '*.{mjs,mts,ts}' 'src/*.mjs' 'tools/*.mjs'"
   }
 }

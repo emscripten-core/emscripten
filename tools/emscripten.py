@@ -101,6 +101,42 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
+def process_embind_metadata(metadata):
+  if not metadata.embind_invokers:
+    return
+
+  # Parse descriptors from the `em_embind` Wasm section:
+  # - `v<kind><returns><arg_count>`: emval invokers (from val.h), mapped 1-to-1.
+  # - `<is_method><returns><is_async><arg_count>`: embind invokers (from bind.h),
+  #   expanded with cleanup modes (`n`: none, `s`: stack frame, `d`: destructor
+  #   stack) since runtime type registration isn't known at compile time.
+  imports_set = set(metadata.imports)
+  has_value_types = bool(imports_set & {
+    '_embind_register_value_object',
+    '_embind_register_value_array',
+  })
+  has_smart_ptr = '_embind_register_smart_ptr' in imports_set
+  expanded_invokers = set()
+  emval_invokers = set()
+  for desc in metadata.embind_invokers:
+    if desc.startswith('v'):
+      kind = desc[1]
+      returns = desc[2]
+      arg_count = int(desc[3:])
+      emval_invokers.add(f'{kind}{returns}{arg_count}')
+      continue
+    prefix = desc[:3]
+    is_method, _returns, is_async = prefix
+    arg_count = int(desc[3:])
+    expanded_invokers.add(f'{prefix}n{arg_count}')
+    if has_value_types and arg_count > 0 and is_async == 'f' and settings.ASYNCIFY != 1:
+      expanded_invokers.add(f'{prefix}s{arg_count}')
+    if (has_value_types and arg_count > 0) or (has_smart_ptr and (arg_count > 0 or is_method == 't')):
+      expanded_invokers.add(f'{prefix}d{arg_count}')
+  settings.EMBIND_INVOKERS = sorted(expanded_invokers)
+  settings.EMVAL_INVOKERS = sorted(emval_invokers)
+
+
 def update_settings_glue(wasm_file, metadata, base_metadata):
   maybe_disable_filesystem(metadata.imports)
 
@@ -119,6 +155,8 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     settings.WASM_EXPORTS = base_metadata.all_exports
   else:
     settings.WASM_EXPORTS = metadata.all_exports
+  settings.RODATA_START = metadata.rodata_start
+  settings.RODATA_END = metadata.rodata_end
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
   if settings.MAIN_MODULE and settings.ASYNCIFY == 1:
@@ -158,6 +196,8 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
   for deps in metadata.js_deps:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(deps.split(','))
+
+  process_embind_metadata(metadata)
 
 
 def apply_static_code_hooks(forwarded_json, code):
@@ -222,7 +262,7 @@ def compile_javascript(symbols_only=False):
   args = ['-']
   if symbols_only:
     args += ['--symbols-only']
-  return shared.run_js_tool(path_from_root('tools/compiler.mjs'),
+  return shared.run_js_tool(path_from_root('dist/compiler.mjs'),
                             args, input=settings_json, stdout=subprocess.PIPE)
 
 

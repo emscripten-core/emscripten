@@ -7,8 +7,8 @@
 #if LZ4
 addToLibrary({
   ...defineInternalConsts({
-    $LZ4_DIR_MODE: cDefs.S_IFDIR | 0o777,
-    $LZ4_FILE_MODE: cDefs.S_IFREG | 0o777,
+    $LZ4_DIR_MODE: cDefs.S_IFDIR | cDefs.S_IRWXUGO,
+    $LZ4_FILE_MODE: cDefs.S_IFREG | cDefs.S_IRWXUGO,
   }),
   $LZ4: {
     CHUNK_SIZE: -1,

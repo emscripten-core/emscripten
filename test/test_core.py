@@ -2559,8 +2559,14 @@ The current type of b is: 9
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
   @requires_pthreads
-  def test_pthread_proxy_deadlock(self):
-    self.do_runf('pthread/test_pthread_proxy_deadlock.c')
+  @parameterized({
+    '': (['-DTEST_SYSTEM_QUEUE'],),
+    'user_queue': (['-DTEST_USER_QUEUE'],),
+    'user_queue_contended': (['-DTEST_USER_QUEUE_CONTENDED'],),
+    'lost_wakeup': (['-DTEST_LOST_WAKEUP'],),
+  })
+  def test_pthread_proxy_deadlock(self, args):
+    self.do_runf('pthread/test_pthread_proxy_deadlock.c', cflags=args)
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
@@ -3379,9 +3385,19 @@ Var: 42
       return data_exports
 
     data_exports = get_data_exports(wat)
+    shrinking = any(f in self.cflags for f in ('-Os', '-Oz')) or self.get_setting('SHRINK_LEVEL')
+    if shrinking:
+      self.assertNotIn('__rodata_start', data_exports)
+      self.assertNotIn('__rodata_end', data_exports)
+    else:
+      self.assertIn('__rodata_start', data_exports)
+      self.assertIn('__rodata_end', data_exports)
     # Certain exports are removed by wasm-emscripten-finalize, but this
     # tool is not run in all configurations, so ignore these exports.
-    data_exports = [d for d in data_exports if d not in {'__start_em_asm', '__stop_em_asm'}]
+    # __rodata_start and __rodata_end are only exported when SHRINK_LEVEL == 0
+    # (see https://github.com/llvm/llvm-project/issues/180632).
+    ignored_exports = {'__start_em_asm', '__stop_em_asm', '__rodata_start', '__rodata_end'}
+    data_exports = [d for d in data_exports if d not in ignored_exports]
     data_exports = '\n'.join(sorted(data_exports)) + '\n'
     self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
 
@@ -4403,7 +4419,8 @@ caught outer int: 123
       #include <stdint.h>
       int64_t sidey() {
         volatile int64_t x = 0x12345678abcdef12LL;
-        x += x % 17;
+        int64_t y = x % 17;
+        x += y;
         x = 18 - x;
         return x;
       }
@@ -5167,6 +5184,8 @@ main main sees -524, -534, 72.
       if (cmake_version >= (4, 2, 0) and cmake_version < (4, 2, 6)) or \
          (cmake_version >= (4, 3, 0) and cmake_version < (4, 3, 3)):
         self.skipTest(f'incompatible cmake version {cmake_version}')
+    elif self.get_setting('STRICT'):
+      self.skipTest('autoconfiguring is not compatible with STRICT')
     zlib_archive = self.get_zlib_library(cmake=cmake, target='libz.so.1.2.5', cflags=['-fPIC'])[0]
     zlib_basename = os.path.basename(zlib_archive)
     shutil.copyfile(zlib_archive, zlib_basename)
@@ -5847,8 +5866,14 @@ got: 10
     self.do_runf('core/test_utf16.cpp', 'done\n')
 
   @with_both_text_decoder
+  @also_with_standalone_wasm(impure=True)
   def test_utf8(self):
-    self.do_runf('core/test_utf8.c', 'done\n')
+    cflags = []
+    if (not self.get_setting('SHRINK_LEVEL') and
+        not any(f in self.cflags for f in ('-Os', '-Oz')) and
+        not self.get_setting('STANDALONE_WASM')):
+      cflags = ['-DCHECK_RODATA_CACHE']
+    self.do_runf('core/test_utf8.c', 'done\n', cflags=cflags)
 
   @with_both_text_decoder
   def test_utf8_bench(self):
@@ -6096,6 +6121,7 @@ Module.onRuntimeInitialized = () => {
   def test_fs_readv_eagain(self):
     self.do_runf('fs/test_readv_eagain.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
+  @no_wasmfs('WasmFS backends only see one write per iovec. https://github.com/emscripten-core/emscripten/issues/16269')
   def test_fs_writev_gather(self):
     self.do_runf('fs/test_writev_gather.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
@@ -8033,7 +8059,7 @@ void* operator new(size_t size) {
       # needs to contain valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][src_index])
     mappings = json.loads(self.run_js(
-      path_from_root('test/sourcemap2json.js'),
+      path_from_root('test/sourcemap2json.mjs'),
       args=[map_filename]))
     seen_lines = set()
     for m in mappings:
@@ -8051,12 +8077,24 @@ void* operator new(size_t size) {
     # Check that embind is usable from a library built with "-fvisibility=hidden"
 
     create_file('libside.cpp', r'''
+      #include <assert.h>
+      #include <emscripten/bind.h>
       #include <emscripten/val.h>
       #define EXPORT __attribute__((visibility("default")))
       using namespace emscripten;
       EXPORT void liba_fun() {
         unsigned char buffer[1];
         val view(typed_memory_view(1, buffer));
+        assert(val::global("Math").call<int>("max", 1, 42, 3) == 42);
+        val arr = val::global("Array").new_(3);
+        arr.call<void>("fill", 7);
+        assert(arr[0].as<int>() == 7);
+      }
+      int side_add(int a, int b) {
+        return a + b;
+      }
+      EMSCRIPTEN_BINDINGS(side_module) {
+        function("side_add", &side_add);
       }
     ''')
     self.build_dlfcn_lib('libside.cpp', cflags=['-fvisibility=hidden'])
@@ -8064,12 +8102,14 @@ void* operator new(size_t size) {
     self.prep_dlfcn_main()
     self.clear_setting('NO_AUTOLOAD_DYLIBS')
     create_file('main.cpp', r'''
+      #include <assert.h>
       #include <stdio.h>
       #include <emscripten/val.h>
       using namespace emscripten;
       void liba_fun();
       int main() {
         liba_fun();
+        assert(val::module_property("side_add")(20, 22).as<int>() == 42);
         printf("done\n");
         return 0;
       }
@@ -9456,6 +9496,24 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf('core/pthread/test_pthread_dlsym.c')
 
+  @crossplatform
+  @needs_dylink
+  @parameterized({
+    '': (['-sPROXY_TO_PTHREAD'],),
+    'async': (['-DUSE_ASYNC_DLOPEN'],),
+  })
+  @requires_pthreads
+  def test_pthread_dlopen_embed(self, args):
+    # Use binary=True to prevent Windows line-ending (\r\n) translation.
+    create_file('embedded.txt', b'hello from embedded file\n', binary=True)
+    self.cflags += ['-Wno-experimental', '-pthread']
+    self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_embed_side.c'),
+                         cflags=['--embed-file', 'embedded.txt'])
+
+    self.prep_dlfcn_main()
+    self.do_runf('core/pthread/test_pthread_dlopen_embed.c', 'done\n',
+                 cflags=args + ['-sEXIT_RUNTIME'])
+
   @needs_dylink
   @requires_pthreads
   def test_pthread_dylink_tls(self):
@@ -9560,7 +9618,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @also_with_minimal_runtime
   @no_esm_integration('depends on wasmExports')
   def test_get_exported_function(self):
-    self.do_core_test('test_get_exported_function.cpp', cflags=['-sALLOW_TABLE_GROWTH', '-lexports.js'])
+    output = self.do_runf_out_file('core/test_get_exported_function.c', cflags=['-sALLOW_TABLE_GROWTH', '-lexports.js'])
+    self.assertContainedIf('No exported function found by name "no_such_function"', output, not self.is_optimizing())
 
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet suppored by the wasm engines we test against.

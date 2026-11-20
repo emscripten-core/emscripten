@@ -95,11 +95,11 @@ const emscriptenThreadProfiler = {
         {{{ makeSetValue('offset', 0, 0, 'double') }}};
       }
       let recent = '';
-      if (threadTimesInStatus[1] > 0) recent += (threadTimesInStatus[1] / totalTime * 100.0).toFixed(1) + '% running. ';
-      if (threadTimesInStatus[2] > 0) recent += (threadTimesInStatus[2] / totalTime * 100.0).toFixed(1) + '% sleeping. ';
-      if (threadTimesInStatus[3] > 0) recent += (threadTimesInStatus[3] / totalTime * 100.0).toFixed(1) + '% waiting for futex. ';
-      if (threadTimesInStatus[4] > 0) recent += (threadTimesInStatus[4] / totalTime * 100.0).toFixed(1) + '% waiting for mutex. ';
-      if (threadTimesInStatus[5] > 0) recent += (threadTimesInStatus[5] / totalTime * 100.0).toFixed(1) + '% waiting for proxied ops. ';
+      if (threadTimesInStatus[{{{ cDefs.EM_THREAD_STATUS_RUNNING }}}] > 0) recent += (threadTimesInStatus[{{{ cDefs.EM_THREAD_STATUS_RUNNING }}}] / totalTime * 100.0).toFixed(1) + '% running. ';
+      if (threadTimesInStatus[{{{ cDefs.EM_THREAD_STATUS_SLEEPING }}}] > 0) recent += (threadTimesInStatus[{{{ cDefs.EM_THREAD_STATUS_SLEEPING }}}] / totalTime * 100.0).toFixed(1) + '% sleeping. ';
+      if (threadTimesInStatus[{{{ cDefs.EM_THREAD_STATUS_WAITFUTEX }}}] > 0) recent += (threadTimesInStatus[{{{ cDefs.EM_THREAD_STATUS_WAITFUTEX }}}] / totalTime * 100.0).toFixed(1) + '% waiting for futex. ';
+      if (threadTimesInStatus[{{{ cDefs.EM_THREAD_STATUS_WAITMUTEX }}}] > 0) recent += (threadTimesInStatus[{{{ cDefs.EM_THREAD_STATUS_WAITMUTEX }}}] / totalTime * 100.0).toFixed(1) + '% waiting for mutex. ';
+      if (threadTimesInStatus[{{{ cDefs.EM_THREAD_STATUS_WAITPROXY }}}] > 0) recent += (threadTimesInStatus[{{{ cDefs.EM_THREAD_STATUS_WAITPROXY }}}] / totalTime * 100.0).toFixed(1) + '% waiting for proxied ops. ';
       if (recent.length > 0) str += `Recent activity: ${recent}`;
       str += '<br />';
     }

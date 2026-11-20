@@ -44,39 +44,49 @@ addToLibrary({
   })),
 
 #if !WASM2JS || WASM == 2
+  // Compiled wrapper modules used by convertJsFunctionToWasm, keyed by
+  // signature. The module bytes depend only on the signature, so each one only
+  // needs to be compiled once.
+  $wrapperModuleCache__internal: true,
+  $wrapperModuleCache: {},
+
   // Wraps a JS function as a wasm function with a given signature.
   $convertJsFunctionToWasm: (func, sig) => {
 #if ASSERTIONS && !WASM_BIGINT
     assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
 #endif
-    // TODO: If the type reflection proposal ever makes progress we can use
-    // it here instead of creatign a new module.
-    var bytes = Uint8Array.of(
-      0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
-      0x01, 0x00, 0x00, 0x00, // version: 1
-      0x01, // Type section code
-        // The module is static, with the exception of the type section, which is
-        // generated based on the signature passed in.
-        ...uleb128EncodeWithLen([
-          0x01, // count: 1
-          0x60 /* form: func */,
-          // param types
-          ...generateTypePack(sig.slice(1)),
-          // return types (for now only supporting [] if `void` and single [T] otherwise)
-          ...generateTypePack(sig[0] === 'v' ? '' : sig[0])
-        ]),
-      // The rest of the module is static
-      0x02, 0x07, // import section
-        // (import "e" "f" (func 0 (type 0)))
-        0x01, 0x01, 0x65, 0x01, 0x66, 0x00, 0x00,
-      0x07, 0x05, // export section
-        // (export "f" (func 0 (type 0)))
-        0x01, 0x01, 0x66, 0x00, 0x00,
-    );
+    var module = wrapperModuleCache[sig];
+    if (!module) {
+      // TODO: If the type reflection proposal ever makes progress we can use
+      // it here instead of creatign a new module.
+      var bytes = Uint8Array.of(
+        0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
+        0x01, 0x00, 0x00, 0x00, // version: 1
+        0x01, // Type section code
+          // The module is static, with the exception of the type section, which is
+          // generated based on the signature passed in.
+          ...uleb128EncodeWithLen([
+            0x01, // count: 1
+            0x60 /* form: func */,
+            // param types
+            ...generateTypePack(sig.slice(1)),
+            // return types (for now only supporting [] if `void` and single [T] otherwise)
+            ...generateTypePack(sig[0] === 'v' ? '' : sig[0])
+          ]),
+        // The rest of the module is static
+        0x02, 0x07, // import section
+          // (import "e" "f" (func 0 (type 0)))
+          0x01, 0x01, 0x65, 0x01, 0x66, 0x00, 0x00,
+        0x07, 0x05, // export section
+          // (export "f" (func 0 (type 0)))
+          0x01, 0x01, 0x66, 0x00, 0x00,
+      );
 
-    // We can compile this wasm module synchronously because it is very small.
-    // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
-    var module = new WebAssembly.Module(bytes);
+      // We can compile this wasm module synchronously because it is very small.
+      // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
+      module = wrapperModuleCache[sig] = new WebAssembly.Module(bytes);
+    }
+
     var instance = new WebAssembly.Instance(module, { 'e': { 'f': func } });
     var wrappedFunc = instance.exports['f'];
     return wrappedFunc;
@@ -133,9 +143,22 @@ addToLibrary({
    * Add a function to the table.
    * 'sig' parameter is required if the function being added is a JS function.
    */
+#if ASSERTIONS && SHARED_MEMORY
   $addFunction__docs: '/** @param {string=} sig */',
-
   $addFunction: (func, sig) => {
+    if (!getFunctionAddress(func)) {
+      warnOnce('addFunction is not supported with threads: each thread has its own table, so the function pointer is only valid in the calling thread');
+    }
+    return addFunctionInternal(func, sig);
+  },
+#else
+  $addFunction: '$addFunctionInternal',
+#endif
+
+  // For the dynamic linker, which adds its functions in every thread.
+  $addFunctionInternal__internal: true,
+  $addFunctionInternal__docs: '/** @param {string=} sig */',
+  $addFunctionInternal: (func, sig) => {
 #if ASSERTIONS
     assert(typeof func !== 'undefined');
 #endif // ASSERTIONS

@@ -24,13 +24,13 @@
 
 struct waiter {
 	struct waiter *prev, *next;
-	volatile int state, barrier;
-	volatile int *notify;
+	_Atomic int state, barrier;
+	_Atomic int *notify;
 };
 
 /* Self-synchronized-destruction-safe lock functions */
 
-static inline void lock(volatile int *l)
+static inline void lock(_Atomic int *l)
 {
 	if (a_cas(l, 0, 1)) {
 		a_cas(l, 1, 2);
@@ -39,13 +39,13 @@ static inline void lock(volatile int *l)
 	}
 }
 
-static inline void unlock(volatile int *l)
+static inline void unlock(_Atomic int *l)
 {
 	if (a_swap(l, 0)==2)
 		__wake(l, 1, 1);
 }
 
-static inline void unlock_requeue(volatile int *l, volatile int *r, int w)
+static inline void unlock_requeue(_Atomic int *l, _Atomic int *r, int w)
 {
 	a_store(l, 0);
 #ifdef __EMSCRIPTEN__
@@ -73,7 +73,7 @@ int __pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restri
 {
 	struct waiter node = { 0 };
 	int e, seq, clock = c->_c_clock, cs, shared=0, oldstate, tmp;
-	volatile int *fut;
+	_Atomic int *fut;
 
 #ifdef __EMSCRIPTEN__
 	// TODO: Optimize this away in MINIMAL_RUNTIME.
@@ -193,7 +193,7 @@ done:
 int __private_cond_signal(pthread_cond_t *c, int n)
 {
 	struct waiter *p, *first=0;
-	volatile int ref = 0;
+	_Atomic int ref = 0;
 	int cur;
 
 	lock(&c->_c_lock);

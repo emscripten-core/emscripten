@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <limits.h>
+#include <climits>
 #include <mutex>
 #include <queue>
 

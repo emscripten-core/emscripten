@@ -94,6 +94,11 @@ addToLibrary({
 #endif // TEXTDECODER == 2
   },
 
+#if SHRINK_LEVEL == 0 && !STANDALONE_WASM
+  $UTF8ToString_cache__internal: true,
+  $UTF8ToString_cache: {},
+#endif
+
   $UTF8ToString__docs: `
   /**
    * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
@@ -115,13 +120,34 @@ addToLibrary({
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
 #endif
+
+#if SHRINK_LEVEL == 0 && !STANDALONE_WASM
+    // Only cache full string reads (when maxBytesToRead is omitted).
+    // We use `== null` here since its shorter than `=== undefined`
+    var useCache = maxBytesToRead == null && ptr >= {{{ RODATA_START }}} && ptr < {{{ RODATA_END }}};
+    if (useCache) {
+      var rtn = UTF8ToString_cache[ptr];
+      if (rtn != null) {
+        return rtn;
+      }
+    }
+#endif
+
 #if TEXTDECODER == 2
     if (!ptr) return '';
     var end = findStringEnd(HEAPU8, ptr, maxBytesToRead, ignoreNul);
-    return UTF8Decoder.decode({{{ getHeapViewOrCopy('HEAPU8', 'ptr', 'end') }}});
+    var rtn = UTF8Decoder.decode({{{ getHeapViewOrCopy('HEAPU8', 'ptr', 'end') }}});
 #else
-    return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : '';
+    var rtn = ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : '';
 #endif
+
+#if SHRINK_LEVEL == 0 && !STANDALONE_WASM
+    if (useCache) {
+      UTF8ToString_cache[ptr] = rtn;
+    }
+#endif
+
+    return rtn;
   },
 
   /**
@@ -263,6 +289,11 @@ addToLibrary({
     return ret.join('');
   },
 
+#if SHRINK_LEVEL == 0 && !STANDALONE_WASM
+  $AsciiToString_cache__internal: true,
+  $AsciiToString_cache: {},
+#endif
+
   // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the
   // emscripten HEAP, returns a copy of that string as a Javascript String
   // object.
@@ -270,12 +301,32 @@ addToLibrary({
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
 #endif
+#if SHRINK_LEVEL == 0 && !STANDALONE_WASM
+    var origPtr = ptr;
+    var useCache = ptr >= {{{ RODATA_START }}} && ptr < {{{ RODATA_END }}};
+    if (useCache) {
+      var rtn = AsciiToString_cache[origPtr];
+      if (rtn != null) {
+        return rtn;
+      }
+    }
+#endif
     var str = '';
     while (1) {
       var ch = {{{ makeGetValue('ptr++', 0, 'u8') }}};
+#if SHRINK_LEVEL == 0 && !STANDALONE_WASM
+      if (!ch) break;
+#else
       if (!ch) return str;
+#endif
       str += String.fromCharCode(ch);
     }
+#if SHRINK_LEVEL == 0 && !STANDALONE_WASM
+    if (useCache) {
+      AsciiToString_cache[origPtr] = str;
+    }
+    return str;
+#endif
   },
 
   // Copies the given Javascript String object 'str' to the emscripten HEAP at

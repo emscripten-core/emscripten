@@ -428,6 +428,14 @@ constexpr const char* getSignature(Return (*)(Args...)) {
     return Signature<Return, Args...>;
 }
 
+template<bool IsClassMethod, typename ReturnType, bool IsAsync, size_t ArgCount>
+inline void recordInvokerDescriptor() {
+    constexpr char is_method = IsClassMethod ? 't' : 'f';
+    constexpr char returns = std::is_void<ReturnType>::value ? 'f' : 't';
+    constexpr char is_async = IsAsync ? 't' : 'f';
+    emitInvokerDescriptor<ArgCount, is_method, returns, is_async>();
+}
+
 } // end namespace internal
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,6 +445,7 @@ constexpr const char* getSignature(Return (*)(Args...)) {
 template<typename ReturnType, typename... Args, typename... Policies>
 void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
     using namespace internal;
+    recordInvokerDescriptor<false, ReturnType, isAsync<Policies...>::value, sizeof...(Args)>();
     typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
     using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
     auto invoke = Invoker<ReturnPolicy, ReturnType, Args...>::invoke;
@@ -1253,6 +1262,7 @@ struct RegisterClassConstructor<ReturnType (*)(Args...)> {
 
     template <typename ClassType, typename... Policies>
     static void invoke(ReturnType (*factory)(Args...)) {
+        recordInvokerDescriptor<false, ReturnType, false, sizeof...(Args)>();
         typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
         using ReturnPolicy = rvp::take_ownership;
         auto invoke = &Invoker<ReturnPolicy, ReturnType, Args...>::invoke;
@@ -1271,6 +1281,7 @@ struct RegisterClassConstructor<std::function<ReturnType (Args...)>> {
 
     template <typename ClassType, typename... Policies>
     static void invoke(std::function<ReturnType (Args...)> factory) {
+        recordInvokerDescriptor<false, ReturnType, false, sizeof...(Args)>();
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
         using ReturnPolicy = rvp::take_ownership;
         auto invoke = &FunctorInvoker<ReturnPolicy, decltype(factory), ReturnType, Args...>::invoke;
@@ -1288,6 +1299,7 @@ template<typename Callable, typename ReturnType, typename... Args>
 struct RegisterClassConstructor<FunctionTag<Callable, ReturnType (Args...)>> {
     template <typename ClassType, typename... Policies>
     static void invoke(Callable& factory) {
+        recordInvokerDescriptor<false, ReturnType, false, sizeof...(Args)>();
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
         using ReturnPolicy = rvp::take_ownership;
         auto invoke = &FunctorInvoker<ReturnPolicy, decltype(factory), ReturnType, Args...>::invoke;
@@ -1314,6 +1326,7 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...)) {
+        recordInvokerDescriptor<true, ReturnType, isAsync<Policies...>::value, sizeof...(Args)>();
         using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = MethodInvoker<ReturnPolicy, decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
 
@@ -1344,6 +1357,7 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...) const)  {
+        recordInvokerDescriptor<true, ReturnType, isAsync<Policies...>::value, sizeof...(Args)>();
         using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = MethodInvoker<ReturnPolicy, decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
 
@@ -1374,6 +1388,7 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
     template <typename ClassType, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (*function)(ThisType, Args...)) {
+        recordInvokerDescriptor<true, ReturnType, isAsync<Policies...>::value, sizeof...(Args)>();
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
         using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = FunctionInvoker<ReturnPolicy, decltype(function), ReturnType, ThisType, Args...>::invoke;
@@ -1403,6 +1418,7 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
     template <typename ClassType, typename... Policies>
     static void invoke(const char* methodName,
                        std::function<ReturnType (ThisType, Args...)> function) {
+        recordInvokerDescriptor<true, ReturnType, isAsync<Policies...>::value, sizeof...(Args)>();
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
         using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = FunctorInvoker<ReturnPolicy, decltype(function), ReturnType, ThisType, Args...>::invoke;
@@ -1426,6 +1442,7 @@ struct RegisterClassMethod<FunctionTag<Callable, ReturnType (ThisType, Args...)>
     template <typename ClassType, typename... Policies>
     static void invoke(const char* methodName,
                        Callable& callable) {
+        recordInvokerDescriptor<true, ReturnType, isAsync<Policies...>::value, sizeof...(Args)>();
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
         using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = FunctorInvoker<ReturnPolicy, decltype(callable), ReturnType, ThisType, Args...>::invoke;
@@ -1564,6 +1581,7 @@ public:
 
         smart_ptr<SmartPtr>(smartPtrName);
 
+        recordInvokerDescriptor<false, SmartPtr, false, sizeof...(Args)>();
         typename WithPolicies<Policies...>::template ArgTypeList<SmartPtr, Args...> args;
         using ReturnPolicy = typename GetReturnValuePolicy<SmartPtr, return_value_policy::take_ownership>::tag;
         auto invoke = &Invoker<ReturnPolicy, SmartPtr, Args...>::invoke;
@@ -1794,6 +1812,7 @@ public:
     EMSCRIPTEN_ALWAYS_INLINE const class_& class_function(const char* methodName, ReturnType (*classMethod)(Args...), Policies...) const {
         using namespace internal;
 
+        recordInvokerDescriptor<false, ReturnType, isAsync<Policies...>::value, sizeof...(Args)>();
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
         using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = internal::Invoker<ReturnPolicy, ReturnType, Args...>::invoke;

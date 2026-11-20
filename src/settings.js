@@ -1362,9 +1362,6 @@ var EXPORT_NAME = 'Module';
 //
 //  - RELOCATABLE: the function loadDynamicLibrary would need to eval().
 //
-// and some features may fall back to slower code paths when they need to:
-// Embind: uses eval() to jit functions for speed.
-//
 // Additionally, the following Emscripten runtime functions are unavailable when
 // DYNAMIC_EXECUTION=0 is set, and an attempt to call them will throw an exception:
 //
@@ -1464,8 +1461,10 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = false;
 var BINARYEN_EXTRA_PASSES = "";
 
 // Whether to compile the wasm asynchronously, which is more efficient and does
-// not block the main thread. This is currently required for all but the
-// smallest modules to run in chrome.
+// not block the main thread. Chrome refuses to synchronously compile modules
+// larger than 8MB on the main thread (larger than 4KB in Chrome versions older
+// than 115), so this is required for such modules to run in Chrome.
+// (Firefox and Safari limit is 1GB)
 //
 // (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 // [link]
@@ -1792,11 +1791,11 @@ var TEXTDECODER = 1;
 // [link]
 var EMBIND_STD_STRING_IS_UTF8 = true;
 
-// Embind specific: If enabled, generate Embind's JavaScript invoker functions
-// at compile time and include them in the JS output file. When used with
-// DYNAMIC_EXECUTION=0 this allows exported bindings to be just as fast as
-// DYNAMIC_EXECUTION=1 mode, but without the need for eval(). If there are many
-// bindings the JS output size may be larger though.
+// Embind specific: If enabled, generate ES module exports for Embind bindings
+// at compile time.
+// Note: This setting is only meaningful when using ``WASM_ESM_INTEGRATION`` or
+// ``MODULARIZE=instance``.
+// [link]
 var EMBIND_AOT = false;
 
 // If set to 1, enables support for transferring canvases to pthreads and

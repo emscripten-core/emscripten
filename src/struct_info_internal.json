@@ -24,6 +24,13 @@
     {
         "file": "threading_internal.h",
         "defines": [
+            "EM_THREAD_STATUS_NOTSTARTED",
+            "EM_THREAD_STATUS_RUNNING",
+            "EM_THREAD_STATUS_SLEEPING",
+            "EM_THREAD_STATUS_WAITFUTEX",
+            "EM_THREAD_STATUS_WAITMUTEX",
+            "EM_THREAD_STATUS_WAITPROXY",
+            "EM_THREAD_STATUS_FINISHED",
             "EM_THREAD_STATUS_NUMFIELDS"
         ]
     },

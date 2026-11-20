@@ -3,10 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-TAG = '3.5.1.20261104'
+TAG = '3.5.1.20261109'
 
 EXTERNAL_PORT = f'https://github.com/pongasoft/emscripten-glfw/releases/download/v{TAG}/emscripten-glfw3-{TAG}.zip'
-SHA512 = 'db6099a1a8fecae0c275cad23ffc2ff9de1b8e257997b75137cc3998667b364d5df10267e3b0bbdacc5db4e7bc2d7add4b946dc7c85aacf2f9bb373688aff7ac'
+SHA512 = 'e4b26b5d627476fb14ea900ebc3a4050c124e1f8fd5a600a887850ceed7d9ed8dd617ac16c7d1181839a26c553d8775093996d9c747e322d84a3236a9ca22791'
 PORT_FILE = 'port/glfw3.py'
 
 # contrib port information (required)

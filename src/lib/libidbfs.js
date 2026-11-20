@@ -11,7 +11,7 @@ addToLibrary({
   }),
   $IDBFS__postset: () => addAtExit('IDBFS.quit();'),
   $IDBFS: {
-    dbs: {},
+    dbs: new Map(),
     indexedDB: () => {
 #if ASSERTIONS
       assert(typeof indexedDB !== 'undefined', 'IDBFS used, but indexedDB not supported');
@@ -129,14 +129,14 @@ addToLibrary({
       });
     },
     quit: () => {
-      for (var value of Object.values(IDBFS.dbs)) {
-        value.close()
+      for (var value of IDBFS.dbs.values()) {
+        value.close();
       }
-      IDBFS.dbs = {};
+      IDBFS.dbs.clear();
     },
     getDB: (name, callback) => {
       // check the cache first
-      var db = IDBFS.dbs[name];
+      var db = IDBFS.dbs.get(name);
       if (db) {
         return callback(null, db);
       }
@@ -170,7 +170,7 @@ addToLibrary({
         db = /** @type {IDBDatabase} */ (req.result);
 
         // add to the cache
-        IDBFS.dbs[name] = db;
+        IDBFS.dbs.set(name, db);
         callback(null, db);
       };
       req.onerror = (e) => {
@@ -179,7 +179,7 @@ addToLibrary({
       };
     },
     getLocalSet: (mount, callback) => {
-      var entries = {};
+      var entries = new Map();
 
       function isRealDir(p) {
         return p !== '.' && p !== '..';
@@ -204,13 +204,13 @@ addToLibrary({
           check.push(...FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
         }
 
-        entries[path] = { 'timestamp': stat.mtime };
+        entries.set(path, { 'timestamp': stat.mtime });
       }
 
-      return callback(null, { type: 'local', entries: entries });
+      return callback(null, { type: 'local', entries });
     },
     getRemoteSet: (mount, callback) => {
-      var entries = {};
+      var entries = new Map();
 
       IDBFS.getDB(mount.mountpoint, (err, db) => {
         if (err) return callback(err);
@@ -232,7 +232,7 @@ addToLibrary({
               return callback(null, { type: 'remote', db, entries });
             }
 
-            entries[cursor.primaryKey] = { 'timestamp': cursor.key };
+            entries.set(cursor.primaryKey, { 'timestamp': cursor.key });
 
             cursor.continue();
           };
@@ -333,8 +333,8 @@ addToLibrary({
       var total = 0;
 
       var create = [];
-      for (var [key, e] of Object.entries(src.entries)) {
-        var e2 = dst.entries[key];
+      for (var [key, e] of src.entries) {
+        var e2 = dst.entries.get(key);
         if (!e2 || e['timestamp'].getTime() != e2['timestamp'].getTime()) {
           create.push(key);
           total++;
@@ -342,8 +342,8 @@ addToLibrary({
       }
 
       var remove = [];
-      for (var key of Object.keys(dst.entries)) {
-        if (!src.entries[key]) {
+      for (var key of dst.entries.keys()) {
+        if (!src.entries.has(key)) {
           remove.push(key);
           total++;
         }

@@ -8,7 +8,7 @@ addToLibrary({
   $MEMFS: {
     ops_table: null,
     mount(mount) {
-      return MEMFS.createNode(null, '/', S_IFDIR | 0o777, 0);
+      return MEMFS.createNode(null, '/', S_IFDIR | S_IRWXUGO, 0);
     },
     createNode(parent, name, mode, dev = undefined) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
@@ -221,7 +221,7 @@ addToLibrary({
         return ['.', '..', ...Object.keys(node.contents)];
       },
       symlink(parent, newname, oldpath) {
-        var node = MEMFS.createNode(parent, newname, 0o777 | S_IFLNK, 0);
+        var node = MEMFS.createNode(parent, newname, S_IRWXUGO | S_IFLNK, 0);
         node.link = oldpath;
         return node;
       },

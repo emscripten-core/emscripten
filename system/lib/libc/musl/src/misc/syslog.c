@@ -13,13 +13,13 @@
 #include "fork_impl.h"
 #include "locale_impl.h"
 
-static volatile int lock[1];
+static _Atomic int lock[1];
 static char log_ident[32];
 static int log_opt;
 static int log_facility = LOG_USER;
 static int log_mask = 0xff;
 static int log_fd = -1;
-volatile int *const __syslog_lockptr = lock;
+_Atomic int *const __syslog_lockptr = lock;
 
 int setlogmask(int maskpri)
 {

@@ -23,7 +23,6 @@ from urllib.request import urlopen
 
 import common
 from browser_common import (
-  CHROMIUM_BASED_BROWSERS,
   EMTEST_COS_EXTENSION_PATH,
   BrowserCore,
   HttpServerThread,
@@ -245,8 +244,7 @@ class browser(BrowserCore):
       print()
 
   def require_jspi(self):
-    if not is_chrome() and not is_firefox():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) and firefox support JSPI today.')
+    self.check_browser_feature('EMTEST_LACKS_JSPI', Feature.JSPI, 'This test requires a browser that supports JSPI')
     super().require_jspi()
 
   def post_manual_reftest(self):
@@ -285,8 +283,8 @@ window.close = () => {
     assert 'expected' not in kwargs
     expected = [str(i) for i in range(reference_slack + 1)]
     self.make_reftest(reference)
-    kwargs.setdefault('cflags', [])
-    kwargs['cflags'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+    # Create a new list here rather than modifying the caller's list in place.
+    kwargs['cflags'] = [*kwargs.get('cflags', []), '--pre-js', 'reftest.js', '-sGL_TESTING']
 
     try:
       return self.btest(filename, *args, expected=expected, **kwargs)
@@ -813,6 +811,26 @@ window.close = () => {
     # create_file('shell.html', read_file(path_from_root('html/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     # test()
 
+  def test_capture_stdio_custom_print(self):
+    # When stdio capturing is enabled (which happens automatically when a flaky
+    # test gets retried), a custom Module.print handler defined by the page
+    # must still get called with the printed string.  The handler reports the
+    # string that it produced as the test result, so that we verify its content.
+    create_file('shell.html', r'''
+      <html>
+        <body>
+          <script>
+            var Module = {
+              print: (text) => reportResultToServer(text.replace('Hello', 'Goodbye')),
+            };
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>''')
+    self.capture_stdio = True
+    self.btest('hello_world.c', expected='Goodbye, world!', reporting=Reporting.JS_ONLY,
+               cflags=['--shell-file', 'shell.html'])
+
   @also_with_wasmfs
   def test_fs_dev_random(self):
     self.btest_exit('fs/test_fs_dev_random.c')
@@ -1082,6 +1100,9 @@ window.close = () => {
       window['simulateAxisMotion'] = (index, axis, value) => {
         gamepads[index].axes[axis] = value;
       };
+      window['disconnectGamepad'] = (index) => {
+        gamepads[index] = null;
+      };
     ''')
 
     self.btest_exit('test_sdl_joystick.c', cflags=['-O2', '--minify=0', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
@@ -1223,6 +1244,10 @@ window.close = () => {
   @requires_webgl2
   def test_webgl2_texsubimage3d(self):
     self.btest_exit('webgl2_texsubimage3d.c', cflags=['-sMIN_WEBGL_VERSION=2'])
+
+  @requires_webgl2
+  def test_webgl2_readpixels_pack_row_length(self):
+    self.btest_exit('webgl2_readpixels_pack_row_length.c', cflags=['-sMIN_WEBGL_VERSION=2'])
 
   # Test that -sGL_PREINITIALIZED_CONTEXT works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
@@ -1703,7 +1728,9 @@ window.close = () => {
     def book_path(path):
       return test_file('third_party/glbook', path)
 
-    cflags += ['-lGL', '-lEGL', '-lX11']
+    # Create a new list here rather than modifying the @parameterized list in
+    # place, which is shared between all runs of this test.
+    cflags = [*cflags, '-lGL', '-lEGL', '-lX11']
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
@@ -2474,6 +2501,14 @@ void *getBindBuffer() {
   def test_cpuprofiler_memoryprofiler(self, opts):
     self.btest_exit('hello_world_gles.c', cflags=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'] + opts)
 
+  @also_with_proxy_to_pthread
+  def test_memoryprofiler_heap_end(self):
+    # The memory profiler tracks the end of the dynamic memory area via
+    # onSbrkGrow() rather than by calling sbrk(), since its UI keeps updating on
+    # a timer after the runtime has exited, at which point calling into the Wasm
+    # module would abort the page.
+    self.btest_exit('test_memoryprofiler_heap_end.c', cflags=['--memoryprofiler'])
+
   def test_uuid(self):
     self.btest_exit('test_uuid.c', cflags=['-luuid'])
 
@@ -3199,8 +3234,8 @@ Module["preRun"] = () => {
     'jspi': (['-sJSPI'],),
   })
   def test_async(self, opt, args):
-    if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+    if is_jspi(args):
+      self.require_jspi()
 
     self.btest_exit('test_async.c', cflags=[opt, '-g2'] + args)
 
@@ -3325,6 +3360,7 @@ Module["preRun"] = () => {
 
   @no_firefox('source phase imports not implemented yet in firefox')
   @no_safari('TODO: croaks on line "import source wasmModule from \'./out.wasm\';"') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
+  @requires_chrome_version(138, 'the JavaScriptSourcePhaseImports feature flag does not exist in older versions')
   def test_source_phase_imports(self):
     self.compile_btest('browser_test_hello_world.c', ['-sEXPORT_ES6', '-sSOURCE_PHASE_IMPORTS', '-Wno-experimental', '-o', 'out.mjs'])
     create_file('a.html', '''
@@ -3957,6 +3993,7 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
   @requires_wasm2js
+  @requires_chrome_version(115, 'older versions do not allow synchronous compilation of wasm modules larger than 4KB on the main thread (https://crbug.com/1378329)')
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=['-sWASM_ASYNC_COMPILATION=0', '-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
@@ -4085,6 +4122,8 @@ Module["preRun"] = () => {
     'off': (['-sWASM_ASYNC_COMPILATION=0'], 0),
   })
   def test_async_compile(self, opts, returncode):
+    if '-sWASM_ASYNC_COMPILATION=0' in opts and is_chrome() and get_chrome_version() < 115:
+      self.skipTest('Chrome older than 115 does not allow synchronous compilation of wasm modules larger than 4KB on the main thread (https://crbug.com/1378329)')
     # notice when we use async compilation
     create_file('pre.js', '''
       // note if we do async compilation
@@ -4184,6 +4223,7 @@ Module["preRun"] = () => {
   # For testing WebGL draft extensions like this, if using chrome as the browser,
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
+  @requires_chrome_version(135, 'https://crbug.com/395670641')
   @parameterized({
     'arrays': (['-DMULTI_DRAW_ARRAYS'],),
     'arrays_instanced': (['-DMULTI_DRAW_ARRAYS_INSTANCED'],),
@@ -4209,6 +4249,8 @@ Module["preRun"] = () => {
     'drawelements': (1,),
   })
   def test_webgl_draw_base_vertex_base_instance(self, multi_draw, draw_elements):
+    if multi_draw and is_chrome() and get_chrome_version() < 135:
+      self.skipTest('https://crbug.com/395670641')
     self.reftest('test_webgl_draw_base_vertex_base_instance.c', 'test_webgl_draw_base_vertex_base_instance.png',
                  cflags=['-lGL',
                             '-sMAX_WEBGL_VERSION=2',
@@ -4479,6 +4521,9 @@ Module["preRun"] = () => {
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_store(self):
     self.btest_exit('fetch/test_fetch_idb_store.cpp', cflags=['-pthread', '-sFETCH', '-sPROXY_TO_PTHREAD'])
+
+  def test_fetch_idb_store_async(self):
+    self.btest_exit('fetch/test_fetch_idb_store_async.c', cflags=['-sFETCH'])
 
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_delete(self):
@@ -4881,8 +4926,8 @@ Module["preRun"] = () => {
     'jspi': (['-sJSPI'],),
   })
   def test_embind(self, args):
-    if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+    if is_jspi(args):
+      self.require_jspi()
     if is_jspi(args) and self.is_wasm64():
       self.skipTest('_emval_await fails')
 

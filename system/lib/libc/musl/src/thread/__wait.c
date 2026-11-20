@@ -4,7 +4,7 @@
 
 #include "pthread_impl.h"
 
-void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
+void __wait(_Atomic int *addr, _Atomic int *waiters, int val, int priv)
 {
 	int spins=100;
 	if (priv) priv = FUTEX_PRIVATE;

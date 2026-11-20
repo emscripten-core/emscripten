@@ -193,6 +193,10 @@ var LibraryDylink = {
       '__stop_em_asm',
       '__start_em_js',
       '__stop_em_js',
+      '__start_em_embind',
+      '__stop_em_embind',
+      '__rodata_end',
+      '__rodata_start',
     ].includes(symName) || symName.startsWith('__em_js__')
 #if SPLIT_MODULE
         // Exports synthesized by wasm-split should be prefixed with '%'
@@ -256,7 +260,7 @@ var LibraryDylink = {
 #endif
         var newValue;
         if (typeof value === 'function') {
-          newValue = {{{ to64('addFunction(value)') }}};
+          newValue = {{{ to64('addFunctionInternal(value)') }}};
         } else if (typeof value.value === POINTER_JS_TYPE) {
           newValue = value;
         } else {
@@ -354,7 +358,7 @@ var LibraryDylink = {
 #endif
         if (typeof value === 'function') {
           /** @suppress {checkTypes} */
-          entry.value = {{{ to64('addFunction(value, value.sig)') }}};
+          entry.value = {{{ to64('addFunctionInternal(value, value.sig)') }}};
 #if DYLINK_DEBUG == 2
           dbg(`assigning table entry for : ${symName} -> ${entry.value}`);
 #endif
@@ -1046,9 +1050,9 @@ var LibraryDylink = {
     }
     var rpathResolved = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
     return withStackSave(() => {
-      // In dylink.c we use: `char buf[2*NAME_MAX+2];` and NAME_MAX is 255.
-      // So we use the same size here.
-      const bufSize = 2*255 + 2;
+      // In dylink.c we use: `char buf[2*NAME_MAX+2];`, so we use the same size
+      // here.
+      const bufSize = 2*NAME_MAX + 2;
       var buf = stackAlloc(bufSize);
       var rpathC = stringToUTF8OnStack(rpathResolved.join(':'));
       var libNameC = stringToUTF8OnStack(libName);
@@ -1321,7 +1325,7 @@ var LibraryDylink = {
     var symDict = lib.exports;
     var symName = Object.keys(symDict)[symbolIndex];
     var sym = symDict[symName];
-    var result = addFunction(sym, sym.sig);
+    var result = addFunctionInternal(sym, sym.sig);
 #if DYLINK_DEBUG
     dbg(`_dlsym_catchup: result=${result}`);
 #endif
@@ -1375,7 +1379,7 @@ var LibraryDylink = {
         // function the second argument will not be needed.  If it's a JS
         // function we rely on the `sig` attribute being set based on the
         // `<func>__sig` specified in library JS file.
-        result = addFunction(result, result.sig);
+        result = addFunctionInternal(result, result.sig);
 #if DYLINK_DEBUG
         dbg('adding symbol to table:',  symbol);
 #endif

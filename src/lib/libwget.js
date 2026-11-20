@@ -16,9 +16,7 @@ var LibraryWget = {
     },
   },
 
-  emscripten_async_wget__deps: [
-    '$Browser',
-  ],
+  emscripten_async_wget__deps: ['$Browser'],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget: (url, file, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}

@@ -117,11 +117,9 @@ var LibraryExceptions = {
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: [
 #if !DISABLE_EXCEPTION_CATCHING
-    '__cxa_increment_exception_refcount',
+  __cxa_rethrow__deps: ['__cxa_increment_exception_refcount'],
 #endif
-  ],
   __cxa_rethrow: () => {
     if (!exceptionCaught.length) {
       abort('no exception to throw');
@@ -144,9 +142,7 @@ var LibraryExceptions = {
 
   llvm_eh_typeid_for: (type) => type,
 
-  __cxa_begin_catch__deps: [
-    '__cxa_get_exception_ptr',
-  ],
+  __cxa_begin_catch__deps: ['__cxa_get_exception_ptr'],
   __cxa_begin_catch: (ptr) => {
     var info = new ExceptionInfo(ptr);
     if (!info.get_caught()) {
@@ -165,9 +161,7 @@ var LibraryExceptions = {
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: [
-    '__cxa_decrement_exception_refcount', 'setThrew',
-  ],
+  __cxa_end_catch__deps: ['__cxa_decrement_exception_refcount', 'setThrew'],
   __cxa_end_catch: () => {
     // Clear state flag.
     _setThrew(0, 0);
@@ -208,11 +202,9 @@ var LibraryExceptions = {
     return info.get_type();
   },
 
-  __cxa_rethrow_primary_exception__deps: [
 #if !DISABLE_EXCEPTION_CATCHING
-    '__cxa_increment_exception_refcount',
+  __cxa_rethrow_primary_exception__deps: ['__cxa_increment_exception_refcount'],
 #endif
-  ],
   __cxa_rethrow_primary_exception: (ptr) => {
     if (!ptr) return;
 #if EXCEPTION_DEBUG
@@ -238,11 +230,9 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  $findMatchingCatch__deps: [
 #if !DISABLE_EXCEPTION_CATCHING
-    '__cxa_can_catch',
+  $findMatchingCatch__deps: ['__cxa_can_catch'],
 #endif
-  ],
   $findMatchingCatch: (args) => {
 #if DISABLE_EXCEPTION_CATCHING
     setTempRet0(0);
@@ -411,7 +401,7 @@ var LibraryExceptions = {
 // number specifies the number of arguments.  In Emscripten, route all these to
 // a single function '__cxa_find_matching_catch' that variadically processes all
 // of these functions using JS 'arguments' object.
-addCxaCatch = (n) => {
+function addCxaCatch(n) {
   const args = [];
   // Confusingly, the actual number of argument is n - 2. According to the llvm
   // code in WebAssemblyLowerEmscriptenEHSjLj.cpp:
@@ -424,19 +414,24 @@ addCxaCatch = (n) => {
     args.push(`arg${i}`);
     sig += 'p';
   }
-  const argString = args.join();
-  LibraryManager.library[`__cxa_find_matching_catch_${n}__sig`] = sig;
-  LibraryManager.library[`__cxa_find_matching_catch_${n}`] = eval(`(${args}) => findMatchingCatch([${argString}])`);
-};
+  LibraryExceptions[`__cxa_find_matching_catch_${n}`] = eval(`(${args}) => findMatchingCatch([${args}])`);
+  LibraryExceptions[`__cxa_find_matching_catch_${n}__sig`] = sig;
+}
 
-// Add the first 2-5 catch handlers preemptively.  Others get added on demand in
-// jsifier.  This is done here primarily so that these symbols end up with the
-// correct deps in the stub library that we pass to wasm-ld.
+// Add the first 2-4 catch handlers preemptively so that these symbols end up
+// with the correct deps in the stub library that we pass to wasm-ld.
+// Add any larger handlers needed by DEFAULT_LIBRARY_FUNCS_TO_INCLUDE (e.g.
+// imports discovered from Wasm) before JS library loading finishes.
 // Note: __cxa_find_matching_catch_N function uses N = NumClauses + 2 so
 // __cxa_find_matching_catch_2 is the first such function with zero clauses.
 // See WebAssemblyLowerEmscriptenEHSjLj.cpp.
 for (let i = 2; i < 5; i++) {
-  addCxaCatch(i)
+  addCxaCatch(i);
+}
+for (const sym of DEFAULT_LIBRARY_FUNCS_TO_INCLUDE) {
+  if (sym.startsWith('__cxa_find_matching_catch_') && !(sym in LibraryExceptions)) {
+    addCxaCatch(+sym.split('_').at(-1));
+  }
 }
 #endif
 

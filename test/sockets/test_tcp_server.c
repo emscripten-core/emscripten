@@ -7,7 +7,8 @@
  * Self-contained TCP loopback accept+echo. A listener and a client live in one
  * process, both non-blocking, driven by select in the main loop. Exercises
  * bind(:0) + getsockname (synchronous ephemeral port), listen, accept,
- * non-blocking connect, send and recv. This is plain POSIX and also builds and
+ * non-blocking connect, send and recv, then a peer reset (SO_LINGER 0 + close)
+ * which the client's recv must report as ECONNRESET. This is plain POSIX and also builds and
  * runs natively, so the same code can be checked against the host stack.
  */
 
@@ -36,6 +37,7 @@ struct sockaddr_in dest;
 bool connected = false;
 bool ping_sent = false;
 bool pong_sent = false;
+bool reset_sent = false;
 
 void set_nonblocking(int fd) {
   fcntl(fd, F_SETFL, O_NONBLOCK);
@@ -115,12 +117,19 @@ void main_loop(void) {
     }
   }
 
-  // client: receive pong
+  // client: receive pong, then the reset
   if (ping_sent && FD_ISSET(client_fd, &fdr)) {
     char buf[4];
     ssize_t n = recv(client_fd, buf, sizeof(buf), 0);
-    if (n == 4 && memcmp(buf, "pong", 4) == 0) {
+    if (reset_sent) {
+      assert(n == -1 && errno == ECONNRESET);
       test_success();
+    } else if (n == 4 && memcmp(buf, "pong", 4) == 0) {
+      struct linger lg = { .l_onoff = 1, .l_linger = 0 };
+      assert(setsockopt(peer_fd, SOL_SOCKET, SO_LINGER, &lg, sizeof(lg)) == 0);
+      close(peer_fd);
+      peer_fd = -1;
+      reset_sent = true;
     } else if (n == 0) {
       assert(false && "peer closed unexpectedly");
     }

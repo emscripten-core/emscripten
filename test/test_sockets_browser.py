@@ -90,7 +90,7 @@ class sockets_browser(BrowserCore):
     if harness_class == CompiledServerHarness and EMTEST_SKIP_NODE_DEV_PACKAGES:
       self.skipTest('requires node ws and EMTEST_SKIP_NODE_DEV_PACKAGES=1')
 
-    args.append('-DTEST_ASYNC=1')
+    args = [*args, '-DTEST_ASYNC=1']
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
       self.btest_exit('sockets/test_sockets_echo_client.c', cflags=[f'-DSOCKK={harness.listen_port}', *args])
 

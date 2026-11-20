@@ -1,0 +1,2 @@
+# Uses Emscripten preprocessor/macro syntax (#if, {{{ ... }}}), not valid JS.
+src/pthread_esm_startup.mjs

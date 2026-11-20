@@ -20,6 +20,15 @@ See docs/process.md for more on how version tagging works.
 
 7.0.1 (in development)
 ----------------------
+- Emscripten's JavaScript tools (`tools/compiler.mjs`, `tools/preprocessor.mjs`,
+  `tools/acorn-optimizer.mjs`, `tools/unsafe_optimizations.mjs`, and
+  `tools/lz4-compress.mjs`) are now bundled into `dist/` using `rolldown`. For
+  folks using a git checkout of emscripten, `./bootstrap.py` runs this bundling
+  step automatically. (#28281)
+- Embind now generates JavaScript invoker functions at link time instead of
+  using `new Function` at runtime. This improves startup time, makes
+  `-sDYNAMIC_EXECUTION=0` bindings just as fast as `-sDYNAMIC_EXECUTION=1`
+  without needing `-sEMBIND_AOT`. (#28181)
 - C preprocessor defines from `struct_info.json` (previously accessed via
   `{{{ cDefs.FOO }}}`) are now exposed as `const` JavaScript library symbols
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
@@ -31,6 +40,16 @@ See docs/process.md for more on how version tagging works.
   in a worker on a main-module function that is not exported (for example one
   obtained with `getWasmTableEntry`) now allocates a new table slot instead of
   returning its existing address. (#28105)
+- zlib port updated from 1.3.2 to 1.4. (#28210)
+- In multi-threaded builds with assertions enabled, `addFunction` now warns
+  when it adds a function to the table: each thread has its own table, so the
+  function pointer is only valid in the calling thread. (#28275)
+- `emscripten_get_now()` (and `clock_gettime(CLOCK_MONOTONIC)`) in pthreads
+  builds now reads `performance.timeOrigin` once per thread. In Safari its value
+  can vary between reads, which made the clock go backwards. (#28272)
+- Building with `-sJSPI` now bumps the default minimum supported browser
+  versions to the first ones that support JSPI: Chrome 137, Firefox 153,
+  Safari 27 and Node.js 24. (#28334)
 
 7.0.0 - 11/06/26
 ----------------

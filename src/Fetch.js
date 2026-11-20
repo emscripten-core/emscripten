@@ -844,8 +844,11 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   if (requestMethod === 'EM_IDB_STORE') {
     var ptr = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestData, '*') }}};
     var size = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestDataSize, '*') }}};
-    // Storing shared or resizable typed arrays to IndexedDB is not allowed, so use getHeapViewOrCopy.
-    fetchCacheData(Fetch.dbInstance, fetch, {{{ getHeapViewOrCopy('HEAPU8', 'ptr', 'ptr + size') }}}, reportSuccess, reportError);
+    // We cannot use subarray() / getHeapViewOrCopy() here because structured
+    // cloning (used by IndexedDB) clones the entire underlying ArrayBuffer, not
+    // just the view. slice() copies only the requested range into a new
+    // unshared, non-resizable Uint8Array.
+    fetchCacheData(Fetch.dbInstance, fetch, HEAPU8.slice(ptr, ptr + size), reportSuccess, reportError);
   } else if (requestMethod === 'EM_IDB_DELETE') {
     fetchDeleteCachedData(Fetch.dbInstance, fetch, reportSuccess, reportError);
   } else if (!fetchAttrReplace) {

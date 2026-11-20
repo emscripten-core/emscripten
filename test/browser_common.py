@@ -239,7 +239,7 @@ def browser_should_skip_feature(skip_env_var, feature):
   # Otherwise EMTEST_AUTOSKIP=1 or EMTEST_AUTOSKIP is not set: check whether
   # the current browser supports the test or not.
   min_required = feature_matrix.min_browser_versions[feature]
-  not_supported = get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
+  not_supported = get_chrome_version() < min_required['chrome'] or get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
 
   # Current browser does not support the test, and EMTEST_AUTOSKIP is not set?
   # Then error out to have end user decide what to do in this situation.
@@ -849,7 +849,7 @@ class BrowserCore(RunnerCore):
   def check_browser_feature(self, env_var, feature, message):
     skip = browser_should_skip_feature(env_var, feature)
     if skip == 'error':
-      self.fail(message)
+      self.fail(f'{message} (run with {env_var}=1 or EMTEST_AUTOSKIP=1 to skip)')
     elif skip:
       self.skipTest(message)
 
@@ -938,6 +938,8 @@ class BrowserCore(RunnerCore):
       print('(moving on..)')
 
   def compile_btest(self, filename, cflags, reporting=Reporting.FULL):
+    # Avoid modifying the caller's list in place so we don't accumulate duplicate flags on retry.
+    cflags = list(cflags)
     # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in

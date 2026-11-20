@@ -1,8 +1,8 @@
 #include "pthread_impl.h"
 #include "fork_impl.h"
 
-static volatile int vmlock[2];
-volatile int *const __vmlock_lockptr = vmlock;
+static _Atomic int vmlock[2];
+_Atomic int *const __vmlock_lockptr = vmlock;
 
 void __vm_wait()
 {

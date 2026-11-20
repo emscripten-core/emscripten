@@ -177,7 +177,7 @@ void test() {
     // Ensure IndexedDB is closed at exit.
     var orig = Module['onExit'];
     Module['onExit'] = (status) => {
-      assert(Object.keys(IDBFS.dbs).length == 0);
+      assert(IDBFS.dbs.size == 0);
       orig(status);
     };
     FS.syncfs((err) => {

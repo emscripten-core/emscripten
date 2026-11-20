@@ -21,6 +21,12 @@ build any binaries as ``emcc.py`` is in Python, and the core JS generation is
 in JavaScript. You do still need binaries for LLVM and Binaryen, which you can
 get using the emsdk.
 
+After checking out the Emscripten repository, run ``./bootstrap.py`` (or ``python
+bootstrap.py`` on Windows) before invoking ``emcc`` or running tests.  This
+installs npm dependencies, bundles the link-time JavaScript tools into
+``dist/``, creates compiler entry points, and initializes test submodules (see
+:ref:`installing-from-source` for details).
+
 If you want to contribute back to Emscripten, it is recommended that you install
 the precise version of the emsdk binaries that are used by Emscripten CI when
 running the test suite:

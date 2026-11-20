@@ -21,8 +21,8 @@ static struct fl
 
 static int finished_atexit;
 static int slot;
-static volatile int lock[1];
-volatile int *const __atexit_lockptr = lock;
+static _Atomic int lock[1];
+_Atomic int *const __atexit_lockptr = lock;
 
 void __funcs_on_exit()
 {

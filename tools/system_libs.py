@@ -362,6 +362,9 @@ class Library:
   # and left as None in an abstract library class, e.g. MTLibrary.
   name: str | None = None
 
+  # Experimental libs are not included in `embuilder build SYSTEM`
+  experimental = False
+
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
 
@@ -1044,6 +1047,7 @@ class libnoexit(Library):
 
 class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libllvmlibc'
+  experimental = True
   never_force = True
   includes = ['system/lib/llvm-libc']
   cflags = [
@@ -1059,6 +1063,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
     # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
     '-Wno-unused-variable',
+    '-Wno-unsequenced',
     '-mrelaxed-simd',
     '-ffp-contract=fast',
   ]

@@ -51,15 +51,24 @@ commands:
       - run:
           name: download browser (<< parameters.browser_name >>)
           command: |
-            npx --yes @puppeteer/browsers install << parameters.browser_name >> --format={{path}} | tee browser_path.txt
-            BROWSER_PATH=$(cat browser_path.txt 2>/dev/null || true)
-            # @puppeteer/browsers can exit 0 on truncated downloads while
-            # failing to extract the binary or outputting an empty path.
-            # See: https://github.com/puppeteer/puppeteer/issues/15487
-            if [[ -z "${BROWSER_PATH}" || ! -x "${BROWSER_PATH}" ]]; then
-              echo "Failed to install browser (empty path or binary missing)"
-              exit 1
-            fi
+            set -o pipefail
+            BROWSER_DIR="${HOME}/.cache/puppeteer-browsers"
+            # `@puppeteer/browsers` has no built-in retry option yet.
+            # See: https://github.com/puppeteer/puppeteer/issues/15803
+            for attempt in 1 2 3; do
+              rm -rf "${BROWSER_DIR}" browser_path.txt
+              if npx --yes @puppeteer/browsers install << parameters.browser_name >> --path="${BROWSER_DIR}" --format={{path}} | tee browser_path.txt; then
+                break
+              fi
+              echo "Browser install attempt ${attempt} failed"
+              if [[ "${attempt}" -eq 3 ]]; then
+                exit 1
+              fi
+              echo "Retrying..."
+              sleep 5
+            done
+            BROWSER_PATH=$(cat browser_path.txt)
+            rm -f browser_path.txt
             echo "browser installed to: ${BROWSER_PATH}"
             "${BROWSER_PATH}" --version
             echo "export EMTEST_BROWSER=\"${BROWSER_PATH}\"" >> $BASH_ENV
@@ -668,6 +677,7 @@ jobs:
             core2s.test_dylink_syslibs_missing_assertions
             core2s.test_module_wasm_memory
             cores.test_minimal_runtime_safe_heap
+            cores.test_dlfcn_self
             wasm2js0.test_autodebug_wasm
             wasm2js3.test_memorygrowth_2
             wasm2js2.test_pthread_proxying
@@ -698,6 +708,7 @@ jobs:
             wasmfs.test_fs_readv
             wasmfs.test_fs_write
             wasmfs.test_fs_readv_rawfs
+            wasmfs.test_fs_readv_eagain
             wasmfs.test_fs_nodefs_nofollow
             wasmfs.test_fs_nodefs_readdir
             wasmfs.test_fs_nodefs_home
@@ -711,6 +722,7 @@ jobs:
             wasmfs.test_dlfcn_self
             wasmfs.test_dlfcn_unique_sig
             wasmfs.test_dylink_basics
+            wasmfs.test_pthread_dlopen_embed*
             wasmfs.test_exit_status
             wasmfs.test_minimal_runtime_memorygrowth
             wasmfs.test_mmap_anon*
@@ -731,6 +743,7 @@ jobs:
             wasmfs.test_minimal_runtime_hello_world*
             wasmfs.test_dlmalloc
             wasmfs.test_wrap_malloc_mimalloc
+            wasmfs.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_utf
             minimal0.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_static_variable

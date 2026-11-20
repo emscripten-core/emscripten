@@ -66,10 +66,16 @@ int main() {
   char out1[4] = "EFGH";
   struct iovec wiov[] = {{.iov_base = out0, .iov_len = 4},
                          {.iov_base = out1, .iov_len = 4}};
+  ssize_t nwrite = writev(wfd, wiov, 2);
+#ifdef WASMFS
+  // WasmFS writes each iovec separately.  First iovec written; second
+  // would-block -> partial success, not EAGAIN.
+  assert(nwrite == 4);
+#else
   // writev gathers both iovecs into a single write, so the whole 8 bytes go
   // out in one call and the would-block second call never happens.
-  ssize_t nwrite = writev(wfd, wiov, 2);
   assert(nwrite == 8);
+#endif
   close(wfd);
 
   printf("done\n");

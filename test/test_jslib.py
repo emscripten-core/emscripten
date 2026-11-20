@@ -197,6 +197,47 @@ addToLibrary({
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
                      "error: JS library error: 'jslibfunc' must take 'sync' as parameter 3, after the 2 of its '__sig'")
 
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY'],),
+    'asyncify_auto': (['-sASYNCIFY', '-DAUTO'],),
+    'jspi': (['-sJSPI'],),
+    'jspi_auto': (['-sJSPI', '-DAUTO'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_jslib_async_auto_variants(self, args):
+    # `answer(ms, value)` resolves to `value` after `ms` milliseconds
+    # (synchronously if `ms` is 0, rejecting if `value` is 0), with an
+    # `answer_promise` variant. Where the caller cannot wait, `answer()` is -1:
+    # without 'auto' in the list it never suspends, even under ASYNCIFY/JSPI.
+    # `wait_ms(ms)` is the same without a result.
+    if '-sJSPI' in args:
+      self.require_jspi()
+    if '-sASYNCIFY' in args and self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    forms = "['auto', 'promise']" if '-DAUTO' in args else "['promise']"
+    self.do_runf(test_file('jslib/test_jslib_async_auto_variants.c'), 'done\n',
+                 cflags=args + ['-sEXIT_RUNTIME', f'-jsDFORMS={forms}', '--js-library', test_file('jslib/test_jslib_async_auto_variants.js')])
+
+  @parameterized({
+    'empty': ("'pi'", '[]', '', "'jslibfunc__async' must be 'auto', or a non-empty array of variants"),
+    'unknown': ("'pi'", "['foo']", '', "unknown async variant 'foo' in 'jslibfunc__async'"),
+    'sig': ("'di'", "['promise']", '', "async variants of 'jslibfunc' require a native function with a '__sig' returning 'v', 'p' or 'i'"),
+    'defined': ("'pi'", "['promise']", 'jslibfunc_promise: () => 0,', "'jslibfunc_promise' is defined explicitly, conflicting with the 'promise' variant of 'jslibfunc'"),
+  })
+  def test_jslib_async_variants_errors(self, sig, variants, extra, expected):
+    create_file('lib.js', f'''
+addToLibrary({{
+  jslibfunc__sig: {sig},
+  jslibfunc__async: {variants},
+  jslibfunc: (x) => x,
+  {extra}
+}});
+''')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'],
+                     'error: JS library error: ' + expected)
+
   def test_jslib_method_syntax(self):
     create_file('lib.js', r'''
 addToLibrary({
@@ -1127,3 +1168,57 @@ addToLibrary({
     ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$bad_obj', '--js-library', 'lib.js'],
                      "error: JS library error: '__const' decorator cannot be used with objects: '$bad_obj'")
+
+  def test_jslib_function_forms(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        $destruct: ({a}) => a + 1,
+        $dollar_param: $ => $ + 1,
+        $async_nospace: async(x) => x,
+        $async_param: async => async + 1,
+        $str_arrow: 'x => x + 2',
+        $str_destruct: '({b}) => b + 3',
+        $str_async: 'async x => x',
+        $str_async_nospace: 'async(x) => x',
+        $str_ws_func: '  function(x) { return x + 5; }',
+        $str_async_func: '  async function(x) { return x + 6; }',
+        $named_func: function origName(x) { return x + 7; },
+        $named_async_func: async function origAsyncName(x) { return x; },
+        $str_named_func: 'function strOrigName (x) { return x + 8; }',
+        $str_named_async_func: '  async function strOrigAsync(x) { return x; }',
+        $CONST_ARROW_STR__const: true,
+        $CONST_ARROW_STR: 'x => y',
+        $CONST_FUNC_STR__const: true,
+        $CONST_FUNC_STR: 'function(x) { return x; }',
+        check_funcs: () => {
+          assert(destruct({a: 1}) === 2);
+          assert(dollar_param(1) === 2);
+          assert(async_nospace(1) instanceof Promise);
+          assert(async_param(1) === 2);
+          assert(str_arrow(1) === 3);
+          assert(str_destruct({b: 1}) === 4);
+          assert(str_async(1) instanceof Promise);
+          assert(str_async_nospace(1) instanceof Promise);
+          assert(str_ws_func(1) === 6);
+          assert(str_async_func(1) instanceof Promise);
+          assert(named_func(1) === 8);
+          assert(named_async_func(1) instanceof Promise);
+          assert(str_named_func(1) === 9);
+          assert(str_named_async_func(1) instanceof Promise);
+          assert(CONST_ARROW_STR === 'x => y');
+          assert(CONST_FUNC_STR === 'function(x) { return x; }');
+          return 1;
+        },
+      });
+    ''')
+    create_file('src.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      int check_funcs(void);
+      int main() {
+        assert(check_funcs() == 1);
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'done\n', cflags=['--js-library', 'lib.js'])

@@ -13,6 +13,10 @@ Some changes have been made to the version that was taken from upstream, includi
  * Setting `_POSIX_REALTIME_SIGNALS` and `_POSIX_SPAWN` macros to -1, to exclude unsupported functions.
  * Handling trailing % in `strftime` and `wcsftime` format strings.
  * Backport [musl commit 3e80328d](https://git.musl-libc.org/cgit/musl/commit/?id=3e80328d45b73604012b9b174f11e3ed632005ce) to fix `acosh` for negative inputs.
+ * Replace `volatile` atomic locations and synchronization struct members with
+   C11 `_Atomic` (see [#28209]).
+
+[#28209]: https://github.com/emscripten-core/emscripten/pull/28209
 
 Copy log.c and log2.c from earlier version of musl which result in smaller
 binary size since they do not rely on data tables in log_data.c and log2_data.c.

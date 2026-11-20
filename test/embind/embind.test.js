@@ -146,7 +146,7 @@ module({
             });
             assert.equal('Cannot pass "true" as a Derived*', e.message);
 
-            if (cm.getCompilerSetting('STRICT_JS') && !cm.getCompilerSetting('DYNAMIC_EXECUTION')) {
+            if (cm.getCompilerSetting('STRICT_JS')) {
               var e = assert.throws(TypeError, function() {
                   cm.Derived.prototype.setMember.call(null, "foo");
               });
@@ -2775,7 +2775,7 @@ module({
             cm.callWithMemoryView(function(view) {
                 views.push(view);
             });
-            assert.equal(3, views.length);
+            assert.equal(4, views.length);
 
             assert.instanceof(views[0], Uint8Array);
             assert.equal(8, views[0].length);
@@ -2788,6 +2788,31 @@ module({
             assert.instanceof(views[2], Int16Array);
             assert.equal(4, views[2].length);
             assert.deepEqual([1000, 100, 10, 1], [].slice.call(views[2]));
+
+            assert.instanceof(views[3], Uint8ClampedArray);
+            assert.equal(3, views[3].length);
+            assert.deepEqual([0, 128, 255], [].slice.call(views[3]));
+        });
+
+        test("clamped memory view aliases Wasm memory and supports empty view", function() {
+            var view = cm.getClampedMemoryView();
+            assert.instanceof(view, Uint8ClampedArray);
+            assert.equal(4, view.length);
+            assert.deepEqual([10, 20, 30, 40], [].slice.call(view));
+
+            // Verify clamping semantics and aliasing back into Wasm memory.
+            view[0] = -10;
+            view[1] = 300;
+            view[2] = 127.6;
+            view[3] = 42;
+            assert.equal(0, cm.getClampedMemoryViewElement(0));
+            assert.equal(255, cm.getClampedMemoryViewElement(1));
+            assert.equal(128, cm.getClampedMemoryViewElement(2));
+            assert.equal(42, cm.getClampedMemoryViewElement(3));
+
+            var empty = cm.getEmptyClampedMemoryView();
+            assert.instanceof(empty, Uint8ClampedArray);
+            assert.equal(0, empty.length);
         });
     });
 
@@ -2990,6 +3015,12 @@ module({
             assert.equal("before", instance.before);
             assert.equal(10, instance.view.byteLength);
             assert.equal("after", instance.after);
+
+            var clampedInstance = cm.construct_with_clamped_memory_view(factory);
+            assert.equal("before", clampedInstance.before);
+            assert.instanceof(clampedInstance.view, Uint8ClampedArray);
+            assert.deepEqual([10, 20, 30, 40], [].slice.call(clampedInstance.view));
+            assert.equal("after", clampedInstance.after);
         });
 
         test("ints_and_float", function() {

@@ -104,9 +104,9 @@ legacyFuncs = {
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
 
 #if EMBIND
-  $getInheritedInstanceCount: () => Object.keys(registeredInstances).length,
+  $getInheritedInstanceCount: () => registeredInstances.size,
 
-  $getLiveInheritedInstances: () => Object.values(registeredInstances),
+  $getLiveInheritedInstances: () => [...registeredInstances.values()],
 #endif
 };
 
