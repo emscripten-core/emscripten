@@ -825,8 +825,8 @@ class BrowserCore(RunnerCore):
     # sets up all of those classes, and tears them down only at the end of the
     # test run. Launch a single browser for all of them, rather than one for each
     # of the classes.
-    BrowserCore.num_classes_using_browser += 1
-    if BrowserCore.num_classes_using_browser > 1:
+    if BrowserCore.num_classes_using_browser > 0:
+      BrowserCore.num_classes_using_browser += 1
       return
 
     BrowserCore.harness_in_queue = queue.Queue()
@@ -835,7 +835,16 @@ class BrowserCore(RunnerCore):
     BrowserCore.harness_server.start()
 
     errlog(f'[Browser harness server on thread {cls.harness_server.name}]')
-    cls.browser_open(cls.HARNESS_URL)
+    try:
+      cls.browser_open(cls.HARNESS_URL)
+    except Exception:
+      # tearDownClass() does not get called for a class that fails to set up,
+      # so stop the harness server here. That lets the next test class start
+      # from a clean state, and the test run exit when it is done.
+      cls.harness_server.stop()
+      cls.harness_server.join()
+      raise
+    BrowserCore.num_classes_using_browser = 1
 
   @classmethod
   def tearDownClass(cls):
