@@ -1522,6 +1522,30 @@ class libprintf_long_double(libc):
     return super().can_use() and settings.PRINTF_LONG_DOUBLE
 
 
+class libfutex_wait_liftoff_workaround(libc):
+  """Version of emscripten_futex_wait() for old versions of Chrome.
+
+  Works around a bug in V8's Liftoff compiler, which was fixed in Chrome 115
+  (https://crbug.com/1432453), see the comments in emscripten_futex_wait.c.
+  This is a separate library, which overrides the version of the function in
+  libc, so that only the builds that target such old versions of Chrome pay
+  for the workaround.
+  """
+
+  name = 'libfutex_wait_liftoff_workaround'
+  cflags = libc.cflags + ['-DEMSCRIPTEN_FUTEX_WAIT_LIFTOFF_WORKAROUND']
+
+  # Need to define get_files so that libc.get_files() is not called
+  def get_files(self):
+    return files_in_path(
+        path='system/lib/pthread',
+        filenames=['emscripten_futex_wait.c'])
+
+  def can_use(self):
+    # emscripten_futex_wait.c is only part of the multithreaded versions of libc.
+    return super().can_use() and (self.is_mt or self.is_ww) and settings.MIN_CHROME_VERSION < 115
+
+
 class libwasm_workers(MuslInternalLibrary, DebugLibrary):
   name = 'libwasm_workers'
   includes = ['system/lib/libc']
@@ -2483,6 +2507,8 @@ def get_libs_to_link():
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
+  if 'libfutex_wait_liftoff_workaround' in system_libs_map:
+    add_library('libfutex_wait_liftoff_workaround')
   # See comment in libc_optz itself
   if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and not force:
     add_library('libc_optz')

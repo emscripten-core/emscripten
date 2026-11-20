@@ -1,10 +1,10 @@
 {
   "a.out.js": 6829,
   "a.out.js.gz": 3357,
-  "a.out.nodebug.wasm": 18950,
-  "a.out.nodebug.wasm.gz": 8760,
-  "total": 25779,
-  "total_gz": 12117,
+  "a.out.nodebug.wasm": 18979,
+  "a.out.nodebug.wasm.gz": 8783,
+  "total": 25808,
+  "total_gz": 12140,
   "sent": [
     "a (memory)",
     "b (exit)",
@@ -116,6 +116,7 @@
     "$cancel_ctx",
     "$cancel_notification",
     "$dispose_chunk",
+    "$do_atomic_wait32",
     "$do_proxy",
     "$em_proxying_ctx_deinit",
     "$em_task_queue_cancel",

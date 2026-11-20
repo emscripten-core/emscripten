@@ -12382,6 +12382,24 @@ int main(void) {
   def test_pthread_hello(self, args):
     self.do_other_test('test_pthread_hello.c', args)
 
+  @parameterized({
+    'chrome114': (['-sMIN_CHROME_VERSION=114'], True),
+    'chrome115': (['-sMIN_CHROME_VERSION=115'], False),
+    # MAIN_MODULE=1 links libc with --whole-archive
+    'chrome114_main_module': (['-sMIN_CHROME_VERSION=114', '-sMAIN_MODULE', '-Wno-experimental'], True),
+  })
+  @requires_pthreads
+  def test_pthread_futex_wait_liftoff_workaround(self, args, expect_workaround):
+    # The workaround for the V8 Liftoff bug that was fixed in Chrome 115, which
+    # moves the atomic wait instruction to a function of its own, should only
+    # be linked in when targeting older versions of Chrome than that.
+    self.do_other_test('test_pthread_hello.c', ['-O2', '--profiling-funcs'] + args)
+    wat = self.get_wasm_text('test_pthread_hello.wasm')
+    if expect_workaround:
+      self.assertContained('(func $do_atomic_wait32', wat)
+    else:
+      self.assertNotContained('(func $do_atomic_wait32', wat)
+
   @crossplatform
   @requires_pthreads
   def test_pthread_mutex_deadlock(self):

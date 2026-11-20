@@ -138,6 +138,25 @@ static double dummy() {
 
 weak_alias(dummy, _emscripten_next_timer);
 
+#ifdef EMSCRIPTEN_FUTEX_WAIT_LIFTOFF_WORKAROUND
+// This file is built a second time with this define into the library
+// libfutex_wait_liftoff_workaround, which gets linked in to override the
+// version in libc when targeting old versions of Chrome (see
+// libfutex_wait_liftoff_workaround in tools/system_libs.py).
+//
+// V8's Liftoff compiler in Chrome versions older than 115 can clobber the
+// register-cached locals of the function that executes memory.atomic.wait32
+// (https://crbug.com/1432453), so do the wait in a separate function. The
+// function is called through a volatile pointer to keep Binaryen from inlining
+// it back.
+static int do_atomic_wait32(int* addr, int val, int64_t ns) {
+  return __builtin_wasm_memory_atomic_wait32(addr, val, ns);
+}
+static int (*volatile atomic_wait32)(int*, int, int64_t) = do_atomic_wait32;
+#else
+#define atomic_wait32 __builtin_wasm_memory_atomic_wait32
+#endif
+
 static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms) {
   if ((((intptr_t)addr)&3) != 0) {
     return -EINVAL;
@@ -178,7 +197,7 @@ static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   uintptr_t expected_null = 0;
   if (atomic_compare_exchange_strong(&self->wait_addr, &expected_null, (uintptr_t)addr)) {
     DBG("emscripten_futex_wait atomic.wait ns=%lld", max_wait_ns);
-    ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
+    ret = atomic_wait32((int*)addr, val, max_wait_ns);
   } else {
     DBG("emscripten_futex_wait skipping atomic.wait due to NOTIFY_BIT");
     // CAS failed, NOTIFY_BIT must have been set.  In this case we don't
@@ -199,7 +218,7 @@ static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
 
   DBG("emscripten_futex_wait done cancelable=%d cancel=%d", cancelable, self->cancel);
 #else // __EMSCRIPTEN_PTHREADS__
-  ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
+  ret = atomic_wait32((int*)addr, val, max_wait_ns);
 #endif // __EMSCRIPTEN_PTHREADS__
 
   // Pass 0 here, which means we don't have access to the current time in this
@@ -223,7 +242,11 @@ static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   return 0;
 }
 
-
+#ifndef EMSCRIPTEN_FUTEX_WAIT_LIFTOFF_WORKAROUND
+// The version in libc is weak so that libfutex_wait_liftoff_workaround can
+// override it also when libc is linked in with --whole-archive (MAIN_MODULE=1).
+weak
+#endif
 int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms) {
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);
   int ret = _do_futex_wait(addr, val, max_wait_ms);

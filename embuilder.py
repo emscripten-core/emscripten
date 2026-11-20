@@ -52,6 +52,9 @@ MINIMAL_TASKS = [
   'libc-mt-debug',
   'libc-mt-asan-debug',
   'libc-ww-debug',
+  'libfutex_wait_liftoff_workaround-mt-debug',
+  'libfutex_wait_liftoff_workaround-mt-asan-debug',
+  'libfutex_wait_liftoff_workaround-ww-debug',
   'libc_optz',
   'libc_optz-debug',
   'libc++abi',
@@ -126,6 +129,7 @@ MINIMAL_TASKS = [
 MINIMAL_PIC_TASKS = [
   *MINIMAL_TASKS,
   'libc-mt',
+  'libfutex_wait_liftoff_workaround-mt',
   'libc_optz-mt',
   'libc_optz-mt-debug',
   'libc++abi-mt',
