@@ -34,6 +34,9 @@ See docs/process.md for more on how version tagging works.
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
   making unminified output more readable. (#28144)
 - zlib port updated from 1.3.2 to 1.4. (#28210)
+- In multi-threaded builds with assertions enabled, `addFunction` now warns
+  when it adds a function to the table: each thread has its own table, so the
+  function pointer is only valid in the calling thread. (#28275)
 - `emscripten_get_now()` (and `clock_gettime(CLOCK_MONOTONIC)`) in pthreads
   builds now reads `performance.timeOrigin` once per thread. In Safari its value
   can vary between reads, which made the clock go backwards. (#28272)

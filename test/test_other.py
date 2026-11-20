@@ -15194,6 +15194,42 @@ throw_tag:
 
   @parameterized({
     '': ([],),
+    'pthreads': (['-pthread'],),
+    'pthreads_dylink': (['-pthread', '-sMAIN_MODULE=2', '-Wno-experimental'],),
+    'wasm_workers': (['-sWASM_WORKERS'],),
+  })
+  def test_add_function_threads(self, args):
+    if '-pthread' in args:
+      self.require_pthreads()
+    self.set_setting('ALLOW_TABLE_GROWTH')
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <emscripten/console.h>
+
+      EM_JS_DEPS(deps, "$addFunction,$getWasmTableEntry");
+
+      void func() {}
+
+      int main() {
+        emscripten_err("start");
+        // A function that is already in the table gets no new slot and no
+        // warning.
+        EM_ASM({ addFunction(getWasmTableEntry($0)) }, func);
+        emscripten_err("existing");
+        EM_ASM({ addFunction(() => {}, 'v') });
+        emscripten_out("done");
+      }
+    ''')
+    warning = 'warning: addFunction is not supported with threads'
+    output = self.do_runf('main.c', 'done\n', cflags=args)
+    if args:
+      self.assertContained('start\nexisting\n' + warning, output)
+    else:
+      self.assertContained('start\nexisting\n', output)
+      self.assertNotContained(warning, output)
+
+  @parameterized({
+    '': ([],),
     'lz4': (['-sLZ4'],),
     'pthread': (['-g', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
