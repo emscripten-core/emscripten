@@ -58,9 +58,7 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
             dbg('asyncify: suspendOnReturnedPromise for', x, original);
 #endif
-#if JSPI_TRACK_SUSPEND
             original = Asyncify.trackResume(original);
-#endif
             imports[x] = original = new WebAssembly.Suspending(original);
           }
 #endif
@@ -169,12 +167,9 @@ addToLibrary({
           if (isAsyncifyExport) {
             Asyncify.asyncExports.add(original);
             original = Asyncify.makeAsyncFunction(original);
-          }
-#if JSPI_TRACK_SUSPEND
-          else {
+          } else {
             original = Asyncify.trackEntry(original, false);
           }
-#endif
           ret[x] = original;
 #else
           var wrapper = Asyncify.instrumentFunction(original);
@@ -477,13 +472,8 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify: makeAsyncFunction for', original);
 #endif
-#if JSPI_TRACK_SUSPEND
       return Asyncify.trackEntry(WebAssembly.promising(original.orig || original), true);
-#else
-      return WebAssembly.promising(original);
-#endif
     },
-#if JSPI_TRACK_SUSPEND
     // Whether a suspending import called now would suspend. Only the value
     // seen by running wasm matters: every JS->wasm entry sets it for its
     // duration, and every resume sets it before the activation continues.
@@ -515,7 +505,6 @@ addToLibrary({
         return ret;
       };
     },
-#endif
 #endif
   },
 

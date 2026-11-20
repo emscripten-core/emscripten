@@ -1918,14 +1918,14 @@ int main() {
       #include <emscripten.h>
 
       int main() {
-        printf("%d\n", emscripten_has_asyncify());
+        printf("%d %d\n", emscripten_has_asyncify(), emscripten_can_suspend());
         return 0;
       }
     '''
     self.set_setting('ASYNCIFY', 0)
-    self.do_run(src, '0')
+    self.do_run(src, '0 0')
     self.set_setting('ASYNCIFY')
-    self.do_run(src, '1')
+    self.do_run(src, '1 1')
 
   def test_inlinejs3(self):
     self.do_core_test('test_inlinejs3.c')
