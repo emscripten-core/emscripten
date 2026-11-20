@@ -849,7 +849,7 @@ class BrowserCore(RunnerCore):
   def check_browser_feature(self, env_var, feature, message):
     skip = browser_should_skip_feature(env_var, feature)
     if skip == 'error':
-      self.fail(message)
+      self.fail(f'{message} (run with {env_var}=1 or EMTEST_AUTOSKIP=1 to skip)')
     elif skip:
       self.skipTest(message)
 
