@@ -4220,9 +4220,8 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_draw_triangle.c', cflags=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-sFULL_ES2'])
 
   # Tests for WEBGL_multi_draw extension
-  # For testing WebGL draft extensions like this, if using chrome as the browser,
-  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
+  @no_firefox('WEBGL_multi_draw is not supported, https://bugzil.la/2079315')
   @requires_chrome_version(135, 'https://crbug.com/395670641')
   @parameterized({
     'arrays': (['-DMULTI_DRAW_ARRAYS'],),
@@ -4235,11 +4234,10 @@ Module["preRun"] = () => {
                  cflags=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP'] + args)
 
   # Tests for base_vertex/base_instance extension
-  # For testing WebGL draft extensions like this, if using chrome as the browser,
-  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   # If testing on Mac, you also need --use-cmd-decoder=passthrough to get this extension.
   # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
   @requires_webgl2
+  @no_firefox('WEBGL_draw_instanced_base_vertex_base_instance is not supported, https://bugzil.la/1677238')
   @parameterized({
     '': (0,),
     'multidraw': (1,),

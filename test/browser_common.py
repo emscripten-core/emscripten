@@ -258,6 +258,10 @@ class ChromeConfig:
     # this flag for now: https://crbug.com/638180
     '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-features=JavaScriptSourcePhaseImports',
     '--enable-experimental-webassembly-features',
+    # Expose the WebGL extensions that are still in draft status, e.g.
+    # WEBGL_draw_instanced_base_vertex_base_instance, so that the tests of them
+    # are run.
+    '--enable-webgl-draft-extensions',
     '--enable-blink-features=AudioWorkletSharedPort',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
