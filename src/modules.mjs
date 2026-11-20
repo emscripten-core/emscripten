@@ -41,8 +41,12 @@ export const nativeAliases = {};
 
 const systemLibdir = path.join(srcDir, 'lib');
 
-// Return type of each async variant by suffix (see expandAsyncVariants).
-const ASYNC_VARIANTS = new Map([['promise', 'p']]);
+// Return type and trailing parameters of each async variant by suffix (see
+// expandAsyncVariants).
+const ASYNC_VARIANTS = new Map([
+  ['promise', ['p', '']],
+  ['callback', ['v', 'pp']],
+]);
 
 function isBeneath(childPath, parentPath) {
   const relativePath = path.relative(parentPath, childPath);
@@ -395,11 +399,13 @@ export const LibraryManager = {
   },
 
   /**
-   * `__async: ['auto', 'promise', ...]` lists the forms in which a function
-   * waits. 'auto' is the function itself, as `__async: 'auto'`; without it
-   * the function never suspends. The rest are variants, emitted only where
-   * used: `foo_promise` runs the same body, returning an em_promise_t of the
-   * result (NULL for a void function) on the calling thread, which can
+   * `__async: ['auto', 'promise', 'callback', ...]` lists the forms in which a
+   * function waits. 'auto' is the function itself, as `__async: 'auto'`;
+   * without it the function never suspends. The rest are variants, emitted
+   * only where used: `foo_promise` runs the same body, returning an
+   * em_promise_t of the result (NULL for a void function) on the calling
+   * thread, and `foo_callback` takes `callback(err, result, arg)` and `arg` to
+   * call on the calling thread with it (see $callbackFromPromise); both can
    * always wait. Either way the body is an 'auto' body: it returns a
    * pointer-sized value or nothing, or a Promise of either, unless its
    * trailing `sync` argument forbids (see jsifier).
@@ -428,7 +434,7 @@ export const LibraryManager = {
       }
       sym.asyncVariants = forms.filter((v) => v != 'auto');
       for (const variant of sym.asyncVariants) {
-        const rtn = ASYNC_VARIANTS.get(variant);
+        const [rtn, params] = ASYNC_VARIANTS.get(variant) ?? [];
         const name = `${sym.name}_${variant}`;
         if (!rtn) {
           error(`JS library error: unknown async variant '${variant}' in '${sym.name}__async'`);
@@ -443,7 +449,7 @@ export const LibraryManager = {
         const variantSym = new LibrarySymbol(name, sym.value);
         variantSym.asyncVariantOf = sym;
         variantSym.asyncVariantKind = variant;
-        variantSym.sig = rtn + sig.slice(1);
+        variantSym.sig = rtn + sig.slice(1) + params;
         variantSym.deps = [...sym.deps];
         variantSym.proxy = sym.proxy;
         variantSym.i53abi = sym.i53abi;
