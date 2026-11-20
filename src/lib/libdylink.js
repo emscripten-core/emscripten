@@ -73,6 +73,15 @@ var LibraryDylink = {
     return true;
   },
 
+#if ASYNCIFY
+  // With Asyncify, exports are replaced by JS wrappers (see
+  // `Asyncify.instrumentWasmExports`) that keep the original wasm function in
+  // `.orig`.  Returns the original function for such a wrapper, and `func`
+  // itself otherwise.
+  $unwrapAsyncifyExport__internal: true,
+  $unwrapAsyncifyExport: (func) => func.orig ?? func,
+#endif
+
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
   // generation time.
@@ -872,10 +881,7 @@ var LibraryDylink = {
           // No stub needed, symbol already exists in symbol table
           var res = wasmImports[prop];
 #if ASYNCIFY
-          // Asyncify wraps exports, and we need to look through those wrappers.
-          if (res.orig) {
-            res = res.orig;
-          }
+          res = unwrapAsyncifyExport(res);
 #endif
           return res;
         }
@@ -1359,10 +1365,7 @@ var LibraryDylink = {
     var symName = Object.keys(symDict)[symbolIndex];
     var sym = symDict[symName];
 #if ASYNCIFY
-    // Asyncify wraps exports, and we need to look through those wrappers.
-    if (sym.orig) {
-      sym = sym.orig;
-    }
+    sym = unwrapAsyncifyExport(sym);
 #endif
     var result = addFunction(sym, sym.sig);
 #if DYLINK_DEBUG
@@ -1402,10 +1405,7 @@ var LibraryDylink = {
 #endif
 
 #if ASYNCIFY
-      // Asyncify wraps exports, and we need to look through those wrappers.
-      if (result.orig) {
-        result = result.orig;
-      }
+      result = unwrapAsyncifyExport(result);
 #endif
       var addr = getFunctionAddress(result);
       if (addr) {
