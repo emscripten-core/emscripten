@@ -268,6 +268,11 @@ class ChromeConfig:
     '--disable-background-networking',
     # Disable native password pop-ups
     '--password-store=basic',
+    # On macOS, do not read the key for encrypting cookies from the keychain of
+    # the user. That would pop up an interactive macOS prompt that asks for
+    # permission to access the keychain, and the browser hangs without loading
+    # any pages until the prompt is answered.
+    '--use-mock-keychain',
     # Send console messages to browser stderr
     '--enable-logging=stderr',
   )
