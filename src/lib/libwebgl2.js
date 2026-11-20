@@ -929,7 +929,7 @@ var LibraryWebGL2 = {
   glDrawArraysInstancedBaseInstance: 'glDrawArraysInstancedBaseInstanceWEBGL',
   glDrawArraysInstancedBaseInstanceANGLE: 'glDrawArraysInstancedBaseInstanceWEBGL',
 
-  glDrawElementsInstancedBaseVertexBaseInstanceWEBGL__sig: 'viiiiiii',
+  glDrawElementsInstancedBaseVertexBaseInstanceWEBGL__sig: 'viiipiii',
   glDrawElementsInstancedBaseVertexBaseInstanceWEBGL: (mode, count, type, offset, instanceCount, baseVertex, baseinstance) => {
     GLctx.dibvbi['drawElementsInstancedBaseVertexBaseInstanceWEBGL'](mode, count, type, offset, instanceCount, baseVertex, baseinstance);
   },
@@ -942,7 +942,7 @@ var LibraryWebGL2 = {
   emscripten_webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance: (ctx) =>
     webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx),
 
-  glMultiDrawArraysInstancedBaseInstanceWEBGL__sig: 'viiiiii',
+  glMultiDrawArraysInstancedBaseInstanceWEBGL__sig: 'vippppi',
   glMultiDrawArraysInstancedBaseInstanceWEBGL: (mode, firsts, counts, instanceCounts, baseInstances, drawCount) => {
     GLctx.mdibvbi['multiDrawArraysInstancedBaseInstanceWEBGL'](
       mode,
@@ -958,8 +958,12 @@ var LibraryWebGL2 = {
   },
   glMultiDrawArraysInstancedBaseInstanceANGLE: 'glMultiDrawArraysInstancedBaseInstanceWEBGL',
 
-  glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL__sig: 'viiiiiiii',
+  glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL__sig: 'vipippppi',
   glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL: (mode, counts, type, offsets, instanceCounts, baseVertices, baseInstances, drawCount) => {
+#if MEMORY64
+    var stack = stackSave();
+    offsets = convertOffsets(offsets, drawCount);
+#endif
     GLctx.mdibvbi['multiDrawElementsInstancedBaseVertexBaseInstanceWEBGL'](
       mode,
       HEAP32,
@@ -974,6 +978,9 @@ var LibraryWebGL2 = {
       HEAPU32,
       {{{ getHeapOffset('baseInstances', 'i32') }}},
       drawCount);
+#if MEMORY64
+    stackRestore(stack);
+#endif
   },
   glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL',
 
