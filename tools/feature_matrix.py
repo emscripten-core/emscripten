@@ -143,12 +143,15 @@ min_browser_versions = {
   #   instructions when they access a constant memory address at 2GB or above
   #   (https://crbug.com/378779897).
   # So require the first version that has neither of these bugs.
+  # Node.js has the same two bugs in its version of V8: all the releases of
+  # Node.js 20 have the first one, and all the releases of Node.js 22 and 23
+  # have the second one, so there the first such version is Node.js 24.
   # https://caniuse.com/wasm-threads
   Feature.THREADS: {
     'chrome': 132,
     'firefox': 79,
     'safari': 140100,
-    'node': 160400,
+    'node': 240000,
   },
 
 # The following features we now support unconditionally, but keeping them around
