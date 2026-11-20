@@ -146,6 +146,26 @@ var LibraryDylink = {
 
   $GOT: {},
 
+  // The exports of the main module's wasm instance.
+  // The address of a main module symbol is only stored when it is first needed.
+  $mainModuleExports__internal: true,
+  $mainModuleExports: undefined,
+
+  $getMainModuleExport__internal: true,
+  $getMainModuleExport: (symName) => {
+    if (!mainModuleExports || isInternalSym(symName)) {
+      return;
+    }
+#if !WASM_BIGINT
+    var value = mainModuleExports['orig$' + symName] ?? mainModuleExports[symName];
+#else
+    var value = mainModuleExports[symName];
+#endif
+    if (typeof value === 'function' || typeof value?.value === POINTER_JS_TYPE) {
+      return value;
+    }
+  },
+
   $exportToAddress__internal: true,
   $exportToAddress: (value) => {
     if (typeof value === 'function') {
@@ -157,7 +177,7 @@ var LibraryDylink = {
   $hasSymbolAddress__internal: true,
   $hasSymbolAddress: (symName) => {
     var global = GOT[symName];
-    return global && global.value != UNDEFINED_ADDR;
+    return global ? global.value != UNDEFINED_ADDR : !!getMainModuleExport(symName);
   },
 
   // Returns the `WebAssembly.Global` that holds the address of `symName`.
@@ -168,7 +188,8 @@ var LibraryDylink = {
 #if DYLINK_DEBUG == 2
       dbg(`new GOT entry: ${symName}`);
 #endif
-      global = GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, UNDEFINED_ADDR);
+      var exp = getMainModuleExport(symName);
+      global = GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, exp ? exportToAddress(exp) : UNDEFINED_ADDR);
     }
     return global;
   },
@@ -180,6 +201,22 @@ var LibraryDylink = {
       global.value = addr;
     } else {
       GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, addr);
+    }
+  },
+
+  // Called once the main module has been instantiated.
+  $setMainModuleExports__internal: true,
+  $setMainModuleExports: (exports) => {
+    mainModuleExports = exports;
+    // Addresses requested while instantiating the main module itself.
+    for (var symName in GOT) {
+      var global = GOT[symName];
+      if (global.value == UNDEFINED_ADDR) {
+        var value = getMainModuleExport(symName);
+        if (value) {
+          global.value = exportToAddress(value);
+        }
+      }
     }
   },
 
@@ -274,8 +311,8 @@ var LibraryDylink = {
         setSymbolAddress(symName, newValue);
       }
 #if DYLINK_DEBUG
-      else if (GOT[symName].value != value) {
-        dbg(`updateGOT: EXISTING SYMBOL: ${symName} : ${GOT[symName].value} (${value})`);
+      else if (GOT[symName]?.value != value) {
+        dbg(`updateGOT: EXISTING SYMBOL: ${symName} : ${GOT[symName]?.value} (${value})`);
       }
 #endif
     }
@@ -1321,6 +1358,12 @@ var LibraryDylink = {
     var symDict = lib.exports;
     var symName = Object.keys(symDict)[symbolIndex];
     var sym = symDict[symName];
+#if ASYNCIFY
+    // Asyncify wraps exports, and we need to look through those wrappers.
+    if (sym.orig) {
+      sym = sym.orig;
+    }
+#endif
     var result = addFunction(sym, sym.sig);
 #if DYLINK_DEBUG
     dbg(`_dlsym_catchup: result=${result}`);

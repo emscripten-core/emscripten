@@ -796,7 +796,7 @@ function getWasmImports() {
     assignWasmExports(wasmExports);
 
 #if MAIN_MODULE
-    updateGOT(origExports);
+    setMainModuleExports(origExports);
 #endif
 
 #if EXPORTED_RUNTIME_METHODS.has('wasmExports')

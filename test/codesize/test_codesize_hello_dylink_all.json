@@ -1,7 +1,7 @@
 {
-  "a.out.js": 268262,
+  "a.out.js": 268436,
   "a.out.nodebug.wasm": 535626,
-  "total": 803888,
+  "total": 804062,
   "sent": [
     "IMG_Init",
     "IMG_Load",
