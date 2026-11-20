@@ -556,6 +556,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if 'EMTEST_SKIP_WASM64' in os.environ:
       self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
     if self.is_browser_test():
+      self.check_browser_feature('EMTEST_SKIP_WASM64', Feature.MEMORY64, 'test requires a browser that supports wasm64')
       return
 
     if self.try_require_node_version(24):
