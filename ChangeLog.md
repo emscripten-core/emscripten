@@ -37,6 +37,13 @@ See docs/process.md for more on how version tagging works.
 - `emscripten_get_now()` (and `clock_gettime(CLOCK_MONOTONIC)`) in pthreads
   builds now reads `performance.timeOrigin` once per thread. In Safari its value
   can vary between reads, which made the clock go backwards. (#28272)
+- New `-sWEBTRANSPORT_SOCKETS` setting, which emulates POSIX TCP sockets over
+  WebTransport bidirectional streams instead of WebSockets, with flow control
+  in both directions. The URL is set with `-sWEBTRANSPORT_URL` or
+  `Module['webtransport']`, and the per-socket buffer limits with
+  `-sWEBTRANSPORT_SEND_BUFFER_SIZE` and `-sWEBTRANSPORT_RECV_BUFFER_SIZE`
+  (1 MiB by default). Only outgoing TCP connections over non-blocking sockets
+  are supported.
 
 7.0.0 - 11/06/26
 ----------------
