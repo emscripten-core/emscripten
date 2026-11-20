@@ -138,6 +138,14 @@ static double dummy() {
 
 weak_alias(dummy, _emscripten_next_timer);
 
+// V8's Liftoff in Chromium 85 can clobber the caller's register-cached locals
+// across memory.atomic.wait32, so wait in a separate function. The volatile
+// pointer keeps Binaryen from inlining it back.
+static int atomic_wait32(int* addr, int val, int64_t ns) {
+  return __builtin_wasm_memory_atomic_wait32(addr, val, ns);
+}
+static int (*volatile atomic_wait32_fn)(int*, int, int64_t) = atomic_wait32;
+
 static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms) {
   if ((((intptr_t)addr)&3) != 0) {
     return -EINVAL;
@@ -178,7 +186,7 @@ static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   uintptr_t expected_null = 0;
   if (atomic_compare_exchange_strong(&self->wait_addr, &expected_null, (uintptr_t)addr)) {
     DBG("emscripten_futex_wait atomic.wait ns=%lld", max_wait_ns);
-    ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
+    ret = atomic_wait32_fn((int*)addr, val, max_wait_ns);
   } else {
     DBG("emscripten_futex_wait skipping atomic.wait due to NOTIFY_BIT");
     // CAS failed, NOTIFY_BIT must have been set.  In this case we don't

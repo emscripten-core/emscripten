@@ -37,6 +37,9 @@ See docs/process.md for more on how version tagging works.
 - `emscripten_get_now()` (and `clock_gettime(CLOCK_MONOTONIC)`) in pthreads
   builds now reads `performance.timeOrigin` once per thread. In Safari its value
   can vary between reads, which made the clock go backwards. (#28272)
+- Add workaround for `atomic.wait32` bug in Chrome 85 (which ships in Tizen 6.5
+  TVs). Note: Support for Chrome versions this old will likely be removed in
+  future releases. (#28313)
 
 7.0.0 - 11/06/26
 ----------------
