@@ -85,6 +85,9 @@ EMTEST_RESTART_BROWSER_EVERY_N_TESTS = int(os.getenv('EMTEST_RESTART_BROWSER_EVE
 
 DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
+# The data directories of currently launched browsers.
+browser_data_dirs_in_use = set()
+
 browser_spawn_lock_filename = path_from_root('out/browser_spawn_lock')
 
 
@@ -708,6 +711,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def browser_terminate(cls):
     terminate_list_of_processes(cls.browser_procs)
+    browser_data_dirs_in_use.discard(getattr(cls, 'browser_data_dir', None))
 
   @classmethod
   def browser_restart(cls):
@@ -736,16 +740,22 @@ class BrowserCore(RunnerCore):
         # Running in parallel mode, give each browser its own profile dir.
         browser_data_dir += '-' + str(worker_id)
 
+      # Skip over data directories that are already in use by a running browser.
+      while browser_data_dir in browser_data_dirs_in_use:
+        browser_data_dir = increment_suffix_number(browser_data_dir)
+
       # Delete old browser data directory.
       if WINDOWS:
         # If we cannot (the data dir is in use on Windows), switch to another dir.
-        while not force_delete_dir(browser_data_dir):
+        while browser_data_dir in browser_data_dirs_in_use or not force_delete_dir(browser_data_dir):
           browser_data_dir = increment_suffix_number(browser_data_dir)
       else:
         force_delete_dir(browser_data_dir)
 
       # Recreate the new data directory.
       os.mkdir(browser_data_dir)
+      browser_data_dirs_in_use.add(browser_data_dir)
+      cls.browser_data_dir = browser_data_dir
 
       if WINDOWS:
         # Escape directory delimiter backslashes for shlex.split.
