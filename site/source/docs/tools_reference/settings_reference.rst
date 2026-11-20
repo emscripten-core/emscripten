@@ -2810,11 +2810,8 @@ Default value: 0
 WASMFS
 ======
 
-ATTENTION [WIP]: Experimental feature. Please use at your own risk.
 This will eventually replace the current JS file system implementation.
 If set to 1, uses new filesystem implementation.
-
-.. note:: This is an experimental setting
 
 Default value: false
 

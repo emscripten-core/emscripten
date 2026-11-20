@@ -178,6 +178,7 @@ EXPERIMENTAL_SETTINGS = {
   'SUPPORT_BIG_ENDIAN': '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.',
   'WASM_ESM_INTEGRATION': '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers',
   'WASM_BINDGEN': '-sWASM_BINDGEN is experimental and subject to change',
+  'PURE_WASI': '-sPURE_WASI is experimental and subject to change or removal',
 }
 
 # For renamed settings the format is:

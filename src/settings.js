@@ -1857,11 +1857,9 @@ var FETCH = false;
 // [link]
 var FETCH_STREAMING = 0;
 
-// ATTENTION [WIP]: Experimental feature. Please use at your own risk.
 // This will eventually replace the current JS file system implementation.
 // If set to 1, uses new filesystem implementation.
 // [link]
-// [experimental]
 var WASMFS = false;
 
 // If set to 1, embeds all subresources (for example, the Wasm file) as strings
