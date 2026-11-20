@@ -146,6 +146,43 @@ var LibraryDylink = {
 
   $GOT: {},
 
+  $exportToAddress__internal: true,
+  $exportToAddress: (value) => {
+    if (typeof value === 'function') {
+      return {{{ to64('addFunction(value)') }}};
+    }
+    return value.value;
+  },
+
+  $hasSymbolAddress__internal: true,
+  $hasSymbolAddress: (symName) => {
+    var global = GOT[symName];
+    return global && global.value != UNDEFINED_ADDR;
+  },
+
+  // Returns the `WebAssembly.Global` that holds the address of `symName`.
+  $getSymbolAddressGlobal__internal: true,
+  $getSymbolAddressGlobal: (symName) => {
+    var global = GOT[symName];
+    if (!global) {
+#if DYLINK_DEBUG == 2
+      dbg(`new GOT entry: ${symName}`);
+#endif
+      global = GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, UNDEFINED_ADDR);
+    }
+    return global;
+  },
+
+  $setSymbolAddress__internal: true,
+  $setSymbolAddress: (symName, addr) => {
+    var global = GOT[symName];
+    if (global) {
+      global.value = addr;
+    } else {
+      GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, addr);
+    }
+  },
+
   // Proxy handler used for GOT.mem and GOT.func imports.  Each of these
   // imports is fulfilled dynamically via the `get` method of this proxy
   // handler.  We abuse the `target` of the Proxy in order to pass the set of
@@ -153,13 +190,7 @@ var LibraryDylink = {
   $GOTHandler__internal: true,
   $GOTHandler: {
     get(weakImports, symName) {
-      var rtn = GOT[symName];
-      if (!rtn) {
-#if DYLINK_DEBUG == 2
-        dbg(`new GOT entry: ${symName}`);
-#endif
-        rtn = GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, UNDEFINED_ADDR);
-      }
+      var rtn = getSymbolAddressGlobal(symName);
       if (!weakImports.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
         // enabled `reportUndefinedSymbols` to report undefined symbol errors
@@ -224,17 +255,11 @@ var LibraryDylink = {
       }
 #endif
 
-      var existingEntry = GOT[symName] && GOT[symName].value != UNDEFINED_ADDR;
-      if (replace || !existingEntry) {
+      if (replace || !hasSymbolAddress(symName)) {
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName]?.value}`);
 #endif
-        var newValue;
-        if (typeof value === 'function') {
-          newValue = {{{ to64('addFunction(value)') }}};
-        } else if (typeof value.value === POINTER_JS_TYPE) {
-          newValue = value;
-        } else {
+        if (typeof value !== 'function' && typeof value.value !== POINTER_JS_TYPE) {
           // The GOT can only contain addresses (i.e data addresses or function
           // addresses so we currently ignore other types export here.
 #if DYLINK_DEBUG
@@ -242,11 +267,11 @@ var LibraryDylink = {
 #endif
           continue;
         }
+        var newValue = exportToAddress(value);
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT:  after: ${symName} : ${newValue} (${value})`);
 #endif
-        GOT[symName] ??= new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true});
-        GOT[symName].value = newValue;
+        setSymbolAddress(symName, newValue);
       }
 #if DYLINK_DEBUG
       else if (GOT[symName].value != value) {
