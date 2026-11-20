@@ -1552,15 +1552,6 @@ addToLibrary({
 
   emscripten_has_asyncify: () => {{{ ASYNCIFY }}},
 
-#if ASYNCIFY == 2
-  emscripten_can_suspend: () => Asyncify.canSuspend,
-#elif ASYNCIFY
-  // Any export can be unwound, but only one async operation at a time.
-  emscripten_can_suspend: () => Asyncify.state === Asyncify.State.Normal && !Asyncify.currData,
-#else
-  emscripten_can_suspend: () => 0,
-#endif
-
   emscripten_debugger: () => { debugger },
 
   emscripten_print_double: (x, to, max) => {

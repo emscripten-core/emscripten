@@ -508,6 +508,13 @@ addToLibrary({
 #endif
   },
 
+#if ASYNCIFY == 1
+  // Any export can be unwound, but only one async operation at a time.
+  emscripten_can_suspend: () => Asyncify.state === Asyncify.State.Normal && !Asyncify.currData,
+#else
+  emscripten_can_suspend: () => Asyncify.canSuspend,
+#endif
+
   emscripten_sleep__async: 'auto',
   emscripten_sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 
@@ -639,6 +646,7 @@ addToLibrary({
     }
   },
 #else // ASYNCIFY
+  emscripten_can_suspend: () => false,
   emscripten_sleep: () => {
     abort('Please compile your program with async support in order to use asynchronous operations like emscripten_sleep');
   },
