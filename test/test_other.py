@@ -2686,6 +2686,25 @@ F1 -> ''
     self.emcc('browser/test_sdl2_mixer_wav.c', ['--use-port=sdl2_mixer', '-o', 'a.out.js'])
     self.emcc('browser/test_sdl2_mixer_wav.c', ['--use-port=sdl2_mixer:formats=ogg', '-o', 'a.out.js'])
 
+  @requires_network
+  def test_sdl2_mixer_dash_l(self):
+    # Selecting the sdl2_mixer port with `-lSDL2_mixer` should take effect also
+    # when compiling the sources, and not only when linking. The headers below
+    # are only found via the include paths that the ports add, so unlike
+    # <SDL2/SDL_mixer.h> this does not depend on whether the port happens to be
+    # installed in the cache already.
+    create_file('main.c', r'''
+      #include <SDL.h>
+      #include <SDL_mixer.h>
+
+      int main() {
+        SDL_Init(SDL_INIT_AUDIO);
+        Mix_Init(0);
+        return 0;
+      }
+    ''')
+    self.run_process([EMCC, 'main.c', '-lSDL2', '-lSDL2_mixer'])
+
   def test_sdl2_linkable(self):
     # Ensure that SDL2 can be built with MAIN_MODULE.  This implies there are no undefined
     # symbols in the library (because MAIN_MODULE=1 includes the entire library).

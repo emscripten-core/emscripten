@@ -30,6 +30,7 @@ import tarfile
 from dataclasses import dataclass
 from enum import Enum, auto, unique
 from subprocess import PIPE
+from tools import link
 
 # This assert needs to happen early, before any too-recent python syntax is used.
 # In particular it needs to happen before we import any python file that uses the
@@ -552,6 +553,12 @@ def phase_compile_inputs(state, newargs):
   assert state.mode == Mode.COMPILE_AND_LINK
   assert not options.dash_c
   compile_args, linker_args = separate_linker_flags(newargs)
+
+  # Some `-l` flags select a port, e.g. `-lSDL2_mixer` implies
+  # `-sUSE_SDL_MIXER=2`. Apply those settings already before compiling the
+  # sources, so that the include paths of such ports
+  # are available when compiling.
+  link.apply_library_settings([f.value for f in linker_args], compile_time_only=True)
 
   # Map of file basenames to how many times we've seen them.  We use this to generate
   # unique `_NN` suffix for object files in cases when we are compiling multiple sources that

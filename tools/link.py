@@ -34,6 +34,7 @@ from . import (
 from .cmdline import OFormat, options
 from .minimal_runtime_shell import generate_minimal_runtime_html
 from .settings import (
+  COMPILE_TIME_SETTINGS,
   DEPRECATED_SETTINGS,
   EXPERIMENTAL_SETTINGS,
   INCOMPATIBLE_SETTINGS,
@@ -2786,7 +2787,16 @@ def process_libraries(flags):
   return new_flags
 
 
-def apply_library_settings(linker_args):
+def apply_library_settings(linker_args, compile_time_only=False):
+  """Apply the settings that are implied by certain `-l` flags.
+
+  For example `-lSDL2_mixer` implies `-sUSE_SDL_MIXER=2`.
+
+  When compiling and linking in a single command this gets called twice: first
+  before the source files are compiled, with `compile_time_only=True`, so that
+  the ports that are selected this way get to add their include paths, and then
+  again at link time.
+  """
   for arg in linker_args:
     if not arg.startswith('-l'):
       continue
@@ -2801,6 +2811,8 @@ def apply_library_settings(linker_args):
 
     if library_name in settings_map:
       for key, value in settings_map[library_name].items():
+        if compile_time_only and key not in COMPILE_TIME_SETTINGS:
+          continue
         default_setting(key, value)
 
 
