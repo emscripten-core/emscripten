@@ -18,6 +18,7 @@
 //
 // We'll call the on-the-wire type WireType.
 
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -482,6 +483,21 @@ inline memory_view<T> typed_memory_view(size_t size, const T* data) {
     return memory_view<T>(size, data);
 }
 
+// Exposes a byte buffer directly to JavaScript as a Uint8ClampedArray without
+// copying. Note that 'data' is marked const so it can accept both const and
+// non-const pointers, though JavaScript can modify the underlying C heap
+// through the view.
+struct EMBIND_VISIBILITY_DEFAULT clamped_memory_view {
+    clamped_memory_view() = delete;
+    explicit clamped_memory_view(size_t size, const uint8_t* data)
+        : size(size)
+        , data(data)
+    {}
+
+    const size_t size; // in elements, not bytes
+    const void* const data;
+};
+
 namespace internal {
 
 template<typename ElementType>
@@ -495,6 +511,14 @@ struct BindingType<memory_view<ElementType>> {
     // JavaScript.)
     typedef memory_view<ElementType> WireType;
     static WireType toWireType(const memory_view<ElementType>& mv, rvp::default_tag) {
+        return mv;
+    }
+};
+
+template<>
+struct BindingType<clamped_memory_view> {
+    typedef clamped_memory_view WireType;
+    static WireType toWireType(const clamped_memory_view& mv, rvp::default_tag) {
         return mv;
     }
 };

@@ -1034,8 +1034,25 @@ The calling JavaScript code will receive a typed array view into the emscripten 
    xhr.open('POST', /* ... */);
    xhr.send(myUint8Array);
 
-The typed array view will be of the appropriate matching type, such as Uint8Array
+The typed array view will be of the appropriate matching type, such as ``Uint8Array``
 for an ``unsigned char`` array or pointer.
+
+To expose an unsigned byte buffer as a ``Uint8ClampedArray`` (for example, to
+pass pixel data directly to ``new ImageData(clampedView, width, height)``
+without copying), use ``clamped_memory_view``:
+
+.. code:: cpp
+
+    val getClampedBytes() {
+        return val(clamped_memory_view(bufferLength, byteBuffer));
+    }
+
+.. note::
+   When building with pthreads (``-pthread`` / ``SharedArrayBuffer``), the HTML
+   specification forbids constructing ``new ImageData(clampedArray, width, height)``
+   from a ``Uint8ClampedArray`` backed by a ``SharedArrayBuffer``. In pthreads
+   builds, reuse an existing ``ImageData`` and copy pixels into it with
+   ``imageData.data.set(clampedView)``.
 
 
 .. _embind-val-guide:

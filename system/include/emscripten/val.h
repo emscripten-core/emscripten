@@ -232,6 +232,12 @@ inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<Ele
   ++cursor;
 }
 
+inline void writeGenericWireType(GenericWireType*& cursor, const clamped_memory_view& wt) {
+  cursor->w[0].s = wt.size;
+  cursor->w[1].p = (void*)wt.data;
+  ++cursor;
+}
+
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T wt) {
   static_assert(sizeof(T) <= sizeof(cursor->w[0].u), "Generic wire type must be smaller than unsigned.");

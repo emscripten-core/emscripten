@@ -1643,10 +1643,33 @@ void callWithMemoryView(val v) {
   v(typed_memory_view(getElementCount(f), f));
   static short s[] = {1000, 100, 10, 1};
   v(typed_memory_view(getElementCount(s), s));
+  static uint8_t clamped[] = {0, 128, 255};
+  v(clamped_memory_view(getElementCount(clamped), clamped));
+}
+
+static uint8_t clamped_view_data[4];
+
+val getClampedMemoryView() {
+  clamped_view_data[0] = 10;
+  clamped_view_data[1] = 20;
+  clamped_view_data[2] = 30;
+  clamped_view_data[3] = 40;
+  return val(clamped_memory_view(getElementCount(clamped_view_data), clamped_view_data));
+}
+
+val getEmptyClampedMemoryView() {
+  return val(clamped_memory_view(0, nullptr));
+}
+
+uint8_t getClampedMemoryViewElement(size_t index) {
+  return clamped_view_data[index];
 }
 
 EMSCRIPTEN_BINDINGS(memory_view_tests) {
   function("callWithMemoryView", &callWithMemoryView);
+  function("getClampedMemoryView", &getClampedMemoryView);
+  function("getEmptyClampedMemoryView", &getEmptyClampedMemoryView);
+  function("getClampedMemoryViewElement", &getClampedMemoryViewElement);
 }
 
 class HasExternalConstructor {
@@ -3089,6 +3112,12 @@ val construct_with_memory_view(val factory) {
     std::string("before"), typed_memory_view(10, data), std::string("after"));
 }
 
+val construct_with_clamped_memory_view(val factory) {
+  static const uint8_t data[4] = {10, 20, 30, 40};
+  clamped_memory_view mv(4, data);
+  return factory.new_(std::string("before"), mv, std::string("after"));
+}
+
 val construct_with_ints_and_float(val factory) {
   return factory.new_(65537, 4.0f, 65538);
 }
@@ -3104,6 +3133,7 @@ val construct_with_arguments_before_and_after_memory_growth() {
 EMSCRIPTEN_BINDINGS(val_new_) {
   function("construct_with_6_arguments", &construct_with_6);
   function("construct_with_memory_view", &construct_with_memory_view);
+  function("construct_with_clamped_memory_view", &construct_with_clamped_memory_view);
   function("construct_with_ints_and_float", &construct_with_ints_and_float);
   function("construct_with_arguments_before_and_after_memory_growth",
            &construct_with_arguments_before_and_after_memory_growth);
