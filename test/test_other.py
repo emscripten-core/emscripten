@@ -12383,16 +12383,18 @@ int main(void) {
     self.do_other_test('test_pthread_hello.c', args)
 
   @parameterized({
-    'chrome114': (['-sMIN_CHROME_VERSION=114'], True),
-    'chrome115': (['-sMIN_CHROME_VERSION=115'], False),
+    'chrome114': (['-sMIN_CHROME_VERSION=114', '-sMIN_NODE_VERSION=210000'], True),
+    'node20': (['-sMIN_CHROME_VERSION=115', '-sMIN_NODE_VERSION=200000'], True),
+    'chrome115_node21': (['-sMIN_CHROME_VERSION=115', '-sMIN_NODE_VERSION=210000'], False),
     # MAIN_MODULE=1 links libc with --whole-archive
-    'chrome114_main_module': (['-sMIN_CHROME_VERSION=114', '-sMAIN_MODULE', '-Wno-experimental'], True),
+    'chrome114_main_module': (['-sMIN_CHROME_VERSION=114', '-sMIN_NODE_VERSION=210000', '-sMAIN_MODULE', '-Wno-experimental'], True),
   })
   @requires_pthreads
   def test_pthread_futex_wait_liftoff_workaround(self, args, expect_workaround):
-    # The workaround for the V8 Liftoff bug that was fixed in Chrome 115, which
-    # moves the atomic wait instruction to a function of its own, should only
-    # be linked in when targeting older versions of Chrome than that.
+    # The workaround for the V8 Liftoff bug that was fixed in Chrome 115 and
+    # Node.js 21, which moves the atomic wait instruction to a function of its
+    # own, should only be linked in when targeting older versions of Chrome or
+    # Node.js than that.
     self.do_other_test('test_pthread_hello.c', ['-O2', '--profiling-funcs'] + args)
     wat = self.get_wasm_text('test_pthread_hello.wasm')
     if expect_workaround:

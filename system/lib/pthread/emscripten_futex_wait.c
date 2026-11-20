@@ -141,14 +141,14 @@ weak_alias(dummy, _emscripten_next_timer);
 #ifdef EMSCRIPTEN_FUTEX_WAIT_LIFTOFF_WORKAROUND
 // This file is built a second time with this define into the library
 // libfutex_wait_liftoff_workaround, which gets linked in to override the
-// version in libc when targeting old versions of Chrome (see
+// version in libc when targeting old versions of Chrome or Node.js (see
 // libfutex_wait_liftoff_workaround in tools/system_libs.py).
 //
-// V8's Liftoff compiler in Chrome versions older than 115 can clobber the
-// register-cached locals of the function that executes memory.atomic.wait32
-// (https://crbug.com/1432453), so do the wait in a separate function. The
-// function is called through a volatile pointer to keep Binaryen from inlining
-// it back.
+// V8's Liftoff compiler in Chrome versions older than 115 and in Node.js
+// versions older than 21 can clobber the locals of the function that executes
+// memory.atomic.wait32 (https://crbug.com/1432453), so do the wait in a
+// separate function. The function is called through a volatile pointer to keep
+// Binaryen from inlining it back.
 static int do_atomic_wait32(int* addr, int val, int64_t ns) {
   return __builtin_wasm_memory_atomic_wait32(addr, val, ns);
 }

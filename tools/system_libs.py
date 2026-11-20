@@ -1523,13 +1523,13 @@ class libprintf_long_double(libc):
 
 
 class libfutex_wait_liftoff_workaround(libc):
-  """Version of emscripten_futex_wait() for old versions of Chrome.
+  """Version of emscripten_futex_wait() for old versions of Chrome and Node.js.
 
   Works around a bug in V8's Liftoff compiler, which was fixed in Chrome 115
-  (https://crbug.com/1432453), see the comments in emscripten_futex_wait.c.
-  This is a separate library, which overrides the version of the function in
-  libc, so that only the builds that target such old versions of Chrome pay
-  for the workaround.
+  and Node.js 21 (https://crbug.com/1432453), see the comments in
+  emscripten_futex_wait.c.  This is a separate library, which overrides the
+  version of the function in libc, so that only the builds that target such
+  old versions of Chrome or Node.js pay for the workaround.
   """
 
   name = 'libfutex_wait_liftoff_workaround'
@@ -1543,7 +1543,13 @@ class libfutex_wait_liftoff_workaround(libc):
 
   def can_use(self):
     # emscripten_futex_wait.c is only part of the multithreaded versions of libc.
-    return super().can_use() and (self.is_mt or self.is_ww) and settings.MIN_CHROME_VERSION < 115
+    if not (self.is_mt or self.is_ww):
+      return False
+    # The fix first shipped in V8 11.5.  Chrome 115 has that version, and no
+    # release of Node.js 20 does (they all have V8 11.3), so there the first
+    # fixed version is Node.js 21.  These settings are set to UNSUPPORTED when
+    # the environment in question is not being targeted.
+    return super().can_use() and (settings.MIN_CHROME_VERSION < 115 or settings.MIN_NODE_VERSION < 210000)
 
 
 class libwasm_workers(MuslInternalLibrary, DebugLibrary):

@@ -44,9 +44,10 @@ See docs/process.md for more on how version tagging works.
   versions to the first ones that support JSPI: Chrome 137, Firefox 153,
   Safari 27 and Node.js 24. (#28334)
 - Add workaround for an `atomic.wait32` bug in Chrome versions older than 115
-  (https://crbug.com/1432453), which made multithreaded programs crash. The
-  workaround is enabled by default, and can be disabled by passing
-  `-sMIN_CHROME_VERSION=115` or higher. (#28313)
+  and Node.js versions older than 21 (https://crbug.com/1432453), which made
+  multithreaded programs crash. The workaround is enabled by default, and can
+  be disabled by passing both `-sMIN_CHROME_VERSION=115` and
+  `-sMIN_NODE_VERSION=210000` (or higher). (#28313)
 
 7.0.0 - 11/06/26
 ----------------
