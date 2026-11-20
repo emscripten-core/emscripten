@@ -13,3 +13,7 @@ void print_addresses_side() {
   printf("side_module: &bar_main %p\n", &bar_main);
   printf("side_module: &bar_side %p\n", &bar_side);
 }
+
+bar_func bar_main_addr_side() {
+  return &bar_main;
+}

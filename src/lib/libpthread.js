@@ -434,6 +434,7 @@ var LibraryPThread = {
         // Share all modules that have been loaded so far.  New workers
         // won't start running threads until these are all loaded.
         sharedModules,
+        mainModuleExportSlots,
 #endif
 #if ASSERTIONS
         workerID: worker.workerID,
