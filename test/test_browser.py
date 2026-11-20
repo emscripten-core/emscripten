@@ -73,7 +73,7 @@ from decorators import (
 from tools import building, ports, shared, utils
 from tools.feature_matrix import Feature
 from tools.link import binary_encode
-from tools.utils import WINDOWS, delete_dir, write_binary, write_file
+from tools.utils import MACOS, WINDOWS, delete_dir, write_binary, write_file
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
@@ -2683,7 +2683,10 @@ Module["preRun"] = () => {
     cflags = ['-sMAX_WEBGL_VERSION=2', '-lGL'] + args
     # Check the desynchronized round-trip only on a normal canvas; OffscreenCanvas
     # doesn't honor it. Chrome supports it, other browsers report it back as false.
-    if not args:
+    # The check is skipped in Chrome on macOS, where Chrome does not support
+    # desynchronized yet and always reports it back as false for a WebGL context
+    # (https://crbug.com/945835).
+    if not args and not (is_chrome() and MACOS):
       cflags.append('-DEXPECT_DESYNCHRONIZED=' + ('1' if is_chrome() else '0'))
     self.btest_exit('html5_webgl.c', cflags=cflags)
 
