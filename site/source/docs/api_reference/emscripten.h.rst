@@ -1366,20 +1366,24 @@ Functions
 
 .. c:function:: int emscripten_can_suspend()
 
-  Returns whether a JSPI suspending import (such as :c:func:`emscripten_sleep`)
-  called from the current point would suspend. This is the case when the
-  innermost JS-to-wasm entry is a ``JSPI_EXPORTS`` function with no JavaScript
-  frame in between. Calling a suspending import otherwise throws a
-  ``SuspendError``.
+  Returns whether an asynchronous operation (such as :c:func:`emscripten_sleep`)
+  started from the current point would suspend.
 
-  Linking this function makes every JS-to-wasm entry track this state, which
-  adds a small JS wrapper to each export and table entry called from JS. Code
-  that calls ``wasmTable.get()`` directly bypasses tracking, so use
-  ``getWasmTableEntry()`` instead.
+  With ``-sJSPI`` this is the case when the innermost JS-to-wasm entry is a
+  ``JSPI_EXPORTS`` function with no JavaScript frame in between. Calling a
+  suspending import otherwise throws a ``SuspendError``. Every JS-to-wasm entry
+  tracks this state through a small JS wrapper around each export and table
+  entry called from JS. Code that calls ``wasmTable.get()`` directly bypasses
+  tracking, so use ``getWasmTableEntry()`` instead.
+
+  With ``-sASYNCIFY=1`` any export can be unwound, so this is the case unless
+  another asynchronous operation is already in flight. JavaScript frames on the
+  stack are not tracked, so imports that call back into code that suspends
+  still need to be listed in ``ASYNCIFY_IMPORTS``.
 
   :rtype: int
-  :returns: 1 if a suspending import would suspend, 0 otherwise. Always 0 when
-    not built with ``-sJSPI``.
+  :returns: 1 if an asynchronous operation would suspend, 0 otherwise. Always 0
+    when built without ``-sASYNCIFY`` or ``-sJSPI``.
 
 
 .. c:function:: void emscripten_debugger()

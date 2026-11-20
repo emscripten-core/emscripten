@@ -124,7 +124,7 @@ addToLibrary({
         var item = getWasmTableEntry(i);
         // Ignore null values.
         if (item) {
-#if JSPI_TRACK_SUSPEND
+#if ASYNCIFY == 2
           item = item.orig;
 #endif
           functionsInTableMap.set(item, i);
@@ -210,7 +210,7 @@ addToLibrary({
   },
 
   $removeFunction: (index) => {
-#if JSPI_TRACK_SUSPEND
+#if ASYNCIFY == 2
     functionsInTableMap.delete(getWasmTableEntry(index)?.orig);
 #else
     functionsInTableMap.delete(getWasmTableEntry(index));

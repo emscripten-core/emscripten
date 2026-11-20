@@ -8,6 +8,10 @@
 #include <emscripten.h>
 #include <emscripten/eventloop.h>
 
+// With ASYNCIFY=1 any export can suspend, so only an async operation already
+// in flight prevents it.
+#define JSPI (emscripten_has_asyncify() == 2)
+
 EM_ASYNC_JS(void, sleep_ms, (int ms), {
   await new Promise((resolve) => setTimeout(resolve, ms));
 });
@@ -21,7 +25,7 @@ EMSCRIPTEN_KEEPALIVE int plain(void) {
 }
 
 EMSCRIPTEN_KEEPALIVE void plain_throws(void) {
-  assert(!emscripten_can_suspend());
+  assert(emscripten_can_suspend() == !JSPI);
   throw_error();
 }
 
@@ -48,9 +52,9 @@ EM_JS(void, call_promising_inner, (), {
   _promising_inner();
 });
 
-EM_JS(void, plain_from_js_timer, (), {
+EM_JS(void, plain_from_js_timer, (int expected), {
   setTimeout(() => {
-    if (_plain() !== 0) throw new Error('plain export from timer can suspend');
+    if (_plain() != expected) throw new Error('unexpected can_suspend from timer');
   });
 });
 
@@ -59,14 +63,14 @@ void during_suspend(void* arg) {
 }
 
 void after_complete(void* arg) {
-  assert(!emscripten_can_suspend());
+  assert(emscripten_can_suspend() == !JSPI);
   printf("done\n");
 }
 
 int main() {
   assert(emscripten_can_suspend());
 
-  assert(call_plain() == 0);
+  assert(call_plain() == !JSPI);
   assert(emscripten_can_suspend());
 
   assert(call_plain_throws());
@@ -75,16 +79,18 @@ int main() {
   sleep_ms(0);
   assert(emscripten_can_suspend());
 
-  // The inner activation suspends, returning control here.
-  call_promising_inner();
-  assert(emscripten_can_suspend());
+  if (JSPI) {
+    // The inner activation suspends, returning control here.
+    call_promising_inner();
+    assert(emscripten_can_suspend());
+  }
 
   emscripten_set_timeout(during_suspend, 0, NULL);
-  plain_from_js_timer();
+  plain_from_js_timer(0);
   sleep_ms(20);
   assert(emscripten_can_suspend());
 
-  plain_from_js_timer();
+  plain_from_js_timer(!JSPI);
   emscripten_set_timeout(after_complete, 10, NULL);
   return 0;
 }

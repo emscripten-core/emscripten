@@ -280,10 +280,6 @@ var MINIFY_WHITESPACE = true;
 
 var ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = [];
 
-// Set under JSPI when the program imports emscripten_can_suspend. Wraps every
-// JS->wasm entry and every JSPI resume to track whether wasm can suspend.
-var JSPI_TRACK_SUSPEND = false;
-
 var WARN_DEPRECATED = true;
 
 // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
