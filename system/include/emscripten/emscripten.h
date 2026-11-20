@@ -144,11 +144,12 @@ long emscripten_get_compiler_setting(const char *name);
 // Returns the value of -sASYNCIFY.  Can be 0, 1, or 2 (in the case of JSPI).
 int emscripten_has_asyncify(void);
 
-// Returns 1 if an async operation such as emscripten_sleep() started from the
-// current point would suspend. Under JSPI that is when the innermost JS->wasm
-// entry is a JSPI export with no JS frame in between. Under ASYNCIFY=1 it is
-// when no other async operation is in flight. Always 0 without ASYNCIFY.
-int emscripten_can_suspend(void);
+// Returns true if an async operation such as emscripten_sleep() started from
+// the current point would suspend. Under JSPI that is when the innermost
+// JS->wasm entry is a JSPI export with no JS frame in between. Under ASYNCIFY=1
+// it is when no other async operation is in flight. Always false without
+// ASYNCIFY.
+bool emscripten_can_suspend(void);
 
 void emscripten_debugger(void);
 

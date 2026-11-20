@@ -1364,7 +1364,7 @@ Functions
   :returns: 1 if program was compiled with -sASYNCIFY, 0 otherwise.
 
 
-.. c:function:: int emscripten_can_suspend()
+.. c:function:: bool emscripten_can_suspend()
 
   Returns whether an asynchronous operation (such as :c:func:`emscripten_sleep`)
   started from the current point would suspend.
@@ -1381,9 +1381,9 @@ Functions
   stack are not tracked, so imports that call back into code that suspends
   still need to be listed in ``ASYNCIFY_IMPORTS``.
 
-  :rtype: int
-  :returns: 1 if an asynchronous operation would suspend, 0 otherwise. Always 0
-    when built without ``-sASYNCIFY`` or ``-sJSPI``.
+  :rtype: bool
+  :returns: true if an asynchronous operation would suspend, false otherwise.
+    Always false when built without ``-sASYNCIFY`` or ``-sJSPI``.
 
 
 .. c:function:: void emscripten_debugger()
