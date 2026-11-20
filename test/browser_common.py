@@ -271,6 +271,13 @@ class ChromeConfig:
     # browser instance has its own window, and all but the topmost one of them
     # are occluded.
     '--disable-backgrounding-occluded-windows',
+    # On Windows, do not track at all whether a window is covered by the windows
+    # of other applications.
+    '--disable-features=CalculateNativeWinOcclusion',
+    # Likewise, do not throttle timers in pages that are in the background, and
+    # do not lower the priority of their renderer processes.
+    '--disable-background-timer-throttling',
+    '--disable-renderer-backgrounding',
     # Disable native password pop-ups
     '--password-store=basic',
     # Send console messages to browser stderr
