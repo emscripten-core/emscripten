@@ -651,6 +651,7 @@ var LibraryEmbind = {
       Uint32Array,
       Float32Array,
       Float64Array,
+      Uint8ClampedArray,
 #if WASM_BIGINT
       BigInt64Array,
       BigUint64Array,
