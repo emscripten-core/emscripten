@@ -615,7 +615,7 @@ def check_settings():
         diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
   for name, msg in EXPERIMENTAL_SETTINGS.items():
-    if getattr(settings, name):
+    if msg and getattr(settings, name):
       diagnostics.warning('experimental', msg)
 
   for a, b, reason in INCOMPATIBLE_SETTINGS:
