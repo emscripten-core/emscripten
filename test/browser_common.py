@@ -164,7 +164,7 @@ def find_browser_test_file(filename):
 def get_safari_version():
   if not is_safari():
     return UNSUPPORTED
-  plist_path = os.path.join(EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
+  plist_path = os.path.join(shlex.split(EMTEST_BROWSER)[0], 'Contents', 'version.plist')
   version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
   # Split into parts (major.minor.patch)
   parts = (version_str.split('.') + ['0', '0', '0'])[:3]
@@ -405,6 +405,11 @@ def configure_test_browser():
     # and spaces are not escaped. But make sure to also support args, e.g.
     # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
     EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "\\\\") + '"'
+  elif not WINDOWS and os.path.exists(EMTEST_BROWSER):
+    # EMTEST_BROWSER may be a bare path to a browser, with no command line args, e.g.
+    # EMTEST_BROWSER=/path/to/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+    # so quote it here.
+    EMTEST_BROWSER = shlex.quote(EMTEST_BROWSER)
 
   if EMTEST_BROWSER_AUTO_CONFIG:
     config = get_browser_config()
