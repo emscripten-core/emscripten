@@ -15063,11 +15063,11 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     # SUPPORT_LONGJMP by default because it uses a JS-based simulation of
     # longjmp.
     self.set_setting('PURE_WASI')
-    self.assert_fail([EMCC, test_file('core/test_longjmp.c')] + self.get_cflags(), 'error: longjmp support was disabled (SUPPORT_LONGJMP=0)')
+    self.assert_fail([EMCC, test_file('core/test_longjmp.c'), '-Wno-experimental'] + self.get_cflags(), 'error: longjmp support was disabled (SUPPORT_LONGJMP=0)')
 
     # When using Wasm exception, SUPPORT_LONGJMP defaults to 'wasm', which does
     # not use the JS-based support. This should succeed.
-    self.do_runf('core/test_longjmp.c', cflags=['-fwasm-exceptions'])
+    self.do_runf('core/test_longjmp.c', cflags=['-fwasm-exceptions', '-Wno-experimental'])
 
   def test_cpp_exception_tag(self):
     # Wasm EH throw/catch sites reference the `__cpp_exception` tag directly,
