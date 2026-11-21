@@ -53,6 +53,12 @@ See docs/process.md for more on how version tagging works.
 - Building with `-sJSPI` now bumps the default minimum supported browser
   versions to the first ones that support JSPI: Chrome 137, Firefox 153,
   Safari 27 and Node.js 24. (#28334)
+- The `glUniform*()` functions now raise `GL_INVALID_OPERATION` when called
+  with a location that is not a valid uniform location of the current program
+  (and is not -1), e.g. a hardcoded integer location that was not acquired from
+  `glGetUniformLocation()`. Previously such calls were silently ignored. This
+  check is not performed in `-sGL_TRACK_ERRORS=0` or
+  `-sGL_EXPLICIT_UNIFORM_LOCATION` builds. (#16367)
 
 7.0.0 - 11/06/26
 ----------------

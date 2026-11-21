@@ -1225,6 +1225,16 @@ window.close = () => {
   def test_webgl_uniform_before_get_location(self, args):
     self.btest_exit('webgl_uniform_before_get_location.c', cflags=args + ['-sGL_EXPLICIT_UNIFORM_LOCATION', '-sMIN_WEBGL_VERSION=2'])
 
+  # Tests that glUniform*() with an invalid location raises GL_INVALID_OPERATION (#16367)
+  @parameterized({
+    '': ([],),
+    'assertions': (['-sGL_ASSERTIONS'],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+  })
+  @requires_graphics_hardware
+  def test_webgl_uniform_invalid_location(self, args):
+    self.btest_exit('webgl_uniform_invalid_location.c', cflags=args)
+
   @parameterized({
     '': ([],),
     'assertions': (['-sGL_ASSERTIONS'],),
