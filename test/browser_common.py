@@ -270,6 +270,20 @@ class ChromeConfig:
     '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
     # Disable various background tasks downloads (e.g. updates).
     '--disable-background-networking',
+    # Disable native password pop-ups
+    '--password-store=basic',
+    # On macOS, do not read the key for encrypting cookies from the keychain of
+    # the user. That would pop up an interactive macOS prompt that asks for
+    # permission to access the keychain, and the browser hangs without loading
+    # any pages until the prompt is answered.
+    '--use-mock-keychain',
+    # Send console messages to browser stderr
+    '--enable-logging=stderr',
+
+    # The flags below are only needed for non-headless runs. In headless mode
+    # (EMTEST_HEADLESS=1) the browser has no windows on the desktop that other
+    # windows could cover.
+    #
     # Keep running timers and requestAnimationFrame() at full rate in windows
     # that are covered by another window. When tests run in parallel, each
     # browser instance has its own window, and all but the topmost one of them
@@ -282,15 +296,6 @@ class ChromeConfig:
     # do not lower the priority of their renderer processes.
     '--disable-background-timer-throttling',
     '--disable-renderer-backgrounding',
-    # Disable native password pop-ups
-    '--password-store=basic',
-    # On macOS, do not read the key for encrypting cookies from the keychain of
-    # the user. That would pop up an interactive macOS prompt that asks for
-    # permission to access the keychain, and the browser hangs without loading
-    # any pages until the prompt is answered.
-    '--use-mock-keychain',
-    # Send console messages to browser stderr
-    '--enable-logging=stderr',
   )
   headless_flags = '--headless=new --window-size=1024,768'
 
