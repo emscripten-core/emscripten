@@ -12,14 +12,21 @@ pthread_t thread;
 
 _Atomic int tries;
 
-const int EXPECTED_TRIES = 7;
+// The number of times that the main thread has to try and fail to join the
+// thread while the thread is running.
+const int MIN_TRIES = 7;
 
 void loop() {
   void* retval;
   printf("try...\n");
   if (pthread_tryjoin_np(thread, &retval) == 0) {
     emscripten_cancel_main_loop();
-    assert(tries == EXPECTED_TRIES);
+    // The thread exits only after it has seen the main thread fail to join it
+    // MIN_TRIES times. Do not expect an exact count here: how many more times
+    // the main thread tries before the thread starts to run (without a thread
+    // pool that includes loading a Worker), and before the exit of the thread
+    // takes effect, depends on timing.
+    assert(tries >= MIN_TRIES);
     emscripten_force_exit(2);
   }
   tries++;
@@ -28,8 +35,10 @@ void loop() {
 void *ThreadMain(void *arg) {
 #ifdef TRY_JOIN
   // Delay to force the main thread to try and fail a few times before
-  // succeeding.
-  while (tries < EXPECTED_TRIES) {}
+  // succeeding. Count the tries from when this thread starts to run, since
+  // the main thread may have tried several times before that already.
+  int target = tries + MIN_TRIES;
+  while (tries < target) {}
 #endif
   pthread_exit((void*)0);
 }
