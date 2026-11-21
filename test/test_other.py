@@ -14600,6 +14600,19 @@ int main() {
     # With EXIT_RUNTIME we expect to see the dtor running.
     self.do_runf('other/test_lto_atexit.c', 'main done\nmy_dtor\n', cflags=['-flto', '-sEXIT_RUNTIME'])
 
+  @parameterized({
+    '': (['-flto'],),
+    'O2': (['-flto', '-O2'],),
+    'thin': (['-flto=thin'],),
+  })
+  def test_lto_getaddrinfo(self, args):
+    # getaddrinfo() and getnameinfo() are implemented in JS, and depend on the
+    # native functions htonl(), htons() and ntohs().  Nothing else in this
+    # program uses those, so they are still in the archive when the link gets
+    # to LTO, and they have to be taken in to the link before LTO runs.
+    # See https://github.com/emscripten-core/emscripten/issues/16836
+    self.do_runf('other/test_lto_getaddrinfo.c', '172.29.1.0\n', cflags=args)
+
   @crossplatform
   def test_prejs_unicode(self):
     create_file('script.js', r'''
