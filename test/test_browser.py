@@ -38,6 +38,7 @@ from browser_common import (
   is_safari,
 )
 from common import (
+  EMBUILDER,
   EMCC,
   FILE_PACKAGER,
   WEBIDL_BINDER,
@@ -3170,6 +3171,11 @@ Module["preRun"] = () => {
   })
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
+    if '-lSDL2_mixer' in flags:
+      # The `-l` flags select the ports only at link time, so the headers of
+      # the ports are only found when compiling if the ports are already
+      # installed in the cache.
+      self.run_process([EMBUILDER, 'build', 'sdl2_mixer'])
     copy_asset('sounds/the_entertainer.wav', 'sound.wav')
     self.btest_exit('test_sdl2_mixer_wav.c', cflags=['--preload-file', 'sound.wav'] + flags)
 
