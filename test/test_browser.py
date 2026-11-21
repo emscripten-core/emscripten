@@ -2667,7 +2667,6 @@ Module["preRun"] = () => {
     # (the testcase doesn't even use threads, but is compiled with thread support).
     self.btest_exit('webgl2.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL', '-pthread'])
 
-  # Tests the WebGL 2 extension OVR_multiview2 (#20173)
   @requires_webgl2
   @parameterized({
     '': ([],),
