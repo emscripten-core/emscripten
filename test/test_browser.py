@@ -5830,6 +5830,14 @@ class browser64_2gb(browser):
 class browser_2gb(browser):
   def setUp(self):
     super().setUp()
+    # Safari fails to instantiate a module that has an active data segment at
+    # an address >= 2GB, which with GLOBAL_BASE=2gb is every module that does
+    # not use shared memory. Fails in Safari 27.2 (22625.2.8.11.9).
+    if get_safari_version() < 280000:
+      message = 'Safari fails to initialize data segments at addresses >= 2GB: https://webkit.org/b/314444'
+      if utils.get_env_bool('EMTEST_AUTOSKIP'):
+        self.skipTest(message)
+      self.fail(f'{message}. Use EMTEST_AUTOSKIP=1 to skip')
     self.set_setting('INITIAL_MEMORY', '2200mb')
     self.set_setting('GLOBAL_BASE', '2gb')
     # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE
