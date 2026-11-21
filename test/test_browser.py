@@ -4247,6 +4247,7 @@ Module["preRun"] = () => {
   # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
   @requires_webgl2
   @no_firefox('WEBGL_draw_instanced_base_vertex_base_instance is not supported, https://bugzil.la/1677238')
+  @no_safari('WEBGL_draw_instanced_base_vertex_base_instance is only available with the WebGL Draft Extensions feature flag, which is off by default, https://webkit.org/b/219140')
   @parameterized({
     '': (0,),
     'multidraw': (1,),
