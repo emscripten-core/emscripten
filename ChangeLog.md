@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-7.0.1 (in development)
+7.0.2 (in development)
 ----------------------
+
+7.0.1 - 11/21/26
+----------------
 - Emscripten's JavaScript tools (`tools/compiler.mjs`, `tools/preprocessor.mjs`,
   `tools/acorn-optimizer.mjs`, `tools/unsafe_optimizations.mjs`, and
   `tools/lz4-compress.mjs`) are now bundled into `dist/` using `rolldown`. For
