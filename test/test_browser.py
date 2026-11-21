@@ -2156,7 +2156,8 @@ void *getBindBuffer() {
     self.reftest('test_sdl_canvas_palette_2.c', 'test_sdl_canvas_palette_b.png', cflags=['--pre-js', 'pre.js', '--pre-js', 'args-b.js', '-lSDL', '-lGL'])
 
   def test_sdl_ttf_render_text_solid(self):
-    self.reftest('test_sdl_ttf_render_text_solid.c', cflags=['-O2', '-lSDL', '-lGL'])
+    # Firefox on Linux differs a tiny bit from other browsers + OSes: https://bugzil.la/2068976
+    self.reftest('test_sdl_ttf_render_text_solid.c', cflags=['-O2', '-lSDL', '-lGL'], reference_slack=1)
 
   def test_sdl3_ttf_render_text_solid(self):
     copy_asset('freetype/LiberationSansBold.ttf')
