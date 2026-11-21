@@ -17,7 +17,7 @@ int main() {
   int fd, rtn;
 
   // We first make sure the file doesn't currently exist.
-  // We then write a file, call fsync, and close the file,
+  // We then write a file, call fsync and fdatasync, and close the file,
   // to make sure synchronous calls to resume does not throw.
 
   struct stat st;
@@ -33,6 +33,9 @@ int main() {
   assert(rtn == 2);
 
   rtn = fsync(fd);
+  assert(rtn == 0);
+
+  rtn = fdatasync(fd);
   assert(rtn == 0);
 
   rtn = close(fd);
