@@ -270,6 +270,18 @@ class ChromeConfig:
     '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
     # Disable various background tasks downloads (e.g. updates).
     '--disable-background-networking',
+    # Keep running timers and requestAnimationFrame() at full rate in windows
+    # that are covered by another window. When tests run in parallel, each
+    # browser instance has its own window, and all but the topmost one of them
+    # are occluded.
+    '--disable-backgrounding-occluded-windows',
+    # On Windows, do not track at all whether a window is covered by the windows
+    # of other applications.
+    '--disable-features=CalculateNativeWinOcclusion',
+    # Likewise, do not throttle timers in pages that are in the background, and
+    # do not lower the priority of their renderer processes.
+    '--disable-background-timer-throttling',
+    '--disable-renderer-backgrounding',
     # Disable native password pop-ups
     '--password-store=basic',
     # On macOS, do not read the key for encrypting cookies from the keychain of
