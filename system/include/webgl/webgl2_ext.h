@@ -1,6 +1,7 @@
 #pragma once
 
 #include "webgl2.h"
+#include <emscripten/html5.h>
 
 // 33. https://www.khronos.org/registry/webgl/extensions/EXT_disjoint_timer_query_webgl2/
 #ifndef EMSCRIPTEN_GL_EXT_disjoint_timer_query_webgl2
@@ -11,6 +12,25 @@
 #define GL_GPU_DISJOINT_EXT 0x8FBB
 WEBGL_APICALL void GL_APIENTRY glQueryCounterEXT(GLuint query, GLenum target);
 #endif /* EMSCRIPTEN_GL_EXT_disjoint_timer_query_webgl2 */
+
+// 36. https://www.khronos.org/registry/webgl/extensions/OVR_multiview2/
+#ifndef EMSCRIPTEN_GL_OVR_multiview2
+#define EMSCRIPTEN_GL_OVR_multiview2 1
+// To enable: call
+bool emscripten_webgl_enable_OVR_multiview2(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+// or link with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=1 and
+// call emscripten_webgl_enable_extension(ctx, "OVR_multiview2");
+//
+// Shaders must enable the extension with "#extension GL_OVR_multiview2 : require".
+// WebGL does not support the older "GL_OVR_multiview" shader extension name, and
+// only 2D array textures can be attached with glFramebufferTextureMultiviewOVR().
+#define GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_NUM_VIEWS_OVR 0x9630
+#define GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_BASE_VIEW_INDEX_OVR 0x9632
+#define GL_MAX_VIEWS_OVR 0x9631
+#define GL_FRAMEBUFFER_INCOMPLETE_VIEW_TARGETS_OVR 0x9633
+WEBGL_APICALL void GL_APIENTRY emscripten_glFramebufferTextureMultiviewOVR(GLenum target, GLenum attachment, GLuint texture, GLint level, GLint baseViewIndex, GLsizei numViews);
+WEBGL_APICALL void GL_APIENTRY glFramebufferTextureMultiviewOVR(GLenum target, GLenum attachment, GLuint texture, GLint level, GLint baseViewIndex, GLsizei numViews);
+#endif /* EMSCRIPTEN_GL_OVR_multiview2 */
 
 // 46. https://www.khronos.org/registry/webgl/extensions/WEBGL_draw_instanced_base_vertex_base_instance/
 #ifndef EMSCRIPTEN_GL_WEBGL_draw_instanced_base_vertex_base_instance

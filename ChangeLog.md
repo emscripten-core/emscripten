@@ -43,6 +43,7 @@ See docs/process.md for more on how version tagging works.
 - Building with `-sJSPI` now bumps the default minimum supported browser
   versions to the first ones that support JSPI: Chrome 137, Firefox 153,
   Safari 27 and Node.js 24. (#28334)
+- Added support for the WebGL 2 extension `OVR_multiview2`. (#20173)
 
 7.0.0 - 11/06/26
 ----------------

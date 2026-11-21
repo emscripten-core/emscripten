@@ -991,6 +991,21 @@ var LibraryWebGL2 = {
 
   emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance: (ctx) =>
     webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GL.contexts[ctx].GLctx),
+
+  $webgl_enable_OVR_multiview2: (ctx) =>
+    // Closure is expected to be allowed to minify the '.ovrMultiview2' property, so not accessing it quoted.
+    !!(ctx.ovrMultiview2 = ctx.getExtension('OVR_multiview2')),
+
+  emscripten_webgl_enable_OVR_multiview2: (ctx) =>
+    webgl_enable_OVR_multiview2(GL.contexts[ctx].GLctx),
+
+  glFramebufferTextureMultiviewOVR: (target, attachment, texture, level, baseViewIndex, numViews) => {
+#if GL_ASSERTIONS
+    assert(GLctx.ovrMultiview2, 'OVR_multiview2 not supported, or not enabled. Before calling glFramebufferTextureMultiviewOVR(), call emscripten_webgl_enable_OVR_multiview2() to enable this extension, and verify that it returns true to indicate support. (alternatively, build with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=1 to enable all GL extensions by default)');
+    GL.validateGLObjectID(GL.textures, texture, 'glFramebufferTextureMultiviewOVR', 'texture');
+#endif
+    GLctx.ovrMultiview2['framebufferTextureMultiviewOVR'](target, attachment, GL.textures[texture], level, baseViewIndex, numViews);
+  },
 };
 
 #if MAX_WEBGL_VERSION >= 2

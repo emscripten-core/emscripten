@@ -70,6 +70,9 @@ int main()
   if (hasext(exts, "WEBGL_polygon_mode"))
     assert(emscripten_webgl_enable_WEBGL_polygon_mode(context));
 
+  if (hasext(exts, "OVR_multiview2"))
+    assert(emscripten_webgl_enable_OVR_multiview2(context));
+
 #if WEBGL_SIMPLE_ENABLE_EXTENSION
   assert(hasext(exts, "ANGLE_instanced_arrays") == emscripten_webgl_enable_extension(context, "ANGLE_instanced_arrays"));
   assert(hasext(exts, "OES_vertex_array_object") == emscripten_webgl_enable_extension(context, "OES_vertex_array_object"));
@@ -77,6 +80,7 @@ int main()
   assert(hasext(exts, "WEBGL_draw_instanced_base_vertex_base_instance") == emscripten_webgl_enable_extension(context, "WEBGL_draw_instanced_base_vertex_base_instance"));
   assert(hasext(exts, "WEBGL_multi_draw") == emscripten_webgl_enable_extension(context, "WEBGL_multi_draw"));
   assert(hasext(exts, "WEBGL_multi_draw_instanced_base_vertex_base_instance") == emscripten_webgl_enable_extension(context, "WEBGL_multi_draw_instanced_base_vertex_base_instance"));
+  assert(hasext(exts, "OVR_multiview2") == emscripten_webgl_enable_extension(context, "OVR_multiview2"));
 #endif
 
   return 0;

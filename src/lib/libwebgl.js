@@ -193,6 +193,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       'EXT_disjoint_timer_query_webgl2',
       'EXT_texture_norm16',
       'NV_shader_noperspective_interpolation',
+      'OVR_multiview2',
       'WEBGL_clip_cull_distance',
       'WEBGL_draw_instanced_base_vertex_base_instance',
       'WEBGL_multi_draw_instanced_base_vertex_base_instance',
@@ -1207,6 +1208,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       // Extensions that are available from WebGL >= 2 (no-op if called on a WebGL 1 context active)
       webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(gl);
       webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(gl);
+      webgl_enable_OVR_multiview2(gl);
 
       // On WebGL 2, EXT_disjoint_timer_query is replaced with an alternative
       // that's based on core APIs, and exposes only the queryCounterEXT()

@@ -344,6 +344,7 @@ var LibraryHtml5WebGL = {
 #if MAX_WEBGL_VERSION >= 2
     if (extString == 'WEBGL_draw_instanced_base_vertex_base_instance') webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
     if (extString == 'WEBGL_multi_draw_instanced_base_vertex_base_instance') webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
+    if (extString == 'OVR_multiview2') webgl_enable_OVR_multiview2(GLctx);
 #endif
 
     if (extString == 'WEBGL_multi_draw') webgl_enable_WEBGL_multi_draw(GLctx);
@@ -360,7 +361,8 @@ var LibraryHtml5WebGL = {
          'EXT_clip_control',
          'WEBGL_polygon_mode',
          'WEBGL_draw_instanced_base_vertex_base_instance',
-         'WEBGL_multi_draw_instanced_base_vertex_base_instance'].includes(extString)) {
+         'WEBGL_multi_draw_instanced_base_vertex_base_instance',
+         'OVR_multiview2'].includes(extString)) {
       err('When building with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
     }
