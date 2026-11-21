@@ -21,7 +21,8 @@ function createEmvalInvokerBody(signature, toValue = 'Emval.toValue') {
     args.push(`argFromPtr${i}(args${i ? '+' + i * GenericWireTypeSize : ''})`);
   }
   // Decode receiver and arguments before the property lookup so a getter or
-  // Proxy trap cannot invalidate a borrowed `val` handle before it is read.
+  // Proxy trap cannot re-enter C++ and destroy a borrowed `val` handle before
+  // it is read.
   if (kind == {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}} && argCount > 0) {
     var argNames = [];
     var decls = [`var obj = ${toValue}(handle);`];

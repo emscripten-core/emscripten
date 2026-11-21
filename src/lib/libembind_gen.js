@@ -821,7 +821,7 @@ var LibraryEmbind = {
   $flushPendingDeletes: () => { throw new Error('stub function should not be called'); },
   $setDelayFunction: () => { throw new Error('stub function should not be called'); },
   $PureVirtualError: () => { throw new Error('stub function should not be called'); },
-  $EmValType: '{}',
+  $EmValType: {},
 };
 
 addToLibrary(LibraryEmbind);
