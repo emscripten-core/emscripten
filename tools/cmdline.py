@@ -558,6 +558,10 @@ def parse_args(newargs):  # ruff: ignore[complex-structure, too-many-branches, t
         value = '1'
       if key in builtin_settings:
         exit_with_error(f'{arg}: cannot change built-in settings values with a -jsD directive. Pass -s{key}={value} instead!')
+      # Values are passed on as strings, except for `0` and `false`, so that
+      # `#if FOO` is false for `-jsDFOO=0` and `-jsDFOO=false`.
+      if value in ('0', 'false'):
+        value = False
       # Allow overrides/duplicates for user-defined -jsD flags
       settings[key] = value
       newargs[i] = ''
