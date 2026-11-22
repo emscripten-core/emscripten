@@ -279,6 +279,14 @@ class ChromeConfig:
     '--use-mock-keychain',
     # Send console messages to browser stderr
     '--enable-logging=stderr',
+    # Disabled Chrome features.
+    # - MediaRouter, DialMediaRouteProvider: Do not search the local network for
+    #   Cast devices. On macOS that search can pop up an interactive OS prompt
+    #   "Allow Google Chrome for Testing to find devices on local networks?".
+    # - CalculateNativeWinOcclusion: On Windows, do not track at all whether a
+    #   window is covered by the windows of other applications. Only needed
+    #   for non-headless runs, like the flags in the group below.
+    '--disable-features=MediaRouter,DialMediaRouteProvider,CalculateNativeWinOcclusion',
 
     # The flags below are only needed for non-headless runs. In headless mode
     # (EMTEST_HEADLESS=1) the browser has no windows on the desktop that other
@@ -289,9 +297,6 @@ class ChromeConfig:
     # browser instance has its own window, and all but the topmost one of them
     # are occluded.
     '--disable-backgrounding-occluded-windows',
-    # On Windows, do not track at all whether a window is covered by the windows
-    # of other applications.
-    '--disable-features=CalculateNativeWinOcclusion',
     # Likewise, do not throttle timers in pages that are in the background, and
     # do not lower the priority of their renderer processes.
     '--disable-background-timer-throttling',
