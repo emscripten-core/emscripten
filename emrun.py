@@ -195,24 +195,11 @@ def unquote_u(source):
 temp_firefox_profile_dir = None
 
 
-def delete_emrun_safe_firefox_profile():
-  """Delete the temporary created Firefox profile (if one exists)."""
-  global temp_firefox_profile_dir
-  if temp_firefox_profile_dir is not None:
-    logv('remove_tree("' + temp_firefox_profile_dir + '")')
-    remove_tree(temp_firefox_profile_dir)
-    temp_firefox_profile_dir = None
-
-
 # Firefox has a lot of default behavior that makes it unsuitable for
-# automated/unattended run.
-# This function creates a temporary profile directory that customized Firefox
-# with various flags that enable automated runs.
-def create_emrun_safe_firefox_profile():
-  global temp_firefox_profile_dir
-  temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
-  with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w', encoding='utf-8') as f:
-    f.write('''
+# automated/unattended runs. These prefs customize Firefox to enable automated
+# runs. They are used both by emrun --safe-firefox-profile and by the browser
+# test harness (test/browser_common.py).
+FIREFOX_PREFS = '''
 // Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
 // default here to help test spawning a lot of threads also on older Firefox versions.
 user_pref("dom.workers.maxPerDomain", 512);
@@ -310,9 +297,28 @@ user_pref("gfx.offscreencanvas.enabled", true);
 user_pref("javascript.options.wasm_memory64", true);
 // Do not ask user consent to enable audio playback (0: Allow autoplay for all media)
 user_pref("media.autoplay.default", 0);
+// Enable JSPI support
+user_pref("javascript.options.wasm_js_promise_integration", true);
 // Disable Window Occlusion tracking so that rAF() and setTimeout() and page loads proceed even if page is hidden.
 user_pref("widget.windows.window_occlusion_tracking.enabled", false);
-''')
+'''
+
+
+def delete_emrun_safe_firefox_profile():
+  """Delete the temporary created Firefox profile (if one exists)."""
+  global temp_firefox_profile_dir
+  if temp_firefox_profile_dir is not None:
+    logv('remove_tree("' + temp_firefox_profile_dir + '")')
+    remove_tree(temp_firefox_profile_dir)
+    temp_firefox_profile_dir = None
+
+
+# Creates a temporary Firefox profile directory with the prefs in FIREFOX_PREFS.
+def create_emrun_safe_firefox_profile():
+  global temp_firefox_profile_dir
+  temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
+  with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w', encoding='utf-8') as f:
+    f.write(FIREFOX_PREFS)
     if emrun_options.private_browsing:
       f.write('''
 // Start in private browsing mode to not cache anything to disk (everything will be wiped anyway after this run)
@@ -467,7 +473,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   # Stores messages that have arrived out of order, pending for a send as soon
   # as the missing message arrives.  Kept in sorted order, first element is the
   # oldest message received.
-  http_message_queue = []
+  http_message_queue: list[tuple] = []
 
   def handle_incoming_message(self, seq_num, log, data):
     global have_received_messages

@@ -26,7 +26,6 @@ from common import (
   TEST_ROOT,
   RunnerCore,
   compiler_for,
-  copy_asset,
   create_file,
   errlog,
   force_delete_dir,
@@ -36,6 +35,7 @@ from common import (
   test_file,
 )
 
+import emrun
 from tools import feature_matrix, utils
 from tools.feature_matrix import OLDEST_SUPPORTED_FIREFOX, UNSUPPORTED
 from tools.utils import LINUX, MACOS, WINDOWS, exit_with_error, memoize, path_from_root, read_binary
@@ -324,7 +324,7 @@ class FirefoxConfig:
 
   @staticmethod
   def configure(data_dir):
-    copy_asset('firefox_user.js', os.path.join(data_dir, 'user.js'))
+    utils.write_file(os.path.join(data_dir, 'user.js'), emrun.FIREFOX_PREFS)
 
   @staticmethod
   def open_url_args(url):
