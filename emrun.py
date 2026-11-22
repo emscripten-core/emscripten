@@ -214,7 +214,10 @@ user_pref("dom.disable_open_during_load", false);
 // (Starting from Firefox 1.0, https://bugzil.la/236744)
 user_pref("browser.shell.checkDefaultBrowser", false);
 // (Starting from Firefox 43, https://bugzil.la/1191250)
+// (obsolete from Firefox 55 onwards, https://bugzil.la/1363118)
 user_pref("browser.shell.skipDefaultBrowserCheck", true);
+// (Starting from Firefox 51, https://bugzil.la/1322723)
+user_pref("browser.shell.skipDefaultBrowserCheckOnFirstRun", true);
 // Don't show OS-level prompts like "Would you like to pin Firefox to your taskbar?" on startup
 // (Starting from Firefox 154, https://bugzil.la/2055457)
 user_pref("browser.bypassAutoTriggerActions", true);
@@ -281,9 +284,6 @@ user_pref("plugins.update.url", '');
 // (Starting from Firefox 21, https://bugzil.la/828829)
 // (obsolete from Firefox 46 onwards, https://bugzil.la/1234526)
 user_pref("datareporting.healthreport.service.enabled", false);
-// Disable crash reporter
-// (not a Firefox pref: has no effect in any Firefox version. Set the MOZ_CRASHREPORTER_DISABLE=1 env. var. instead)
-user_pref("toolkit.crashreporter.enabled", false);
 // Don't show WhatsNew on first run after every update
 // (Starting from Firefox 1.0, https://bugzil.la/97220)
 user_pref("browser.startup.homepage_override.mstone","ignore");
