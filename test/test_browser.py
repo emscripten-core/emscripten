@@ -2668,6 +2668,12 @@ Module["preRun"] = () => {
     # (the testcase doesn't even use threads, but is compiled with thread support).
     self.btest_exit('webgl2.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL', '-pthread'])
 
+  # Tests that the WebGL extensions that only add enums, renderable formats or
+  # GLSL features, but no functions, are advertised and enabled automatically.
+  @requires_webgl2
+  def test_webgl2_extensions_without_functions(self):
+    self.btest_exit('webgl2_extensions_without_functions.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
+
   @requires_graphics_hardware
   def test_webgl2_objects(self):
     self.btest_exit('webgl2_objects.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])

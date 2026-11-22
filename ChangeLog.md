@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 7.0.2 (in development)
 ----------------------
+- The WebGL extensions `EXT_render_snorm`, `EXT_texture_mirror_clamp_to_edge`,
+  `OES_sample_variables`, `OES_shader_multisample_interpolation`,
+  `WEBGL_compressed_texture_pvrtc`, `WEBGL_render_shared_exponent` and
+  `WEBGL_stencil_texturing` are now enabled automatically at context creation
+  and advertised in the `GL_EXTENSIONS` string, like the other supported
+  extensions. Previously they could only be enabled by calling
+  `emscripten_webgl_enable_extension()` explicitly. (#28372)
 
 7.0.1 - 11/21/26
 ----------------
