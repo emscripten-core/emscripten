@@ -651,6 +651,7 @@ var LibraryEmbind = {
       Uint32Array,
       Float32Array,
       Float64Array,
+      Uint8ClampedArray,
 #if WASM_BIGINT
       BigInt64Array,
       BigUint64Array,
@@ -797,7 +798,7 @@ var LibraryEmbind = {
       var rtn = getWasmTableEntry(rawFunction);
 #if JSPI
       if (isAsync) {
-        rtn = WebAssembly.promising(rtn);
+        rtn = Asyncify.makeAsyncFunction(rtn);
       }
 #endif
       return rtn;

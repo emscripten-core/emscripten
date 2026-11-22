@@ -200,6 +200,9 @@ def clear_port(port_name):
 
 
 def build_port(port_name):
+  # Ports install their headers and pkg-config files into the sysroot, so it
+  # needs to exist also when the cache starts out empty.
+  system_libs.ensure_sysroot()
   with get_port_variant(port_name) as port_name_base:
     ports.build_port(port_name_base, settings)
 

@@ -75,6 +75,8 @@ int main() {
   assert(val::global().call<std::wstring>("passthrough", wstr) == L"abc");
   static const int data[] = {0, 1, 2};
   assert(val::global().call<int>("passthroughMemoryView", typed_memory_view(3, data)) == 2);
+  static const uint8_t clampedData[] = {10, 20, 30};
+  assert(val::global().call<int>("passthroughMemoryView", clamped_memory_view(3, clampedData)) == 30);
   assert(val::global().call<Enum>("passthrough", ONE) == ONE);
 
   return 0;

@@ -5184,6 +5184,8 @@ main main sees -524, -534, 72.
       if (cmake_version >= (4, 2, 0) and cmake_version < (4, 2, 6)) or \
          (cmake_version >= (4, 3, 0) and cmake_version < (4, 3, 3)):
         self.skipTest(f'incompatible cmake version {cmake_version}')
+    elif self.get_setting('STRICT'):
+      self.skipTest('autoconfiguring is not compatible with STRICT')
     zlib_archive = self.get_zlib_library(cmake=cmake, target='libz.so.1.2.5', cflags=['-fPIC'])[0]
     zlib_basename = os.path.basename(zlib_archive)
     shutil.copyfile(zlib_archive, zlib_basename)
@@ -8075,6 +8077,7 @@ void* operator new(size_t size) {
     # Check that embind is usable from a library built with "-fvisibility=hidden"
 
     create_file('libside.cpp', r'''
+      #include <assert.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
       #define EXPORT __attribute__((visibility("default")))
@@ -8082,6 +8085,10 @@ void* operator new(size_t size) {
       EXPORT void liba_fun() {
         unsigned char buffer[1];
         val view(typed_memory_view(1, buffer));
+        assert(val::global("Math").call<int>("max", 1, 42, 3) == 42);
+        val arr = val::global("Array").new_(3);
+        arr.call<void>("fill", 7);
+        assert(arr[0].as<int>() == 7);
       }
       int side_add(int a, int b) {
         return a + b;

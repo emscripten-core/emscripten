@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-7.0.1 (in development)
+7.0.2 (in development)
 ----------------------
+
+7.0.1 - 11/21/26
+----------------
 - Emscripten's JavaScript tools (`tools/compiler.mjs`, `tools/preprocessor.mjs`,
   `tools/acorn-optimizer.mjs`, `tools/unsafe_optimizations.mjs`, and
   `tools/lz4-compress.mjs`) are now bundled into `dist/` using `rolldown`. For
@@ -34,9 +37,15 @@ See docs/process.md for more on how version tagging works.
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
   making unminified output more readable. (#28144)
 - zlib port updated from 1.3.2 to 1.4. (#28210)
+- In multi-threaded builds with assertions enabled, `addFunction` now warns
+  when it adds a function to the table: each thread has its own table, so the
+  function pointer is only valid in the calling thread. (#28275)
 - `emscripten_get_now()` (and `clock_gettime(CLOCK_MONOTONIC)`) in pthreads
   builds now reads `performance.timeOrigin` once per thread. In Safari its value
   can vary between reads, which made the clock go backwards. (#28272)
+- Building with `-sJSPI` now bumps the default minimum supported browser
+  versions to the first ones that support JSPI: Chrome 137, Firefox 153,
+  Safari 27 and Node.js 24. (#28334)
 
 7.0.0 - 11/06/26
 ----------------

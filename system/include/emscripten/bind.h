@@ -428,29 +428,12 @@ constexpr const char* getSignature(Return (*)(Args...)) {
     return Signature<Return, Args...>;
 }
 
-// Emits a null-terminated `<is_method><returns><is_async><arg_count>` descriptor
-// string (e.g. "ftf02") into the `em_embind` section so the linker knows which
-// JS invoker functions to generate at link time.
-template<char IsClassMethod, char Returns, char IsAsync, size_t ArgCount>
-struct InvokerDescriptor {
-    __attribute__((section("em_embind"), aligned(1)))
-    static constexpr char value[] = {
-        IsClassMethod,
-        Returns,
-        IsAsync,
-        static_cast<char>('0' + (ArgCount / 10) % 10),
-        static_cast<char>('0' + (ArgCount % 10)),
-        '\0'
-    };
-};
-
 template<bool IsClassMethod, typename ReturnType, bool IsAsync, size_t ArgCount>
 inline void recordInvokerDescriptor() {
-    static_assert(ArgCount < 100, "functions with 100 or more arguments are not supported");
     constexpr char is_method = IsClassMethod ? 't' : 'f';
     constexpr char returns = std::is_void<ReturnType>::value ? 'f' : 't';
     constexpr char is_async = IsAsync ? 't' : 'f';
-    __asm__ __volatile__("" : : "r"(&InvokerDescriptor<is_method, returns, is_async, ArgCount>::value[0]));
+    emitInvokerDescriptor<ArgCount, is_method, returns, is_async>();
 }
 
 } // end namespace internal

@@ -23,11 +23,13 @@ void create_file(const char* path, const char* data) {
 int main() {
   create_file("foo", "hello");
 
-#if defined(MEMFS) || defined(NODEFS)
+#if defined(MEMFS) || defined(NODEFS) || defined(WASMFS)
   // MEMFS and NODEFS provide no `link` node op, so hardlinks report EMLINK.
   // NODEFS intentionally omits it: unlike NODERAWFS it confines access to a
   // mount root, but a real host hardlink cannot be guaranteed to stay within
   // that root (host symlinks in intermediate path components escape it).
+  // WasmFS does not support hardlinks in any of its backends (including its
+  // NODERAWFS backend), so it also reports EMLINK.
   assert(link("foo", "bar") == -1);
   assert(errno == EMLINK);
 #else

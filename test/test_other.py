@@ -3904,6 +3904,32 @@ More info: https://emscripten.org
                       '-lembind', '--emit-tsd', 'embind_tsgen_val.d.ts'])
     self.assertExists('embind_tsgen_val.d.ts')
 
+  @parameterized({
+    '': ([],),
+    'no_bigint': (['-sWASM_BIGINT=0'],),
+  })
+  def test_embind_tsgen_memory_view(self, args):
+    create_file('test.cpp', r'''
+      #include <emscripten/bind.h>
+      #include <cstdint>
+      using namespace emscripten;
+
+      memory_view<uint8_t> get_u8() { return typed_memory_view(0, static_cast<const uint8_t*>(nullptr)); }
+      memory_view<float> get_f32() { return typed_memory_view(0, static_cast<const float*>(nullptr)); }
+      clamped_memory_view get_clamped() { return clamped_memory_view(0, nullptr); }
+
+      EMSCRIPTEN_BINDINGS(memory_view_tsgen) {
+        function("get_u8", &get_u8);
+        function("get_f32", &get_f32);
+        function("get_clamped", &get_clamped);
+      }
+    ''')
+    self.run_process([EMXX, 'test.cpp', '-lembind', '--emit-tsd', 'out.d.ts'] + args)
+    out = read_file('out.d.ts')
+    self.assertContained('get_u8(): Uint8Array;', out)
+    self.assertContained('get_f32(): Float32Array;', out)
+    self.assertContained('get_clamped(): Uint8ClampedArray;', out)
+
   def test_embind_tsgen_constant_only(self):
     self.run_process([EMXX, test_file('other/embind_tsgen_constant_only.cpp'),
                       '-lembind', '--emit-tsd', 'out.d.ts'])
@@ -8546,11 +8572,11 @@ int main() {
     'single_file': (['-sSINGLE_FILE'],),
   })
   def test_output_eol(self, params):
+    if '-sSINGLE_FILE' not in params:
+      params = [*params, '-oa.out.html']
     for eol in ('windows', 'linux'):
       self.clear()
       print('checking eol: ', eol)
-      if '-sSINGLE_FILE' not in params:
-        params.append('-oa.out.html')
       self.run_process([EMCC, test_file('hello_world.c'), '--output-eol', eol] + params)
       out_files = ['a.out.js']
       html_file = 'a.out.html'
@@ -9686,9 +9712,9 @@ end
     # Enable as many features as possible in order to maximise
     # the amount of library code we include here.
     if '-sWASM=0' in args:
-      args += ['-sEXPORT_ALL']
+      args = [*args, '-sEXPORT_ALL']
     else:
-      args += ['-sMAIN_MODULE']
+      args = [*args, '-sMAIN_MODULE']
     output = self.build('hello_world.c', cflags=[
       '--closure=1',
       '--minify=0',
@@ -15037,11 +15063,11 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     # SUPPORT_LONGJMP by default because it uses a JS-based simulation of
     # longjmp.
     self.set_setting('PURE_WASI')
-    self.assert_fail([EMCC, test_file('core/test_longjmp.c')] + self.get_cflags(), 'error: longjmp support was disabled (SUPPORT_LONGJMP=0)')
+    self.assert_fail([EMCC, test_file('core/test_longjmp.c'), '-Wno-experimental'] + self.get_cflags(), 'error: longjmp support was disabled (SUPPORT_LONGJMP=0)')
 
     # When using Wasm exception, SUPPORT_LONGJMP defaults to 'wasm', which does
     # not use the JS-based support. This should succeed.
-    self.do_runf('core/test_longjmp.c', cflags=['-fwasm-exceptions'])
+    self.do_runf('core/test_longjmp.c', cflags=['-fwasm-exceptions', '-Wno-experimental'])
 
   def test_cpp_exception_tag(self):
     # Wasm EH throw/catch sites reference the `__cpp_exception` tag directly,
@@ -15191,6 +15217,42 @@ throw_tag:
     ''')
 
     self.do_runf('main.c', '')
+
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread'],),
+    'pthreads_dylink': (['-pthread', '-sMAIN_MODULE=2', '-Wno-experimental'],),
+    'wasm_workers': (['-sWASM_WORKERS'],),
+  })
+  def test_add_function_threads(self, args):
+    if '-pthread' in args:
+      self.require_pthreads()
+    self.set_setting('ALLOW_TABLE_GROWTH')
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <emscripten/console.h>
+
+      EM_JS_DEPS(deps, "$addFunction,$getWasmTableEntry");
+
+      void func() {}
+
+      int main() {
+        emscripten_err("start");
+        // A function that is already in the table gets no new slot and no
+        // warning.
+        EM_ASM({ addFunction(getWasmTableEntry($0)) }, func);
+        emscripten_err("existing");
+        EM_ASM({ addFunction(() => {}, 'v') });
+        emscripten_out("done");
+      }
+    ''')
+    warning = 'warning: addFunction is not supported with threads'
+    output = self.do_runf('main.c', 'done\n', cflags=args)
+    if args:
+      self.assertContained('start\nexisting\n' + warning, output)
+    else:
+      self.assertContained('start\nexisting\n', output)
+      self.assertNotContained(warning, output)
 
   @parameterized({
     '': ([],),

@@ -740,6 +740,9 @@ def setup_sanitizers():
 
   if settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
+    if not settings.MINIMAL_RUNTIME:
+      # Loading the source map uses the addRunDependency/removeRunDependency system.
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
 
 
 def get_dylibs(linker_args):
@@ -1266,10 +1269,6 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
-    if settings.LOAD_SOURCE_MAP:
-      # Loading the source map uses the addRunDependency/removeRunDependency system.
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
-
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
 
@@ -1314,9 +1313,7 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     settings.ALLOW_TABLE_GROWTH = 1
 
   # various settings require sbrk() access
-  if settings.EMSCRIPTEN_TRACING or \
-     settings.SAFE_HEAP or \
-     settings.MEMORYPROFILER:
+  if settings.EMSCRIPTEN_TRACING or settings.SAFE_HEAP:
     settings.REQUIRED_EXPORTS += ['sbrk']
 
   if settings.MEMORYPROFILER:

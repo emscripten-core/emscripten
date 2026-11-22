@@ -264,13 +264,16 @@ class LibrarySymbol {
   // function, object, string snippet/alias, primitive constant, or `undefined`).
   value;
 
-  // Set on base symbols with an array `__async` decorator by
-  // `expandAsyncVariants()` to the expanded non-`'auto'` variant suffixes;
-  // marks the symbol as having an `'auto'` body even without `'auto'`.
+  // A function listing async variants in its `__async` decorator has each
+  // expanded into a symbol of its own by `expandAsyncVariants()`, e.g.
+  // `foo_promise` for the 'promise' variant of `foo`.
+  //
+  // On `foo`: the kinds of its variants, e.g. `['promise']`.
   asyncVariants;
-  // Set on synthetic variant symbols (e.g. `foo_promise`) by
-  // `expandAsyncVariants()` to the variant suffix (e.g. `'promise'`).
-  asyncVariant;
+  // On `foo_promise`: the symbol it is a variant of (`foo`) and its kind
+  // (`'promise'`).
+  asyncVariantOf;
+  asyncVariantKind;
 
   // Fields set automatically based on e.g. `foo__sig` library entries.
   deps = [];
@@ -298,15 +301,16 @@ class LibrarySymbol {
     return isJsOnlySymbol(this.name);
   }
 
-  // Whether the body returns a value or a Promise as it can, told by a `sync`
-  // argument: an 'auto' function, one with async variants (whether or not it
-  // suspends itself), or such a variant.
+  // Whether the function has an 'auto' body, as in `__async: 'auto'`: one that
+  // returns its result directly or as a Promise of it, as told by its trailing
+  // `sync` argument. That is an 'auto' function, one with async variants
+  // (whether or not it suspends itself), or such a variant.
   isAutoBody() {
-    return this.async == 'auto' || !!this.asyncVariants || !!this.asyncVariant;
+    return this.async == 'auto' || !!this.asyncVariants || !!this.asyncVariantOf;
   }
 
   isAsync() {
-    return ASYNCIFY && this.async && !this.asyncVariant;
+    return ASYNCIFY && this.async && !this.asyncVariantOf;
   }
 
   isAlias() {
@@ -437,7 +441,8 @@ export const LibraryManager = {
           continue;
         }
         const variantSym = new LibrarySymbol(name, sym.value);
-        variantSym.asyncVariant = variant;
+        variantSym.asyncVariantOf = sym;
+        variantSym.asyncVariantKind = variant;
         variantSym.sig = rtn + sig.slice(1);
         variantSym.deps = [...sym.deps];
         variantSym.proxy = sym.proxy;

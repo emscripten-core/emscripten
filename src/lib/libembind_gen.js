@@ -513,7 +513,27 @@ var LibraryEmbind = {
     });
   },
   _embind_register_memory_view: (typeID, dataTypeIndex, name) => {
-    // TODO
+    var typeMapping = [
+      'Int8Array',
+      'Uint8Array',
+      'Int16Array',
+      'Uint16Array',
+      'Int32Array',
+      'Uint32Array',
+      'Float32Array',
+      'Float64Array',
+      'Uint8ClampedArray',
+#if WASM_BIGINT
+      'BigInt64Array',
+      'BigUint64Array',
+#endif
+    ];
+    var tsName = typeMapping[dataTypeIndex];
+    if (tsName) {
+      registerType(typeID, new UserType(typeID, tsName), {
+        ignoreDuplicateRegistrations: true,
+      });
+    }
   },
   _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync, isNonnullReturn) => {
     createFunctionDefinition(name, argCount, rawArgTypesAddr, fn, false, isNonnullReturn, isAsync, (funcDef) => {

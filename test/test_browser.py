@@ -23,7 +23,6 @@ from urllib.request import urlopen
 
 import common
 from browser_common import (
-  CHROMIUM_BASED_BROWSERS,
   EMTEST_COS_EXTENSION_PATH,
   BrowserCore,
   HttpServerThread,
@@ -39,6 +38,7 @@ from browser_common import (
   is_safari,
 )
 from common import (
+  EMBUILDER,
   EMCC,
   FILE_PACKAGER,
   WEBIDL_BINDER,
@@ -74,7 +74,7 @@ from decorators import (
 from tools import building, ports, shared, utils
 from tools.feature_matrix import Feature
 from tools.link import binary_encode
-from tools.utils import WINDOWS, delete_dir, write_binary, write_file
+from tools.utils import MACOS, WINDOWS, delete_dir, write_binary, write_file
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
@@ -245,8 +245,7 @@ class browser(BrowserCore):
       print()
 
   def require_jspi(self):
-    if not is_chrome() and not is_firefox():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) and firefox support JSPI today.')
+    self.check_browser_feature('EMTEST_LACKS_JSPI', Feature.JSPI, 'This test requires a browser that supports JSPI')
     super().require_jspi()
 
   def post_manual_reftest(self):
@@ -285,8 +284,8 @@ window.close = () => {
     assert 'expected' not in kwargs
     expected = [str(i) for i in range(reference_slack + 1)]
     self.make_reftest(reference)
-    kwargs.setdefault('cflags', [])
-    kwargs['cflags'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+    # Create a new list here rather than modifying the caller's list in place.
+    kwargs['cflags'] = [*kwargs.get('cflags', []), '--pre-js', 'reftest.js', '-sGL_TESTING']
 
     try:
       return self.btest(filename, *args, expected=expected, **kwargs)
@@ -1247,6 +1246,10 @@ window.close = () => {
   def test_webgl2_texsubimage3d(self):
     self.btest_exit('webgl2_texsubimage3d.c', cflags=['-sMIN_WEBGL_VERSION=2'])
 
+  @requires_webgl2
+  def test_webgl2_readpixels_pack_row_length(self):
+    self.btest_exit('webgl2_readpixels_pack_row_length.c', cflags=['-sMIN_WEBGL_VERSION=2'])
+
   # Test that -sGL_PREINITIALIZED_CONTEXT works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
@@ -1726,7 +1729,9 @@ window.close = () => {
     def book_path(path):
       return test_file('third_party/glbook', path)
 
-    cflags += ['-lGL', '-lEGL', '-lX11']
+    # Create a new list here rather than modifying the @parameterized list in
+    # place, which is shared between all runs of this test.
+    cflags = [*cflags, '-lGL', '-lEGL', '-lX11']
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
@@ -2497,6 +2502,14 @@ void *getBindBuffer() {
   def test_cpuprofiler_memoryprofiler(self, opts):
     self.btest_exit('hello_world_gles.c', cflags=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'] + opts)
 
+  @also_with_proxy_to_pthread
+  def test_memoryprofiler_heap_end(self):
+    # The memory profiler tracks the end of the dynamic memory area via
+    # onSbrkGrow() rather than by calling sbrk(), since its UI keeps updating on
+    # a timer after the runtime has exited, at which point calling into the Wasm
+    # module would abort the page.
+    self.btest_exit('test_memoryprofiler_heap_end.c', cflags=['--memoryprofiler'])
+
   def test_uuid(self):
     self.btest_exit('test_uuid.c', cflags=['-luuid'])
 
@@ -2671,7 +2684,10 @@ Module["preRun"] = () => {
     cflags = ['-sMAX_WEBGL_VERSION=2', '-lGL'] + args
     # Check the desynchronized round-trip only on a normal canvas; OffscreenCanvas
     # doesn't honor it. Chrome supports it, other browsers report it back as false.
-    if not args:
+    # The check is skipped in Chrome on macOS, where Chrome does not support
+    # desynchronized yet and always reports it back as false for a WebGL context
+    # (https://crbug.com/945835).
+    if not args and not (is_chrome() and MACOS):
       cflags.append('-DEXPECT_DESYNCHRONIZED=' + ('1' if is_chrome() else '0'))
     self.btest_exit('html5_webgl.c', cflags=cflags)
 
@@ -3155,6 +3171,11 @@ Module["preRun"] = () => {
   })
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
+    if '-lSDL2_mixer' in flags:
+      # The `-l` flags select the ports only at link time, so the headers of
+      # the ports are only found when compiling if the ports are already
+      # installed in the cache.
+      self.run_process([EMBUILDER, 'build', 'sdl2_mixer'])
     copy_asset('sounds/the_entertainer.wav', 'sound.wav')
     self.btest_exit('test_sdl2_mixer_wav.c', cflags=['--preload-file', 'sound.wav'] + flags)
 
@@ -3222,8 +3243,8 @@ Module["preRun"] = () => {
     'jspi': (['-sJSPI'],),
   })
   def test_async(self, opt, args):
-    if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+    if is_jspi(args):
+      self.require_jspi()
 
     self.btest_exit('test_async.c', cflags=[opt, '-g2'] + args)
 
@@ -3348,6 +3369,7 @@ Module["preRun"] = () => {
 
   @no_firefox('source phase imports not implemented yet in firefox')
   @no_safari('TODO: croaks on line "import source wasmModule from \'./out.wasm\';"') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
+  @requires_chrome_version(138, 'the JavaScriptSourcePhaseImports feature flag does not exist in older versions')
   def test_source_phase_imports(self):
     self.compile_btest('browser_test_hello_world.c', ['-sEXPORT_ES6', '-sSOURCE_PHASE_IMPORTS', '-Wno-experimental', '-o', 'out.mjs'])
     create_file('a.html', '''
@@ -3980,6 +4002,7 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
   @requires_wasm2js
+  @requires_chrome_version(115, 'older versions do not allow synchronous compilation of wasm modules larger than 4KB on the main thread (https://crbug.com/1378329)')
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=['-sWASM_ASYNC_COMPILATION=0', '-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
@@ -4108,6 +4131,8 @@ Module["preRun"] = () => {
     'off': (['-sWASM_ASYNC_COMPILATION=0'], 0),
   })
   def test_async_compile(self, opts, returncode):
+    if '-sWASM_ASYNC_COMPILATION=0' in opts and is_chrome() and get_chrome_version() < 115:
+      self.skipTest('Chrome older than 115 does not allow synchronous compilation of wasm modules larger than 4KB on the main thread (https://crbug.com/1378329)')
     # notice when we use async compilation
     create_file('pre.js', '''
       // note if we do async compilation
@@ -4204,9 +4229,9 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_draw_triangle.c', cflags=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-sFULL_ES2'])
 
   # Tests for WEBGL_multi_draw extension
-  # For testing WebGL draft extensions like this, if using chrome as the browser,
-  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
+  @no_firefox('WEBGL_multi_draw is not supported, https://bugzil.la/2079315')
+  @requires_chrome_version(135, 'https://crbug.com/395670641')
   @parameterized({
     'arrays': (['-DMULTI_DRAW_ARRAYS'],),
     'arrays_instanced': (['-DMULTI_DRAW_ARRAYS_INSTANCED'],),
@@ -4218,11 +4243,11 @@ Module["preRun"] = () => {
                  cflags=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP'] + args)
 
   # Tests for base_vertex/base_instance extension
-  # For testing WebGL draft extensions like this, if using chrome as the browser,
-  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   # If testing on Mac, you also need --use-cmd-decoder=passthrough to get this extension.
   # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
   @requires_webgl2
+  @no_firefox('WEBGL_draw_instanced_base_vertex_base_instance is not supported, https://bugzil.la/1677238')
+  @no_safari('WEBGL_draw_instanced_base_vertex_base_instance is only available with the WebGL Draft Extensions feature flag, which is off by default, https://webkit.org/b/219140')
   @parameterized({
     '': (0,),
     'multidraw': (1,),
@@ -4232,6 +4257,8 @@ Module["preRun"] = () => {
     'drawelements': (1,),
   })
   def test_webgl_draw_base_vertex_base_instance(self, multi_draw, draw_elements):
+    if multi_draw and is_chrome() and get_chrome_version() < 135:
+      self.skipTest('https://crbug.com/395670641')
     self.reftest('test_webgl_draw_base_vertex_base_instance.c', 'test_webgl_draw_base_vertex_base_instance.png',
                  cflags=['-lGL',
                             '-sMAX_WEBGL_VERSION=2',
@@ -4907,8 +4934,8 @@ Module["preRun"] = () => {
     'jspi': (['-sJSPI'],),
   })
   def test_embind(self, args):
-    if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+    if is_jspi(args):
+      self.require_jspi()
     if is_jspi(args) and self.is_wasm64():
       self.skipTest('_emval_await fails')
 
@@ -5810,6 +5837,14 @@ class browser64_2gb(browser):
 class browser_2gb(browser):
   def setUp(self):
     super().setUp()
+    # Safari fails to instantiate a module that has an active data segment at
+    # an address >= 2GB, which with GLOBAL_BASE=2gb is every module that does
+    # not use shared memory. Fails in Safari 27.2 (22625.2.8.11.9).
+    if get_safari_version() < 280000:
+      message = 'Safari fails to initialize data segments at addresses >= 2GB: https://webkit.org/b/314444'
+      if utils.get_env_bool('EMTEST_AUTOSKIP'):
+        self.skipTest(message)
+      self.fail(f'{message}. Use EMTEST_AUTOSKIP=1 to skip')
     self.set_setting('INITIAL_MEMORY', '2200mb')
     self.set_setting('GLOBAL_BASE', '2gb')
     # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE

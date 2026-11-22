@@ -92,6 +92,9 @@ var EMBIND_GEN_MODE = false;
 // List of 5-tuple embind invoker signatures expanded from the em_embind section.
 var EMBIND_INVOKERS = [];
 
+// List of emval invoker signatures extracted from the em_embind section.
+var EMVAL_INVOKERS = [];
+
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = true;
 

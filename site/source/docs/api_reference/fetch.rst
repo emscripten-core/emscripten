@@ -302,7 +302,7 @@ following snippet for an example.
     attr.onsuccess = downloadSucceeded;
     attr.onprogress = downloadProgress;
     attr.onerror = downloadFailed;
-    attr.timeoutMSecs = 2*60;
+    attr.timeoutMSecs = 2*60*1000;
     emscripten_fetch(&attr, "myfile.dat");
   }
 

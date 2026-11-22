@@ -18,6 +18,7 @@
 //
 // We'll call the on-the-wire type WireType.
 
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -482,6 +483,21 @@ inline memory_view<T> typed_memory_view(size_t size, const T* data) {
     return memory_view<T>(size, data);
 }
 
+// Exposes a byte buffer directly to JavaScript as a Uint8ClampedArray without
+// copying. Note that 'data' is marked const so it can accept both const and
+// non-const pointers, though JavaScript can modify the underlying C heap
+// through the view.
+struct EMBIND_VISIBILITY_DEFAULT clamped_memory_view {
+    clamped_memory_view() = delete;
+    explicit clamped_memory_view(size_t size, const uint8_t* data)
+        : size(size)
+        , data(data)
+    {}
+
+    const size_t size; // in elements, not bytes
+    const void* const data;
+};
+
 namespace internal {
 
 template<typename ElementType>
@@ -495,6 +511,14 @@ struct BindingType<memory_view<ElementType>> {
     // JavaScript.)
     typedef memory_view<ElementType> WireType;
     static WireType toWireType(const memory_view<ElementType>& mv, rvp::default_tag) {
+        return mv;
+    }
+};
+
+template<>
+struct BindingType<clamped_memory_view> {
+    typedef clamped_memory_view WireType;
+    static WireType toWireType(const clamped_memory_view& mv, rvp::default_tag) {
         return mv;
     }
 };
@@ -689,6 +713,27 @@ auto Filter(Args&&... args) {
             )
         )(std::forward<Args>(args))...
     );
+}
+
+// Emits a null-terminated `<Prefix...><arg_count>` descriptor string into the
+// `em_embind` section so the linker knows which JS invoker functions to
+// generate at link time. See `process_embind_metadata` in tools/emscripten.py
+// for the descriptor format.
+template<size_t ArgCount, char... Prefix>
+struct InvokerDescriptor {
+    static_assert(ArgCount < 100, "functions with 100 or more arguments are not supported");
+    __attribute__((section("em_embind"), aligned(1)))
+    static constexpr char value[] = {
+        Prefix...,
+        static_cast<char>('0' + (ArgCount / 10) % 10),
+        static_cast<char>('0' + (ArgCount % 10)),
+        '\0'
+    };
+};
+
+template<size_t ArgCount, char... Prefix>
+inline void emitInvokerDescriptor() {
+    __asm__ __volatile__("" : : "r"(&InvokerDescriptor<ArgCount, Prefix...>::value[0]));
 }
 
 } // namespace internal
