@@ -254,9 +254,12 @@ def browser_should_skip_feature(skip_env_var, feature):
 class ChromeConfig:
   data_dir_flag = '--user-data-dir='
   default_flags = (
-    # --no-sandbox because we are running as root and chrome requires
+    '--no-first-run -start-maximized --enable-features=JavaScriptSourcePhaseImports',
+    # --no-sandbox because CircleCI is running as root and chrome requires
     # this flag for now: https://crbug.com/638180
-    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-features=JavaScriptSourcePhaseImports',
+    # In CircleCI, render WebGL with the SwiftShader
+    # software renderer, since the runners might not have a GPU.
+    *(('--no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader',) if utils.get_env_bool('CIRCLECI') else ()),
     '--enable-experimental-webassembly-features',
     # Expose the WebGL extensions that are still in draft status, e.g.
     # WEBGL_draw_instanced_base_vertex_base_instance, so that the tests of them
