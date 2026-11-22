@@ -250,6 +250,26 @@ def browser_should_skip_feature(skip_env_var, feature):
   return not_supported
 
 
+def uses_shared_memory(cflags):
+  """Returns True if the given emcc flags produce a multithreaded build."""
+  prev = None
+  for flag in cflags:
+    if flag == '-pthread':
+      return True
+    # Settings can be passed either as `-sFOO=1`, or as two arguments `-s FOO=1`.
+    if prev == '-s':
+      setting = flag
+    elif flag.startswith('-s'):
+      setting = flag[2:]
+    else:
+      setting = ''
+    key, _, value = setting.partition('=')
+    if key in {'PTHREADS', 'USE_PTHREADS', 'WASM_WORKERS', 'SHARED_MEMORY'} and value != '0':
+      return True
+    prev = flag
+  return False
+
+
 # Default flags used to run browsers in CI testing:
 class ChromeConfig:
   data_dir_flag = '--user-data-dir='
@@ -971,6 +991,8 @@ class BrowserCore(RunnerCore):
   def compile_btest(self, filename, cflags, reporting=Reporting.FULL):
     # Avoid modifying the caller's list in place so we don't accumulate duplicate flags on retry.
     cflags = list(cflags)
+    if uses_shared_memory(self.get_cflags() + cflags):
+      self.check_browser_feature('EMTEST_LACKS_THREADS', feature_matrix.Feature.THREADS, 'This test requires a browser that supports multithreading')
     # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
