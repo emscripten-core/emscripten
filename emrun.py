@@ -202,194 +202,242 @@ temp_firefox_profile_dir = None
 FIREFOX_PREFS = '''
 // Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
 // default here to help test spawning a lot of threads also on older Firefox versions.
-// (Starting from Firefox 8, https://bugzil.la/649537)
+// (Added in Firefox 8, https://bugzil.la/649537)
 user_pref("dom.workers.maxPerDomain", 512);
+
 // Always allow opening popups
-// (Starting from Firefox 1.0, https://bugzil.la/136985)
-// (obsolete from Firefox 59 onwards, https://bugzil.la/1416703)
+// (Added in Firefox 1.0, https://bugzil.la/136985. Removed in Firefox 59, https://bugzil.la/1416703)
 user_pref("browser.popups.showPopupBlocker", false);
-// (Starting from Firefox 1.0, https://bugzil.la/92955)
+
+// (Added in Firefox 1.0, https://bugzil.la/92955)
 user_pref("dom.disable_open_during_load", false);
+
 // Don't ask user if they want to set Firefox as the default system browser
-// (Starting from Firefox 1.0, https://bugzil.la/236744)
+// (Added in Firefox 1.0, https://bugzil.la/236744)
 user_pref("browser.shell.checkDefaultBrowser", false);
-// (Starting from Firefox 43, https://bugzil.la/1191250)
-// (obsolete from Firefox 55 onwards, https://bugzil.la/1363118)
+
+// (Added in Firefox 43, https://bugzil.la/1191250. Removed in Firefox 55, https://bugzil.la/1363118)
 user_pref("browser.shell.skipDefaultBrowserCheck", true);
-// (Starting from Firefox 51, https://bugzil.la/1322723)
+
+// (Added in Firefox 51, https://bugzil.la/1322723)
 user_pref("browser.shell.skipDefaultBrowserCheckOnFirstRun", true);
+
 // Don't show OS-level prompts like "Would you like to pin Firefox to your taskbar?" on startup
-// (Starting from Firefox 154, https://bugzil.la/2055457)
+// (Added in Firefox 154, https://bugzil.la/2055457)
 user_pref("browser.bypassAutoTriggerActions", true);
+
 // If automated runs crash, don't resume old tabs on the next run or show safe mode dialogs or anything else extra.
-// (Starting from Firefox 2, https://bugzil.la/328159)
+// (Added in Firefox 2, https://bugzil.la/328159)
 user_pref("browser.sessionstore.resume_from_crash", false);
-// (Starting from Firefox 11, https://bugzil.la/709005)
-// (obsolete from Firefox 69 onwards, https://bugzil.la/1560154)
+
+// (Added in Firefox 11, https://bugzil.la/709005. Removed in Firefox 69, https://bugzil.la/1560154)
 user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", false);
-// (Starting from Firefox 8, https://bugzil.la/648683)
+
+// (Added in Firefox 8, https://bugzil.la/648683)
 user_pref("browser.sessionstore.restore_on_demand", false);
-// (Starting from Firefox 3.5, https://bugzil.la/448976)
+
+// (Added in Firefox 3.5, https://bugzil.la/448976)
 user_pref("browser.sessionstore.max_resumed_crashes", -1);
-// (Starting from Firefox 13, https://bugzil.la/294260)
+
+// (Added in Firefox 13, https://bugzil.la/294260)
 user_pref("toolkit.startup.max_resumed_crashes", -1);
-// (Starting from Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/c4cc52826abd53e1121e4234d719cfd89ce58093)
+
+// (Added in Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/c4cc52826abd53e1121e4234d719cfd89ce58093)
 user_pref("browser.startup.page", 0);
-// (Starting from Firefox 62, https://bugzil.la/603903)
+
+// (Added in Firefox 62, https://bugzil.la/603903)
 user_pref("toolkit.winRegisterApplicationRestart", false);
+
 // Ease shutting down browser instances in the parallel browser harness
-// (Starting from Firefox 3, https://bugzil.la/383760)
+// (Added in Firefox 3, https://bugzil.la/383760)
 user_pref("browser.warnOnQuit", false);
-// (Starting from Firefox 94, https://bugzil.la/1726736)
+
+// (Added in Firefox 94, https://bugzil.la/1726736)
 user_pref("browser.warnOnQuitShortcut", false);
+
 // Hide about:config confirmation prompt - devs are advanced users
-// (Starting from Firefox 66, https://bugzil.la/1500542)
+// (Added in Firefox 66, https://bugzil.la/1500542)
 user_pref("browser.aboutConfig.showWarning", false);
+
 // Don't show the slow script dialog popup
-// (Starting from Firefox 1.0, https://bugzil.la/13350)
+// (Added in Firefox 1.0, https://bugzil.la/13350)
 user_pref("dom.max_script_run_time", 0);
-// (Starting from Firefox 1.5.0.7, https://bugzil.la/335058)
+
+// (Added in Firefox 1.5.0.7, https://bugzil.la/335058)
 user_pref("dom.max_chrome_script_run_time", 0);
+
 // Don't open a home page at startup
-// (Starting from Firefox 1.0, https://bugzil.la/132140)
+// (Added in Firefox 1.0, https://bugzil.la/132140)
 user_pref("startup.homepage_override_url", "about:blank");
-// (Starting from Firefox 2, https://bugzil.la/314119)
+
+// (Added in Firefox 2, https://bugzil.la/314119)
 user_pref("startup.homepage_welcome_url", "about:blank");
-// (Starting from Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/c4cc52826abd53e1121e4234d719cfd89ce58093)
+
+// (Added in Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/c4cc52826abd53e1121e4234d719cfd89ce58093)
 user_pref("browser.startup.homepage", "about:blank");
+
 // Don't try to perform browser (auto)update on the background
-// (Starting from Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/ad3b24d5ad3b69f9a1e16307e74e06d3c3043130)
+// (Added in Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/ad3b24d5ad3b69f9a1e16307e74e06d3c3043130)
 user_pref("app.update.auto", false);
-// (Starting from Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/ad3b24d5ad3b69f9a1e16307e74e06d3c3043130)
-// (obsolete from Firefox 63 onwards, https://bugzil.la/1420514)
+
+// (Added in Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/ad3b24d5ad3b69f9a1e16307e74e06d3c3043130. Removed in Firefox 63, https://bugzil.la/1420514)
 user_pref("app.update.enabled", false);
-// (Starting from Firefox 1.5, https://github.com/mozilla-firefox/firefox/commit/056f6ca3c1a65d6f293bab2a8e9544b0e56292be)
-// (obsolete from Firefox 69 onwards, https://bugzil.la/1515484)
+
+// (Added in Firefox 1.5, https://github.com/mozilla-firefox/firefox/commit/056f6ca3c1a65d6f293bab2a8e9544b0e56292be. Removed in Firefox 69, https://bugzil.la/1515484)
 user_pref("app.update.silent", false);
-// (Starting from Firefox 1.5, https://github.com/mozilla-firefox/firefox/commit/056f6ca3c1a65d6f293bab2a8e9544b0e56292be)
-// (obsolete from Firefox 49 onwards, https://bugzil.la/1262880)
+
+// (Added in Firefox 1.5, https://github.com/mozilla-firefox/firefox/commit/056f6ca3c1a65d6f293bab2a8e9544b0e56292be. Removed in Firefox 49, https://bugzil.la/1262880)
 user_pref("app.update.mode", 0);
-// (Starting from Firefox 12, https://bugzil.la/481815)
+
+// (Added in Firefox 12, https://bugzil.la/481815)
 user_pref("app.update.service.enabled", false);
+
 // Don't check compatibility with add-ons, or (auto)update them
-// (Starting from Firefox 1.0, https://bugzil.la/170006)
+// (Added in Firefox 1.0, https://bugzil.la/170006)
 user_pref("extensions.lastAppVersion", '');
-// (Starting from Firefox 3.6, https://bugzil.la/514327)
-// (obsolete from Firefox 24 onwards, https://bugzil.la/880735)
+
+// (Added in Firefox 3.6, https://bugzil.la/514327. Removed in Firefox 24, https://bugzil.la/880735)
 user_pref("plugins.hide_infobar_for_outdated_plugin", true);
-// (Starting from Firefox 3.6, https://bugzil.la/514327)
-// (obsolete from Firefox 50 onwards, https://bugzil.la/1277905)
+
+// (Added in Firefox 3.6, https://bugzil.la/514327. Removed in Firefox 50, https://bugzil.la/1277905)
 user_pref("plugins.update.url", '');
+
 // Disable health reporter
-// (Starting from Firefox 21, https://bugzil.la/828829)
-// (obsolete from Firefox 46 onwards, https://bugzil.la/1234526)
+// (Added in Firefox 21, https://bugzil.la/828829. Removed in Firefox 46, https://bugzil.la/1234526)
 user_pref("datareporting.healthreport.service.enabled", false);
+
 // Don't show WhatsNew on first run after every update
-// (Starting from Firefox 1.0, https://bugzil.la/97220)
+// (Added in Firefox 1.0, https://bugzil.la/97220)
 user_pref("browser.startup.homepage_override.mstone","ignore");
+
 // Don't show 'know your rights' and a bunch of other nag windows at startup
-// (Starting from Firefox 3.5, https://bugzil.la/456439)
+// (Added in Firefox 3.5, https://bugzil.la/456439)
 user_pref("browser.rights.3.shown", true);
-// (Starting from Firefox 36, https://bugzil.la/1078539)
-// (obsolete from Firefox 62 onwards, https://bugzil.la/1463924)
+
+// (Added in Firefox 36, https://bugzil.la/1078539. Removed in Firefox 62, https://bugzil.la/1463924)
 user_pref('devtools.devedition.promo.shown', true);
-// (Starting from Firefox 8, https://bugzil.la/596343)
-// (obsolete from Firefox 47 onwards, https://bugzil.la/1244302)
+
+// (Added in Firefox 8, https://bugzil.la/596343. Removed in Firefox 47, https://bugzil.la/1244302)
 user_pref('extensions.shownSelectionUI', true);
-// (Starting from Firefox 34, https://bugzil.la/1053530)
-// (obsolete from Firefox 60 onwards, https://bugzil.la/1355166)
+
+// (Added in Firefox 34, https://bugzil.la/1053530. Removed in Firefox 60, https://bugzil.la/1355166)
 user_pref('browser.newtabpage.introShown', true);
-// (Starting from Firefox 19, https://bugzil.la/766263)
+
+// (Added in Firefox 19, https://bugzil.la/766263)
 user_pref('browser.download.panel.shown', true);
-// (Starting from Firefox 30, https://bugzil.la/870593)
-// (obsolete from Firefox 57 onwards, https://bugzil.la/1388422)
+
+// (Added in Firefox 30, https://bugzil.la/870593. Removed in Firefox 57, https://bugzil.la/1388422)
 user_pref('browser.customizemode.tip0.shown', true);
-// (Starting from Firefox 38.0.5, https://bugzil.la/1155523)
-// (obsolete from Firefox 57 onwards, https://bugzil.la/1385418)
+
+// (Added in Firefox 38.0.5, https://bugzil.la/1155523. Removed in Firefox 57, https://bugzil.la/1385418)
 user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
+
 // Don't ask the user if they want to close the browser when there are multiple tabs.
-// (Starting from Firefox 1.0, https://bugzil.la/108973)
+// (Added in Firefox 1.0, https://bugzil.la/108973)
 user_pref("browser.tabs.warnOnClose", false);
+
 // Allow the launched script window to close itself, so that we don't need to kill the browser process in order to move on.
-// (Starting from Firefox 1.0, https://bugzil.la/32571)
+// (Added in Firefox 1.0, https://bugzil.la/32571)
 user_pref("dom.allow_scripts_to_close_windows", true);
+
 // Set various update timers to a large value in the future in order to not
 // trigger a large mass of update HTTP traffic on each Firefox run on the clean profile.
 // 2147483647 seconds since Unix epoch is sometime in the year 2038, and this is the max integer accepted by Firefox.
-// (Starting from Firefox 1.5, https://bugzil.la/296566)
+// (Added in Firefox 1.5, https://bugzil.la/296566)
 user_pref("app.update.lastUpdateTime.addon-background-update-timer", 2147483647);
-// (Starting from Firefox 1.5, https://github.com/mozilla-firefox/firefox/commit/079768c2c5b62ae515bb3be06c1e9bcb147ffeab)
+
+// (Added in Firefox 1.5, https://github.com/mozilla-firefox/firefox/commit/079768c2c5b62ae515bb3be06c1e9bcb147ffeab)
 user_pref("app.update.lastUpdateTime.background-update-timer", 2147483647);
-// (Starting from Firefox 2, https://bugzil.la/271166)
-// (obsolete from Firefox 75 onwards, https://bugzil.la/1618188)
+
+// (Added in Firefox 2, https://bugzil.la/271166. Removed in Firefox 75, https://bugzil.la/1618188)
 user_pref("app.update.lastUpdateTime.blocklist-background-update-timer", 2147483647);
-// (Starting from Firefox 17, https://bugzil.la/754671)
+
+// (Added in Firefox 17, https://bugzil.la/754671)
 user_pref("app.update.lastUpdateTime.browser-cleanup-thumbnails", 2147483647);
-// (Starting from Firefox 31, https://bugzil.la/974009)
-// (obsolete from Firefox 61 onwards, https://bugzil.la/1420908)
+
+// (Added in Firefox 31, https://bugzil.la/974009. Removed in Firefox 61, https://bugzil.la/1420908)
 user_pref("app.update.lastUpdateTime.experiments-update-timer", 2147483647);
-// (Starting from Firefox 2, https://bugzil.la/327932)
+
+// (Added in Firefox 2, https://bugzil.la/327932)
 user_pref("app.update.lastUpdateTime.search-engine-update-timer", 2147483647);
-// (Starting from Firefox 40, https://bugzil.la/1151511)
+
+// (Added in Firefox 40, https://bugzil.la/1151511)
 user_pref("app.update.lastUpdateTime.xpi-signature-verification", 2147483647);
-// (Starting from Firefox 32, https://bugzil.la/760356)
+
+// (Added in Firefox 32, https://bugzil.la/760356)
 user_pref("extensions.getAddons.cache.lastUpdate", 2147483647);
-// (Starting from Firefox 38, https://bugzil.la/1089867)
-// (obsolete from Firefox 53 onwards, https://bugzil.la/1329543)
+
+// (Added in Firefox 38, https://bugzil.la/1089867. Removed in Firefox 53, https://bugzil.la/1329543)
 user_pref("media.gmp-eme-adobe.lastUpdate", 2147483647);
-// (Starting from Firefox 33, https://bugzil.la/1040937)
+
+// (Added in Firefox 33, https://bugzil.la/1040937)
 user_pref("media.gmp-gmpopenh264.lastUpdate", 2147483647);
-// (Starting from Firefox 21, https://bugzil.la/828829)
-// (obsolete from Firefox 46 onwards, https://bugzil.la/1234522)
+
+// (Added in Firefox 21, https://bugzil.la/828829. Removed in Firefox 46, https://bugzil.la/1234522)
 user_pref("datareporting.healthreport.nextDataSubmissionTime", "2147483647000");
+
 // Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
-// (Starting from Firefox 21, https://bugzil.la/828829)
+// (Added in Firefox 21, https://bugzil.la/828829)
 user_pref("datareporting.healthreport.uploadEnabled", false);
-// (Starting from Firefox 21, https://bugzil.la/828829)
+
+// (Added in Firefox 21, https://bugzil.la/828829)
 user_pref("datareporting.healthreport.service.enabled", false);
-// (Starting from Firefox 21, https://bugzil.la/830489)
-// (obsolete from Firefox 46 onwards, https://bugzil.la/1234526)
+
+// (Added in Firefox 21, https://bugzil.la/830489. Removed in Firefox 46, https://bugzil.la/1234526)
 user_pref("datareporting.healthreport.service.firstRun", false);
-// (Starting from Firefox 6, https://bugzil.la/585196)
+
+// (Added in Firefox 6, https://bugzil.la/585196)
 user_pref("toolkit.telemetry.enabled", false);
-// (Starting from Firefox 40, https://bugzil.la/1148500)
+
+// (Added in Firefox 40, https://bugzil.la/1148500)
 user_pref("toolkit.telemetry.unified", false);
-// (Starting from Firefox 21, https://bugzil.la/828829)
+
+// (Added in Firefox 21, https://bugzil.la/828829)
 user_pref("datareporting.policy.dataSubmissionEnabled", false);
-// (Starting from Firefox 34, https://bugzil.la/862563)
+
+// (Added in Firefox 34, https://bugzil.la/862563)
 user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
+
 // Allow window.dump() to print directly to console
-// (Starting from Firefox 1.0, https://bugzil.la/74816)
+// (Added in Firefox 1.0, https://bugzil.la/74816)
 user_pref("browser.dom.window.dump.enabled", true);
+
 // Disable background add-ons related update & information check pings
-// (Starting from Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/ad3b24d5ad3b69f9a1e16307e74e06d3c3043130)
+// (Added in Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/ad3b24d5ad3b69f9a1e16307e74e06d3c3043130)
 user_pref("extensions.update.enabled", false);
-// (Starting from Firefox 4, https://bugzil.la/586591)
+
+// (Added in Firefox 4, https://bugzil.la/586591)
 user_pref("extensions.getAddons.cache.enabled", false);
+
 // Enable wasm
-// (Starting from Firefox 47, https://bugzil.la/1252498)
+// (Added in Firefox 47, https://bugzil.la/1252498)
 user_pref("javascript.options.wasm", true);
+
 // Enable SharedArrayBuffer, and ignore COOP/COEP (this profile is for a testing environment, so Spectre/Meltdown don't apply)
-// (Starting from Firefox 46, https://bugzil.la/1231337)
+// (Added in Firefox 46, https://bugzil.la/1231337)
 user_pref("javascript.options.shared_memory", true);
-// (Starting from Firefox 72, https://bugzil.la/1587394)
+
+// (Added in Firefox 72, https://bugzil.la/1587394)
 user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
+
 // Enable OffscreenCanvas support
-// (Starting from Firefox 44, https://bugzil.la/709490)
-// (obsolete from Firefox 131 onwards, https://bugzil.la/1914083)
+// (Added in Firefox 44, https://bugzil.la/709490. Removed in Firefox 131, https://bugzil.la/1914083)
 user_pref("gfx.offscreencanvas.enabled", true);
+
 // Enable Wasm64
-// (Starting from Firefox 92, https://bugzil.la/1717914)
-// (obsolete from Firefox 141 onwards, https://bugzil.la/1967231)
+// (Added in Firefox 92, https://bugzil.la/1717914. Removed in Firefox 141, https://bugzil.la/1967231)
 user_pref("javascript.options.wasm_memory64", true);
+
 // Do not ask user consent to enable audio playback (0: Allow autoplay for all media)
-// (Starting from Firefox 63, https://bugzil.la/1470082)
+// (Added in Firefox 63, https://bugzil.la/1470082)
 user_pref("media.autoplay.default", 0);
+
 // Enable JSPI support
-// (Starting from Firefox 127, https://bugzil.la/1850627)
+// (Added in Firefox 127, https://bugzil.la/1850627)
 user_pref("javascript.options.wasm_js_promise_integration", true);
+
 // Disable Window Occlusion tracking so that rAF() and setTimeout() and page loads proceed even if page is hidden.
-// (Starting from Firefox 95, https://bugzil.la/1732733)
+// (Added in Firefox 95, https://bugzil.la/1732733)
 user_pref("widget.windows.window_occlusion_tracking.enabled", false);
 '''
 
@@ -412,7 +460,7 @@ def create_emrun_safe_firefox_profile():
     if emrun_options.private_browsing:
       f.write('''
 // Start in private browsing mode to not cache anything to disk (everything will be wiped anyway after this run)
-// (Starting from Firefox 3.5, https://bugzil.la/460346)
+// (Added in Firefox 3.5, https://bugzil.la/460346)
 user_pref("browser.privatebrowsing.autostart", true);
       ''')
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
