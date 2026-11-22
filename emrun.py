@@ -473,7 +473,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   # Stores messages that have arrived out of order, pending for a send as soon
   # as the missing message arrives.  Kept in sorted order, first element is the
   # oldest message received.
-  http_message_queue = []
+  http_message_queue: list[tuple] = []
 
   def handle_incoming_message(self, seq_num, log, data):
     global have_received_messages

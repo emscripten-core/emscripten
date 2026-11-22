@@ -20,7 +20,6 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, unquote_plus, urlparse
 
 import common
-import emrun
 import psutil
 from common import (
   EMCC,
@@ -36,6 +35,7 @@ from common import (
   test_file,
 )
 
+import emrun
 from tools import feature_matrix, utils
 from tools.feature_matrix import OLDEST_SUPPORTED_FIREFOX, UNSUPPORTED
 from tools.utils import LINUX, MACOS, WINDOWS, exit_with_error, memoize, path_from_root, read_binary
