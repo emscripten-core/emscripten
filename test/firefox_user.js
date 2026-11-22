@@ -7,6 +7,8 @@ user_pref("dom.disable_open_during_load", false);
 // Don't ask user if they want to set Firefox as the default system browser
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("browser.shell.skipDefaultBrowserCheck", true);
+// Don't show OS-level prompts like "Would you like to pin Firefox to your taskbar?" on startup
+user_pref("browser.bypassAutoTriggerActions", true);
 // If automated runs crash, don't resume old tabs on the next run or show safe mode dialogs or anything else extra.
 user_pref("browser.sessionstore.resume_from_crash", false);
 user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", false);
