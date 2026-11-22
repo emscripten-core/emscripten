@@ -2677,6 +2677,8 @@ Module["preRun"] = () => {
     'offscreenframebuffer_pthread': (['-sOFFSCREEN_FRAMEBUFFER', '-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_webgl2_ovr_multiview2(self, args):
+    if '-sOFFSCREEN_FRAMEBUFFER' in args and self.is_wasm64():
+      self.skipTest('TODO: proxying GL calls to the main thread is not fully supported in wasm64')
     self.btest_exit('webgl2_ovr_multiview2.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'] + args)
 
   @requires_graphics_hardware
