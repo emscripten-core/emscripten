@@ -2667,6 +2667,20 @@ Module["preRun"] = () => {
     # (the testcase doesn't even use threads, but is compiled with thread support).
     self.btest_exit('webgl2.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL', '-pthread'])
 
+  @requires_webgl2
+  @parameterized({
+    '': ([],),
+    'explicit_enable': (['-DTEST_EXPLICIT_ENABLE', '-sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0', '-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0'],),
+    'simple_enable': (['-DTEST_SIMPLE_ENABLE', '-sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0'],),
+    'assertions': (['-sGL_ASSERTIONS'],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+    'offscreenframebuffer_pthread': (['-sOFFSCREEN_FRAMEBUFFER', '-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_webgl2_ovr_multiview2(self, args):
+    if '-sOFFSCREEN_FRAMEBUFFER' in args and self.is_wasm64():
+      self.skipTest('TODO: proxying GL calls to the main thread is not fully supported in wasm64')
+    self.btest_exit('webgl2_ovr_multiview2.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'] + args)
+
   @requires_graphics_hardware
   def test_webgl2_objects(self):
     self.btest_exit('webgl2_objects.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])

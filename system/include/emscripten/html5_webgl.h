@@ -82,6 +82,8 @@ bool emscripten_webgl_enable_EXT_clip_control(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE co
 
 bool emscripten_webgl_enable_WEBGL_polygon_mode(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
+bool emscripten_webgl_enable_OVR_multiview2(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
+
 typedef bool (*em_webgl_context_callback)(int eventType, const void *reserved, void *userData);
 EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback_on_thread(const char * _Nonnull target, void *userData, bool useCapture, em_webgl_context_callback callback, pthread_t targetThread);
 EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback_on_thread(const char * _Nonnull target, void *userData, bool useCapture, em_webgl_context_callback callback, pthread_t targetThread);

@@ -13,6 +13,7 @@
 
 #include <webgl/webgl1.h>
 #include <webgl/webgl2.h>
+#include <webgl/webgl2_ext.h>
 
 #include "webgl_internal.h"
 
@@ -149,6 +150,9 @@ GL_APICALL void GL_APIENTRY glGenVertexArraysOES(GLsizei n, GLuint *arrays) { gl
 GL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array) { return glIsVertexArray(array); }
 GL_APICALL void GL_APIENTRY glDrawBuffersEXT(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
 GL_APICALL void GL_APIENTRY glDrawBuffersWEBGL(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
+
+// WebGL 2 extensions:
+ASYNC_GL_FUNCTION_6(EM_FUNC_SIG_VIIIIII, void, glFramebufferTextureMultiviewOVR, GLenum, GLenum, GLuint, GLint, GLint, GLsizei);
 
 #endif // ~__EMSCRIPTEN_PTHREADS__) && __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__
 
@@ -307,7 +311,7 @@ void *emscripten_webgl2_get_proc_address(const char *name) {
   RETURN_FN(glDrawBuffersWEBGL);
 
   // WebGL 2 extensions:
-  // (currently none)
+  RETURN_FN(glFramebufferTextureMultiviewOVR);
 
   return 0;
 }
