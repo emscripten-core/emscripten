@@ -20,13 +20,13 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, unquote_plus, urlparse
 
 import common
+import emrun
 import psutil
 from common import (
   EMCC,
   TEST_ROOT,
   RunnerCore,
   compiler_for,
-  copy_asset,
   create_file,
   errlog,
   force_delete_dir,
@@ -321,7 +321,7 @@ class FirefoxConfig:
 
   @staticmethod
   def configure(data_dir):
-    copy_asset('firefox_user.js', os.path.join(data_dir, 'user.js'))
+    utils.write_file(os.path.join(data_dir, 'user.js'), emrun.FIREFOX_PREFS)
 
   @staticmethod
   def open_url_args(url):
