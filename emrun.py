@@ -322,6 +322,84 @@ user_pref("media.autoplay.default", 0);
 user_pref("javascript.options.wasm_js_promise_integration", true);
 // Disable Window Occlusion tracking so that rAF() and setTimeout() and page loads proceed even if page is hidden.
 user_pref("widget.windows.window_occlusion_tracking.enabled", false);
+// Don't show the Terms of Use modal on first startup
+// (Starting from Firefox 142, https://bugzil.la/1964544)
+user_pref("termsofuse.bypassNotification", true);
+// Don't show the preonboarding modal on first startup
+// (Starting from Firefox 136, https://bugzil.la/1941350)
+user_pref("browser.preonboarding.enabled", false);
+// Don't open the about:welcome onboarding page on first startup
+// (Starting from Firefox 75, https://bugzil.la/1616370)
+user_pref("browser.aboutwelcome.enabled", false);
+// Don't open the privacy notice page in a tab on first run
+// (Starting from Firefox 53, https://bugzil.la/1324049)
+user_pref("datareporting.policy.firstRunURL", "");
+// Don't show the "restore previous session" infobar after the browser was killed
+// (Starting from Firefox 94, https://bugzil.la/1724960)
+user_pref("browser.startup.couldRestoreSession.count", -1);
+// Don't show UI tour popups that highlight browser features
+// (Starting from Firefox 27, https://bugzil.la/862998)
+user_pref("browser.uitour.enabled", false);
+// Don't show the "This page is slowing down Firefox" bar during long-running Wasm compiles or loops
+// (Starting from Firefox 38, https://bugzil.la/1118618)
+user_pref("dom.ipc.reportProcessHangs", false);
+// Don't lower the priority of background browser windows, which can stall tests when the parallel harness keeps the CPU busy
+// (Starting from Firefox 114, https://bugzil.la/1805932)
+user_pref("threads.lower_mainthread_priority_in_background.enabled", false);
+// Don't deprioritize background content processes, which can stall tests when the parallel harness keeps the CPU busy
+// (Starting from Firefox 17, https://bugzil.la/768832)
+user_pref("dom.ipc.processPriorityManager.enabled", false);
+// Don't offer to block further dialogs when a test calls alert() repeatedly
+// (Starting from Firefox 4, https://bugzil.la/61098)
+user_pref("dom.successive_dialog_time_limit", 0);
+// Don't ask for confirmation when closing other tabs
+// (Starting from Firefox 18, https://bugzil.la/772319)
+user_pref("browser.tabs.warnOnCloseOtherTabs", false);
+// Don't download Gecko Media Plugins (OpenH264, Widevine) in the background
+// (Starting from Firefox 52, https://bugzil.la/1267495)
+user_pref("media.gmp-manager.updateEnabled", false);
+// Don't update system add-ons in the background
+// (Starting from Firefox 62, https://bugzil.la/1428459)
+user_pref("extensions.systemAddon.update.enabled", false);
+// Don't let Normandy apply remote studies and pref rollouts that would change browser behavior mid-run
+// (Starting from Firefox 60, https://bugzil.la/1436113)
+user_pref("app.normandy.enabled", false);
+// Don't enroll in Shield studies
+// (Starting from Firefox 57, https://bugzil.la/1388823)
+user_pref("app.shield.optoutstudies.enabled", false);
+// Don't load remote Contextual Feature Recommendation (CFR) messages
+// (Starting from Firefox 65, https://bugzil.la/1505929)
+user_pref("browser.newtabpage.activity-stream.asrouter.providers.cfr", "null");
+// Don't load remote message group configuration for in-browser messaging
+// (Starting from Firefox 73, https://bugzil.la/1578754)
+user_pref("browser.newtabpage.activity-stream.asrouter.providers.message-groups", "null");
+// Don't load in-browser messages from remote experiments
+// (Starting from Firefox 77, https://bugzil.la/1631456)
+user_pref("browser.newtabpage.activity-stream.asrouter.providers.messaging-experiments", "null");
+// Don't download Safe Browsing list updates in the background
+// (Starting from Firefox 98, https://bugzil.la/1371576)
+user_pref("browser.safebrowsing.update.enabled", false);
+// Don't update search engines in the background
+// (Starting from Firefox 1.5, https://bugzil.la/271097)
+user_pref("browser.search.update", false);
+// Don't ping Mozilla servers to detect captive portals
+// (Starting from Firefox 42, https://bugzil.la/1048131)
+user_pref("network.captive-portal-service.enabled", false);
+// Don't ping Mozilla servers to check network connectivity
+// (Starting from Firefox 65, https://bugzil.la/1460537)
+user_pref("network.connectivity-service.enabled", false);
+// Don't run background profile backups, which use disk and CPU
+// (Starting from Firefox 125, https://bugzil.la/1882171)
+user_pref("browser.backup.enabled", false);
+// Don't download machine learning models in the background
+// (Starting from Firefox 125, https://bugzil.la/1873743)
+user_pref("browser.ml.enable", false);
+// Don't fetch personalized extension recommendations
+// (Starting from Firefox 65, https://bugzil.la/1489531)
+user_pref("browser.discovery.enabled", false);
+// Don't send usage (daily active user) pings
+// (Starting from Firefox 136, https://bugzil.la/1921218)
+user_pref("datareporting.usage.uploadEnabled", false);
 '''
 
 
