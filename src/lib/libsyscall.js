@@ -480,9 +480,7 @@ var SyscallsLibrary = {
     var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
     var namelen = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_namelen, 'i32') }}};
     if (name) {
-      var info = getSocketAddress(name, namelen);
-      port = info.port;
-      addr = info.addr;
+      ({port, addr} = getSocketAddress(name, namelen));
     }
     // concatenate scatter-gather arrays into one message buffer
     var total = 0;
