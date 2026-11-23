@@ -5846,6 +5846,14 @@ class browser_2gb(browser):
       if utils.get_env_bool('EMTEST_AUTOSKIP'):
         self.skipTest(message)
       self.fail(f'{message}. Use EMTEST_AUTOSKIP=1 to skip')
+    # Chrome before 132 miscompiles the atomic.rmw.and, atomic.rmw.or and
+    # atomic.rmw.xor instructions when they access a memory address >= 2GB.
+    # For simplicity, skip the whole suite in Chrome < 132.
+    if get_chrome_version() < 132:
+      message = 'Chrome < 132 miscompiles atomic operations at addresses >= 2GB: https://crbug.com/378779897'
+      if utils.get_env_bool('EMTEST_AUTOSKIP'):
+        self.skipTest(message)
+      self.fail(f'{message}. Use EMTEST_AUTOSKIP=1 to skip')
     self.set_setting('INITIAL_MEMORY', '2200mb')
     self.set_setting('GLOBAL_BASE', '2gb')
     # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE
