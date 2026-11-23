@@ -2171,6 +2171,18 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
         program.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(program, program.uniformArrayNamesById[location] + (webglLoc > 0 ? `[${webglLoc}]` : ''));
       }
       // Else an already cached WebGLUniformLocation, return it.
+#if GL_TRACK_ERRORS && !GL_EXPLICIT_UNIFORM_LOCATION
+      // In GLES, calling glUniform*() with a location that is neither -1 nor a
+      // valid uniform location of the program generates GL_INVALID_OPERATION.
+      // WebGL API would silently ignore null/undefined locations (those would
+      // be the same scenario as -1 in native GLES), so we must manually raise
+      // the error here. 
+      // However, we cannot enable this when -sGL_EXPLICIT_UNIFORM_LOCATION is used,
+      // since explicit locations of a uniform that the linker deemed inactive must
+      // be silently ignored, and the locations taken up by inactive uniforms are
+      // currently not being tracked.
+      if (!webglLoc && location != -1) GL.recordError(GL_INVALID_OPERATION);
+#endif
       return webglLoc;
 #if GL_TRACK_ERRORS
     } else {
