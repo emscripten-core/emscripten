@@ -27,12 +27,6 @@ See docs/process.md for more on how version tagging works.
   and advertised in the `GL_EXTENSIONS` string, like the other supported
   extensions. Previously they could only be enabled by calling
   `emscripten_webgl_enable_extension()` explicitly. (#28372)
-- The `glUniform*()` functions now raise `GL_INVALID_OPERATION` when called
-  with a location that is not a valid uniform location of the current program
-  (and is not -1), e.g. a hardcoded integer location that was not acquired from
-  `glGetUniformLocation()`. Previously such calls were silently ignored. This
-  check is not performed in `-sGL_TRACK_ERRORS=0` or
-  `-sGL_EXPLICIT_UNIFORM_LOCATION` builds. (#16367)
 
 7.0.1 - 11/21/26
 ----------------
