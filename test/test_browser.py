@@ -1783,6 +1783,22 @@ window.close = () => {
   def test_clientside_vertex_arrays_es3(self):
     self.reftest('clientside_vertex_arrays_es3.c', 'gl_triangle.png', cflags=['-sFULL_ES3', '-sUSE_GLFW=3', '-lglfw', '-lGLESv2'])
 
+  # Tests that passing an out-of-range vertex attribute index, e.g. the -1 that
+  # glGetAttribLocation() returns for an inactive attribute, raises
+  # GL_INVALID_VALUE instead of throwing an exception (#14589)
+  @parameterized({
+    '': ([],),
+    'full_es2': (['-sFULL_ES2'],),
+    'full_es2_assertions': (['-sFULL_ES2', '-sGL_ASSERTIONS'],),
+    'full_es3': (['-sFULL_ES3', '-DTEST_WEBGL2'],),
+    'full_es3_assertions': (['-sFULL_ES3', '-DTEST_WEBGL2', '-sGL_ASSERTIONS'],),
+  })
+  @requires_graphics_hardware
+  def test_webgl_vertex_attrib_invalid_index(self, args):
+    if '-DTEST_WEBGL2' in args and webgl2_disabled():
+      self.skipTest('This test requires WebGL2 to be available')
+    self.btest_exit('webgl_vertex_attrib_invalid_index.c', cflags=['-lGL'] + args)
+
   def test_emscripten_api(self):
     self.btest_exit('emscripten_api_browser.c', cflags=['-lSDL'])
 

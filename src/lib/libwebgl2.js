@@ -888,8 +888,14 @@ var LibraryWebGL2 = {
   glVertexAttribIPointer: (index, size, type, stride, ptr) => {
 #if FULL_ES3
     var cb = GL.currentContext.clientBuffers[index];
+#if GL_TRACK_ERRORS
+    if (!cb) {
 #if GL_ASSERTIONS
-    assert(cb, index);
+      err(`GL_INVALID_VALUE in glVertexAttribIPointer(index=${index}): index must be in the range 0 <= index < GL_MAX_VERTEX_ATTRIBS (${GL.currentContext.maxVertexAttribs})!`);
+#endif
+      GL.recordError(GL_INVALID_VALUE);
+      return;
+    }
 #endif
     if (!GLctx.currentArrayBufferBinding) {
       cb.size = size;
