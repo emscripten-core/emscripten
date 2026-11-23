@@ -28,6 +28,9 @@ See docs/process.md for more on how version tagging works.
   extensions. Previously they could only be enabled by calling
   `emscripten_webgl_enable_extension()` explicitly. (#28372)
 - Freetype was updated to 2.15.0 (#28378)
+- `-jsDFOO=0` and `-jsDFOO=false` now pass `FOO` to JS library code as `false`
+  rather than as the truthy strings `'0'` and `'false'`, so that `#if FOO` is
+  false. Other values are still passed as strings. (#28364)
 
 7.0.1 - 11/21/26
 ----------------

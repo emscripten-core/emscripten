@@ -514,7 +514,7 @@ window.close = () => {
 
   # Clear all IndexedDB databases. This gives us a fresh state for tests that
   # check caching.
-  def clear_indexed_db(self):
+  def clear_indexed_db(self, db_name='EM_PRELOAD_CACHE'):
     self.add_browser_reporting()
     create_file('clear_indexed_db.html', '''
       <script src="browser_reporting.js"></script>
@@ -532,14 +532,12 @@ window.close = () => {
           });
         } else {
           // Testing an old browser that does not support indexedDB.databases():
-          // Delete the fixed database EM_PRELOAD_CACHE (this is hardcoded in
-          // file packager)
-          indexedDB.deleteDatabase('EM_PRELOAD_CACHE').onsuccess = () => {
+          indexedDB.deleteDatabase('%s').onsuccess = () => {
             reportResultToServer("clear");
           };
         }
       </script>
-    ''')
+    ''' % db_name)
     self.run_browser('clear_indexed_db.html', '/report_result?clear')
 
   @parameterized({
@@ -608,6 +606,8 @@ window.close = () => {
     self.run_browser('page.html', '/report_result?exit:0')
 
   def test_preload_caching_indexeddb_name(self):
+    # Start testing from an empty cache.
+    self.clear_indexed_db('testdb')
     self.set_setting('EXIT_RUNTIME')
     create_file('somefile.txt', 'load me right before running the code please')
 
@@ -1224,6 +1224,16 @@ window.close = () => {
   @requires_webgl2
   def test_webgl_uniform_before_get_location(self, args):
     self.btest_exit('webgl_uniform_before_get_location.c', cflags=args + ['-sGL_EXPLICIT_UNIFORM_LOCATION', '-sMIN_WEBGL_VERSION=2'])
+
+  # Tests that glUniform*() with an invalid location raises GL_INVALID_OPERATION (#16367)
+  @parameterized({
+    '': ([],),
+    'assertions': (['-sGL_ASSERTIONS'],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+  })
+  @requires_graphics_hardware
+  def test_webgl_uniform_invalid_location(self, args):
+    self.btest_exit('webgl_uniform_invalid_location.c', cflags=args)
 
   @parameterized({
     '': ([],),
