@@ -148,6 +148,7 @@ var LibraryDylink = {
 
   // Names of GOT entries that were created without a value (UNDEFINED_ADDR),
   // in creation order.
+  // This avoid having to iterate the entire GOT during reportUndefinedSymbols.
   $unresolvedSymbols__internal: true,
   $unresolvedSymbols: 'new Set()',
 
