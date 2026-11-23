@@ -15,44 +15,35 @@ function createEmvalInvokerBody(signature, toValue = 'Emval.toValue') {
   var argCount = Number(signature.slice(2));
 
   var params = returns ? ['toReturnWire'] : [];
+  // Decode receiver and arguments before any property lookup or call so a
+  // getter or Proxy trap cannot re-enter C++ and destroy a borrowed `val`
+  // handle before it is read. CAST takes no receiver (`handle` may be 0).
+  var decls = kind == {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}
+    ? []
+    : [`var obj = ${toValue}(handle);`];
   var args = [];
   for (var i = 0; i < argCount; ++i) {
     params.push(`argFromPtr${i}`);
-    args.push(`argFromPtr${i}(args${i ? '+' + i * GenericWireTypeSize : ''})`);
+    args.push(`a${i}`);
+    decls.push(`var a${i} = argFromPtr${i}(args${i ? '+' + i * GenericWireTypeSize : ''});`);
   }
-  // Decode receiver and arguments before the property lookup so a getter or
-  // Proxy trap cannot re-enter C++ and destroy a borrowed `val` handle before
-  // it is read.
-  if (kind == {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}} && argCount > 0) {
-    var argNames = [];
-    var decls = [`var obj = ${toValue}(handle);`];
-    for (var i = 0; i < argCount; ++i) {
-      argNames.push(`a${i}`);
-      decls.push(`var a${i} = ${args[i]};`);
-    }
-    var call = `obj[getStringOrSymbol(methodName)](${argNames})`;
-    var ret = returns ? `return emval_returnValue(toReturnWire, destructorsRef, ${call});` : `${call};`;
-    return `(${params}) => (handle, methodName, destructorsRef, args) => {\n${decls.join('\n')}\n${ret}\n}`;
-  }
-  var functionBody;
+  var call;
   switch (kind) {
     case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
-      functionBody = `${toValue}(handle)(${args})`;
+      call = `obj(${args})`;
       break;
     case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
-      functionBody = `new (${toValue}(handle))(${args})`;
+      call = `new obj(${args})`;
       break;
     case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
-      functionBody = args[0];
+      call = args[0];
       break;
     case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
-      functionBody = `${toValue}(handle)[getStringOrSymbol(methodName)]()`;
+      call = `obj[getStringOrSymbol(methodName)](${args})`;
       break;
   }
-  if (returns) {
-    return `(${params}) => (handle, methodName, destructorsRef, args) => emval_returnValue(toReturnWire, destructorsRef, ${functionBody})`;
-  }
-  return `(${params}) => (handle, methodName, destructorsRef, args) => {\n${functionBody}\n}`;
+  decls.push(returns ? `return emval_returnValue(toReturnWire, destructorsRef, ${call});` : `${call};`);
+  return `(${params}) => (handle, methodName, destructorsRef, args) => {\n${decls.join('\n')}\n}`;
 }
 
 var LibraryEmVal = {
