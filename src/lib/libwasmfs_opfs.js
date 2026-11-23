@@ -147,9 +147,7 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_get_entries__deps: [
-    '_wasmfs_opfs_record_entry',
-  ],
+  _wasmfs_opfs_get_entries__deps: ['_wasmfs_opfs_record_entry'],
   _wasmfs_opfs_get_entries__async: {{{ ASYNCIFY_NEEDED }}},
   _wasmfs_opfs_get_entries: async (ctx, dirID, entriesPtr, errPtr) => {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);

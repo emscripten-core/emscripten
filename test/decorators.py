@@ -497,6 +497,7 @@ def also_with_standalone_wasm(impure=False):
         self.set_setting('STANDALONE_WASM')
         if not impure:
           self.set_setting('PURE_WASI')
+          self.cflags.append('-Wno-experimental')
         self.cflags.append('-Wno-unused-command-line-argument')
         # if we are impure, disallow all wasm engines
         if impure:

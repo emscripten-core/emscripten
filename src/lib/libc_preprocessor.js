@@ -23,7 +23,7 @@ addToLibrary({
 
   // Finds the index of closing parens from the opening parens at arr[i].
   // Used polymorphically for strings ('foo') and token arrays (['(', 'foo', ')']) as input.
-  $find_closing_parens_index: (arr, i, opening='(', closing=')') => {
+  $find_closing_parens_index: function(arr, i, opening='(', closing=')') {
     for (var nesting = 0; i < arr.length; ++i) {
       if (arr[i] == opening) ++nesting;
       if (arr[i] == closing && --nesting == 0) {

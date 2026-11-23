@@ -770,12 +770,8 @@ var LibraryPThread = {
   // pthread's internal allocations as leaks.  If/when we remove all the
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
+  __pthread_create_js__deps: ['malloc'],
 #endif
-  __pthread_create_js__deps: [
-#if OFFSCREENCANVAS_SUPPORT
-    'malloc',
-#endif
-  ],
   __pthread_create_js: (pthread_ptr, attr, startRoutine, arg) => {
     if (!_emscripten_has_threading_support()) {
 #if ASSERTIONS
@@ -1134,9 +1130,7 @@ var LibraryPThread = {
 #endif
   },
 
-  $invokeEntryPoint__deps: [
-    '_emscripten_thread_exit',
-  ],
+  $invokeEntryPoint__deps: ['_emscripten_thread_exit'],
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);
@@ -1286,10 +1280,7 @@ var LibraryPThread = {
   },
 #endif // MAIN_MODULE
 
-  $checkMailbox__deps: [
-                        'pthread_self',
-                        '_emscripten_check_mailbox',
-  ],
+  $checkMailbox__deps: ['pthread_self', '_emscripten_check_mailbox'],
   $checkMailbox: () => {
     // checkMailbox can be called after the pthread has shut down. See
     // Pthread.terminateRuntime().

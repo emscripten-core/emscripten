@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 
@@ -57,13 +58,7 @@ int main()
   emscripten_webgl_make_context_current(ctx);
 
   GLboolean extAvailable = emscripten_webgl_enable_WEBGL_multi_draw(ctx);
-
-  if (!extAvailable) {
-    EM_ASM({
-      skipTest('WEBGL_multi_draw is not supported');
-    });
-    return 0;
-  }
+  assert(extAvailable && "WEBGL_multi_draw is not supported");
 
   static const char vertex_shader[] =
     "attribute vec4 apos;"

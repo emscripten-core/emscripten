@@ -55,7 +55,7 @@ int main() {
   attr.onsuccess = success;
   attr.onerror = onerror;
   attr.onreadystatechange = readyStateChange;
-  attr.timeoutMSecs = 2*60;
+  attr.timeoutMSecs = 2*60*1000;
   printf("Calling emscripten_fetch\n");
   emscripten_fetch(&attr, "myfile.dat");
   return 0;

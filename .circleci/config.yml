@@ -708,6 +708,7 @@ jobs:
             wasmfs.test_fs_readv
             wasmfs.test_fs_write
             wasmfs.test_fs_readv_rawfs
+            wasmfs.test_fs_readv_eagain
             wasmfs.test_fs_nodefs_nofollow
             wasmfs.test_fs_nodefs_readdir
             wasmfs.test_fs_nodefs_home
@@ -742,6 +743,7 @@ jobs:
             wasmfs.test_minimal_runtime_hello_world*
             wasmfs.test_dlmalloc
             wasmfs.test_wrap_malloc_mimalloc
+            wasmfs.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_utf
             minimal0.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_static_variable
