@@ -20,9 +20,9 @@
 #include <webgl/webgl2_ext.h>
 
 // The full list of extensions that the browser supports.
-static char *browser_extensions;
+char *browser_extensions;
 
-static bool has_extension(const char *extensions, const char *name) {
+bool has_extension(const char *extensions, const char *name) {
   size_t len = strlen(name);
   for (const char *cur = extensions; (cur = strstr(cur, name)); cur += len) {
     if ((cur == extensions || cur[-1] == ' ') && (cur[len] == ' ' || !cur[len])) return true;
@@ -32,7 +32,7 @@ static bool has_extension(const char *extensions, const char *name) {
 
 // Returns true if the browser supports the given extension. In that case
 // Emscripten must also advertise it.
-static bool check_extension(const char *name) {
+bool check_extension(const char *name) {
   bool supported = has_extension(browser_extensions, name);
   bool advertised = has_extension((const char *)glGetString(GL_EXTENSIONS), name);
   printf("%s: supported by browser: %d, advertised in GL_EXTENSIONS: %d\n", name, supported, advertised);
@@ -49,7 +49,7 @@ static bool check_extension(const char *name) {
   return supported;
 }
 
-static void check_tex_parameter(GLenum pname, GLint param) {
+void check_tex_parameter(GLenum pname, GLint param) {
   GLuint tex;
   glGenTextures(1, &tex);
   glBindTexture(GL_TEXTURE_2D, tex);
@@ -62,7 +62,7 @@ static void check_tex_parameter(GLenum pname, GLint param) {
   glDeleteTextures(1, &tex);
 }
 
-static void check_color_renderable(GLenum internal_format) {
+void check_color_renderable(GLenum internal_format) {
   GLuint tex;
   glGenTextures(1, &tex);
   glBindTexture(GL_TEXTURE_2D, tex);
@@ -78,7 +78,7 @@ static void check_color_renderable(GLenum internal_format) {
   glDeleteTextures(1, &tex);
 }
 
-static void check_fragment_shader_compiles(const char *source) {
+void check_fragment_shader_compiles(const char *source) {
   GLuint shader = glCreateShader(GL_FRAGMENT_SHADER);
   glShaderSource(shader, 1, &source, NULL);
   glCompileShader(shader);
