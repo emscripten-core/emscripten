@@ -128,9 +128,9 @@ int main(int argc, char *argv[]) {
   uint8_t data[4];
   glReadPixels(150, 75, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, data);
   printf("output triangle color: %u, %u, %u, %u\n", data[0], data[1], data[2], data[3]);
-  assert(data[0] == 102); // 0.1 + 0.1 + 0.1 + 0.1 = 0.4
-  assert(data[1] == 153); // 0.2 + 0.2 + 0.1 + 0.1 = 0.6
-  assert(data[2] == 204); // 0.1 + 0.3 + 0.3 + 0.1 = 0.8
+  assert(data[0] == 0.4 * 255); // 0.1 + 0.1 + 0.1 + 0.1 = 0.4
+  assert(data[1] == 0.6 * 255); // 0.2 + 0.2 + 0.1 + 0.1 = 0.6
+  assert(data[2] == 0.8 * 255); // 0.1 + 0.3 + 0.3 + 0.1 = 0.8
   assert(data[3] == 255);
 
   // Test that setting program zero is allowed
