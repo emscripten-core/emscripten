@@ -12198,6 +12198,64 @@ int main(void) {
     ''')
     self.do_runf('src.c', 'ok\ndone\n', cflags=['-sEMULATE_FUNCTION_POINTER_CASTS'])
 
+  @parameterized({
+    '': ([],),
+    'nobigint': (['-sWASM_BIGINT=0', '-Wno-deprecated'],),
+  })
+  def test_dylink_emulate_function_pointer_casts_setjmp(self, extra_args):
+    create_file('side.c', r'''
+      #include <assert.h>
+      #include <emscripten.h>
+      #include <setjmp.h>
+      #include <stdint.h>
+      #include <stdio.h>
+      static jmp_buf side_jb;
+      EMSCRIPTEN_KEEPALIVE int64_t side_i64(int64_t x) {
+        return x + 100;
+      }
+      EMSCRIPTEN_KEEPALIVE void side_setjmp(void) {
+        if (!setjmp(side_jb)) {
+          printf("side setjmp\n");
+          longjmp(side_jb, 1);
+        } else {
+          printf("side longjmp\n");
+        }
+      }
+    ''')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <setjmp.h>
+      #include <stdint.h>
+      #include <stdio.h>
+      extern void side_setjmp(void);
+      static jmp_buf main_jb;
+      int main() {
+        if (!setjmp(main_jb)) {
+          printf("main setjmp\n");
+          longjmp(main_jb, 1);
+        } else {
+          printf("main longjmp\n");
+        }
+        side_setjmp();
+        void* h = dlopen(NULL, RTLD_NOW);
+        assert(h);
+        int64_t (*fn)(int64_t, int) = (int64_t (*)(int64_t, int))dlsym(h, "side_i64");
+        assert(fn);
+        assert(fn(42, 7) == 142);
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.run_process([
+      EMCC, 'side.c', '-sSIDE_MODULE=2', '-sEMULATE_FUNCTION_POINTER_CASTS',
+      '-o', 'libside.so',
+    ] + extra_args)
+    self.do_runf(
+      'main.c',
+      'main setjmp\nmain longjmp\nside setjmp\nside longjmp\ndone\n',
+      cflags=['libside.so', '-sMAIN_MODULE=2', '-sEMULATE_FUNCTION_POINTER_CASTS'] + extra_args)
+
   def test_no_lto(self):
     # This used to fail because options.lto didn't reflect `-fno-lto`.
     # See bug https://github.com/emscripten-core/emscripten/issues/20308

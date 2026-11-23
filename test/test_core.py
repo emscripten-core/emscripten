@@ -4333,6 +4333,90 @@ caught outer int: 123
       header='typedef float (*floatfunc)(float);', force_c=True)
 
   @with_dylink_reversed
+  def test_dylink_emulate_function_pointer_casts(self):
+    self.set_setting('EMULATE_FUNCTION_POINTER_CASTS')
+    self.dylink_test(
+      main=r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <emscripten.h>
+      #include <stdint.h>
+      #include <stdio.h>
+      #include "header.h"
+
+      void main_void_ii(int a, int b) { printf("main_void_ii: %d %d\n", a, b); }
+      int main_inc(int x) { return x + 1; }
+      float main_float_f(float f) { return f + 1.5f; }
+      EMSCRIPTEN_KEEPALIVE double main_double_di(double d, int i) { return d * i; }
+      int64_t main_i64(int64_t x) { return x + 100; }
+
+      int main() {
+        side_check(&main_void_ii, &main_inc, &main_float_f, &main_double_di, &main_i64);
+
+        // Mismatched calls from main to side directly and via dlsym.
+        ((int (*)(int, int, int))side_void_ii)(10, 20, 999);
+        void* h = dlopen(NULL, RTLD_NOW);
+        assert(h);
+        void* sym_void = dlsym(h, "side_void_ii");
+        assert(sym_void == side_get_void_ii());
+        ((void (*)(int, int))sym_void)(30, 40);
+
+        double (*sym_double)(double, int, int) =
+          (double (*)(double, int, int))dlsym(h, "main_double_di");
+        assert(sym_double(2.5, 4, 99) == 10.0);
+
+        int64_t (*sym_i64)(int64_t, int) =
+          (int64_t (*)(int64_t, int))dlsym(h, "side_i64");
+        assert(sym_i64(42, 7) == 142);
+
+        printf("done\n");
+        return 0;
+      }
+      ''',
+      side=r'''
+      #include <assert.h>
+      #include <emscripten.h>
+      #include <stdint.h>
+      #include <stdio.h>
+      #include "header.h"
+
+      void side_void_ii(int a, int b) { printf("side_void_ii: %d %d\n", a, b); }
+      EMSCRIPTEN_KEEPALIVE int64_t side_i64(int64_t x) { return x + 100; }
+      void* side_get_void_ii() { return (void*)&side_void_ii; }
+
+      void side_check(void (*mv)(int, int), int (*mi)(int), float (*mf)(float),
+                      double (*md)(double, int), int64_t (*mi64)(int64_t)) {
+        assert(mv == &main_void_ii);
+        assert(mi == &main_inc);
+        assert(mf == &main_float_f);
+        assert(md == &main_double_di);
+        assert(mi64 == &main_i64);
+
+        ((int (*)(int, int, int))main_void_ii)(1, 2, 999);
+        ((void (*)(int, double))mi)(4, 2.5);
+        assert(((int (*)(int, int))mi)(4, 99) == 5);
+        assert(((float (*)(float, int))main_float_f)(2.5f, 9) == 4.0f);
+        assert(((double (*)(double, int, int))main_double_di)(3.5, 2, 9) == 7.0);
+        assert(((int64_t (*)(int64_t, int))main_i64)(50, 9) == 150);
+      }
+      ''',
+      expected='main_void_ii: 1 2\nside_void_ii: 10 20\nside_void_ii: 30 40\ndone\n',
+      header='''
+      #include <stdint.h>
+      void main_void_ii(int a, int b);
+      int main_inc(int x);
+      float main_float_f(float f);
+      double main_double_di(double d, int i);
+      int64_t main_i64(int64_t x);
+      void side_void_ii(int a, int b);
+      int64_t side_i64(int64_t x);
+      void* side_get_void_ii();
+      void side_check(void (*mv)(int, int), int (*mi)(int), float (*mf)(float),
+                      double (*md)(double, int), int64_t (*mi64)(int64_t));
+      ''',
+      force_c=True)
+
+  @with_dylink_reversed
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4936,6 +5020,56 @@ res64 - external 64\n''', header='''\
         throw 3;
       }
       ''', expected=['side: caught 5.3\nmain: caught 3\n'])
+
+  @with_all_eh_sjlj
+  @with_dylink_reversed
+  def test_dylink_emulate_function_pointer_casts_eh_sjlj(self):
+    self.set_setting('EMULATE_FUNCTION_POINTER_CASTS')
+    self.dylink_test(main=r'''
+      #include <setjmp.h>
+      #include <stdio.h>
+      extern void side_run();
+      static jmp_buf main_jb;
+      void main_throw() {
+        throw 42;
+      }
+      int main() {
+        if (setjmp(main_jb) == 0) {
+          puts("main setjmp");
+          longjmp(main_jb, 1);
+        } else {
+          puts("main longjmp");
+        }
+        try {
+          side_run();
+        } catch (int n) {
+          printf("main caught %d\n", n);
+        }
+        printf("done\n");
+        return 0;
+      }
+    ''', side=r'''
+      #include <setjmp.h>
+      #include <stdio.h>
+      extern void main_throw();
+      static jmp_buf side_jb;
+      void side_run() {
+        if (setjmp(side_jb) == 0) {
+          puts("side setjmp");
+          longjmp(side_jb, 1);
+        } else {
+          puts("side longjmp");
+        }
+        try {
+          main_throw();
+        } catch (int n) {
+          printf("side caught %d\n", n);
+          throw n + 1;
+        }
+      }
+    ''', expected=[
+      'main setjmp\nmain longjmp\nside setjmp\nside longjmp\nside caught 42\nmain caught 43\ndone\n',
+    ])
 
   @with_all_eh_sjlj
   @needs_dylink
@@ -7438,6 +7572,77 @@ void* operator new(size_t size) {
     # call_indirect with unreachable when fpcast-emu will fix them.
     # https://github.com/WebAssembly/binaryen/pull/8475
     self.do_core_test('test_emulate_function_pointer_casts_directize.c', cflags=['-sEMULATE_FUNCTION_POINTER_CASTS'])
+
+  @no_wasm2js('addFunction wrapper module uses wasm')
+  def test_emulate_function_pointer_casts_add_function(self):
+    create_file('src.c', r'''
+      #include <assert.h>
+      #include <emscripten.h>
+      #include <stdint.h>
+      #include <stdio.h>
+
+      int main() {
+        void* fp_v = (void*)EM_ASM_PTR({
+          return addFunction(() => { Module['calledVoid'] = 1; }, 'v');
+        });
+        ((void (*)(int))(intptr_t)fp_v)(123);
+        assert(EM_ASM_INT({ return Module['calledVoid']; }) == 1);
+
+        void* fp_vi = (void*)EM_ASM_PTR({
+          return addFunction((a) => { Module['gotVi'] = a; }, 'vi');
+        });
+        ((int (*)(int, int))(intptr_t)fp_vi)(42, 99);
+        assert(EM_ASM_INT({ return Module['gotVi']; }) == 42);
+
+        void* fp_iii = (void*)EM_ASM_PTR({
+          return addFunction((a, b) => a + b, 'iii');
+        });
+        assert(((int (*)(int, int, int))(intptr_t)fp_iii)(10, 20, 999) == 30);
+
+        void* fp_ff = (void*)EM_ASM_PTR({
+          return addFunction((x) => Math.fround(x * 2.5), 'ff');
+        });
+        assert(((float (*)(float, int))(intptr_t)fp_ff)(4.0f, 7) == 10.0f);
+
+        void* fp_dd = (void*)EM_ASM_PTR({
+          return addFunction((x) => x * 1.5, 'dd');
+        });
+        assert(((double (*)(double, int))(intptr_t)fp_dd)(6.0, 7) == 9.0);
+
+        void* fp_pp = (void*)EM_ASM_PTR({
+          return addFunction((p) => p, 'pp');
+        });
+        int dummy = 7;
+        assert(((void* (*)(void*, int))(intptr_t)fp_pp)(&dummy, 9) == &dummy);
+
+#ifdef WASM_BIGINT_ENABLED
+        void* fp_jij = (void*)EM_ASM_PTR({
+          return addFunction((a, b) => BigInt(a) + b, 'jij');
+        });
+        assert(((int64_t (*)(int, int64_t, int))(intptr_t)fp_jij)(5, 1000000000000LL, 9) == 1000000000005LL);
+        EM_ASM({ removeFunction($0); }, fp_jij);
+#endif
+
+        EM_ASM({
+          removeFunction($0);
+          removeFunction($1);
+          removeFunction($2);
+          removeFunction($3);
+          removeFunction($4);
+          removeFunction($5);
+        }, fp_v, fp_vi, fp_iii, fp_ff, fp_dd, fp_pp);
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    cflags = [
+      '-sEMULATE_FUNCTION_POINTER_CASTS',
+      '-sALLOW_TABLE_GROWTH',
+      '-sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction',
+    ]
+    if self.get_setting('WASM_BIGINT') != 0:
+      cflags.append('-DWASM_BIGINT_ENABLED')
+    self.do_runf('src.c', 'done\n', cflags=cflags)
 
   @no_wasm2js('TODO: nicely printed names in wasm2js')
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')

@@ -57,6 +57,101 @@ addToLibrary({
 #endif
     var module = wrapperModuleCache[sig];
     if (!module) {
+#if EMULATE_FUNCTION_POINTER_CASTS
+#if ASSERTIONS
+      assert(sig.length <= 17, `too many arguments in signature: ${sig}`);
+#endif
+      // Under EMULATE_FUNCTION_POINTER_CASTS, table functions must use the
+      // fixed (i64 x 16) -> i64 ABI. Import the JS function as its actual
+      // signature (type 0) and export an adapter (type 1) that casts params and
+      // return value to/from i64.
+      var body = [];
+      for (var i = 1; i < sig.length; i++) {
+        body.push(0x20, i - 1); // local.get
+        switch (sig[i]) {
+          case 'i':
+#if !MEMORY64
+          case 'p':
+#endif
+            body.push(0xa7); // i32.wrap_i64
+            break;
+          case 'f':
+            body.push(0xa7, 0xbe); // i32.wrap_i64, f32.reinterpret_i32
+            break;
+          case 'd':
+            body.push(0xbf); // f64.reinterpret_i64
+            break;
+#if MEMORY64
+          case 'p':
+#endif
+          case 'j':
+            break;
+#if ASSERTIONS
+          default:
+            abort(`unsupported param type in signature '${sig}': ${sig[i]}`);
+#endif
+        }
+      }
+      body.push(0x10, 0x00); // call 0
+      switch (sig[0]) {
+        case 'v':
+          body.push(0x42, 0x00); // i64.const 0
+          break;
+        case 'i':
+#if !MEMORY64
+        case 'p':
+#endif
+          body.push(0xad); // i64.extend_i32_u
+          break;
+        case 'f':
+          body.push(0xbc, 0xad); // i32.reinterpret_f32, i64.extend_i32_u
+          break;
+        case 'd':
+          body.push(0xbd); // i64.reinterpret_f64
+          break;
+#if MEMORY64
+        case 'p':
+#endif
+        case 'j':
+          break;
+#if ASSERTIONS
+        default:
+          abort(`unsupported return type in signature '${sig}': ${sig[0]}`);
+#endif
+      }
+      body.push(0x0b); // end
+      var bytes = Uint8Array.of(
+        0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
+        0x01, 0x00, 0x00, 0x00, // version: 1
+        0x01, // Type section code
+          ...uleb128EncodeWithLen([
+            0x02, // count: 2
+            0x60 /* form: func */,
+            ...generateTypePack(sig.slice(1)),
+            ...generateTypePack(sig[0] === 'v' ? '' : sig[0]),
+            0x60 /* form: func */,
+            ...generateTypePack('j'.repeat(16)),
+            ...generateTypePack('j'),
+          ]),
+        0x02, 0x07, // import section
+          // (import "e" "f" (func 0 (type 0)))
+          0x01, 0x01, 0x65, 0x01, 0x66, 0x00, 0x00,
+        0x03, 0x02, // function section
+          // (func 1 (type 1))
+          0x01, 0x01,
+        0x07, 0x05, // export section
+          // (export "f" (func 1))
+          0x01, 0x01, 0x66, 0x00, 0x01,
+        0x0a, // code section
+          ...uleb128EncodeWithLen([
+            0x01, // count: 1
+            ...uleb128EncodeWithLen([
+              0x00, // local decl count: 0
+              ...body,
+            ]),
+          ]),
+      );
+#else
       // TODO: If the type reflection proposal ever makes progress we can use
       // it here instead of creatign a new module.
       var bytes = Uint8Array.of(
@@ -81,6 +176,7 @@ addToLibrary({
           // (export "f" (func 0 (type 0)))
           0x01, 0x01, 0x66, 0x00, 0x00,
       );
+#endif
 
       // We can compile this wasm module synchronously because it is very small.
       // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
