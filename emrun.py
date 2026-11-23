@@ -195,35 +195,26 @@ def unquote_u(source):
 temp_firefox_profile_dir = None
 
 
-def delete_emrun_safe_firefox_profile():
-  """Delete the temporary created Firefox profile (if one exists)."""
-  global temp_firefox_profile_dir
-  if temp_firefox_profile_dir is not None:
-    logv('remove_tree("' + temp_firefox_profile_dir + '")')
-    remove_tree(temp_firefox_profile_dir)
-    temp_firefox_profile_dir = None
-
-
 # Firefox has a lot of default behavior that makes it unsuitable for
-# automated/unattended run.
-# This function creates a temporary profile directory that customized Firefox
-# with various flags that enable automated runs.
-def create_emrun_safe_firefox_profile():
-  global temp_firefox_profile_dir
-  temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
-  with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w', encoding='utf-8') as f:
-    f.write('''
+# automated/unattended runs. These prefs customize Firefox to enable automated
+# runs. They are used both by emrun --safe-firefox-profile and by the browser
+# test harness (test/browser_common.py).
+FIREFOX_PREFS = '''
 // Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
 // default here to help test spawning a lot of threads also on older Firefox versions.
 user_pref("dom.workers.maxPerDomain", 512);
 // Always allow opening popups
+// (obsolete from Firefox 59 onwards, https://bugzil.la/1416703)
 user_pref("browser.popups.showPopupBlocker", false);
 user_pref("dom.disable_open_during_load", false);
 // Don't ask user if they want to set Firefox as the default system browser
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("browser.shell.skipDefaultBrowserCheck", true);
+// Don't show OS-level prompts like "Would you like to pin Firefox to your taskbar?" on startup
+user_pref("browser.bypassAutoTriggerActions", true);
 // If automated runs crash, don't resume old tabs on the next run or show safe mode dialogs or anything else extra.
 user_pref("browser.sessionstore.resume_from_crash", false);
+// (obsolete from Firefox 69 onwards, https://bugzil.la/1560154)
 user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.max_resumed_crashes", -1);
@@ -244,27 +235,39 @@ user_pref("startup.homepage_welcome_url", "about:blank");
 user_pref("browser.startup.homepage", "about:blank");
 // Don't try to perform browser (auto)update on the background
 user_pref("app.update.auto", false);
+// (obsolete from Firefox 63 onwards, https://bugzil.la/1420514)
 user_pref("app.update.enabled", false);
+// (obsolete from Firefox 69 onwards, https://bugzil.la/1515484)
 user_pref("app.update.silent", false);
+// (obsolete from Firefox 49 onwards, https://bugzil.la/1262880)
 user_pref("app.update.mode", 0);
 user_pref("app.update.service.enabled", false);
 // Don't check compatibility with add-ons, or (auto)update them
 user_pref("extensions.lastAppVersion", '');
+// (obsolete from Firefox 24 onwards, https://bugzil.la/880735)
 user_pref("plugins.hide_infobar_for_outdated_plugin", true);
+// (obsolete from Firefox 50 onwards, https://bugzil.la/1277905)
 user_pref("plugins.update.url", '');
 // Disable health reporter
+// (obsolete from Firefox 46 onwards, https://bugzil.la/1234526)
 user_pref("datareporting.healthreport.service.enabled", false);
 // Disable crash reporter
+// (not a Firefox pref: has no effect in any Firefox version. Set the MOZ_CRASHREPORTER_DISABLE=1 env. var. instead)
 user_pref("toolkit.crashreporter.enabled", false);
 // Don't show WhatsNew on first run after every update
 user_pref("browser.startup.homepage_override.mstone","ignore");
 // Don't show 'know your rights' and a bunch of other nag windows at startup
 user_pref("browser.rights.3.shown", true);
+// (obsolete from Firefox 62 onwards, https://bugzil.la/1463924)
 user_pref('devtools.devedition.promo.shown', true);
+// (obsolete from Firefox 47 onwards, https://bugzil.la/1244302)
 user_pref('extensions.shownSelectionUI', true);
+// (obsolete from Firefox 60 onwards, https://bugzil.la/1355166)
 user_pref('browser.newtabpage.introShown', true);
 user_pref('browser.download.panel.shown', true);
+// (obsolete from Firefox 57 onwards, https://bugzil.la/1388422)
 user_pref('browser.customizemode.tip0.shown', true);
+// (obsolete from Firefox 57 onwards, https://bugzil.la/1385418)
 user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
 // Don't ask the user if they want to close the browser when there are multiple tabs.
 user_pref("browser.tabs.warnOnClose", false);
@@ -275,18 +278,23 @@ user_pref("dom.allow_scripts_to_close_windows", true);
 // 2147483647 seconds since Unix epoch is sometime in the year 2038, and this is the max integer accepted by Firefox.
 user_pref("app.update.lastUpdateTime.addon-background-update-timer", 2147483647);
 user_pref("app.update.lastUpdateTime.background-update-timer", 2147483647);
+// (obsolete from Firefox 75 onwards, https://bugzil.la/1618188)
 user_pref("app.update.lastUpdateTime.blocklist-background-update-timer", 2147483647);
 user_pref("app.update.lastUpdateTime.browser-cleanup-thumbnails", 2147483647);
+// (obsolete from Firefox 61 onwards, https://bugzil.la/1420908)
 user_pref("app.update.lastUpdateTime.experiments-update-timer", 2147483647);
 user_pref("app.update.lastUpdateTime.search-engine-update-timer", 2147483647);
 user_pref("app.update.lastUpdateTime.xpi-signature-verification", 2147483647);
 user_pref("extensions.getAddons.cache.lastUpdate", 2147483647);
+// (obsolete from Firefox 53 onwards, https://bugzil.la/1329543)
 user_pref("media.gmp-eme-adobe.lastUpdate", 2147483647);
 user_pref("media.gmp-gmpopenh264.lastUpdate", 2147483647);
+// (obsolete from Firefox 46 onwards, https://bugzil.la/1234522)
 user_pref("datareporting.healthreport.nextDataSubmissionTime", "2147483647000");
 // Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
 user_pref("datareporting.healthreport.uploadEnabled", false);
 user_pref("datareporting.healthreport.service.enabled", false);
+// (obsolete from Firefox 46 onwards, https://bugzil.la/1234526)
 user_pref("datareporting.healthreport.service.firstRun", false);
 user_pref("toolkit.telemetry.enabled", false);
 user_pref("toolkit.telemetry.unified", false);
@@ -303,14 +311,35 @@ user_pref("javascript.options.wasm", true);
 user_pref("javascript.options.shared_memory", true);
 user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
 // Enable OffscreenCanvas support
+// (obsolete from Firefox 131 onwards, https://bugzil.la/1914083)
 user_pref("gfx.offscreencanvas.enabled", true);
 // Enable Wasm64
+// (obsolete from Firefox 141 onwards, https://bugzil.la/1967231)
 user_pref("javascript.options.wasm_memory64", true);
 // Do not ask user consent to enable audio playback (0: Allow autoplay for all media)
 user_pref("media.autoplay.default", 0);
+// Enable JSPI support
+user_pref("javascript.options.wasm_js_promise_integration", true);
 // Disable Window Occlusion tracking so that rAF() and setTimeout() and page loads proceed even if page is hidden.
 user_pref("widget.windows.window_occlusion_tracking.enabled", false);
-''')
+'''
+
+
+def delete_emrun_safe_firefox_profile():
+  """Delete the temporary created Firefox profile (if one exists)."""
+  global temp_firefox_profile_dir
+  if temp_firefox_profile_dir is not None:
+    logv('remove_tree("' + temp_firefox_profile_dir + '")')
+    remove_tree(temp_firefox_profile_dir)
+    temp_firefox_profile_dir = None
+
+
+# Creates a temporary Firefox profile directory with the prefs in FIREFOX_PREFS.
+def create_emrun_safe_firefox_profile():
+  global temp_firefox_profile_dir
+  temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
+  with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w', encoding='utf-8') as f:
+    f.write(FIREFOX_PREFS)
     if emrun_options.private_browsing:
       f.write('''
 // Start in private browsing mode to not cache anything to disk (everything will be wiped anyway after this run)
@@ -465,7 +494,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   # Stores messages that have arrived out of order, pending for a send as soon
   # as the missing message arrives.  Kept in sorted order, first element is the
   # oldest message received.
-  http_message_queue = []
+  http_message_queue: list[tuple] = []
 
   def handle_incoming_message(self, seq_num, log, data):
     global have_received_messages

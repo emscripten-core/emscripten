@@ -127,7 +127,7 @@ module = [
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["psutil", "win32con", "win32gui", "win32process"]
+module = ["psutil", "win32api", "win32com.*", "win32con", "win32gui", "win32process"]
 ignore_missing_imports = true
 
 [tool.deadcode]
