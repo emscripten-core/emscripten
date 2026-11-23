@@ -27,6 +27,7 @@ See docs/process.md for more on how version tagging works.
   and advertised in the `GL_EXTENSIONS` string, like the other supported
   extensions. Previously they could only be enabled by calling
   `emscripten_webgl_enable_extension()` explicitly. (#28372)
+- Freetype was updated to 2.15.0 (#28378)
 
 7.0.1 - 11/21/26
 ----------------
