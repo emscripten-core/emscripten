@@ -541,6 +541,14 @@ WEBGL_APICALL void GL_APIENTRY emscripten_glPolygonModeWEBGL(GLenum face, GLenum
 WEBGL_APICALL void GL_APIENTRY glPolygonModeWEBGL(GLenum face, GLenum mode);
 #endif
 
+// 62. https://registry.khronos.org/webgl/extensions/EXT_texture_mirror_clamp_to_edge/
+#ifndef EMSCRIPTEN_GL_EXT_texture_mirror_clamp_to_edge
+#define EMSCRIPTEN_GL_EXT_texture_mirror_clamp_to_edge 1
+// To enable: call emscripten_webgl_enable_extension(ctx, "EXT_texture_mirror_clamp_to_edge");
+#define GL_MIRROR_CLAMP_TO_EDGE_EXT 0x8743
+// <no functions exposed>
+#endif
+
 /* To add a new GL extension here, follow the template
 
 // <num>. <online URL to extension documentation>
