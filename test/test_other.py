@@ -16547,6 +16547,7 @@ console.log('OK');'''
 
   def test_setting_sets_validity(self):
     from tools.settings import (
+      COMPILE_ONLY_SETTINGS,
       COMPILE_TIME_SETTINGS,
       EXPERIMENTAL_SETTINGS,
       INTERNAL_SETTINGS,
@@ -16554,6 +16555,7 @@ console.log('OK');'''
       MEM_SIZE_SETTINGS,
       settings,
     )
+    self.assertTrue(COMPILE_ONLY_SETTINGS <= COMPILE_TIME_SETTINGS)
     setting_names = (
       COMPILE_TIME_SETTINGS
       | JS_ONLY_SETTINGS
