@@ -4229,6 +4229,15 @@ Module["preRun"] = () => {
   def test_webgl_from_client_side_memory_without_default_enabled_extensions(self):
     self.btest_exit('webgl_draw_triangle.c', cflags=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-sFULL_ES2'])
 
+  @requires_graphics_hardware
+  @parameterized({'webgl1': (1,), 'webgl2': (2,)})
+  def test_webgl_client_indices(self, version):
+    if version == 2 and webgl2_disabled():
+      self.skipTest('This test requires WebGL2')
+    self.btest_exit('webgl_draw_triangle.c', cflags=[
+      '-lGL', '-sFULL_ES2', f'-DTEST_CLIENT_INDICES={version}',
+      f'-sMIN_WEBGL_VERSION={version}', f'-sMAX_WEBGL_VERSION={version}'])
+
   # Tests for WEBGL_multi_draw extension
   @requires_graphics_hardware
   @no_firefox('WEBGL_multi_draw is not supported, https://bugzil.la/2079315')

@@ -44,9 +44,21 @@ GLuint create_program(GLuint vertexShader, GLuint fragmentShader)
   return program;
 }
 
+#ifdef TEST_CLIENT_INDICES
+static void
+draw_tile(int tile, GLsizei count, GLenum type, const void* indices) {
+  glViewport(tile * 8, 0, 8, 8);
+  glDrawElements(GL_TRIANGLES, count, type, indices);
+}
+#endif
+
 int main() {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
+#ifdef TEST_CLIENT_INDICES
+  attr.majorVersion = TEST_CLIENT_INDICES;
+  attr.antialias = 0;
+#endif
 #ifdef EXPLICIT_SWAP
   attr.explicitSwapControl = 1;
 #endif
@@ -103,6 +115,56 @@ int main() {
   glClearColor(0.3f,0.3f,0.3f,1);
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLES, 0, 3);
+
+#ifdef TEST_CLIENT_INDICES
+  glClearColor(0, 0, 0, 1);
+  glClear(GL_COLOR_BUFFER_BIT);
+  // Queue draws into separate tiles. Six and eight bytes use the same buffer.
+  GLubyte bytes[] = {0, 0, 0, 0, 1, 2, 0, 0};
+  draw_tile(0, 6, GL_UNSIGNED_BYTE, bytes);
+  bytes[5] = 1;
+  draw_tile(1, 8, GL_UNSIGNED_BYTE, bytes);
+  GLushort shorts[] = {2, 1, 0};
+  draw_tile(2, 3, GL_UNSIGNED_SHORT, shorts);
+
+  // With an application buffer bound, indices is a byte offset.
+  GLuint ebo;
+  glGenBuffers(1, &ebo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+  bytes[5] = 2;
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(bytes), bytes, GL_STATIC_DRAW);
+  draw_tile(3, 3, GL_UNSIGNED_BYTE, (const void*)3);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+  draw_tile(4, 3, GL_UNSIGNED_SHORT, shorts);
+
+  // WebGL 2 treats a zero length from the Wasm heap as its entire tail.
+  EM_ASM({
+    GLctx.savedBufferData = GLctx.bufferData;
+    GLctx.emptyIndexUploads = 0;
+    GLctx.bufferData = function(target, data) {
+      if (target == this.ELEMENT_ARRAY_BUFFER) {
+        if (data !== 0 && data.byteLength !== 0) throw new Error('expected empty index data');
+        ++this.emptyIndexUploads;
+      }
+      return this.savedBufferData.apply(this, arguments);
+    };
+  });
+  draw_tile(5, 0, GL_UNSIGNED_SHORT, shorts);
+  assert(glGetError() == GL_NO_ERROR);
+  int uploads = EM_ASM_INT({ return GLctx.emptyIndexUploads; });
+  glDrawElements(GL_TRIANGLES, -1, GL_UNSIGNED_SHORT, shorts);
+  assert(glGetError() == GL_INVALID_VALUE);
+  assert(EM_ASM_INT({ return GLctx.emptyIndexUploads; }) == uploads);
+  EM_ASM({ GLctx.bufferData = GLctx.savedBufferData; });
+
+  GLubyte pixels[6 * 8][4];
+  glReadPixels(0, 3, 6 * 8, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+  const int expected[] = {1, 0, 1, 1, 1, 0};
+  for (int i = 0; i < 6; ++i) {
+    const GLubyte* pixel = pixels[i * 8 + 4];
+    assert((pixel[0] + pixel[1] + pixel[2] > 0) == expected[i]);
+  }
+#endif
 
 #ifdef EXPLICIT_SWAP
   // Mark the program for deletion, first, as a regression test for the state
