@@ -13,6 +13,8 @@ import re
 import shlex
 import shutil
 import stat
+import struct
+import zlib
 from subprocess import PIPE
 from urllib.parse import quote
 
@@ -1824,6 +1826,21 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
   if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
     settings.MAYBE_CLOSURE_COMPILER = 1
 
+  # Under ASSERTIONS, embed a CRC-32 of the final .wasm in an `em_crc` custom
+  # section and verify it in JS at instantiation time. Only enabled when
+  # emitting paired JS + .wasm outputs where JS holds the WebAssembly.Module
+  # (excluding SINGLE_FILE where the binary is inlined, and SPLIT_MODULE /
+  # WASM_ESM_INTEGRATION where the Wasm is split or wrapped outside this path).
+  if (settings.ASSERTIONS and
+      options.oformat != OFormat.WASM and
+      not settings.SIDE_MODULE and
+      not settings.STANDALONE_WASM and
+      not settings.SINGLE_FILE and
+      not settings.SPLIT_MODULE and
+      not settings.WASM_ESM_INTEGRATION and
+      (settings.WASM == 2 or not settings.WASM2JS)):
+    settings.CHECK_WASM_CRC = 1
+
   add_required_heap_symbols()
   check_settings()
 
@@ -1934,6 +1951,14 @@ def phase_post_link(in_wasm, wasm_target, target, js_syms, base_metadata=None):
 
   phase_binaryen(target, wasm_target)
 
+  if final_js and settings.CHECK_WASM_CRC and not shared.SKIP_SUBPROCS:
+    crc = zlib.crc32(utils.read_binary(wasm_target))
+    crc_hex = f'{crc:08x}'
+    logger.debug(f'CHECK_WASM_CRC: crc32 = {crc_hex}')
+    webassembly.add_custom_section(wasm_target, 'em_crc', struct.pack('<I', crc))
+    js_content = do_replace(read_file(final_js), '<<< WASM_CRC >>>', crc_hex)
+    write_file(final_js, js_content)
+
   # Compute the SHA-256 hash of the final wasm (after binaryen) and substitute
   # the <<< WASM_HASH_VALUE >>> placeholder that preamble.js left in the JS.
   if final_js and settings.CROSS_ORIGIN_STORAGE:
@@ -2027,6 +2052,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
   settings.GENERATE_SOURCE_MAP = 0
+  settings.CHECK_WASM_CRC = 0
   outfile_js = in_temp('tsgen.js')
   # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen.wasm')

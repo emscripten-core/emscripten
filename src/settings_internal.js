@@ -312,3 +312,7 @@ var PUBLIC_SETTINGS = [];
 // Bounds of the static .rodata section extracted at link time for string caching.
 var RODATA_START = 0;
 var RODATA_END = 0;
+
+// Verify at runtime that the loaded Wasm module's 'em_crc' custom section
+// matches the CRC-32 of the Wasm binary generated alongside this JS.
+var CHECK_WASM_CRC = false;

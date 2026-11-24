@@ -23,6 +23,22 @@
 #include "binaryDecode.js"
 #endif
 
+#if CHECK_WASM_CRC
+function checkWasmCrc(module) {
+#if WASM == 2
+  // In WASM=2 mode we might be running the wasm2js fallback, which does not
+  // provide WebAssembly.Module.customSections.
+  if (!WebAssembly.Module.customSections) return;
+#endif
+  var expected = '<<< WASM_CRC >>>';
+  var sections = WebAssembly.Module.customSections(module, 'em_crc');
+  var actual = sections.length == 1 && sections[0].byteLength == 4
+    ? new DataView(sections[0]).getUint32(0, true).toString(16).padStart(8, '0')
+    : 'missing';
+  assert(actual === expected, `Wasm binary CRC mismatch: expected ${expected}, got ${actual}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
+}
+#endif
+
 #if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS != 2
 // Support for growable heap + pthreads, where the buffer may change, so JS views
 // must be updated.

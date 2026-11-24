@@ -10653,6 +10653,63 @@ console.log(JSON.stringify([0x14, 0x18, 0x1c, 0x20].map((pc) => sm.lookup(pc))))
     self.assertLess(size, size_with_section)
 
   @parameterized({
+    'default': ([],),
+    'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
+    'minimal_runtime': (['-sMINIMAL_RUNTIME', '-sENVIRONMENT=node'],),
+    'closure': (['-O2', '-sASSERTIONS', '--closure=1'],),
+    'modularize': (['-sMODULARIZE', '--extern-post-js', test_file('modularize_post_js.js')],),
+    'wasm2': (['-sWASM=2', '-Wno-deprecated'],),
+  })
+  def test_wasm_crc_mismatch(self, args):
+    create_file('a.c', '''
+      #include <stdio.h>
+      int main() {
+        printf("hello a\\n");
+        return 0;
+      }
+    ''')
+    create_file('b.c', '''
+      #include <stdio.h>
+      int main() {
+        printf("hello b\\n");
+        return 0;
+      }
+    ''')
+    self.run_process([EMCC, 'a.c', '-o', 'a.js'] + args)
+    self.run_process([EMCC, 'b.c', '-o', 'b.js'] + args)
+    self.verify_custom_sec_existence('a.wasm', 'em_crc', True)
+    self.assertContained('hello a', self.run_js('a.js'))
+
+    # Swapping in a different .wasm with matching imports/exports triggers CRC mismatch.
+    shutil.copyfile('b.wasm', 'a.wasm')
+    out = self.run_js('a.js', assert_returncode=NON_ZERO)
+    self.assertContained('Wasm binary CRC mismatch:', out)
+    self.assertContained('out of sync', out)
+
+    # Stripping the em_crc custom section also fails cleanly.
+    building.strip_sections('a.wasm', 'a.wasm', ['em_crc'])
+    out = self.run_js('a.js', assert_returncode=NON_ZERO)
+    self.assertContained('Wasm binary CRC mismatch:', out)
+    self.assertContained('got missing', out)
+
+  def test_wasm_crc_disabled_and_manual_instantiate(self):
+    # Without ASSERTIONS (e.g. -O2), no em_crc section or runtime check is emitted.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-o', 'rel.js'])
+    self.verify_custom_sec_existence('rel.wasm', 'em_crc', False)
+    self.assertNotContained('checkWasmCrc', read_file('rel.js'))
+
+    # Custom Module.instantiateWasm callbacks that only pass `instance` (without
+    # `module`) should still work under ASSERTIONS=1.
+    create_file('pre.js', '''
+      Module['instantiateWasm'] = async (imports, successCallback) => {
+        wasmBinaryFile ??= findWasmBinary();
+        const { instance } = await instantiateArrayBuffer(wasmBinaryFile, imports);
+        successCallback(instance);
+      };
+    ''')
+    self.do_runf('hello_world.c', 'Hello, world!\n', cflags=['--pre-js=pre.js'])
+
+  @parameterized({
     '':       ([],),
     # in some modes we run wasm-emscripten-finalize, which normally strips the
     # features section for us, so add testing for those
