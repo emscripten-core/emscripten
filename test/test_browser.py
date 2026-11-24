@@ -5197,11 +5197,14 @@ Module["preRun"] = () => {
     self.btest('wasm_worker/hardware_concurrency_is_lock_free.c', expected='0', cflags=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_u32() and emscripten_atomic_notify() functions.
+  # Chrome 110-114 miscompile the wasm atomic.wait instructions in the Liftoff baseline compiler.
+  @requires_chrome_version(115, 'https://crbug.com/1432453')
   @also_with_minimal_runtime
   def test_wasm_worker_wait32_notify(self):
     self.btest('atomic/test_wait32_notify.c', expected='3', cflags=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_u64() and emscripten_atomic_notify() functions.
+  @requires_chrome_version(115, 'https://crbug.com/1432453')
   @also_with_minimal_runtime
   def test_wasm_worker_wait64_notify(self):
     self.btest('atomic/test_wait64_notify.c', expected='3', cflags=['-sWASM_WORKERS'])
