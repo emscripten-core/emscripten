@@ -4210,8 +4210,8 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
 // - [X] ones have X in the C name but not in the JS name
 var glPassthroughFuncs = [
   [0, 'finish flush'],
-  [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
-  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
+  [1, 'clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
+  [2, 'blendFunc blendEquationSeparate depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
   [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
   [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
   [5, 'vertexAttrib4f'],

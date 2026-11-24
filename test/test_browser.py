@@ -2253,6 +2253,10 @@ void *getBindBuffer() {
   def test_gl_error(self):
     self.btest_exit('gl_error.c', cflags=['-sLEGACY_GL_EMULATION', '-lGL'])
 
+  @requires_graphics_hardware
+  def test_gl_clear_depth_range(self):
+    self.btest_exit('gl_clear_depth_range.c', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+
   @parameterized({
     '': ([],),
     'strict': (['-lopenal', '-sSTRICT'],),

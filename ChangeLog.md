@@ -30,6 +30,11 @@ See docs/process.md for more on how version tagging works.
 - `-jsDFOO=0` and `-jsDFOO=false` now pass `FOO` to JS library code as `false`
   rather than as the truthy strings `'0'` and `'false'`, so that `#if FOO` is
   false. Other values are still passed as strings. (#28364)
+- The desktop OpenGL functions `glClearDepth()` and `glDepthRange()` were
+  misplaced and linked as part of WebGL and GLES2/3 targeting builds. They
+  are now moved correctly into `-sLEGACY_GL_EMULATION` mode. In GLES and WebGL,
+  use the correct API functions `glClearDepthf()` and `glDepthRangef()` instead.
+  (#28379)
 
 7.0.1 - 11/21/26
 ----------------
