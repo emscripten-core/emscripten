@@ -9,8 +9,8 @@ import shlex
 import subprocess
 from subprocess import PIPE
 
-from browser_common import BrowserCore, get_browser, has_browser
-from common import EMCC, EMRUN, RunnerCore, path_from_root, read_file, test_file
+from browser_common import DEFAULT_BROWSER_DATA_DIR, BrowserCore, get_browser, has_browser
+from common import EMCC, EMRUN, RunnerCore, force_delete_dir, path_from_root, read_file, test_file
 from decorators import also_with_pthreads, parameterized
 
 
@@ -96,16 +96,23 @@ class emrun(RunnerCore):
       browser_cmd = shlex.split(get_browser())
       browser_path = browser_cmd[0]
       args_base += ['--browser', browser_path]
-      if len(browser_cmd) > 1:
-        browser_args = browser_cmd[1:]
-        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
-          # emrun uses its own -profile, strip it out
-          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
-          parser.add_argument('-profile')
-          parser.add_argument('--profile')
-          browser_args = parser.parse_known_args(browser_args)[1]
-        if browser_args:
-          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+      browser_args = browser_cmd[1:]
+      if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
+        # emrun uses its own -profile, strip it out
+        parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
+        parser.add_argument('-profile')
+        parser.add_argument('--profile')
+        browser_args = parser.parse_known_args(browser_args)[1]
+      elif 'chrome' in browser_path.lower():
+        # Run Chrome in a new profile directory of its own. Otherwise Chrome
+        # uses the default profile of the user, which all the Chrome versions
+        # on the system share, and an older Chrome crashes at startup if a
+        # newer Chrome has used that profile.
+        profile_dir = f'{DEFAULT_BROWSER_DATA_DIR}-emrun-{port}'
+        force_delete_dir(profile_dir)
+        browser_args.append(f'--user-data-dir={profile_dir}')
+      if browser_args:
+        args_base += ['--browser_args', ' ' + shlex.join(browser_args)]
 
     args = args_base + args + [self.in_dir('test_emrun.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
     print(shlex.join(args))
