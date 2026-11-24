@@ -29,6 +29,29 @@ LINUX = sys.platform.startswith('linux')
 logger = logging.getLogger('utils')
 
 
+def set_process_title():
+  """Remove the python prefix of the process title.
+
+  This makes the process listing easier to read as it just shows
+  `emcc ..` rather than e.g. `python3 -E emcc.py ...`.
+
+  This code depends the `setproctitle` PiPi module which might
+  not be installed.  If the module cannot be loaded this function
+  simply does nothing.
+  """
+  try:
+    import setproctitle
+  except ImportError:
+    return
+  t = setproctitle.getproctitle()
+  t = shlex.split(t)
+  while t and not t[0].endswith('.py'):
+    t.pop(0)
+  if t:
+    t[0] = os.path.splitext(t[0])[0]
+  setproctitle.setproctitle(shlex.join(t))
+
+
 def run_process(cmd, check=True, input=None, *args, **kw):
   """Run a subprocess returning the exit code.
 
