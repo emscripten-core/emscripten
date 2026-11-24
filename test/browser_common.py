@@ -26,7 +26,6 @@ from common import (
   TEST_ROOT,
   RunnerCore,
   compiler_for,
-  copy_asset,
   create_file,
   errlog,
   force_delete_dir,
@@ -36,6 +35,7 @@ from common import (
   test_file,
 )
 
+import emrun
 from tools import feature_matrix, utils
 from tools.feature_matrix import OLDEST_SUPPORTED_FIREFOX, UNSUPPORTED
 from tools.utils import LINUX, MACOS, WINDOWS, exit_with_error, memoize, path_from_root, read_binary
@@ -164,7 +164,7 @@ def find_browser_test_file(filename):
 def get_safari_version():
   if not is_safari():
     return UNSUPPORTED
-  plist_path = os.path.join(EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
+  plist_path = os.path.join(shlex.split(EMTEST_BROWSER)[0], 'Contents', 'version.plist')
   version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
   # Split into parts (major.minor.patch)
   parts = (version_str.split('.') + ['0', '0', '0'])[:3]
@@ -239,7 +239,7 @@ def browser_should_skip_feature(skip_env_var, feature):
   # Otherwise EMTEST_AUTOSKIP=1 or EMTEST_AUTOSKIP is not set: check whether
   # the current browser supports the test or not.
   min_required = feature_matrix.min_browser_versions[feature]
-  not_supported = get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
+  not_supported = get_chrome_version() < min_required['chrome'] or get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
 
   # Current browser does not support the test, and EMTEST_AUTOSKIP is not set?
   # Then error out to have end user decide what to do in this situation.
@@ -254,10 +254,17 @@ def browser_should_skip_feature(skip_env_var, feature):
 class ChromeConfig:
   data_dir_flag = '--user-data-dir='
   default_flags = (
-    # --no-sandbox because we are running as root and chrome requires
+    '--no-first-run -start-maximized --enable-features=JavaScriptSourcePhaseImports',
+    # --no-sandbox because CircleCI is running as root and chrome requires
     # this flag for now: https://crbug.com/638180
-    '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-features=JavaScriptSourcePhaseImports',
+    # In CircleCI, render WebGL with the SwiftShader
+    # software renderer, since the runners might not have a GPU.
+    *(('--no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader',) if utils.get_env_bool('CIRCLECI') else ()),
     '--enable-experimental-webassembly-features',
+    # Expose the WebGL extensions that are still in draft status, e.g.
+    # WEBGL_draw_instanced_base_vertex_base_instance, so that the tests of them
+    # are run.
+    '--enable-webgl-draft-extensions',
     '--enable-blink-features=AudioWorkletSharedPort',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
@@ -268,8 +275,35 @@ class ChromeConfig:
     '--disable-background-networking',
     # Disable native password pop-ups
     '--password-store=basic',
+    # On macOS, do not read the key for encrypting cookies from the keychain of
+    # the user. That would pop up an interactive macOS prompt that asks for
+    # permission to access the keychain, and the browser hangs without loading
+    # any pages until the prompt is answered.
+    '--use-mock-keychain',
     # Send console messages to browser stderr
     '--enable-logging=stderr',
+    # Disabled Chrome features.
+    # - MediaRouter, DialMediaRouteProvider: Do not search the local network for
+    #   Cast devices. On macOS that search can pop up an interactive OS prompt
+    #   "Allow Google Chrome for Testing to find devices on local networks?".
+    # - CalculateNativeWinOcclusion: On Windows, do not track at all whether a
+    #   window is covered by the windows of other applications. Only needed
+    #   for non-headless runs, like the flags in the group below.
+    '--disable-features=MediaRouter,DialMediaRouteProvider,CalculateNativeWinOcclusion',
+
+    # The flags below are only needed for non-headless runs. In headless mode
+    # (EMTEST_HEADLESS=1) the browser has no windows on the desktop that other
+    # windows could cover.
+    #
+    # Keep running timers and requestAnimationFrame() at full rate in windows
+    # that are covered by another window. When tests run in parallel, each
+    # browser instance has its own window, and all but the topmost one of them
+    # are occluded.
+    '--disable-backgrounding-occluded-windows',
+    # Likewise, do not throttle timers in pages that are in the background, and
+    # do not lower the priority of their renderer processes.
+    '--disable-background-timer-throttling',
+    '--disable-renderer-backgrounding',
   )
   headless_flags = '--headless=new --window-size=1024,768'
 
@@ -290,7 +324,7 @@ class FirefoxConfig:
 
   @staticmethod
   def configure(data_dir):
-    copy_asset('firefox_user.js', os.path.join(data_dir, 'user.js'))
+    utils.write_file(os.path.join(data_dir, 'user.js'), emrun.FIREFOX_PREFS)
 
   @staticmethod
   def open_url_args(url):
@@ -384,6 +418,11 @@ def configure_test_browser():
     # and spaces are not escaped. But make sure to also support args, e.g.
     # set EMTEST_BROWSER="C:\Users\clb\AppData\Local\Google\Chrome SxS\Application\chrome.exe" --enable-unsafe-webgpu
     EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "\\\\") + '"'
+  elif not WINDOWS and os.path.exists(EMTEST_BROWSER):
+    # EMTEST_BROWSER may be a bare path to a browser, with no command line args, e.g.
+    # EMTEST_BROWSER=/path/to/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+    # so quote it here.
+    EMTEST_BROWSER = shlex.quote(EMTEST_BROWSER)
 
   if EMTEST_BROWSER_AUTO_CONFIG:
     config = get_browser_config()
@@ -849,7 +888,7 @@ class BrowserCore(RunnerCore):
   def check_browser_feature(self, env_var, feature, message):
     skip = browser_should_skip_feature(env_var, feature)
     if skip == 'error':
-      self.fail(message)
+      self.fail(f'{message} (run with {env_var}=1 or EMTEST_AUTOSKIP=1 to skip)')
     elif skip:
       self.skipTest(message)
 

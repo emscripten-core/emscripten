@@ -18,8 +18,7 @@ e || (g = new WebAssembly.Memory({
 
 var k = [], l = a => {
     k.push(a);
-}, n = a => {
-    a = a.data;
+}, n = ({data: a}) => {
     var b = a._wsc;
     b && m.get(b)(...a.x);
 }, q = () => {

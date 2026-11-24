@@ -8,16 +8,13 @@
 
 int main(int argc, char **argv) {
   int expected = atoi(argv[1]);
-  int proc = !!SDL_GL_GetProcAddress("glBegin");
-  printf("proc exists: %d, expected: %d\n", proc, expected);
-  if (proc && !expected) {
-    printf("should not exist\n");
-    return 1;
-  } else if (!proc && expected) {
-    printf("should have existed\n");
-    return 1;
+  // Functions that exist only in desktop OpenGL, and not in OpenGL ES or WebGL.
+  const char *names[] = { "glBegin", "glClearDepth", "glDepthRange" };
+  for (int i = 0; i < 3; ++i) {
+    int proc = !!SDL_GL_GetProcAddress(names[i]);
+    printf("%s exists: %d, expected: %d\n", names[i], proc, expected);
+    assert(proc == expected);
   }
-  assert(proc == expected);
   printf("done\n");
   return 0;
 }

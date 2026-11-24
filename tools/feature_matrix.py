@@ -40,6 +40,7 @@ class Feature(IntEnum):
   WEBGPU = auto()
   GROWABLE_ARRAYBUFFERS = auto()
   EXTENDED_CONST = auto()
+  JSPI = auto()
 
 
 disable_override_features: set[Feature] = set()
@@ -124,6 +125,15 @@ min_browser_versions = {
     'safari': 170400,
     'node': 210000,
   },
+  # JavaScript Promise Integration (-sJSPI).
+  # https://caniuse.com/wf-wasm-jspi
+  # Node 24 supported JSPI behind a flag. Node 25 shipped JSPI without the flag.
+  Feature.JSPI: {
+    'chrome': 137,
+    'firefox': 153,
+    'safari': 270000,
+    'node': 240000,
+  },
 
 # The following features we now support unconditionally, but keeping them around
 # in code comments for future reference
@@ -175,6 +185,16 @@ min_browser_versions = {
 #    'firefox': 79,
 #    'safari': 140000,
 #    'node': 150000,
+#  },
+
+#  # WebAssembly memories that are larger than 2GB, up to the 4GB maximum of
+#  # wasm32 (MAXIMUM_MEMORY greater than 2GB).
+#  # See also https://crbug.com/378779897.
+#  Feature.MEMORY4GB: {
+#    'chrome': 83, # https://v8.dev/blog/4gb-wasm-memory
+#    'firefox': 89, # https://bugzil.la/1703505
+#    'safari': 150200, # https://webkit.org/blog/12140/new-webkit-features-in-safari-15-2/
+#    'node': 140500,
 #  },
 
 }
@@ -254,6 +274,8 @@ def apply_min_browser_versions():
   """
   if settings.MEMORY64 == 1:
     enable_feature(Feature.MEMORY64, 'MEMORY64')
+  if settings.ASYNCIFY == 2:
+    enable_feature(Feature.JSPI, 'JSPI')
   if settings.EXPORT_ES6 and settings.PTHREADS:
     enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -pthread')
   if settings.EXPORT_ES6 and settings.WASM_WORKERS:

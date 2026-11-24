@@ -617,6 +617,10 @@ See `test_add_function in test/test_core.py`_ for an example.
 You should build with ``-sALLOW_TABLE_GROWTH`` to allow new functions to be
 added to the table. Otherwise by default the table has a fixed size.
 
+``addFunction`` is not supported in multi-threaded programs. Each thread has
+its own table, so the function pointer is only valid in the thread that called
+``addFunction``.
+
 When using ``addFunction`` with a JavaScript function, you need to provide
 an additional second argument, a Wasm function signature string, explained
 below. See `test/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/test/interop/test_add_function_post.js>`_ for an example.

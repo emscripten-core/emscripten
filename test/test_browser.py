@@ -23,7 +23,6 @@ from urllib.request import urlopen
 
 import common
 from browser_common import (
-  CHROMIUM_BASED_BROWSERS,
   EMTEST_COS_EXTENSION_PATH,
   BrowserCore,
   HttpServerThread,
@@ -39,6 +38,7 @@ from browser_common import (
   is_safari,
 )
 from common import (
+  EMBUILDER,
   EMCC,
   FILE_PACKAGER,
   WEBIDL_BINDER,
@@ -74,7 +74,7 @@ from decorators import (
 from tools import building, ports, shared, utils
 from tools.feature_matrix import Feature
 from tools.link import binary_encode
-from tools.utils import WINDOWS, delete_dir, write_binary, write_file
+from tools.utils import MACOS, WINDOWS, delete_dir, write_binary, write_file
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
@@ -245,8 +245,7 @@ class browser(BrowserCore):
       print()
 
   def require_jspi(self):
-    if not is_chrome() and not is_firefox():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) and firefox support JSPI today.')
+    self.check_browser_feature('EMTEST_LACKS_JSPI', Feature.JSPI, 'This test requires a browser that supports JSPI')
     super().require_jspi()
 
   def post_manual_reftest(self):
@@ -515,7 +514,7 @@ window.close = () => {
 
   # Clear all IndexedDB databases. This gives us a fresh state for tests that
   # check caching.
-  def clear_indexed_db(self):
+  def clear_indexed_db(self, db_name='EM_PRELOAD_CACHE'):
     self.add_browser_reporting()
     create_file('clear_indexed_db.html', '''
       <script src="browser_reporting.js"></script>
@@ -533,14 +532,12 @@ window.close = () => {
           });
         } else {
           // Testing an old browser that does not support indexedDB.databases():
-          // Delete the fixed database EM_PRELOAD_CACHE (this is hardcoded in
-          // file packager)
-          indexedDB.deleteDatabase('EM_PRELOAD_CACHE').onsuccess = () => {
+          indexedDB.deleteDatabase('%s').onsuccess = () => {
             reportResultToServer("clear");
           };
         }
       </script>
-    ''')
+    ''' % db_name)
     self.run_browser('clear_indexed_db.html', '/report_result?clear')
 
   @parameterized({
@@ -609,6 +606,8 @@ window.close = () => {
     self.run_browser('page.html', '/report_result?exit:0')
 
   def test_preload_caching_indexeddb_name(self):
+    # Start testing from an empty cache.
+    self.clear_indexed_db('testdb')
     self.set_setting('EXIT_RUNTIME')
     create_file('somefile.txt', 'load me right before running the code please')
 
@@ -1226,6 +1225,16 @@ window.close = () => {
   def test_webgl_uniform_before_get_location(self, args):
     self.btest_exit('webgl_uniform_before_get_location.c', cflags=args + ['-sGL_EXPLICIT_UNIFORM_LOCATION', '-sMIN_WEBGL_VERSION=2'])
 
+  # Tests that glUniform*() with an invalid location raises GL_INVALID_OPERATION (#16367)
+  @parameterized({
+    '': ([],),
+    'assertions': (['-sGL_ASSERTIONS'],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+  })
+  @requires_graphics_hardware
+  def test_webgl_uniform_invalid_location(self, args):
+    self.btest_exit('webgl_uniform_invalid_location.c', cflags=args)
+
   @parameterized({
     '': ([],),
     'assertions': (['-sGL_ASSERTIONS'],),
@@ -1774,6 +1783,22 @@ window.close = () => {
   def test_clientside_vertex_arrays_es3(self):
     self.reftest('clientside_vertex_arrays_es3.c', 'gl_triangle.png', cflags=['-sFULL_ES3', '-sUSE_GLFW=3', '-lglfw', '-lGLESv2'])
 
+  # Tests that passing an out-of-range vertex attribute index, e.g. the -1 that
+  # glGetAttribLocation() returns for an inactive attribute, raises
+  # GL_INVALID_VALUE instead of throwing an exception (#14589)
+  @parameterized({
+    '': ([],),
+    'full_es2': (['-sFULL_ES2'],),
+    'full_es2_assertions': (['-sFULL_ES2', '-sGL_ASSERTIONS'],),
+    'full_es3': (['-sFULL_ES3', '-DTEST_WEBGL2'],),
+    'full_es3_assertions': (['-sFULL_ES3', '-DTEST_WEBGL2', '-sGL_ASSERTIONS'],),
+  })
+  @requires_graphics_hardware
+  def test_webgl_vertex_attrib_invalid_index(self, args):
+    if '-DTEST_WEBGL2' in args and webgl2_disabled():
+      self.skipTest('This test requires WebGL2 to be available')
+    self.btest_exit('webgl_vertex_attrib_invalid_index.c', cflags=['-lGL'] + args)
+
   def test_emscripten_api(self):
     self.btest_exit('emscripten_api_browser.c', cflags=['-lSDL'])
 
@@ -2157,7 +2182,8 @@ void *getBindBuffer() {
     self.reftest('test_sdl_canvas_palette_2.c', 'test_sdl_canvas_palette_b.png', cflags=['--pre-js', 'pre.js', '--pre-js', 'args-b.js', '-lSDL', '-lGL'])
 
   def test_sdl_ttf_render_text_solid(self):
-    self.reftest('test_sdl_ttf_render_text_solid.c', cflags=['-O2', '-lSDL', '-lGL'])
+    # Firefox on Linux differs a tiny bit from other browsers + OSes: https://bugzil.la/2068976
+    self.reftest('test_sdl_ttf_render_text_solid.c', cflags=['-O2', '-lSDL', '-lGL'], reference_slack=1)
 
   def test_sdl3_ttf_render_text_solid(self):
     copy_asset('freetype/LiberationSansBold.ttf')
@@ -2226,6 +2252,10 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   def test_gl_error(self):
     self.btest_exit('gl_error.c', cflags=['-sLEGACY_GL_EMULATION', '-lGL'])
+
+  @requires_graphics_hardware
+  def test_gl_clear_depth_range(self):
+    self.btest_exit('gl_clear_depth_range.c', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @parameterized({
     '': ([],),
@@ -2668,6 +2698,12 @@ Module["preRun"] = () => {
     # (the testcase doesn't even use threads, but is compiled with thread support).
     self.btest_exit('webgl2.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL', '-pthread'])
 
+  # Tests that the WebGL extensions that only add enums, renderable formats or
+  # GLSL features, but no functions, are advertised and enabled automatically.
+  @requires_webgl2
+  def test_webgl2_extensions_without_functions(self):
+    self.btest_exit('webgl2_extensions_without_functions.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
+
   @requires_graphics_hardware
   def test_webgl2_objects(self):
     self.btest_exit('webgl2_objects.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
@@ -2685,7 +2721,10 @@ Module["preRun"] = () => {
     cflags = ['-sMAX_WEBGL_VERSION=2', '-lGL'] + args
     # Check the desynchronized round-trip only on a normal canvas; OffscreenCanvas
     # doesn't honor it. Chrome supports it, other browsers report it back as false.
-    if not args:
+    # The check is skipped in Chrome on macOS, where Chrome does not support
+    # desynchronized yet and always reports it back as false for a WebGL context
+    # (https://crbug.com/945835).
+    if not args and not (is_chrome() and MACOS):
       cflags.append('-DEXPECT_DESYNCHRONIZED=' + ('1' if is_chrome() else '0'))
     self.btest_exit('html5_webgl.c', cflags=cflags)
 
@@ -3169,6 +3208,11 @@ Module["preRun"] = () => {
   })
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
+    if '-lSDL2_mixer' in flags:
+      # The `-l` flags select the ports only at link time, so the headers of
+      # the ports are only found when compiling if the ports are already
+      # installed in the cache.
+      self.run_process([EMBUILDER, 'build', 'sdl2_mixer'])
     copy_asset('sounds/the_entertainer.wav', 'sound.wav')
     self.btest_exit('test_sdl2_mixer_wav.c', cflags=['--preload-file', 'sound.wav'] + flags)
 
@@ -3236,8 +3280,8 @@ Module["preRun"] = () => {
     'jspi': (['-sJSPI'],),
   })
   def test_async(self, opt, args):
-    if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+    if is_jspi(args):
+      self.require_jspi()
 
     self.btest_exit('test_async.c', cflags=[opt, '-g2'] + args)
 
@@ -3309,6 +3353,7 @@ Module["preRun"] = () => {
     self.btest('test_async_returnvalue.c', '0', cflags=['-sASSERTIONS', '-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/test_async_returnvalue.js')] + args)
 
   @no_safari('TODO: Never reports a result, so times out') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
+  @requires_chrome_version(121, 'older versions do not fire the unhandledrejection event for a wasm trap (https://chromium-review.googlesource.com/c/v8/v8/+/5013671)')
   def test_async_bad_list(self):
     self.btest('test_async_bad_list.c', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
 
@@ -3362,6 +3407,7 @@ Module["preRun"] = () => {
 
   @no_firefox('source phase imports not implemented yet in firefox')
   @no_safari('TODO: croaks on line "import source wasmModule from \'./out.wasm\';"') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
+  @requires_chrome_version(138, 'the JavaScriptSourcePhaseImports feature flag does not exist in older versions')
   def test_source_phase_imports(self):
     self.compile_btest('browser_test_hello_world.c', ['-sEXPORT_ES6', '-sSOURCE_PHASE_IMPORTS', '-Wno-experimental', '-o', 'out.mjs'])
     create_file('a.html', '''
@@ -3994,6 +4040,7 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
   @requires_wasm2js
+  @requires_chrome_version(115, 'older versions do not allow synchronous compilation of wasm modules larger than 4KB on the main thread (https://crbug.com/1378329)')
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=['-sWASM_ASYNC_COMPILATION=0', '-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
@@ -4122,6 +4169,8 @@ Module["preRun"] = () => {
     'off': (['-sWASM_ASYNC_COMPILATION=0'], 0),
   })
   def test_async_compile(self, opts, returncode):
+    if '-sWASM_ASYNC_COMPILATION=0' in opts and is_chrome() and get_chrome_version() < 115:
+      self.skipTest('Chrome older than 115 does not allow synchronous compilation of wasm modules larger than 4KB on the main thread (https://crbug.com/1378329)')
     # notice when we use async compilation
     create_file('pre.js', '''
       // note if we do async compilation
@@ -4218,9 +4267,8 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_draw_triangle.c', cflags=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1', '-DDRAW_FROM_CLIENT_MEMORY=1', '-sFULL_ES2'])
 
   # Tests for WEBGL_multi_draw extension
-  # For testing WebGL draft extensions like this, if using chrome as the browser,
-  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
+  @no_firefox('WEBGL_multi_draw is not supported, https://bugzil.la/2079315')
   @requires_chrome_version(135, 'https://crbug.com/395670641')
   @parameterized({
     'arrays': (['-DMULTI_DRAW_ARRAYS'],),
@@ -4233,11 +4281,11 @@ Module["preRun"] = () => {
                  cflags=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP'] + args)
 
   # Tests for base_vertex/base_instance extension
-  # For testing WebGL draft extensions like this, if using chrome as the browser,
-  # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   # If testing on Mac, you also need --use-cmd-decoder=passthrough to get this extension.
   # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
   @requires_webgl2
+  @no_firefox('WEBGL_draw_instanced_base_vertex_base_instance is not supported, https://bugzil.la/1677238')
+  @no_safari('WEBGL_draw_instanced_base_vertex_base_instance is only available with the WebGL Draft Extensions feature flag, which is off by default, https://webkit.org/b/219140')
   @parameterized({
     '': (0,),
     'multidraw': (1,),
@@ -4262,6 +4310,7 @@ Module["preRun"] = () => {
   def test_webgl_sample_query(self):
     self.btest_exit('webgl_sample_query.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
+  @skip_if_simple('chrome', lambda _: MACOS and get_chrome_version() < 117, 'timer queries always report zero on macOS before Chrome 117 (https://crbug.com/1322521)')
   @requires_graphics_hardware
   @parameterized({
     # EXT query entrypoints on WebGL 1.0
@@ -4924,8 +4973,8 @@ Module["preRun"] = () => {
     'jspi': (['-sJSPI'],),
   })
   def test_embind(self, args):
-    if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+    if is_jspi(args):
+      self.require_jspi()
     if is_jspi(args) and self.is_wasm64():
       self.skipTest('_emval_await fails')
 
@@ -5827,6 +5876,22 @@ class browser64_2gb(browser):
 class browser_2gb(browser):
   def setUp(self):
     super().setUp()
+    # Safari fails to instantiate a module that has an active data segment at
+    # an address >= 2GB, which with GLOBAL_BASE=2gb is every module that does
+    # not use shared memory. Fails in Safari 27.2 (22625.2.8.11.9).
+    if get_safari_version() < 280000:
+      message = 'Safari fails to initialize data segments at addresses >= 2GB: https://webkit.org/b/314444'
+      if utils.get_env_bool('EMTEST_AUTOSKIP'):
+        self.skipTest(message)
+      self.fail(f'{message}. Use EMTEST_AUTOSKIP=1 to skip')
+    # Chrome before 132 miscompiles the atomic.rmw.and, atomic.rmw.or and
+    # atomic.rmw.xor instructions when they access a memory address >= 2GB.
+    # For simplicity, skip the whole suite in Chrome < 132.
+    if get_chrome_version() < 132:
+      message = 'Chrome < 132 miscompiles atomic operations at addresses >= 2GB: https://crbug.com/378779897'
+      if utils.get_env_bool('EMTEST_AUTOSKIP'):
+        self.skipTest(message)
+      self.fail(f'{message}. Use EMTEST_AUTOSKIP=1 to skip')
     self.set_setting('INITIAL_MEMORY', '2200mb')
     self.set_setting('GLOBAL_BASE', '2gb')
     # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE

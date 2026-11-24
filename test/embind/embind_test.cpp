@@ -1428,6 +1428,37 @@ struct StructWithOptionalProperty {
 };
 void embind_test_optional_property(const StructWithOptionalProperty &arg) {
 }
+
+EMSCRIPTEN_DECLARE_VAL_TYPE(CustomValType);
+
+static std::optional<val> reentrant_holder1;
+static std::optional<val> reentrant_holder2;
+
+void emval_test_clear_reentrant_holders() {
+  reentrant_holder1.reset();
+  reentrant_holder2.reset();
+}
+
+int emval_test_reentrant_val_destroy(val obj1, val obj2) {
+  reentrant_holder1.emplace(std::move(obj1));
+  reentrant_holder2.emplace(std::move(obj2));
+  return reentrant_holder1->call<int>("combine", *reentrant_holder1, *reentrant_holder2);
+}
+
+int emval_test_borrowed_val_args(val receiver) {
+  val lval("lval");
+  CustomValType custom_val(val("custom"));
+  // Borrowed lvalue/rvalue val, custom val subtype, and owning std::optional<val>
+  return receiver.call<int>("combine", lval, val("rval"), custom_val, std::make_optional(val("opt")));
+}
+
+void emval_test_deleted_val_arg(val callback, val obj) {
+  reentrant_holder1.emplace(std::move(callback));
+  reentrant_holder2.emplace(std::move(obj));
+  // Decoding arg 0 throws BindingError before arg 1 is read; borrowed arg 1
+  // must not leak once holders are cleared.
+  (*reentrant_holder1)(val::take_ownership(nullptr), *reentrant_holder2);
+}
 #endif
 
 val embind_test_getglobal() {
@@ -1643,10 +1674,33 @@ void callWithMemoryView(val v) {
   v(typed_memory_view(getElementCount(f), f));
   static short s[] = {1000, 100, 10, 1};
   v(typed_memory_view(getElementCount(s), s));
+  static uint8_t clamped[] = {0, 128, 255};
+  v(clamped_memory_view(getElementCount(clamped), clamped));
+}
+
+static uint8_t clamped_view_data[4];
+
+val getClampedMemoryView() {
+  clamped_view_data[0] = 10;
+  clamped_view_data[1] = 20;
+  clamped_view_data[2] = 30;
+  clamped_view_data[3] = 40;
+  return val(clamped_memory_view(getElementCount(clamped_view_data), clamped_view_data));
+}
+
+val getEmptyClampedMemoryView() {
+  return val(clamped_memory_view(0, nullptr));
+}
+
+uint8_t getClampedMemoryViewElement(size_t index) {
+  return clamped_view_data[index];
 }
 
 EMSCRIPTEN_BINDINGS(memory_view_tests) {
   function("callWithMemoryView", &callWithMemoryView);
+  function("getClampedMemoryView", &getClampedMemoryView);
+  function("getEmptyClampedMemoryView", &getEmptyClampedMemoryView);
+  function("getClampedMemoryViewElement", &getClampedMemoryViewElement);
 }
 
 class HasExternalConstructor {
@@ -2472,6 +2526,8 @@ EMSCRIPTEN_BINDINGS(tests) {
   register_optional<SmallClass>();
   register_optional<SmallClass*>();
   register_optional<std::string>();
+  register_optional<val>();
+  register_type<CustomValType>("any");
   function("embind_test_return_optional_int", &embind_test_return_optional_int);
   function("embind_test_return_optional_float", &embind_test_return_optional_float);
   function("embind_test_return_optional_small_class", &embind_test_return_optional_small_class);
@@ -2487,6 +2543,10 @@ EMSCRIPTEN_BINDINGS(tests) {
       .field("y", &StructWithOptionalProperty::y)
   ;
   function("embind_test_optional_property", &embind_test_optional_property);
+  function("emval_test_clear_reentrant_holders", &emval_test_clear_reentrant_holders);
+  function("emval_test_reentrant_val_destroy", &emval_test_reentrant_val_destroy);
+  function("emval_test_borrowed_val_args", &emval_test_borrowed_val_args);
+  function("emval_test_deleted_val_arg", &emval_test_deleted_val_arg);
 #endif
 
   register_map<std::string, int>("StringIntMap");
@@ -3089,6 +3149,12 @@ val construct_with_memory_view(val factory) {
     std::string("before"), typed_memory_view(10, data), std::string("after"));
 }
 
+val construct_with_clamped_memory_view(val factory) {
+  static const uint8_t data[4] = {10, 20, 30, 40};
+  clamped_memory_view mv(4, data);
+  return factory.new_(std::string("before"), mv, std::string("after"));
+}
+
 val construct_with_ints_and_float(val factory) {
   return factory.new_(65537, 4.0f, 65538);
 }
@@ -3104,6 +3170,7 @@ val construct_with_arguments_before_and_after_memory_growth() {
 EMSCRIPTEN_BINDINGS(val_new_) {
   function("construct_with_6_arguments", &construct_with_6);
   function("construct_with_memory_view", &construct_with_memory_view);
+  function("construct_with_clamped_memory_view", &construct_with_clamped_memory_view);
   function("construct_with_ints_and_float", &construct_with_ints_and_float);
   function("construct_with_arguments_before_and_after_memory_growth",
            &construct_with_arguments_before_and_after_memory_growth);

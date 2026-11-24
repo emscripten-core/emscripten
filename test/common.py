@@ -556,6 +556,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if 'EMTEST_SKIP_WASM64' in os.environ:
       self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
     if self.is_browser_test():
+      self.check_browser_feature('EMTEST_SKIP_WASM64', Feature.MEMORY64, 'test requires a browser that supports wasm64')
       return
 
     if self.try_require_node_version(24):
@@ -661,8 +662,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     # Support for JSPI came earlier than 22, but the new API changes require v24
     if self.try_require_node_version(24):
-      # Node v26 no longer has the experimental cmdline parameter.
-      if not self.try_require_node_version(26):
+      # Node v25 no longer has the experimental cmdline parameter.
+      if not self.try_require_node_version(25):
         self.node_args += ['--experimental-wasm-stack-switching']
       return
 

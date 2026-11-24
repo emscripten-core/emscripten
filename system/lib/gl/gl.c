@@ -213,6 +213,8 @@ for line in open('a').readlines():
   //RETURN_GL_EMU_FN(glGetTexLevelParameterfv);
   RETURN_GL_EMU_FN(glGetTexLevelParameteriv);
   RETURN_GL_EMU_FN(glShadeModel);
+  RETURN_GL_EMU_FN(glClearDepth);
+  RETURN_GL_EMU_FN(glDepthRange);
 
   // GL emulation library "sloppy" lookup:
   // WebGL 1 extensions are offered without their EXT suffixes.

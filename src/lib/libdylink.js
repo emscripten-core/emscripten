@@ -155,6 +155,12 @@ var LibraryDylink = {
 
   $GOT: {},
 
+  // Names of GOT entries that were created without a value (UNDEFINED_ADDR),
+  // in creation order.
+  // This avoid having to iterate the entire GOT during reportUndefinedSymbols.
+  $unresolvedSymbols__internal: true,
+  $unresolvedSymbols: 'new Set()',
+
   // The exports of the main module's wasm instance.
   // The address of a main module symbol is only stored when it is first needed.
   $mainModuleExports__internal: true,
@@ -178,7 +184,7 @@ var LibraryDylink = {
   $exportToAddress__internal: true,
   $exportToAddress: (value) => {
     if (typeof value === 'function') {
-      return {{{ to64('addFunction(value)') }}};
+      return {{{ to64('addFunctionInternal(value)') }}};
     }
     return value.value;
   },
@@ -199,6 +205,9 @@ var LibraryDylink = {
 #endif
       var exp = getMainModuleExport(symName);
       global = GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, exp ? exportToAddress(exp) : UNDEFINED_ADDR);
+      if (!exp) {
+        unresolvedSymbols.add(symName);
+      }
     }
     return global;
   },
@@ -378,7 +387,8 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('reportUndefinedSymbols');
 #endif
-    for (var [symName, entry] of Object.entries(GOT)) {
+    for (var symName of unresolvedSymbols) {
+      var entry = GOT[symName];
       if (entry.value == UNDEFINED_ADDR) {
 #if DYLINK_DEBUG
         dbg(`undef GOT entry: ${symName}`);
@@ -390,6 +400,7 @@ var LibraryDylink = {
           dbg('ignoring undefined weak symbol:', symName);
 #endif
           entry.value = {{{ to64(0) }}};
+          unresolvedSymbols.delete(symName);
           continue;
         }
 #if ASSERTIONS
@@ -400,7 +411,7 @@ var LibraryDylink = {
 #endif
         if (typeof value === 'function') {
           /** @suppress {checkTypes} */
-          entry.value = {{{ to64('addFunction(value, value.sig)') }}};
+          entry.value = {{{ to64('addFunctionInternal(value, value.sig)') }}};
 #if DYLINK_DEBUG == 2
           dbg(`assigning table entry for : ${symName} -> ${entry.value}`);
 #endif
@@ -412,6 +423,7 @@ var LibraryDylink = {
           throw new Error(`bad export type for '${symName}': ${typeof value} (${value})`);
         }
       }
+      unresolvedSymbols.delete(symName);
     }
 #if DYLINK_DEBUG
     dbg('done reportUndefinedSymbols');
@@ -1367,7 +1379,7 @@ var LibraryDylink = {
 #if ASYNCIFY
     sym = unwrapAsyncifyExport(sym);
 #endif
-    var result = addFunction(sym, sym.sig);
+    var result = addFunctionInternal(sym, sym.sig);
 #if DYLINK_DEBUG
     dbg(`_dlsym_catchup: result=${result}`);
 #endif
@@ -1418,7 +1430,7 @@ var LibraryDylink = {
         // function the second argument will not be needed.  If it's a JS
         // function we rely on the `sig` attribute being set based on the
         // `<func>__sig` specified in library JS file.
-        result = addFunction(result, result.sig);
+        result = addFunctionInternal(result, result.sig);
 #if DYLINK_DEBUG
         dbg('adding symbol to table:',  symbol);
 #endif

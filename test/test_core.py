@@ -5184,6 +5184,8 @@ main main sees -524, -534, 72.
       if (cmake_version >= (4, 2, 0) and cmake_version < (4, 2, 6)) or \
          (cmake_version >= (4, 3, 0) and cmake_version < (4, 3, 3)):
         self.skipTest(f'incompatible cmake version {cmake_version}')
+    elif self.get_setting('STRICT'):
+      self.skipTest('autoconfiguring is not compatible with STRICT')
     zlib_archive = self.get_zlib_library(cmake=cmake, target='libz.so.1.2.5', cflags=['-fPIC'])[0]
     zlib_basename = os.path.basename(zlib_archive)
     shutil.copyfile(zlib_archive, zlib_basename)

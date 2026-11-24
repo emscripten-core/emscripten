@@ -143,9 +143,22 @@ addToLibrary({
    * Add a function to the table.
    * 'sig' parameter is required if the function being added is a JS function.
    */
+#if ASSERTIONS && SHARED_MEMORY
   $addFunction__docs: '/** @param {string=} sig */',
-
   $addFunction: (func, sig) => {
+    if (!getFunctionAddress(func)) {
+      warnOnce('addFunction is not supported with threads: each thread has its own table, so the function pointer is only valid in the calling thread');
+    }
+    return addFunctionInternal(func, sig);
+  },
+#else
+  $addFunction: '$addFunctionInternal',
+#endif
+
+  // For the dynamic linker, which adds its functions in every thread.
+  $addFunctionInternal__internal: true,
+  $addFunctionInternal__docs: '/** @param {string=} sig */',
+  $addFunctionInternal: (func, sig) => {
 #if ASSERTIONS
     assert(typeof func !== 'undefined');
 #endif // ASSERTIONS
