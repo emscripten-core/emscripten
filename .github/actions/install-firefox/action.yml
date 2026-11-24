@@ -1,0 +1,17 @@
+name: 'Install Firefox'
+description: 'Downloads Firefox Nightly and sets up audio dependencies'
+runs:
+  using: 'composite'
+  steps:
+    - name: Download Firefox
+      run: |
+        wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
+        tar -C ~ -xf ~/ff.tar.bz2
+      shell: bash
+
+    - name: Add dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -q -y pulseaudio libgtk-3-bin
+        pulseaudio --start
+      shell: bash
