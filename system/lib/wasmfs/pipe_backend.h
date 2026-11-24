@@ -42,44 +42,70 @@ class PipeFile : public DataFile {
     return 0;
   }
 
-  ssize_t write(const uint8_t* buf, size_t len, off_t offset) override {
+  ssize_t write(const __wasi_ciovec_t* iovs,
+                size_t iovs_len,
+                off_t offset,
+                oflags_t flags) override {
     std::lock_guard lock(data->mutex);
     if (data->readClosed) {
       return -EPIPE;
     }
-    for (size_t i = 0; i < len; i++) {
-      data->bytes.push(buf[i]);
+    ssize_t total = 0;
+    for (size_t i = 0; i < iovs_len; i++) {
+      if (iovs[i].buf_len > std::numeric_limits<ssize_t>::max() ||
+          addWillOverFlow(total, (ssize_t)iovs[i].buf_len)) {
+        return -EINVAL;
+      }
+      total += iovs[i].buf_len;
     }
-    return len;
-  }
-
-  // PIPE_BUF rule: a small write is all-or-nothing, a larger one takes what
-  // fits.
-  ssize_t writableBytes(size_t len) override {
-    std::lock_guard lock(data->mutex);
-    if (data->readClosed) {
-      return -EPIPE;
+    if (total == 0) {
+      return 0;
     }
-    off_t room = capacity - (off_t)data->bytes.size();
-    if (room <= 0 || (len <= PIPE_BUF && (off_t)len > room)) {
-      return -EAGAIN;
+    if (flags & O_NONBLOCK) {
+      // PIPE_BUF rule: a small write is all-or-nothing, a larger one takes what
+      // fits.
+      off_t room = capacity - (off_t)data->bytes.size();
+      if (room <= 0 || (total <= PIPE_BUF && total > room)) {
+        return -EAGAIN;
+      }
+      total = std::min<ssize_t>(total, room);
     }
-    return (off_t)len < room ? len : room;
+    size_t written = 0;
+    for (size_t i = 0; i < iovs_len && written < (size_t)total; i++) {
+      size_t len = std::min(iovs[i].buf_len, (size_t)total - written);
+      for (size_t j = 0; j < len; j++) {
+        data->bytes.push(iovs[i].buf[j]);
+      }
+      written += len;
+    }
+    return written;
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
-    std::lock_guard lock(data->mutex);
     for (size_t i = 0; i < len; i++) {
       if (data->bytes.empty()) {
-        if (i) {
-          return i;
-        }
-        return data->writeClosed ? 0 : -EAGAIN;
+        return i;
       }
       buf[i] = data->bytes.front();
       data->bytes.pop();
     }
     return len;
+  }
+
+  ssize_t read(const __wasi_iovec_t* iovs,
+               size_t iovs_len,
+               off_t offset,
+               oflags_t flags) override {
+    std::lock_guard lock(data->mutex);
+    auto nread = DataFile::read(iovs, iovs_len, offset, flags);
+    if (nread == 0 && !data->writeClosed) {
+      for (size_t i = 0; i < iovs_len; i++) {
+        if (iovs[i].buf_len > 0) {
+          return -EAGAIN;
+        }
+      }
+    }
+    return nread;
   }
 
   int flush() override { return 0; }

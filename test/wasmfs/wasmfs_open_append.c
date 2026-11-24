@@ -48,6 +48,14 @@ int main() {
   pos = getPos(fd);
   assert(pos == 0);
 
+#ifdef WASMFS
+  nwritten = write(fd, NULL, 5);
+  assert(nwritten == -1);
+  assert(errno == EINVAL);
+  pos = getPos(fd);
+  assert(pos == 0);
+#endif
+
   nwritten = write(fd, "", 0);
   assert(nwritten == 0);
 
