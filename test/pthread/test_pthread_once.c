@@ -9,7 +9,7 @@
 #include <emscripten.h>
 #include <emscripten/threading.h>
 
-_Atomic int numInitialized = 0;
+int numInitialized = 0;
 
 void once_init() {
   numInitialized++;
@@ -17,8 +17,7 @@ void once_init() {
 
 #define NUM_THREADS 8
 
-void *thread_main(void *arg)
-{
+void *thread_main(void *arg) {
   static pthread_once_t control = PTHREAD_ONCE_INIT;
   pthread_once(&control, &once_init);
   assert(numInitialized == 1);
@@ -33,10 +32,10 @@ int main() {
     pthread_create(&thread[i], NULL, thread_main, 0);
   }
 
-  if (emscripten_has_threading_support()) {
-    for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-    assert(numInitialized == 1);
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    pthread_join(thread[i], NULL);
   }
+  assert(numInitialized == 1);
 
   return 0;
 }
