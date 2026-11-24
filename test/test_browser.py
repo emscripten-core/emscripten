@@ -4305,6 +4305,7 @@ Module["preRun"] = () => {
   def test_webgl_sample_query(self):
     self.btest_exit('webgl_sample_query.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
+  @skip_if_simple('chrome', lambda _: MACOS and get_chrome_version() < 117, 'timer queries always report zero on macOS before Chrome 117 (https://crbug.com/1322521)')
   @requires_graphics_hardware
   @parameterized({
     # EXT query entrypoints on WebGL 1.0
