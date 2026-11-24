@@ -648,6 +648,13 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   sequencing mechanism to enforce ordered transmission.
   """
 
+  # The page sends each line of stdout and stderr, and each dumped file, in a
+  # POST request of its own, so a burst of connections can arrive faster than
+  # the server accepts them. When the default accept queue of 5 connections
+  # overflows, macOS resets the excess connections, and the page loses those
+  # messages.
+  request_queue_size = 128
+
   expected_http_seq_num = 1
   # Stores messages that have arrived out of order, pending for a send as soon
   # as the missing message arrives.  Kept in sorted order, first element is the
