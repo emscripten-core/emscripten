@@ -684,3 +684,11 @@ def is_wasm_dylib(filename):
       if section.name in {'dylink', 'dylink.0'}:
         return True
   return False
+
+
+def add_custom_section(wasm_file, name, payload):
+  name_bytes = name.encode('utf-8')
+  section_body = to_leb(len(name_bytes)) + name_bytes + payload
+  section = bytes([SecType.CUSTOM]) + to_leb(len(section_body)) + section_body
+  with open(wasm_file, 'ab') as f:
+    f.write(section)

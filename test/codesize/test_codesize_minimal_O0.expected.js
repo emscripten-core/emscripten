@@ -486,6 +486,15 @@ function checkStackCookie() {
   }
 }
 // end include: runtime_stack_check.js
+function checkWasmCrc(module) {
+  var expected = 'bf22a114';
+  var sections = WebAssembly.Module.customSections(module, 'em_crc');
+  var actual = sections.length == 1 && sections[0].byteLength == 4
+    ? new DataView(sections[0]).getUint32(0, true).toString(16).padStart(8, '0')
+    : 'missing';
+  assert(actual === expected, `Wasm binary CRC mismatch: expected ${expected}, got ${actual}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
+}
+
 // Memory management
 
 var runtimeInitialized = false;
@@ -675,7 +684,10 @@ async function createWasm() {
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
-  function receiveInstance(instance) {
+  function receiveInstance(instance, module) {
+    if (module) {
+      checkWasmCrc(module);
+    }
     wasmExports = instance.exports;
 
     assignWasmExports(wasmExports);
@@ -695,9 +707,7 @@ async function createWasm() {
     // receiveInstance() will swap in the exports (to Module.asm) so they can be called
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
-    // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
-    // When the regression is fixed, can restore the above PTHREADS-enabled path.
-    return receiveInstance(result['instance']);
+    return receiveInstance(result['instance'], result['module']);
   }
 
   var info = getWasmImports();

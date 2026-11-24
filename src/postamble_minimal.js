@@ -271,6 +271,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
   wasmExports = output.instance.exports;
 #endif
 
+#if CHECK_WASM_CRC
+  checkWasmCrc({{{ (PTHREADS || WASM_WORKERS) ? 'wasmModule' : (MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION ? "Module['wasm']" : "output.module || Module['wasm']") }}});
+#endif
+
 #if ASYNCIFY
   wasmExports = Asyncify.instrumentWasmExports(wasmExports);
 #endif

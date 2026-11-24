@@ -739,10 +739,15 @@ function getWasmImports() {
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
-#if SHARED_MEMORY || MAIN_MODULE
+#if SHARED_MEMORY || MAIN_MODULE || CHECK_WASM_CRC
   {{{ asyncIf(MAIN_MODULE) }}}function receiveInstance(instance, module) {
 #else
   {{{ asyncIf(MAIN_MODULE) }}}function receiveInstance(instance) {
+#endif
+#if CHECK_WASM_CRC
+    if (module) {
+      checkWasmCrc(module);
+    }
 #endif
 #if RUNTIME_DEBUG
     dbg('receiveInstance')
@@ -840,7 +845,7 @@ function getWasmImports() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if SHARED_MEMORY || MAIN_MODULE
+#if SHARED_MEMORY || MAIN_MODULE || CHECK_WASM_CRC
     return receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
@@ -871,7 +876,7 @@ function getWasmImports() {
 #if ASSERTIONS
       try {
 #endif
-#if SHARED_MEMORY || MAIN_MODULE
+#if SHARED_MEMORY || MAIN_MODULE || CHECK_WASM_CRC
         instantiateWasm(info, (inst, mod) => resolve(receiveInstance(inst, mod)));
 #else
         instantiateWasm(info, (inst) => resolve(receiveInstance(inst)));
@@ -913,7 +918,7 @@ function getWasmImports() {
   return exports;
 #else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);
-#if SHARED_MEMORY || MAIN_MODULE
+#if SHARED_MEMORY || MAIN_MODULE || CHECK_WASM_CRC
   return receiveInstance(result[0], result[1]);
 #else
   // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,

@@ -4836,6 +4836,21 @@ Module["preRun"] = () => {
 
     self.run_browser('test.html', 'this file was not read as UTF-8')
 
+  def test_wasm_crc_mismatch(self):
+    create_file('other.c', '''
+      #include <stdio.h>
+      int main() {
+        printf("other\\n");
+        return 0;
+      }
+    ''')
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js'])
+    self.compile_btest('other.c', ['-o', 'other.js'])
+    shutil.copyfile('other.wasm', 'test.wasm')
+
+    create_file('test.html', '<script src="test.js"></script>')
+    self.run_browser('test.html', 'Wasm binary CRC mismatch:')
+
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     self.btest_exit('browser_test_hello_world.c', cflags=['-sSINGLE_FILE'], run_in_worker=True)
