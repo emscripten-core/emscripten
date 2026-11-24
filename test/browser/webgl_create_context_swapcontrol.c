@@ -6,9 +6,20 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #include <assert.h>
+#include <errno.h>
+#ifdef __EMSCRIPTEN_PTHREADS__
+#include <pthread.h>
+#include <emscripten/threading.h>
+#endif
 
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
+
+#if defined(__EMSCRIPTEN_PTHREADS__) && !defined(USE_OFFSCREEN_FRAMEBUFFER)
+static void* thread_main(void* arg) {
+  return NULL;
+}
+#endif
 
 int main() {
   EmscriptenWebGLContextAttributes attrs;
@@ -43,6 +54,20 @@ int main() {
 
   emscripten_webgl_destroy_context(context);
   assert(emscripten_webgl_get_current_context() == 0);
+
+#if defined(__EMSCRIPTEN_PTHREADS__) && !defined(USE_OFFSCREEN_FRAMEBUFFER)
+  // Once a canvas has been transferred offscreen on the main thread via
+  // explicitSwapControl, attempting to transfer it to a pthread must fail with
+  // EPERM and leave the canvas usable on the main thread.
+  pthread_t thread;
+  pthread_attr_t pthread_attr;
+  pthread_attr_init(&pthread_attr);
+  emscripten_pthread_attr_settransferredcanvases(&pthread_attr, "#canvas");
+  int rc = pthread_create(&thread, &pthread_attr, thread_main, NULL);
+  pthread_attr_destroy(&pthread_attr);
+  assert(rc == EPERM);
+#endif
+
   // Test that creating a context for a canvas that's already been used once succeeds
   context = emscripten_webgl_create_context("#canvas", &attrs);
   assert(context > 0); // Must have received a valid context.
