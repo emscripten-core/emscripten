@@ -377,6 +377,7 @@
 #define GLEW_EXT_texture3D GLEW_GET_VAR(GL_EXT_texture3D)
 #define GLEW_EXT_texture_array GLEW_GET_VAR(GL_EXT_texture_array)
 #define GLEW_EXT_texture_buffer_object GLEW_GET_VAR(GL_EXT_texture_buffer_object)
+#define GLEW_EXT_texture_compression_bptc GLEW_GET_VAR(GL_EXT_texture_compression_bptc)
 #define GLEW_EXT_texture_compression_dxt1 GLEW_GET_VAR(GL_EXT_texture_compression_dxt1)
 #define GLEW_EXT_texture_compression_latc GLEW_GET_VAR(GL_EXT_texture_compression_latc)
 #define GLEW_EXT_texture_compression_rgtc GLEW_GET_VAR(GL_EXT_texture_compression_rgtc)
