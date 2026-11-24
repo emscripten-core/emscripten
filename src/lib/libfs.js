@@ -133,6 +133,12 @@ FS.staticInit();
       set position(val) {
         this.shared.position = val;
       }
+      get path() {
+        return this._path ?? FS.getPath(this.node);
+      }
+      set path(val) {
+        this._path = val;
+      }
     },
     FSNode: class {
       node_ops = {};
@@ -1235,7 +1241,6 @@ FS.staticInit();
       // register the stream with the filesystem
       var stream = FS.createStream({
         node,
-        path: FS.getPath(node),  // we want the absolute path to the node
         flags,
         seekable: true,
         position: 0,
