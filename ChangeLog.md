@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 7.0.2 (in development)
 ----------------------
+- Added `emscripten_dns_lookup_promise` and `emscripten_dns_lookup_callback`,
+  asynchronous variants of `getaddrinfo` completing through an `em_promise_t`
+  or a callback, so a real DNS lookup under `-sNODERAWSOCKETS` can be awaited
+  without blocking from any stack.
 - The WebGL extensions `EXT_render_snorm`, `EXT_texture_mirror_clamp_to_edge`,
   `OES_sample_variables`, `OES_shader_multisample_interpolation`,
   `WEBGL_compressed_texture_pvrtc`, `WEBGL_render_shared_exponent` and
