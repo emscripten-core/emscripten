@@ -327,7 +327,6 @@ var LibraryDylink = {
           dbg('ignoring undefined weak symbol:', symName);
 #endif
           entry.value = {{{ to64(0) }}};
-          unresolvedSymbols.delete(symName);
           continue;
         }
 #if ASSERTIONS
@@ -350,8 +349,8 @@ var LibraryDylink = {
           throw new Error(`bad export type for '${symName}': ${typeof value} (${value})`);
         }
       }
-      unresolvedSymbols.delete(symName);
     }
+    unresolvedSymbols.clear();
 #if DYLINK_DEBUG
     dbg('done reportUndefinedSymbols');
 #endif
