@@ -33,17 +33,15 @@ class emrun(RunnerCore):
       self.skipTest('need a browser')
 
     self.run_process([EMCC, test_file('test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
-    proc = subprocess.Popen([EMRUN, '--no-browser', '.', '--port=3333'], stdout=PIPE)
+    proc = subprocess.Popen([EMRUN, '--no-browser', '.', '--port=3333', '--timeout', '60'], stdout=PIPE)
     try:
       if get_browser():
         url = 'http://localhost:3333/hello_world.html?argv0'
         print(f'Starting browser to {url}')
         BrowserCore.browser_open(url)
         try:
-          while True:
-            stdout = proc.stdout.read()
-            if b'Dumping out file' in stdout:
-              break
+          stdout = proc.stdout.read().decode()
+          self.assertContained('Dumping out file', stdout)
         finally:
           print('Terminating browser')
           BrowserCore.browser_terminate()
