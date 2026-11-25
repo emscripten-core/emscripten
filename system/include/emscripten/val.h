@@ -232,6 +232,12 @@ inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<Ele
   ++cursor;
 }
 
+inline void writeGenericWireType(GenericWireType*& cursor, const clamped_memory_view& wt) {
+  cursor->w[0].s = wt.size;
+  cursor->w[1].p = (void*)wt.data;
+  ++cursor;
+}
+
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T wt) {
   static_assert(sizeof(T) <= sizeof(cursor->w[0].u), "Generic wire type must be smaller than unsigned.");
@@ -244,7 +250,14 @@ inline void writeGenericWireTypes(GenericWireType*&) {
 
 template<typename First, typename... Rest>
 EMSCRIPTEN_ALWAYS_INLINE void writeGenericWireTypes(GenericWireType*& cursor, First&& first, Rest&&... rest) {
-  writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first), rvp::default_tag{}));
+  if constexpr (std::is_base_of<val, std::decay_t<First>>::value) {
+    // Emval invokers decode the receiver and all arguments before any property
+    // lookup or JS call, so borrowing the handle avoids an incref/decref pair
+    // without risking use-after-free under JS->C++ re-entrancy.
+    writeGenericWireType(cursor, first.as_handle());
+  } else {
+    writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first), rvp::default_tag{}));
+  }
   writeGenericWireTypes(cursor, std::forward<Rest>(rest)...);
 }
 

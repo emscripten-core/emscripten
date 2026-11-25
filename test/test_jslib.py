@@ -568,6 +568,38 @@ int main() {
 
     self.assert_fail([EMCC, '-jsDWASM=1'], 'cannot change built-in settings values with a -jsD directive')
 
+  # Tests that -jsDfoo=0 and -jsDfoo=false are passed to JS libraries as false,
+  # so that `#if FOO` is false, and that other values are passed as strings.
+  @parameterized({
+    '': ('', 'enabled\nstring: 1\n'),
+    'zero': ('=0', 'disabled\nboolean: false\n'),
+    'false': ('=false', 'disabled\nboolean: false\n'),
+    'one': ('=1', 'enabled\nstring: 1\n'),
+    'two': ('=2', 'enabled\nstring: 2\n'),
+    'empty': ('=', 'disabled\nstring: \n'),
+    'string': ('=abc', 'enabled\nstring: abc\n'),
+  })
+  def test_jslib_custom_settings_types(self, value, expected):
+    create_file('lib.js', r'''
+addToLibrary({
+  js_function: () => {
+#if CUSTOM_JS_OPTION
+    out('enabled');
+#else
+    out('disabled');
+#endif
+    out('{{{ typeof CUSTOM_JS_OPTION }}}: {{{ CUSTOM_JS_OPTION }}}');
+  },
+});
+''')
+    create_file('src.c', r'''
+void js_function(void);
+int main() {
+  js_function();
+}
+''')
+    self.do_runf('src.c', expected, cflags=['--js-library', 'lib.js', f'-jsDCUSTOM_JS_OPTION{value}'])
+
   def test_jslib_native_deps(self):
     # Verify that memset (which lives in compiled code), can be specified as a JS library
     # dependency.

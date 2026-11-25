@@ -3217,6 +3217,11 @@ var LibraryGLEmulation = {
 
   glPolygonMode: () => {}, // TODO
 
+  // Desktop OpenGL only. OpenGL ES and WebGL have the single-precision
+  // glClearDepthf() and glDepthRangef() instead.
+  glClearDepth: (depth) => GLctx.clearDepth(depth),
+  glDepthRange: (zNear, zFar) => GLctx.depthRange(zNear, zFar),
+
   glAlphaFunc: (func, ref) => {
     switch(func) {
       case GL_NEVER:

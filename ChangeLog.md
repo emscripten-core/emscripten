@@ -18,8 +18,26 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-7.0.1 (in development)
+7.0.2 (in development)
 ----------------------
+- The WebGL extensions `EXT_render_snorm`, `EXT_texture_mirror_clamp_to_edge`,
+  `OES_sample_variables`, `OES_shader_multisample_interpolation`,
+  `WEBGL_compressed_texture_pvrtc`, `WEBGL_render_shared_exponent` and
+  `WEBGL_stencil_texturing` are now enabled automatically at context creation
+  and advertised in the `GL_EXTENSIONS` string, like the other supported
+  extensions. Previously they could only be enabled by calling
+  `emscripten_webgl_enable_extension()` explicitly. (#28372)
+- `-jsDFOO=0` and `-jsDFOO=false` now pass `FOO` to JS library code as `false`
+  rather than as the truthy strings `'0'` and `'false'`, so that `#if FOO` is
+  false. Other values are still passed as strings. (#28364)
+- The desktop OpenGL functions `glClearDepth()` and `glDepthRange()` were
+  misplaced and linked as part of WebGL and GLES2/3 targeting builds. They
+  are now moved correctly into `-sLEGACY_GL_EMULATION` mode. In GLES and WebGL,
+  use the correct API functions `glClearDepthf()` and `glDepthRangef()` instead.
+  (#28379)
+
+7.0.1 - 11/21/26
+----------------
 - Emscripten's JavaScript tools (`tools/compiler.mjs`, `tools/preprocessor.mjs`,
   `tools/acorn-optimizer.mjs`, `tools/unsafe_optimizations.mjs`, and
   `tools/lz4-compress.mjs`) are now bundled into `dist/` using `rolldown`. For
@@ -34,9 +52,15 @@ See docs/process.md for more on how version tagging works.
   (e.g., `ENOENT`, `O_CREAT`) and referenced directly in JS library code,
   making unminified output more readable. (#28144)
 - zlib port updated from 1.3.2 to 1.4. (#28210)
+- In multi-threaded builds with assertions enabled, `addFunction` now warns
+  when it adds a function to the table: each thread has its own table, so the
+  function pointer is only valid in the calling thread. (#28275)
 - `emscripten_get_now()` (and `clock_gettime(CLOCK_MONOTONIC)`) in pthreads
   builds now reads `performance.timeOrigin` once per thread. In Safari its value
   can vary between reads, which made the clock go backwards. (#28272)
+- Building with `-sJSPI` now bumps the default minimum supported browser
+  versions to the first ones that support JSPI: Chrome 137, Firefox 153,
+  Safari 27 and Node.js 24. (#28334)
 
 7.0.0 - 11/06/26
 ----------------

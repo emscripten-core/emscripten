@@ -796,6 +796,7 @@ addToLibrary({
   },
 
   $readSockaddr__deps: ['ntohs'],
+  $readSockaddr__internal: true,
   $readSockaddr: (sa, salen) => {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -850,6 +851,7 @@ addToLibrary({
   },
   $writeSockaddr__docs: '/** @param {number=} addrlen */',
   $writeSockaddr__deps: ['htons'],
+  $writeSockaddr__internal: true,
   $writeSockaddr: (sa, family, addr, port, addrlen) => {
     switch (family) {
 #if NODERAWSOCKETS
@@ -914,6 +916,7 @@ addToLibrary({
   // we're generating fake IP addresses with lookup_name that we can
   // resolve later on with lookup_addr.
   // We do the aliasing in 172.29.*.*, giving us 65536 possibilities.
+  $DNS__internal: true,
   $DNS: {
     address_map: {
       id: 1,
@@ -1258,8 +1261,9 @@ addToLibrary({
 
   // Implement netdb.h protocol entry (getprotoent, getprotobyname, getprotobynumber, setprotoent, endprotoent)
   // http://pubs.opengroup.org/onlinepubs/9699919799/functions/getprotobyname.html
-  // The Protocols object holds our 'fake' protocols 'database'.
-  $Protocols: {
+  // The netdbProtocols object holds our 'fake' protocols 'database'.
+  $netdbProtocols__internal: true,
+  $netdbProtocols: {
     list: [],
     map: {}
   },
@@ -1296,8 +1300,7 @@ addToLibrary({
 
     // Populate the protocol 'database'. The entries are limited to tcp and udp, though it is fairly trivial
     // to add extra entries from /etc/protocols if desired - though not sure if that'd actually be useful.
-    var list = Protocols.list;
-    var map  = Protocols.map;
+    const {list, map} = netdbProtocols;
     if (!list.length) {
         var entry = allocprotoent('tcp', 6, ['TCP']);
         list.push(entry);
@@ -1318,10 +1321,10 @@ addToLibrary({
   getprotoent: (number) => {
     // struct protoent *getprotoent(void);
     // reads the  next  entry  from  the  protocols 'database' or return NULL if 'eof'
-    if (_setprotoent.index === Protocols.list.length) {
+    if (_setprotoent.index === netdbProtocols.list.length) {
       return 0;
     }
-    var result = Protocols.list[_setprotoent.index++];
+    var result = netdbProtocols.list[_setprotoent.index++];
     return result;
   },
 
@@ -1329,20 +1332,21 @@ addToLibrary({
     // struct protoent *getprotobyname(const char *);
     name = UTF8ToString(name);
     _setprotoent(true);
-    var result = Protocols.map[name];
+    var result = netdbProtocols.map[name];
     return result;
   },
 
   getprotobynumber: (number) => {
     // struct protoent *getprotobynumber(int proto);
     _setprotoent(true);
-    var result = Protocols.map[number];
+    var result = netdbProtocols.map[number];
     return result;
   },
 
 #endif // PROXY_POSIX_SOCKETS == 0
 
   $timers: new Map(),
+  $timers__internal: true,
 
   $clearTimers__internal: true,
   $clearTimers: () => {
@@ -1848,7 +1852,7 @@ addToLibrary({
     var func = getWasmTableEntry(ptr);
 #if JSPI
     if (promising) {
-      func = WebAssembly.promising(func);
+      func = Asyncify.makeAsyncFunction(func);
     }
 #endif
     var rtn = func(...args);

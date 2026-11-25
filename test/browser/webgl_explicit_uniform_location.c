@@ -113,12 +113,12 @@ int main(int argc, char *argv[]) {
   // Test submitting a non-array uniform
   glUniform3f(8/*color*/, 0.1f, 0.2f, 0.1f);
   // Test submitting a non-array uniform that has never had glGetUniformLocation() called on it
-  glUniform4f(11/*color2*/, 0.2f, 0.2f, 0.3f, 1.f);
+  glUniform4f(11/*color2*/, 0.1f, 0.2f, 0.3f, 1.f);
   // Test submitting an array uniform
   float colors[9] = { 0.1f, 0.2f, 0.3f, 0.4f, 0.1f, 0.2f, 0.1f, 0.0f, 0.3f };
   glUniform3fv(18, 3, colors);
     // Test submitting an array uniform that has never had glGetUniformLocation() called on it
-  float colors2[9] = { 0.2f, 0.3f, 0.4f, 0.5f, 0.2f, 0.1f, 0.0f, 0.2f, 0.1f };
+  float colors2[9] = { 0.1f, 0.3f, 0.4f, 0.5f, 0.1f, 0.1f, 0.0f, 0.2f, 0.1f };
   glUniform3fv(24, 3, colors2);
 
   glClearColor(0.3f,0.3f,0.3f,1);
@@ -128,9 +128,9 @@ int main(int argc, char *argv[]) {
   uint8_t data[4];
   glReadPixels(150, 75, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, data);
   printf("output triangle color: %u, %u, %u, %u\n", data[0], data[1], data[2], data[3]);
-  assert(data[0] == 153);
-  assert(data[1] == 178);
-  assert(data[2] == 204);
+  assert(data[0] == 0.4 * 255); // 0.1 + 0.1 + 0.1 + 0.1 = 0.4
+  assert(data[1] == 0.6 * 255); // 0.2 + 0.2 + 0.1 + 0.1 = 0.6
+  assert(data[2] == 0.8 * 255); // 0.1 + 0.3 + 0.3 + 0.1 = 0.8
   assert(data[3] == 255);
 
   // Test that setting program zero is allowed

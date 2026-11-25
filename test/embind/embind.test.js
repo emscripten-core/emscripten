@@ -546,6 +546,53 @@ module({
             assert.equal(0, cm.count_emval_handles());
         });
 
+        test("borrowed val args preserve handle counts", function() {
+            var receiver = {
+                combine: function(a, b, c, d) {
+                    return a.length + b.length + c.length + d.length;
+                },
+            };
+            // combine(4+4+6+3=17)
+            assert.equal(17, cm.emval_test_borrowed_val_args(receiver));
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("borrowed val args survive reentrant C++ destruction", function() {
+            var obj2 = { y: 32 };
+            var methodObj = {
+                x: 10,
+                combine: function(a, b) {
+                    cm.emval_test_clear_reentrant_holders();
+                    return this.x + a.x + b.y;
+                },
+            };
+            assert.equal(52, cm.emval_test_reentrant_val_destroy(methodObj, obj2));
+            assert.equal(0, cm.count_emval_handles());
+
+            var getterObj = {
+                x: 10,
+                get combine() {
+                    cm.emval_test_clear_reentrant_holders();
+                    return function(a, b) {
+                        return this.x + a.x + b.y;
+                    };
+                },
+            };
+            assert.equal(52, cm.emval_test_reentrant_val_destroy(getterObj, obj2));
+            assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("deleted val arg throwing BindingError does not leak borrowed val handles", function() {
+            try {
+                assert.throws(cm.BindingError, function() {
+                    cm.emval_test_deleted_val_arg(function() {}, { x: 1 });
+                });
+            } finally {
+                cm.emval_test_clear_reentrant_holders();
+            }
+            assert.equal(0, cm.count_emval_handles());
+        });
+
         test("void return converts to undefined", function() {
             assert.equal(undefined, cm.emval_test_return_void());
         });
@@ -2775,7 +2822,7 @@ module({
             cm.callWithMemoryView(function(view) {
                 views.push(view);
             });
-            assert.equal(3, views.length);
+            assert.equal(4, views.length);
 
             assert.instanceof(views[0], Uint8Array);
             assert.equal(8, views[0].length);
@@ -2788,6 +2835,31 @@ module({
             assert.instanceof(views[2], Int16Array);
             assert.equal(4, views[2].length);
             assert.deepEqual([1000, 100, 10, 1], [].slice.call(views[2]));
+
+            assert.instanceof(views[3], Uint8ClampedArray);
+            assert.equal(3, views[3].length);
+            assert.deepEqual([0, 128, 255], [].slice.call(views[3]));
+        });
+
+        test("clamped memory view aliases Wasm memory and supports empty view", function() {
+            var view = cm.getClampedMemoryView();
+            assert.instanceof(view, Uint8ClampedArray);
+            assert.equal(4, view.length);
+            assert.deepEqual([10, 20, 30, 40], [].slice.call(view));
+
+            // Verify clamping semantics and aliasing back into Wasm memory.
+            view[0] = -10;
+            view[1] = 300;
+            view[2] = 127.6;
+            view[3] = 42;
+            assert.equal(0, cm.getClampedMemoryViewElement(0));
+            assert.equal(255, cm.getClampedMemoryViewElement(1));
+            assert.equal(128, cm.getClampedMemoryViewElement(2));
+            assert.equal(42, cm.getClampedMemoryViewElement(3));
+
+            var empty = cm.getEmptyClampedMemoryView();
+            assert.instanceof(empty, Uint8ClampedArray);
+            assert.equal(0, empty.length);
         });
     });
 
@@ -2990,6 +3062,12 @@ module({
             assert.equal("before", instance.before);
             assert.equal(10, instance.view.byteLength);
             assert.equal("after", instance.after);
+
+            var clampedInstance = cm.construct_with_clamped_memory_view(factory);
+            assert.equal("before", clampedInstance.before);
+            assert.instanceof(clampedInstance.view, Uint8ClampedArray);
+            assert.deepEqual([10, 20, 30, 40], [].slice.call(clampedInstance.view));
+            assert.equal("after", clampedInstance.after);
         });
 
         test("ints_and_float", function() {

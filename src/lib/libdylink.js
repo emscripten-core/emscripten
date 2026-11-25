@@ -146,6 +146,12 @@ var LibraryDylink = {
 
   $GOT: {},
 
+  // Names of GOT entries that were created without a value (UNDEFINED_ADDR),
+  // in creation order.
+  // This avoid having to iterate the entire GOT during reportUndefinedSymbols.
+  $unresolvedSymbols__internal: true,
+  $unresolvedSymbols: 'new Set()',
+
   // Proxy handler used for GOT.mem and GOT.func imports.  Each of these
   // imports is fulfilled dynamically via the `get` method of this proxy
   // handler.  We abuse the `target` of the Proxy in order to pass the set of
@@ -159,6 +165,7 @@ var LibraryDylink = {
         dbg(`new GOT entry: ${symName}`);
 #endif
         rtn = GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, UNDEFINED_ADDR);
+        unresolvedSymbols.add(symName);
       }
       if (!weakImports.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
@@ -231,7 +238,7 @@ var LibraryDylink = {
 #endif
         var newValue;
         if (typeof value === 'function') {
-          newValue = {{{ to64('addFunction(value)') }}};
+          newValue = {{{ to64('addFunctionInternal(value)') }}};
         } else if (typeof value.value === POINTER_JS_TYPE) {
           newValue = value;
         } else {
@@ -307,7 +314,8 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('reportUndefinedSymbols');
 #endif
-    for (var [symName, entry] of Object.entries(GOT)) {
+    for (var symName of unresolvedSymbols) {
+      var entry = GOT[symName];
       if (entry.value == UNDEFINED_ADDR) {
 #if DYLINK_DEBUG
         dbg(`undef GOT entry: ${symName}`);
@@ -319,6 +327,7 @@ var LibraryDylink = {
           dbg('ignoring undefined weak symbol:', symName);
 #endif
           entry.value = {{{ to64(0) }}};
+          unresolvedSymbols.delete(symName);
           continue;
         }
 #if ASSERTIONS
@@ -329,7 +338,7 @@ var LibraryDylink = {
 #endif
         if (typeof value === 'function') {
           /** @suppress {checkTypes} */
-          entry.value = {{{ to64('addFunction(value, value.sig)') }}};
+          entry.value = {{{ to64('addFunctionInternal(value, value.sig)') }}};
 #if DYLINK_DEBUG == 2
           dbg(`assigning table entry for : ${symName} -> ${entry.value}`);
 #endif
@@ -341,6 +350,7 @@ var LibraryDylink = {
           throw new Error(`bad export type for '${symName}': ${typeof value} (${value})`);
         }
       }
+      unresolvedSymbols.delete(symName);
     }
 #if DYLINK_DEBUG
     dbg('done reportUndefinedSymbols');
@@ -1296,7 +1306,7 @@ var LibraryDylink = {
     var symDict = lib.exports;
     var symName = Object.keys(symDict)[symbolIndex];
     var sym = symDict[symName];
-    var result = addFunction(sym, sym.sig);
+    var result = addFunctionInternal(sym, sym.sig);
 #if DYLINK_DEBUG
     dbg(`_dlsym_catchup: result=${result}`);
 #endif
@@ -1350,7 +1360,7 @@ var LibraryDylink = {
         // function the second argument will not be needed.  If it's a JS
         // function we rely on the `sig` attribute being set based on the
         // `<func>__sig` specified in library JS file.
-        result = addFunction(result, result.sig);
+        result = addFunctionInternal(result, result.sig);
 #if DYLINK_DEBUG
         dbg('adding symbol to table:',  symbol);
 #endif

@@ -657,8 +657,7 @@ var LibraryOpenAL = {
         src.dopplerShift = 1.0;
       } else {
         // Doppler algorithm from 1.1 spec
-        var speedOfSound = src.context.speedOfSound;
-        var dopplerFactor = src.context.dopplerFactor;
+        const {speedOfSound, dopplerFactor} = src.context;
 
         var slX = lPosX - posX;
         var slY = lPosY - posY;

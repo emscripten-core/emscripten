@@ -91,7 +91,7 @@ template <typename T> static void register_float(const char* name) {
   _embind_register_float(TypeID<T>::get(), name, sizeof(T));
 }
 
-// matches typeMapping in embind.js
+// matches typeMapping in libembind.js and libembind_gen.js
 enum TypedArrayIndex {
   Int8Array,
   Uint8Array,
@@ -101,6 +101,7 @@ enum TypedArrayIndex {
   Uint32Array,
   Float32Array,
   Float64Array,
+  Uint8ClampedArray,
   // Only available if WASM_BIGINT
   Int64Array,
   Uint64Array,
@@ -186,4 +187,7 @@ EMSCRIPTEN_BINDINGS(builtin) {
 
   register_memory_view<float>("emscripten::memory_view<float>");
   register_memory_view<double>("emscripten::memory_view<double>");
+
+  _embind_register_memory_view(
+    TypeID<clamped_memory_view>::get(), Uint8ClampedArray, "emscripten::clamped_memory_view");
 }

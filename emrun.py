@@ -195,6 +195,293 @@ def unquote_u(source):
 temp_firefox_profile_dir = None
 
 
+# Firefox has a lot of default behavior that makes it unsuitable for
+# automated/unattended runs. These prefs customize Firefox to enable automated
+# runs. They are used both by emrun --safe-firefox-profile and by the browser
+# test harness (test/browser_common.py).
+# The prefs are sorted by the Firefox version that added them. Update timers are
+# set to 2147483647 seconds since the Unix epoch (sometime in the year 2038), the
+# max integer accepted by Firefox, to postpone them far into the future.
+FIREFOX_PREFS = '''
+// Always allow opening popups
+// (Added in Firefox 1.0, https://bugzil.la/136985. Removed in Firefox 59, https://bugzil.la/1416703)
+user_pref("browser.popups.showPopupBlocker", false);
+
+// Always allow opening popups
+// (Added in Firefox 1.0, https://bugzil.la/92955)
+user_pref("dom.disable_open_during_load", false);
+
+// Don't ask user if they want to set Firefox as the default system browser
+// (Added in Firefox 1.0, https://bugzil.la/236744)
+user_pref("browser.shell.checkDefaultBrowser", false);
+
+// Start with a blank page instead of restoring the previous session
+// (Added in Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/c4cc52826abd53e1121e4234d719cfd89ce58093)
+user_pref("browser.startup.page", 0);
+
+// Don't show the slow script dialog popup
+// (Added in Firefox 1.0, https://bugzil.la/13350)
+user_pref("dom.max_script_run_time", 0);
+
+// Don't open a home page at startup
+// (Added in Firefox 1.0, https://bugzil.la/132140)
+user_pref("startup.homepage_override_url", "about:blank");
+
+// Don't open a home page at startup
+// (Added in Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/c4cc52826abd53e1121e4234d719cfd89ce58093)
+user_pref("browser.startup.homepage", "about:blank");
+
+// Don't try to perform browser (auto)update on the background
+// (Added in Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/ad3b24d5ad3b69f9a1e16307e74e06d3c3043130)
+user_pref("app.update.auto", false);
+
+// Don't try to perform browser (auto)update on the background
+// (Added in Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/ad3b24d5ad3b69f9a1e16307e74e06d3c3043130. Removed in Firefox 63, https://bugzil.la/1420514)
+user_pref("app.update.enabled", false);
+
+// Don't check compatibility with add-ons, or (auto)update them
+// (Added in Firefox 1.0, https://bugzil.la/170006)
+user_pref("extensions.lastAppVersion", '');
+
+// Don't show WhatsNew on first run after every update
+// (Added in Firefox 1.0, https://bugzil.la/97220)
+user_pref("browser.startup.homepage_override.mstone","ignore");
+
+// Don't ask the user if they want to close the browser when there are multiple tabs.
+// (Added in Firefox 1.0, https://bugzil.la/108973)
+user_pref("browser.tabs.warnOnClose", false);
+
+// Allow the launched script window to close itself, so that we don't need to kill the browser process in order to move on.
+// (Added in Firefox 1.0, https://bugzil.la/32571)
+user_pref("dom.allow_scripts_to_close_windows", true);
+
+// Allow window.dump() to print directly to console
+// (Added in Firefox 1.0, https://bugzil.la/74816)
+user_pref("browser.dom.window.dump.enabled", true);
+
+// Disable background add-ons related update & information check pings
+// (Added in Firefox 1.0, https://github.com/mozilla-firefox/firefox/commit/ad3b24d5ad3b69f9a1e16307e74e06d3c3043130)
+user_pref("extensions.update.enabled", false);
+
+// Don't try to perform browser (auto)update on the background
+// (Added in Firefox 1.5, https://github.com/mozilla-firefox/firefox/commit/056f6ca3c1a65d6f293bab2a8e9544b0e56292be. Removed in Firefox 69, https://bugzil.la/1515484)
+user_pref("app.update.silent", false);
+
+// Don't try to perform browser (auto)update on the background
+// (Added in Firefox 1.5, https://github.com/mozilla-firefox/firefox/commit/056f6ca3c1a65d6f293bab2a8e9544b0e56292be. Removed in Firefox 49, https://bugzil.la/1262880)
+user_pref("app.update.mode", 0);
+
+// Postpone the add-on update timer so that a clean profile does not cause update HTTP traffic on each run
+// (Added in Firefox 1.5, https://bugzil.la/296566)
+user_pref("app.update.lastUpdateTime.addon-background-update-timer", 2147483647);
+
+// Postpone the browser update timer so that a clean profile does not cause update HTTP traffic on each run
+// (Added in Firefox 1.5, https://github.com/mozilla-firefox/firefox/commit/079768c2c5b62ae515bb3be06c1e9bcb147ffeab)
+user_pref("app.update.lastUpdateTime.background-update-timer", 2147483647);
+
+// Don't show the slow script dialog popup for browser chrome scripts
+// (Added in Firefox 1.5.0.7, https://bugzil.la/335058)
+user_pref("dom.max_chrome_script_run_time", 0);
+
+// If automated runs crash, don't resume old tabs on the next run or show safe mode dialogs or anything else extra.
+// (Added in Firefox 2, https://bugzil.la/328159)
+user_pref("browser.sessionstore.resume_from_crash", false);
+
+// Don't open a home page at startup
+// (Added in Firefox 2, https://bugzil.la/314119)
+user_pref("startup.homepage_welcome_url", "about:blank");
+
+// Postpone the blocklist update timer so that a clean profile does not cause update HTTP traffic on each run
+// (Added in Firefox 2, https://bugzil.la/271166. Removed in Firefox 75, https://bugzil.la/1618188)
+user_pref("app.update.lastUpdateTime.blocklist-background-update-timer", 2147483647);
+
+// Postpone the search engine update timer so that a clean profile does not cause update HTTP traffic on each run
+// (Added in Firefox 2, https://bugzil.la/327932)
+user_pref("app.update.lastUpdateTime.search-engine-update-timer", 2147483647);
+
+// Ease shutting down browser instances in the parallel browser harness
+// (Added in Firefox 3, https://bugzil.la/383760)
+user_pref("browser.warnOnQuit", false);
+
+// Don't offer to restore the previous session after crashes
+// (Added in Firefox 3.5, https://bugzil.la/448976)
+user_pref("browser.sessionstore.max_resumed_crashes", -1);
+
+// Don't show 'know your rights' and a bunch of other nag windows at startup
+// (Added in Firefox 3.5, https://bugzil.la/456439)
+user_pref("browser.rights.3.shown", true);
+
+// Don't show an infobar about outdated plugins
+// (Added in Firefox 3.6, https://bugzil.la/514327. Removed in Firefox 24, https://bugzil.la/880735)
+user_pref("plugins.hide_infobar_for_outdated_plugin", true);
+
+// Don't check for plugin updates
+// (Added in Firefox 3.6, https://bugzil.la/514327. Removed in Firefox 50, https://bugzil.la/1277905)
+user_pref("plugins.update.url", '');
+
+// Disable background add-ons related update & information check pings
+// (Added in Firefox 4, https://bugzil.la/586591)
+user_pref("extensions.getAddons.cache.enabled", false);
+
+// Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
+// (Added in Firefox 6, https://bugzil.la/585196)
+user_pref("toolkit.telemetry.enabled", false);
+
+// Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
+// default here to help test spawning a lot of threads also on older Firefox versions.
+// (Added in Firefox 8, https://bugzil.la/649537)
+user_pref("dom.workers.maxPerDomain", 512);
+
+// Restore session tabs eagerly instead of on demand
+// (Added in Firefox 8, https://bugzil.la/648683)
+user_pref("browser.sessionstore.restore_on_demand", false);
+
+// Don't show 'know your rights' and a bunch of other nag windows at startup
+// (Added in Firefox 8, https://bugzil.la/596343. Removed in Firefox 47, https://bugzil.la/1244302)
+user_pref('extensions.shownSelectionUI', true);
+
+// Don't sync the session restore on-demand pref via Firefox Sync
+// (Added in Firefox 11, https://bugzil.la/709005. Removed in Firefox 69, https://bugzil.la/1560154)
+user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", false);
+
+// Don't try to perform browser (auto)update on the background
+// (Added in Firefox 12, https://bugzil.la/481815)
+user_pref("app.update.service.enabled", false);
+
+// Don't offer to start in Safe Mode after repeated startup crashes
+// (Added in Firefox 13, https://bugzil.la/294260)
+user_pref("toolkit.startup.max_resumed_crashes", -1);
+
+// Postpone the thumbnail cleanup timer so that a clean profile does not cause update HTTP traffic on each run
+// (Added in Firefox 17, https://bugzil.la/754671)
+user_pref("app.update.lastUpdateTime.browser-cleanup-thumbnails", 2147483647);
+
+// Don't show 'know your rights' and a bunch of other nag windows at startup
+// (Added in Firefox 19, https://bugzil.la/766263)
+user_pref('browser.download.panel.shown', true);
+
+// Disable health reporter
+// (Added in Firefox 21, https://bugzil.la/828829. Removed in Firefox 46, https://bugzil.la/1234526)
+user_pref("datareporting.healthreport.service.enabled", false);
+
+// Postpone the next Firefox Health Report data submission
+// (Added in Firefox 21, https://bugzil.la/828829. Removed in Firefox 46, https://bugzil.la/1234522)
+user_pref("datareporting.healthreport.nextDataSubmissionTime", "2147483647000");
+
+// Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
+// (Added in Firefox 21, https://bugzil.la/828829)
+user_pref("datareporting.healthreport.uploadEnabled", false);
+
+// Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
+// (Added in Firefox 21, https://bugzil.la/830489. Removed in Firefox 46, https://bugzil.la/1234526)
+user_pref("datareporting.healthreport.service.firstRun", false);
+
+// Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
+// (Added in Firefox 21, https://bugzil.la/828829)
+user_pref("datareporting.policy.dataSubmissionEnabled", false);
+
+// Don't show 'know your rights' and a bunch of other nag windows at startup
+// (Added in Firefox 30, https://bugzil.la/870593. Removed in Firefox 57, https://bugzil.la/1388422)
+user_pref('browser.customizemode.tip0.shown', true);
+
+// Postpone the telemetry experiments update timer so that a clean profile does not cause update HTTP traffic on each run
+// (Added in Firefox 31, https://bugzil.la/974009. Removed in Firefox 61, https://bugzil.la/1420908)
+user_pref("app.update.lastUpdateTime.experiments-update-timer", 2147483647);
+
+// Postpone the add-on metadata cache update so that a clean profile does not cause update HTTP traffic on each run
+// (Added in Firefox 32, https://bugzil.la/760356)
+user_pref("extensions.getAddons.cache.lastUpdate", 2147483647);
+
+// Postpone the OpenH264 plugin update so that a clean profile does not cause update HTTP traffic on each run
+// (Added in Firefox 33, https://bugzil.la/1040937)
+user_pref("media.gmp-gmpopenh264.lastUpdate", 2147483647);
+
+// Don't show 'know your rights' and a bunch of other nag windows at startup
+// (Added in Firefox 34, https://bugzil.la/1053530. Removed in Firefox 60, https://bugzil.la/1355166)
+user_pref('browser.newtabpage.introShown', true);
+
+// Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
+// (Added in Firefox 34, https://bugzil.la/862563)
+user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
+
+// Don't show 'know your rights' and a bunch of other nag windows at startup
+// (Added in Firefox 36, https://bugzil.la/1078539. Removed in Firefox 62, https://bugzil.la/1463924)
+user_pref('devtools.devedition.promo.shown', true);
+
+// Postpone the Adobe EME plugin update so that a clean profile does not cause update HTTP traffic on each run
+// (Added in Firefox 38, https://bugzil.la/1089867. Removed in Firefox 53, https://bugzil.la/1329543)
+user_pref("media.gmp-eme-adobe.lastUpdate", 2147483647);
+
+// Don't show 'know your rights' and a bunch of other nag windows at startup
+// (Added in Firefox 38.0.5, https://bugzil.la/1155523. Removed in Firefox 57, https://bugzil.la/1385418)
+user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
+
+// Postpone the add-on signature verification timer so that a clean profile does not cause update HTTP traffic on each run
+// (Added in Firefox 40, https://bugzil.la/1151511)
+user_pref("app.update.lastUpdateTime.xpi-signature-verification", 2147483647);
+
+// Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
+// (Added in Firefox 40, https://bugzil.la/1148500)
+user_pref("toolkit.telemetry.unified", false);
+
+// Don't ask user if they want to set Firefox as the default system browser
+// (Added in Firefox 43, https://bugzil.la/1191250. Removed in Firefox 55, https://bugzil.la/1363118)
+user_pref("browser.shell.skipDefaultBrowserCheck", true);
+
+// Enable OffscreenCanvas support
+// (Added in Firefox 44, https://bugzil.la/709490. Removed in Firefox 131, https://bugzil.la/1914083)
+user_pref("gfx.offscreencanvas.enabled", true);
+
+// Enable SharedArrayBuffer, and ignore COOP/COEP (this profile is for a testing environment, so Spectre/Meltdown don't apply)
+// (Added in Firefox 46, https://bugzil.la/1231337)
+user_pref("javascript.options.shared_memory", true);
+
+// Enable wasm
+// (Added in Firefox 47, https://bugzil.la/1252498)
+user_pref("javascript.options.wasm", true);
+
+// Don't ask user if they want to set Firefox as the default system browser
+// (Added in Firefox 51, https://bugzil.la/1322723)
+user_pref("browser.shell.skipDefaultBrowserCheckOnFirstRun", true);
+
+// Don't let Windows automatically restart Firefox after an OS update or reboot
+// (Added in Firefox 62, https://bugzil.la/603903)
+user_pref("toolkit.winRegisterApplicationRestart", false);
+
+// Do not ask user consent to enable audio playback (0: Allow autoplay for all media)
+// (Added in Firefox 63, https://bugzil.la/1470082)
+user_pref("media.autoplay.default", 0);
+
+// Hide about:config confirmation prompt - devs are advanced users
+// (Added in Firefox 66, https://bugzil.la/1500542)
+user_pref("browser.aboutConfig.showWarning", false);
+
+// Enable SharedArrayBuffer, and ignore COOP/COEP (this profile is for a testing environment, so Spectre/Meltdown don't apply)
+// (Added in Firefox 72, https://bugzil.la/1587394)
+user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
+
+// Enable Wasm64
+// (Added in Firefox 92, https://bugzil.la/1717914. Removed in Firefox 141, https://bugzil.la/1967231)
+user_pref("javascript.options.wasm_memory64", true);
+
+// Ease shutting down browser instances in the parallel browser harness
+// (Added in Firefox 94, https://bugzil.la/1726736)
+user_pref("browser.warnOnQuitShortcut", false);
+
+// Disable Window Occlusion tracking so that rAF() and setTimeout() and page loads proceed even if page is hidden.
+// (Added in Firefox 95, https://bugzil.la/1732733)
+user_pref("widget.windows.window_occlusion_tracking.enabled", false);
+
+// Enable JSPI support
+// (Added in Firefox 127, https://bugzil.la/1850627)
+user_pref("javascript.options.wasm_js_promise_integration", true);
+
+// Don't show OS-level prompts like "Would you like to pin Firefox to your taskbar?" on startup
+// (Added in Firefox 154, https://bugzil.la/2055457)
+user_pref("browser.bypassAutoTriggerActions", true);
+'''
+
+
 def delete_emrun_safe_firefox_profile():
   """Delete the temporary created Firefox profile (if one exists)."""
   global temp_firefox_profile_dir
@@ -204,116 +491,16 @@ def delete_emrun_safe_firefox_profile():
     temp_firefox_profile_dir = None
 
 
-# Firefox has a lot of default behavior that makes it unsuitable for
-# automated/unattended run.
-# This function creates a temporary profile directory that customized Firefox
-# with various flags that enable automated runs.
+# Creates a temporary Firefox profile directory with the prefs in FIREFOX_PREFS.
 def create_emrun_safe_firefox_profile():
   global temp_firefox_profile_dir
   temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
   with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w', encoding='utf-8') as f:
-    f.write('''
-// Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
-// default here to help test spawning a lot of threads also on older Firefox versions.
-user_pref("dom.workers.maxPerDomain", 512);
-// Always allow opening popups
-user_pref("browser.popups.showPopupBlocker", false);
-user_pref("dom.disable_open_during_load", false);
-// Don't ask user if they want to set Firefox as the default system browser
-user_pref("browser.shell.checkDefaultBrowser", false);
-user_pref("browser.shell.skipDefaultBrowserCheck", true);
-// If automated runs crash, don't resume old tabs on the next run or show safe mode dialogs or anything else extra.
-user_pref("browser.sessionstore.resume_from_crash", false);
-user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", false);
-user_pref("browser.sessionstore.restore_on_demand", false);
-user_pref("browser.sessionstore.max_resumed_crashes", -1);
-user_pref("toolkit.startup.max_resumed_crashes", -1);
-user_pref("browser.startup.page", 0);
-user_pref("toolkit.winRegisterApplicationRestart", false);
-// Ease shutting down browser instances in the parallel browser harness
-user_pref("browser.warnOnQuit", false);
-user_pref("browser.warnOnQuitShortcut", false);
-// Hide about:config confirmation prompt - devs are advanced users
-user_pref("browser.aboutConfig.showWarning", false);
-// Don't show the slow script dialog popup
-user_pref("dom.max_script_run_time", 0);
-user_pref("dom.max_chrome_script_run_time", 0);
-// Don't open a home page at startup
-user_pref("startup.homepage_override_url", "about:blank");
-user_pref("startup.homepage_welcome_url", "about:blank");
-user_pref("browser.startup.homepage", "about:blank");
-// Don't try to perform browser (auto)update on the background
-user_pref("app.update.auto", false);
-user_pref("app.update.enabled", false);
-user_pref("app.update.silent", false);
-user_pref("app.update.mode", 0);
-user_pref("app.update.service.enabled", false);
-// Don't check compatibility with add-ons, or (auto)update them
-user_pref("extensions.lastAppVersion", '');
-user_pref("plugins.hide_infobar_for_outdated_plugin", true);
-user_pref("plugins.update.url", '');
-// Disable health reporter
-user_pref("datareporting.healthreport.service.enabled", false);
-// Disable crash reporter
-user_pref("toolkit.crashreporter.enabled", false);
-// Don't show WhatsNew on first run after every update
-user_pref("browser.startup.homepage_override.mstone","ignore");
-// Don't show 'know your rights' and a bunch of other nag windows at startup
-user_pref("browser.rights.3.shown", true);
-user_pref('devtools.devedition.promo.shown', true);
-user_pref('extensions.shownSelectionUI', true);
-user_pref('browser.newtabpage.introShown', true);
-user_pref('browser.download.panel.shown', true);
-user_pref('browser.customizemode.tip0.shown', true);
-user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
-// Don't ask the user if they want to close the browser when there are multiple tabs.
-user_pref("browser.tabs.warnOnClose", false);
-// Allow the launched script window to close itself, so that we don't need to kill the browser process in order to move on.
-user_pref("dom.allow_scripts_to_close_windows", true);
-// Set various update timers to a large value in the future in order to not
-// trigger a large mass of update HTTP traffic on each Firefox run on the clean profile.
-// 2147483647 seconds since Unix epoch is sometime in the year 2038, and this is the max integer accepted by Firefox.
-user_pref("app.update.lastUpdateTime.addon-background-update-timer", 2147483647);
-user_pref("app.update.lastUpdateTime.background-update-timer", 2147483647);
-user_pref("app.update.lastUpdateTime.blocklist-background-update-timer", 2147483647);
-user_pref("app.update.lastUpdateTime.browser-cleanup-thumbnails", 2147483647);
-user_pref("app.update.lastUpdateTime.experiments-update-timer", 2147483647);
-user_pref("app.update.lastUpdateTime.search-engine-update-timer", 2147483647);
-user_pref("app.update.lastUpdateTime.xpi-signature-verification", 2147483647);
-user_pref("extensions.getAddons.cache.lastUpdate", 2147483647);
-user_pref("media.gmp-eme-adobe.lastUpdate", 2147483647);
-user_pref("media.gmp-gmpopenh264.lastUpdate", 2147483647);
-user_pref("datareporting.healthreport.nextDataSubmissionTime", "2147483647000");
-// Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
-user_pref("datareporting.healthreport.uploadEnabled", false);
-user_pref("datareporting.healthreport.service.enabled", false);
-user_pref("datareporting.healthreport.service.firstRun", false);
-user_pref("toolkit.telemetry.enabled", false);
-user_pref("toolkit.telemetry.unified", false);
-user_pref("datareporting.policy.dataSubmissionEnabled", false);
-user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
-// Allow window.dump() to print directly to console
-user_pref("browser.dom.window.dump.enabled", true);
-// Disable background add-ons related update & information check pings
-user_pref("extensions.update.enabled", false);
-user_pref("extensions.getAddons.cache.enabled", false);
-// Enable wasm
-user_pref("javascript.options.wasm", true);
-// Enable SharedArrayBuffer, and ignore COOP/COEP (this profile is for a testing environment, so Spectre/Meltdown don't apply)
-user_pref("javascript.options.shared_memory", true);
-user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
-// Enable OffscreenCanvas support
-user_pref("gfx.offscreencanvas.enabled", true);
-// Enable Wasm64
-user_pref("javascript.options.wasm_memory64", true);
-// Do not ask user consent to enable audio playback (0: Allow autoplay for all media)
-user_pref("media.autoplay.default", 0);
-// Disable Window Occlusion tracking so that rAF() and setTimeout() and page loads proceed even if page is hidden.
-user_pref("widget.windows.window_occlusion_tracking.enabled", false);
-''')
+    f.write(FIREFOX_PREFS)
     if emrun_options.private_browsing:
       f.write('''
 // Start in private browsing mode to not cache anything to disk (everything will be wiped anyway after this run)
+// (Added in Firefox 3.5, https://bugzil.la/460346)
 user_pref("browser.privatebrowsing.autostart", true);
       ''')
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
@@ -461,11 +648,18 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
   sequencing mechanism to enforce ordered transmission.
   """
 
+  # The page sends each line of stdout and stderr, and each dumped file, in a
+  # POST request of its own, so a burst of connections can arrive faster than
+  # the server accepts them. When the default accept queue of 5 connections
+  # overflows, macOS resets the excess connections, and the page loses those
+  # messages.
+  request_queue_size = 128
+
   expected_http_seq_num = 1
   # Stores messages that have arrived out of order, pending for a send as soon
   # as the missing message arrives.  Kept in sorted order, first element is the
   # oldest message received.
-  http_message_queue = []
+  http_message_queue: list[tuple] = []
 
   def handle_incoming_message(self, seq_num, log, data):
     global have_received_messages

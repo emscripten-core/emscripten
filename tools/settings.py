@@ -73,7 +73,6 @@ JS_ONLY_SETTINGS = {
 }
 
 # Subset of settings that apply at compile time.
-# (Keep in sync with [compile] comments in settings.js)
 COMPILE_TIME_SETTINGS = {
   'MEMORY64',
   'INLINING_LIMIT',
@@ -99,13 +98,16 @@ COMPILE_TIME_SETTINGS = {
   'DEBUG_LEVEL',
 }.union(PORTS_SETTINGS)
 
+# Subset of compile-time settings that apply only during compilation (not linking).
+COMPILE_ONLY_SETTINGS = {
+  'INLINING_LIMIT',
+}
+
 # Unlike `LEGACY_SETTINGS`, deprecated settings can still be used
 # both on the command line and in the emscripten codebase.
 #
 # At some point in the future, once folks have stopped using these
 # settings we can move them to `LEGACY_SETTINGS`.
-#
-# All settings here should be tagged as `[deprecated]` in settings.js
 DEPRECATED_SETTINGS = {
   'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
   'CLOSURE_WARNINGS': 'use -Wclosure/-Wno-closure instead',
@@ -178,6 +180,7 @@ EXPERIMENTAL_SETTINGS = {
   'SUPPORT_BIG_ENDIAN': '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.',
   'WASM_ESM_INTEGRATION': '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers',
   'WASM_BINDGEN': '-sWASM_BINDGEN is experimental and subject to change',
+  'PURE_WASI': '-sPURE_WASI is experimental and subject to change or removal',
 }
 
 # For renamed settings the format is:

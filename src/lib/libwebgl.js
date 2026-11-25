@@ -191,9 +191,16 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       'EXT_color_buffer_float',
       'EXT_conservative_depth',
       'EXT_disjoint_timer_query_webgl2',
+      'EXT_render_snorm',
       'EXT_texture_norm16',
       'NV_shader_noperspective_interpolation',
+      'OES_sample_variables',
+      'OES_shader_multisample_interpolation',
       'WEBGL_clip_cull_distance',
+      'WEBGL_draw_instanced_base_vertex_base_instance',
+      'WEBGL_multi_draw_instanced_base_vertex_base_instance',
+      'WEBGL_render_shared_exponent',
+      'WEBGL_stencil_texturing',
 #endif
       // WebGL 1 and WebGL 2 extensions
       'EXT_clip_control',
@@ -204,12 +211,14 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       'EXT_texture_compression_bptc',
       'EXT_texture_compression_rgtc',
       'EXT_texture_filter_anisotropic',
+      'EXT_texture_mirror_clamp_to_edge',
       'KHR_parallel_shader_compile',
       'OES_texture_float_linear',
       'WEBGL_blend_func_extended',
       'WEBGL_compressed_texture_astc',
       'WEBGL_compressed_texture_etc',
       'WEBGL_compressed_texture_etc1',
+      'WEBGL_compressed_texture_pvrtc',
       'WEBGL_compressed_texture_s3tc',
       'WEBGL_compressed_texture_s3tc_srgb',
       'WEBGL_debug_renderer_info',
@@ -2162,6 +2171,18 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
         program.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(program, program.uniformArrayNamesById[location] + (webglLoc > 0 ? `[${webglLoc}]` : ''));
       }
       // Else an already cached WebGLUniformLocation, return it.
+#if GL_TRACK_ERRORS && !GL_EXPLICIT_UNIFORM_LOCATION
+      // In GLES, calling glUniform*() with a location that is neither -1 nor a
+      // valid uniform location of the program generates GL_INVALID_OPERATION.
+      // WebGL API would silently ignore null/undefined locations (those would
+      // be the same scenario as -1 in native GLES), so we must manually raise
+      // the error here. 
+      // However, we cannot enable this when -sGL_EXPLICIT_UNIFORM_LOCATION is used,
+      // since explicit locations of a uniform that the linker deemed inactive must
+      // be silently ignored, and the locations taken up by inactive uniforms are
+      // currently not being tracked.
+      if (!webglLoc && location != -1) GL.recordError(GL_INVALID_OPERATION);
+#endif
       return webglLoc;
 #if GL_TRACK_ERRORS
     } else {
@@ -3682,8 +3703,14 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
   glVertexAttribPointer: (index, size, type, normalized, stride, ptr) => {
 #if FULL_ES2
     var cb = GL.currentContext.clientBuffers[index];
+#if GL_TRACK_ERRORS
+    if (!cb) {
 #if GL_ASSERTIONS
-    assert(cb, index);
+      err(`GL_INVALID_VALUE in glVertexAttribPointer(index=${index}): index must be in the range 0 <= index < GL_MAX_VERTEX_ATTRIBS (${GL.currentContext.maxVertexAttribs})!`);
+#endif
+      GL.recordError(GL_INVALID_VALUE);
+      return;
+    }
 #endif
     if (!GLctx.currentArrayBufferBinding) {
       cb.size = size;
@@ -3708,8 +3735,14 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
   glEnableVertexAttribArray: (index) => {
 #if FULL_ES2
     var cb = GL.currentContext.clientBuffers[index];
+#if GL_TRACK_ERRORS
+    if (!cb) {
 #if GL_ASSERTIONS
-    assert(cb, index);
+      err(`GL_INVALID_VALUE in glEnableVertexAttribArray(index=${index}): index must be in the range 0 <= index < GL_MAX_VERTEX_ATTRIBS (${GL.currentContext.maxVertexAttribs})!`);
+#endif
+      GL.recordError(GL_INVALID_VALUE);
+      return;
+    }
 #endif
     cb.enabled = true;
 #endif
@@ -3719,8 +3752,14 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
   glDisableVertexAttribArray: (index) => {
 #if FULL_ES2
     var cb = GL.currentContext.clientBuffers[index];
+#if GL_TRACK_ERRORS
+    if (!cb) {
 #if GL_ASSERTIONS
-    assert(cb, index);
+      err(`GL_INVALID_VALUE in glDisableVertexAttribArray(index=${index}): index must be in the range 0 <= index < GL_MAX_VERTEX_ATTRIBS (${GL.currentContext.maxVertexAttribs})!`);
+#endif
+      GL.recordError(GL_INVALID_VALUE);
+      return;
+    }
 #endif
     cb.enabled = false;
 #endif
@@ -4171,8 +4210,8 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
 // - [X] ones have X in the C name but not in the JS name
 var glPassthroughFuncs = [
   [0, 'finish flush'],
-  [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
-  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
+  [1, 'clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
+  [2, 'blendFunc blendEquationSeparate depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
   [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
   [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
   [5, 'vertexAttrib4f'],
