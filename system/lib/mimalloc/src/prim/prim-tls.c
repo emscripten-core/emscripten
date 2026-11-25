@@ -6,7 +6,7 @@ terms of the MIT license. A copy of the license can be found in the file
 -----------------------------------------------------------------------------*/
 
 #include "mimalloc.h"
-#include "mimalloc/prim.h"
+#include "mimalloc/prim/prim.h"
 #include "mimalloc/prim/prim-tls.h"
 #include "mimalloc/util/options.h"              // _mi_error_message
 
@@ -20,13 +20,20 @@ void _mi_tls_slots_init(void);
 void _mi_tls_slots_done(void);
 void _mi_theap_default_set(mi_theap_t* theap);
 void _mi_theap_cached_set(mi_theap_t* theap);
+void _mi_theap_tls_check(void);
 
 
 #if MI_TLS_MODEL_LOCAL
+// with `MI_PAC` the initial value is `NULL` (as we cannot statically sign the empty theap)
+#if MI_PAC
+#define MI_THEAP_LOCAL_INIT   NULL
+#else
+#define MI_THEAP_LOCAL_INIT   ((mi_theap_t*)&_mi_theap_empty)
+#endif
 // the thread-local main theap for allocation
-mi_decl_hidden mi_decl_thread mi_theap_t* __mi_theap_default = (mi_theap_t*)&_mi_theap_empty;
+mi_decl_hidden mi_decl_thread mi_theap_t* __mi_theap_default = MI_THEAP_LOCAL_INIT;
 // the last used non-main theap
-mi_decl_hidden mi_decl_thread mi_theap_t* __mi_theap_cached = (mi_theap_t*)&_mi_theap_empty;
+mi_decl_hidden mi_decl_thread mi_theap_t* __mi_theap_cached = MI_THEAP_LOCAL_INIT;
 #endif
 
 mi_decl_hidden mi_decl_thread void* __mi_thread_id_helper = NULL;
@@ -155,18 +162,24 @@ mi_decl_hidden _Atomic(pthread_key_t) _mi_theap_default_key = MI_ATOMIC_VAR_INIT
 mi_decl_hidden _Atomic(pthread_key_t) _mi_theap_cached_key  = MI_ATOMIC_VAR_INIT(MI_PTHREAD_KEY_INVALID);
 
 static void mi_theap_cached_key_destroy(void* theapv) {
-  mi_theap_t* theap = (mi_theap_t*)theapv;
+  mi_theap_t* theap = (mi_theap_t*)mi_tls_auth(theapv, MI_TLS_TAG_THEAP_CACHED);
   if (theap!=NULL) {
     _mi_theap_decref(theap);
   }
 }
 
+// without the keys each allocation would re-initialize the thread
+static void mi_tls_slots_init_once(void) {
+  pthread_key_t key = MI_PTHREAD_KEY_INVALID;
+  if (!_mi_pthread_key_create(&key,NULL,NULL)) { _mi_fatal_error("unable to allocate the thread local keys\n"); }
+  mi_atomic_store_release(&_mi_theap_default_key,key);
+  key = MI_PTHREAD_KEY_INVALID;
+  if (!_mi_pthread_key_create(&key,&mi_theap_cached_key_destroy,NULL)) { _mi_fatal_error("unable to allocate the thread local keys\n"); }
+  mi_atomic_store_release(&_mi_theap_cached_key,key);
+}
+
 void _mi_tls_slots_init(void) {
-  mi_atomic_do_once {
-    pthread_key_t key;
-    if (_mi_pthread_key_create(&key,NULL,NULL)) { mi_atomic_store_release(&_mi_theap_default_key,key); }
-    if (_mi_pthread_key_create(&key,&mi_theap_cached_key_destroy,NULL)) { mi_atomic_store_release(&_mi_theap_cached_key,key); }
-  }
+  mi_atomic_do_once { mi_tls_slots_init_once(); }
 }
 
 void _mi_tls_slots_done(void) {
@@ -213,15 +226,16 @@ void _mi_theap_cached_set(mi_theap_t* theap) {
   if (prev==theap) return;
   // set
   _mi_tls_slots_init();
+  void* const x = mi_tls_sign(theap, MI_TLS_TAG_THEAP_CACHED);
   #if MI_TLS_MODEL_LOCAL
-    __mi_theap_cached = theap;
+    __mi_theap_cached = (mi_theap_t*)x;
   #elif MI_TLS_MODEL_FIXED
-    mi_prim_tls_slot_set(MI_TLS_MODEL_FIXED_CACHED, theap);
+    mi_prim_tls_slot_set(MI_TLS_MODEL_FIXED_CACHED, x);
   #elif MI_TLS_MODEL_WIN32
-    mi_win_tls_slot_set(mi_atomic_load_relaxed(&_mi_theap_cached_slot), mi_atomic_load_relaxed(&_mi_theap_cached_expansion_slot), theap);
+    mi_win_tls_slot_set(mi_atomic_load_relaxed(&_mi_theap_cached_slot), mi_atomic_load_relaxed(&_mi_theap_cached_expansion_slot), x);
   #elif MI_TLS_MODEL_PTHREADS
     pthread_key_t key = mi_atomic_load_relaxed(&_mi_theap_cached_key);
-    if (key!=MI_PTHREAD_KEY_INVALID) { pthread_setspecific(key, theap); }
+    if (key!=MI_PTHREAD_KEY_INVALID) { pthread_setspecific(key, x); }
   #endif
   // update refcounts (so cached theap memory keeps available until no longer cached)
   _mi_theap_incref(theap);
@@ -233,20 +247,29 @@ void _mi_theap_default_set(mi_theap_t* theap)  {
   mi_assert_internal(theap->tld != NULL);
   mi_assert_internal(mi_theap_matches_thread(theap));
   _mi_tls_slots_init();
+  void* const x = mi_tls_sign(theap, MI_TLS_TAG_THEAP_DEFAULT);
   #if MI_TLS_MODEL_LOCAL
-    __mi_theap_default = theap;
+    __mi_theap_default = (mi_theap_t*)x;
   #elif MI_TLS_MODEL_FIXED
-    mi_prim_tls_slot_set(MI_TLS_MODEL_FIXED_DEFAULT, theap);
+    mi_prim_tls_slot_set(MI_TLS_MODEL_FIXED_DEFAULT, x);
   #elif MI_TLS_MODEL_WIN32
-    mi_win_tls_slot_set(mi_atomic_load_relaxed(&_mi_theap_default_slot), mi_atomic_load_relaxed(&_mi_theap_default_expansion_slot), theap);
+    mi_win_tls_slot_set(mi_atomic_load_relaxed(&_mi_theap_default_slot), mi_atomic_load_relaxed(&_mi_theap_default_expansion_slot), x);
   #elif MI_TLS_MODEL_PTHREADS
     pthread_key_t key = mi_atomic_load_relaxed(&_mi_theap_default_key);
-    if (key!=MI_PTHREAD_KEY_INVALID) { pthread_setspecific(key, theap); }
+    if (key!=MI_PTHREAD_KEY_INVALID) { pthread_setspecific(key, x); }
   #endif
 
   // set theap main if needed
   if (mi_theap_is_initialized(theap)) {
     // ensure the default theap is passed to `_mi_thread_done` as on some platforms we cannot access TLS at thread termination (as it would allocate again)
-    _mi_prim_thread_associate_default_theap(theap);
+    _mi_prim_thread_associate_default_theap((mi_theap_t*)mi_theap_thread_done_sign(theap));
   }
+}
+
+// Called on the slow path when the thread is not initialized: report an error if the
+// default or cached theap entry was overwritten with an invalidly signed value (see `mi_theap_tls_auth`).
+void _mi_theap_tls_check(void) {
+  if (!MI_PAC) return;
+  mi_tls_auth(mi_prim_theap_default_raw(), MI_TLS_TAG_THEAP_DEFAULT);
+  mi_tls_auth(mi_prim_theap_cached_raw(), MI_TLS_TAG_THEAP_CACHED);
 }

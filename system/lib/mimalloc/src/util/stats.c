@@ -5,7 +5,7 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #include "mimalloc.h"
-#include "mimalloc/prim.h"       // _mi_prim_clock_now, mi_process_info_t
+#include "mimalloc/prim/prim.h"       // _mi_prim_clock_now, mi_process_info_t
 #include "mimalloc/prim/prim-tls.h"
 #include "mimalloc/alloc/page.h"
 #include "mimalloc/util/stats.h"
@@ -162,7 +162,7 @@ static void mi_print_number(int64_t n, mi_output_fun* out, void* arg, bool limit
     const char* magnitude = "K";
     if (pos >= divider*base) { divider *= base; magnitude = "M"; }
     if (pos >= divider*base) { divider *= base; magnitude = "G"; }
-    const int64_t tens = (n / (divider/10));
+    const int64_t tens = (n / divider)*10 + ((n % divider)*10)/divider;
     const long whole = (long)(tens/10);
     const long frac1 = (long)(tens%10);
     char unitdesc[8];
@@ -438,7 +438,13 @@ void _mi_stats_print(const char* name, size_t id, const mi_stats_t* stats, mi_ou
 
 // called on process init
 void _mi_stats_init(void) {
-  if (_mi_process.clock_process_start == 0) { _mi_process.clock_process_start = _mi_clock_start(); }
+  const mi_msecs_t t0 = _mi_clock_now();  // also initializes the clock frequency on Windows
+  const mi_msecs_t overhead = _mi_clock_now() - t0;
+  const mi_msecs_t start = _mi_clock_now();
+  mi_process_sealed_once_t* const once = _mi_process_unseal_once();
+  once->clock_overhead = overhead;
+  once->clock_process_start = start;
+  _mi_process_seal_once();
 }
 
 static void mi_stats_add_into(mi_stats_t* to, const mi_stats_t* from) {
@@ -462,13 +468,15 @@ static const mi_stats_t* mi_stats_merge_theap_to_heap(mi_theap_t* theap) mi_attr
 }
 
 static const mi_stats_t* mi_heap_get_stats(mi_heap_t* heap) {
-  if (heap==NULL) { heap = mi_heap_main(); }
+  // if (heap==NULL) { heap = mi_heap_main(); }
+  if (!mi_heap_handle_is_valid(heap)) return NULL;
   mi_theap_t* theap = _mi_heap_theap_peek(heap);
   if (theap==NULL) return &heap->stats;
               else return mi_stats_merge_theap_to_heap(theap);
 }
 
 static const mi_stats_t* mi_theap_get_stats(mi_theap_t* theap) {
+  if (theap==NULL || !mi_theap_is_initialized(theap) || !mi_theap_handle_is_valid(theap)) return NULL;
   return &theap->stats;
 }
 
@@ -482,7 +490,8 @@ void mi_stats_reset(void) mi_attr_noexcept {
 
 
 void mi_heap_stats_print_out(mi_heap_t* heap, mi_output_fun* out, void* arg) mi_attr_noexcept {
-  if (heap==NULL) { heap = mi_heap_main(); }
+  // if (heap==NULL) { heap = mi_heap_main(); }
+  if (!mi_heap_handle_is_valid(heap)) return;
   _mi_stats_print("heap", heap->heap_seq, mi_heap_get_stats(heap), out, arg);
 }
 
@@ -550,16 +559,12 @@ mi_msecs_t _mi_clock_now(void) {
 }
 
 mi_msecs_t _mi_clock_start(void) {
-  if (_mi_process.clock_overhead == 0) {
-    const mi_msecs_t t0 = _mi_clock_now();
-    _mi_process.clock_overhead = _mi_clock_now() - t0;
-  }
   return _mi_clock_now();
 }
 
 mi_msecs_t _mi_clock_end(mi_msecs_t start) {
   mi_msecs_t end = _mi_clock_now();
-  return (end - start - _mi_process.clock_overhead);
+  return (end - start - mi_process_get_sealed_once()->clock_overhead);
 }
 
 
@@ -571,7 +576,7 @@ mi_decl_export void mi_process_info(size_t* elapsed_msecs, size_t* user_msecs, s
 {
   mi_process_info_t pinfo;
   _mi_memzero_var(pinfo);
-  pinfo.elapsed        = _mi_clock_end(_mi_process.clock_process_start);
+  pinfo.elapsed        = _mi_clock_end(mi_process_get_sealed_once()->clock_process_start);
   { const mi_subproc_t* subproc = _mi_subproc_main();
     if (subproc!=NULL) {
       const int64_t current = mi_atomic_loadi64_relaxed((_Atomic(int64_t)*)(&subproc->stats.committed.current));
@@ -634,7 +639,7 @@ bool mi_theap_stats_get(mi_theap_t* theap, mi_stats_t* stats) mi_attr_noexcept {
 }
 
 void mi_theap_stats_merge_to_heap(mi_theap_t* theap) mi_attr_noexcept {
-  if (theap == NULL) return;
+  if (theap==NULL || !mi_theap_is_initialized(theap) || !mi_theap_handle_is_valid(theap)) return;
   _mi_theap_merge_stats(theap);
 }
 
@@ -669,6 +674,7 @@ typedef struct mi_json_buf_s {
   size_t  size;
   size_t  used;
   bool    can_realloc;
+  bool    truncated;  // set if output was dropped
 } mi_json_buf_t;
 
 static bool mi_json_buf_expand(mi_json_buf_t* hbuf) {
@@ -687,11 +693,10 @@ static bool mi_json_buf_expand(mi_json_buf_t* hbuf) {
 
 static void mi_json_buf_print(mi_json_buf_t* hbuf, const char* msg) {
   if (msg==NULL || hbuf==NULL) return;
-  if (hbuf->used + 1 >= hbuf->size && !hbuf->can_realloc) return;
   for (const char* src = msg; *src != 0; src++) {
     char c = *src;
-    if (hbuf->used + 1 >= hbuf->size) {
-      if (!mi_json_buf_expand(hbuf)) return;
+    if (hbuf->used + 1 >= hbuf->size) {  // keep room for the terminating zero
+      if (!mi_json_buf_expand(hbuf)) { hbuf->truncated = true; return; }
     }
     mi_assert_internal(hbuf->used < hbuf->size);
     hbuf->buf[hbuf->used++] = c;
@@ -762,7 +767,7 @@ static void mi_json_buf_print_counter_value(mi_json_buf_t* hbuf, const char* nam
 
 static char* mi_stats_get_json_from(const mi_stats_t* stats, size_t output_size, char* output_buf) mi_attr_noexcept {
   if (stats==NULL || stats->size!=sizeof(mi_stats_t) || stats->version!=MI_STAT_VERSION) return NULL;
-  mi_json_buf_t hbuf = { NULL, 0, 0, true };
+  mi_json_buf_t hbuf = { NULL, 0, 0, true, false };
   if (output_size > 0 && output_buf != NULL) {
     mi_memzero(output_buf, output_size);
     hbuf.buf = output_buf;
@@ -823,7 +828,7 @@ static char* mi_stats_get_json_from(const mi_stats_t* stats, size_t output_size,
   }
   mi_json_buf_print(&hbuf, "  ]\n");
   mi_json_buf_print(&hbuf, "}\n");
-  if (hbuf.used + 1 >= hbuf.size) {
+  if (hbuf.truncated) {
     // failed
     if (hbuf.can_realloc) { mi_free(hbuf.buf); }
     return NULL;

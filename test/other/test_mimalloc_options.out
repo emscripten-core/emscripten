@@ -1,4 +1,4 @@
-v3.6.1
+v3.7.1
 option 'show_errors': 0 
 option 'show_stats': 0 
 option 'verbose': 1 
@@ -30,7 +30,7 @@ option 'retry_on_oom': 400
 option 'deprecated_visit_abandoned': 1 
 option 'guarded_min': 0 
 option 'guarded_max': 1073741824 
-option 'unsafe_guarded_precise': 0 
+option 'deprecated_unsafe_guarded_precise': 0 
 option 'guarded_sample_rate': 0 
 option 'guarded_sample_seed': 0 
 option 'generic_collect': 10000 
@@ -53,7 +53,8 @@ option 'profile_time_interval': 0
 option 'profile_sample_rate': 524288 B
 option 'stats_merge_threshold': 4194304 B
 option 'arena_purge_immediate_size': 2048 KiB
-free mode   : pagemap, page size: 76
+option 'mte': 1 
+free mode   : pagemap, page size: 128
 mem tracking: none
 debug level : 0
 secure level: 0

@@ -13,11 +13,12 @@ terms of the MIT license. A copy of the license can be found in the file
 // --------------------------------------------------------
 
 #include "mimalloc.h"
-#include "mimalloc/prim.h"             // mi_prim_getenv
+#include "mimalloc/prim/prim.h"             // mi_prim_getenv
 #include "mimalloc/prim/prim-tls.h"
 #include "mimalloc/util/options.h"
 #include "mimalloc/util/libc.h"
-#include <limits.h>                   // LONG_MIN, LONG_MAX
+#include "mimalloc/prim/os.h"          // _mi_os_is_elevated
+#include <limits.h>                   // LONG_MIN, LONG_MAX, ULLONG_MAX
 
 #if MI_DEBUG && NDEBUG
 #if defined(_MSC_VER)
@@ -132,63 +133,120 @@ static int mi_digit_value(char c, int base) {
 }
 
 // Parse up to max_len bytes without errno or requiring a terminator; skip at most 128 whitespace characters.
-// Allow at most 64 digits; leading zeros are allowed only in hexadecimal.
-// On failure, result is zero (clamped on overflow); end is s if no digits, otherwise the stopping point.
-bool _mi_strntol(const char* s, size_t max_len, const char** end, long* result) {
+// A sign is only allowed if `allow_sign`. A `0x` prefix selects hexadecimal if `base` is 0 (or is skipped if `base` is 16).
+// Allow at most 64 digits; leading zeros are allowed only in hexadecimal. The magnitude can be at most
+// `max_pos` (or `max_neg` if negative). On failure, result is zero (clamped on overflow); end is s if no digits,
+// otherwise the stopping point.
+static bool mi_strn_parse(const char* s, size_t max_len, int base, bool allow_sign,
+                          unsigned long long max_pos, unsigned long long max_neg,
+                          const char** end, bool* neg, unsigned long long* result) {
+  mi_assert_internal(base == 0 || base == 10 || base == 16);
   if (end != NULL) { *end = s; }
-  if (result != NULL) { *result = 0; }
+  *neg = false;
+  *result = 0;
   if (s == NULL) return false;
   size_t i = 0;
   while (i < max_len && i < 128 && mi_isspace(s[i])) { i++; }
   if (i == max_len) return false;
-  const bool neg = (s[i] == '-');
-  if (neg || s[i] == '+') { i++; }
-  if (i == max_len) return false;
-  int base = 10;
-  if (i + 1 < max_len && s[i] == '0' && (s[i+1] == 'x' || s[i+1] == 'X')) {
+  if (allow_sign && (s[i] == '-' || s[i] == '+')) {
+    *neg = (s[i] == '-');
+    i++;
+    if (i == max_len) return false;
+  }
+  if (base != 10 && i + 1 < max_len && s[i] == '0' && (s[i+1] == 'x' || s[i+1] == 'X')) {
     base = 16;
     i += 2;
   }
+  if (base == 0) { base = 10; }
   if (base == 10 && i + 1 < max_len && s[i] == '0' && mi_digit_value(s[i+1], base) >= 0) return false;
   const size_t start = i;
-  // Accumulate negatively so LONG_MIN is representable without unsigned arithmetic.
-  const long limit = (neg ? LONG_MIN : -LONG_MAX);
-  const long cutoff = limit / base;
-  const long cutlim = -(limit % base);
-  long acc = 0;
+  const unsigned long long max = (*neg ? max_neg : max_pos);
+  unsigned long long acc = 0;
   while (i < max_len && i - start < 64) {
     const int digit = mi_digit_value(s[i], base);
     if (digit < 0) break;
-    if (acc < cutoff || (acc == cutoff && digit > cutlim)) {
+    if (acc > (max - (unsigned)digit) / (unsigned)base) {  // acc*base + digit > max
       if (end != NULL) { *end = s + i; }
-      if (result != NULL) { *result = (neg ? LONG_MIN : LONG_MAX); }
+      *result = max;
       return false;
     }
-    acc = acc*base - digit;
+    acc = acc*(unsigned)base + (unsigned)digit;
     i++;
   }
   if (i == start) return false;
   if (end != NULL) { *end = s + i; }
   if (i < max_len && i - start == 64 && mi_digit_value(s[i], base) >= 0) return false;
-  if (result != NULL) { *result = (neg ? acc : -acc); }
+  *result = acc;
   return true;
 }
 
-#ifdef MI_NO_GETENV
+// Parse a signed decimal or `0x` prefixed hexadecimal number (see `mi_strn_parse`).
+bool _mi_strntol(const char* s, size_t max_len, const char** end, long* result) {
+  const unsigned long long max_neg = (unsigned long long)LONG_MAX + 1;
+  bool neg;
+  unsigned long long x;
+  const bool ok = mi_strn_parse(s, max_len, 0, true, (unsigned long long)LONG_MAX, max_neg, end, &neg, &x);
+  if (result != NULL) { *result = (!neg ? (long)x : (x == max_neg ? LONG_MIN : -(long)x)); }
+  return ok;
+}
+
+// Parse an unsigned number without a sign in `base` 10 or 16, or in base 0 as decimal or `0x` prefixed hexadecimal (see `mi_strn_parse`).
+bool _mi_strntoull(const char* s, size_t max_len, int base, const char** end, unsigned long long* result) {
+  bool neg;
+  unsigned long long x;
+  const bool ok = mi_strn_parse(s, max_len, base, false, ULLONG_MAX, ULLONG_MAX, end, &neg, &x);
+  if (result != NULL) { *result = x; }
+  return ok;
+}
+
+#if MI_NO_GETENV
 int _mi_getenv(const char* name, char* result, size_t result_size) {
   MI_UNUSED(name);
   MI_UNUSED(result);
   MI_UNUSED(result_size);
   return ENOENT;
 }
+bool _mi_env_visit(mi_env_visit_fun* visit, void* arg) {
+  MI_UNUSED(visit);
+  MI_UNUSED(arg);
+  return true;  // an empty environment
+}
 #else
 int _mi_getenv(const char* name, char* result, size_t result_size) {
   if (name==NULL || result == NULL || result_size < 64) return ENOENT;
   // change the result of _mi_prim_getenv to an errno result
   const int res = _mi_prim_getenv(name,result,result_size);
-  return (res > 0 ? 0 : (res == 0 ? ENOENT : EAGAIN));
+  return (res > 0 ? 0 : (res == 0 ? ENOENT : (res == -2 ? E2BIG : EAGAIN)));
+}
+bool _mi_env_visit(mi_env_visit_fun* visit, void* arg) {
+  if (visit == NULL) return false;
+  return _mi_prim_env_visit(visit, arg);
 }
 #endif
+
+typedef struct mi_getenv_visit_s {
+  const char* name;
+  size_t      name_len;
+  char*       result;
+  size_t      result_size;
+  int         res;          // result of `_mi_prim_getenv`
+} mi_getenv_visit_t;
+
+static void mi_getenv_visit(const char* entry, void* arg) {
+  mi_getenv_visit_t* const v = (mi_getenv_visit_t*)arg;
+  if (v->res != 0) return;  // the first occurrence takes precedence
+  if (_mi_strnicmp(v->name, entry, v->name_len) == 0 && entry[v->name_len] == '=') {  // case insensitive
+    v->res = (_mi_strlcpy(v->result, entry + v->name_len + 1, v->result_size) ? 1 : -2 /* too long */);
+  }
+}
+
+int _mi_prim_getenv_by_visit(const char* name, char* result, size_t result_size) {
+  if (name == NULL) return -1;
+  mi_getenv_visit_t v = { name, _mi_strlen(name), result, result_size, 0 };
+  if (v.name_len == 0) return -1;
+  if (!_mi_prim_env_visit(&mi_getenv_visit, &v)) return -1;  // try again later
+  return v.res;
+}
 
 
 // --------------------------------------------------------
@@ -209,8 +267,8 @@ bool _mi_atomic_once_enter(mi_atomic_once_t* once) {
   }
 
   mi_lock_acquire(&once->lock);
-  size_t expected = 0;
-  if (mi_atomic_cas_strong_acq_rel(&once->tid, &expected, current_tid)) {  // could use atomic_load/store as well
+  if (mi_atomic_load_relaxed(&once->tid) == 0) {
+    mi_atomic_store_relaxed(&once->tid, current_tid);
     return true;  // should execute and release
   }
   else {
@@ -228,9 +286,17 @@ void _mi_atomic_once_release(mi_atomic_once_t* once) {
 
 #if MI_USE_PTHREADS
 mi_decl_noinline bool _mi_pthread_key_create(pthread_key_t* pkey, void (*destruct)(void*), void* init) {
-  int err = pthread_key_create(pkey,destruct);
+  // keys are created lazily on first use so multiple threads can race to create the same key
+  static mi_lock_t key_lock = MI_LOCK_INITIALIZER;
+  int err = 0;
+  mi_lock(&key_lock) {
+    if (*pkey == MI_PTHREAD_KEY_INVALID) {
+      pthread_key_t key;
+      err = pthread_key_create(&key,destruct);
+      if (err==0) { *pkey = key; }
+    }
+  }
   if mi_unlikely(err!=0) {
-    *pkey = MI_PTHREAD_KEY_INVALID;
     _mi_error_message(ENOMEM,"unable to allocate a thread local variable (error %d)\n", err);
     return false;
   }
@@ -330,7 +396,7 @@ static void mi_out_fill(char fill, size_t len, char** out, char* end) {
 
 static void mi_out_alignright(char fill, char* start, size_t len, size_t extra, char* end) {
   if (len == 0 || extra == 0) return;
-  if (start + len + extra >= end) return;
+  if (start + len + extra > end) return;
   // move `len` characters to the right (in reverse since it can overlap)
   for (size_t i = 1; i <= len; i++) {
     start[len + extra - i] = start[len - i];
@@ -354,7 +420,7 @@ static void mi_out_num(uintmax_t x, size_t base, char prefix, char** out, char* 
     int dcount = 0;
     while(x>0 && dcount < MI_MAX_OUT_DIGITS) {
       char digit = (char)(x % base);
-      num[dcount++] = (digit <= 9 ? '0' + digit : 'A' + digit - 10);
+      num[dcount++] = (digit <= 9 ? '0' + digit : 'a' + digit - 10);
       x = x / base;
     }
     if (dcount>=MI_MAX_OUT_DIGITS) return;  // don't output anything?
@@ -367,6 +433,16 @@ static void mi_out_num(uintmax_t x, size_t base, char prefix, char** out, char* 
   }
 }
 
+
+// Hide (randomized) addresses in `%p` output in secure release builds or in a privileged process
+// (as the output can reveal the address space layout to an attacker)
+static bool mi_redact_addresses(void) {
+  #if (MI_SECURE>=1 && MI_DEBUG==0)
+  return true;
+  #else
+  return _mi_os_is_elevated();
+  #endif
+}
 
 #define MI_NEXTC()  c = *in; if (c==0) break; in++;
 
@@ -452,8 +528,16 @@ int _mi_vsnprintf(char* buf, size_t bufsize, const char* fmt, va_list args) {
           void* const p = va_arg(args, void*);
           x = mi_addr(p);
           mi_outs("0x", &out, end);
+          if (mi_redact_addresses()) {
+            // only show the low 16 bits (enough to distinguish blocks, while the higher randomized bits stay hidden)
+            mi_outs("...", &out, end);
+            x = (x & 0xFFFF);
+            width = 4; fill = '0'; alignright = true;
+          }
+          else {
+            width = (width >= 2 ? width - 2 : 0);
+          }
           start = out;
-          width = (width >= 2 ? width - 2 : 0);
         }
         if (width == 0 && (c == 'x' || c == 'p')) {
           if (c == 'p')   { width = 2 * (x <= UINT32_MAX ? 4 : ((x >> 16) <= UINT32_MAX ? 6 : sizeof(size_t))); }
@@ -481,6 +565,11 @@ int _mi_vsnprintf(char* buf, size_t bufsize, const char* fmt, va_list args) {
           pre = numplus;
         }
         mi_out_num((uintmax_t)x, 10, pre, &out, end);
+        if (pre != 0 && fill == '0' && alignright && out > start) {
+          // zero fill goes after the sign
+          start++;
+          if (width > 0) { width--; }
+        }
       }
       else if (c >= ' ' && c <= '~') {
         // unknown format

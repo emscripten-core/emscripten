@@ -7,7 +7,9 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include "mimalloc.h"
 #include "mimalloc/prim/os.h"
+#include "mimalloc/prim/prim-mte.h"  // mi_memtag_is_enabled
 #include "mimalloc/heap/subproc.h"
+#include "mimalloc/alloc/free.h"
 #if defined(MI_MALLOC_OVERRIDE)
 
 #if !defined(__APPLE__)
@@ -42,6 +44,27 @@ extern malloc_zone_t* malloc_default_purgeable_zone(void) __attribute__((weak_im
 
 static bool is_mimalloc_zone( malloc_zone_t* zone );
 
+#if MI_MTE
+// libmalloc requests canonical (tag 0) memory from an interposed zone through a thread option
+// (`MALLOC_ZONE_MALLOC_OPTION_CANONICAL_TAG`), used for example by the objc method caches.
+typedef struct mi_malloc_thread_options_s {
+  uintptr_t disable_expensive_debugging : 1;
+  uintptr_t disable_guard_malloc : 1;
+  uintptr_t disable_stack_logging : 1;
+  uintptr_t canonical_tag : 1;
+} mi_malloc_thread_options_t;
+extern mi_malloc_thread_options_t malloc_get_thread_options(void) __attribute__((weak_import));
+
+static void* zone_canonical(void* p) {
+  if (mi_memtag_is_enabled() && malloc_get_thread_options != NULL && malloc_get_thread_options().canonical_tag) {
+    return _mi_memtag_canonical(p);
+  }
+  return p;
+}
+#else
+#define zone_canonical(p)  (p)
+#endif
+
 static size_t zone_size(malloc_zone_t* zone, const void* p) {
   if (mi_any_heap_contains(p)) {
     return mi_usable_size(p);
@@ -56,17 +79,17 @@ static size_t zone_size(malloc_zone_t* zone, const void* p) {
 
 static void* zone_malloc(malloc_zone_t* zone, size_t size) {
   MI_UNUSED(zone);
-  return mi_malloc(size);
+  return zone_canonical(mi_malloc(size));
 }
 
 static void* zone_calloc(malloc_zone_t* zone, size_t count, size_t size) {
   MI_UNUSED(zone);
-  return mi_calloc(count, size);
+  return zone_canonical(mi_calloc(count, size));
 }
 
 static void* zone_valloc(malloc_zone_t* zone, size_t size) {
   MI_UNUSED(zone);
-  return mi_malloc_aligned(size, _mi_os_page_size());
+  return zone_canonical(mi_malloc_aligned(size, _mi_os_page_size()));
 }
 
 static void zone_free(malloc_zone_t* zone, void* p) {
@@ -93,7 +116,7 @@ static void* zone_realloc(malloc_zone_t* zone, void* p, size_t newsize) {
 
 static void* zone_memalign(malloc_zone_t* zone, size_t alignment, size_t size) {
   MI_UNUSED(zone);
-  return mi_malloc_aligned(size,alignment);
+  return zone_canonical(mi_malloc_aligned(size,alignment));
 }
 
 static void zone_destroy(malloc_zone_t* zone) {
@@ -275,7 +298,7 @@ static bool is_mimalloc_zone( malloc_zone_t* zone ) {
   return (zone==NULL || zone==&mi_malloc_zone);
 }
 
-#if defined(MI_OSX_INTERPOSE) && defined(MI_SHARED_LIB_EXPORT)
+#if defined(MI_OSX_INTERPOSE) && MI_SHARED_LIB_EXPORT
 
 // ------------------------------------------------------
 // Override malloc_xxx and malloc_zone_xxx api's to use only
@@ -345,7 +368,8 @@ static void mi__malloc_fork_parent(void) {
   // nothing
 }
 static void mi__malloc_fork_child(void) {
-  // nothing
+  // we replace libSystem's `_malloc_fork_child` (which would call our zone `intro_reinit_lock`)
+  _mi_fork_child_zone();
 }
 
 static void mi_malloc_printf(const char* fmt, ...) {

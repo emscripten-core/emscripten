@@ -5,8 +5,8 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #pragma once
-#ifndef MI_INTERNAL_ARENA_ALLOC_H
-#define MI_INTERNAL_ARENA_ALLOC_H
+#ifndef MI_ARENA_ARENA_ALLOC_H
+#define MI_ARENA_ARENA_ALLOC_H
 
 #include "../types.h"
 

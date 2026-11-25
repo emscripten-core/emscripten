@@ -61,7 +61,7 @@ mi_decl_nodiscard mi_decl_restrict void* mi_valloc(size_t size) mi_attr_noexcept
 
 mi_decl_nodiscard mi_decl_restrict void* mi_pvalloc(size_t size) mi_attr_noexcept {
   size_t psize = _mi_os_page_size();
-  if (size >= SIZE_MAX - psize) return NULL; // overflow
+  if (size >= SIZE_MAX - psize) { errno = ENOMEM; return NULL; } // overflow
   size_t asize = mi_align_up(size, psize);
   return mi_malloc_aligned(asize, psize);
 }
@@ -85,19 +85,13 @@ mi_decl_nodiscard mi_decl_restrict void* mi_aligned_alloc(size_t alignment, size
 
 mi_decl_nodiscard void* mi_reallocarray( void* p, size_t count, size_t size ) mi_attr_noexcept {  // BSD <https://man.freebsd.org/cgi/man.cgi?query=reallocarray>
   size_t total;
-  if mi_unlikely(mi_count_size_overflow(count, size, &total)) {
-    errno = EOVERFLOW;
-    return NULL;
-  }
-  void* newp = mi_realloc(p,total);
-  if (newp==NULL) { errno = ENOMEM; }
-  return newp;
+  if mi_unlikely(mi_count_size_overflow(count, size, &total)) return NULL;  // sets errno to ENOMEM (as required by POSIX)
+  return mi_realloc(p,total);
 }
 
 mi_decl_nodiscard int mi_reallocarr( void* ptrp, size_t count, size_t size ) mi_attr_noexcept { // NetBSD <https://man.netbsd.org/reallocarr.3>
-  mi_assert(size != 0);
   mi_assert(ptrp != NULL);
-  if (ptrp == NULL || size == 0) {
+  if (ptrp == NULL) {
     return (errno = EINVAL);
   }
   size_t total;
@@ -129,7 +123,7 @@ mi_decl_nodiscard mi_decl_restrict wchar_t* mi_wcsdup(const wchar_t* s) mi_attr_
   size_t wlen;
   for(wlen = 0; s[wlen] != 0 && wlen < PTRDIFF_MAX; wlen++) { }  // prevent overflow on wlen+1
   size_t size;
-  if (mi_mul_overflow(wlen+1, sizeof(wchar_t), &size) || size > PTRDIFF_MAX) return NULL;
+  if (mi_mul_overflow(wlen+1, sizeof(wchar_t), &size) || size > PTRDIFF_MAX) { errno = ENOMEM; return NULL; }
   wchar_t* p = (wchar_t*)mi_malloc(size);
   if (p != NULL) {
     mi_memcpy(p,s,size);

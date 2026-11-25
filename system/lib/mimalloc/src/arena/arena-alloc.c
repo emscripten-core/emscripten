@@ -7,6 +7,7 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include "mimalloc.h"
 #include "mimalloc/util/stats.h"
+#include "mimalloc/util/memid.h"
 #include "mimalloc/alloc/free.h"          // mi_free_subproc_safe
 #include "mimalloc/alloc/page.h"
 #include "mimalloc/heap/subproc.h"
@@ -16,8 +17,9 @@ terms of the MIT license. A copy of the license can be found in the file
 
 mi_decl_nodiscard bool _mi_arena_commit(mi_subproc_t* subproc, mi_arena_t* arena, void* start, size_t size, bool* is_zero, size_t stat_already_committed) {
   mi_assert_internal(subproc!=NULL);
-  if (arena != NULL && arena->commit_fun != NULL) {
-    return (*arena->commit_fun)(true, start, size, is_zero, arena->commit_fun_arg);
+  mi_commit_fun_t* const commit_fun = (arena != NULL ? mi_fun_auth_at(mi_commit_fun_t, &arena->commit_fun) : NULL);
+  if (commit_fun != NULL) {
+    return (*commit_fun)(true, start, size, is_zero, arena->commit_fun_arg);
   }
   else if (stat_already_committed > 0) {
     return _mi_os_commit_ex(subproc, start, size, is_zero, stat_already_committed);
@@ -34,9 +36,9 @@ static mi_memid_t mi_memid_create_arena(mi_arena_t* arena, size_t slice_index, s
   mi_assert_internal(slice_count > 0);
   mi_assert_internal(slice_index < arena->slice_count);
   mi_memid_t memid = _mi_memid_create(MI_MEM_ARENA);
-  memid.mem.arena.arena = arena;
   memid.mem.arena.slice_index = (uint32_t)slice_index;
   memid.mem.arena.slice_count = (uint32_t)slice_count;
+  memid.mem.arena.arena = mi_ptr_sign(arena, mi_memid_arena_salt(&memid.mem.arena));
   return memid;
 }
 
@@ -56,18 +58,21 @@ static mi_decl_noinline void* mi_arena_try_alloc_at(
   void* p = mi_arena_slice_start(arena, slice_index);
   *memid = mi_memid_create_arena(arena, slice_index, slice_count);
   memid->is_pinned = arena->memid.is_pinned;
+  memid->is_memtag = arena->memid.is_memtag;
 
   // set the dirty bits and track which slices become accessible
-  size_t touched_slices = slice_count;
+  size_t touched_slices = 0;  // todo: properly count touched pages for non-zero arenas with a separate bitmap?
   if (arena->memid.initially_zero) {
-    size_t already_dirty = 0;
-    memid->initially_zero = mi_bitmap_setN(arena->slices_dirty, slice_index, slice_count, &already_dirty);
-    mi_assert_internal(already_dirty <= touched_slices);
-    touched_slices -= already_dirty;
-  }
-  else {
-    // todo: properly count touched pages with a separate bitmap?
-    touched_slices = 0;
+    // dirty bits are never cleared, so check first to avoid writing to the shared bitmap
+    size_t already_dirty = slice_count;
+    if (mi_bitmap_is_setN(arena->slices_dirty, slice_index, slice_count)) {
+      memid->initially_zero = false;
+    }
+    else {
+      memid->initially_zero = mi_bitmap_setN(arena->slices_dirty, slice_index, slice_count, &already_dirty);
+    }
+    mi_assert_internal(already_dirty <= slice_count);
+    touched_slices = slice_count - already_dirty;
   }
 
   // set commit state
@@ -123,13 +128,12 @@ static mi_decl_noinline void* mi_arena_try_alloc_at(
   }
   else {
     // no need to commit, but check if it is already fully committed
-    memid->initially_committed = mi_bitmap_is_setN(arena->slices_committed, slice_index, slice_count);
+    const size_t already_committed = mi_bitmap_popcountN(arena->slices_committed, slice_index, slice_count);
+    memid->initially_committed = (already_committed == slice_count);
     if (!memid->initially_committed) {
       // partly committed.. adjust stats
-      size_t already_committed_count = 0;
-      mi_bitmap_setN(arena->slices_committed, slice_index, slice_count, &already_committed_count);
       mi_bitmap_clearN(arena->slices_committed, slice_index, slice_count);
-      mi_subproc_stat_decrease(arena->subproc, committed, _mi_size_of_slices(already_committed_count));
+      mi_subproc_stat_decrease(arena->subproc, committed, _mi_size_of_slices(already_committed));
     }
   }
 
@@ -346,8 +350,14 @@ void _mi_arenas_free(mi_subproc_t* subproc, void* p, size_t size, mi_memid_t mem
 }
 
 // Purge the arenas; if `force_purge` is true, amenable parts are purged even if not yet expired
+// (`tld` is NULL on a thread without a theap which always belongs to the main subprocess, see `mi_collect`)
 void _mi_arenas_collect(bool force_purge, bool visit_all, mi_tld_t* tld) {
-  mi_arenas_try_purge(force_purge, visit_all, tld->subproc, tld->thread_seq);
+  if (tld==NULL) {
+    mi_arenas_try_purge(force_purge, visit_all, _mi_subproc_main(), 0);
+  }
+  else {
+    mi_arenas_try_purge(force_purge, visit_all, tld->subproc, tld->thread_seq);
+  }
 }
 
 /* -----------------------------------------------------------
@@ -375,23 +385,13 @@ static bool mi_arena_purge(mi_arena_t* arena, size_t slice_index, size_t slice_c
 
   const size_t size = _mi_size_of_slices(slice_count);
   void* const p = mi_arena_slice_start(arena, slice_index);
-  //const bool all_committed = mi_bitmap_is_setN(arena->slices_committed, slice_index, slice_count);
-  size_t already_committed;
-  mi_bitmap_setN(arena->slices_committed, slice_index, slice_count, &already_committed); // pretend all committed.. (as we lack a clearN call that counts the already set bits..)
+  const size_t already_committed = mi_bitmap_popcountN(arena->slices_committed, slice_index, slice_count);
   const bool all_committed = (already_committed == slice_count);
-  const bool needs_recommit = _mi_os_purge_ex(arena->subproc, p, size, all_committed /* allow reset? */, _mi_size_of_slices(already_committed), arena->commit_fun, arena->commit_fun_arg);
+  const bool needs_recommit = _mi_os_purge_ex(arena->subproc, p, size, all_committed /* allow reset? */, _mi_size_of_slices(already_committed), mi_fun_auth_at(mi_commit_fun_t, &arena->commit_fun), arena->commit_fun_arg);
 
-  if (needs_recommit) {
-    // no longer committed
+  if (needs_recommit || !all_committed) {
+    // Discard partial commitment tracking so the range will be recommitted on reuse.
     mi_bitmap_clearN(arena->slices_committed, slice_index, slice_count);
-    // we just counted in the purge to decommit all, but the some part was not committed so adjust that here
-    // mi_subproc_stat_decrease(arena->subproc, committed, _mi_size_of_slices(slice_count - already_committed));
-  }
-  else if (!all_committed) {
-    // we cannot assume any of these are committed any longer (even with reset since we did setN and may have marked uncommitted slices as committed)
-    mi_bitmap_clearN(arena->slices_committed, slice_index, slice_count);
-    // we adjust the commit count as parts will be re-committed
-    // mi_subproc_stat_decrease(arena->subproc, committed, _mi_size_of_slices(already_committed));
   }
 
   return needs_recommit;
@@ -410,19 +410,16 @@ static void mi_arena_schedule_purge(mi_arena_t* arena, size_t slice_index, size_
     mi_arena_purge(arena, slice_index, slice_count);
   }
   else {
-    // schedule purge
-    const mi_msecs_t expire = _mi_clock_now() + delay;
-    mi_msecs_t expire0 = 0;
-    if (mi_atomic_casi64_strong_acq_rel(&arena->purge_expire, &expire0, expire)) {
-      // expiration was not yet set
-      // maybe set the global arenas expire as well (if it wasn't set already)
-      mi_assert_internal(expire0==0);
-      mi_atomic_casi64_strong_acq_rel(&arena->subproc->purge_expire, &expire0, expire);
-    }
-    else {
-      // already an expiration was set
-    }
+    // schedule purge: first set the purge bits, then lower the arena expiration, and if we lowered it,
+    // the global one as well. These are (always writing) read-modify-writes that are ordered with the
+    // exchanges in `mi_arenas_try_purge` (and `mi_arena_try_purge`): either the purger sees our
+    // expiration (and purge bits), or we see its reset to 0 and publish our expiration again.
     mi_bitmap_setN(arena->slices_purge, slice_index, slice_count, NULL);
+    const mi_msecs_t expire = _mi_clock_now() + delay;
+    const mi_msecs_t prev = mi_atomic_mini64_nonzero_acq_rel(&arena->purge_expire, expire);
+    if (prev == 0 || expire < prev) {
+      mi_atomic_mini64_nonzero_acq_rel(&arena->subproc->purge_expire, expire);
+    }
   }
 }
 
@@ -470,22 +467,23 @@ static bool mi_arena_try_purge_visitor(size_t slice_index, size_t slice_count, m
   return true; // continue
 }
 
-// returns
-// -1 = nothing was purged
-// 0  = nothing was purged yet because have not yet reached the expire time
-// 1  = some pages in the arena were purged
-static int mi_arena_try_purge(mi_arena_t* arena, mi_msecs_t now, bool force)
+// Returns `true` if some pages in the arena were purged.
+// If the arena expiration is not yet reached, `*pending_expire` is lowered to it.
+static bool mi_arena_try_purge(mi_arena_t* arena, mi_msecs_t now, bool force, mi_msecs_t* pending_expire)
 {
   // check pre-conditions
-  if (arena->memid.is_pinned) return -1;
+  if (arena->memid.is_pinned) return false;
 
   // expired yet?
-  mi_msecs_t expire = mi_atomic_loadi64_relaxed(&arena->purge_expire);
-  if (expire==0) return -1;
-  if (!force && expire > now) return 0;
+  const mi_msecs_t expire = mi_atomic_loadi64_relaxed(&arena->purge_expire);
+  if (expire==0) return false;
+  if (!force && expire > now) {
+    if (*pending_expire == 0 || expire < *pending_expire) { *pending_expire = expire; }
+    return false;
+  }
 
-  // reset expire
-  mi_atomic_storei64_release(&arena->purge_expire, (mi_msecs_t)0);
+  // reset expire (ordered with `mi_arena_schedule_purge` so we see the purge bits of any free that saw the old expiration)
+  mi_atomic_exchangei64_acq_rel(&arena->purge_expire, (mi_msecs_t)0);
   mi_subproc_stat_counter_increase(arena->subproc, arena_purges, 1);
 
   // go through all purge info's  (with max MI_BFIELD_BITS ranges at a time)
@@ -497,7 +495,7 @@ static int mi_arena_try_purge(mi_arena_t* arena, mi_msecs_t now, bool force)
   const size_t minslices = _mi_slice_count_of_size(_mi_os_minimal_purge_size());
   _mi_bitmap_forall_setc_rangesn(arena->slices_purge, minslices, &mi_arena_try_purge_visitor, arena, &vinfo);
 
-  return (vinfo.any_purged ? 1 : -1);
+  return vinfo.any_purged;
 }
 
 
@@ -512,38 +510,31 @@ static void mi_arenas_try_purge(bool force, bool visit_all, mi_subproc_t* subpro
   const mi_msecs_t arenas_expire = mi_atomic_loadi64_acquire(&subproc->purge_expire);
   if (!visit_all && !force && (arenas_expire == 0 || arenas_expire > now)) return;
 
-  const size_t max_arena = mi_arenas_get_count(subproc);
-  if (max_arena == 0) return;
-
   // allow only one thread to purge at a time (todo: allow concurrent purging?)
   mi_atomic_guard(&_mi_process.arena_purge_guard)
   {
-    // increase global expire: at most one purge per delay cycle
-    if (arenas_expire > now) { mi_atomic_storei64_release(&subproc->purge_expire, now + (delay/10)); }
-    const size_t arena_start = tseq % max_arena;
+    // reset the global expiration (ordered with `mi_arena_schedule_purge`): any free that saw the old
+    // expiration has its arena expiration visible to us; any later free publishes its expiration again.
+    mi_atomic_exchangei64_acq_rel(&subproc->purge_expire, (mi_msecs_t)0);
+    mi_msecs_t pending_expire = 0;  // earliest expiration of the arenas we did not purge
+    const size_t max_arena = mi_arenas_get_count(subproc);
+    const size_t arena_start = (max_arena == 0 ? 0 : tseq % max_arena);
     size_t max_purge_count = (visit_all ? max_arena : (max_arena/4)+1);
-    bool all_visited = true;
-    bool any_purged = false;
     for (size_t _i = 0; _i < max_arena; _i++) {
       size_t i = _i + arena_start;
       if (i >= max_arena) { i -= max_arena; }
       mi_arena_t* arena = mi_arena_from_index(subproc,i);
-      if (arena != NULL) {
-        const int purged = mi_arena_try_purge(arena, now, force);
-        if (purged >= 0) {      // purged, or arena expire is not yet reached
-          any_purged = true;
-          if (purged >= 1) {    // purged
-            if (max_purge_count <= 1) {
-              all_visited = false;
-              break;
-            }
-            max_purge_count--;
-          }
+      if (arena != NULL && mi_arena_try_purge(arena, now, force, &pending_expire)) {
+        if (max_purge_count <= 1) {
+          pending_expire = now;  // not all arenas were visited; continue at the next try
+          break;
         }
+        max_purge_count--;
       }
     }
-    if (all_visited && !any_purged) {
-      mi_atomic_storei64_release(&subproc->purge_expire, (mi_msecs_t)0);
+    // publish the earliest pending expiration again
+    if (pending_expire != 0) {
+      mi_atomic_mini64_nonzero_acq_rel(&subproc->purge_expire, pending_expire);
     }
   }
 }

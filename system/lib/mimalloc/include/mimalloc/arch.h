@@ -6,24 +6,40 @@ terms of the MIT license. A copy of the license can be found in the file
 -----------------------------------------------------------------------------*/
 
 /* ----------------------------------------------------------------------------
-  Bit operation, and platform dependent definition (MI_INTPTR_SIZE etc)
+  Platform dependent definitions (MI_INTPTR_SIZE etc.), and bit operations.
 ---------------------------------------------------------------------------- */
 
 #pragma once
-#ifndef MI_BITS_H
-#define MI_BITS_H
+#ifndef MI_ARCH_H
+#define MI_ARCH_H
 
 #include <stddef.h>   // size_t
 #include <stdint.h>   // int64_t etc
 #include <stdbool.h>  // bool
 #include <limits.h>   // LONG_MAX
 
+// Header availability for builds that do not use CMake.
+#if !defined(MI_HAS_UNISTDH) && !defined(_WIN32)
+#if defined(__has_include)
+#if __has_include(<unistd.h>)
+#define MI_HAS_UNISTDH  1
+#endif
+#elif defined(__unix__) || defined(__APPLE__) || defined(__HAIKU__)
+#define MI_HAS_UNISTDH  1
+#endif
+#endif
+
+// C++ versus C
 #if defined(__cplusplus)
 #define mi_decl_externc         extern "C"
 #define mi_init_struct_zero     { }
 #else
 #define mi_decl_externc
 #define mi_init_struct_zero     { 0 }
+#endif
+
+#if defined(__CHERI_PURE_CAPABILITY__)
+#define MI_CHERI          1
 #endif
 
 // ------------------------------------------------------
@@ -78,15 +94,96 @@ typedef int32_t  mi_ssize_t;
 #define MI_INTPTR_SIZE  (1<<MI_INTPTR_SHIFT)
 #define MI_INTPTR_BITS  (MI_INTPTR_SIZE*8)
 
-#define MI_SIZE_SIZE  (1<<MI_SIZE_SHIFT)
-#define MI_SIZE_BITS  (MI_SIZE_SIZE*8)
+#define MI_SIZE_SIZE    (1<<MI_SIZE_SHIFT)
+#define MI_SIZE_BITS    (MI_SIZE_SIZE*8)
 
-#define MI_KiB     (MI_ZU(1024))
-#define MI_MiB     (MI_KiB*MI_KiB)
-#define MI_GiB     (MI_MiB*MI_KiB)
+#define MI_KiB          (MI_ZU(1024))
+#define MI_MiB          (MI_KiB*MI_KiB)
+#define MI_GiB          (MI_MiB*MI_KiB)
+
+
+// ------------------------------------------------------
+// Raw addresses: the integer address of a pointer (without provenance or memory tag).
+// Usually `mi_addr_t == uintptr_t == size_t`, but on CHERI `uintptr_t` is a 128-bit capability
+// while the address (`mi_addr_t`) is 64-bit. Use `mi_addr(p)` to get the address of a pointer
+// (and derive pointers from an existing pointer to keep provenance).
+// With MTE, `mi_addr_t == uintptr_t` but a `void*` contains a tag in the top bits.
+// ------------------------------------------------------
+
+#if defined(__PTRADDR_TYPE__)
+typedef __PTRADDR_TYPE__      mi_addr_t;
+#else
+typedef uintptr_t             mi_addr_t;
+#endif
+#define MI_ADDR(x)            ((mi_addr_t)(x))
+
+// With memory tagging (MTE), pointers carry a 4-bit tag starting at bit `MI_PTR_MEMTAG_SHIFT` (see `prim/prim-mte.h`).
+// The address mask removes all top bits ignored by the hardware, not just the logical memory tag (for ARM the full top byte).
+// (For a future x86 ChkTag the tag would use bits 57-60, with LAM ignoring bits 57-62, but bit 56 is part of the address.)
+#define MI_MEMTAG_UNIT_SIZE        (16)               // memory is tagged per unit
+#define mi_decl_memtag_unit_align  mi_decl_align(16)  // align to a memory tag unit
+
+#if MI_MTE
+#define MI_PTR_MEMTAG_SHIFT   (56)
+#define MI_PTR_MEMTAG_MASK    (MI_ADDR(0x0F) << MI_PTR_MEMTAG_SHIFT)
+#define MI_PTR_ADDR_MASK      (~(MI_ADDR(0xFF) << MI_PTR_MEMTAG_SHIFT))
+#else
+#define MI_PTR_MEMTAG_SHIFT   (0)
+#define MI_PTR_MEMTAG_MASK    (MI_ADDR(0))
+#define MI_PTR_ADDR_MASK      (~MI_ADDR(0))
+#endif
+
+// Get the address part of a pointer (without provenance or memory tag)
+static inline mi_addr_t mi_addr(const void* p) {
+  #if MI_CHERI
+  return (mi_addr_t)__builtin_cheri_address_get(p);
+  #else
+  return ((mi_addr_t)(uintptr_t)(p) & MI_PTR_ADDR_MASK);
+  #endif
+}
+
+// Derive a pointer with address `addr` from `p` (keeping the provenance and memory tag of `p`)
+static inline void* mi_ptr_with_addr(const void* p, mi_addr_t addr) {
+  #if MI_CHERI
+  return (void*)__builtin_cheri_address_set(p, addr);
+  #else
+  return (void*)((uintptr_t)p + (addr - mi_addr(p)));
+  #endif
+}
+
+// An address-only pointer (e.g. a mapping hint), without provenance or memory tag
+static inline void* mi_ptr_from_addr(mi_addr_t addr) {
+  return (void*)(uintptr_t)addr;
+}
+
+// ------------------------------------------------------
+// Pointer serialization for free-list links.
+// a `mi_addr_tagged_t` retains the memory tag but not capability authority
+// ------------------------------------------------------
+
+typedef mi_addr_t mi_addr_tagged_t;
+
+static inline mi_addr_tagged_t mi_ptr_pack(const void* p) {
+  #if MI_CHERI
+  return (mi_addr_tagged_t)mi_addr(p);
+  #else
+  return (mi_addr_tagged_t)(uintptr_t)p;
+  #endif
+}
+
+// Restore the saved address and memory tag, using `auth` for capability authority
+static inline void* mi_ptr_unpack(const void* auth, mi_addr_tagged_t addrt) {
+  #if MI_CHERI
+  return mi_ptr_with_addr(auth, (mi_addr_t)addrt);
+  #else
+  MI_UNUSED(auth);
+  return (void*)(uintptr_t)addrt;
+  #endif
+}
+
 
 /* --------------------------------------------------------------------------------
-  Architecture
+  CPU Architecture
 -------------------------------------------------------------------------------- */
 
 #if defined(__aarch64__) || defined(_M_ARM64) || defined(_M_HYBRID_X86_ARM64) || defined(_M_ARM64EC)  // consider arm64ec as arm64
@@ -106,8 +203,8 @@ typedef int32_t  mi_ssize_t;
 #endif
 #endif
 
-#if defined(__CHERI_PURE_CAPABILITY__)
-#define MI_CHERI          1
+#if MI_MTE && !MI_ARCH_ARM64
+#error "memory tagging (MI_MTE) is only supported on arm64"
 #endif
 
 #if MI_ARCH_X64 && defined(__AVX2__)
@@ -128,9 +225,6 @@ typedef int32_t  mi_ssize_t;
 #if MI_ARCH_X64 && defined(__AVX2__) && !defined(__LZCNT__) // avx2 implies lzcnt
 #define __LZCNT__  1
 #endif
-
-// Define big endian if needed
-// #define MI_BIG_ENDIAN  1
 
 // maximum virtual address bits in a user-space pointer
 #if MI_DEFAULT_VIRTUAL_ADDRESS_BITS > 0
@@ -158,10 +252,10 @@ typedef int32_t  mi_ssize_t;
 #define MI_FREE_USE_PAGEMAP  1
 #endif
 
-// Probable OS page size (as statically known; the actual page size is determined at runtime).
+// Probable OS page size (as statically known; the actual page size is determined at runtime with `_mi_os_page_size()`).
 // Can be set explicitly, e.g. `-DMI_OS_PROBABLE_PAGE_SIZE=65536` for arm64 Linux kernels with 64 KiB pages.
 #if !defined(MI_OS_PROBABLE_PAGE_SIZE)
-#if defined(__APPLE__)                     // check first as `PAGE_SIZE` may be the runtime `vm_page_size` here
+#if defined(__APPLE__)                        // check first as `PAGE_SIZE` may be the runtime `vm_page_size` there
 #if MI_ARCH_ARM64
 #define MI_OS_PROBABLE_PAGE_SIZE  (16*MI_KiB) // macOS, iOS, etc. on Apple silicon
 #else
@@ -169,7 +263,7 @@ typedef int32_t  mi_ssize_t;
 #endif
 #elif defined(__wasm__) || defined(__EMSCRIPTEN__) || defined(__wasi__)
 #define MI_OS_PROBABLE_PAGE_SIZE  (64*MI_KiB) // fixed WebAssembly page size
-#elif defined(PAGE_SIZE)                   // only defined if constant (FreeBSD, musl on x86, bionic without flexible page sizes, ...)
+#elif defined(PAGE_SIZE)                      // only defined if constant (FreeBSD, musl on x86, bionic without flexible page sizes, ...)
 #define MI_OS_PROBABLE_PAGE_SIZE  PAGE_SIZE
 #elif defined(__linux__) && (defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__))
 #define MI_OS_PROBABLE_PAGE_SIZE  (64*MI_KiB) // default for ppc64(le) distributions
@@ -192,6 +286,136 @@ typedef int32_t  mi_ssize_t;
 #define MI_OS_HAS_GUARD_PAGES  1
 #endif
 #endif
+
+
+// ------------------------------------------------------
+// Signed pointers (see `prim/prim-pac.h`): with `MI_PAC` some internal pointers are stored signed
+// (using ARM pointer authentication or a software keyed encoding); this is a `uintptr_t` so it can be atomic.
+// ------------------------------------------------------
+
+typedef uintptr_t           mi_ptr_signed_t;
+#define mi_ptr_signed(tp)   mi_ptr_signed_t     // a signed `tp*` (only documents the pointer type)
+
+// Pointer signing (see `prim/prim-pac.h`): 0=off, 1=weak (using a software process key), 2=required (using the
+// arm64 generic pointer authentication key (`pacga`), which must be supported at runtime).
+// Only on 64-bit systems (and not on CHERI); `required` only on arm64 with GCC or clang.
+// Defaults to `required` with `MI_MTE=2` as all MTE hardware supports PAC.
+#if (MI_MTE >= 2) && !defined(MI_PAC)
+#define MI_PAC  2
+#endif
+#if (MI_PAC >= 2) && !(MI_ARCH_ARM64 && defined(__GNUC__))
+#error "pointer authentication (MI_PAC=ON) is only supported on arm64 with GCC or clang"
+#elif (MI_PAC > 0) && (MI_CHERI || (MI_INTPTR_SIZE != 8))
+#warning "pointer authentication (MI_PAC=ON) is not supported on CHERI or non-64-bit systems"
+#undef MI_PAC
+#define MI_PAC  0
+#elif !defined(MI_PAC)
+#define MI_PAC  0
+#endif
+
+
+// ------------------------------------------------------
+// Capability bounds, permissions, and pointer provenance (only on CHERI at this point).
+// Internally all blocks are derived from the page start which is bounded to the block area
+// of the page, while pointers handed out to the user are bounded to their block and lose
+// any non-data permissions.
+// ------------------------------------------------------
+
+#if MI_CHERI
+#if defined(__has_include)
+#if __has_include(<cheri/cherireg.h>)
+#include <cheri/cherireg.h>     // CHERI_PERM_SW_VMEM on CheriBSD
+#endif
+#endif
+#if defined(CHERI_PERM_SW_VMEM)
+#define MI_CHERI_PERM_SW_VMEM   CHERI_PERM_SW_VMEM            // permission to (un)map memory
+#elif defined(CHERI_PERM_CHERIABI_VMMAP)
+#define MI_CHERI_PERM_SW_VMEM   CHERI_PERM_CHERIABI_VMMAP     // older CheriBSD
+#else
+#define MI_CHERI_PERM_SW_VMEM   0
+#endif
+// permissions that data pointers (user blocks and internal meta data) never need
+#define MI_CHERI_PERMS_NOT_DATA (__CHERI_CAP_PERMISSION_PERMIT_EXECUTE__ | __CHERI_CAP_PERMISSION_PERMIT_SEAL__ | \
+                                 __CHERI_CAP_PERMISSION_PERMIT_UNSEAL__  | __CHERI_CAP_PERMISSION_ACCESS_SYSTEM_REGISTERS__ | \
+                                 MI_CHERI_PERM_SW_VMEM)
+// permissions a pointer passed to `mi_free` must have
+#define MI_CHERI_PERMS_FREE     (__CHERI_CAP_PERMISSION_PERMIT_LOAD__ | __CHERI_CAP_PERMISSION_PERMIT_STORE__ | \
+                                 __CHERI_CAP_PERMISSION_PERMIT_LOAD_CAPABILITY__ | __CHERI_CAP_PERMISSION_PERMIT_STORE_CAPABILITY__)
+#endif
+
+// The bounds size for a pointer to `size` bytes that is handed out to the user. On CHERI this is never zero:
+// a zero-length capability can be validly derived at the end of a neighbouring block (which may be the start of
+// another block), so `mi_free` rejects zero-length capabilities.
+static inline size_t mi_bounds_user_size(size_t size) {
+  #if MI_CHERI
+  return (size==0 ? 1 : size);
+  #else
+  return size;
+  #endif
+}
+
+// The alignment needed for exactly representable bounds of `size` bytes (always a power of 2, and 1 if not on CHERI)
+static inline size_t mi_bounds_align(size_t size) {
+  #if MI_CHERI
+  return ~(size_t)__builtin_cheri_representable_alignment_mask(size) + 1;
+  #else
+  MI_UNUSED(size);
+  return 1;
+  #endif
+}
+
+// Round `size` up such that bounds of that size can be exactly representable (`size` if not on CHERI)
+static inline size_t mi_bounds_size(size_t size) {
+  #if MI_CHERI
+  return __builtin_cheri_round_representable_length(size);
+  #else
+  return size;
+  #endif
+}
+
+// Restrict `p` to `size` bytes (rounded outward if that is not exactly representable)
+static inline void* mi_ptr_bounded(void* p, size_t size) {
+  #if MI_CHERI
+  return __builtin_cheri_bounds_set(p, size);
+  #else
+  MI_UNUSED(size);
+  return p;
+  #endif
+}
+
+// Restrict a (non-NULL) pointer to `size` bytes and data permissions only
+static inline void* mi_ptr_bounded_data(void* p, size_t size) {
+  #if MI_CHERI
+  return mi_ptr_bounded(__builtin_cheri_perms_and(p, ~(size_t)MI_CHERI_PERMS_NOT_DATA), size);
+  #else
+  MI_UNUSED(size);
+  return p;
+  #endif
+}
+
+// Keep the address and memory tag of `p`, taking capability authority from `auth`
+static inline void* mi_ptr_rederive(const void* auth, const void* p) {
+  #if MI_CHERI
+  return mi_ptr_with_addr(auth, mi_addr(p));
+  #else
+  MI_UNUSED(auth);
+  return (void*)p;
+  #endif
+}
+
+// Limit `size` to the bytes accessible through `p` (`size` if not on a system with provenance)
+static inline size_t mi_ptr_bounds_limit(const void* p, size_t size) {
+  #if MI_CHERI
+  const size_t len = (size_t)__builtin_cheri_length_get(p);
+  const size_t ofs = (size_t)__builtin_cheri_offset_get(p);
+  const size_t avail = (ofs <= len ? len - ofs : 0);
+  return (size <= avail ? size : avail);
+  #else
+  MI_UNUSED(p);
+  return size;
+  #endif
+}
+
 
 /* --------------------------------------------------------------------------------
   Builtin's
@@ -399,131 +623,41 @@ static inline uint32_t mi_rotl32(uint32_t x, uint32_t r) {
   #endif
 }
 
+/* --------------------------------------------------------------------------------
+  multiply-xor: the xor of the low and high 64 bits of the full 128-bit product
+-------------------------------------------------------------------------------- */
 
-// ------------------------------------------------------
-// Raw addresses: the integer value of a pointer (without provenance).
-// Usually `mi_addr_t == uintptr_t == size_t`, but on CHERI `uintptr_t` is a 128-bit capability
-// while the address (`ptraddr_t`) is 64-bit. Use `mi_addr(p)` to get the address of a pointer
-// (and derive pointers from an existing pointer to keep provenance).
-// ------------------------------------------------------
-
-#if defined(__PTRADDR_TYPE__)
-typedef __PTRADDR_TYPE__  mi_addr_t;
-#else
-typedef uintptr_t         mi_addr_t;
-#endif
-#define MI_AU(x)          ((mi_addr_t)(x))
-
-// Get the address part of a pointer (without provenance)
-static inline mi_addr_t mi_addr(const void* p) {
-  #if MI_CHERI
-  return (mi_addr_t)__builtin_cheri_address_get(p);
+static inline uint64_t mi_mul_xor64(uint64_t x, uint64_t y) {
+  #if defined(__SIZEOF_INT128__)
+    const unsigned __int128 r = (unsigned __int128)x * y;
+    return ((uint64_t)r ^ (uint64_t)(r >> 64));
+  #elif defined(_MSC_VER) && MI_ARCH_X64
+    uint64_t hi;
+    const uint64_t lo = _umul128(x, y, &hi);
+    return (lo ^ hi);
+  #elif defined(_MSC_VER) && MI_ARCH_ARM64
+    return ((x*y) ^ __umulh(x, y));
   #else
-  return (mi_addr_t)(uintptr_t)(p);
+    const uint64_t x0 = (uint32_t)x, x1 = (x >> 32);
+    const uint64_t y0 = (uint32_t)y, y1 = (y >> 32);
+    const uint64_t p00 = x0*y0, p01 = x0*y1, p10 = x1*y0, p11 = x1*y1;
+    const uint64_t mid = (p00 >> 32) + (uint32_t)p01 + (uint32_t)p10;  // cannot overflow
+    const uint64_t lo  = (mid << 32) | (uint32_t)p00;
+    const uint64_t hi  = p11 + (p01 >> 32) + (p10 >> 32) + (mid >> 32);
+    return (lo ^ hi);
   #endif
 }
 
-// Derive a pointer with address `addr` from `p` (keeping the provenance of `p`)
-static inline void* mi_ptr_with_addr(const void* p, mi_addr_t addr) {
-  #if MI_CHERI
-  return (void*)__builtin_cheri_address_set(p, addr);
+// The high 64 bits of the 96-bit product `x*y` (with `x < 2^32`).
+static inline uint64_t mi_mul_hi64_32(uint32_t x, uint64_t y) {
+  #if defined(__SIZEOF_INT128__)
+    return (uint64_t)(((unsigned __int128)x * y) >> 64);
+  #elif defined(_MSC_VER) && (MI_ARCH_X64 || MI_ARCH_ARM64)
+    return __umulh(x, y);
   #else
-  return (void*)((uintptr_t)p + (addr - mi_addr(p)));
+    // `x*(y>>32) <= (2^32-1)^2` so adding a 32-bit value cannot overflow
+    return ((uint64_t)x * (y >> 32) + (((uint64_t)x * (uint32_t)y) >> 32)) >> 32;
   #endif
 }
 
-// A pointer from an address without provenance
-static inline void* mi_ptr_from_addr(mi_addr_t addr) {
-  return (void*)(uintptr_t)addr;
-}
-
-// ------------------------------------------------------
-// Capability bounds and permissions (only on CHERI).
-// Internally all blocks are derived from the page start which is bounded to the block area
-// of the page, while pointers handed out to the user are bounded to their block and lose
-// any non-data permissions.
-// ------------------------------------------------------
-
-#if MI_CHERI
-#if defined(__has_include)
-#if __has_include(<cheri/cherireg.h>)
-#include <cheri/cherireg.h>     // CHERI_PERM_SW_VMEM on CheriBSD
-#endif
-#endif
-#if defined(CHERI_PERM_SW_VMEM)
-#define MI_CHERI_PERM_SW_VMEM   CHERI_PERM_SW_VMEM            // permission to (un)map memory
-#elif defined(CHERI_PERM_CHERIABI_VMMAP)
-#define MI_CHERI_PERM_SW_VMEM   CHERI_PERM_CHERIABI_VMMAP     // older CheriBSD
-#else
-#define MI_CHERI_PERM_SW_VMEM   0
-#endif
-// permissions that data pointers (user blocks and internal meta data) never need
-#define MI_CHERI_PERMS_NOT_DATA (__CHERI_CAP_PERMISSION_PERMIT_EXECUTE__ | __CHERI_CAP_PERMISSION_PERMIT_SEAL__ | \
-                                 __CHERI_CAP_PERMISSION_PERMIT_UNSEAL__  | __CHERI_CAP_PERMISSION_ACCESS_SYSTEM_REGISTERS__ | \
-                                 MI_CHERI_PERM_SW_VMEM)
-#endif
-
-// The alignment needed for exactly representable bounds of `size` bytes (always a power of 2, and 1 if not on CHERI)
-static inline size_t mi_bounds_align(size_t size) {
-  #if MI_CHERI
-  return ~(size_t)__builtin_cheri_representable_alignment_mask(size) + 1;
-  #else
-  MI_UNUSED(size);
-  return 1;
-  #endif
-}
-
-// Round `size` up such that bounds of that size can be exactly representable (`size` if not on CHERI)
-static inline size_t mi_bounds_size(size_t size) {
-  #if MI_CHERI
-  return __builtin_cheri_round_representable_length(size);
-  #else
-  return size;
-  #endif
-}
-
-// Restrict `p` to `size` bytes (rounded outward if that is not exactly representable)
-static inline void* mi_ptr_bounded(void* p, size_t size) {
-  #if MI_CHERI
-  return __builtin_cheri_bounds_set(p, size);
-  #else
-  MI_UNUSED(size);
-  return p;
-  #endif
-}
-
-// Restrict a (non-NULL) pointer to `size` bytes and data permissions only
-static inline void* mi_ptr_bounded_data(void* p, size_t size) {
-  #if MI_CHERI
-  return mi_ptr_bounded(__builtin_cheri_perms_and(p, ~(size_t)MI_CHERI_PERMS_NOT_DATA), size);
-  #else
-  MI_UNUSED(size);
-  return p;
-  #endif
-}
-
-// Re-derive `p` from the capability `auth` (when `p` lacks the bounds or permissions, e.g. a user pointer)
-static inline void* mi_ptr_rederive(void* auth, void* p) {
-  #if MI_CHERI
-  return mi_ptr_with_addr(auth, mi_addr(p));
-  #else
-  MI_UNUSED(auth);
-  return p;
-  #endif
-}
-
-// Limit `size` to the bytes accessible through `p` (`size` if not on a system with provenance)
-static inline size_t mi_ptr_bounds_limit(const void* p, size_t size) {
-  #if MI_CHERI
-  const size_t len = (size_t)__builtin_cheri_length_get(p);
-  const size_t ofs = (size_t)__builtin_cheri_offset_get(p);
-  const size_t avail = (ofs <= len ? len - ofs : 0);
-  return (size <= avail ? size : avail);
-  #else
-  MI_UNUSED(p);
-  return size;
-  #endif
-}
-
-
-#endif // MI_BITS_H
+#endif // MI_ARCH_H

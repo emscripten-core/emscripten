@@ -86,7 +86,7 @@ typedef void* mi_nothrow_t;
   #define MI_FORWARD03(fun,x,y,z) { fun(x,y,z); }
 #endif
 
-#if defined(__APPLE__) && defined(MI_SHARED_LIB_EXPORT) && defined(MI_OSX_INTERPOSE)
+#if defined(__APPLE__) && MI_SHARED_LIB_EXPORT && defined(MI_OSX_INTERPOSE)
   // define MI_OSX_IS_INTERPOSED as we should not provide forwarding definitions for
   // functions that are interposed (or the interposing does not work)
   #define MI_OSX_IS_INTERPOSED

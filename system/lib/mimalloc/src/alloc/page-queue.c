@@ -27,12 +27,12 @@ terms of the MIT license. A copy of the license can be found in the file
   // ok, default alignment is 1 word
 #endif
 
-// Minimal block size in machine words (a block must be able to hold a pointer)
-#if (MI_INTPTR_SIZE > MI_SIZE_SIZE)
+// Minimal block size in machine words (a block must be able to hold a pointer, and be a multiple of the memory tag unit size)
+#if (MI_INTPTR_SIZE > MI_SIZE_SIZE) || MI_MTE
   #if (MI_INTPTR_SIZE > 2*MI_SIZE_SIZE) || !(defined(MI_ALIGN2W) || defined(MI_ALIGN4W))
   #error "define the minimal block size for this platform"
   #endif
-  #define MI_MIN_BLOCK_WSIZE  2   // as on CHERI
+  #define MI_MIN_BLOCK_WSIZE  2   // as on CHERI, or with memory tagging (16-byte units)
 #else
   #define MI_MIN_BLOCK_WSIZE  1
 #endif
@@ -95,17 +95,23 @@ size_t _mi_bin_size(size_t bin) {
   return _mi_theap_empty.pages[bin].block_size;
 }
 
-// Good size for allocation
-mi_decl_nodiscard mi_decl_export size_t mi_good_size(size_t size) mi_attr_noexcept {
+// The block size (including padding) used for an allocation of `size` bytes (see `alloc-generic.c:mi_huge_page_alloc`)
+size_t _mi_block_size_of(size_t size) {
   if (size <= MI_LARGE_MAX_OBJ_SIZE - MI_PADDING_SIZE) {
     return _mi_bin_size(mi_bin(size + MI_PADDING_SIZE));
   }
   else if (size <= MI_MAX_ALLOC_SIZE - MI_PADDING_SIZE) {
-    return mi_align_up(size + MI_PADDING_SIZE,_mi_os_page_size());
+    return mi_bounds_size(_mi_os_good_alloc_size(size + MI_PADDING_SIZE));
   }
   else {
     return size;
   }
+}
+
+// Good size for allocation: the usable size of the block used for `size` bytes
+mi_decl_nodiscard mi_decl_export size_t mi_good_size(size_t size) mi_attr_noexcept {
+  if (size > MI_MAX_ALLOC_SIZE - MI_PADDING_SIZE) return size;
+  return _mi_block_size_of(size) - MI_PADDING_SIZE;
 }
 
 #if (MI_DEBUG>1)
@@ -229,6 +235,7 @@ void mi_page_queue_remove(mi_page_queue_t* queue, mi_page_t* page) {
                       (mi_page_is_huge(page) && mi_page_queue_is_huge(queue)) ||
                         (mi_page_is_in_full(page) && mi_page_queue_is_full(queue)));
   mi_theap_t* theap = mi_page_theap(page);
+  mi_list_unlink_check(page, prev, next, queue->first, queue->last);
   if (page->prev != NULL) page->prev->next = page->next;
   if (page->next != NULL) page->next->prev = page->prev;
   if (page == queue->last)  queue->last = page->prev;
@@ -310,11 +317,13 @@ void mi_page_queue_push_at_end(mi_theap_t* theap, mi_page_queue_t* queue, mi_pag
   if (page->memid.memkind != MI_MEM_ARENA) { theap->page_count_os++; }
 }
 
+// Move a page from the `from` queue to the end (or front) of the `to` queue.
+// The queues can be the same in which case the page is moved within the queue.
 static void mi_page_queue_enqueue_from_ex(mi_page_queue_t* to, mi_page_queue_t* from, bool enqueue_at_end, mi_page_t* page) {
   mi_assert_internal(page != NULL);
   mi_assert_internal(from->count >= 1);
   mi_assert_expensive(mi_page_queue_contains(from, page));
-  mi_assert_expensive(!mi_page_queue_contains(to, page));
+  mi_assert_expensive(to == from || !mi_page_queue_contains(to, page));
   const size_t bsize = mi_page_block_size(page);
   MI_UNUSED(bsize);
   mi_assert_internal((bsize == to->block_size && bsize == from->block_size) ||
@@ -326,6 +335,7 @@ static void mi_page_queue_enqueue_from_ex(mi_page_queue_t* to, mi_page_queue_t* 
   mi_theap_t* theap = mi_page_theap(page);
 
   // delete from `from`
+  mi_list_unlink_check(page, prev, next, from->first, from->last);
   if (page->prev != NULL) page->prev->next = page->next;
   if (page->next != NULL) page->next->prev = page->prev;
   if (page == from->last)  from->last = page->prev;
@@ -355,31 +365,23 @@ static void mi_page_queue_enqueue_from_ex(mi_page_queue_t* to, mi_page_queue_t* 
     }
   }
   else {
+    // enqueue at the front
+    page->prev = NULL;
+    page->next = to->first;
     if (to->first != NULL) {
-      // enqueue at 2nd place
       mi_assert_internal(theap == mi_page_theap(to->first));
-      mi_page_t* next = to->first->next;
-      page->prev = to->first;
-      page->next = next;
-      to->first->next = page;
-      if (next != NULL) {
-        next->prev = page;
-      }
-      else {
-        to->last = page;
-      }
+      to->first->prev = page;
     }
     else {
-      // enqueue at the head (singleton list)
-      page->prev = NULL;
-      page->next = NULL;
-      to->first = page;
       to->last = page;
-      mi_theap_queue_first_update(theap, to);
     }
+    to->first = page;
+    mi_theap_queue_first_update(theap, to);
   }
 
-  mi_page_set_in_full(page, mi_page_queue_is_full(to));
+  if (to != from) {  // avoid the atomic flag update when moving within a queue
+    mi_page_set_in_full(page, mi_page_queue_is_full(to));
+  }
 }
 
 void mi_page_queue_enqueue_from(mi_page_queue_t* to, mi_page_queue_t* from, mi_page_t* page) {
@@ -394,17 +396,30 @@ void mi_page_queue_enqueue_from_full(mi_page_queue_t* to, mi_page_queue_t* from,
 void mi_page_queue_move_to_front(mi_theap_t* theap, mi_page_queue_t* queue, mi_page_t* page) {
   mi_assert_internal(mi_page_theap(page) == theap);
   mi_assert_internal(mi_page_queue_contains(queue, page));
+  MI_UNUSED(theap);
   if (queue->first == page) return;
-  mi_page_queue_remove(queue, page);
-  mi_page_queue_push(theap, queue, page);
+  mi_page_queue_enqueue_from_ex(queue, queue, false /* at the front */, page);
   mi_assert_internal(queue->first == page);
 }
 
 void mi_page_queue_move_to_back(mi_theap_t* theap, mi_page_queue_t* queue, mi_page_t* page) {
   mi_assert_internal(mi_page_theap(page) == theap);
   mi_assert_internal(mi_page_queue_contains(queue, page));
+  MI_UNUSED(theap);
   if (queue->last == page) return;
-  mi_page_queue_remove(queue, page);
-  mi_page_queue_push_at_end(theap, queue, page);
+  mi_page_queue_enqueue_from_ex(queue, queue, true /* at the end */, page);
   mi_assert_internal(queue->last == page);
+}
+
+// Rotate the full or huge queue such that `page` becomes the first page (and the pages before it move to the back)
+void mi_page_queue_rotate_to(mi_page_queue_t* queue, mi_page_t* page) {
+  mi_assert_internal(mi_page_queue_is_special(queue));
+  mi_assert_expensive(mi_page_queue_contains(queue, page));
+  if (queue->first == page) return;
+  queue->last->next = queue->first;
+  queue->first->prev = queue->last;
+  queue->last = page->prev;
+  queue->last->next = NULL;
+  page->prev = NULL;
+  queue->first = page;
 }

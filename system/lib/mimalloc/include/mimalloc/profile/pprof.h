@@ -5,8 +5,8 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #pragma once
-#ifndef MI_INTERNAL_PPROF_H
-#define MI_INTERNAL_PPROF_H
+#ifndef MI_PROFILE_PPROF_H
+#define MI_PROFILE_PPROF_H
 
 #include "../types.h"
 

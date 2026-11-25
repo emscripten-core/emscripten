@@ -15,9 +15,9 @@ is a general purpose allocator with excellent [performance](#performance) charac
 Initially developed by Daan Leijen for the runtime systems of the
 [Koka](https://koka-lang.github.io) and [Lean](https://github.com/leanprover/lean) languages.
 
-Latest release   : `v3.6.1`  (2026-10-30) recommended.\
-Latest v2 release: `v2.5.2`  (2026-09-12) stable, legacy.\
-Latest v1 release: `v1.15.2` (2026-09-12) legacy.
+Latest release   : `v3.7.1`  (2026-11-24) recommended -- now with [MTE](#memory-tagging-mte) support.\
+Latest v2 release: `v2.5.4`  (2026-11-24) stable, legacy.\
+Latest v1 release: `v1.15.4` (2026-11-24) legacy.
 
 mimalloc is a drop-in replacement for `malloc` and can be used in other programs
 without code changes, for example, on dynamically linked ELF-based systems (Linux, BSD, etc.) you can use it as:
@@ -27,7 +27,7 @@ without code changes, for example, on dynamically linked ELF-based systems (Linu
 It also includes a way to dynamically override the default allocator in [Windows](#override_on_windows).
 Notable aspects of the design include:
 
-- __small and consistent__: the library is about 12k LOC using simple and
+- __small and consistent__: the core library is about 12k LOC using simple and
   consistent data structures. This makes it very suitable
   to integrate and adapt in other projects. For runtime systems it
   provides hooks for a monotonic _heartbeat_ and deferred freeing (for
@@ -90,6 +90,25 @@ New development is mostly on v3, while v1 and v2 are maintained with security an
 
 ### Releases
 
+* 2026-11-24, `v3.7.1`, `v2.5.4`, `v1.15.4`: (v3) fix THP usage regression (#1502), initialize arena bitmaps lazily,
+  make configuration defines consistent (#1506), detect big-endian platforms, more CPython integration fixes (python/cpython#158718),
+  fix legacy pprof output with lower case hexadecimal output (#1509), improved purge delay,
+  remove dependency on msvcp140.dll in Rust (#1511), better detect elevated processes on Linux (with AT_SECURE),
+  the `mi_umalloc` api's return the usable size, fix `mi_good_size` to take padding into account,
+  introduce [secure mode](#security) `BASIC` that includes free-list encoding and double-free detection with modest overhead,
+  Faster Rust crate, add `MiMallocExcess` as well for better buffer allocation (#1513), fix WASI compilation,
+  collect correctly from threads that never allocate.\
+  (v1,v2,v3): use MADV_DONTNEED for cross-thread huge page resets (#1510), ignore environment options in
+  elevated processes and secure builds, redact addresses in output, limit real_path buffer, prevent infinite loops
+  on corrupted free-lists in release builds,
+* 2026-11-16, `v3.7.0`, `v2.5.3`, `v1.15.3`:
+  (v3) Initial memory tagging support (on an M5 for example), see [MTE](#memory-tagging-mte) and [PAC](#pointer-authentication-pac).
+  Generally improved [security](#security) with sealed data after initialization and secure environments.
+  More CPython integration fixes (python/cpython#158718), fixed profile sample data,
+  Some performance improvements, fix arm64ec cross-compilation (#1492), better backtrace support (#1489),
+  waste less memory with realloc (on Rust, #1488), fix arm32 detection (#1487), make error
+  codes aligned with POSIX, fix lost arena purges, improve fork support on macOS,
+  improved documentation.
 * 2026-10-30, `v3.6.1`: (v3) Many small fixes for CPython integration (thank you @DinoV),
   Emscripten fixes (#1455, thank you @kleisauke) and reduced memory usage on WASI and Emscripten,
   C23 free_sized(_aligned) overrides (#1470), improved fork support (#1456),
@@ -99,7 +118,7 @@ New development is mostly on v3, while v1 and v2 are maintained with security an
   Experimental support for CHERI platforms. Improved Rust bindings (thank you @OscarTHZhang and @Techcable).
   Add `-DMI_SECURE=MINIMAL` as improved [security](#secure-mode) with minimal (~1%) performance impact which
   puts guard pages around all mimalloc meta-data (but does not encode free lists).
-  Move all static variables into a [`mi_process_t`](include/mimalloc/heap/proces.h) struct (that is guarded).
+  Move all static variables into a [`mi_process_t`](include/mimalloc/heap/process.h) struct (that is guarded).
 * 2026-10-23, `v3.6.0`: (v3) add initial [profiling](#profiling) hooks and default profiler, "always on"
   detailed statistics per size-bin, and always-on profiling. Initial rust bindings. Better support
   for large OS page sizes, support a quiescent state based reclamation interfacec (for CPython),
@@ -226,7 +245,7 @@ Finally, you can build a _secure_ version that uses guard pages, encrypted free 
 ```
 
 This will name the shared library as `libmimalloc-secure.so`.
-Use `cmake ../.. -LH` to see all the available build options.
+Use `ccmake ../..` or `cmake ../.. -LH` to see all the available build options.
 
 The examples use the default compiler. If you like to use another, use:
 
@@ -372,7 +391,9 @@ completely and redirect all calls to the _mimalloc_ library instead .
 
 ## Environment Options
 
-You can set further options either programmatically (using [`mi_option_set`](https://microsoft.github.io/mimalloc/group__options.html)), or via environment variables:
+You can set further options either programmatically (using [`mi_option_set`](https://microsoft.github.io/mimalloc/group__options.html)), or via environment variables (most of which are ignored in processes with elevated privileges, like a `setuid` executable).
+
+Common options:
 
 - `MIMALLOC_SHOW_STATS=1`: show statistics when the program terminates.
 - `MIMALLOC_VERBOSE=1`: show verbose messages (including statistics).
@@ -433,41 +454,6 @@ OS will copy the entire 1GiB huge page (or 2MiB large page) which can cause the 
 [linux-huge]: https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/5/html/tuning_and_optimizing_red_hat_enterprise_linux_for_oracle_9i_and_10g_databases/sect-oracle_9i_and_10g_tuning_guide-large_memory_optimization_big_pages_and_huge_pages-configuring_huge_pages_in_red_hat_enterprise_linux_4_or_5
 [windows-huge]: https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows?view=sql-server-2017
 
-## Secure Mode
-
-_mimalloc_ can be build in secure mode by using the `-DMI_SECURE=OFF|MINIMAL|ON|FULL` flags in `cmake`. This build mode
-enables various mitigations to make mimalloc more robust against exploits.
-With `MINIMAL` only security mitigations are added that have minimal impact on performance (usually about 1 or 2%):
-
-- (v3) All internal mimalloc meta data (including the page map and static data) is surrounded by guard pages
-  (so a buffer overflow/underflow exploit cannot reach into the allocator's meta data).
-  However, free lists are not encoded at this level, and a heap block overflow can still corrupt a free list.
-- (v3) The start address of OS allocated memory is randomized
-  (if possible), and mimalloc aborts on corrupted meta data detection.
-
-With `ON`, performance is impacted a bit more (usually less than 25%), but adds:
-
-- All free list pointers are
-  [encoded](include/mimalloc/alloc/page.h#L555)
-  with per-page keys which is used both to prevent overwrites with a known pointer, as well as to detect heap corruption.
-- Double free's are detected (and ignored).
-- Padding is added at the end of each heap block to detect heap block overflows (once the block is freed).
-- Some use-after-free accesses are detected (if these modify the first word in the block).
-- The free lists are initialized in a random order and allocation randomly chooses between extension and reuse within a page to
-  mitigate against attacks that rely on a predicable allocation order. Similarly, the larger heap blocks allocated by mimalloc
-  from the OS are also address randomized.
-- (v3) All pointers passed to `mi_free` (and others) are validated, and pointers not originating from a mimalloc allocation
-  are ignored.
-
-The `FULL` mode also adds:
-
-- If using `-DMI_SECURE=FULL` there will also be guard pages at the end of each (64KiB) mimalloc page (thus interleaving
-  valid block data with inaccessible gaps). This setting is not recommended in general as it is more expensive (and uses
-  more memory), and can also lead to reaching the maximum VMA limit on Linux systems if the heap gets too large.
-- Byte-precise heap block overflow check (once the block is freed).
-
-As always, evaluate with care as part of an overall security strategy as all of the above are mitigations but not guarantees.
-
 ## Debug Mode
 
 When _mimalloc_ is built using debug mode, (`-DCMAKE_BUILD_TYPE=Debug`) (or when using `-DMI_DEBUG=ON` explicitly),
@@ -477,35 +463,7 @@ various checks are done at runtime to catch development errors.
 - Double free's, and freeing invalid heap pointers are detected.
 - Corrupted free-lists and some forms of use-after-free are detected.
 
-## Guarded Mode
 
-<span id="guarded">_mimalloc_ can be build in guarded mode using the `-DMI_GUARDED=ON` flags in `cmake`.</span>
-This is `ON` by default when building a debug version of mimalloc.
-Guarded mode enables placing OS guard pages behind certain object allocations to catch buffer overflows as they occur.
-This can be invaluable to catch buffer-overflow bugs in large programs. However, it also means that any object
-allocated with a guard page takes at least 8 KiB memory for the guard page and its alignment. As such, allocating
-a guard page for every allocation may be too expensive both in terms of memory, and in terms of performance with
-many system calls. Therefore, there are various environment variables (and options) to tune this:
-
-- `MIMALLOC_GUARDED_SAMPLE_RATE=N`: Set the sample rate to `N` (by default 0). This mode places a guard page
-  behind a suitable object about every `N` requested bytes (per thread). Since the performance in guarded mode without placing
-  guard pages is close to release mode, this can be used to enable guard pages even in production to catch latent
-  buffer overflow bugs (for example, by setting it to `16KiB` or higher where the performance impact will be minimal).
-  Set the sample rate to `1` to guard every object, and to `0` to place no guard pages at all.
-
-- `MIMALLOC_GUARDED_SAMPLE_SEED=N`: Start sampling at `N` (by default random). Can be used to reproduce a buffer
-  overflow if needed.
-
-- `MIMALLOC_GUARDED_MIN=N`, `MIMALLOC_GUARDED_MAX=N`: Minimal and maximal _rounded_ object sizes for which a guard
-  page is considered (`0` and `1GiB` respectively). If you suspect a buffer overflow occurs with an object of size
-  141, set the minimum and maximum to `148` and the sample rate to `1` to have all of those guarded.
-
-<!--
-- `MIMALLOC_UNSAFE_GUARDED_PRECISE=1`: If we have an object of size 13, we would usually place it an aligned 16 bytes in
-  front of the guard page. Using `MIMALLOC_UNSAFE_GUARDED_PRECISE` places it exactly 13 bytes before a page so that even
-  a 1 byte overflow is detected. This violates the C/C++ minimal alignment guarantees, and can cause
-  aligned allocations to be un-aligned so use with care.
--->
 
 # Overriding Standard Malloc
 
@@ -621,6 +579,200 @@ first in the import table. In such cases the [`minject`](bin) tool can be used
 to patch the executable's import tables.
 
 
+# Security
+
+There are various build options to make mimalloc more secure.
+
+## Environment Options
+
+With `-DMI_SECURE_ENV=ON`, only `MIMALLOC_SHOW_STATS`, `MIMALLOC_VERBOSE`, `MIMALLOC_SHOW_ERRORS`,
+and `MIMALLOC_ALLOW_THP` are accepted from the environment -- all other options are ignored.
+
+This is by default enabled for [secure mode](#secure-mode), [MTE](#memory-tagging-mte),
+and [PAC](#pointer-authentication-pac). This can be overridden by explicitly building
+with `-DMI_SECURE_ENV=OFF`. Note: even with `OFF`, an elevated process always ignores
+all environment options. Moreover, a program build with secure mode always ignores
+settings for large- or huge OS pages (as pinned memory cannot be guarded).
+You can still set options programmatically for trusted programs.
+
+## Secure Mode
+
+_mimalloc_ can be build in secure mode by using the `-DMI_SECURE=OFF|BASIC|CHECKED|ON|FULL` flags in `cmake`. This build mode
+enables various software mitigations to make mimalloc more robust against exploits.
+With `BASIC` only security mitigations are added that have a small impact on performance (usually less than 5%):
+
+- All internal mimalloc meta data (including the page map and static data) is surrounded by guard pages
+  (so a buffer overflow/underflow exploit cannot reach into the allocator's meta data).
+  All static pointers into metadata are put in a sealed read-only area (like the page map).
+- All free list pointers are [encoded](include/mimalloc/alloc/page.h#L644) with per-page keys
+  such that free list corruption (through a heap block overflow or use-after-free write) is detected (with high probability).
+- Double frees are detected: either immediately when a block is freed twice in a row, or otherwise (with high probability)
+  when the block would be allocated a second time, or when its page is freed.
+  Heap block overflows that overflow into a free block are also detected with the same mechanism.
+- The start address of OS allocated memory is randomized
+  (if possible), and mimalloc aborts on corrupted meta data detection.
+- Larger blocks (> 80 KiB) are followed by a guard page.
+- Does not allocate or reserve large OS pages as pinned memory cannot hold a guard page.
+- Enables `MI_SECURE_ENV=ON`
+- Addresses in error and warning messages are redacted to their low 16 bits (e.g. `0x...13c0`) so the output
+  does not reveal the address space layout (this is also done for elevated processes in any build mode).
+
+With `CHECKED` (the default with `-DMI_MTE` and `-DMI_PAC`), the performance and memory impact
+is still relatively small (usually less than 10%, but can be 60% slower on synthetic benchmarks):
+
+- All pointers passed to `mi_free` (and others) are validated, and pointers not originating from a mimalloc allocation
+  are ignored. Interior pointers are adjusted to the start of their block.
+- Uses slightly stronger list encoding (and with [PAC](#pointer-authentication-pac), the encoding uses hardware keys).
+- The free lists are initialized in a random order and allocation randomly chooses between extension and reuse within a page to
+  mitigate against attacks that rely on a predictable allocation order.
+- Reuse of freed blocks is delayed (until 1/8th of a page is free) and a random number of the most recently
+  freed blocks is held back, making it harder to reclaim a just-freed block (to exploit a use-after-free).
+
+With `ON`, performance and memory usage is impacted a bit more (usually less than 25%, but can be 2 to 3x slower):
+
+- Padding (8 bytes) is added at the end of each heap block to detect heap block overflows (detected once the block is freed),
+  and also to immediately detect double frees.
+- On free, the first 1KiB of a block is zero'd.
+- Free lists are randomized more to make allocation order less predictable.
+- Purged pages are protected and fault on an access.
+- The mimalloc library is build as `mimalloc-secure`.
+
+The `FULL` mode also adds:
+
+- There are guard pages at the end of each (64KiB) mimalloc page (thus interleaving
+  valid block data with inaccessible gaps). This setting is not recommended in general as it is more expensive (and uses
+  more memory), and can also lead to reaching the maximum VMA limit on Linux systems if the heap gets too large.
+- Byte-precise heap block overflow check (once the block is freed).
+
+As always, evaluate with care as part of an overall security strategy as all of the above are mitigations but not guarantees.
+
+## Memory Tagging (MTE)
+
+(v3 only, experimental)\
+On recent arm64 hardware with the memory tagging extensions ([MTE]), _mimalloc_ can be built with `-DMI_MTE=ON`
+to give every heap block a randomized memory tag that can only be accessed with a matching pointer that has the same
+tag. Adjacent blocks (almost) always get different tags (and linear block overflows fault), and blocks are retagged when freed
+(so (most) double-free and use-after-free accesses fault). Each block tag is chosen from 15 possible tags (excluding the tags of
+its neighbours). All blocks up to 80KiB are tagged, and larger blocks get a guard page
+at the end so overflows still fault (this is done as tagging memory is linear in the size of the block).
+
+It depends on the hardware and workload, but on an M5 an MTE build is usually within about 20% of a release
+build (but can be 2 to 3x slower).
+Building with `-DMI_MTE=ON` also sets pointer authentication ([PAC](#pointer-authentication-pac)) (`-DMI_PAC=ON`),
+`-DMI_SECURE=CHECKED`, and `MI_SECURE_ENV=ON` by default.
+
+_These combined options provide strong mitigation against common heap exploitation techniques_.\
+As it is hardware assisted, this is stronger than `-DMI_SECURE=ON` (but still probabilistic).
+
+When building with `-DMI_MTE=ON`, _mimalloc_ requires that the CPU and OS support MTE at runtime and
+otherwise aborts at initialization.
+You can also build with `-DMI_MTE=PREFER` which uses MTE when both the hardware and OS support it, and
+otherwise runs untagged (which is very close in performance to a regular release build).
+A `-DMI_MTE=ON` build gets the `-mte-pac` suffix in the library name (e.g. `mimalloc-mte-pac.o`)
+(or just `-mte` with `-DMI_PAC=OFF`).
+
+- __macOS__: requires an Apple M5 (or later) with macOS 26+. MTE is only enabled for executables signed with
+  the hardened-process entitlements (the mimalloc tests are signed automatically):
+  ```
+  > cmake -DMI_MTE=ON ../.. && make -j
+  > codesign -s - -f --entitlements ../../cmake/mte-entitlements.plist myprogram
+  ```
+- __Linux__: requires an arm64 kernel with MTE support (check with `grep mte /proc/cpuinfo`). The tag check mode
+  can be set with `MIMALLOC_MTE=sync` (default), `async`, or `preferred`. Without MTE hardware you can still
+  test using QEMU emulation (e.g. `QEMU_CPU=max qemu-aarch64 ./myprogram`).
+- __Android__: requires an MTE capable device (like the Pixel 8 or later) with MTE enabled in
+  _Developer options_ / _Memory Tagging Extension_. Build with the Android NDK as:
+  ```
+  > cmake -DMI_MTE=ON -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+          -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-30 ../..
+  ```
+- __iOS__ (experimental, untested): requires an A19 (or later) with iOS 26+, and an app with the _Enhanced Security_
+  capability that enables hardware memory tagging (the same hardened-process entitlements as on macOS).
+  Build a static library with the iOS SDK as:
+  ```
+  > cmake -DMI_MTE=ON -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0 \
+          -DMI_BUILD_SHARED=OFF -DMI_BUILD_OBJECT=OFF -DMI_BUILD_TESTS=OFF ../..
+  ```
+  and link `libmimalloc-mte-pac.a` into the app.
+
+[MTE]: https://support.arm.com/documentation/108035/0100/How-does-MTE-work-
+
+
+## Pointer Authentication (PAC)
+
+(v3 only, experimental)\
+On recent arm64 hardware with _pointer authentication_ ([PAC]), _mimalloc_ can be built with `-DMI_PAC=ON`.
+The PAC extension provides secret hardware keys that _mimalloc_ uses to sign root pointers. On access these
+are validated and prevent tampering. On an M5, the overhead is usually ~10% but can be 1 to 2x slower.
+
+This is most effective together with MTE (and it is enabled by default with `-DMI_MTE=ON`); and without
+MTE it is best to use `-DMI_SECURE=ON` to get the most benefit.
+The following are signed:
+- The free list links, such that a heap block overflow or use-after-free write cannot forge a free list pointer
+  (even when the per-page keys are known).
+- The page map entries, the thread local theap pointers, and other root pointers that might reside
+  adjacent to user memory.
+
+Any authentication failure aborts the program. Building with PAC also enables `-DMI_SECURE=CHECKED` (and `-DMI_SECURE_ENV=ON`) by default (just like MTE).
+When building with `-DMI_PAC=ON`, _mimalloc_ requires that the CPU and OS support PAC and aborts at initialization otherwise.
+On other platforms (or with MSVC) you can build with `-DMI_PAC=WEAK` instead, which signs the same pointers using a
+random process key in software. This is weaker (an attacker who can read memory may recover the key) but still
+prevents forging pointers with blind overwrites.
+PAC is part of Armv8.3-A and later, and is supported, for example, by:
+- Apple: A12 and M1 (and later processors), on macOS and iOS.
+- Linux (5.0+) and Android: Arm Cortex-A710/X2 and later (all Armv9 cores, like the Google Tensor G3 in the Pixel 8),
+  Arm Neoverse V1/V2/N2 (like AWS Graviton3 and Graviton4), AmpereOne, and Qualcomm Oryon (Snapdragon X).
+  Check for support with `grep pacg /proc/cpuinfo`.
+- Not supported: older cores (Armv8.2-A and earlier) like the Cortex-A76/A78/X1, AWS Graviton2, Ampere Altra,
+  and the Raspberry Pi 4 and 5.
+
+
+<!--
+**Note:**
+MTE+PAC provide strong hardware security mitigation -- common heap exploitation techniques, like linear overflow
+into a neighbour or metadata, use-after-free, double free, free-list poisoning, forging a page-map or theap pointer,
+usually fault. In the end though, tag checks are still probabilistic and cannot prevent all attacks.
+If you are in security research, it would be nice
+to see if we can improve the current design further. At this point, mimalloc separates all meta data from user
+space with guard pages and readonly pages (in the .bss), and MTE tagging (the free blocks etc.), and other
+entry points we validate with PAC (the free list, the default theap, the page-map etc.).
+Are there any futher obvious (or not so obvious)
+things that could improve security further with a reasonable performance trade-off?
+There is also still a real [performance overhead][MTE-overhead] in practice even with hardware
+support -- what could we do to improve performance more without weakening the current mitigations too much?
+-->
+
+[PAC]: https://developer.arm.com/documentation/102433/0200/Return-oriented-programming
+
+[MTE-overhead]: https://arxiv.org/abs/2601.11786
+
+## Pointer Capabilities (CHERI)
+
+(v3 only, experimental)\
+[CHERI] extends an architecture with _capabilities_: every pointer is a 128-bit capability that carries its bounds,
+permissions, and an unforgeable validity tag (so integers cannot be turned into pointers).
+_mimalloc_ supports the pure-capability ABI so all allocated blocks are bounded, and where internal metadate
+is not reachable through user capabilities. The default secure level is 3 (`CHECKED` plus zeroing the first 1KiB of
+each block on free and double-free detection), as the capabilities already provide spatial safety.
+Note that unlike MTE, CHERI does not prevent use-after-free by itself (as that requires capability revocation).
+
+CHERI can be found on the Arm [Morello] research platform, and on
+some CHERI RISC-V cores (like the Codasip X730) running [CheriBSD].
+When building natively on a pure-capability CheriBSD, just use `cmake ../.. && make -j`.
+When cross-compiling with the CHERI LLVM toolchain, add the pure-capability flags
+(e.g. `-DCMAKE_C_FLAGS="-march=morello -mabi=purecap"` for Morello, or
+`-DCMAKE_C_FLAGS="-march=rv64imafdcxcheri -mabi=l64pc128d"` for CHERI-RISC-V).
+
+We would like to thank ARM and
+[Ian Stark](https://homepages.inf.ed.ac.uk/stark/) for generously
+providing us with a [Morello] system to test CHERI with mimalloc.
+
+[CHERI]: https://www.cl.cam.ac.uk/research/security/ctsrd/cheri/
+[Morello]: https://www.arm.com/architecture/cpu/morello
+[CheriBSD]: https://www.cheribsd.org
+
+
+
 # Getting the best performance
 
 Consider the following build options (v3):
@@ -643,6 +795,7 @@ Consider the following build options (v3):
   of every pointer passed to `mi_free`. Sometimes needed when overriding malloc/free process wide.
   Note also that `mi_cfree` (checked free) always checks the validity of pointers passed to it which can
   also be used if appropiate without needing to check all pointers process wide.
+  (This option is always enabled with `-DMI_SECURE=CHECKED|ON`).
 
 In the source code:
 
@@ -650,7 +803,7 @@ In the source code:
 
 - Use the typed macros `mi_malloc_tp` etc. as these are both more safe and also use `mi_malloc_csize` internally.
 
-- Use `mi_malloc_csize`/`mi_free_csize` etc. when the allocated or free'd size is a constant as these are inlined
+- Use `mi_malloc_csize`/`mi_free_csize` etc. when the allocated or free'd size is a constant, as these are inlined
   and statically redirect to `mi_malloc_small`/`mi_free_small` when possible.
   These are also used by the C++ `mimalloc-new-delete.h` sized overrides.
   You can use `mi_free_csize_nonnull` when the pointer is guaranteed to be not `NULL` as well.
@@ -660,16 +813,42 @@ In the source code:
 - Use `mi_free_small` when the pointer was returned from `mi_malloc_small` (and guaranteed to have a
   size of less than `MI_SMALL_SIZE_MAX`). Use `mi_free_small_nonnull` when the pointer is guaranteed to be not `NULL` as well.
 
-For run-time systems and compilers (like Koka, Lean, Rust (?) etc.), we can do slightly better still.
+For run-time systems and compilers (like Koka, Lean, Rust etc.), we can do slightly better still.
 
 - If the allocation size is statically known, use `mi_malloc_csize` and `mi_free_csize` etc. when possible.
   (or directly `mi_malloc_small`/`mi_free_small`).
 
 - If the runtime already carries thread local state, it may be faster to get the default `theap` for each thread
   up-front (`mi_theap_get_default()`) and use the bestest `mi_theap_malloc(_small)` etc. passing the theap pointer directly.
-  This avoids having mimalloc look up the thread local pointer all the time and
-  skips a theap `NULL` check. Whether this is
+  This avoids having mimalloc look up the thread local pointer all the time and skips a theap `NULL` check. Whether this is
   faster depends a bit on the OS implementation of thread local variables.
+
+# Guarded Mode
+
+<span id="guarded">_mimalloc_ can be build in guarded mode using the `-DMI_GUARDED=ON` flags in `cmake`.</span>
+This is `ON` by default when building a debug version of mimalloc.
+Guarded mode enables placing OS guard pages behind certain object allocations to catch buffer overflows as they occur
+(and of course, you never need this if you have
+MTE enabled hardware since [MTE](#memory-tagging-mte) catches all these overflows
+much more efficiently).
+
+This can be invaluable to catch buffer-overflow bugs in large programs. However, it also means that any object
+allocated with a guard page takes at least 8 KiB memory for the guard page and its alignment. As such, allocating
+a guard page for every allocation may be too expensive both in terms of memory, and in terms of performance with
+many system calls. Therefore, there are various environment variables (and options) to tune this:
+
+- `MIMALLOC_GUARDED_SAMPLE_RATE=N`: Set the sample rate to `N` (by default 0). This mode places a guard page
+  behind a suitable object about every `N` requested bytes (per thread). Since the performance in guarded mode without placing
+  guard pages is close to release mode, this can be used to enable guard pages even in production to catch latent
+  buffer overflow bugs (for example, by setting it to `16KiB` or higher where the performance impact will be minimal).
+  Set the sample rate to `1` to guard every object, and to `0` to place no guard pages at all.
+
+- `MIMALLOC_GUARDED_SAMPLE_SEED=N`: Start sampling at `N` (by default random). Can be used to reproduce a buffer
+  overflow if needed.
+
+- `MIMALLOC_GUARDED_MIN=N`, `MIMALLOC_GUARDED_MAX=N`: Minimal and maximal _rounded_ object sizes for which a guard
+  page is considered (`0` and `1GiB` respectively). If you suspect a buffer overflow occurs with an object of size
+  141, set the minimum and maximum to `148` and the sample rate to `1` to have all of those guarded.
 
 
 # Profiling

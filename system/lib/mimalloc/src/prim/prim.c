@@ -6,7 +6,7 @@ terms of the MIT license. A copy of the license can be found in the file
 -----------------------------------------------------------------------------*/
 
 #include "mimalloc/heap/process.h"
-#include "mimalloc/prim.h"
+#include "mimalloc/prim/prim.h"
 
 
 // Select the implementation of the primitives

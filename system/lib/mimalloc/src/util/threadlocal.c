@@ -13,8 +13,10 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include "mimalloc.h"
 #include "mimalloc/prim/prim-tls.h"
+#include "mimalloc/prim/prim-mte.h"  // mi_ptr_memtag_meta
 #include "mimalloc/util/libc.h"
 #include "mimalloc/util/options.h"
+#include "mimalloc/util/memid.h"
 #include "mimalloc/util/threadlocal.h"
 #include "mimalloc/heap/process.h"
 
@@ -24,8 +26,8 @@ terms of the MIT license. A copy of the license can be found in the file
   The version is used to safely reuse slots.
 ----------------------------------------------------------- */
 typedef struct mi_tls_slot_s {
-  size_t  version;
-  void*   value;
+  mi_thread_local_t version;
+  void*             value;
 } mi_tls_slot_t;
 
 typedef struct mi_thread_locals_s {
@@ -34,7 +36,7 @@ typedef struct mi_thread_locals_s {
   mi_tls_slot_t slots[1];
 } mi_thread_locals_t;
 
-static mi_thread_locals_t mi_thread_locals_empty = mi_init_struct_zero;
+static const mi_thread_locals_t mi_thread_locals_empty = mi_init_struct_zero;
 
 
 /* -----------------------------------------------------------
@@ -42,29 +44,31 @@ static mi_thread_locals_t mi_thread_locals_empty = mi_init_struct_zero;
   a C thread local declaration or using pthread keys.
   - mi_thread_locals: points to an array of thread locals for most keys
   - mi_slot_fast: a single dedicated thread local for slightly faster access. (used for the main heap's theap)
+  The values are signed with `MI_PAC` (see `mi_tls_sign` in `prim/prim-tls.h`) and are
+  initially `NULL` (where `name_get` returns the `initval` instead).
 ----------------------------------------------------------- */
 
-#if MI_TLS_MODEL_PTHREADS || defined(__APPLE__)   // macOS has fast pthreads
+#if MI_USE_PTHREADS && (MI_TLS_MODEL_PTHREADS || defined(__APPLE__))   // macOS has fast pthreads
 // Use pthreads
-#define mi_define_thread_local(tp,name,initval) \
+#define mi_define_thread_local(tp,name,initval,tag) \
   static pthread_key_t __##name##_key = MI_PTHREAD_KEY_INVALID; \
-  static inline tp   name##_peek(void)    { return (tp)mi_pthread_key_get(__##name##_key); } \
+  static inline tp   name##_peek(void)    { return (tp)mi_tls_auth(mi_pthread_key_get(__##name##_key),tag); } \
   static inline tp   name##_get(void)     { tp result = name##_peek(); return (result!=NULL ? result : initval); } \
-  static inline bool name##_set(tp val)   { return mi_pthread_key_set(&__##name##_key,val); } \
+  static inline bool name##_set(tp val)   { return mi_pthread_key_set(&__##name##_key,mi_tls_sign(val,tag)); } \
   static inline void name##_delete(void)  { mi_pthread_key_delete(&__##name##_key); }
 
 #else
 // Direct thread locals
-#define mi_define_thread_local(tp,name,initval) \
-  static mi_decl_thread tp __##name = initval; \
-  static inline tp   name##_peek(void)    { return __##name; } \
-  static inline tp   name##_get(void)     { tp result = __##name; return (result!=NULL ? result : initval); } \
-  static inline bool name##_set(tp val)   { __##name = val; return true; } \
+#define mi_define_thread_local(tp,name,initval,tag) \
+  static mi_decl_thread void* __##name = NULL; \
+  static inline tp   name##_peek(void)    { return (tp)mi_tls_auth(__##name,tag); } \
+  static inline tp   name##_get(void)     { tp result = name##_peek(); return (result!=NULL ? result : initval); } \
+  static inline bool name##_set(tp val)   { __##name = mi_tls_sign(val,tag); return true; } \
   static inline void name##_delete(void)  {  }
 #endif
 
-mi_define_thread_local(mi_thread_locals_t*, mi_thread_locals, &mi_thread_locals_empty)
-mi_define_thread_local(void*, mi_slot_fast, NULL)
+mi_define_thread_local(mi_thread_locals_t*, mi_thread_locals, (mi_thread_locals_t*)&mi_thread_locals_empty, MI_TLS_TAG_THREAD_LOCALS)
+mi_define_thread_local(void*, mi_slot_fast, NULL, MI_TLS_TAG_SLOT_FAST)
 
 
 /* -----------------------------------------------------------
@@ -74,27 +78,33 @@ mi_define_thread_local(void*, mi_slot_fast, NULL)
   a value, we also set the version of the key.
 ----------------------------------------------------------- */
 
-#if MI_SIZE_BITS >= 64
-#define MI_TLS_IDX_BITS     (MI_SIZE_BITS/4)      /* 16 bits for the index, 48 bits for the version */
-#elif MI_SIZE_BITS >= 32
-#define MI_TLS_IDX_BITS     (12)                  /* 12 bits for index, 20 for the version? */
+#if MI_TLS_KEY32
+#define MI_TLS_KEY_BITS     MI_SIZE_BITS
+#else
+#define MI_TLS_KEY_BITS     64
+#endif
+
+#if MI_TLS_KEY_BITS >= 64
+#define MI_TLS_IDX_BITS     (16)                  /* 16 bits for the index, 48 bits for the version */
+#elif MI_TLS_KEY_BITS >= 32
+#define MI_TLS_IDX_BITS     (12)                  /* 12 bits for index, 20 for the version (see `MI_TLS_KEY32` in `types.h`) */
 #else
 #error not enough bits for the version for thread locals
 #endif
 #define MI_TLS_IDX_MASK     ((MI_ZU(1)<<MI_TLS_IDX_BITS)-1)
 #define MI_TLS_IDX_MAX      MI_TLS_IDX_MASK
-#define MI_TLS_VERSION_MAX  ((MI_ZU(1)<<(MI_SIZE_BITS - MI_TLS_IDX_BITS))-1)
+#define MI_TLS_VERSION_MAX  ((((mi_thread_local_t)1)<<(MI_TLS_KEY_BITS - MI_TLS_IDX_BITS))-1)
 
 
-static size_t mi_key_index( size_t key ) {
-  return (key & MI_TLS_IDX_MASK);
+static size_t mi_key_index( mi_thread_local_t key ) {
+  return (size_t)(key & MI_TLS_IDX_MASK);
 }
 
-static size_t mi_key_version( size_t key ) {
+static mi_thread_local_t mi_key_version( mi_thread_local_t key ) {
   return (key >> MI_TLS_IDX_BITS);
 }
 
-static mi_thread_local_t mi_key_create( size_t index, size_t version ) {
+static mi_thread_local_t mi_key_create( size_t index, mi_thread_local_t version ) {
   mi_assert_internal(version != 0 && version <= MI_TLS_VERSION_MAX);
   mi_assert_internal(index <= MI_TLS_IDX_MAX);
   const mi_thread_local_t key = ((version << MI_TLS_IDX_BITS) | index);
@@ -225,11 +235,16 @@ void _mi_thread_locals_init(void) {
   mi_lock_init(&_mi_process.thread_locals_lock);
 }
 
+// the free slots bitmap is sealed and stored without memory tag
+static mi_bitmap_t* mi_thread_locals_free(void) {
+  return (mi_bitmap_t*)mi_meta_load_maybe(mi_process_get_sealed()->thread_locals_free);
+}
+
 void _mi_thread_locals_done(void) {
   mi_lock(&_mi_process.thread_locals_lock) {
-    mi_bitmap_t* const slots = _mi_process.thread_locals_free;
+    mi_bitmap_t* const slots = mi_thread_locals_free();
     if (slots!=NULL) {
-      _mi_meta_free(_mi_subproc_main(), slots, _mi_process.thread_locals_memid);
+      _mi_meta_free(_mi_subproc_main(), slots, mi_process_get_sealed()->thread_locals_memid);
     }
   }
   mi_lock_done(&_mi_process.thread_locals_lock);
@@ -248,7 +263,8 @@ static bool mi_thread_local_claim_fun(size_t _slice_index, void* _arg, bool* kee
 // (so if we reuse a slot it will be returning NULL initially when a thread tries to get it)
 static mi_thread_local_t mi_thread_local_claim(void) {
   size_t idx = 0;
-  if (_mi_process.thread_locals_free != NULL && mi_bitmap_try_find_and_claim(_mi_process.thread_locals_free,0,&idx,&mi_thread_local_claim_fun,NULL)) {
+  mi_bitmap_t* const slots = mi_thread_locals_free();
+  if (slots != NULL && mi_bitmap_try_find_and_claim(slots,0,&idx,&mi_thread_local_claim_fun,NULL)) {
     _mi_process.thread_locals_version++;
     if (_mi_process.thread_locals_version >= MI_TLS_VERSION_MAX) { _mi_process.thread_locals_version = 1; }  /* wrap around the version */
     return mi_key_create( idx, _mi_process.thread_locals_version);
@@ -259,7 +275,7 @@ static mi_thread_local_t mi_thread_local_claim(void) {
 }
 
 static bool mi_thread_local_create_expand(void) {
-  mi_bitmap_t* const slots = _mi_process.thread_locals_free;
+  mi_bitmap_t* const slots = mi_thread_locals_free();
   // 1024 bits at a time
   const size_t oldcount = (slots==NULL ? 0 : mi_bitmap_max_bits(slots));
   const size_t newcount = 1024 + oldcount;
@@ -274,12 +290,15 @@ static bool mi_thread_local_create_expand(void) {
     // copy over the previous bitmap
     const size_t oldsize = mi_bitmap_size(oldcount,NULL);
     mi_memcpy_aligned(newslots, slots, oldsize);
-    _mi_meta_free(_mi_subproc_main(), slots, _mi_process.thread_locals_memid);
+    _mi_meta_free(_mi_subproc_main(), slots, mi_process_get_sealed()->thread_locals_memid);
   }
   mi_bitmap_init(newslots, newcount, true /* pretend already zero'd so we do not zero out the copied old entries */);
   mi_bitmap_unsafe_setN(newslots, oldcount, newcount - oldcount);  /* set the new expanded slots as available */
-  _mi_process.thread_locals_free = newslots;
-  _mi_process.thread_locals_memid = memid;
+  if (memid.memkind == MI_MEM_MALLOC) { memid.mem.malloc.base = mi_ptr_memtag_meta(memid.mem.malloc.base); }  // store without memory tag (`_mi_meta_free` does not use it)
+  mi_process_sealed_t* const sealed = _mi_process_unseal();
+  sealed->thread_locals_free = (mi_bitmap_t*)mi_ptr_memtag_meta(newslots);  // store without memory tag
+  sealed->thread_locals_memid = memid;
+  _mi_process_seal();
   return true;
 }
 
@@ -305,7 +324,7 @@ void _mi_thread_local_free(mi_thread_local_t key) {
   if (key==0) return;
   const size_t idx = mi_key_index(key);
   mi_lock(&_mi_process.thread_locals_lock) {
-    mi_bitmap_t* const slots = _mi_process.thread_locals_free;
+    mi_bitmap_t* const slots = mi_thread_locals_free();
     if (slots!=NULL && idx < mi_bitmap_max_bits(slots)) {
       mi_bitmap_set(slots,idx);
     }

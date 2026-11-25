@@ -5,12 +5,14 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #include "mimalloc.h"
-#include "mimalloc/prim.h"
+#include "mimalloc/prim/prim.h"
+#include "mimalloc/prim/prim-mte.h"  // mi_memtag_use_for_meta, mi_memtag_meta_init_adjacent
 #include "mimalloc/track.h"
 #include "mimalloc/prim/os.h"
 #include "mimalloc/prim/prim-tls.h"
 #include "mimalloc/util/random.h"
 #include "mimalloc/util/stats.h"
+#include "mimalloc/util/memid.h"
 #include "mimalloc/heap/page-map.h"
 #include "mimalloc/profile/pprof.h"
 #include "mimalloc/profile/sample-profile.h"
@@ -33,6 +35,9 @@ static const mi_page_t mi_page_empty = {
   0,                      // xlast_alloc
   #endif
   NULL,                   // page_start
+  #if MI_FREE_IS_CHECKED
+  MI_ATOMIC_VAR_INIT(0),  // capacity_size
+  #endif
   0,                      // capacity
   0,                      // reserved capacity
   0,                      // slice_pcommitted
@@ -44,16 +49,18 @@ static const mi_page_t mi_page_empty = {
   NULL, NULL,             // next, prev
   MI_MEMID_STATIC,        // memid
   #if (MI_PADDING || MI_ENCODE_FREELIST)
-  #if MI_PAGE_KEY_COUNT==2
   { 0, 0 },               // keys
-  #else
-  { 0 },                  // key
   #endif
+  #if MI_FREE_IS_CHECKED
+  0,                      // block_recip
   #endif
   #if MI_QSBR
   MI_ATOMIC_VAR_INIT(0),  // qsbr_xthread_id
   NULL, NULL,             // qsbr_next, qsbr_prev
   mi_init_struct_zero,    // qsbr
+  #endif
+  #if MI_DEBUG>0
+  MI_ATOMIC_VAR_INIT(0),  // debug_fill_preserve
   #endif
 };
 
@@ -142,6 +149,7 @@ mi_decl_hidden mi_decl_cache_align const mi_theap_t _mi_theap_empty = {
   MI_ATOMIC_VAR_INIT(NULL), // heap
   MI_ATOMIC_VAR_INIT(NULL), // subproc
   MI_ATOMIC_VAR_INIT(1),  // refcount
+  0,                      // cookie (never valid; empty theaps are uninitialized)
   0,                      // full page retain
   false,                  // allow reclaim
   true,                   // allow abandon
@@ -165,7 +173,7 @@ mi_decl_hidden mi_decl_cache_align const mi_theap_t _mi_theap_empty = {
   MI_MEMID_STATIC,
   MI_STATS_NULL,          // stats
   #if MI_QSBR
-  NULL, NULL,            // qsbr_first, qsbr_last
+  NULL, NULL,            // qsbr_delayed, qsbr_delayed_last
   #endif
 };
 
@@ -174,15 +182,153 @@ mi_decl_hidden mi_decl_cache_align const mi_theap_t _mi_theap_empty = {
 
 
 // pre-allocate the process data
-mi_decl_hidden mi_decl_cache_align mi_process_t _mi_process = mi_init_struct_zero;
+mi_decl_hidden mi_decl_process_align mi_process_t _mi_process = mi_init_struct_zero;
 
-// In secure mode, surround the process data with guard pages to protect against overflows of adjacent static data
-static void mi_process_guard_init(void) {
-  const size_t front = sizeof(_mi_process.guard_front);
-  const size_t size  = offsetof(mi_process_t, guard_end) - front;
-  _mi_os_secure_guard_pages_set_within(&_mi_process, sizeof(_mi_process), front, size);
+// The sealed lock is static as it can be used before process initialization (and a zero lock is invalid on some platforms)
+static mi_lock_t mi_sealed_lock = MI_LOCK_INITIALIZER;
+
+// Make the sealed process data writable; this takes the sealed lock until `_mi_process_seal`.
+mi_process_sealed_t* _mi_process_unseal(void) {
+  mi_lock_acquire(&mi_sealed_lock);
+  mi_process_sealed_t* const sealed = (mi_process_sealed_t*)mi_process_get_sealed();
+  if (mi_process_get_sealed_once()->is_protected) {
+    _mi_prim_protect(sealed, MI_OS_PROBABLE_PAGE_SIZE, MI_PROTECT_READWRITE);  // on failure we fault on the first write
+  }
+  return sealed;
 }
 
+// Make the sealed process data read-only again and release the sealed lock.
+void _mi_process_seal(void) {
+  mi_process_sealed_t* const sealed = (mi_process_sealed_t*)mi_process_get_sealed();
+  const int err = (mi_process_get_sealed_once()->is_protected ? _mi_prim_protect(sealed, MI_OS_PROBABLE_PAGE_SIZE, MI_PROTECT_READ) : 0);
+  mi_lock_release(&mi_sealed_lock);
+  if (err != 0) {
+    _mi_error_message(EINVAL, "unable to seal the process data (error: %d)\n", err);
+  }
+}
+
+// Set a callback `fun` with `arg` in the sealed fields `pfun` and `parg` (using a seqlock so readers always see a consistent pair).
+// The fields must be in the sealed process data (and are writable once unsealed).
+void _mi_process_set_callback(const _Atomic(void*)* pfun, const _Atomic(void*)* parg, void* fun, void* arg) {
+  mi_process_sealed_t* const sealed = _mi_process_unseal();
+  const size_t seq = mi_atomic_load_relaxed(&sealed->callbacks_seq);
+  mi_atomic_store_relaxed(&sealed->callbacks_seq, seq + 1);           // odd while updating
+  mi_atomic_store_ptr_release(void, (_Atomic(void*)*)parg, arg);      // release stores keep the odd sequence visible first
+  mi_atomic_store_ptr_release(void, (_Atomic(void*)*)pfun, fun);
+  mi_atomic_store_release(&sealed->callbacks_seq, seq + 2);
+  _mi_process_seal();
+}
+
+// Get a consistent callback pair from the sealed fields `pfun` and `parg`.
+void* _mi_process_get_callback(const _Atomic(void*)* pfun, const _Atomic(void*)* parg, void** arg) {
+  const mi_process_sealed_t* const sealed = mi_process_get_sealed();
+  size_t seq;
+  void* fun;
+  do {
+    seq = mi_atomic_load_acquire(&sealed->callbacks_seq);
+    fun = mi_atomic_load_ptr_acquire(void, pfun);
+    *arg = mi_atomic_load_ptr_acquire(void, parg);
+  } while ((seq & 1) != 0 || mi_atomic_load_relaxed(&sealed->callbacks_seq) != seq);
+  return fun;
+}
+
+// Write the sealed-once process data; this takes the sealed lock until `_mi_process_seal_once`.
+// This is only allowed before `mi_process_sealed_init` (as the data is never made writable again).
+mi_process_sealed_once_t* _mi_process_unseal_once(void) {
+  mi_lock_acquire(&mi_sealed_lock);
+  mi_process_sealed_once_t* const once = (mi_process_sealed_once_t*)mi_process_get_sealed_once();
+  if mi_unlikely(once->is_sealed) {
+    mi_lock_release(&mi_sealed_lock);
+    _mi_fatal_error("attempt to write sealed process data after process initialization\n");
+  }
+  return once;
+}
+
+void _mi_process_seal_once(void) {
+  mi_lock_release(&mi_sealed_lock);
+}
+
+// Seal the process data and, in secure mode, make it read-only (and the sealed-once data immutable if possible).
+// With memory tagging, secure level > 1, or in debug mode, failing to seal is a fatal error.
+#if MI_MTE || (MI_SECURE > 1) || MI_DEBUG
+#define MI_SEALED_REQUIRED  (1)
+#else
+#define MI_SEALED_REQUIRED  (0)
+#endif
+static void mi_process_sealed_init(void) {
+  bool protect = false;
+  #if MI_SECURE_STATIC_SEALED
+  mi_assert_internal(sizeof(mi_process_sealed_once_t) <= MI_OS_PROBABLE_PAGE_SIZE);
+  mi_assert_internal(sizeof(mi_process_sealed_t) <= MI_OS_PROBABLE_PAGE_SIZE);
+  if ((MI_OS_PROBABLE_PAGE_SIZE % _mi_os_page_size()) == 0) {
+    protect = true;
+  }
+  else if (MI_SEALED_REQUIRED) {  // fail early as the sealed data (like the page map root and user callbacks) would be writable
+    _mi_fatal_error("unable to seal the process data as the OS page size (%zu KiB) is larger than the probable OS page size (%zu KiB); rebuild with `-DMI_OS_PROBABLE_PAGE_SIZE=%zu`\n", _mi_os_page_size() / MI_KiB, (size_t)(MI_OS_PROBABLE_PAGE_SIZE / MI_KiB), _mi_os_page_size());
+  }
+  else {
+    _mi_warning_message("unable to seal the process data as the OS page size (%zu KiB) is too large (rebuild with `-DMI_OS_PROBABLE_PAGE_SIZE=%zu`?)\n", _mi_os_page_size() / MI_KiB, _mi_os_page_size());
+  }
+  #endif
+  mi_process_sealed_once_t* const once = _mi_process_unseal_once();
+  once->is_sealed = true;
+  once->is_protected = protect;
+  int err = 0;
+  if (protect) {
+    err = _mi_prim_protect((void*)mi_process_get_sealed(), MI_OS_PROBABLE_PAGE_SIZE, MI_PROTECT_READ);
+    if (err == 0) { err = _mi_prim_protect(once, MI_OS_PROBABLE_PAGE_SIZE, MI_PROTECT_READ_SEALED); }
+  }
+  _mi_process_seal_once();
+  if (err != 0) {
+    if (MI_SEALED_REQUIRED) { _mi_fatal_error("unable to seal the process data (error: %d)\n", err); }
+    _mi_error_message(EINVAL, "unable to seal the process data (error: %d)\n", err);
+  }
+}
+
+// In secure mode, surround the process data with guard pages to protect against overflows of adjacent static data.
+// The front guard page is placed just before the sealed pages.
+static void mi_process_guard_init(void) {
+  #if MI_SECURE && MI_OS_HAS_GUARD_PAGES && !MI_SECURE_NO_STATIC_GUARD
+  const size_t front = (size_t)((uint8_t*)mi_process_get_sealed_once() - (uint8_t*)&_mi_process);
+  const size_t size  = offsetof(mi_process_t, guard_end) - front;
+  _mi_os_secure_guard_pages_set_within(&_mi_process, sizeof(_mi_process), front, size);
+  #endif
+}
+
+
+// Allocate the process meta data from the OS (instead of statically) so it is not at a fixed offset
+// from the program image, and, in secure mode, surround it with guard pages. It is never freed.
+// This is normally called from `mi_process_init_once` right after `_mi_os_init`, but can be called
+// lazily if the main subprocess is accessed before process initialization.
+mi_decl_noinline mi_process_metadata_t* _mi_process_metadata_init(void) {
+  mi_atomic_do_once {
+    if (mi_process_get_sealed_once()->os_mem_config.page_size == 0) { _mi_os_init(); }  // accessed before process initialization
+    mi_memid_t memid;
+    mi_process_metadata_t* metadata = (mi_process_metadata_t*)_mi_os_alloc_with_guards(NULL /* bootstrap stats */, sizeof(mi_process_metadata_t), true /* commit */, false /* allow large */, &memid);
+    if (metadata == NULL) {
+      _mi_fatal_error("unable to allocate the process meta data (%zu bytes)\n", sizeof(mi_process_metadata_t));
+    }
+    if (!memid.initially_zero) { mi_memzero_aligned(metadata, sizeof(mi_process_metadata_t)); }
+    if (mi_memtag_use_for_meta(!memid.is_pinned)) {  // all non-large OS memory supports tagging
+      // tag each field separately (where adjacent fields have different tags)
+      #define mi_process_metadata_field_offset(tp,name)  offsetof(mi_process_metadata_t, name),
+      static const size_t offsets[] = { mi_process_metadata_fields(mi_process_metadata_field_offset) sizeof(mi_process_metadata_t) };
+      #undef mi_process_metadata_field_offset
+      const size_t count = sizeof(offsets)/sizeof(offsets[0]) - 1;
+      for (size_t i = 0; i < count; i++) {
+        mi_assert_internal(offsets[i] % MI_MEMTAG_UNIT_SIZE == 0);
+        mi_memtag_meta_init_adjacent((uint8_t*)metadata + offsets[i], offsets[i+1] - offsets[i], i, i > 0 /* has prev */, i + 1 < count /* has next */);
+      }
+    }
+    *((mi_memid_t*)mi_meta_load(&metadata->memid)) = memid;
+    mi_process_sealed_once_t* const once = _mi_process_unseal_once();
+    once->metadata = metadata;  // stored without memory tag (see `mi_process_metadata`)
+    _mi_process_seal_once();
+  }
+  mi_process_metadata_t* const metadata = mi_process_get_sealed_once()->metadata;
+  mi_assert(metadata != NULL);  // fails on a recursive invocation during initialization
+  return metadata;
+}
 
 mi_page_t* _mi_page_empty_get(void) {
   return (mi_page_t*)&mi_page_empty;
@@ -192,8 +338,19 @@ mi_decl_cold mi_decl_noinline mi_theap_t* _mi_theap_empty_get(void) {
   return (mi_theap_t*)&_mi_theap_empty;
 }
 
+mi_theap_t* _mi_theap_unavailable(void) {
+  return mi_process_metadata_field(mi_theap_t, theap_unavailable);
+}
+
 bool _mi_is_empty_theap(const mi_theap_t* theap) {
-  return (theap == &_mi_theap_empty);
+  return (theap == &_mi_theap_empty || _mi_theap_is_unavailable(theap));
+}
+
+// A thread is done once `mi_thread_done` set its default theap to the unavailable theap.
+// Implicit (lazy) initialization is then no longer done as that would leak if the thread-done hooks already ran
+// (for example when thread-local destructors allocate). Only an explicit `mi_thread_init` re-initializes the thread.
+bool _mi_thread_is_done(void) {
+  return _mi_theap_is_unavailable(_mi_theap_default());
 }
 
 /* -----------------------------------------------------------
@@ -207,30 +364,31 @@ static mi_tld_t* mi_tld_init(mi_tld_t* tld, size_t tseq, mi_subproc_t* subproc);
 // Initialize main heap
 static void mi_heap_main_init_once(void) {
   mi_memid_t memid_static = _mi_memid_create(MI_MEM_STATIC);
-  mi_memcpy(&_mi_process.theap_empty_wrong,&_mi_theap_empty,sizeof(_mi_process.theap_empty_wrong));
+  mi_theap_t* const theap_unavailable = _mi_theap_unavailable();
+  mi_memcpy(theap_unavailable,&_mi_theap_empty,sizeof(*theap_unavailable));
 
   // initialize the main subprocess
   mi_subproc_t* subproc_main = _mi_subproc_main_init();
 
   // detached tld for theap_meta
-  mi_tld_t* const tld_meta = &_mi_process.tld_meta;
+  mi_tld_t* const tld_meta = mi_process_metadata_field(mi_tld_t, tld_meta);
   tld_meta->thread_id = MI_THREAD_ID_DETACHED;
   tld_meta->memid = memid_static;
   mi_tld_init(tld_meta, 0, subproc_main);
 
   // main process heap
-  mi_heap_t* const heap_main = &_mi_process.heap_main;
+  mi_heap_t* const heap_main = mi_process_metadata_field(mi_heap_t, heap_main);
   heap_main->memid = memid_static;
   mi_atomic_store_ptr_release(mi_heap_t,&subproc_main->heap_main,heap_main);
   _mi_heap_init(heap_main,mi_thread_local_key_fast,subproc_main,0,false);
 
   // detached theap for allocating meta-data (we can allocate on this without having an initialized thread)
-  mi_theap_t* const theap_meta = &_mi_process.theap_meta;
+  mi_theap_t* const theap_meta = mi_process_metadata_field(mi_theap_t, theap_meta);
   theap_meta->memid = memid_static;
   _mi_theap_meta_init(theap_meta,heap_main,tld_meta);
   subproc_main->theap_meta = theap_meta;
 
-  // mi_heap_theap_set(heap_main,&_mi_process.theap_main); // set in `mi_thread_init(_theap_default)`
+  // mi_heap_theap_set(heap_main,theap_main); // set in `mi_thread_init(_theap_default)`
 }
 
 static void mi_heap_main_init(void) {
@@ -251,7 +409,7 @@ mi_heap_t* _mi_subproc_heap_main(mi_subproc_t* subproc) {
   }
   else {
     mi_assert_internal(false);
-    return &_mi_process.heap_main;
+    return mi_process_metadata_field(mi_heap_t, heap_main);
   }
 }
 
@@ -261,7 +419,9 @@ mi_heap_t* _mi_subproc_heap_main(mi_subproc_t* subproc) {
 
 mi_theap_t* _mi_theap_main(void) {
   // All subprocess main heaps share this slot; do not follow a possibly deleted default theap.
-  const mi_thread_local_t key = _mi_process.heap_main.theap;
+  mi_process_metadata_t* const metadata = mi_process_get_sealed_once()->metadata;
+  if (metadata==NULL) return NULL;
+  const mi_thread_local_t key = ((mi_heap_t*)mi_meta_load(&metadata->heap_main))->theap;
   return (key==0 ? NULL : (mi_theap_t*)_mi_thread_local_get(key));
 }
 
@@ -291,7 +451,7 @@ static mi_tld_t* mi_tld_create(mi_subproc_t* subproc) {
   mi_memid_t memid;
   mi_tld_t* tld;
   if (_mi_subproc_is_main(subproc) && tseq==0 /* first tld */) {
-    tld = &_mi_process.tld_main;
+    tld = mi_process_metadata_field(mi_tld_t, tld_main);
     memid = _mi_memid_create_static(tld,sizeof(*tld));
   }
   else {
@@ -319,7 +479,7 @@ mi_decl_noinline static void mi_tld_free(mi_tld_t* tld) {
   Thread Init
 ----------------------------------------------------------- */
 
-#if MI_DEBUG || defined(MI_TLS_RECURSE_GUARD)
+#if MI_DEBUG || MI_TLS_RECURSE_GUARD
 static mi_theap_t* mi_heap_check_for_existing_theap(mi_heap_t* heap) {
   const mi_thread_id_t tid = _mi_thread_id();
   mi_theap_t* thread_theap = NULL;
@@ -344,19 +504,21 @@ mi_theap_t* _mi_thread_init_with_heap(mi_heap_t* heap_main)
   // if the theap_default is already set we have already initialized
   mi_theap_t* theap = _mi_theap_default();
   if (mi_theap_is_initialized(theap)) return theap;
+  _mi_theap_tls_check();  // report if the thread local theap was overwritten
+  _mi_prim_thread_init();
 
   // initialize the default theap
   // note: we cannot access thread-locals yet as that can cause (recursive) allocation
   // (on macOS <= 14 for example where the loader allocates thread-local data on demand).
   if (heap_main==NULL) {
     heap_main = mi_heap_main();
-    mi_assert_internal(heap_main == &_mi_process.heap_main);
+    mi_assert_internal(mi_addr(heap_main) == mi_addr(&mi_process_metadata()->heap_main));
   }
   mi_assert_internal(heap_main!=NULL);
 
-  #if MI_DEBUG || defined(MI_TLS_RECURSE_GUARD)
+  #if MI_DEBUG || MI_TLS_RECURSE_GUARD
   theap = mi_heap_check_for_existing_theap(heap_main);  // recursion check
-  #if !defined(MI_TLS_RECURSE_GUARD)
+  #if !MI_TLS_RECURSE_GUARD
   mi_assert_internal(theap==NULL);
   #endif
   #else
@@ -368,15 +530,16 @@ mi_theap_t* _mi_thread_init_with_heap(mi_heap_t* heap_main)
     mi_tld_t* tld = mi_tld_create(heap_main->subproc);
     if (tld==NULL) return NULL;    // out-of-memory on tld allocation
     // allocate and initialize the theap for the main heap
-    if (tld==&_mi_process.tld_main) {
-      theap = &_mi_process.theap_main;         // initial theap is pre-allocated
+    if (mi_addr(tld) == mi_addr(&mi_process_metadata()->tld_main)) {
+      theap = mi_process_metadata_field(mi_theap_t, theap_main);  // initial theap is pre-allocated
       theap->memid = _mi_memid_create_static(theap,sizeof(*theap));
     }
     else {
       theap = _mi_theap_alloc(heap_main,tld);  // otherwise meta allocate
       if (theap==NULL) { mi_tld_free(tld); return NULL; } // out-of-memory on theap allocation
     }
-    _mi_theap_init(theap,heap_main,tld);
+    const bool attached = _mi_theap_init(theap,heap_main,tld);  // a main heap is never deleted while it is in use
+    mi_assert_internal(attached); MI_UNUSED_RELEASE(attached);
   }
 
   // now initialize the thread
@@ -427,11 +590,12 @@ static void mi_thread_theaps_done(mi_tld_t* tld)
     }
   }
 
-  // reset the thread local theaps
+  // reset the thread local theaps and mark the thread as done
   // note: do this after abandon as page->heap may be NULL and mi_heap_main should return the heap
   // belonging to the right subprocess
-  _mi_theap_default_set((mi_theap_t*)&_mi_theap_empty);
+  _mi_theap_default_set(_mi_theap_unavailable());
   _mi_theap_cached_set((mi_theap_t*)&_mi_theap_empty);
+  _mi_prim_thread_associate_default_theap(NULL);  // so the thread-done hook does not use the freed theap
 
   // We might run concurrently with a `mi_heap_free_theaps` and we need to ensure we free theaps atomically.
   // we first detach our theaps list from any heaps
@@ -448,13 +612,15 @@ static void mi_thread_theaps_done(mi_tld_t* tld)
       theap->tld = NULL;
       theap->tnext = NULL;
       theap->tprev = NULL;
-      mi_assert_internal(mi_atomic_load_relaxed(&theap->refcount) == 1); // as the cached entry is set to empty
+      // the cached entry is set to empty, but the platform may have reset its TLS slot before us (macOS dyld, issue #1518)
+      if (mi_atomic_load_relaxed(&theap->refcount) > 1) { _mi_theap_decref(theap); }  // safe as it is detached and there are no concurrent references anymore
+      mi_assert_internal(mi_atomic_load_relaxed(&theap->refcount) == 1);
       _mi_theap_decref(theap);
       theap = next;
     }
   }
 
-  mi_assert(_mi_theap_default()==(mi_theap_t*)&_mi_theap_empty); // careful to not re-initialize the default theap during theap_delete
+  mi_assert(_mi_thread_is_done()); // careful to not re-initialize the default theap during theap_delete
   mi_assert(!mi_theap_is_initialized(_mi_theap_default()));
 }
 
@@ -491,11 +657,16 @@ void mi_thread_done(void) mi_attr_noexcept {
   _mi_thread_done(NULL);
 }
 
+// `_theap_main` is NULL or the (signed) theap associated with the thread (see `_mi_prim_thread_associate_default_theap`)
 void _mi_thread_done(mi_theap_t* _theap_main)
 {
   // NULL can be passed on some platforms
   if (_theap_main==NULL) {
     _theap_main = _mi_theap_default();
+  }
+  else {
+    _theap_main = mi_theap_thread_done_auth(_theap_main);
+    if (_theap_main==NULL) return;
   }
 
   // prevent re-entrancy through theap_done/theap_set_default_direct (issue #699)
@@ -542,8 +713,7 @@ mi_decl_nodiscard bool mi_is_redirected(void) mi_attr_noexcept {
   return _mi_is_redirected();
 }
 
-// Called once by the process loader from `src/prim/prim.c` before `main` is called.
-void _mi_auto_process_init(void) {
+static void mi_auto_process_init_once(void) {
   _mi_process.libc_is_initialized = true;
 
   mi_process_init();
@@ -574,6 +744,13 @@ void _mi_auto_process_init(void) {
   _mi_pprof_profiler_init();
 }
 
+// Called by the process loader from `src/prim/prim.c` before `main` is called.
+void _mi_auto_process_init(void) {
+  mi_atomic_do_once {
+    mi_auto_process_init_once();
+  }
+}
+
 
 // Initialize the process; called by thread_init, the process loader, or an initial allocation (perhaps by the loader or a system library)
 static void mi_process_init_once(void) {
@@ -586,10 +763,11 @@ static void mi_process_init_once(void) {
   _mi_options_init();        // read environment (if possible)
   _mi_stats_init();          // start timer
   _mi_os_init();             // primitive dependent
+  _mi_process_metadata_init();  // after os_init so the OS page size is known
   mi_process_guard_init();   // after os_init so the OS page size is known
-
   mi_heap_main_init();       // before page_map_init so stats are working
-  _mi_page_map_init();       // todo: this could fail.. should we abort in that case?
+  if (!_mi_page_map_init()) { _mi_fatal_error("unable to initialize the allocation page map\n"); }
+  mi_process_sealed_init();  // after page_map_init so the page map is stored before sealing (no sealed-once writes are allowed after this)
   mi_thread_init();
 
   // the following can potentially allocate (on freeBSD for pthread keys)
@@ -599,7 +777,7 @@ static void mi_process_init_once(void) {
   mi_process_setup_auto_thread_done();  // after the above mi_thread_init so it can add the current theap
   _mi_fork_init();                      // register fork handlers (can allocate)
 
-  #if defined(_WIN32) && defined(MI_WIN_INIT_USE_FLS)
+  #if defined(_WIN32) && MI_WIN_INIT_USE_FLS
   // On windows, when building as a static lib the FLS cleanup happens to early for the main thread.
   // To avoid this, set the FLS value for the main thread to NULL so the fls cleanup
   // will not call _mi_thread_done on the (still executing) main thread. See issue #508.
@@ -645,7 +823,7 @@ static void mi_process_unwind_once(void)
   _mi_prim_thread_done_auto_done();
 
 #ifndef MI_SKIP_COLLECT_ON_EXIT
-#if (MI_DEBUG || !defined(MI_SHARED_LIB))
+#if (MI_DEBUG || !MI_SHARED_LIB)
   // free all memory if possible on process exit. This is not needed for a stand-alone process
   // but should be done if mimalloc is statically linked into another shared library which
   // is repeatedly loaded/unloaded, see issue #281.
@@ -671,7 +849,7 @@ static void mi_process_unwind_once(void)
       if (mi_option_is_enabled(mi_option_show_stats) || mi_option_is_enabled(mi_option_verbose)) {
         mi_theap_collect(subproc_main->theap_meta, false /* force */); // update stats of all pages in theap_meta
         _mi_theap_merge_stats(subproc_main->theap_meta);
-        _mi_theap_merge_stats(_mi_theap_default());  // _mi_thread_locals_done can free
+        mi_theap_stats_merge_to_heap(_mi_theap_default());  // _mi_thread_locals_done can free; NULL or empty if `exit` is called from a thread that never allocated
         mi_heap_stats_merge_to_subproc(subproc_main->heap_main);
         mi_subproc_stats_print_out(mi_subproc_main(), NULL, NULL); // note: can try to access (the now freed) thread_locals in mi_heap_theap_peek
       }
@@ -689,7 +867,7 @@ static void mi_process_done_once(void) {
   const size_t thread_count = mi_atomic_load_acquire(&_mi_subproc_main()->thread_count);
   if (thread_count == 1 || !_mi_prim_process_is_killed()) {  // can we safely take locks?
     mi_process_unwind_once();
-    _mi_verbose_message("process done: 0x%zx\n", _mi_process.tld_main.thread_id);
+    _mi_verbose_message("process done: 0x%zx\n", mi_process_metadata_field(mi_tld_t, tld_main)->thread_id);
   }
 
   _mi_subproc_main_done();
@@ -702,7 +880,7 @@ static void mi_process_done_once(void) {
 void mi_cdecl mi_process_done(void) mi_attr_noexcept {
   // we don't use `mi_atomic_do_once` here to avoid deadlocks if threads are killed due to a forced exit (issue #1377)
   size_t expected = 0;
-  if (mi_atomic_cas_strong_acq_rel(&_mi_process.process_done_called, &expected, 1)) {
+  if (mi_atomic_cas_strong_relaxed(&_mi_process.process_done_is_called, &expected, 1)) {
     mi_process_done_once();
   }
 }

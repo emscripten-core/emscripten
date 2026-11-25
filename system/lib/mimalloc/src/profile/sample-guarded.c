@@ -10,7 +10,10 @@ terms of the MIT license. A copy of the license can be found in the file
 #include "mimalloc/alloc/page.h"
 #include "mimalloc/profile/sample-guarded.h"
 
-mi_decl_export void mi_theap_guarded_set_sample_rate(mi_theap_t* theap, size_t sample_rate, size_t seed) {
+static void mi_theap_guarded_set_sample_rate_ex(mi_theap_t* theap, size_t sample_rate, size_t seed) {
+  #if !MI_GUARDED
+  sample_rate = 0;
+  #endif
   theap->guarded_sample_rate  = (sample_rate > MI_SAMPLE_RATE_MAX ? MI_SAMPLE_RATE_MAX : sample_rate);
   if (theap->guarded_sample_rate > 1) {
     if (seed == 0) {
@@ -24,21 +27,31 @@ mi_decl_export void mi_theap_guarded_set_sample_rate(mi_theap_t* theap, size_t s
   _mi_theap_update_sample_rate(theap);
 }
 
-mi_decl_export void mi_theap_guarded_set_size_bound(mi_theap_t* theap, size_t min, size_t max) {
+static void mi_theap_guarded_set_size_bound_ex(mi_theap_t* theap, size_t min, size_t max) {
   theap->guarded_size_min = min;
   theap->guarded_size_max = (min > max ? min : max);
 }
 
+mi_decl_export void mi_theap_guarded_set_sample_rate(mi_theap_t* theap, size_t sample_rate, size_t seed) {
+  if (theap==NULL || !mi_theap_is_initialized(theap) || !mi_theap_handle_is_valid(theap)) return;
+  mi_theap_guarded_set_sample_rate_ex(theap, sample_rate, seed);
+}
+
+mi_decl_export void mi_theap_guarded_set_size_bound(mi_theap_t* theap, size_t min, size_t max) {
+  if (theap==NULL || !mi_theap_is_initialized(theap) || !mi_theap_handle_is_valid(theap)) return;
+  mi_theap_guarded_set_size_bound_ex(theap, min, max);
+}
+
 void _mi_theap_guarded_init(mi_theap_t* theap) {
   #if MI_GUARDED
-  mi_theap_guarded_set_sample_rate(theap,
+  mi_theap_guarded_set_sample_rate_ex(theap,
     (size_t)mi_option_get_clamp(mi_option_guarded_sample_rate, 0, LONG_MAX),
     (size_t)mi_option_get(mi_option_guarded_sample_seed));
-  mi_theap_guarded_set_size_bound(theap,
+  mi_theap_guarded_set_size_bound_ex(theap,
     (size_t)mi_option_get_clamp(mi_option_guarded_min, 0, LONG_MAX),
     (size_t)mi_option_get_clamp(mi_option_guarded_max, 0, LONG_MAX) );
   #else
-  mi_theap_guarded_set_sample_rate(theap,0,0);
+  mi_theap_guarded_set_sample_rate_ex(theap,0,0);
   #endif
 }
 
@@ -52,7 +65,7 @@ static void* mi_block_ptr_set_guarded(mi_block_t* block, size_t obj_size, size_t
   if mi_unlikely(page==NULL) return NULL;  // should not happen, but avoids gcc -Wstringop-overflow warnings
   block = (mi_block_t*)mi_ptr_rederive(mi_page_start(page), block);  // `block` is bounded to the requested size
   mi_page_set_has_interior_pointers(page, true);
-  block->next = MI_BLOCK_TAG_GUARDED;
+  mi_atomic_store_relaxed(&block->next, MI_BLOCK_TAG_GUARDED);
 
   // set guard page at the end of the block
   const size_t block_size = mi_page_block_size(page);  // must use `block_size` to match `mi_free_local`
@@ -103,7 +116,11 @@ mi_decl_restrict void* _mi_theap_malloc_guarded(mi_theap_t* theap, size_t size, 
     return NULL;
   }
   const size_t os_page_size = _mi_os_page_size();
-  const size_t obj_size = (mi_option_is_enabled(mi_option_unsafe_guarded_precise) ? size : mi_align_up(size, MI_MAX_ALIGN_SIZE));
+  #if MI_UNSAFE_GUARDED_PRECISE
+  const size_t obj_size = size;
+  #else
+  const size_t obj_size = mi_align_up(size, MI_MAX_ALIGN_SIZE);
+  #endif
   const size_t bsize    = mi_align_up(mi_align_up(obj_size, MI_MAX_ALIGN_SIZE) + sizeof(mi_block_t), MI_MAX_ALIGN_SIZE);
   const size_t req_size = mi_align_up(bsize + os_page_size, os_page_size);
   // const size_t threshold = mi_theap_disable_profiler(theap);
@@ -138,7 +155,7 @@ mi_decl_restrict void* _mi_theap_malloc_guarded(mi_theap_t* theap, size_t size, 
     mi_assert_internal(mi_page_block_size(page) <= MI_SMALL_MAX_OBJ_SIZE);
   }
   #endif
-  return mi_ptr_bounded_data(p, size - MI_PADDING_SIZE);
+  return mi_ptr_bounded_data(p, mi_bounds_user_size(size - MI_PADDING_SIZE));
 }
 
 
@@ -150,7 +167,7 @@ void _mi_page_block_unguard(mi_page_t* page, mi_block_t* block, void* p) {
   mi_assert_internal(mi_block_ptr_is_guarded(block, p));
   mi_assert_internal(mi_page_has_interior_pointers(page));
   mi_assert_internal((uint8_t*)p - (uint8_t*)block >= (ptrdiff_t)sizeof(mi_block_t));
-  mi_assert_internal(block->next == MI_BLOCK_TAG_GUARDED);
+  mi_assert_internal(mi_atomic_load_relaxed(&block->next) == MI_BLOCK_TAG_GUARDED);
 
   const size_t bsize = mi_page_block_size(page);
   const size_t psize = _mi_os_page_size();

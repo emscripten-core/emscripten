@@ -5,8 +5,8 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #pragma once
-#ifndef MI_INTERNAL_SAMPLE_PROFILE_H
-#define MI_INTERNAL_SAMPLE_PROFILE_H
+#ifndef MI_PROFILE_SAMPLE_PROFILE_H
+#define MI_PROFILE_SAMPLE_PROFILE_H
 
 #include "../types.h"
 
@@ -41,6 +41,17 @@ static inline bool mi_theap_should_sample(mi_theap_t* theap, size_t req_size) {
   return ((mi_ssize_t)theap->sample_countdown < (mi_ssize_t)req_size);
 }
 
+// count requested bytes against the sample countdown (where any bytes beyond the countdown are added to `sample_requested`)
+static inline void mi_theap_sample_countdown_sub(mi_theap_t* theap, uint64_t requested) {
+  if (requested <= theap->sample_countdown) {
+    theap->sample_countdown -= (size_t)requested;
+  }
+  else {
+    theap->sample_requested += requested - theap->sample_countdown;
+    theap->sample_countdown = 0;
+  }
+}
+
 // we always align guarded pointers in a block at an offset
 // the block `next` field is then used as a tag to distinguish regular offset aligned blocks from guarded ones
 #define MI_BLOCK_TAG_ALIGNED   ((mi_encoded_t)(0))
@@ -50,21 +61,25 @@ static inline bool mi_theap_should_sample(mi_theap_t* theap, size_t req_size) {
 static inline bool mi_block_ptr_is_sampled(const mi_block_t* block, const void* p) {
 #if MI_GUARDED || MI_PROFILE
   const ptrdiff_t offset = (uint8_t*)p - (uint8_t*)block;
-  return (offset >= (ptrdiff_t)(sizeof(mi_block_t)) && block->next != MI_BLOCK_TAG_ALIGNED);
+  return (offset >= (ptrdiff_t)(sizeof(mi_block_t)) && mi_atomic_load_relaxed(&block->next) != MI_BLOCK_TAG_ALIGNED);
 #else
   MI_UNUSED(block); MI_UNUSED(p);
   return false;
 #endif
 }
 
-static inline bool mi_profiler_is_enabled(const mi_profiler_t* prof) {
-  _Atomic(size_t)* penabled = (_Atomic(size_t)*)&prof->reserved;
-  return (mi_atomic_load_acquire(penabled) != 0);
+// The profiler state is stored in its `reserved` field as `(generation << 1) | enabled`,
+// where the profiler gets a fresh generation each time it is attached.
+static inline _Atomic(size_t)* mi_profiler_pstate(const mi_profiler_t* prof) {
+  return (_Atomic(size_t)*)&prof->reserved;
 }
 
-static inline bool mi_profiler_set_enabled(mi_profiler_t* prof, bool enable) {
-  _Atomic(size_t)* penabled = (_Atomic(size_t)*)&prof->reserved;
-  return (mi_atomic_exchange_release(penabled, (enable ? 1 : 0)) != 0);
+static inline size_t mi_profiler_state(const mi_profiler_t* prof) {
+  return mi_atomic_load_acquire(mi_profiler_pstate(prof));
+}
+
+static inline bool mi_profiler_is_enabled(const mi_profiler_t* prof) {
+  return ((mi_profiler_state(prof) & 1) != 0);
 }
 
 #endif

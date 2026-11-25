@@ -29,6 +29,7 @@ void mi_page_queue_enqueue_from(mi_page_queue_t* to, mi_page_queue_t* from, mi_p
 void mi_page_queue_enqueue_from_full(mi_page_queue_t* to, mi_page_queue_t* from, mi_page_t* page);
 void mi_page_queue_move_to_front(mi_theap_t* theap, mi_page_queue_t* queue, mi_page_t* page);
 void mi_page_queue_move_to_back(mi_theap_t* theap, mi_page_queue_t* queue, mi_page_t* page);
+void mi_page_queue_rotate_to(mi_page_queue_t* queue, mi_page_t* page);
 
 
 static inline bool mi_page_queue_is_huge(const mi_page_queue_t* pq) {
