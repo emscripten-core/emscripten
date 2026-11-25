@@ -73,14 +73,19 @@ var LibraryDylink = {
     return true;
   },
 
-#if ASYNCIFY
   // With Asyncify, exports are replaced by JS wrappers (see
   // `Asyncify.instrumentWasmExports`) that keep the original wasm function in
   // `.orig`.  Returns the original function for such a wrapper, and `func`
   // itself otherwise.
   $unwrapAsyncifyExport__internal: true,
-  $unwrapAsyncifyExport: (func) => func.orig ?? func,
+  $unwrapAsyncifyExport: (func) => {
+#if ASYNCIFY
+    if (func.orig) {
+      return func.orig;
+    }
 #endif
+    return func;
+  },
 
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
@@ -892,9 +897,7 @@ var LibraryDylink = {
         if (prop in wasmImports && !wasmImports[prop].stub) {
           // No stub needed, symbol already exists in symbol table
           var res = wasmImports[prop];
-#if ASYNCIFY
           res = unwrapAsyncifyExport(res);
-#endif
           return res;
         }
         // Return a stub function that will resolve the symbol
@@ -1376,9 +1379,7 @@ var LibraryDylink = {
     var symDict = lib.exports;
     var symName = Object.keys(symDict)[symbolIndex];
     var sym = symDict[symName];
-#if ASYNCIFY
     sym = unwrapAsyncifyExport(sym);
-#endif
     var result = addFunctionInternal(sym, sym.sig);
 #if DYLINK_DEBUG
     dbg(`_dlsym_catchup: result=${result}`);
@@ -1416,9 +1417,7 @@ var LibraryDylink = {
       dbg(`dlsym_js: ${symbol} getting table slot for: ${result}`);
 #endif
 
-#if ASYNCIFY
       result = unwrapAsyncifyExport(result);
-#endif
       var addr = getFunctionAddress(result);
       if (addr) {
 #if DYLINK_DEBUG
