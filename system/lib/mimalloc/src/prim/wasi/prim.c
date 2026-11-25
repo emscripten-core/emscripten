@@ -8,7 +8,7 @@ terms of the MIT license. A copy of the license can be found in the file
 // This file is included in `src/prim/prim.c`
 
 #include "mimalloc.h"
-#include "mimalloc/prim.h"
+#include "mimalloc/prim/prim.h"
 #include "mimalloc/prim/os.h"
 #include "mimalloc/util/libc.h"
 #include "mimalloc/heap/process.h"
@@ -27,6 +27,7 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config ) {
   config->has_overcommit = false;
   config->has_partial_free = false;
   config->has_virtual_reserve = false;
+  config->has_reset = false;
 }
 
 //---------------------------------------------
@@ -62,7 +63,7 @@ int _mi_prim_free(void* addr, size_t size ) {
   }
 #endif
 
-#if defined(MI_USE_PTHREADS)
+#if MI_USE_PTHREADS
 static pthread_mutex_t mi_theap_grow_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
@@ -70,11 +71,11 @@ static void* mi_prim_mem_grow(size_t size, size_t try_alignment) {
   void* p = NULL;
   if (try_alignment <= 1) {
     // `sbrk` is not thread safe in general so try to protect it (we could skip this on WASM but leave it in for now)
-    #if defined(MI_USE_PTHREADS)
+    #if MI_USE_PTHREADS
     pthread_mutex_lock(&mi_theap_grow_mutex);
     #endif
     p = mi_memory_grow(size);
-    #if defined(MI_USE_PTHREADS)
+    #if MI_USE_PTHREADS
     pthread_mutex_unlock(&mi_theap_grow_mutex);
     #endif
   }
@@ -84,7 +85,7 @@ static void* mi_prim_mem_grow(size_t size, size_t try_alignment) {
     // to allocate aligned use a lock to try to avoid thread interaction
     // between getting the current size and actual allocation
     // (also, `sbrk` is not thread safe in general)
-    #if defined(MI_USE_PTHREADS)
+    #if MI_USE_PTHREADS
     pthread_mutex_lock(&mi_theap_grow_mutex);
     #endif
     {
@@ -95,7 +96,7 @@ static void* mi_prim_mem_grow(size_t size, size_t try_alignment) {
         base = mi_memory_grow(alloc_size);
       }
     }
-    #if defined(MI_USE_PTHREADS)
+    #if MI_USE_PTHREADS
     pthread_mutex_unlock(&mi_theap_grow_mutex);
     #endif
     if (base != NULL) {
@@ -123,8 +124,8 @@ static void* mi_prim_mem_grow(size_t size, size_t try_alignment) {
 int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
   MI_UNUSED(allow_large); MI_UNUSED(commit); MI_UNUSED(hint_addr);
   *is_large = false;
-  *is_zero = false;
   *addr = mi_prim_mem_grow(size, try_alignment);
+  *is_zero = (*addr != NULL);  // memory.grow (and wasi-libc sbrk) always appends zero-initialized pages
   return (*addr != NULL ? 0 : ENOMEM);
 }
 
@@ -145,8 +146,8 @@ int _mi_prim_decommit(void* addr, size_t size, bool* needs_recommit) {
   return 0;
 }
 
-int _mi_prim_reset(void* addr, size_t size) {
-  MI_UNUSED(addr); MI_UNUSED(size);
+int _mi_prim_reset(void* addr, size_t size, bool eager) {
+  MI_UNUSED(addr); MI_UNUSED(size); MI_UNUSED(eager);
   return 0;
 }
 
@@ -155,8 +156,13 @@ int _mi_prim_reuse(void* addr, size_t size) {
   return 0;
 }
 
-int _mi_prim_guard(void* addr, size_t size, bool set, bool is_committed) {
-  MI_UNUSED(addr); MI_UNUSED(size); MI_UNUSED(set); MI_UNUSED(is_committed);
+int _mi_prim_guard(void* addr, size_t size, bool set_guard, bool is_committed) {
+  MI_UNUSED(addr); MI_UNUSED(size); MI_UNUSED(set_guard); MI_UNUSED(is_committed);
+  return 0;
+}
+
+int _mi_prim_protect(void* addr, size_t size, mi_protect_t protect) {
+  MI_UNUSED(addr); MI_UNUSED(size); MI_UNUSED(protect);
   return 0;
 }
 
@@ -189,6 +195,9 @@ size_t _mi_prim_numa_node_count(void) {
 
 // low resolution timer
 static mi_msecs_t mi_prim_clock_now_lowres(void) {
+  #if !defined(_WASI_EMULATED_PROCESS_CLOCKS)
+  return 0;  // `clock` requires -D_WASI_EMULATED_PROCESS_CLOCKS -lwasi-emulated-process-clocks
+  #else
   const int64_t ticks = (int64_t)clock();
   #if !defined(CLOCKS_PER_SEC)
     return ticks;
@@ -202,6 +211,7 @@ static mi_msecs_t mi_prim_clock_now_lowres(void) {
     else {
       return ticks / ((mi_msecs_t)CLOCKS_PER_SEC / 1000);
     }
+  #endif
   #endif
 }
 
@@ -245,23 +255,39 @@ void _mi_prim_out_stderr( const char* msg ) {
 // Environment
 //----------------------------------------------------------------
 
-int _mi_prim_getenv(const char* name, char* result, size_t result_size) {
-  // cannot call getenv() when still initializing the C runtime.
-  if (_mi_preloading()) return -1;  // error, try again later
-  const char* s = getenv(name);
-  if (s == NULL) {
-    // we check the upper case name too.
-    char buf[64+1];
-    size_t len = _mi_strnlen(name,sizeof(buf)-1);
-    for (size_t i = 0; i < len; i++) {
-      buf[i] = _mi_toupper(name[i]);
-    }
-    buf[len] = 0;
-    s = getenv(buf);
+#include <wasi/api.h>  // __wasi_environ_sizes_get, __wasi_environ_get
+
+// Read the environment directly as `getenv` allocates on first use (which can recurse into the allocator).
+// A small environment is read into a stack buffer, while a large one is read once into memory from `memory.grow`.
+#define MI_WASI_ENV_BUF_SIZE  (4*MI_KiB)
+static uint8_t** mi_wasi_env_large;  // = NULL
+
+bool _mi_prim_env_visit(mi_env_visit_fun* visit, void* arg) {
+  __wasi_size_t count = 0;
+  __wasi_size_t size  = 0;
+  if (__wasi_environ_sizes_get(&count, &size) != 0) return false;
+  uint8_t* buf[MI_WASI_ENV_BUF_SIZE / sizeof(uint8_t*)];
+  uint8_t** env = buf;
+  const size_t env_size = (count + 1)*sizeof(uint8_t*) + size;
+  if (env_size <= sizeof(buf)) {
+    if (__wasi_environ_get(env, (uint8_t*)&env[count + 1]) != 0) return false;
   }
-  if (s == NULL || _mi_strnlen(s,result_size) >= result_size)  return 0; // not found
-  _mi_strlcpy(result, s, result_size);
-  return 1; // found
+  else if (mi_wasi_env_large != NULL) {
+    env = mi_wasi_env_large;
+  }
+  else {
+    env = (uint8_t**)mi_prim_mem_grow(mi_align_up(env_size, 64*MI_KiB), 0);  // the WASI environment does not change
+    if (env == NULL || __wasi_environ_get(env, (uint8_t*)&env[count + 1]) != 0) return false;
+    mi_wasi_env_large = env;
+  }
+  for (__wasi_size_t i = 0; i < count; i++) {
+    visit((const char*)env[i], arg);
+  }
+  return true;
+}
+
+int _mi_prim_getenv(const char* name, char* result, size_t result_size) {
+  return _mi_prim_getenv_by_visit(name, result, result_size);
 }
 
 
@@ -288,6 +314,10 @@ void _mi_prim_thread_done_auto_done(void) {
 
 void _mi_prim_thread_associate_default_theap(mi_theap_t* theap) {
   MI_UNUSED(theap);
+}
+
+void _mi_prim_thread_init(void) {
+  // nothing
 }
 
 bool _mi_prim_thread_is_in_threadpool(void) {

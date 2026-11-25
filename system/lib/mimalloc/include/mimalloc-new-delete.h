@@ -43,7 +43,7 @@ terms of the MIT license. A copy of the license can be found in the file
   mi_decl_new_nothrow(n) void* operator new  (std::size_t n, const std::nothrow_t& tag) noexcept { (void)(tag); return mi_new_nothrow(n); }
   mi_decl_new_nothrow(n) void* operator new[](std::size_t n, const std::nothrow_t& tag) noexcept { (void)(tag); return mi_new_nothrow(n); }
 
-  #if (__cplusplus >= 201402L || _MSC_VER >= 1916)
+  #if (__cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1916))
   void operator delete  (void* p, std::size_t n) noexcept { mi_free_size(p,n); };
   void operator delete[](void* p, std::size_t n) noexcept { mi_free_size(p,n); };
   #endif

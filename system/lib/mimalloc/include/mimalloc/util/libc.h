@@ -5,8 +5,8 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #pragma once
-#ifndef MI_INTERNAL_LIBC_H
-#define MI_INTERNAL_LIBC_H
+#ifndef MI_UTIL_LIBC_H
+#define MI_UTIL_LIBC_H
 
 #include "../types.h"
 
@@ -26,7 +26,9 @@ const char*   _mi_strchr(const char* s, char c);
 const char*   _mi_strrchr(const char* s, char c);
 bool          _mi_streq(const char* s, const char* t);
 bool          _mi_strntol(const char* s, size_t max_len, const char** end, long* result); // parses at most max_len bytes; no terminator required
+bool          _mi_strntoull(const char* s, size_t max_len, int base, const char** end, unsigned long long* result); // unsigned; base is 10, 16, or 0 (detect `0x`)
 int           _mi_getenv(const char* name, char* result, size_t result_size);
+bool          _mi_env_visit(void (*visit)(const char* entry, void* arg), void* arg);  // returns `false` if the full environment cannot be iterated
 void          _mi_detect_cpu_features(void);
 
 
@@ -153,12 +155,12 @@ static inline bool mi_mul_overflow(size_t count, size_t size, size_t* total) {
 // initialize a local variable to zero; use memset as compilers optimize constant sized memset's
 #define _mi_memzero_var(x)  memset(&x,0,sizeof(x))
 
-// Is memory zero initialized?
+// Is memory zero initialized? (Only used in debug mode)
 static inline bool mi_mem_is_zero(const void* p, size_t size) {
-  for (size_t i = 0; i < size; i++) {
-    if (((uint8_t*)p)[i] != 0) return false;
-  }
-  return true;
+  // byte wise compare is a too slow for certain debug tests so we use memcmp instead.
+  if (size == 0) return true;
+  const uint8_t* b = (const uint8_t*)p;
+  return (b[0] == 0 && memcmp(b, b + 1, size - 1) == 0);
 }
 
 // ---------------------------------------------------------------------------------

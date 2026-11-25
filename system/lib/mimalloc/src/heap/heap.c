@@ -19,28 +19,37 @@ terms of the MIT license. A copy of the license can be found in the file
   Heap's
 ----------------------------------------------------------- */
 
+mi_decl_cold bool _mi_heap_invalid(const mi_heap_t* heap) {
+  _mi_error_message(EFAULT, "invalid heap handle %p (the heap was deleted or the handle was corrupted)\n", heap);
+  return false;
+}
+
 mi_theap_t* mi_heap_theap(mi_heap_t* heap) {
-  return _mi_heap_theap(heap);  // in prim.h
+  // if (heap==NULL) { heap = mi_heap_main(); }
+  return _mi_heap_theap(heap);  // in prim/prim.h
 }
 
 void mi_heap_set_numa_affinity(mi_heap_t* heap, int numa_node) {
-  if (heap==NULL) { heap = mi_heap_main(); }
+  // if (heap==NULL) { heap = mi_heap_main(); }
+  if (!mi_heap_handle_is_valid(heap)) return;
   heap->numa_node = (numa_node < 0 ? -1 : numa_node % _mi_os_numa_node_count());
 }
 
 void mi_heap_set_debug_fill_preserve(mi_heap_t* heap, size_t preserve) {
-  if (heap==NULL) { heap = mi_heap_main(); }
+  // if (heap==NULL) { heap = mi_heap_main(); }
+  if (!mi_heap_handle_is_valid(heap)) return;
   if (preserve > MI_MiB) { preserve = MI_MiB; }  // fills are limited to 1 MiB anyway
   mi_atomic_store_relaxed(&heap->debug_fill_preserve, preserve);
 }
 
 void mi_heap_stats_merge_to_subproc(mi_heap_t* heap) {
-  if (heap==NULL) { heap = mi_heap_main(); }
+  // if (heap==NULL) { heap = mi_heap_main(); }
+  if (!mi_heap_handle_is_valid(heap)) return;
   _mi_stats_merge_into(&heap->subproc->stats, &heap->stats);
 }
 
 void mi_heap_stats_merge_to_main(mi_heap_t* heap) {
-  if (heap==NULL) return;
+  mi_assert_internal(heap!=NULL && !mi_is_heap_main(heap));
   _mi_stats_merge_into(&mi_heap_get_heap_main(heap)->stats, &heap->stats);
 }
 
@@ -75,7 +84,7 @@ static mi_decl_noinline mi_theap_t* mi_heap_init_theap(const mi_heap_t* const_he
   // initialize thread first in case this is the main heap
   // (which may allocate the default theap already for the main heap)
   if (!_mi_thread_is_initialized()) {
-    mi_thread_init();
+    if (_mi_thread_init() == NULL) return NULL;
   }
 
   // get the thread local theap
@@ -83,12 +92,9 @@ static mi_decl_noinline mi_theap_t* mi_heap_init_theap(const mi_heap_t* const_he
 
   // create a fresh theap?
   if (theap==NULL) {
-    // allocate a fresh theap
+    // allocate a fresh theap (fails on out-of-memory or if the heap is deleted)
     theap = _mi_theap_create(heap, mi_theap_get_default()->tld); // sets the theap thread local
-    if (theap==NULL) {
-      _mi_error_message(EFAULT, "unable to allocate memory for a thread local heap\n");
-      return NULL;
-    }
+    if (theap==NULL) return NULL;
     _mi_heap_theap_set(heap, theap);
     mi_assert_internal(theap == (mi_theap_t*)_mi_thread_local_get(heap->theap));
   }
@@ -96,14 +102,29 @@ static mi_decl_noinline mi_theap_t* mi_heap_init_theap(const mi_heap_t* const_he
 }
 
 
+// a theap for which allocation returns NULL (see `alloc/alloc-generic.c:mi_theap_init`)
+// note: on a done thread the unavailable theap falls back to meta allocation so we return the empty theap instead
+static mi_theap_t* mi_theap_failed(void) {
+  return (_mi_thread_is_done() ? _mi_theap_empty_get() : _mi_theap_unavailable());
+}
+
 // get (and possibly create) the theap belonging to a heap
 mi_decl_cold mi_theap_t* _mi_heap_theap_get_or_init(const mi_heap_t* heap)
 {
-  mi_assert_internal(heap->theap != 0);
+  if (!mi_heap_handle_is_valid(heap)) { return mi_theap_failed(); }  // allocation returns NULL
+  mi_assert_internal(heap->theap != 0 || heap->is_deleted);  // the slot is released by `mi_heap_free`
+  _mi_theap_tls_check();  // report if the cached theap was overwritten
   mi_theap_t* theap = (mi_theap_t*)_mi_thread_local_get(heap->theap);
   if mi_unlikely(theap==NULL) {
+    if (_mi_thread_is_done()) {
+      // don't re-initialize; allocation in the main heap uses the meta-data theap while other heaps return NULL (see `alloc/alloc-generic.c`)
+      return (mi_addr(heap) == mi_addr(mi_heap_main()) ? _mi_theap_unavailable() : mi_theap_failed());
+    }
     theap = mi_heap_init_theap(heap);
-    if (theap==NULL) { return &_mi_process.theap_empty_wrong; }  // this will return NULL from alloc/alloc-generic.c:_mi_malloc_generic
+    if (theap==NULL) { return mi_theap_failed(); }
+  }
+  else if mi_unlikely(_mi_theap_is_unavailable(theap)) {
+    return mi_theap_failed();  // released by this thread (see `mi_thread_heap_release`)
   }
   _mi_theap_cached_set(theap);
   return theap;
@@ -111,15 +132,21 @@ mi_decl_cold mi_theap_t* _mi_heap_theap_get_or_init(const mi_heap_t* heap)
 
 void _mi_heap_init(mi_heap_t* heap, mi_thread_local_t theap_slot, mi_subproc_t* subproc, mi_arena_id_t exclusive_arena_id, bool use_qsbr)
 {
+  mi_assert_internal(_mi_bin_size(_mi_bin(MI_LARGE_MAX_OBJ_SIZE)) == MI_LARGE_MAX_OBJ_SIZE);  // must be a bin size
   // init fields
+  heap->cookie = mi_heap_cookie(heap);
   heap->theap = theap_slot;
   heap->subproc = subproc;
   heap->heap_seq = mi_atomic_increment_relaxed(&subproc->heap_total_count);
   heap->exclusive_arena = _mi_arena_from_id(exclusive_arena_id);
   heap->reclaim_on_free = mi_option_get(mi_option_page_reclaim_on_free);
   heap->numa_node = -1; // no initial affinity
+  heap->is_deleted = false;
   #if MI_QSBR
   heap->qsbr_enabled = use_qsbr;
+  mi_atomic_store_ptr_relaxed(mi_page_t, &heap->qsbr_delayed, NULL);
+  heap->qsbr_delayed_last = NULL;
+  mi_lock_init(&heap->qsbr_delayed_lock);
   if (use_qsbr) {
     if (heap->reclaim_on_free > 0) { heap->reclaim_on_free = 0; }
     mi_heap_qsbr_init(&heap->qsbr);
@@ -128,7 +155,7 @@ void _mi_heap_init(mi_heap_t* heap, mi_thread_local_t theap_slot, mi_subproc_t* 
   mi_assert_internal(!use_qsbr);
   MI_UNUSED(use_qsbr);
   #endif
-  heap->profiler = mi_atomic_load_ptr_acquire(mi_profiler_t,&subproc->profiler);
+  mi_atomic_store_ptr_relaxed(mi_profiler_t, &heap->profiler, NULL);  // set when the heap is linked into the subprocess
   mi_stats_header_init(&heap->stats);
   mi_lock_init(&heap->theaps_lock);
   mi_lock_init(&heap->os_abandoned_pages_lock);
@@ -136,6 +163,8 @@ void _mi_heap_init(mi_heap_t* heap, mi_thread_local_t theap_slot, mi_subproc_t* 
 
   // push onto the subproc heaps
   mi_lock(&heap->subproc->heaps_lock) {
+    // inherit the profiler under the lock so a concurrent `mi_subproc_profile` either sees this heap or we see its profiler
+    mi_atomic_store_ptr_relaxed(mi_profiler_t, &heap->profiler, mi_atomic_load_ptr_acquire(mi_profiler_t,&subproc->profiler));
     mi_heap_t* head = heap->subproc->heaps;
     heap->prev = NULL;
     heap->next = head;
@@ -148,15 +177,21 @@ void _mi_heap_init(mi_heap_t* heap, mi_thread_local_t theap_slot, mi_subproc_t* 
 }
 
 mi_heap_t* _mi_heap_new_for_subproc(mi_subproc_t* subproc, mi_arena_id_t exclusive_arena_id, bool is_main_heap, bool use_qsbr) {
-  mi_assert_internal(is_main_heap ? (subproc->heap_main == NULL && subproc->parent != NULL) : subproc->heap_main != NULL);
-  // heap data is allocated in the current subproc (or the parent for a main heap)
-  mi_subproc_t* const owner = (is_main_heap ? subproc->parent : subproc);
-  #if MI_SECURE
-  // in secure mode, keep heap data separate from user data (at the cost of taking a lock)
-  mi_heap_t* const heap = (mi_heap_t*)_mi_meta_zalloc(owner, sizeof(mi_heap_t), NULL);
-  #else
-  mi_heap_t* const heap = (mi_heap_t*)mi_heap_zalloc(owner->heap_main, sizeof(mi_heap_t));
-  #endif
+  mi_assert_internal(is_main_heap ? (subproc->heap_main == NULL && !_mi_subproc_is_main(subproc)) : subproc->heap_main != NULL);
+  mi_heap_t* heap;
+  if (is_main_heap) {
+    // the main heap of a subprocess is allocated in the main subprocess as that outlives all other subprocesses
+    // (and we use the detached meta theap as the current thread may belong to another subprocess)
+    heap = (mi_heap_t*)_mi_meta_zalloc(_mi_subproc_main(), sizeof(mi_heap_t), NULL);
+  }
+  else {
+    #if MI_SECURE
+    // in secure mode, keep heap data separate from user data (at the cost of taking a lock)
+    heap = (mi_heap_t*)_mi_meta_zalloc(subproc, sizeof(mi_heap_t), NULL);
+    #else
+    heap = (mi_heap_t*)mi_heap_zalloc(subproc->heap_main, sizeof(mi_heap_t));
+    #endif
+  }
   if (heap==NULL) return NULL;
   // reserve a thread local slot for this heap (see also issue #1230)
   mi_thread_local_t theap_slot = (is_main_heap ? mi_thread_local_key_fast : _mi_thread_local_create());
@@ -199,8 +234,20 @@ static void mi_heap_free_theaps(mi_heap_t* heap) {
   // This can run concurrently with a thread that terminates (see `heap/process.c:mi_thread_theaps_done`),
   // and we need to ensure we free theaps atomically.
 
+  // From now on no new theaps can be attached to this heap (see `heap/theap.c:mi_theap_attach_to_heap`)
+  mi_lock(&heap->theaps_lock) {
+    heap->is_deleted = true;
+  }
+
   // We first detach our theaps list from any thread local lists
   _mi_heap_detach_theaps(heap);
+
+  // clear our own thread local slot so `_mi_page_associated_theap` does not read a freed theap (through destroy pages -> page_update_stats).
+  // (the key itself is only freed in `mi_heap_free` as concurrent frees may still read it until all pages are gone)
+  // (main heaps of all subprocesses share the fast key which must never be released)
+  if (!mi_is_heap_main(heap) && _mi_thread_local_get(heap->theap) != NULL) {
+    _mi_thread_local_set(heap->theap, NULL);
+  }
 
   // Now we can safely free the theaps
   mi_lock(&heap->theaps_lock) { // paranoia
@@ -222,12 +269,6 @@ static void mi_heap_free_theaps(mi_heap_t* heap) {
       _mi_theap_decref(theap);  // a cached entry can still point to the theap
       theap = next;
     }
-  }
-
-  // set the theap thread local to NULL (so _mi_page_associated_theap does not read from a freed theap (through delete pages -> page_update_stats))
-  if (!mi_is_process_heap_main(heap)) {
-    _mi_thread_local_free(heap->theap);
-    heap->theap = 0;
   }
 }
 
@@ -259,6 +300,7 @@ static void mi_heap_free(mi_heap_t* heap, bool acquire_heaps_lock) {
   mi_atomic_decrement_relaxed(&heap->subproc->heap_count);
   mi_subproc_stat_decrease(heap->subproc, heaps, 1);
   mi_lock_maybe(&heap->subproc->heaps_lock, acquire_heaps_lock) {
+    mi_list_unlink_check(heap, prev, next, heap->subproc->heaps, NULL);
     if (heap->next!=NULL) { heap->next->prev = heap->prev; }
     if (heap->prev!=NULL) { heap->prev->next = heap->next; }
                      else { heap->subproc->heaps = heap->next; }
@@ -267,14 +309,58 @@ static void mi_heap_free(mi_heap_t* heap, bool acquire_heaps_lock) {
   mi_lock_done(&heap->theaps_lock);
   mi_lock_done(&heap->os_abandoned_pages_lock);
   mi_lock_done(&heap->arena_pages_lock);
+  #if MI_QSBR
+  mi_assert_internal(mi_atomic_load_ptr_relaxed(mi_page_t, &heap->qsbr_delayed) == NULL);
+  mi_lock_done(&heap->qsbr_delayed_lock);
+  #endif
+  if (!is_main) {  // main heaps of all subprocesses share the fast key which must never be released
+    _mi_thread_local_free(heap->theap);
+    heap->theap = 0;
+  }
   if (!mi_is_process_heap_main(heap)) {
-    // _mi_thread_local_free(heap->theap);
+    heap->cookie = 0;  // invalidate the handle
     _mi_free_subproc_safe(heap);
   }
 }
 
+// Release the theap of the calling thread for this heap: its pages are abandoned (so blocks can still be freed from any thread),
+// and the thread-local slot is set to the unavailable theap so this thread can no longer allocate in the heap (and no free path recreates a theap).
+void mi_thread_heap_release(mi_heap_t* heap) mi_attr_noexcept {
+  // if (heap==NULL) { heap = mi_heap_main(); }
+  if (!mi_heap_handle_is_valid(heap)) return;
+  if (mi_is_heap_main(heap)) {
+    _mi_warning_message("cannot release the main heap\n");
+    return;
+  }
+  if (_mi_thread_is_done()) return;   // all theaps of this thread are already released
+  mi_theap_t* const theap = (mi_theap_t*)_mi_thread_local_get(heap->theap);
+  if (_mi_theap_is_unavailable(theap)) return;   // already released
+  if (theap!=NULL) {
+    _mi_theap_release(theap, _mi_theap_unavailable());
+  }
+  else {
+    // never used in this thread: still prevent a theap being created later on
+    mi_thread_init();  // so the thread locals are released at thread exit
+    _mi_thread_local_set(heap->theap, _mi_theap_unavailable());
+  }
+}
+
+#if MI_DEBUG
+// Report (verbose) if some threads still own a theap of a heap that is deleted (see `mi_thread_heap_release`)
+static void mi_heap_check_released(mi_heap_t* heap) {
+  size_t count = 0;
+  mi_lock(&heap->theaps_lock) {
+    for (mi_theap_t* theap = heap->theaps; theap != NULL; theap = theap->hnext) { count++; }
+  }
+  if (count > 0) {
+    _mi_verbose_message("deleting heap %p while %zu thread(s) did not release it first (see mi_thread_heap_release)\n", heap, count);
+  }
+}
+#endif
+
 void mi_heap_delete(mi_heap_t* heap) {
-  if (heap==NULL) return;
+  // if (heap==NULL) { heap = mi_heap_main(); }
+  if (!mi_heap_handle_is_valid(heap)) return;
   mi_heap_t* heap_main = mi_heap_get_heap_main(heap);
   if (heap == heap_main) {
     _mi_warning_message("cannot delete the main heap\n");
@@ -284,6 +370,11 @@ void mi_heap_delete(mi_heap_t* heap) {
     _mi_warning_message("cannot delete a QSBR heap; use destroy after readers and mutators have stopped\n");
     return;
   }
+  // release our own theap first (the thread-local key is freed in `mi_heap_free`)
+  _mi_theap_release(_mi_heap_theap_peek(heap), NULL);
+  #if MI_DEBUG
+  mi_heap_check_released(heap);
+  #endif
   mi_heap_free_theaps(heap);
   _mi_heap_move_pages(heap, heap_main);
   mi_heap_free(heap,true /* acquire subproc->heaps_lock */);
@@ -303,7 +394,8 @@ void _mi_heap_force_destroy(mi_heap_t* heap, bool acquire_heaps_lock) {
 }
 
 void mi_heap_destroy(mi_heap_t* heap) {
-  if (heap==NULL) return;
+  // if (heap==NULL) { heap = mi_heap_main(); }
+  if (!mi_heap_handle_is_valid(heap)) return;
   if (mi_is_heap_main(heap)) {
     _mi_warning_message("cannot destroy the main heap\n");
     return;
@@ -323,7 +415,8 @@ bool mi_any_heap_contains(const void* p) {
 }
 
 bool mi_heap_contains(const mi_heap_t* heap, const void* p) {
-  if (heap==NULL) { heap = mi_heap_main(); }
+  // if (heap==NULL) { heap = mi_heap_main(); }
+  if (!mi_heap_handle_is_valid(heap)) return false;
   return (heap==mi_heap_of(p));
 }
 

@@ -5,13 +5,30 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #include "mimalloc.h"
-#include "mimalloc/prim.h"
+#include "mimalloc/prim/prim.h"
+#include "mimalloc/prim/prim-mte.h"  // mi_memtag_cpu_line_size, _mi_os_has_memtag, _mi_os_memtag_line_size
 #include "mimalloc/track.h"
 #include "mimalloc/prim/prim-tls.h"  // _mi_theap_default for random
 #include "mimalloc/util/libc.h"
 #include "mimalloc/util/options.h"
 #include "mimalloc/util/stats.h"
+#include "mimalloc/util/memid.h"
 #include "mimalloc/prim/os.h"
+#include "mimalloc/util/random.h"
+#include "mimalloc/prim/prim-pac.h"
+#include "mimalloc/arena/arena.h"   // mi_memid_arena
+
+#if !defined(_WIN32) && MI_HAS_UNISTDH
+#include <unistd.h>   // issetugid, getuid, geteuid, getgid, getegid
+#endif
+#if defined(__linux__) && defined(__has_include) && (!defined(__ANDROID__) || __ANDROID_API__ >= 18)
+#if __has_include(<sys/auxv.h>)
+#include <sys/auxv.h> // getauxval, AT_SECURE
+#if defined(AT_SECURE)
+#define MI_HAS_AT_SECURE  1
+#endif
+#endif
+#endif
 
 /* -----------------------------------------------------------
   Initialization.
@@ -30,17 +47,42 @@ static const mi_os_mem_config_t mi_os_mem_config_default = {
   0,        // large page size (usually 2MiB)
   4096,     // allocation granularity
   MI_DEFAULT_PHYSICAL_MEMORY_IN_KIB,
-  MI_MAX_VABITS, // in `bits.h`
+  MI_MAX_VABITS, // in `arch.h`
+  0,        // memory tag check mode
+  0,        // memory tag line size
   true,     // has overcommit?  (if true we use MAP_NORESERVE on mmap systems)
   false,    // can we partially free allocated blocks? (on mmap systems we can free anywhere in a mapped range, but on Windows we must free the entire span)
   true,     // has virtual reserve? (if true we can reserve virtual address space without using commit or physical memory)
-  false     // has transparent huge pages? (if true we purge in (aligned) large page size chunks only to not fragment such pages)
+  true,     // has reset? (if false, `_mi_prim_reset` is a no-op)
+  false,    // has aligned allocation? (if true the OS can directly allocate at a requested alignment)
+  false,    // has transparent huge pages? (if true we purge in (aligned) large page size chunks only to not fragment such pages)
+  false,    // is elevated? (set in `_mi_os_init`)
+  false,    // has pointer authentication? (only detected with `MI_PAC=ON`)
+  false     // has memory tagging? (if true, all non-large OS memory supports memory tagging)
 };
 
-// The OS memory configuration in the process data (zero until `_mi_os_init`)
+// The OS memory configuration in the sealed process data (zero until `_mi_os_init`)
+// OS statistics are recorded in the given sub-process, or in the bootstrap statistics if `subproc` is `NULL`.
+// A `NULL` sub-process is only used to allocate the process meta data (which contains the main sub-process),
+// and the bootstrap statistics are merged into the main sub-process at its initialization (see `_mi_os_stats_bootstrap_merge`).
+static mi_stats_t mi_os_stats_bootstrap;
+
+static inline mi_stats_t* mi_os_stats(mi_subproc_t* subproc) {
+  return (subproc == NULL ? &mi_os_stats_bootstrap : &subproc->stats);
+}
+
+#define mi_os_stat_counter_increase(subproc,stat,amount)  __mi_stat_counter_increase_mt( &mi_os_stats(subproc)->stat, amount)
+#define mi_os_stat_increase(subproc,stat,amount)          __mi_stat_increase_mt( &mi_os_stats(subproc)->stat, amount)
+#define mi_os_stat_decrease(subproc,stat,amount)          __mi_stat_decrease_mt( &mi_os_stats(subproc)->stat, amount)
+#define mi_os_stat_adjust_decrease(subproc,stat,amount)   __mi_stat_adjust_decrease_mt( &mi_os_stats(subproc)->stat, amount)
+
+void _mi_os_stats_bootstrap_merge(mi_subproc_t* subproc) {
+  _mi_stats_merge_into(&subproc->stats, &mi_os_stats_bootstrap);
+}
+
 static inline const mi_os_mem_config_t* mi_os_mem_config(void) {
-  const mi_os_mem_config_t* const config = &_mi_process.os_mem_config;
-  return (mi_likely(config->page_size != 0) ? config : &mi_os_mem_config_default);
+  const mi_os_mem_config_t* const config = &mi_process_get_sealed_once()->os_mem_config;
+  return (config->page_size != 0 ? config : &mi_os_mem_config_default);
 }
 
 bool _mi_os_has_overcommit(void) {
@@ -51,13 +93,58 @@ bool _mi_os_has_virtual_reserve(void) {
   return mi_os_mem_config()->has_virtual_reserve;
 }
 
+bool _mi_os_has_reset(void) {
+  return mi_os_mem_config()->has_reset;
+}
+
 bool _mi_os_has_thp(void) {
   return mi_os_mem_config()->has_transparent_huge_pages;
+}
+
+bool _mi_os_has_memtag(void) {
+  return mi_os_mem_config()->has_memtag;
+}
+
+size_t _mi_os_memtag_line_size(void) {
+  return mi_os_mem_config()->memtag_line_size;
+}
+
+// Are we running with elevated privileges (e.g. a setuid/setgid executable)?
+static bool mi_os_detect_elevated(void) {
+  #if defined(_WIN32)
+  return false;  // no direct setuid/setgid equivalent; a UAC elevation does not inherit the parent's environment
+  #elif defined(__wasi__)
+  return false;  // no users or setuid/setgid in WASI
+  #elif MI_HAS_UNISTDH && (defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__))
+  return (issetugid() != 0);
+  #elif MI_HAS_UNISTDH
+  #if MI_HAS_AT_SECURE
+  // also covers file capabilities and LSM transitions where the uid/gid do not change
+  if (getauxval(AT_SECURE) != 0) return true;
+  #endif
+  return (getuid() != geteuid() || getgid() != getegid());
+  #else
+  return false;  // no portable way to check without `unistd.h`; assume not elevated
+  #endif
+}
+
+// Are we running with elevated privileges? In that case the environment is untrusted (and we ignore
+// all `MIMALLOC_` environment options and don't show addresses in messages).
+// Before `_mi_os_init` has published the OS configuration (e.g. when reading options during the
+// initialization in `_mi_prim_mem_init`) we use a direct (system call) check.
+bool _mi_os_is_elevated(void) {
+  const mi_os_mem_config_t* const config = &mi_process_get_sealed_once()->os_mem_config;
+  return (config->page_size != 0 ? config->is_elevated : mi_os_detect_elevated());
 }
 
 // OS (small) page size
 size_t _mi_os_page_size(void) {
   return mi_os_mem_config()->page_size;
+}
+
+// OS allocation granularity (usually the page size, but 64KiB on Windows)
+size_t _mi_os_alloc_granularity(void) {
+  return mi_os_mem_config()->alloc_granularity;
 }
 
 // if large OS pages are supported (2 or 4MiB), then return the size, otherwise return the small page size (4KiB)
@@ -74,10 +161,7 @@ size_t _mi_os_minimal_purge_size(void) {
     return mi_align_up(minsize, _mi_os_page_size());
   }
   else if (mi_os_mem_config()->has_transparent_huge_pages && mi_option_get(mi_option_allow_thp) == 2) {
-    // don't break up THP pages;
-    // we don't do this by default as that can lead to increased memory usage (see issue #1282).
-    // on the other hand, breaking up THP pages can lead to performance degradation and perhaps
-    // allow_thp should be 2 by default (and the user can set the OS THP setting to [never]).
+    // avoid splitting THP pages during purging; this can improve performance but increase memory usage.
     return _mi_os_large_page_size();
   }
   else {
@@ -105,6 +189,14 @@ bool _mi_os_canuse_large_page(size_t size, size_t alignment) {
   return ((size % lpsize) == 0 && (alignment % lpsize) == 0);
 }
 
+// Does the mapping contain at least one complete, aligned large page?
+bool _mi_os_canuse_thp(const void* p, size_t size) {
+  const size_t lpsize = mi_os_mem_config()->large_page_size;
+  if (lpsize == 0 || size < lpsize) return false;
+  const size_t offset = mi_addr(p) % lpsize;
+  return (offset == 0 || lpsize - offset <= size - lpsize);
+}
+
 // round to a good OS allocation size (bounded by max 12.5% waste)
 size_t _mi_os_good_alloc_size(size_t size) {
   size_t align_size;
@@ -117,14 +209,58 @@ size_t _mi_os_good_alloc_size(size_t size) {
   return mi_align_up(size, align_size);
 }
 
+// Create a fresh random process key (for encoded pointers and heap cookies)
+static mi_addr_t mi_random_key_new(void) {
+  mi_random_ctx_t ctx;
+  _mi_random_init(&ctx);
+  const mi_addr_t key = (mi_addr_t)_mi_random_next(&ctx);
+  mi_memzero(&ctx, sizeof(ctx));
+  return key;
+}
+
 void _mi_os_init(void) {
   mi_os_mem_config_t config = mi_os_mem_config_default;
   _mi_prim_mem_init(&config);
   mi_assert(config.page_size != 0);
-  _mi_process.os_mem_config = config;  // publish at once
+  config.is_elevated = mi_os_detect_elevated();
+  if (config.has_memtag) {
+    const size_t line_size = mi_memtag_cpu_line_size();
+    if (line_size < MI_MEMTAG_LINE_MIN || line_size > MI_MEMTAG_LINE_MAX || !mi_is_power_of_two(line_size)) {
+      _mi_warning_message("memory tagging is disabled as the CPU tag cache line size (%zu bytes) is not supported\n", line_size);
+      config.has_memtag = false;
+    }
+    else {
+      config.memtag_line_size = line_size;
+    }
+  }
+  #if MI_MTE >= 2
+  if (!config.has_memtag) {
+    _mi_fatal_error("built with MI_MTE=ON but memory tagging is not enabled at runtime\n"
+                    "  (on macOS the program needs the MTE entitlement, and the `mte` option must not be disabled)\n");
+  }
+  #endif
+  #if MI_PAC >= 2
+  if (!config.has_pac) {
+    _mi_fatal_error("built with MI_PAC=ON but the CPU (or OS) does not support pointer authentication (PAC)\n");
+  }
+  #endif
+  mi_process_sealed_once_t* const once = _mi_process_unseal_once();
+  once->os_mem_config = config;  // publish at once
+  if (once->process_key == 0) {  // `_mi_os_init` may be called twice; the key never changes
+    #if MI_PAC == 1
+    once->process_key = mi_random_key_new() | MI_PAC_KEY_ALWAYS;
+    #else
+    once->process_key = mi_random_key_new() | 1;   // never 0
+    #endif
+  }
+  _mi_process_seal_once();
   if (_mi_os_page_size() > MI_ARENA_SLICE_SIZE) {
     _mi_error_message(ENOTSUP, "the OS page size (%zu KiB) is larger than the arena slice size (%zu KiB); increase MI_ARENA_SLICE_SHIFT\n", _mi_os_page_size()/MI_KiB, (size_t)(MI_ARENA_SLICE_SIZE/MI_KiB));
   }
+  if (config.has_memtag) { _mi_verbose_message("memory tagging is enabled (for blocks up to %zu KiB)\n", (size_t)(MI_LARGE_MAX_OBJ_SIZE / MI_KiB)); }
+  #if MI_PAC
+  _mi_verbose_message("signing is enabled (%s)\n", (config.has_pac && MI_PAC>=2 ? "hardware supported" : "weak, using a process key"));
+  #endif
 }
 
 
@@ -146,9 +282,9 @@ bool _mi_os_commit(mi_subproc_t* subproc, void* addr, size_t size, bool* is_zero
 // (otherwise an initial large allocation of say 2TiB has a 50% chance to include (known) addresses
 //  in the middle of the 2TiB - 6TiB address range (see issue #372))
 
-#define MI_HINT_BASE  (MI_AU(2) << 40)   // 2TiB start
-#define MI_HINT_AREA  (MI_AU(4) << 40)   // upto (2+4) 6TiB  (since before win8 there is "only" 8TiB available to processes)
-#define MI_HINT_MAX   (MI_AU(30) << 40)  // wrap after 30TiB (area after 32TiB is used for huge OS pages)
+#define MI_HINT_BASE  (MI_ADDR(2) << 40)   // 2TiB start
+#define MI_HINT_AREA  (MI_ADDR(4) << 40)   // upto (2+4) 6TiB  (since before win8 there is "only" 8TiB available to processes)
+#define MI_HINT_MAX   (MI_ADDR(30) << 40)  // wrap after 30TiB (area after 32TiB is used for huge OS pages)
 
 void* _mi_os_get_aligned_hint(size_t try_alignment, size_t sze)
 {
@@ -163,20 +299,20 @@ void* _mi_os_get_aligned_hint(size_t try_alignment, size_t sze)
   if (req_size > 32*MI_GiB) return NULL;  // guarantee the chance of fixed valid address is at most 1/(MI_HINT_AREA / 1<<34) = 1/256
   #endif
 
-  mi_addr_t hint = mi_atomic_add_acq_rel(&_mi_process.os_aligned_base, req_size);
-  if (hint == 0 || hint > MI_HINT_MAX) {   // wrap or initialize
+  // initialize (or wrap) the base before advancing it so an early return leaves it unchanged
+  mi_addr_t base = mi_atomic_load_relaxed(&_mi_process.os.aligned_base);
+  if (base == 0 || base > MI_HINT_MAX) {
     mi_addr_t init = MI_HINT_BASE;
     #if (MI_SECURE || !MI_DEBUG)  // security: randomize start of aligned allocations unless in debug mode
     mi_theap_t* const theap = _mi_theap_default();     // don't use `mi_theap_get_default()` as that can cause allocation recursively (issue #1267)
     if (!mi_theap_is_initialized(theap)) return NULL;  // no hint as we lack randomness at this point
     const size_t r = _mi_theap_random_next(theap);
-    init = init + ((MI_AU(MI_MiB) * ((r>>17) & 0x3FFFFF)) % MI_HINT_AREA);  // (randomly 22 bits)* 1MiB == 0 to 4TiB
+    init = init + ((MI_ADDR(MI_MiB) * ((r>>17) & 0x3FFFFF)) % MI_HINT_AREA);  // (randomly 22 bits)* 1MiB == 0 to 4TiB
     #endif
-    mi_addr_t expected = hint + req_size;
-    mi_atomic_cas_strong_acq_rel(&_mi_process.os_aligned_base, &expected, init);
-    hint = mi_atomic_add_acq_rel(&_mi_process.os_aligned_base, req_size); // this may still give 0 or > MI_HINT_MAX but that is ok, it is a hint after all
-    if (hint==0) return NULL;
+    mi_atomic_cas_strong_relaxed(&_mi_process.os.aligned_base, &base, init);  // if this fails, another thread initialized it
   }
+  const mi_addr_t hint = mi_atomic_add_relaxed(&_mi_process.os.aligned_base, req_size);
+  if (hint == 0 || hint > MI_HINT_MAX) return NULL;  // (rare) wrapped concurrently: the next call reinitializes
   const mi_addr_t hint_align = mi_addr_align_up(hint,try_alignment);
   mi_assert_internal(hint_align + sze < hint + req_size);
   return mi_ptr_from_addr(hint_align);
@@ -210,9 +346,10 @@ static bool mi_os_secure_guard_page(void* addr, mi_memid_t memid, bool set) {
   mi_assert_internal(mi_is_aligned(addr, _mi_os_page_size()));
   bool ok;
   mi_arena_t* const arena = mi_memid_arena(memid);
-  if (arena != NULL && arena->commit_fun != NULL) {
+  mi_commit_fun_t* const commit_fun = (arena != NULL ? mi_fun_auth_at(mi_commit_fun_t, &arena->commit_fun) : NULL);
+  if (commit_fun != NULL) {
     // decommit on a set, and only recommit on a reset if accounted as committed
-    ok = (set || memid.initially_committed ? (*(arena->commit_fun))(!set /* commit */, addr, size, NULL, arena->commit_fun_arg) : true);
+    ok = (set || memid.initially_committed ? (*commit_fun)(!set /* commit */, addr, size, NULL, arena->commit_fun_arg) : true);
   }
   else {
     ok = (set ? _mi_os_guard(addr, size, memid.initially_committed) : _mi_os_unguard(addr, size, memid.initially_committed));
@@ -273,50 +410,39 @@ bool _mi_os_secure_guard_pages_set_within(void* area, size_t area_size, size_t o
 
 static void mi_os_free_huge_os_pages(mi_subproc_t* subproc, void* p, size_t size);
 
-static void mi_os_prim_free(mi_subproc_t* subproc, void* addr, size_t size, size_t commit_size, bool adjust) {
-  mi_assert_internal(subproc!=NULL);
-  mi_assert_internal((size % _mi_os_page_size()) == 0);
-  if (addr == NULL) return; // || _mi_os_is_huge_reserved(addr)
+static void mi_os_prim_free_no_stat(void* addr, size_t size) {
   int err = _mi_prim_free(addr, size);  // allow size==0 (issue #1041)
   if (err != 0) {
     _mi_warning_message("unable to free OS memory (error: %d (0x%x), size: 0x%zx bytes, address: %p)\n", err, err, size, addr);
   }
+}
+
+static void mi_os_prim_free(mi_subproc_t* subproc, void* addr, size_t size, size_t commit_size, bool adjust) {
+  mi_assert_internal((size % _mi_os_page_size()) == 0);
+  if (addr == NULL) return; // || _mi_os_is_huge_reserved(addr)
+  mi_os_prim_free_no_stat(addr, size);
   if (adjust) {
-    if (commit_size>0) { mi_subproc_stat_adjust_decrease(subproc, committed, commit_size); }
-    mi_subproc_stat_adjust_decrease(subproc, reserved, size);
+    if (commit_size>0) { mi_os_stat_adjust_decrease(subproc, committed, commit_size); }
+    mi_os_stat_adjust_decrease(subproc, reserved, size);
   }
   else {
-    if (commit_size>0) { mi_subproc_stat_decrease(subproc, committed, commit_size); }
-    mi_subproc_stat_decrease(subproc, reserved, size);
+    if (commit_size>0) { mi_os_stat_decrease(subproc, committed, commit_size); }
+    mi_os_stat_decrease(subproc, reserved, size);
   }
 }
 
 void _mi_os_free_ex(mi_subproc_t* subproc, void* addr, size_t size, bool still_committed, mi_memid_t memid) {
+  MI_UNUSED(addr); MI_UNUSED(size);
   if (mi_memkind_is_os(memid.memkind)) {
-    size_t csize = memid.mem.os.size;
-    if (csize==0) { csize = _mi_os_good_alloc_size(size); }
-    mi_assert_internal(csize >= size);
-    size_t commit_size = (still_committed ? csize : 0);
-    void* base = addr;
-    // different base? (due to alignment)
-    if (memid.mem.os.base != base) {
-      mi_assert(memid.mem.os.base <= addr);
-      base = memid.mem.os.base;
-      const size_t diff = (uint8_t*)addr - (uint8_t*)memid.mem.os.base;
-      if (memid.mem.os.size==0) {
-        csize += diff;
-      }
-      if (still_committed) {
-        commit_size -= diff;  // the (addr-base) part was already un-committed
-      }
-    }
-    // free it
+    void* const base = memid.mem.os.base;
+    const size_t full_size = mi_memid_os_size(memid);
+    mi_assert_internal((uint8_t*)base <= (uint8_t*)addr && (uint8_t*)addr + size <= (uint8_t*)base + full_size);
     if (memid.memkind == MI_MEM_OS_HUGE) {
       mi_assert(memid.is_pinned);
-      mi_os_free_huge_os_pages(subproc, base, csize);
+      mi_os_free_huge_os_pages(subproc, base, full_size);
     }
     else {
-      mi_os_prim_free(subproc, base, csize, (still_committed ? commit_size : 0), false);
+      mi_os_prim_free(subproc, base, full_size, (still_committed ? mi_memid_os_committed(memid) : 0), false);
     }
   }
   else {
@@ -341,7 +467,14 @@ static void* mi_os_prim_alloc_at(mi_subproc_t* subproc, void* hint_addr, size_t 
   mi_assert_internal(is_zero != NULL);
   mi_assert_internal(is_large != NULL);
   if (size == 0) return NULL;
+  if (!mi_memid_os_size_fits(size)) {
+    _mi_warning_message("unable to allocate OS memory as the size is too large (size: 0x%zx bytes)\n", size);
+    return NULL;
+  }
   if (!commit) { allow_large = false; }
+  #if MI_SECURE > 0 && MI_OS_HAS_GUARD_PAGES
+  allow_large = false;  // pinned memory cannot support guard pages
+  #endif
   if (try_alignment == 0) { try_alignment = 1; } // avoid 0 to ensure there will be no divide by zero when aligning
 
   // try to align along large OS page size for larger allocations
@@ -357,13 +490,13 @@ static void* mi_os_prim_alloc_at(mi_subproc_t* subproc, void* hint_addr, size_t 
     _mi_warning_message("unable to allocate OS memory (error: %d (0x%x), addr: %p, size: 0x%zx bytes, align: 0x%zx, commit: %d, allow large: %d)\n", err, err, hint_addr, size, try_alignment, commit, allow_large);
   }
 
-  mi_subproc_stat_counter_increase(subproc, mmap_calls, 1);
+  mi_os_stat_counter_increase(subproc, mmap_calls, 1);
   if (p != NULL) {
-    mi_subproc_stat_increase(subproc, reserved, size);
+    mi_os_stat_increase(subproc, reserved, size);
     if (commit) {
-      mi_subproc_stat_increase(subproc, committed, size);
+      mi_os_stat_increase(subproc, committed, size);
       // seems needed for asan (or `mimalloc-test-api` fails)
-      #ifdef MI_TRACK_ASAN
+      #if MI_TRACK_ASAN
       if (*is_zero) { mi_track_mem_defined(p,size); }
                else { mi_track_mem_undefined(p,size); }
       #endif
@@ -391,8 +524,8 @@ static void* mi_os_prim_alloc_aligned(mi_subproc_t* subproc, size_t size, size_t
   #if MI_SIZE_SIZE >= 8
   const bool try_direct_alloc = true;
   #else
-  // try a direct allocation if the alignment is below the default, or less than or equal to 1/4 fraction of the size.
-  const bool try_direct_alloc = (alignment <= mi_os_mem_config()->alloc_granularity || alignment <= size/4);
+  // try a direct allocation if the OS supports aligned allocation, the alignment is below the default, or less than or equal to 1/4 fraction of the size.
+  const bool try_direct_alloc = (mi_os_mem_config()->has_aligned_alloc || alignment <= mi_os_mem_config()->alloc_granularity || alignment <= size/4);
   #endif
 
   bool os_is_large = false;
@@ -430,7 +563,7 @@ static void* mi_os_prim_alloc_aligned(mi_subproc_t* subproc, size_t size, size_t
       // note: Windows VirtualFree needs the actual base pointer
       // this is handled though by having the `base` field in the memid
       os_base = p; // remember the base
-      os_size = over_size; // todo: use size instead as now we over-decrement commit stats on free?
+      os_size = over_size;
       p = mi_align_up_ptr(p, alignment);
 
       // explicitly commit only the aligned part
@@ -464,7 +597,7 @@ static void* mi_os_prim_alloc_aligned(mi_subproc_t* subproc, size_t size, size_t
 
   mi_assert_internal(p != NULL && os_base != NULL && mi_is_aligned(p,alignment));
   mi_assert_internal(os_base <= p && size <= os_size);
-  *memid = _mi_memid_create_os(os_base,os_size,commit,os_is_zero,os_is_large);
+  *memid = _mi_memid_create_os(os_base, os_size, (commit ? size : 0), os_is_zero, os_is_large);
   return p;
 }
 
@@ -482,8 +615,8 @@ void* _mi_os_alloc(mi_subproc_t* subproc, size_t size, mi_memid_t* memid) {
   void* p = mi_os_prim_alloc(subproc, size, 0, true, false, &os_is_large, &os_is_zero);
   if (p == NULL) return NULL;
 
-  *memid = _mi_memid_create_os(p, size, true, os_is_zero, os_is_large);
-  mi_assert_internal(memid->mem.os.size >= size);
+  *memid = _mi_memid_create_os(p, size, size, os_is_zero, os_is_large);
+  mi_assert_internal(mi_memid_os_size(*memid) >= size);
   mi_assert_internal(memid->initially_committed);
   return p;
 }
@@ -499,7 +632,7 @@ void* _mi_os_alloc_aligned(mi_subproc_t* subproc, size_t size, size_t alignment,
   void* p = mi_os_prim_alloc_aligned(subproc, size, alignment, commit, allow_large, memid );
   if (p == NULL) return NULL;
 
-  mi_assert_internal(memid->mem.os.size >= size);
+  mi_assert_internal(mi_memid_os_size(*memid) >= size);
   mi_assert_internal(mi_is_aligned(p,alignment));
   if (commit) { mi_assert_internal(memid->initially_committed); }
   return p;
@@ -510,11 +643,13 @@ mi_decl_nodiscard static void* mi_os_ensure_zero(mi_subproc_t* subproc, void* p,
   if (p==NULL || size==0) return p;
   // ensure committed
   if (!memid->initially_committed) {
+    const size_t commit_size = mi_memid_os_size(*memid);
     bool is_zero = false;
-    if (!_mi_os_commit(subproc, p, size, &is_zero)) {
+    if (!_mi_os_commit(subproc, memid->mem.os.base, commit_size, &is_zero)) {
       _mi_os_free(subproc, p, size, *memid);
       return NULL;
     }
+    mi_memid_os_set_committed(memid, commit_size);
     memid->initially_committed = true;
   }
   // ensure zero'd
@@ -530,7 +665,8 @@ void*  _mi_os_zalloc(mi_subproc_t* subproc, size_t size, mi_memid_t* memid) {
 }
 
 // Allocate OS memory with (in secure mode) a guard page right before and after it.
-// The memory can be freed using `_mi_os_free` with the returned `memid`.
+// The memory can be freed using `_mi_os_free_with_guards` with the returned `memid`.
+// The `subproc` can be `NULL` for statistics (see `mi_os_stats`).
 void* _mi_os_alloc_with_guards(mi_subproc_t* subproc, size_t size, bool commit, bool allow_large, mi_memid_t* memid) {
   const size_t guard_size = _mi_os_secure_guard_page_size();
   size = mi_align_up(size, _mi_os_page_size());
@@ -545,7 +681,7 @@ void* _mi_os_alloc_with_guards(mi_subproc_t* subproc, size_t size, bool commit, 
 
 // Free memory allocated by `_mi_os_alloc_with_guards` (including the guard pages).
 void _mi_os_free_with_guards(mi_subproc_t* subproc, mi_memid_t memid) {
-  _mi_os_free(subproc, memid.mem.os.base, memid.mem.os.size, memid);
+  _mi_os_free(subproc, memid.mem.os.base, mi_memid_os_size(memid), memid);
 }
 
 /* -----------------------------------------------------------
@@ -555,6 +691,8 @@ void _mi_os_free_with_guards(mi_subproc_t* subproc, mi_memid_t memid) {
   As we may need to overallocate, we need to free such pointers using `mi_free_aligned`
   to use the actual start of the memory region.
 ----------------------------------------------------------- */
+
+static bool mi_os_decommit_ex(mi_subproc_t* subproc, void* addr, size_t size, bool* needs_recommit, size_t stat_size);
 
 void* _mi_os_alloc_aligned_at_offset(mi_subproc_t* subproc, size_t size, size_t alignment, size_t offset, bool commit, bool allow_large, mi_memid_t* memid) {
   mi_assert(offset <= size);
@@ -576,9 +714,12 @@ void* _mi_os_alloc_aligned_at_offset(mi_subproc_t* subproc, size_t size, size_t 
     void* const p = (uint8_t*)start + extra;
     mi_assert(mi_is_aligned((uint8_t*)p + offset, alignment));
     // decommit the overallocation at the start
-    // note: this double counts the decommit when freeing `memid`. Should we keep commit size in the memid as well?
     if (commit && extra >= _mi_os_page_size()) {
-      _mi_os_decommit(subproc, start, extra);
+      const size_t decommit_size = mi_align_down(extra, _mi_os_page_size());
+      bool needs_recommit = false;
+      if (mi_os_decommit_ex(subproc, start, decommit_size, &needs_recommit, decommit_size) && needs_recommit) {
+        mi_memid_os_set_committed(memid, mi_memid_os_committed(*memid) - decommit_size);
+      }
     }
     return p;
   }
@@ -615,7 +756,7 @@ static void* mi_os_page_align_area_conservative(void* addr, size_t size, size_t*
 bool _mi_os_commit_ex(mi_subproc_t* subproc, void* addr, size_t size, bool* is_zero, size_t stat_already_committed) {
   mi_assert_internal(size >= stat_already_committed);
   if (is_zero != NULL) { *is_zero = false; }
-  mi_subproc_stat_counter_increase(subproc, commit_calls, 1);
+  mi_os_stat_counter_increase(subproc, commit_calls, 1);
 
   // page align range
   size_t csize;
@@ -634,11 +775,11 @@ bool _mi_os_commit_ex(mi_subproc_t* subproc, void* addr, size_t size, bool* is_z
     mi_assert_expensive(mi_mem_is_zero(start, csize));
   }
   // note: the following seems required for asan (otherwise `mimalloc-test-stress` fails)
-  #ifdef MI_TRACK_ASAN
+  #if MI_TRACK_ASAN
   if (os_is_zero) { mi_track_mem_defined(start,csize); }
              else { mi_track_mem_undefined(start,csize); }
   #endif
-  mi_subproc_stat_increase(subproc, committed, size - stat_already_committed);  // for precise commit vs. decommit
+  mi_os_stat_increase(subproc, committed, size - stat_already_committed);  // for precise commit vs. decommit
   return true;
 }
 
@@ -661,7 +802,7 @@ static bool mi_os_decommit_ex(mi_subproc_t* subproc, void* addr, size_t size, bo
     _mi_warning_message("cannot decommit OS memory (error: %d (0x%x), address: %p, size: 0x%zx bytes)\n", err, err, start, csize);
   }
   else if (*needs_recommit) {
-    mi_subproc_stat_decrease(subproc, committed, stat_size);
+    mi_os_stat_decrease(subproc, committed, stat_size);
   }
   mi_assert_internal(err == 0);
   return (err == 0);
@@ -677,19 +818,20 @@ bool _mi_os_decommit(mi_subproc_t* subproc, void* addr, size_t size) {
 // but may be used later again. This will release physical memory
 // pages and reduce swapping while keeping the memory committed.
 // We page align to a conservative area inside the range to reset.
-bool _mi_os_reset(mi_subproc_t* subproc, void* addr, size_t size) {
+// If `eager`, the memory is released immediately (e.g. `MADV_DONTNEED` instead of `MADV_FREE`).
+bool _mi_os_reset(mi_subproc_t* subproc, void* addr, size_t size, bool eager) {
   // page align conservatively within the range
   size_t csize;
   void* start = mi_os_page_align_area_conservative(addr, size, &csize);
   if (csize == 0) return true;  // || _mi_os_is_huge_reserved(addr)
-  mi_subproc_stat_counter_increase(subproc, reset, csize);
-  mi_subproc_stat_counter_increase(subproc, reset_calls, 1);
+  mi_os_stat_counter_increase(subproc, reset, csize);
+  mi_os_stat_counter_increase(subproc, reset_calls, 1);
 
   #if (MI_DEBUG>1) && !MI_SECURE && !MI_TRACK_ENABLED // && !MI_TSAN
   memset(start, 0, csize); // pretend it is eagerly reset
   #endif
 
-  int err = _mi_prim_reset(start, csize);
+  int err = _mi_prim_reset(start, csize, eager);
   if (err != 0) {
     _mi_warning_message("cannot reset OS memory (error: %d (0x%x), address: %p, size: 0x%zx bytes)\n", err, err, start, csize);
   }
@@ -714,8 +856,8 @@ void _mi_os_reuse( mi_subproc_t* subproc, void* addr, size_t size ) {
 bool _mi_os_purge_ex(mi_subproc_t* subproc, void* p, size_t size, bool allow_reset, size_t stat_size, mi_commit_fun_t* commit_fun, void* commit_fun_arg)
 {
   if (mi_option_get(mi_option_purge_delay) < 0) return false;  // is purging allowed?
-  mi_subproc_stat_counter_increase(subproc, purge_calls, 1);
-  mi_subproc_stat_counter_increase(subproc, purged, size);
+  mi_os_stat_counter_increase(subproc, purge_calls, 1);
+  mi_os_stat_counter_increase(subproc, purged, size);
 
   if (commit_fun != NULL) {
     bool decommitted = (*commit_fun)(false, p, size, NULL, commit_fun_arg);
@@ -730,7 +872,7 @@ bool _mi_os_purge_ex(mi_subproc_t* subproc, void* p, size_t size, bool allow_res
   }
   else {
     if (allow_reset) {  // this can sometimes be not allowed if the range is not fully committed (on Windows, we cannot reset uncommitted memory)
-      _mi_os_reset(subproc, p, size);
+      _mi_os_reset(subproc, p, size, false);
     }
     return false;  // needs no recommit
   }
@@ -780,24 +922,24 @@ and possibly associated with a specific NUMA node. (use `numa_node>=0`)
 static uint8_t* mi_os_claim_huge_pages(size_t pages, size_t* total_size) {
   if (total_size != NULL) *total_size = 0;
   size_t size = 0;
-  if (mi_mul_overflow(pages,MI_HUGE_OS_PAGE_SIZE,&size)) {
+  if (mi_mul_overflow(pages,MI_HUGE_OS_PAGE_SIZE,&size) || !mi_memid_os_size_fits(size)) {
     _mi_warning_message("too many huge pages requested: %zu\n", pages);
     return NULL;
   }
 
   mi_addr_t start = 0;
   mi_addr_t end = 0;
-  mi_addr_t huge_start = mi_atomic_load_relaxed(&_mi_process.os_huge_start);
+  mi_addr_t huge_start = mi_atomic_load_relaxed(&_mi_process.os.huge_start);
   do {
     start = huge_start;
     if (start == 0) {
       // Initialize the start address after the 32TiB area
-      start = (MI_AU(32) << 40);    // 32TiB virtual start address (after addresses returned by _mi_os_get_aligned_hint)
+      start = (MI_ADDR(32) << 40);    // 32TiB virtual start address (after addresses returned by _mi_os_get_aligned_hint)
       #if (MI_SECURE || MI_DEBUG==0)  // security: randomize start of huge pages unless in debug mode
       mi_theap_t* const theap = _mi_theap_default();     // don't use `mi_theap_get_default()` as that can cause allocation recursively (issue #1267)
       if (mi_theap_is_initialized(theap)) {              // todo: or no hint at all if we lack randomness?
         const size_t r = _mi_theap_random_next(theap);
-        start = start + (MI_AU(MI_HUGE_OS_PAGE_SIZE) * ((r>>17) & 0x0FFF));  // (randomly 12bits)*1GiB == between 0 to 4TiB
+        start = start + (MI_ADDR(MI_HUGE_OS_PAGE_SIZE) * ((r>>17) & 0x0FFF));  // (randomly 12bits)*1GiB == between 0 to 4TiB
       }
       else {
         _mi_warning_message("failed to randomize the start address of huge pages allocation (%zu bytes at %p)", size, mi_ptr_from_addr(start));
@@ -805,7 +947,7 @@ static uint8_t* mi_os_claim_huge_pages(size_t pages, size_t* total_size) {
       #endif
     }
     end = start + size;
-  } while (!mi_atomic_cas_weak_acq_rel(&_mi_process.os_huge_start, &huge_start, end));
+  } while (!mi_atomic_cas_weak_relaxed(&_mi_process.os.huge_start, &huge_start, end));
 
   if (total_size != NULL) *total_size = size;
   return (uint8_t*)mi_ptr_from_addr(start);
@@ -823,6 +965,10 @@ void* _mi_os_alloc_huge_os_pages(mi_subproc_t* subproc, size_t pages, int numa_n
   *memid = _mi_memid_none();
   if (psize != NULL) *psize = 0;
   if (pages_reserved != NULL) *pages_reserved = 0;
+  #if MI_SECURE > 0 && MI_OS_HAS_GUARD_PAGES
+  _mi_warning_message("cannot allocate huge OS pages in secure mode as pinned memory cannot support guard pages\n");
+  return NULL;
+  #endif
   size_t size = 0;
   uint8_t* const start = mi_os_claim_huge_pages(pages, &size);
   if (start == NULL) return NULL; // or 32-bit systems
@@ -850,15 +996,15 @@ void* _mi_os_alloc_huge_os_pages(mi_subproc_t* subproc, size_t pages, int numa_n
       // no success, issue a warning and break
       if (p != NULL) {
         _mi_warning_message("could not allocate contiguous huge OS page %zu at %p\n", page, addr);
-        mi_os_prim_free(subproc, p, MI_HUGE_OS_PAGE_SIZE, MI_HUGE_OS_PAGE_SIZE, true /* adjust */);
+        mi_os_prim_free_no_stat(p, MI_HUGE_OS_PAGE_SIZE);  // not yet accounted
       }
       break;
     }
 
     // success, record it
     page++;  // increase before timeout check (see issue #711)
-    mi_subproc_stat_increase(subproc, committed, MI_HUGE_OS_PAGE_SIZE);
-    mi_subproc_stat_increase(subproc, reserved, MI_HUGE_OS_PAGE_SIZE);
+    mi_os_stat_increase(subproc, committed, MI_HUGE_OS_PAGE_SIZE);
+    mi_os_stat_increase(subproc, reserved, MI_HUGE_OS_PAGE_SIZE);
 
     // check for timeout
     if (max_msecs > 0) {
@@ -881,10 +1027,10 @@ void* _mi_os_alloc_huge_os_pages(mi_subproc_t* subproc, size_t pages, int numa_n
   if (psize != NULL) { *psize = allocated; }
   if (page != 0) {
     mi_assert(start != NULL);
-    *memid = _mi_memid_create_os(start, allocated, true /* is committed */, all_zero, true /* is_large */);
+    *memid = _mi_memid_create_os(start, allocated, allocated, all_zero, true /* is_large */);
     memid->memkind = MI_MEM_OS_HUGE;
     mi_assert(memid->is_pinned);
-    #ifdef MI_TRACK_ASAN
+    #if MI_TRACK_ASAN
     if (all_zero) { mi_track_mem_defined(start,allocated); }
     #endif
   }
@@ -909,7 +1055,7 @@ Support NUMA aware allocation
 -----------------------------------------------------------------------------*/
 
 int _mi_os_numa_node_count(void) {
-  size_t count = mi_atomic_load_acquire(&_mi_process.os_numa_node_count);
+  size_t count = mi_atomic_load_acquire(&_mi_process.os.numa_node_count);
   if mi_unlikely(count == 0) {
     long ncount = mi_option_get(mi_option_use_numa_nodes); // given explicitly?
     if (ncount > 0 && ncount < INT_MAX) {
@@ -920,7 +1066,7 @@ int _mi_os_numa_node_count(void) {
       if (n == 0 || n > INT_MAX) { count = 1; }
                             else { count = n; }
     }
-    mi_atomic_store_release(&_mi_process.os_numa_node_count, count); // save it
+    mi_atomic_store_release(&_mi_process.os.numa_node_count, count); // save it
     if (count>1) { _mi_verbose_message("using %zd numa regions\n", count); }
   }
   mi_assert_internal(count > 0 && count <= INT_MAX);
@@ -938,7 +1084,7 @@ static int mi_os_numa_node_get(void) {
 }
 
 int _mi_os_numa_node(void) {
-  if mi_likely(mi_atomic_load_relaxed(&_mi_process.os_numa_node_count) == 1) {
+  if mi_likely(mi_atomic_load_relaxed(&_mi_process.os.numa_node_count) == 1) {
     return 0;
   }
   else {
@@ -962,9 +1108,9 @@ static void* mi_os_alloc_aligned_ex(size_t size, size_t alignment, bool commit, 
   if (is_committed != NULL) { *is_committed = memid.initially_committed;  }
   if (is_pinned != NULL) { *is_pinned = memid.is_pinned;  }
   if (base != NULL) { *base = memid.mem.os.base;  }
-  if (full_size != NULL) { *full_size = memid.mem.os.size;  }
+  if (full_size != NULL) { *full_size = mi_memid_os_size(memid);  }
   if (!memid.initially_zero && memid.initially_committed) {
-    mi_memzero_aligned(memid.mem.os.base, memid.mem.os.size);
+    mi_memzero_aligned(memid.mem.os.base, mi_memid_os_size(memid));
   }
   return p;
 }
@@ -979,7 +1125,7 @@ mi_decl_export void* mi_os_alloc_aligned_allow_large(size_t size, size_t alignme
 
 mi_decl_export void  mi_os_free(void* p, size_t size) {
   if (p==NULL || size == 0) return;
-  mi_memid_t memid = _mi_memid_create_os(p, size, true, false, false);
+  mi_memid_t memid = _mi_memid_create_os(p, size, size, false, false);
   _mi_os_free(p, size, memid);
 }
 

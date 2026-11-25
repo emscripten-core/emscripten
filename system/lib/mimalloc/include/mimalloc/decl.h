@@ -32,10 +32,6 @@ terms of the MIT license. A copy of the license can be found in the file
 #define mi_decl_noinline        __declspec(noinline)
 #define mi_decl_thread          __declspec(thread)
 #define mi_decl_noreturn        __declspec(noreturn)
-#define mi_decl_weak
-#define mi_decl_hidden
-#define mi_decl_cold
-#define mi_assume_aligned(p,sz) (p)
 #elif (defined(__GNUC__) && (__GNUC__ >= 3)) || defined(__clang__) // includes clang and icc
 #if !MI_TRACK_ASAN
 #define mi_decl_forceinline     __attribute__((always_inline)) inline
@@ -45,37 +41,38 @@ terms of the MIT license. A copy of the license can be found in the file
 #define mi_decl_noinline        __attribute__((noinline))
 #define mi_decl_thread          __thread
 #define mi_decl_noreturn        __attribute__((noreturn))
-#define mi_decl_weak            __attribute__((weak))
-#if defined(__MINGW32__) || defined(__CYGWIN__)
-#define mi_decl_hidden
-#else
-#define mi_decl_hidden          __attribute__((visibility("hidden")))
-#endif
-#if (defined(__GNUC__) && (__GNUC__ >= 4)) || defined(__clang__)
-#define mi_decl_cold            __attribute__((cold))
-#define mi_assume_aligned(p,sz) __builtin_assume_aligned(p,sz)
-#else
-#define mi_decl_cold
-#define mi_assume_aligned(p,sz) (p)
-#endif
 #elif __cplusplus >= 201103L    // c++11
 #define mi_decl_forceinline     inline
 #define mi_decl_noinline
 #define mi_decl_thread          thread_local
 #define mi_decl_noreturn        [[noreturn]]
-#define mi_decl_weak
-#define mi_decl_hidden
-#define mi_decl_cold
-#define mi_assume_aligned(p,sz) (p)
 #else
 #define mi_decl_forceinline     inline
 #define mi_decl_noinline
 #define mi_decl_thread          __thread        // hope for the best :-)
 #define mi_decl_noreturn
-#define mi_decl_weak
+#endif
+
+#if !defined(__MINGW32__) && !defined(__CYGWIN__) && ((defined(__GNUC__) && (__GNUC__ >= 3)) || defined(__clang__))
+#define mi_decl_hidden          __attribute__((visibility("hidden")))
+#else
 #define mi_decl_hidden
+#endif
+
+#if (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3))) || defined(__clang__)
+#define mi_prefetch_write(p)    __builtin_prefetch(p, 1, 3)
+#define mi_prefetch_read(p)     __builtin_prefetch(p, 0, 3)
+#define mi_decl_cold            __attribute__((cold))
+#define mi_decl_weak            __attribute__((weak))
+#define mi_assume_aligned(p,sz) __builtin_assume_aligned(p,sz)
+#define mi_decl_func_align      __attribute__((aligned(64)))
+#else
+#define mi_prefetch_write(p)
+#define mi_prefetch_read(p)
 #define mi_decl_cold
+#define mi_decl_weak
 #define mi_assume_aligned(p,sz) (p)
+#define mi_decl_func_align
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -89,14 +86,6 @@ terms of the MIT license. A copy of the license can be found in the file
 #define mi_likely(x)            (x)
 #endif
 
-#if (defined(__GNUC__) && (__GNUC__ >= 4)) || defined(__clang__)
-#define mi_prefetch_write(p)    __builtin_prefetch(p, 1, 3)
-#define mi_prefetch_read(p)     __builtin_prefetch(p, 0, 3)
-#else
-#define mi_prefetch_write(p)
-#define mi_prefetch_read(p)
-#endif
-
 #if (defined(__GNUC__) && (__GNUC__ >= 7)) || defined(__clang__)
 #define mi_decl_maybe_unused    __attribute__((unused))
 #elif __cplusplus >= 201703L    // c++17
@@ -106,7 +95,21 @@ terms of the MIT license. A copy of the license can be found in the file
 #endif
 
 #ifndef __has_builtin
-#define __has_builtin(x)    0
+#define __has_builtin(x)        0
+#endif
+
+
+// ------------------------------------------------------
+// Define MI_DEBUG for assertion and invariant checking
+// #define MI_DEBUG 1  // basic assertion checks and statistics, check double free, corrupted free list, and invalid pointer free. (cmake -DMI_DEBUG=ON)
+// #define MI_DEBUG 2  // + internal assertion checks (cmake -DMI_DEBUG_INTERNAL=ON)
+// #define MI_DEBUG 3  // + extensive internal invariant checking (cmake -DMI_DEBUG_FULL=ON)
+#if !defined(MI_DEBUG)
+#if defined(MI_BUILD_RELEASE) || defined(NDEBUG)
+#define MI_DEBUG 0
+#else
+#define MI_DEBUG 2
+#endif
 #endif
 
 #define MI_UNUSED(x)     (void)(x)

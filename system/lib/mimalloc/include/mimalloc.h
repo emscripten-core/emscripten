@@ -8,14 +8,14 @@ terms of the MIT license. A copy of the license can be found in the file
 #ifndef MIMALLOC_H
 #define MIMALLOC_H
 
-#define MI_MALLOC_VERSION 30601   // major + 2 digits minor + 2 digits patch
+#define MI_MALLOC_VERSION 30701   // major + 2 digits minor + 2 digits patch
 
 // ------------------------------------------------------
 // Compiler specific attributes
 // ------------------------------------------------------
 
 #ifdef __cplusplus
-  #if (__cplusplus >= 201103L) || (_MSC_VER > 1900)  // C++11
+  #if (__cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER > 1900)  // C++11
     #define mi_attr_noexcept   noexcept
   #else
     #define mi_attr_noexcept   throw()
@@ -30,16 +30,16 @@ terms of the MIT license. A copy of the license can be found in the file
   #define mi_decl_nodiscard    __attribute__((warn_unused_result))
 #elif defined(_HAS_NODISCARD)
   #define mi_decl_nodiscard    _NODISCARD
-#elif (_MSC_VER >= 1700)
+#elif defined(_MSC_VER) && (_MSC_VER >= 1700)
   #define mi_decl_nodiscard    _Check_return_
 #else
   #define mi_decl_nodiscard
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
-  #if !defined(MI_SHARED_LIB)
+  #if !defined(MI_SHARED_LIB) || !MI_SHARED_LIB
     #define mi_decl_export
-  #elif defined(MI_SHARED_LIB_EXPORT)
+  #elif defined(MI_SHARED_LIB_EXPORT) && MI_SHARED_LIB_EXPORT
     #define mi_decl_export              __declspec(dllexport)
   #else
     #define mi_decl_export              __declspec(dllimport)
@@ -56,11 +56,12 @@ terms of the MIT license. A copy of the license can be found in the file
     #define mi_attr_malloc
   #endif
   #define mi_cdecl                      __cdecl
+  #define mi_attr_pure
   #define mi_attr_alloc_size(s)
   #define mi_attr_alloc_size2(s1,s2)
   #define mi_attr_alloc_align(p)
 #elif defined(__GNUC__)                 // includes clang and icc
-  #if defined(MI_SHARED_LIB) && defined(MI_SHARED_LIB_EXPORT)
+  #if defined(MI_SHARED_LIB) && MI_SHARED_LIB && defined(MI_SHARED_LIB_EXPORT) && MI_SHARED_LIB_EXPORT
     #define mi_decl_export              __attribute__((visibility("default")))
   #else
     #define mi_decl_export
@@ -68,6 +69,7 @@ terms of the MIT license. A copy of the license can be found in the file
   #define mi_cdecl                      // leads to warnings... __attribute__((cdecl))
   #define mi_decl_restrict
   #define mi_attr_malloc                __attribute__((malloc))
+  #define mi_attr_pure                  __attribute__((pure))
   #if (defined(__clang_major__) && (__clang_major__ < 4)) || (__GNUC__ < 5)
     #define mi_attr_alloc_size(s)
     #define mi_attr_alloc_size2(s1,s2)
@@ -86,6 +88,7 @@ terms of the MIT license. A copy of the license can be found in the file
   #define mi_decl_export
   #define mi_decl_restrict
   #define mi_attr_malloc
+  #define mi_attr_pure
   #define mi_attr_alloc_size(s)
   #define mi_attr_alloc_size2(s1,s2)
   #define mi_attr_alloc_align(p)
@@ -131,8 +134,9 @@ mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_mallocn(size_t count,
 mi_decl_nodiscard mi_decl_export void* mi_reallocn(void* p, size_t count, size_t size)        mi_attr_noexcept mi_attr_alloc_size2(2,3);
 mi_decl_nodiscard mi_decl_export void* mi_reallocf(void* p, size_t newsize)                   mi_attr_noexcept mi_attr_alloc_size(2);
 
-mi_decl_nodiscard mi_decl_export size_t mi_usable_size(const void* p) mi_attr_noexcept;
-mi_decl_nodiscard mi_decl_export size_t mi_good_size(size_t size)     mi_attr_noexcept;
+mi_decl_nodiscard mi_decl_export size_t mi_usable_size(const void* p) mi_attr_noexcept mi_attr_pure;
+mi_decl_nodiscard mi_decl_export size_t mi_allocated_size(const void* p) mi_attr_noexcept mi_attr_pure;
+mi_decl_nodiscard mi_decl_export size_t mi_good_size(size_t size)     mi_attr_noexcept mi_attr_pure;
 
 // `mi_free_size` can be more efficient (as it calls mi_free_small internally).
 mi_decl_export void mi_free_size(void* p, size_t size) mi_attr_noexcept;
@@ -192,6 +196,7 @@ mi_decl_nodiscard mi_decl_export void* mi_realloc_aligned_at(void* p, size_t new
 // See also `mimalloc-stats.h` for statistics
 // ------------------------------------------------------
 
+// Callbacks are always called with their registered argument, but other threads may briefly call a previously registered one.
 typedef void (mi_cdecl mi_deferred_free_fun)(bool force, unsigned long long heartbeat, void* arg);
 mi_decl_export void mi_register_deferred_free(mi_deferred_free_fun* deferred_free, void* arg) mi_attr_noexcept;
 
@@ -202,7 +207,7 @@ typedef void (mi_cdecl mi_error_fun)(int err, void* arg);
 mi_decl_export void mi_register_error(mi_error_fun* fun, void* arg);
 
 mi_decl_export void mi_collect(bool force)      mi_attr_noexcept;
-mi_decl_export int  mi_version(void);
+mi_decl_export int  mi_version(void) mi_attr_pure;
 mi_decl_export void mi_options_print(void)      mi_attr_noexcept;
 mi_decl_export void mi_process_info_print(void) mi_attr_noexcept;
 mi_decl_export void mi_options_print_out(mi_output_fun* out, void* arg)      mi_attr_noexcept;
@@ -222,19 +227,22 @@ mi_decl_export void mi_thread_set_in_threadpool(void) mi_attr_noexcept; // commu
 
 
 // -----------------------------------------------------------------
-// Return allocated block size (if the return value is not NULL)
+// Return the usable size (`mi_usable_size`) (if the return value is not NULL)
+// (no `alloc_size` attribute as the full usable size can be used, see `_FORTIFY_SOURCE`)
 // -----------------------------------------------------------------
 
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_umalloc(size_t size, size_t* block_size)  mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_ucalloc(size_t count, size_t size, size_t* block_size)  mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size2(1,2);
-mi_decl_nodiscard mi_decl_export void* mi_urealloc(void* p, size_t newsize, size_t* block_size_pre, size_t* block_size_post) mi_attr_noexcept mi_attr_alloc_size(2);
-mi_decl_export void mi_ufree(void* p, size_t* block_size) mi_attr_noexcept;
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_umalloc(size_t size, size_t* usable_size)  mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_uzalloc(size_t size, size_t* usable_size)  mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_ucalloc(size_t count, size_t size, size_t* usable_size)  mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_export void* mi_urealloc(void* p, size_t newsize, size_t* usable_size_pre, size_t* usable_size_post) mi_attr_noexcept;
+mi_decl_export void mi_ufree(void* p, size_t* usable_size) mi_attr_noexcept;
 
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_umalloc_aligned(size_t size, size_t alignment, size_t* block_size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1) mi_attr_alloc_align(2);
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_uzalloc_aligned(size_t size, size_t alignment, size_t* block_size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1) mi_attr_alloc_align(2);
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_umalloc_aligned(size_t size, size_t alignment, size_t* usable_size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_align(2);
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_uzalloc_aligned(size_t size, size_t alignment, size_t* usable_size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_align(2);
+mi_decl_nodiscard mi_decl_export void* mi_urealloc_aligned(void* p, size_t newsize, size_t alignment, size_t* usable_size_pre, size_t* usable_size_post) mi_attr_noexcept mi_attr_alloc_align(3);
 
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_umalloc_small(size_t size, size_t* block_size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_uzalloc_small(size_t size, size_t* block_size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_umalloc_small(size_t size, size_t* usable_size) mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_uzalloc_small(size_t size, size_t* usable_size) mi_attr_noexcept mi_attr_malloc;
 
 
 // -------------------------------------------------------------------------------------
@@ -249,6 +257,8 @@ mi_decl_nodiscard mi_decl_export mi_heap_t* mi_heap_new(void);
 
 mi_decl_export void mi_heap_delete(mi_heap_t* heap);            // move live blocks to the main heap
 mi_decl_export void mi_heap_destroy(mi_heap_t* heap);           // free all live blocks
+mi_decl_export void mi_thread_heap_release(mi_heap_t* heap) mi_attr_noexcept;  // the calling thread promises to no longer allocate in the heap (but blocks can still be freed)
+
 mi_decl_export void mi_heap_set_numa_affinity(mi_heap_t* heap, int numa_node);
 mi_decl_export void mi_heap_set_debug_fill_preserve(mi_heap_t* heap, size_t preserve); // in debug mode, do not fill the first `preserve` bytes of blocks on allocation or free
 mi_decl_export void mi_heap_collect(mi_heap_t* heap, bool force);
@@ -325,7 +335,8 @@ typedef struct mi_heap_area_s {
 
 typedef bool (mi_cdecl mi_block_visit_fun)(const mi_heap_t* heap, const mi_heap_area_t* area, void* block, size_t block_size, void* arg);
 
-// Heap visitors assume no concurrent heap access (except thread exit).
+// Heap visitors assume no concurrent heap access (except thread exit): no other thread may allocate in the heap,
+// or free blocks that belong to it, during the visit.
 mi_decl_export bool   mi_heap_visit_blocks(mi_heap_t* heap, bool visit_blocks, mi_block_visit_fun* visitor, void* arg);
 mi_decl_export bool   mi_heap_visit_abandoned_blocks(mi_heap_t* heap, bool visit_blocks, mi_block_visit_fun* visitor, void* arg);
 
@@ -405,6 +416,8 @@ mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_theap_malloc_aligned(
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_theap_zalloc_aligned(mi_theap_t* theap, size_t size, size_t alignment) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(2) mi_attr_alloc_align(3);
 mi_decl_nodiscard mi_decl_export                  void* mi_theap_realloc(mi_theap_t* theap, void* p, size_t newsize)              mi_attr_noexcept mi_attr_alloc_size(3);
 mi_decl_nodiscard mi_decl_export                  void* mi_theap_rezalloc(mi_theap_t* theap, void* p, size_t newsize)             mi_attr_noexcept mi_attr_alloc_size(3);
+mi_decl_nodiscard mi_decl_export                  void* mi_theap_realloc_aligned(mi_theap_t* theap, void* p, size_t newsize, size_t alignment)  mi_attr_noexcept mi_attr_alloc_size(3) mi_attr_alloc_align(4);
+mi_decl_nodiscard mi_decl_export                  void* mi_theap_rezalloc_aligned(mi_theap_t* theap, void* p, size_t newsize, size_t alignment) mi_attr_noexcept mi_attr_alloc_size(3) mi_attr_alloc_align(4);
 
 // ------------------------------------------------------
 // Experimental
@@ -463,6 +476,7 @@ mi_decl_export void mi_stats_print_out(mi_output_fun* out, void* arg) mi_attr_no
 
 // ------------------------------------------------------
 // Options
+// The deprecated options no longer have any effect.
 // ------------------------------------------------------
 
 typedef enum mi_option_e {
@@ -489,17 +503,17 @@ typedef enum mi_option_e {
   mi_option_os_tag,                     // tag used for OS logging (macOS only for now) (=100)
   mi_option_max_errors,                 // issue at most N error messages
   mi_option_max_warnings,               // issue at most N warning messages
-  mi_option_deprecated_max_segment_reclaim,  // max. percentage of the abandoned segments can be reclaimed per try (=10%)
+  mi_option_deprecated_max_segment_reclaim,
   mi_option_destroy_on_exit,            // if set, release all memory on exit; sometimes used for dynamic unloading but can be unsafe
   mi_option_arena_reserve,              // initial memory size for arena reservation (= 1 GiB on 64-bit) (internally, this value is in KiB; use `mi_option_get_size`)
   mi_option_arena_purge_mult,           // multiplier for `purge_delay` for the purging delay for arenas (=10)
   mi_option_deprecated_purge_extend_delay,
   mi_option_disallow_arena_alloc,       // 1 = do not use arena's for allocation (except if using specific arena id's)
   mi_option_retry_on_oom,               // retry on out-of-memory for N milli seconds (=400), set to 0 to disable retries. (only on windows)
-  mi_option_deprecated_visit_abandoned, // allow visiting theap blocks from abandoned threads (=0)
+  mi_option_deprecated_visit_abandoned,
   mi_option_guarded_min,                // only used when building with MI_GUARDED: minimal rounded object size for guarded objects (=0)
   mi_option_guarded_max,                // only used when building with MI_GUARDED: maximal rounded object size for guarded objects (=0)
-  mi_option_unsafe_guarded_precise,     // disregard minimal alignment requirement to always place guarded blocks exactly in front of a guard page (=0)
+  mi_option_deprecated_unsafe_guarded_precise,     // deprecated (but can be enabled at build time with -DMI_UNSAFE_GUARDED_PRECISE=1)
   mi_option_guarded_sample_rate,        // guard an object in the min/max range about every N requested bytes (=0)
   mi_option_guarded_sample_seed,        // can be set to allow for a (more) deterministic re-execution when a guard page is triggered (=0)
   mi_option_generic_collect,            // collect theaps every N (=10000) generic allocation calls
@@ -511,7 +525,8 @@ typedef enum mi_option_e {
   mi_option_page_commit_on_demand,      // commit page memory on-demand
   mi_option_page_max_reclaim,           // don't reclaim pages of the same originating theap if we already own N pages (in that size class) (=-1 (unlimited))
   mi_option_page_cross_thread_max_reclaim, // don't reclaim pages across threads if we already own N pages (in that size class) (=32)
-  mi_option_allow_thp,                  // allow transparent huge pages? (=1) (on Android =0 by default). Set to 0 to disable THP for the process.
+  mi_option_allow_thp,                  // transparent huge pages: 0 disable for the process, 1 allow, 2 allow and avoid splitting on purge.
+                                       // default: 2 on Linux, 0 on Android; an explicit minimal_purge_size overrides the purge behavior.
   mi_option_arena_purge_min_size,       // set minimal purge size (in KiB) (=0). By default set to either 64 or 2048 if THP is enabled.
   mi_option_arena_max_object_size,      // set maximal object size that can be allocated in an arena (in KiB) (=2GiB on 64-bit).
   mi_option_arena_is_numa_local,        // experimental: associate local numa node with an initial arena allocation
@@ -522,6 +537,7 @@ typedef enum mi_option_e {
   mi_option_profile_sample_rate,        // sample rate (in bytes) for heap profiler (=512 KiB)
   mi_option_stats_merge_threshold,      // on a page stats update, merge theap stats into the parent heap if N bytes were freed/allocated; 0 disables (=4 MiB)
   mi_option_arena_purge_immediate_size, // ranges above this size are purged immediately
+  mi_option_mte,                        // use memory tagging (MTE) if available (and mimalloc is built with `MI_MTE=PREFER` or `ON`) (=1); on Linux, 2=sync, 3=async, 4=preferred tag check mode
   _mi_option_last,
   // legacy option names
   mi_option_large_os_pages = mi_option_allow_large_os_pages,
@@ -552,9 +568,9 @@ mi_decl_export void mi_option_set_default(mi_option_t option, long value);
 // note: we use `mi_cfree` as "checked free" and it checks if the pointer is in our theap before free-ing.
 // -------------------------------------------------------------------------------------------------------
 
-mi_decl_nodiscard mi_decl_export size_t mi_malloc_size(const void* p)        mi_attr_noexcept;
-mi_decl_nodiscard mi_decl_export size_t mi_malloc_good_size(size_t size)     mi_attr_noexcept;
-mi_decl_nodiscard mi_decl_export size_t mi_malloc_usable_size(const void *p) mi_attr_noexcept;
+mi_decl_nodiscard mi_decl_export size_t mi_malloc_size(const void* p)        mi_attr_noexcept mi_attr_pure;
+mi_decl_nodiscard mi_decl_export size_t mi_malloc_good_size(size_t size)     mi_attr_noexcept mi_attr_pure;
+mi_decl_nodiscard mi_decl_export size_t mi_malloc_usable_size(const void *p) mi_attr_noexcept mi_attr_pure;
 
 mi_decl_export int mi_posix_memalign(void** p, size_t alignment, size_t size); // mi_attr_noexcept;
 mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_memalign(size_t alignment, size_t size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(2) mi_attr_alloc_align(1);
@@ -612,10 +628,10 @@ mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_theap_alloc_new_nothr
 // --------------------------------------------------------------------------
 
 // Internal machine word size allocation. `wsize` is the allocation size in machine words (`sizeof(size_t)`)
-mi_decl_nodiscard mi_decl_restrict void* mi_wzalloc_small(size_t wsize) mi_attr_noexcept mi_attr_malloc;
-mi_decl_nodiscard mi_decl_restrict void* mi_wmalloc_small(size_t wsize) mi_attr_noexcept mi_attr_malloc;
-mi_decl_nodiscard mi_decl_restrict void* mi_theap_wmalloc_small(mi_theap_t* theap, size_t wsize) mi_attr_noexcept mi_attr_malloc;
-mi_decl_nodiscard mi_decl_restrict void* mi_theap_wzalloc_small(mi_theap_t* theap, size_t wsize) mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_wzalloc_small(size_t wsize) mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_wmalloc_small(size_t wsize) mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_theap_wmalloc_small(mi_theap_t* theap, size_t wsize) mi_attr_noexcept mi_attr_malloc;
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_theap_wzalloc_small(mi_theap_t* theap, size_t wsize) mi_attr_noexcept mi_attr_malloc;
 
 static inline size_t mi_wsize_from_size(size_t size) mi_attr_noexcept {
   return (size + sizeof(size_t) - 1) / sizeof(size_t);
@@ -674,7 +690,7 @@ mi_decl_export void mi_free_small_local_nonnull(void* p) mi_attr_noexcept;
 
 #include <cstddef>     // std::size_t
 #include <cstdint>     // PTRDIFF_MAX
-#if (__cplusplus >= 201103L) || (_MSC_VER > 1900)  // C++11
+#if (__cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER > 1900)  // C++11
 #include <type_traits> // std::true_type
 #include <utility>     // std::forward
 #endif
@@ -688,7 +704,7 @@ template<class T> struct _mi_stl_allocator_common {
   typedef value_type*       pointer;
   typedef value_type const* const_pointer;
 
-  #if ((__cplusplus >= 201103L) || (_MSC_VER > 1900))  // C++11
+  #if ((__cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER > 1900))  // C++11
   using propagate_on_container_copy_assignment = std::true_type;
   using propagate_on_container_move_assignment = std::true_type;
   using propagate_on_container_swap            = std::true_type;
@@ -723,7 +739,7 @@ template<class T> struct mi_stl_allocator : public _mi_stl_allocator_common<T> {
   mi_decl_nodiscard pointer allocate(size_type count, const void* = 0) { return static_cast<pointer>(mi_new_n(count, sizeof(value_type))); }
   #endif
 
-  #if ((__cplusplus >= 201103L) || (_MSC_VER > 1900))  // C++11
+  #if ((__cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER > 1900))  // C++11
   using is_always_equal = std::true_type;
   #endif
 };
@@ -732,7 +748,7 @@ template<class T1,class T2> bool operator==(const mi_stl_allocator<T1>& , const 
 template<class T1,class T2> bool operator!=(const mi_stl_allocator<T1>& , const mi_stl_allocator<T2>& ) mi_attr_noexcept { return false; }
 
 
-#if (__cplusplus >= 201103L) || (_MSC_VER >= 1900)  // C++11
+#if (__cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER >= 1900)  // C++11
 #define MI_HAS_HEAP_STL_ALLOCATOR 1
 
 #include <memory>      // std::shared_ptr
@@ -752,7 +768,7 @@ template<class T, bool _mi_destroy> struct _mi_heap_stl_allocator_common : publi
   mi_decl_nodiscard pointer allocate(size_type count, const void* = 0) { return static_cast<pointer>(mi_heap_alloc_new_n(this->heap.get(), count, sizeof(value_type))); }
   #endif
 
-  #if ((__cplusplus >= 201103L) || (_MSC_VER > 1900))  // C++11
+  #if ((__cplusplus >= 201103L) || (defined(_MSC_VER) && _MSC_VER > 1900))  // C++11
   using is_always_equal = std::false_type;
   #endif
 

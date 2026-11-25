@@ -10,7 +10,7 @@ Concurrent bitmap that can set/reset sequences of bits atomically
 ---------------------------------------------------------------------------- */
 
 #include "mimalloc.h"
-#include "mimalloc/prim.h"  // _mi_prim_thread_yield
+#include "mimalloc/prim/prim.h"  // _mi_prim_thread_yield
 #include "mimalloc/util/libc.h"
 #include "mimalloc/util/stats.h"
 #include "bitmap-chunk.h"
@@ -124,7 +124,8 @@ static inline void mi_bfield_atomic_clear_once_set(mi_subproc_t* subproc, _Atomi
         old = mi_atomic_load_acquire(b);
       }
     }
-  } while (!mi_atomic_cas_weak_acq_rel(b,&old, (old&~mask)));
+    old = mi_atomic_and_acq_rel(b, ~mask);
+  } while ((old&mask)==0);
   mi_assert_internal((old&mask)==mask);  // we should only clear when it was set
 }
 

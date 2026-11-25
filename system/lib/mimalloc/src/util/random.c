@@ -5,7 +5,7 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #include "mimalloc.h"
-#include "mimalloc/prim.h"    // _mi_prim_random_buf
+#include "mimalloc/prim/prim.h"    // _mi_prim_random_buf
 #include "mimalloc/util/libc.h"
 #include "mimalloc/util/options.h"
 #include "mimalloc/util/random.h"

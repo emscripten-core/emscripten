@@ -8,7 +8,7 @@ terms of the MIT license. A copy of the license can be found in the file
 // This file is included in `src/prim/prim.c`
 
 #include "mimalloc.h"
-#include "mimalloc/prim.h"
+#include "mimalloc/prim/prim.h"
 #include "mimalloc/util/libc.h"
 #include "mimalloc/heap/process.h"
 
@@ -56,6 +56,7 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config) {
   config->has_overcommit = false;
   config->has_partial_free = false;
   config->has_virtual_reserve = false;
+  config->has_reset = false;
 }
 
 // Use the builtin allocator (dlmalloc by default) rather than requiring
@@ -126,8 +127,8 @@ int _mi_prim_decommit(void* addr, size_t size, bool* needs_recommit) {
   return 0;
 }
 
-int _mi_prim_reset(void* addr, size_t size) {
-  MI_UNUSED(addr); MI_UNUSED(size);
+int _mi_prim_reset(void* addr, size_t size, bool eager) {
+  MI_UNUSED(addr); MI_UNUSED(size); MI_UNUSED(eager);
   return 0;
 }
 
@@ -136,8 +137,13 @@ int _mi_prim_reuse(void* addr, size_t size) {
   return 0;
 }
 
-int _mi_prim_guard(void* addr, size_t size, bool set, bool is_committed) {
-  MI_UNUSED(addr); MI_UNUSED(size); MI_UNUSED(set); MI_UNUSED(is_committed);
+int _mi_prim_guard(void* addr, size_t size, bool set_guard, bool is_committed) {
+  MI_UNUSED(addr); MI_UNUSED(size); MI_UNUSED(set_guard); MI_UNUSED(is_committed);
+  return 0;
+}
+
+int _mi_prim_protect(void* addr, size_t size, mi_protect_t protect) {
+  MI_UNUSED(addr); MI_UNUSED(size); MI_UNUSED(protect);
   return 0;
 }
 
@@ -205,19 +211,16 @@ void _mi_prim_out_stderr( const char* msg) {
 extern char** environ;
 
 int _mi_prim_getenv(const char* name, char* result, size_t result_size) {
-  if (name==NULL) return -1;
-  const size_t len = _mi_strlen(name);
-  if (len == 0) return -1;
+  return _mi_prim_getenv_by_visit(name, result, result_size);
+}
+
+bool _mi_prim_env_visit(mi_env_visit_fun* visit, void* arg) {
   char** env = environ;
-  if (env == NULL) return -1;  // not yet initialized; try again later
+  if (env == NULL) return false;  // not yet initialized
   for (int i = 0; i < 10000 && env[i] != NULL; i++) {
-    const char* s = env[i];
-    if (_mi_strnicmp(name, s, len) == 0 && s[len] == '=') { // case insensitive
-      if (!_mi_strlcpy(result, s + len + 1, result_size)) return -1;
-      return 1;
-    }
+    visit(env[i], arg);
   }
-  return 0; // not found
+  return true;
 }
 
 
@@ -235,7 +238,7 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
 // Thread init/done
 //----------------------------------------------------------------
 
-#if defined(MI_USE_PTHREADS)
+#if MI_USE_PTHREADS
 
 // use pthread local storage keys to detect thread ending
 // (and used with MI_TLS_PTHREADS for the default theap)
@@ -284,6 +287,10 @@ void _mi_prim_thread_associate_default_theap(mi_theap_t* theap) {
   MI_UNUSED(theap);
 }
 #endif
+
+void _mi_prim_thread_init(void) {
+  // nothing
+}
 
 bool _mi_prim_thread_is_in_threadpool(void) {
   return false;

@@ -5,7 +5,8 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #include "mimalloc.h"
-#include "mimalloc/prim.h"  // mi_prim_out_stderr
+#include "mimalloc/prim/prim.h"  // mi_prim_out_stderr
+#include "mimalloc/prim/prim-mte.h"  // mi_memtag_is_enabled, MI_MEMTAG_MODE_*
 #include "mimalloc/prim/prim-tls.h"
 #include "mimalloc/alloc/page.h"
 #include "mimalloc/util/options.h"
@@ -24,8 +25,9 @@ int mi_version(void) {
 // --------------------------------------------------------
 // Options
 // These can be accessed by multiple threads and may be
-// concurrently initialized, but an initializing data race
-// is ok since they resolve to the same value.
+// concurrently initialized or set. The value is relaxed atomic,
+// and the init state is release/acquire so a reader that sees
+// an initialized state also sees the initialized value.
 // --------------------------------------------------------
 
 
@@ -124,7 +126,7 @@ int mi_version(void) {
 static const mi_option_desc_t mi_option_descs[_mi_option_last] =
 {
   // stable options
-#if MI_DEBUG || defined(MI_SHOW_ERRORS)
+#if MI_DEBUG || MI_SHOW_ERRORS
   { 1, MI_OPTION(show_errors) },
 #else
   { 0, MI_OPTION(show_errors) },
@@ -161,7 +163,7 @@ static const mi_option_desc_t mi_option_descs[_mi_option_last] =
   { 1, MI_OPTION(deprecated_visit_abandoned) },
   { 0, MI_OPTION(guarded_min) },              // only used when building with MI_GUARDED: minimal rounded object size for guarded objects
   { MI_GiB, MI_OPTION(guarded_max) },           // only used when building with MI_GUARDED: maximal rounded object size for guarded objects
-  { 0, MI_OPTION(unsafe_guarded_precise) },          // disregard minimal alignment requirement to always place guarded blocks exactly in front of a guard page (=0)
+  { 0, MI_OPTION(deprecated_unsafe_guarded_precise) },          // deprecated, see MI_UNSAFE_GUARDED_PRECISE macro
   { MI_DEFAULT_GUARDED_SAMPLE_RATE, MI_OPTION(guarded_sample_rate)},       // guard an object in the min/max range about every N requested bytes (=0)
   { 0, MI_OPTION(guarded_sample_seed)},
   { 10000, MI_OPTION(generic_collect) },        // collect theaps every N (=10000) generic allocation calls
@@ -173,7 +175,7 @@ static const mi_option_desc_t mi_option_descs[_mi_option_last] =
   { 0, MI_OPTION(page_commit_on_demand) },    // commit pages on-demand (2 disables this only on overcommit systems (like Linux))
   { MI_DEFAULT_PAGE_MAX_RECLAIM, MI_OPTION(page_max_reclaim) },         // don't reclaim (small) pages of the same originating theap if we already own N pages in that size class
   { MI_DEFAULT_PAGE_CROSS_THREAD_MAX_RECLAIM, MI_OPTION(page_cross_thread_max_reclaim) }, // don't reclaim (small) pages across threads if we already own N pages in that size class
-  { MI_DEFAULT_ALLOW_THP, MI_OPTION(allow_thp) },                // allow transparent huge pages? (=1) (on Android =0 by default). Set to 0 to disable THP for the process.
+  { MI_DEFAULT_ALLOW_THP, MI_OPTION(allow_thp) },                // transparent huge pages: 0 disable for the process, 1 allow, 2 allow and avoid splitting on purge.
   { 0, MI_OPTION_LEGACY(arena_purge_min_size, minimal_purge_size) },       // set minimal purge size (in KiB) (=0). Using 0 resolves to either 64 (or 2048 if THP is enabled).
   { MI_DEFAULT_ARENA_MAX_OBJECT_SIZE, MI_OPTION(arena_max_object_size) },    // set maximal object size that can be allocated in an arena (in KiB) (=2GiB on 64-bit).
   { 0, MI_OPTION(arena_is_numa_local) },      // associate local numa node with an initial arena allocation
@@ -184,23 +186,38 @@ static const mi_option_desc_t mi_option_descs[_mi_option_last] =
   { 512*MI_KiB, MI_OPTION(profile_sample_rate) }, // sample rate in bytes for the `MIMALLOC_PROFILE` heap profiler (use `option_get_size`) (=512 KiB)
   { MI_DEFAULT_STATS_MERGE_THRESHOLD, MI_OPTION(stats_merge_threshold) },    // on a page stats update, merge theap stats into the heap if N bytes were freed/allocated; 0 disables (=4 MiB)
   { MI_DEFAULT_ARENA_PURGE_IMMEDIATE_SIZE, MI_OPTION(arena_purge_immediate_size) }, // ranges above this size are purged immediately
-
+  { 1, MI_OPTION(mte) }                       // use memory tagging (MTE) if available (and built with `MI_MTE=PREFER` or `ON`); on Linux the tag check mode can be set as well (sync, async, preferred)
 };
 
 static void mi_option_init(mi_option_t option, mi_option_state_t* state);
+static bool mi_options_init_from_environ(void);
 
 static const mi_option_desc_t* mi_option_desc(mi_option_t option) {
+  mi_assert_internal((int)option >= 0 && (int)option < (int)_mi_option_last);
   const mi_option_desc_t* desc = &mi_option_descs[option];
   mi_assert(desc->option == option);  // index should match the option
   return desc;
 }
 
+static inline long mi_option_state_value(mi_option_state_t* state) {
+  return (long)mi_atomic_loads_relaxed(&state->value);
+}
+
+static inline mi_option_init_t mi_option_state_init(mi_option_state_t* state) {
+  return (mi_option_init_t)mi_atomic_load_acquire(&state->init);
+}
+
+// Set the value and then the init state (so readers that see the init state also see the value).
+static inline void mi_option_state_set(mi_option_state_t* state, long value, mi_option_init_t init) {
+  mi_atomic_storess_relaxed(&state->value, (mi_ssize_t)value);
+  mi_atomic_store_release(&state->init, (size_t)init);
+}
+
 // Get the option state with the value set (to the default if not yet set) (but not reading from the environment)
 static mi_option_state_t* mi_option_state(mi_option_t option) {
   mi_option_state_t* state = &_mi_process.options[option];
-  if mi_unlikely(state->init == MI_OPTION_UNINIT) {
-    state->value = mi_option_desc(option)->default_value;
-    state->init = MI_OPTION_PENDING;
+  if mi_unlikely(mi_option_state_init(state) == MI_OPTION_UNINIT) {
+    mi_option_state_set(state, mi_option_desc(option)->default_value, MI_OPTION_PENDING);
   }
   return state;
 }
@@ -223,9 +240,12 @@ static bool mi_option_has_size_in_bytes(mi_option_t option) {
 
 void _mi_options_init(void) {
   // called on process load
-  for(int i = 0; i < _mi_option_last; i++ ) {
-    mi_option_t option = (mi_option_t)i;
-    long l = mi_option_get(option); MI_UNUSED(l); // initialize
+  if (!mi_options_init_from_environ()) {
+    // the full environment is not available: look up each option by name
+    for(int i = 0; i < _mi_option_last; i++ ) {
+      mi_option_t option = (mi_option_t)i;
+      long l = mi_option_get(option); MI_UNUSED(l); // initialize
+    }
   }
   #if MI_GUARDED
   if (mi_option_get(mi_option_guarded_sample_rate) > 0) {
@@ -286,7 +306,7 @@ mi_decl_export void mi_options_print_out(mi_output_fun* out, void* arg) mi_attr_
   _mi_fprintf(out, arg, "free mode   : pagemap, page size: %zu\n", sizeof(mi_page_t));
   #endif
   #if MI_ENCODE_FREELIST
-  _mi_fprintf(out, arg, "free lists  : encoded with %d key(s)\n", MI_PAGE_KEY_COUNT);
+  _mi_fprintf(out, arg, "free lists  : encoded (%s)\n", (MI_SIZE_BITS>=64 ? (MI_ENCODE_FREELIST==1 && MI_PAC<2 ? "tagged offsets, low mul" : "tagged offsets") : "xor-shift"));
   #endif
   #if MI_GUARDED
   _mi_fprintf(out, arg, "guarded mode: %s, rate=%ld\n",  MI_SAMPLE==2 ? "fine-grained" : "enabled", mi_option_get(mi_option_guarded_sample_rate));
@@ -296,6 +316,13 @@ mi_decl_export void mi_options_print_out(mi_output_fun* out, void* arg) mi_attr_
   #endif
   #if MI_TSAN
   _mi_fprintf(out, arg, "thread santizer enabled\n");
+  #endif
+  #if MI_MTE
+  if (mi_memtag_is_enabled()) { _mi_fprintf(out, arg, "mem tagging : enabled\n"); }
+  else { _mi_fprintf(out, arg, "mem tagging : disabled\n"); }
+  #endif
+  #if MI_PAC
+  _mi_fprintf(out, arg, "ptr signing : %s\n", (MI_PAC>=2 ? "enabled (pacga)" : "weak (process key)"));
   #endif
   _mi_fprintf(out, arg, "mem tracking: %s\n", MI_TRACK_TOOL);
   _mi_fprintf(out, arg, "debug level : %d\n", MI_DEBUG );
@@ -309,7 +336,7 @@ mi_decl_export void mi_options_print(void) mi_attr_noexcept {
 
 long _mi_option_get_fast(mi_option_t option) {
   mi_assert(option >= 0 && option < _mi_option_last);
-  return mi_option_state(option)->value;
+  return mi_option_state_value(mi_option_state(option));
 }
 
 
@@ -317,11 +344,11 @@ mi_decl_nodiscard long mi_option_get(mi_option_t option) {
   mi_assert(option >= 0 && option < _mi_option_last);
   if (option < 0 || option >= _mi_option_last) return 0;
   mi_option_state_t* state = &_mi_process.options[option];
-  if mi_unlikely(state->init < MI_OPTION_DEFAULTED) {  // uninit or pending
+  if mi_unlikely(mi_option_state_init(state) < MI_OPTION_DEFAULTED) {  // uninit or pending
     state = mi_option_state(option);
     mi_option_init(option, state);
   }
-  return state->value;
+  return mi_option_state_value(state);
 }
 
 mi_decl_nodiscard long mi_option_get_clamp(mi_option_t option, long min, long max) {
@@ -344,13 +371,12 @@ void mi_option_set(mi_option_t option, long value) {
   mi_assert(option >= 0 && option < _mi_option_last);
   if (option < 0 || option >= _mi_option_last) return;
   mi_option_state_t* const state = &_mi_process.options[option];
-  state->value = value;
-  state->init = MI_OPTION_INITIALIZED;
+  mi_option_state_set(state, value, MI_OPTION_INITIALIZED);
   // ensure min/max range; be careful to not recurse.
-  if (option == mi_option_guarded_min && mi_option_state(mi_option_guarded_max)->value < value) {
+  if (option == mi_option_guarded_min && mi_option_state_value(mi_option_state(mi_option_guarded_max)) < value) {
     mi_option_set(mi_option_guarded_max, value);
   }
-  else if (option == mi_option_guarded_max && mi_option_state(mi_option_guarded_min)->value > value) {
+  else if (option == mi_option_guarded_max && mi_option_state_value(mi_option_state(mi_option_guarded_min)) > value) {
     mi_option_set(mi_option_guarded_min, value);
   }
 }
@@ -359,8 +385,8 @@ void mi_option_set_default(mi_option_t option, long value) {
   mi_assert(option >= 0 && option < _mi_option_last);
   if (option < 0 || option >= _mi_option_last) return;
   mi_option_state_t* const state = mi_option_state(option);
-  if (state->init != MI_OPTION_INITIALIZED) {
-    state->value = value;
+  if (mi_option_state_init(state) != MI_OPTION_INITIALIZED) {
+    mi_atomic_storess_relaxed(&state->value, (mi_ssize_t)value);
   }
 }
 
@@ -447,27 +473,27 @@ static void mi_cdecl mi_out_buf_stderr(const char* msg, void* arg) {
 // Default output handler
 // --------------------------------------------------------
 
-// The program should only install a single output handler from a single thread
-// since otherwise the argument and output function may not match.
-// The output function and argument are stored in `_mi_process.out_default/out_arg`.
+// The output function and argument are stored in the sealed process data (see `heap/process.h`).
 static mi_output_fun* mi_out_get_default(void** parg) {
-  mi_output_fun* const out = (mi_output_fun*)mi_atomic_load_ptr_acquire(void,&_mi_process.out_default);
-  if (parg != NULL) { *parg = mi_atomic_load_ptr_acquire(void,&_mi_process.out_arg); }
+  const mi_process_sealed_t* const sealed = mi_process_get_sealed();
+  void* arg;
+  mi_output_fun* const out = (mi_output_fun*)_mi_process_get_callback(&sealed->out_default, &sealed->out_arg, &arg);
+  if (parg != NULL) { *parg = arg; }
   return (out == NULL ? &mi_out_buf : out);
 }
 
 void mi_register_output(mi_output_fun* out, void* arg) mi_attr_noexcept {
-  mi_atomic_store_ptr_release(void,&_mi_process.out_default, (void*)(out == NULL ? &mi_out_stderr : out)); // stop using the delayed output buffer
-  mi_atomic_store_ptr_release(void,&_mi_process.out_arg, arg);
+  const mi_process_sealed_t* const sealed = mi_process_get_sealed();
+  _mi_process_set_callback(&sealed->out_default, &sealed->out_arg, (void*)(out == NULL ? &mi_out_stderr : out), arg); // stop using the delayed output buffer
   if (out!=NULL) { mi_out_buf_flush(out,true,arg); }        // output all the delayed output now
 }
 
 // add stderr to the delayed output after the module is loaded
 static void mi_add_stderr_output(void) {
-  mi_assert_internal(_mi_process.out_default == NULL);
+  mi_assert_internal(mi_process_get_sealed()->out_default == NULL);
   mi_out_buf_flush(&mi_out_stderr, false, NULL); // flush current contents to stderr
-  mi_atomic_store_ptr_release(void,&_mi_process.out_default,(void*)&mi_out_buf_stderr);  // and add stderr to the delayed output
-  mi_atomic_store_ptr_release(void,&_mi_process.out_arg,NULL);
+  const mi_process_sealed_t* const sealed = mi_process_get_sealed();
+  _mi_process_set_callback(&sealed->out_default, &sealed->out_arg, (void*)&mi_out_buf_stderr, NULL);  // and add stderr to the delayed output
 }
 
 // --------------------------------------------------------
@@ -482,14 +508,14 @@ static mi_decl_noinline void mi_recurse_exit_prim(void) {
 }
 
 static bool mi_recurse_enter(void) {
-  #if defined(__APPLE__) || defined(__ANDROID__) || defined(MI_TLS_RECURSE_GUARD)
+  #if defined(__APPLE__) || defined(__ANDROID__) || MI_TLS_RECURSE_GUARD
   if (_mi_preloading()) return false;
   #endif
   return mi_recurse_enter_prim();
 }
 
 static void mi_recurse_exit(void) {
-  #if defined(__APPLE__) || defined(__ANDROID__) || defined(MI_TLS_RECURSE_GUARD)
+  #if defined(__APPLE__) || defined(__ANDROID__) || MI_TLS_RECURSE_GUARD
   if (_mi_preloading()) return;
   #endif
   mi_recurse_exit_prim();
@@ -530,7 +556,7 @@ void _mi_fprintf( mi_output_fun* out, void* arg, const char* fmt, ... ) {
 static void mi_vfprintf_thread(mi_output_fun* out, void* arg, const char* prefix, const char* fmt, va_list args) {
   if (prefix != NULL && _mi_strnlen(prefix,33) <= 32) { // && !_mi_is_main_thread()) {
     char tprefix[64];
-    _mi_snprintf(tprefix, sizeof(tprefix), "%sthread 0x%tx: ", prefix, (size_t)_mi_thread_id());
+    _mi_snprintf(tprefix, sizeof(tprefix), "%sthread %p: ", prefix, (void*)_mi_thread_id());
     mi_vfprintf(out, arg, tprefix, fmt, args);
   }
   else {
@@ -565,7 +591,7 @@ static void mi_show_error_message(const char* fmt, va_list args) {
   if (!mi_option_is_enabled(mi_option_verbose)) {
     if (!mi_option_is_enabled(mi_option_show_errors)) return;
     const long max_errors = mi_option_get(mi_option_max_errors);
-    if (max_errors >= 0 && (long)mi_atomic_increment_acq_rel(&_mi_process.error_count) > max_errors) return;
+    if (max_errors >= 0 && (long)mi_atomic_increment_acq_rel(&_mi_process.error_count) >= max_errors) return;
   }
   mi_vfprintf_thread(NULL, NULL, "mimalloc: error: ", fmt, args);
 }
@@ -574,7 +600,7 @@ void _mi_warning_message(const char* fmt, ...) {
   if (!mi_option_is_enabled(mi_option_verbose)) {
     if (!mi_option_is_enabled(mi_option_show_errors)) return;
     const long max_warnings = mi_option_get(mi_option_max_warnings);
-    if (max_warnings >= 0 && (long)mi_atomic_increment_acq_rel(&_mi_process.warning_count) > max_warnings) return;
+    if (max_warnings >= 0 && (long)mi_atomic_increment_acq_rel(&_mi_process.warning_count) >= max_warnings) return;
   }
   va_list args;
   va_start(args,fmt);
@@ -583,11 +609,15 @@ void _mi_warning_message(const char* fmt, ...) {
 }
 
 
+// flush delayed output (if not yet initialized) so a serious error message is not lost
+static void mi_out_buf_flush_now(void) {
+  if (mi_atomic_load_ptr_acquire(void,&mi_process_get_sealed()->out_default) == NULL) { mi_out_buf_flush(&mi_out_stderr, true, NULL); }
+}
+
 #if MI_DEBUG
 mi_decl_noreturn mi_decl_cold void _mi_assert_fail(const char* assertion, const char* fname, unsigned line, const char* func ) mi_attr_noexcept {
   _mi_fprintf(NULL, NULL, "mimalloc: assertion failed: at \"%s\":%u, %s\n  assertion: \"%s\"\n", fname, line, (func==NULL?"":func), assertion);
-  // flush delayed output (if not yet initialized) so the message is not lost
-  if (mi_atomic_load_ptr_acquire(void,&_mi_process.out_default) == NULL) { mi_out_buf_flush(&mi_out_stderr, true, NULL); }
+  mi_out_buf_flush_now();
   abort();
 }
 #endif
@@ -596,7 +626,7 @@ mi_decl_noreturn mi_decl_cold void _mi_assert_fail(const char* assertion, const 
 // Errors
 // --------------------------------------------------------
 
-// The error handler and argument are stored in `_mi_process.error_handler/error_arg`.
+// The error handler and argument are stored in the sealed process data (see `heap/process.h`).
 static void mi_error_default(int err) {
   MI_UNUSED(err);
   #if (MI_DEBUG>0)
@@ -607,130 +637,356 @@ static void mi_error_default(int err) {
       abort();
     }
   #endif
-  #if MI_SECURE
-    if (err==EFAULT) {  // abort on serious errors in secure mode (corrupted meta-data)
-      abort();
-    }
-  #endif
-  #if defined(MI_XMALLOC)
+  #if MI_XMALLOC
     if (err==ENOMEM || err==EOVERFLOW || err==EINVAL) { // abort on memory allocation fails in xmalloc mode
       abort();
     }
   #endif
-  if (errno==0) {
-    errno = (err==EINVAL ? EINVAL : ENOMEM /* compatibility */ );
-  }
+  // note: we do not set `errno` here; allocation functions set it themselves on failure (and `free` should not modify it)
 }
 
 void mi_register_error(mi_error_fun* fun, void* arg) {
-  mi_atomic_store_ptr_release(void,&_mi_process.error_arg, arg);
-  mi_atomic_store_ptr_release(void,&_mi_process.error_handler, (void*)fun);  // can be NULL
+  const mi_process_sealed_t* const sealed = mi_process_get_sealed();
+  _mi_process_set_callback(&sealed->error_handler, &sealed->error_arg, (void*)fun, arg);  // can be NULL
 }
 
-void _mi_error_message(int err, const char* fmt, ...) {
-  // show detailed error message
-  va_list args;
-  va_start(args, fmt);
-  mi_show_error_message(fmt, args);
-  va_end(args);
+static void mi_error_message_va(int err, const char* prefix, const char* fmt, va_list args) {
+  // show detailed error message; serious errors (EFAULT) are always shown (also before the C runtime is initialized)
+  if (err==EFAULT) {
+    mi_vfprintf_thread(NULL, NULL, prefix, fmt, args);
+    mi_out_buf_flush_now();
+  }
+  else {
+    mi_show_error_message(fmt, args);
+  }
   // and call the error handler which may abort (or return normally, potentially setting errno)
-  mi_error_fun* const handler = (mi_error_fun*)mi_atomic_load_ptr_acquire(void,&_mi_process.error_handler);
+  const mi_process_sealed_t* const sealed = mi_process_get_sealed();
+  void* arg;
+  mi_error_fun* const handler = (mi_error_fun*)_mi_process_get_callback(&sealed->error_handler, &sealed->error_arg, &arg);
   if (handler != NULL) {
-    handler(err, mi_atomic_load_ptr_acquire(void,&_mi_process.error_arg));
+    handler(err, arg);
   }
   else {
     mi_error_default(err);
   }
+  #if MI_SECURE
+  if (err==EFAULT) {  // in secure mode always abort on serious errors (corrupted meta-data), even if the handler returns
+    abort();
+  }
+  #endif
 }
 
-mi_decl_noinline mi_block_t* _mi_block_next_is_corrupted(const mi_page_t* page, const mi_block_t* block, const mi_block_t* next) {
-  _mi_error_message(EFAULT, "corrupted free list entry of size %zub at %p: value 0x%zx\n", mi_page_block_size(page), block, (size_t)mi_addr(next));
+void _mi_error_message(int err, const char* fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  mi_error_message_va(err, "mimalloc: error: ", fmt, args);
+  va_end(args);
+}
+
+// Unrecoverable error: report as `EFAULT` and always abort.
+mi_decl_noreturn mi_decl_cold void _mi_fatal_error(const char* fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  mi_error_message_va(EFAULT, "mimalloc: fatal error: ", fmt, args);
+  va_end(args);
+  abort();
+}
+
+mi_decl_noinline mi_block_t* _mi_error_block_next_is_corrupted(const mi_page_t* page, const mi_block_t* block, mi_encoded_t x) {
+  _mi_error_message(EFAULT, "corrupted free list entry at %p in page %p with block size %zu: value %p\n", block, page, mi_page_block_size(page), (void*)x);
   return NULL;
 }
 
+mi_decl_noinline void _mi_error_block_next_is_invalid(const mi_page_t* page, const mi_block_t* block, const mi_block_t* next) {
+  _mi_error_message(EFAULT, "corrupted free list entry at %p in page %p with block size %zu: invalid link %p\n", block, page, mi_page_block_size(page), next);
+}
+
+mi_decl_noinline void* _mi_error_ptr_auth_failed(mi_ptr_signed_t x, mi_addr_t salt) {
+  if (x != 0) {
+    _mi_error_message(EFAULT, "pointer authentication failed at %p: value %p\n", (void*)salt, (void*)x);
+  }
+  return NULL;
+}
+
+mi_decl_noinline mi_decl_noreturn void _mi_error_list_corrupted(const void* node) {
+  _mi_fatal_error("corrupted list links detected at %p\n", node);
+}
+
+mi_decl_noinline void _mi_error_ptr_pac_unaligned(const void* p) {
+  _mi_fatal_error("internal error: signed pointers must be aligned with memory tagging (%p)\n", p);
+}
+
 // --------------------------------------------------------
-// Initialize options by checking the environment
+// Initialize options from the environment
+//
+// If the platform can iterate the full environment (`_mi_env_visit`), all
+// options are initialized in a single pass over the environment (which also
+// detects unknown `MIMALLOC_` variables). Otherwise each option is looked up by name
+// (`_mi_getenv`) when it is first accessed. Both strategies produce a `mi_option_env_t`
+// that is applied to the option state using `mi_option_env_apply` and `mi_option_env_warn`.
 // --------------------------------------------------------
+
+// The result of reading an option from the environment
+typedef struct mi_option_env_s {
+  long  value;    // the parsed value (if `err==0`)
+  int   err;      // 0 (found), ENOENT (not found), EINVAL (invalid value), E2BIG (value too long), or EAGAIN (try again later)
+  bool  legacy;   // found under its legacy name?
+  const char* ignore_reason;
+} mi_option_env_t;
+
+#define MI_OPTION_ENV_NOT_FOUND  { 0, ENOENT, false, NULL }
+
+// Parse an environment value `s` for an option; returns 0 on success, EINVAL if invalid, or E2BIG if too long.
+static int mi_option_parse(mi_option_t option, const char* s, long* result) {
+  char buf[64+1];
+  const size_t len = _mi_strnlen(s, sizeof(buf));
+  if (len >= sizeof(buf)) return E2BIG;
+  for (size_t i = 0; i < len; i++) {
+    buf[i] = _mi_toupper(s[i]);
+  }
+  buf[len] = 0;
+  if (buf[0] == 0 || _mi_streq(buf,"1") || _mi_streq(buf,"TRUE") || _mi_streq(buf,"YES") || _mi_streq(buf,"ON")) {
+    *result = 1;
+    return 0;
+  }
+  if (_mi_streq(buf,"0") || _mi_streq(buf,"FALSE") || _mi_streq(buf,"NO") || _mi_streq(buf,"OFF")) {
+    *result = 0;
+    return 0;
+  }
+  if (option == mi_option_mte && (_mi_streq(buf,"SYNC") || _mi_streq(buf,"ASYNC") || _mi_streq(buf,"PREFERRED"))) {
+    *result = (buf[0]=='S' ? MI_MEMTAG_MODE_SYNC : (buf[0]=='A' ? MI_MEMTAG_MODE_ASYNC : MI_MEMTAG_MODE_PREFERRED));
+    return 0;
+  }
+  const char* end = buf;
+  long value = 0;
+  if (!_mi_strntol(buf, sizeof(buf), &end, &value)) return EINVAL;
+  if (mi_option_has_size_in_kib(option) || mi_option_has_size_in_bytes(option)) {
+    // the size is interpreted in bytes.
+    size_t size = (value < 0 ? 0 : (size_t)value);
+    bool overflow = false;
+    if (*end == 'K') { overflow = mi_mul_overflow(size,MI_KiB,&size); end++; }
+    #if MI_SIZE_SIZE >= 4
+    else if (*end == 'M') { overflow = mi_mul_overflow(size,MI_MiB,&size); end++; }
+    else if (*end == 'G') { overflow = mi_mul_overflow(size,MI_GiB,&size); end++; }
+    #endif
+    #if MI_SIZE_SIZE >= 8
+    else if (*end == 'T') { overflow = mi_mul_overflow(size,MI_GiB * MI_KiB,&size); end++; }
+    #endif
+    if (end[0] == 'I' && end[1] == 'B') { end += 2; } // KiB, MiB, GiB, TiB
+    else if (*end == 'B') { end++; }                  // Kb, Mb, Gb, Tb
+    if (overflow || size > MI_MAX_ALLOC_SIZE) { size = MI_MAX_ALLOC_SIZE; }
+    if (mi_option_has_size_in_kib(option)) {
+      // This option is interpreted in KiB to prevent overflow of `long` for large allocations
+      // (long is 32-bit on 64-bit windows, which allows for 4TiB max.)
+      size = (size + MI_KiB - 1) / MI_KiB;  // no overflow due to check before this
+    }
+    value = (size > LONG_MAX ? LONG_MAX : (long)size);
+  }
+  if (*end != 0) return EINVAL;
+  *result = value;
+  return 0;
+}
+
+// Apply an environment result to a pending option state (without emitting warnings).
+static void mi_option_env_apply(mi_option_t option, mi_option_state_t* state, mi_option_env_t* env) {
+  bool ignore_env = false;
+  #if MI_SECURE_ENV
+  switch (option) {
+    case mi_option_show_stats:
+    case mi_option_verbose:
+    case mi_option_show_errors:
+    case mi_option_allow_thp:
+      break;
+    default:
+      ignore_env = true;
+      break;
+  }
+  #elif MI_SECURE >= 1
+  switch (option) {
+    #if MI_OS_HAS_GUARD_PAGES
+    case mi_option_allow_large_os_pages:
+    case mi_option_reserve_huge_os_pages:
+    #endif
+    #if MI_MTE
+    case mi_option_mte:
+    #endif
+    case mi_option_deprecated_unsafe_guarded_precise:
+    case mi_option_destroy_on_exit:
+      ignore_env = true;
+      break;
+    default:
+      break;
+  }
+  #endif
+  if (env->err != ENOENT && env->err != EAGAIN && (ignore_env || _mi_os_is_elevated())) {
+    // don't let environment overrides weaken secure builds or influence a privileged process
+    env->ignore_reason = (ignore_env ? (MI_SECURE_ENV ? "secure environment mode" : "secure mode") : "an elevated process");
+    env->err = ENOENT;
+    env->legacy = false;
+  }
+  if (env->err == 0) {
+    mi_option_set(option, env->value);
+  }
+  else if (env->err != EAGAIN) {
+    mi_atomic_store_release(&state->init, (size_t)MI_OPTION_DEFAULTED);  // not found or invalid: use the default value
+  }
+  // on EAGAIN, keep pending to try again (can happen during preloading if getenv is not available)
+}
+
+// Emit warnings for an applied environment result (after `mi_option_env_apply` so we cannot recurse on a pending option).
+static void mi_option_env_warn(mi_option_t option, const mi_option_env_t* env) {
+  const mi_option_desc_t* const desc = mi_option_desc(option);
+  if (env->ignore_reason != NULL) {
+    _mi_warning_message("MIMALLOC_%s is ignored in %s\n", desc->name, env->ignore_reason);
+  }
+  if (env->legacy && env->err != ENOENT) {
+    _mi_warning_message("environment option \"mimalloc_%s\" is deprecated -- use \"mimalloc_%s\" instead.\n", desc->legacy_name, desc->name);
+  }
+  if (env->err == EINVAL || env->err == E2BIG) {
+    // if the 'mimalloc_verbose' env var has a bogus value we'd never know
+    // (since the value defaults to 'off') so in that case briefly enable verbose
+    mi_option_state_t* const state = &_mi_process.options[option];
+    const bool force_verbose = (option == mi_option_verbose && mi_option_state_value(state) == 0);
+    if (force_verbose) { mi_atomic_storess_relaxed(&state->value, 1); }
+    _mi_warning_message("environment option mimalloc_%s %s.\n", desc->name, (env->err == E2BIG ? "has a value that is too long" : "has an invalid value"));
+    if (force_verbose) { mi_atomic_storess_relaxed(&state->value, 0); }
+  }
+}
+
+
+// --------------------------------------------------------
+// Strategy 1: look up a single option by name
+// --------------------------------------------------------
+
+static int mi_option_getenv(const char* name, char* result, size_t result_size) {
+  char buf[64+1];
+  _mi_strlcpy(buf, "mimalloc_", sizeof(buf));
+  _mi_strlcat(buf, name, sizeof(buf));
+  return _mi_getenv(buf, result, result_size);
+}
 
 static void mi_option_init(mi_option_t option, mi_option_state_t* state) {
   const mi_option_desc_t* const desc = mi_option_desc(option);
-  // Read option value from the environment
-  char s[64 + 1];
-  char buf[64+1];
-  _mi_strlcpy(buf, "mimalloc_", sizeof(buf));
-  _mi_strlcat(buf, desc->name, sizeof(buf));
-  int err = _mi_getenv(buf, s, sizeof(s));
-  if (err==ENOENT && desc->legacy_name != NULL) {
-    _mi_strlcpy(buf, "mimalloc_", sizeof(buf));
-    _mi_strlcat(buf, desc->legacy_name, sizeof(buf));
-    err = _mi_getenv(buf, s, sizeof(s));
-    if (err==0) {
-      _mi_warning_message("environment option \"mimalloc_%s\" is deprecated -- use \"mimalloc_%s\" instead.\n", desc->legacy_name, desc->name);
+  mi_option_env_t env = MI_OPTION_ENV_NOT_FOUND;
+  char s[64+1];
+  env.err = mi_option_getenv(desc->name, s, sizeof(s));
+  if (env.err == ENOENT && desc->legacy_name != NULL) {
+    env.err = mi_option_getenv(desc->legacy_name, s, sizeof(s));
+    env.legacy = (env.err != ENOENT && env.err != EAGAIN);
+  }
+  if (env.err == 0) {
+    env.err = mi_option_parse(option, s, &env.value);
+  }
+  mi_option_env_apply(option, state, &env);
+  mi_option_env_warn(option, &env);
+}
+
+
+// --------------------------------------------------------
+// Strategy 2: initialize all options in one pass over the full environment
+// --------------------------------------------------------
+
+typedef struct mi_env_scan_s {
+  mi_option_env_t options[_mi_option_last];
+  size_t          unknown_count;
+  char            unknown[256];   // `;` separated names of unknown `MIMALLOC_` variables (only whole names that fit)
+} mi_env_scan_t;
+
+// Is `name` (of length `len`, not zero terminated) equal to `s` (case insensitive)?
+static bool mi_env_name_eq(const char* name, size_t len, const char* s) {
+  return (s != NULL && _mi_strnicmp(name, s, len) == 0 && s[len] == 0);
+}
+
+// Is `name` (without the `mimalloc_` prefix) a known environment variable that is not an option?
+static bool mi_env_is_extra(const char* name, size_t len) {
+  static const char* const extra_names[] = {
+    "profile",    // pprof profiler output (src/profile/pprof.c)
+    "defines",    // C defines for the Rust build script (contrib/rust/sys/build.rs)
+    "src_dir",    // mimalloc source directory for the Rust build script (contrib/rust/sys/build.rs)
+    "disable_redirect", "disable_override", "enable_redirect", "prioritize_load_order",  // used by mimalloc-redirect.dll
+    "patch_imports", "force_redirect", "patch_ntheap",
+  };
+  for (size_t i = 0; i < sizeof(extra_names)/sizeof(extra_names[0]); i++) {
+    if (mi_env_name_eq(name, len, extra_names[i])) return true;
+  }
+  return false;
+}
+
+// Append an unknown variable name (of length `len`) to the list of unknown names
+static void mi_env_scan_unknown(mi_env_scan_t* scan, const char* name, size_t len) {
+  scan->unknown_count++;
+  const size_t n = _mi_strnlen(scan->unknown, sizeof(scan->unknown));
+  const size_t sep = (n > 0 ? 1 : 0);
+  if (n + sep + len < sizeof(scan->unknown)) {
+    if (sep > 0) { scan->unknown[n] = ';'; }
+    mi_memcpy(scan->unknown + n + sep, name, len);
+    scan->unknown[n + sep + len] = 0;
+  }
+}
+
+// Visit an environment `entry` of the form `name=value`
+static void mi_env_scan_entry(const char* entry, void* arg) {
+  mi_env_scan_t* const scan = (mi_env_scan_t*)arg;
+  const size_t plen = 9;  // `mimalloc_`
+  if (_mi_strnicmp(entry, "mimalloc_", plen) != 0) return;
+  const char* const name = entry + plen;
+  size_t len = 0;
+  while (name[len] != 0 && name[len] != '=') { len++; }
+  if (name[len] != '=') return;
+  const char* const value = name + len + 1;
+  for (size_t i = 0; i < _mi_option_last; i++) {
+    const mi_option_desc_t* const desc = &mi_option_descs[i];
+    mi_option_env_t* const env = &scan->options[i];
+    if (mi_env_name_eq(name, len, desc->name)) {
+      // the first occurrence takes precedence (as with a lookup by name), but the current name overrides a legacy name
+      if (env->err == ENOENT || env->legacy) {
+        env->legacy = false;
+        env->err = mi_option_parse(desc->option, value, &env->value);
+      }
+      return;
+    }
+    if (mi_env_name_eq(name, len, desc->legacy_name)) {
+      if (env->err == ENOENT) {
+        env->legacy = true;
+        env->err = mi_option_parse(desc->option, value, &env->value);
+      }
+      return;
     }
   }
+  if (!mi_env_is_extra(name, len)) {
+    mi_env_scan_unknown(scan, entry, plen + len);
+  }
+}
 
-  if (err==0) {
-    size_t len = _mi_strnlen(s, sizeof(buf) - 1);
-    for (size_t i = 0; i < len; i++) {
-      buf[i] = _mi_toupper(s[i]);
-    }
-    buf[len] = 0;
-    if (buf[0] == 0 || _mi_streq(buf,"1") || _mi_streq(buf,"TRUE") || _mi_streq(buf,"YES") || _mi_streq(buf,"ON")) {
-      state->value = 1;
-      state->init = MI_OPTION_INITIALIZED;
-    }
-    else if (_mi_streq(buf,"0") || _mi_streq(buf,"FALSE") || _mi_streq(buf,"NO") || _mi_streq(buf,"OFF")) {
-      state->value = 0;
-      state->init = MI_OPTION_INITIALIZED;
+// Initialize all pending options in a single pass over the environment.
+// Returns `false` if the full environment cannot be iterated.
+static bool mi_options_init_from_environ(void) {
+  mi_env_scan_t scan;
+  for (size_t i = 0; i < _mi_option_last; i++) {
+    const mi_option_env_t not_found = MI_OPTION_ENV_NOT_FOUND;
+    scan.options[i] = not_found;
+  }
+  scan.unknown_count = 0;
+  scan.unknown[0] = 0;
+  if (!_mi_env_visit(&mi_env_scan_entry, &scan)) return false;
+  // first apply all options (so warnings use the final values for `verbose`, `show_errors` etc.)
+  for (size_t i = 0; i < _mi_option_last; i++) {
+    const mi_option_t option = (mi_option_t)i;
+    mi_option_state_t* const state = mi_option_state(option);
+    if (mi_option_state_init(state) == MI_OPTION_PENDING) {
+      mi_option_env_apply(option, state, &scan.options[i]);
     }
     else {
-      const char* end = buf;
-      long value = 0;
-      const bool ok = _mi_strntol(buf, sizeof(buf), &end, &value);
-      if (ok && (mi_option_has_size_in_kib(option) || mi_option_has_size_in_bytes(option))) {
-        // the size is interpreted in bytes.
-        size_t size = (value < 0 ? 0 : (size_t)value);
-        bool overflow = false;
-        if (*end == 'K') { overflow = mi_mul_overflow(size,MI_KiB,&size); end++; }
-        #if MI_SIZE_SIZE >= 4
-        else if (*end == 'M') { overflow = mi_mul_overflow(size,MI_MiB,&size); end++; }
-        else if (*end == 'G') { overflow = mi_mul_overflow(size,MI_GiB,&size); end++; }
-        #endif
-        #if MI_SIZE_SIZE >= 8
-        else if (*end == 'T') { overflow = mi_mul_overflow(size,MI_GiB * MI_KiB,&size); end++; }
-        #endif
-        if (end[0] == 'I' && end[1] == 'B') { end += 2; } // KiB, MiB, GiB, TiB
-        else if (*end == 'B') { end++; }                  // Kb, Mb, Gb, Tb
-        if (overflow || size > MI_MAX_ALLOC_SIZE) { size = MI_MAX_ALLOC_SIZE; }
-        if (mi_option_has_size_in_kib(option)) {
-          // This option is interpreted in KiB to prevent overflow of `long` for large allocations
-          // (long is 32-bit on 64-bit windows, which allows for 4TiB max.)
-          size = (size + MI_KiB - 1) / MI_KiB;  // no overflow due to check before this
-        }
-        value = (size > LONG_MAX ? LONG_MAX : (long)size);
-      }
-      if (ok && *end == 0) {
-        mi_option_set(option, value);
-      }
-      else {
-        // set `init` first to avoid recursion through _mi_warning_message on mimalloc_verbose.
-        state->init = MI_OPTION_DEFAULTED;
-        if (option == mi_option_verbose && state->value == 0) {
-          // if the 'mimalloc_verbose' env var has a bogus value we'd never know
-          // (since the value defaults to 'off') so in that case briefly enable verbose
-          state->value = 1;
-          _mi_warning_message("environment option mimalloc_%s has an invalid value.\n", desc->name);
-          state->value = 0;
-        }
-        else {
-          _mi_warning_message("environment option mimalloc_%s has an invalid value.\n", desc->name);
-        }
-      }
+      scan.options[i].err = ENOENT;   // already initialized (e.g. set explicitly)
+      scan.options[i].legacy = false;
     }
-    mi_assert_internal(state->init >= MI_OPTION_DEFAULTED);
   }
-  else if (err==ENOENT) {
-    state->init = MI_OPTION_DEFAULTED;
+  // and then emit warnings
+  for (size_t i = 0; i < _mi_option_last; i++) {
+    mi_option_env_warn((mi_option_t)i, &scan.options[i]);
   }
-  // and on another error, keep pending to try again (can happen during preloading if getenv is not available)
+  if (scan.unknown_count > 0 && !_mi_os_is_elevated()) {
+    _mi_warning_message("unknown environment option(s) are ignored: %s\n", (scan.unknown[0] != 0 ? scan.unknown : "..."));
+  }
+  return true;
 }
