@@ -35,6 +35,7 @@ See docs/process.md for more on how version tagging works.
   are now moved correctly into `-sLEGACY_GL_EMULATION` mode. In GLES and WebGL,
   use the correct API functions `glClearDepthf()` and `glDepthRangef()` instead.
   (#28379)
+- mimalloc was updated to 3.7.1. (#28399)
 
 7.0.1 - 11/21/26
 ----------------
