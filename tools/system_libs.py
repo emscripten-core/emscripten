@@ -1434,7 +1434,11 @@ class libc(MuslInternalLibrary,
           'system.c',
         ])
 
-    if settings.MAIN_MODULE:
+    # Main modules and side modules share the same `pic` library directory (see
+    # `get_lib_dir_relative` in `cache.py`), so the contents of the library must
+    # not depend on which of the two happens to build it first.  A side module
+    # builds libc when it is linked with an explicit `-lc`.
+    if settings.MAIN_MODULE or settings.SIDE_MODULE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
