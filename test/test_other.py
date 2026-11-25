@@ -5042,6 +5042,18 @@ int main() {
   def test_no_exit_runtime_strict(self):
     self.do_other_test('test_no_exit_runtime_strict.c', cflags=['-sSTRICT'])
 
+  @parameterized({
+    '': ([], True),
+    'exit_runtime': (['-sEXIT_RUNTIME'], True),
+    'no_exit_runtime': (['-sEXIT_RUNTIME=0'], False),
+  })
+  def test_emrun_exit_runtime(self, args, expect_exit):
+    # --emrun enables EXIT_RUNTIME by default, so that the page can report its
+    # exit code to emrun, but EXIT_RUNTIME can still be explicitly disabled.
+    self.run_process([EMCC, test_file('core/test_atexit.c'), '--emrun'] + args)
+    output = self.run_js('a.out.js')
+    self.assertContainedIf('B\nA\n', output, expect_exit)
+
   def test_extra_opt_levels(self):
     # Opt levels that we don't tend to test elsewhere
     for opt in ('-Og', '-Ofast'):

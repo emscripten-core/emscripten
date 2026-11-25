@@ -525,7 +525,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--emrun``
   [link]
-  Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*. (This enables `EXIT_RUNTIME=1`, allowing normal runtime exiting with return code passing.)
+  Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*. (This enables `EXIT_RUNTIME=1` by default, allowing normal runtime exiting with return code passing. If ``-sEXIT_RUNTIME=0`` is passed explicitly, ``stdout`` and ``stderr`` are still captured, but the application does not report an exit code to *emrun*.)
 
 ``--cpuprofiler``
   [link]
