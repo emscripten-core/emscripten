@@ -474,11 +474,13 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
       if (ibo) {
         return ibo;
       }
-      var prevIBO = GLctx.getParameter(GL_ELEMENT_ARRAY_BUFFER_BINDING);
       GL.currentContext.tempIndexBuffers[idx] = GLctx.createBuffer();
+#if LEGACY_GL_EMULATION
+      var prevIBO = GLctx.getParameter(GL_ELEMENT_ARRAY_BUFFER_BINDING);
       GLctx.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, GL.currentContext.tempIndexBuffers[idx]);
       GLctx.bufferData(GL_ELEMENT_ARRAY_BUFFER, 1 << idx, GL_DYNAMIC_DRAW);
       GLctx.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, prevIBO);
+#endif
       return GL.currentContext.tempIndexBuffers[idx];
     },
 
@@ -1875,6 +1877,11 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     }
 #endif
 
+    webglBufferData(target, size, data, usage);
+  },
+
+  $webglBufferData__internal: true,
+  $webglBufferData: (target, size, data, usage) => {
 #if WEBGL_USE_GARBAGE_FREE_APIS
     if ({{{ isCurrentContextWebGL2() }}}) {
       // If size is zero, WebGL would interpret uploading the whole input
@@ -3785,10 +3792,13 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
     var buf;
     var vertexes = 0;
     if (!GLctx.currentElementArrayBufferBinding) {
-      var size = GL.calcBufLength(1, type, 0, count);
-      buf = GL.getTempIndexBuffer(size);
-      GLctx.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf);
-      webglBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size, indices);
+      if (count >= 0) {
+        var size = GL.calcBufLength(1, type, 0, count);
+        buf = GL.getTempIndexBuffer(size);
+        GLctx.bindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf);
+        // The previous draw can still be reading this buffer. Replace its entire store.
+        webglBufferData(GL_ELEMENT_ARRAY_BUFFER, size, indices, GL_STREAM_DRAW);
+      }
 
       // Calculating vertex count if shader's attribute data is on client side
       if (count > 0) {
@@ -3816,7 +3826,7 @@ for (let i = 0; i <= GL_POOL_TEMP_BUFFERS_SIZE; ++i) {
         }
       }
 
-      // the index is now 0
+      // WebGL expects a byte offset even when it rejects the count.
       indices = 0;
     }
 
