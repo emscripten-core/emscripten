@@ -90,6 +90,27 @@ void iter() {
   assert(pitch == testPitch);
 #endif
 #ifndef TEST_INTERACTIVE
+#ifdef __EMSCRIPTEN__
+  // Step the Web Audio clock to change pitch halfway through the first buffer.
+  double duration = (double)BUFFER_SIZE / (frequency * channels * (bits / 8));
+  EM_ASM({
+    Object.defineProperty(AudioContext.prototype, 'currentTime',
+                          {configurable: true, writable: true, value: 0});
+  });
+  alSourcePlay(source);
+  EM_ASM({ AudioContext.prototype.currentTime = $0; }, duration / (2 * pitch));
+  alSourcef(source, AL_PITCH, pitch / 2);
+  ALfloat position;
+  alGetSourcef(source, AL_SEC_OFFSET, &position);
+  assert(position == (ALfloat)(duration / 2));
+
+  // At half speed, the remaining half takes one more full buffer interval.
+  EM_ASM({ AudioContext.prototype.currentTime = $0; }, 1.75 * duration / pitch);
+  alSourcePause(source);
+  alGetSourcei(source, AL_BUFFERS_PROCESSED, &buffersProcessed);
+  assert(buffersProcessed == 1);
+  EM_ASM({ delete AudioContext.prototype.currentTime; });
+#endif
   offset = size;
 #endif
   // Exit once we've processed the entire clip.
