@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 7.0.2 (in development)
 ----------------------
+- A new `EMSCRIPTEN_NOINLINE` macro in `emscripten.h` prevents inlining in both
+  LLVM and Binaryen (the normal LLVM `__noinline__` macro has always only
+  affected LLVM. (#)
 - The WebGL extensions `EXT_render_snorm`, `EXT_texture_mirror_clamp_to_edge`,
   `OES_sample_variables`, `OES_shader_multisample_interpolation`,
   `WEBGL_compressed_texture_pvrtc`, `WEBGL_render_shared_exponent` and
