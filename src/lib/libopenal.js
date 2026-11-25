@@ -268,7 +268,8 @@ var LibraryOpenAL = {
       } else if (src.audioQueue[0]) {
         // The source is still actively playing, so we just need to calculate where we are in the current buffer
         // so it can be remembered if the source gets paused.
-        src.bufOffset = (currentTime - src.audioQueue[0]._startTime) * src.playbackRate;
+        var audioSrc = src.audioQueue[0];
+        src.bufOffset = audioSrc._startOffset + (currentTime - audioSrc._startTime) * src.playbackRate;
       } else {
         // The source hasn't finished yet, but there is no scheduled audio left for it. This can be because
         // the source has just been started/resumed, or due to an underrun caused by a long blocking operation.
@@ -318,7 +319,7 @@ var LibraryOpenAL = {
     },
 
     cancelPendingSourceAudio: (src) => {
-      AL.updateSourceTime(src);
+      var currentTime = AL.updateSourceTime(src);
 
       for (var i = 1; i < src.audioQueue.length; i++) {
         var audioSrc = src.audioQueue[i];
@@ -328,6 +329,7 @@ var LibraryOpenAL = {
       if (src.audioQueue.length > 1) {
         src.audioQueue.length = 1;
       }
+      return currentTime;
     },
 
     stopSourceAudio: (src) => {
@@ -678,15 +680,24 @@ var LibraryOpenAL = {
     },
 
     updateSourceRate: (src) => {
+      var currentTime;
       if (src.state === AL_PLAYING) {
         // clear scheduled buffers
-        AL.cancelPendingSourceAudio(src);
+        currentTime = AL.cancelPendingSourceAudio(src);
+      }
+      src.playbackRate = src.pitch * src.dopplerShift;
+      if (src.state === AL_PLAYING) {
+        if (src.playbackRate) {
+          src.bufStartTime = currentTime - src.bufOffset / src.playbackRate;
+        }
 
         var audioSrc = src.audioQueue[0];
         if (!audioSrc) {
           return; // It is possible that AL.scheduleContextAudio() has not yet fed the next buffer, if so, skip.
         }
 
+        audioSrc._startTime = currentTime;
+        audioSrc._startOffset = src.bufOffset;
         var duration;
         if (src.type === AL_STATIC && src.looping) {
           duration = Number.POSITIVE_INFINITY;
@@ -1328,6 +1339,7 @@ var LibraryOpenAL = {
           if (src.type === AL_STATIC && src.audioQueue.length > 0) {
             var audioSrc  = src.audioQueue[0];
             audioSrc.loop = false;
+            audioSrc._startOffset = 0.0;
             audioSrc._duration = src.bufQueue[0].audioBuf.duration / src.playbackRate;
             audioSrc._startTime = currentTime - src.bufOffset / src.playbackRate;
           }
@@ -2757,6 +2769,7 @@ var LibraryOpenAL = {
         looping: false,
         pitch: 1.0,
         dopplerShift: 1.0,
+        playbackRate: 1.0,
         gain,
         minGain: 0.0,
         maxGain: 1.0,
@@ -2776,10 +2789,6 @@ var LibraryOpenAL = {
         coneOuterAngle: 360.0,
         distanceModel: AL_INVERSE_DISTANCE_CLAMPED,
         spatialize: AL_AUTO_SOFT,
-
-        get playbackRate() {
-          return this.pitch * this.dopplerShift;
-        }
       };
       AL.currentCtx.sources.set(src.id, src);
       {{{ makeSetValue('pSourceIds', 'i*4', 'src.id', 'i32') }}};
