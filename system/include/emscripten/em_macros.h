@@ -11,8 +11,10 @@
 
 #ifdef __wasm__
 #define EM_IMPORT(NAME) __attribute__((import_module("env"), import_name(#NAME)))
+#define EMSCRIPTEN_NOINLINE __attribute__((__noinline__, __annotate__("binaryen.inline=0")))
 #else
 #define EM_IMPORT(NAME)
+#define EMSCRIPTEN_NOINLINE __attribute__((__noinline__))
 #endif
 
 #ifdef __cplusplus

@@ -18,6 +18,7 @@ import logging
 import os
 import pprint
 import shutil
+import struct
 import subprocess
 import sys
 import textwrap
@@ -408,7 +409,8 @@ def compile_javascript_cached():
   return get_cached_file('js_output', f'{content_hash}.js', compile_javascript, cache_limit=500, has_warnings=has_warnings)
 
 
-def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadata=None):
+def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadata=None,
+             emit_toolchain_annotations=False):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -418,7 +420,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   settings.WASM_BINARY_FILE = js_manipulation.escape_for_js_string(os.path.basename(out_wasm))
 
   if finalize:
-    metadata = finalize_wasm(in_wasm, out_wasm, js_syms)
+    metadata = finalize_wasm(in_wasm, out_wasm, js_syms,
+                             emit_toolchain_annotations=emit_toolchain_annotations)
   else:
     # Skip finalize and only extract the metadata.
     if in_wasm != out_wasm:
@@ -552,7 +555,52 @@ def get_metadata(infile, outfile, modify_wasm, args):
   return metadata
 
 
-def finalize_wasm(infile, outfile, js_syms):
+def extract_binaryen_inline_annotations(wasm_file):
+  prefix = 'llvm.func_attr.annotate.binaryen.inline='
+  inline_hints = {}
+  with webassembly.Module(wasm_file) as module:
+    for section in module.sections():
+      if section.type == webassembly.SecType.CUSTOM and section.name.startswith(prefix):
+        value_str = section.name.removeprefix(prefix)
+        try:
+          value = int(value_str)
+        except ValueError:
+          exit_with_error(f'invalid binaryen.inline annotation value: `{value_str}`')
+        if not 0 <= value <= 127:
+          exit_with_error(f'binaryen.inline annotation value out of range [0, 127]: {value}')
+        module.seek(section.offset)
+        module.read_string()  # skip section name
+        payload_size = section.offset + section.size - module.tell()
+        assert payload_size % 4 == 0
+        data = module.buf.read(payload_size)
+        for (func_idx,) in struct.iter_unpack('<I', data):
+          # wasm-ld writes 0xffffffff as a tombstone for GC'd functions.
+          if func_idx == 0xffffffff:
+            continue
+          if func_idx in inline_hints and inline_hints[func_idx] != value:
+            exit_with_error(f'conflicting binaryen.inline annotations ({inline_hints[func_idx]} vs {value}) on function index {func_idx}')
+          inline_hints[func_idx] = value
+
+  if not inline_hints:
+    return None
+
+  # Encode in WebAssembly Code Metadata format for `binaryen.inline`:
+  #   num_funcs: u32leb
+  #   for each func:
+  #     func_idx: u32leb
+  #     num_hints: u32leb (= 1)
+  #     relative_offset: u32leb (= 0, function-level annotation)
+  #     hint_size: u32leb (= 1)
+  #     hint_value: u8 (0..127)
+  payload = bytearray(leb128.u.encode(len(inline_hints)))
+  for func_idx, value in sorted(inline_hints.items()):
+    payload += leb128.u.encode(func_idx)
+    payload += b'\x01\x00\x01'
+    payload.append(value)
+  return bytes(payload)
+
+
+def finalize_wasm(infile, outfile, js_syms, emit_toolchain_annotations=False):
   building.save_intermediate(infile, 'base.wasm')
   args = []
 
@@ -624,11 +672,15 @@ def finalize_wasm(infile, outfile, js_syms):
                infile]
         shared.check_call(cmd)
 
+  binaryen_inline = None
+  if emit_toolchain_annotations:
+    binaryen_inline = extract_binaryen_inline_annotations(infile)
+
   # For sections we no longer need, strip now to speed subsequent passes.
   # If Binaryen is not needed, this is also our last chance to strip.
   # The `llvm.func_attr.annotate` are created by `[[clang::annotate]]` or
-  # similar.  We have some plans to use them for emscripten metadata but
-  # they should not persist in the final binary.
+  # similar.  We translate any recognized ones (like `binaryen.inline=...`)
+  # above before stripping them so they do not persist in the final binary.
   strip_sections = ['llvm.func_attr.annotate.*']
   if not settings.EMIT_PRODUCERS_SECTION:
     strip_sections += ['producers']
@@ -637,9 +689,15 @@ def finalize_wasm(infile, outfile, js_syms):
   if not settings.GENERATE_DWARF:
     strip_sections += ['.debug*']
 
-  if strip_sections:
+  if strip_sections or binaryen_inline:
     building.save_intermediate(outfile, 'strip.wasm')
-    building.strip_sections(infile, outfile, strip_sections)
+    if binaryen_inline:
+      with shared.get_temp_files().get_file('.bin') as inline_file:
+        utils.write_binary(inline_file, binaryen_inline)
+        building.strip_sections(infile, outfile, strip_sections,
+                                add_sections={'binaryen.inline': inline_file})
+    else:
+      building.strip_sections(infile, outfile, strip_sections)
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
 

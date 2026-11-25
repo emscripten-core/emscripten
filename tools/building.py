@@ -1068,9 +1068,12 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
 
 
 @ToolchainProfiler.profile()
-def strip_sections(infile, outfile, sections):
-  """Strip specified sections from a wasm file."""
+def strip_sections(infile, outfile, sections, add_sections=None):
+  """Strip specified sections from a wasm file, optionally adding new ones."""
   cmd = [LLVM_OBJCOPY, infile, outfile] + ['--remove-section=' + section for section in sections]
+  if add_sections:
+    for name, filename in add_sections.items():
+      cmd.append(f'--add-section={name}={filename}')
   check_call(cmd)
 
 

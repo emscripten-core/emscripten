@@ -10073,6 +10073,68 @@ int main() {
     self.assertExists('out.profdata')
     self.assertEqual(expected, self.run_process([LLVM_COV, 'show', 'test_hello_world.wasm', '-instr-profile=out.profdata'], stdout=PIPE).stdout)
 
+  def test_emscripten_noinline(self):
+    self.cflags += ['--profiling-funcs']
+    src = r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+
+      static int normal_func(int x) {
+        return x + 1;
+      }
+
+      __attribute__((noinline))
+      static int llvm_noinline_func(int x) {
+        return x + 2;
+      }
+
+      EMSCRIPTEN_NOINLINE
+      static int emscripten_noinline_func(int x) {
+        return x + 3;
+      }
+
+      // Also test that a dead annotated function (which wasm-ld replaces with a
+      // 0xffffffff tombstone) does not cause errors.
+      EMSCRIPTEN_NOINLINE
+      static int unused_noinline_func(int x) {
+        return x + 4;
+      }
+
+      int main(int argc, char** argv) {
+        printf("%d %d %d\n",
+               normal_func(argc),
+               llvm_noinline_func(argc),
+               emscripten_noinline_func(argc));
+        return 0;
+      }
+    '''
+    self.do_run(src, '2 3 4\n', force_c=True)
+
+    if self.is_wasm():
+      wasm = 'src.wasm'
+      wat = self.get_wasm_text(wasm)
+      # EMSCRIPTEN_NOINLINE prevents inlining in both LLVM and Binaryen.
+      self.assertContained('(func $emscripten_noinline_func', wat)
+      self.assertContained('(call $emscripten_noinline_func', wat)
+      # The unused function should still be dead-code eliminated.
+      self.assertNotContained('unused_noinline_func', wat)
+
+      # Sanity-check that without EMSCRIPTEN_NOINLINE, optimizing builds do
+      # inline: LLVM inlines normal_func at -O1+, and Binaryen inlines
+      # llvm_noinline_func at -O2+.
+      if any(f in self.cflags for f in ('-O1', '-O2', '-O3', '-Os', '-Oz')):
+        self.assertNotContained('(func $normal_func', wat)
+      if any(f in self.cflags for f in ('-O2', '-O3', '-Os', '-Oz')):
+        self.assertNotContained('(func $llvm_noinline_func', wat)
+
+      # Verify that neither the LLVM annotate section nor binaryen.inline
+      # persists in the final wasm binary.
+      with webassembly.Module(wasm) as m:
+        for section in m.sections():
+          if section.type == webassembly.SecType.CUSTOM:
+            self.assertNotEqual(section.name, 'binaryen.inline')
+            self.assertFalse(section.name.startswith('llvm.func_attr.annotate.'))
+
 
 # Generate tests for everything
 def make_run(name, cflags=None, settings=None, env=None,
