@@ -74,7 +74,7 @@ void RunTest(int testVariant) {
     printf("   ...ok\n");
   }
 
-  float colors[4*3] = { 1,0,0, 0,0.5,0, 0,0,0.2, 1,1,1 };
+  float colors[4*3] = { 1,0,0, 0,0.4,0, 0,0,0.2, 1,1,1 };
 
   if ((testVariant&2)!=0) {
     glUniform3fv(loc+1, 3, colors+3); // Pass the actual colors (testing a nonzero location offset), but do a mistake by setting one index too many. Spec says this should be gracefully handled, and that excess elements are ignored.
@@ -110,10 +110,10 @@ void RunTest(int testVariant) {
     unsigned char pixel[4];
     glReadPixels(1,1,1,1,GL_RGBA,GL_UNSIGNED_BYTE, pixel);
     //printf("%d,%d,%d,%d\n", pixel[0], pixel[1], pixel[2], pixel[3]);
-    assert(pixel[0] == 255);
-    assert(pixel[1] == 178);
-    assert(pixel[2] == 102);
-    assert(pixel[3] == 255);
+    assert(pixel[0] == 1.0 * 255); // 0.2 + 1.0 = 1.2, clamped to 1.0
+    assert(pixel[1] == 0.6 * 255); // 0.2 + 0.4 = 0.6
+    assert(pixel[2] == 0.4 * 255); // 0.2 + 0.2 = 0.4
+    assert(pixel[3] == 1.0 * 255); // 1.0 + 1.0 = 2.0, clamped to 1.0
   }
 
   printf("OK: Case %d passed.\n", testVariant);

@@ -514,7 +514,7 @@ window.close = () => {
 
   # Clear all IndexedDB databases. This gives us a fresh state for tests that
   # check caching.
-  def clear_indexed_db(self):
+  def clear_indexed_db(self, db_name='EM_PRELOAD_CACHE'):
     self.add_browser_reporting()
     create_file('clear_indexed_db.html', '''
       <script src="browser_reporting.js"></script>
@@ -532,14 +532,12 @@ window.close = () => {
           });
         } else {
           // Testing an old browser that does not support indexedDB.databases():
-          // Delete the fixed database EM_PRELOAD_CACHE (this is hardcoded in
-          // file packager)
-          indexedDB.deleteDatabase('EM_PRELOAD_CACHE').onsuccess = () => {
+          indexedDB.deleteDatabase('%s').onsuccess = () => {
             reportResultToServer("clear");
           };
         }
       </script>
-    ''')
+    ''' % db_name)
     self.run_browser('clear_indexed_db.html', '/report_result?clear')
 
   @parameterized({
@@ -608,6 +606,8 @@ window.close = () => {
     self.run_browser('page.html', '/report_result?exit:0')
 
   def test_preload_caching_indexeddb_name(self):
+    # Start testing from an empty cache.
+    self.clear_indexed_db('testdb')
     self.set_setting('EXIT_RUNTIME')
     create_file('somefile.txt', 'load me right before running the code please')
 
@@ -1225,6 +1225,16 @@ window.close = () => {
   def test_webgl_uniform_before_get_location(self, args):
     self.btest_exit('webgl_uniform_before_get_location.c', cflags=args + ['-sGL_EXPLICIT_UNIFORM_LOCATION', '-sMIN_WEBGL_VERSION=2'])
 
+  # Tests that glUniform*() with an invalid location raises GL_INVALID_OPERATION (#16367)
+  @parameterized({
+    '': ([],),
+    'assertions': (['-sGL_ASSERTIONS'],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+  })
+  @requires_graphics_hardware
+  def test_webgl_uniform_invalid_location(self, args):
+    self.btest_exit('webgl_uniform_invalid_location.c', cflags=args)
+
   @parameterized({
     '': ([],),
     'assertions': (['-sGL_ASSERTIONS'],),
@@ -1773,6 +1783,22 @@ window.close = () => {
   def test_clientside_vertex_arrays_es3(self):
     self.reftest('clientside_vertex_arrays_es3.c', 'gl_triangle.png', cflags=['-sFULL_ES3', '-sUSE_GLFW=3', '-lglfw', '-lGLESv2'])
 
+  # Tests that passing an out-of-range vertex attribute index, e.g. the -1 that
+  # glGetAttribLocation() returns for an inactive attribute, raises
+  # GL_INVALID_VALUE instead of throwing an exception (#14589)
+  @parameterized({
+    '': ([],),
+    'full_es2': (['-sFULL_ES2'],),
+    'full_es2_assertions': (['-sFULL_ES2', '-sGL_ASSERTIONS'],),
+    'full_es3': (['-sFULL_ES3', '-DTEST_WEBGL2'],),
+    'full_es3_assertions': (['-sFULL_ES3', '-DTEST_WEBGL2', '-sGL_ASSERTIONS'],),
+  })
+  @requires_graphics_hardware
+  def test_webgl_vertex_attrib_invalid_index(self, args):
+    if '-DTEST_WEBGL2' in args and webgl2_disabled():
+      self.skipTest('This test requires WebGL2 to be available')
+    self.btest_exit('webgl_vertex_attrib_invalid_index.c', cflags=['-lGL'] + args)
+
   def test_emscripten_api(self):
     self.btest_exit('emscripten_api_browser.c', cflags=['-lSDL'])
 
@@ -2227,6 +2253,10 @@ void *getBindBuffer() {
   def test_gl_error(self):
     self.btest_exit('gl_error.c', cflags=['-sLEGACY_GL_EMULATION', '-lGL'])
 
+  @requires_graphics_hardware
+  def test_gl_clear_depth_range(self):
+    self.btest_exit('gl_clear_depth_range.c', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+
   @parameterized({
     '': ([],),
     'strict': (['-lopenal', '-sSTRICT'],),
@@ -2668,6 +2698,12 @@ Module["preRun"] = () => {
     # (the testcase doesn't even use threads, but is compiled with thread support).
     self.btest_exit('webgl2.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL', '-pthread'])
 
+  # Tests that the WebGL extensions that only add enums, renderable formats or
+  # GLSL features, but no functions, are advertised and enabled automatically.
+  @requires_webgl2
+  def test_webgl2_extensions_without_functions(self):
+    self.btest_exit('webgl2_extensions_without_functions.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
+
   @requires_graphics_hardware
   def test_webgl2_objects(self):
     self.btest_exit('webgl2_objects.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
@@ -2767,11 +2803,11 @@ Module["preRun"] = () => {
   def test_webgl2_pbo(self):
     self.btest_exit('webgl2_pbo.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
-  @no_firefox('fails on CI likely due to GPU drivers there')
-  @no_safari('TODO: Fails with report_result?5') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
+  # This test needs a rather high amount of slack, since it renders a highly aliasing (moireing) pattern, which touches on
+  # mipmapping, filtering and subpixel sampling rules. (#28396)
   @requires_graphics_hardware
   def test_webgl2_sokol_mipmap(self):
-    self.reftest('third_party/sokol/mipmap-emsc.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL', '-O1'], reference_slack=2)
+    self.reftest('third_party/sokol/mipmap-emsc.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL', '-O1'], reference_slack=5)
 
   @no_firefox('fails on CI likely due to GPU drivers there')
   @no_4gb('fails to render')
@@ -3317,6 +3353,7 @@ Module["preRun"] = () => {
     self.btest('test_async_returnvalue.c', '0', cflags=['-sASSERTIONS', '-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/test_async_returnvalue.js')] + args)
 
   @no_safari('TODO: Never reports a result, so times out') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
+  @requires_chrome_version(121, 'older versions do not fire the unhandledrejection event for a wasm trap (https://chromium-review.googlesource.com/c/v8/v8/+/5013671)')
   def test_async_bad_list(self):
     self.btest('test_async_bad_list.c', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
 
@@ -4273,6 +4310,7 @@ Module["preRun"] = () => {
   def test_webgl_sample_query(self):
     self.btest_exit('webgl_sample_query.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
+  @skip_if_simple('chrome', lambda _: MACOS and get_chrome_version() < 117, 'timer queries always report zero on macOS before Chrome 117 (https://crbug.com/1322521)')
   @requires_graphics_hardware
   @parameterized({
     # EXT query entrypoints on WebGL 1.0
@@ -5159,11 +5197,14 @@ Module["preRun"] = () => {
     self.btest('wasm_worker/hardware_concurrency_is_lock_free.c', expected='0', cflags=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_u32() and emscripten_atomic_notify() functions.
+  # Chrome 110-114 miscompile the wasm atomic.wait instructions in the Liftoff baseline compiler.
+  @requires_chrome_version(115, 'https://crbug.com/1432453')
   @also_with_minimal_runtime
   def test_wasm_worker_wait32_notify(self):
     self.btest('atomic/test_wait32_notify.c', expected='3', cflags=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_u64() and emscripten_atomic_notify() functions.
+  @requires_chrome_version(115, 'https://crbug.com/1432453')
   @also_with_minimal_runtime
   def test_wasm_worker_wait64_notify(self):
     self.btest('atomic/test_wait64_notify.c', expected='3', cflags=['-sWASM_WORKERS'])
@@ -5843,6 +5884,14 @@ class browser_2gb(browser):
     # not use shared memory. Fails in Safari 27.2 (22625.2.8.11.9).
     if get_safari_version() < 280000:
       message = 'Safari fails to initialize data segments at addresses >= 2GB: https://webkit.org/b/314444'
+      if utils.get_env_bool('EMTEST_AUTOSKIP'):
+        self.skipTest(message)
+      self.fail(f'{message}. Use EMTEST_AUTOSKIP=1 to skip')
+    # Chrome before 132 miscompiles the atomic.rmw.and, atomic.rmw.or and
+    # atomic.rmw.xor instructions when they access a memory address >= 2GB.
+    # For simplicity, skip the whole suite in Chrome < 132.
+    if get_chrome_version() < 132:
+      message = 'Chrome < 132 miscompiles atomic operations at addresses >= 2GB: https://crbug.com/378779897'
       if utils.get_env_bool('EMTEST_AUTOSKIP'):
         self.skipTest(message)
       self.fail(f'{message}. Use EMTEST_AUTOSKIP=1 to skip')

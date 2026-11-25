@@ -187,6 +187,16 @@ min_browser_versions = {
 #    'node': 150000,
 #  },
 
+#  # WebAssembly memories that are larger than 2GB, up to the 4GB maximum of
+#  # wasm32 (MAXIMUM_MEMORY greater than 2GB).
+#  # See also https://crbug.com/378779897.
+#  Feature.MEMORY4GB: {
+#    'chrome': 83, # https://v8.dev/blog/4gb-wasm-memory
+#    'firefox': 89, # https://bugzil.la/1703505
+#    'safari': 150200, # https://webkit.org/blog/12140/new-webkit-features-in-safari-15-2/
+#    'node': 140500,
+#  },
+
 }
 
 # Static assertion to check that we actually need each of the above feature flags

@@ -250,7 +250,14 @@ inline void writeGenericWireTypes(GenericWireType*&) {
 
 template<typename First, typename... Rest>
 EMSCRIPTEN_ALWAYS_INLINE void writeGenericWireTypes(GenericWireType*& cursor, First&& first, Rest&&... rest) {
-  writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first), rvp::default_tag{}));
+  if constexpr (std::is_base_of<val, std::decay_t<First>>::value) {
+    // Emval invokers decode the receiver and all arguments before any property
+    // lookup or JS call, so borrowing the handle avoids an incref/decref pair
+    // without risking use-after-free under JS->C++ re-entrancy.
+    writeGenericWireType(cursor, first.as_handle());
+  } else {
+    writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first), rvp::default_tag{}));
+  }
   writeGenericWireTypes(cursor, std::forward<Rest>(rest)...);
 }
 

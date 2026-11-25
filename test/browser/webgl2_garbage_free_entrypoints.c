@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
   assert(glGetUniformLocation(program, "colors[-1]") == -1);
   assert(glGetUniformLocation(program, "colors[-100]") == -1);
 
-  float colors[4*3] = { 1,0,0, 0,0.5,0, 0,0,0.2, 1,1,1 };
+  float colors[4*3] = { 1,0,0, 0,0.4,0, 0,0,0.2, 1,1,1 };
 
   // Pass the actual colors (testing a nonzero location offset), but do a
   // mistake by setting one index too many. Spec says this should be gracefully
@@ -101,10 +101,10 @@ int main(int argc, char *argv[]) {
   unsigned char pixel[4];
   glReadPixels(1, 1, 1, 1, GL_RGBA,GL_UNSIGNED_BYTE, pixel);
   printf("%d,%d,%d,%d\n", pixel[0], pixel[1], pixel[2], pixel[3]);
-  assert(pixel[0] == 255);
-  assert(pixel[1] == 178);
-  assert(pixel[2] == 102);
-  assert(pixel[3] == 255);
+  assert(pixel[0] == 1.0 * 255); // 0.2 + 1.0 = 1.2, clamped to 1.0
+  assert(pixel[1] == 0.6 * 255); // 0.2 + 0.4 = 0.6
+  assert(pixel[2] == 0.4 * 255); // 0.2 + 0.2 = 0.4
+  assert(pixel[3] == 1.0 * 255); // 1.0 + 1.0 = 2.0, clamped to 1.0
 
   printf("Test passed!\n");
   return 0;

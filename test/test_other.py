@@ -3062,6 +3062,15 @@ More info: https://emscripten.org
     # with it, it should work
     self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.c', args=['1'], cflags=['-sLEGACY_GL_EMULATION', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
+  def test_gl_clear_depth_range_link_error(self):
+    # glClearDepth() and glDepthRange() exist only in desktop OpenGL, so linking
+    # to them needs -sLEGACY_GL_EMULATION.
+    cmd = [EMCC, test_file('browser/gl_clear_depth_range.c'), '-lGL', '-lSDL']
+    err = self.expect_fail(cmd)
+    self.assertContained('undefined symbol: glClearDepth', err)
+    self.assertContained('undefined symbol: glDepthRange', err)
+    self.run_process(cmd + ['-sLEGACY_GL_EMULATION'])
+
   # Verifies that is user is building without -sGL_ENABLE_GET_PROC_ADDRESS, then
   # at link time they should get a helpful error message guiding them to enable
   # the option.
@@ -16547,6 +16556,7 @@ console.log('OK');'''
 
   def test_setting_sets_validity(self):
     from tools.settings import (
+      COMPILE_ONLY_SETTINGS,
       COMPILE_TIME_SETTINGS,
       EXPERIMENTAL_SETTINGS,
       INTERNAL_SETTINGS,
@@ -16554,6 +16564,7 @@ console.log('OK');'''
       MEM_SIZE_SETTINGS,
       settings,
     )
+    self.assertTrue(COMPILE_ONLY_SETTINGS <= COMPILE_TIME_SETTINGS)
     setting_names = (
       COMPILE_TIME_SETTINGS
       | JS_ONLY_SETTINGS

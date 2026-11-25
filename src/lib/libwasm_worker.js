@@ -81,10 +81,9 @@ addToLibrary({
   },
 
   // Executes a wasm function call received via a postMessage.
-  $_wasmWorkerRunPostMessage: (e) => {
+  $_wasmWorkerRunPostMessage: ({data}) => {
     // '_wsc' is short for 'wasm call', trying to use an identifier name that
     // will never conflict with user code
-    let data = e.data;
     let wasmCall = data['_wsc'];
     wasmCall && callUserCallback(() => getWasmTableEntry(wasmCall)(...data['x']));
   },

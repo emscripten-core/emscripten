@@ -104,14 +104,12 @@ u || (x = new WebAssembly.Memory({
 
 var L = [], M = a => {
     L.push(a);
-}, N = a => {
-    a = a.data;
+}, N = ({data: a}) => {
     var b = a._wsc;
     b && A.get(b)(...a.x);
 }, aa = () => {
     P(0, !r && !t, !u, r && !t);
-}, ba = a => {
-    a = a.data;
+}, ba = ({data: a}) => {
     var b = a._wsc;
     b && A.get(b)(...a.D);
 }, Q = {}, ca = (a, b, c, k, d, g, f) => {

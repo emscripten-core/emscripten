@@ -1178,12 +1178,10 @@ FS.staticInit();
         // noent_okay makes it so that if the final component of the path
         // doesn't exist, lookupPath returns `node: undefined`. `path` will be
         // updated to point to the target of all symlinks.
-        var lookup = FS.lookupPath(path, {
+        ({node, path} = FS.lookupPath(path, {
           follow: !(flags & O_NOFOLLOW),
           noent_okay: true
-        });
-        node = lookup.node;
-        path = lookup.path;
+        }));
       }
       // perhaps we need to create the node
       var created = false;
