@@ -616,7 +616,13 @@ def make_test_server(in_queue, out_queue, port):
   # do not have the correct MIME type
   SimpleHTTPRequestHandler.extensions_map['.mjs'] = 'text/javascript'
 
-  return ThreadingHTTPServer(('localhost', port), TestServerHandler)
+  class TestServer(ThreadingHTTPServer):
+    # A page can request many files at once, e.g. the worker script of each
+    # thread of a pthread pool. Python default accept queue is 5 connections,
+    # but tests can request many more concurrently.
+    request_queue_size = 128
+
+  return TestServer(('localhost', port), TestServerHandler)
 
 
 class HttpServerThread(threading.Thread):
