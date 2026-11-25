@@ -73,6 +73,15 @@ var LibraryDylink = {
     return true;
   },
 
+#if ASYNCIFY
+  // With Asyncify, exports are replaced by JS wrappers (see
+  // `Asyncify.instrumentWasmExports`) that keep the original wasm function in
+  // `.orig`.  Returns the original function for such a wrapper, and `func`
+  // itself otherwise.
+  $unwrapAsyncifyExport__internal: true,
+  $unwrapAsyncifyExport: (func) => func.orig ?? func,
+#endif
+
   // Dynamic version of shared.py:make_invoke.  This is needed for invokes
   // that originate from side modules since these are not known at JS
   // generation time.
@@ -152,6 +161,83 @@ var LibraryDylink = {
   $unresolvedSymbols__internal: true,
   $unresolvedSymbols: 'new Set()',
 
+  // The exports of the main module's wasm instance.
+  // The address of a main module symbol is only stored when it is first needed.
+  $mainModuleExports__internal: true,
+  $mainModuleExports: undefined,
+
+  $getMainModuleExport__internal: true,
+  $getMainModuleExport: (symName) => {
+    if (!mainModuleExports || isInternalSym(symName)) {
+      return;
+    }
+#if !WASM_BIGINT
+    var value = mainModuleExports['orig$' + symName] ?? mainModuleExports[symName];
+#else
+    var value = mainModuleExports[symName];
+#endif
+    if (typeof value === 'function' || typeof value?.value === POINTER_JS_TYPE) {
+      return value;
+    }
+  },
+
+  $exportToAddress__internal: true,
+  $exportToAddress: (value) => {
+    if (typeof value === 'function') {
+      return {{{ to64('addFunctionInternal(value)') }}};
+    }
+    return value.value;
+  },
+
+  $hasSymbolAddress__internal: true,
+  $hasSymbolAddress: (symName) => {
+    var global = GOT[symName];
+    return global ? global.value != UNDEFINED_ADDR : !!getMainModuleExport(symName);
+  },
+
+  // Returns the `WebAssembly.Global` that holds the address of `symName`.
+  $getSymbolAddressGlobal__internal: true,
+  $getSymbolAddressGlobal: (symName) => {
+    var global = GOT[symName];
+    if (!global) {
+#if DYLINK_DEBUG == 2
+      dbg(`new GOT entry: ${symName}`);
+#endif
+      var exp = getMainModuleExport(symName);
+      global = GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, exp ? exportToAddress(exp) : UNDEFINED_ADDR);
+      if (!exp) {
+        unresolvedSymbols.add(symName);
+      }
+    }
+    return global;
+  },
+
+  $setSymbolAddress__internal: true,
+  $setSymbolAddress: (symName, addr) => {
+    var global = GOT[symName];
+    if (global) {
+      global.value = addr;
+    } else {
+      GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, addr);
+    }
+  },
+
+  // Called once the main module has been instantiated.
+  $setMainModuleExports__internal: true,
+  $setMainModuleExports: (exports) => {
+    mainModuleExports = exports;
+    // Addresses requested while instantiating the main module itself.
+    for (var symName in GOT) {
+      var global = GOT[symName];
+      if (global.value == UNDEFINED_ADDR) {
+        var value = getMainModuleExport(symName);
+        if (value) {
+          global.value = exportToAddress(value);
+        }
+      }
+    }
+  },
+
   // Proxy handler used for GOT.mem and GOT.func imports.  Each of these
   // imports is fulfilled dynamically via the `get` method of this proxy
   // handler.  We abuse the `target` of the Proxy in order to pass the set of
@@ -159,14 +245,7 @@ var LibraryDylink = {
   $GOTHandler__internal: true,
   $GOTHandler: {
     get(weakImports, symName) {
-      var rtn = GOT[symName];
-      if (!rtn) {
-#if DYLINK_DEBUG == 2
-        dbg(`new GOT entry: ${symName}`);
-#endif
-        rtn = GOT[symName] = new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true}, UNDEFINED_ADDR);
-        unresolvedSymbols.add(symName);
-      }
+      var rtn = getSymbolAddressGlobal(symName);
       if (!weakImports.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
         // enabled `reportUndefinedSymbols` to report undefined symbol errors
@@ -231,17 +310,11 @@ var LibraryDylink = {
       }
 #endif
 
-      var existingEntry = GOT[symName] && GOT[symName].value != UNDEFINED_ADDR;
-      if (replace || !existingEntry) {
+      if (replace || !hasSymbolAddress(symName)) {
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName]?.value}`);
 #endif
-        var newValue;
-        if (typeof value === 'function') {
-          newValue = {{{ to64('addFunctionInternal(value)') }}};
-        } else if (typeof value.value === POINTER_JS_TYPE) {
-          newValue = value;
-        } else {
+        if (typeof value !== 'function' && typeof value.value !== POINTER_JS_TYPE) {
           // The GOT can only contain addresses (i.e data addresses or function
           // addresses so we currently ignore other types export here.
 #if DYLINK_DEBUG
@@ -249,15 +322,15 @@ var LibraryDylink = {
 #endif
           continue;
         }
+        var newValue = exportToAddress(value);
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT:  after: ${symName} : ${newValue} (${value})`);
 #endif
-        GOT[symName] ??= new WebAssembly.Global({'value': POINTER_WASM_TYPE, 'mutable': true});
-        GOT[symName].value = newValue;
+        setSymbolAddress(symName, newValue);
       }
 #if DYLINK_DEBUG
-      else if (GOT[symName].value != value) {
-        dbg(`updateGOT: EXISTING SYMBOL: ${symName} : ${GOT[symName].value} (${value})`);
+      else if (GOT[symName]?.value != value) {
+        dbg(`updateGOT: EXISTING SYMBOL: ${symName} : ${GOT[symName]?.value} (${value})`);
       }
 #endif
     }
@@ -820,10 +893,7 @@ var LibraryDylink = {
           // No stub needed, symbol already exists in symbol table
           var res = wasmImports[prop];
 #if ASYNCIFY
-          // Asyncify wraps exports, and we need to look through those wrappers.
-          if (res.orig) {
-            res = res.orig;
-          }
+          res = unwrapAsyncifyExport(res);
 #endif
           return res;
         }
@@ -1306,6 +1376,9 @@ var LibraryDylink = {
     var symDict = lib.exports;
     var symName = Object.keys(symDict)[symbolIndex];
     var sym = symDict[symName];
+#if ASYNCIFY
+    sym = unwrapAsyncifyExport(sym);
+#endif
     var result = addFunctionInternal(sym, sym.sig);
 #if DYLINK_DEBUG
     dbg(`_dlsym_catchup: result=${result}`);
@@ -1344,10 +1417,7 @@ var LibraryDylink = {
 #endif
 
 #if ASYNCIFY
-      // Asyncify wraps exports, and we need to look through those wrappers.
-      if (result.orig) {
-        result = result.orig;
-      }
+      result = unwrapAsyncifyExport(result);
 #endif
       var addr = getFunctionAddress(result);
       if (addr) {

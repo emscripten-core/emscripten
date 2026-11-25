@@ -2463,6 +2463,116 @@ Module['postRun'] = () => {
     self.run_process(cmd + ['-L.'])
     self.run_js('a.out.js')
 
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+    'debug': (['-sDYLINK_DEBUG'],),
+  })
+  def test_dylink_main_got(self, args):
+    # GOT entries for main module exports are created lazily, when a side
+    # module first asks for them.  Check that the addresses side modules see
+    # match the main module's, including for symbols that the main module
+    # never takes the address of itself, and that main module definitions
+    # take precedence over side module ones.
+    create_file('side1.c', r'''
+    // Also defined in the main module.  The main module's definitions win.
+    // Nothing takes their address before side2 is loaded.
+    int dup_fn(void) { return 2; }
+    int dup_var = 2;
+    ''')
+    create_file('side2.c', r'''
+    int main_fn(void);
+    extern int main_var;
+    int dup_fn(void);
+    extern int dup_var;
+
+    void* side2_main_fn() { return (void*)&main_fn; }
+    int* side2_main_var() { return &main_var; }
+    void* side2_dup_fn() { return (void*)&dup_fn; }
+    int* side2_dup_var() { return &dup_var; }
+    ''')
+    create_file('main.c', r'''
+    #include <assert.h>
+    #include <dlfcn.h>
+    #include <stdio.h>
+    #include <emscripten.h>
+
+    EMSCRIPTEN_KEEPALIVE int main_fn(void) { return 1; }
+    EMSCRIPTEN_KEEPALIVE int main_var = 1;
+    EMSCRIPTEN_KEEPALIVE int dup_fn(void) { return 1; }
+    EMSCRIPTEN_KEEPALIVE int dup_var = 1;
+
+    void* side2_main_fn();
+    int* side2_main_var();
+    void* side2_dup_fn();
+    int* side2_dup_var();
+
+    typedef int (*fn_t)(void);
+
+    int main() {
+      fn_t f = side2_main_fn();
+      assert(f == dlsym(RTLD_DEFAULT, "main_fn"));
+      assert(f() == 1);
+      assert(side2_main_var() == &main_var);
+
+      f = side2_dup_fn();
+      assert(f == dlsym(RTLD_DEFAULT, "dup_fn"));
+      assert(f() == 1);
+      assert(side2_dup_var() == &dup_var);
+      assert(*side2_dup_var() == 1);
+
+      printf("done\n");
+      return 0;
+    }
+    ''')
+    self.emcc('side1.c', ['-sSIDE_MODULE', '-o', 'libside1.so'] + args)
+    self.emcc('side2.c', ['-sSIDE_MODULE', '-o', 'libside2.so'] + args)
+    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2', 'libside1.so', 'libside2.so'] + args)
+
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY'],),
+  })
+  def test_dylink_main_got_dlsym_pthread(self, args):
+    # The main module never takes the address of `main_fn`, so the first
+    # `dlsym` of it allocates a new table slot.  Other threads replay that
+    # allocation (see `_dlsym_catchup_js`), and must put the same function in
+    # the same slot: the wasm export itself, not the JS wrapper that Asyncify
+    # puts around it.
+    create_file('main.c', r'''
+    #include <assert.h>
+    #include <dlfcn.h>
+    #include <pthread.h>
+    #include <stdio.h>
+    #include <emscripten.h>
+
+    EMSCRIPTEN_KEEPALIVE int main_fn(void) { return 42; }
+
+    typedef int (*fn_t)(void);
+
+    fn_t g_fn;
+
+    void* thread_main(void* arg) {
+      fn_t f = dlsym(RTLD_DEFAULT, "main_fn");
+      assert(f == g_fn);
+      assert(f() == 42);
+      assert(g_fn() == 42);
+      return NULL;
+    }
+
+    int main() {
+      g_fn = dlsym(RTLD_DEFAULT, "main_fn");
+      assert(g_fn && g_fn() == 42);
+
+      pthread_t t;
+      pthread_create(&t, NULL, thread_main, NULL);
+      pthread_join(t, NULL);
+      printf("done\n");
+      return 0;
+    }
+    ''')
+    self.do_runf('main.c', 'done\n', cflags=['-sMAIN_MODULE=2', '-pthread', '-Wno-experimental', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'] + args)
+
   def test_dylink_dependencies_rpath(self):
     create_file('side1.c', r'''
     #include <stdio.h>

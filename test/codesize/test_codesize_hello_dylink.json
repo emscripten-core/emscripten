@@ -1,9 +1,9 @@
 {
-  "a.out.js": 26397,
+  "a.out.js": 26606,
   "a.out.js.gz": 11194,
   "a.out.nodebug.wasm": 16979,
   "a.out.nodebug.wasm.gz": 8665,
-  "total": 43376,
+  "total": 43585,
   "total_gz": 19859,
   "sent": [
     "__syscall_stat64",
