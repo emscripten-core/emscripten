@@ -74,7 +74,7 @@ from decorators import (
 from tools import building, ports, shared, utils
 from tools.feature_matrix import Feature
 from tools.link import binary_encode
-from tools.utils import MACOS, WINDOWS, delete_dir, write_binary, write_file
+from tools.utils import LINUX, MACOS, WINDOWS, delete_dir, write_binary, write_file
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
@@ -164,6 +164,8 @@ def is_swiftshader(_):
 no_swiftshader = skip_if_simple('not compatible with swiftshader', is_swiftshader)
 
 no_chrome = skip_if('no_chrome', lambda _: is_chrome(), 'chrome is not supported')
+
+no_chrome_linux = skip_if('no_chrome_linux', lambda _: is_chrome() and LINUX, 'chrome on linux is not supported')
 
 no_firefox = skip_if('no_firefox', lambda _: is_firefox(), 'firefox is not supported')
 
@@ -4284,6 +4286,7 @@ Module["preRun"] = () => {
   # If testing on Mac, you also need --use-cmd-decoder=passthrough to get this extension.
   # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
   @requires_webgl2
+  @no_chrome_linux('WEBGL_draw_instanced_base_vertex_base_instance is not supported, https://issues.chromium.org/issues/427956856')
   @no_firefox('WEBGL_draw_instanced_base_vertex_base_instance is not supported, https://bugzil.la/1677238')
   @no_safari('WEBGL_draw_instanced_base_vertex_base_instance is only available with the WebGL Draft Extensions feature flag, which is off by default, https://webkit.org/b/219140')
   @parameterized({
