@@ -81,7 +81,7 @@ EMTEST_COS_EXTENSION_PATH = os.getenv('EMTEST_COS_EXTENSION_PATH', '')
 # 1: Restart a fresh browser instance for every browser test.
 # 2,3,...: Restart a fresh browser instance after given number of tests have been run in it.
 # Helps with e.g. https://bugzil.la/1992558
-EMTEST_RESTART_BROWSER_EVERY_N_TESTS = int(os.getenv('EMTEST_RESTART_BROWSER_EVERY_N_TESTS', '0'))
+EMTEST_RESTART_BROWSER_EVERY_N_TESTS = os.getenv('EMTEST_RESTART_BROWSER_EVERY_N_TESTS')
 
 DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
@@ -218,6 +218,20 @@ def get_chrome_version():
     cmd = [exe, '--version']
   version = subprocess.check_output(cmd, text=True)
   return int(re.search(r'\b(\d+)\.', version).group(1))
+
+
+@memoize
+def restart_browser_every_n_tests():
+  """Returns after how many tests to restart the browser, or 0 for never."""
+  if EMTEST_RESTART_BROWSER_EVERY_N_TESTS is not None:
+    return int(EMTEST_RESTART_BROWSER_EVERY_N_TESTS)
+  # Chrome 121-125 leak each page that runs a script file in an <iframe>.
+  # The leak is in the "local compile hints" experiment, which Chrome for
+  # Testing enables only on Windows. It was fixed in Chrome 126 by
+  # https://chromium-review.googlesource.com/c/chromium/src/+/5490233
+  if WINDOWS and is_chrome() and 121 <= get_chrome_version() < 126:
+    return 30
+  return 0
 
 
 def browser_should_skip_feature(skip_env_var, feature):
@@ -918,8 +932,9 @@ class BrowserCore(RunnerCore):
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
       self.skipTest('too many unresponsive tests, skipping remaining tests')
 
-    if EMTEST_RESTART_BROWSER_EVERY_N_TESTS and BrowserCore.num_tests_ran >= EMTEST_RESTART_BROWSER_EVERY_N_TESTS:
-      logger.warning(f'[EMTEST_RESTART_BROWSER_EVERY_N_TESTS={EMTEST_RESTART_BROWSER_EVERY_N_TESTS} workaround: restarting browser]')
+    restart_every = restart_browser_every_n_tests()
+    if restart_every and BrowserCore.num_tests_ran >= restart_every:
+      logger.warning(f'[EMTEST_RESTART_BROWSER_EVERY_N_TESTS={restart_every} workaround: restarting browser]')
       self.browser_restart()
     BrowserCore.num_tests_ran += 1
 
