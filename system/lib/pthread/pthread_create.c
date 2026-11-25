@@ -158,6 +158,9 @@ int __pthread_create(pthread_t* restrict res,
   // Allocate all the data for the new thread and zero-initialize all parts
   // except for the stack.
   unsigned char* block = emscripten_builtin_malloc(size);
+  if (!block) {
+    return EAGAIN;
+  }
   memset(block, 0, zero_size);
 
   uintptr_t offset = (uintptr_t)block;
@@ -218,6 +221,13 @@ int __pthread_create(pthread_t* restrict res,
 #endif
 
   _emscripten_thread_mailbox_init(new);
+  if (!new->mailbox) {
+#ifndef NDEBUG
+    emscripten_builtin_free(new->profilerBlock);
+#endif
+    emscripten_builtin_free(block);
+    return EAGAIN;
+  }
 
   struct pthread *self = __pthread_self();
   dbg("start __pthread_create: new=%p new_end=%p stack=%p->%p "

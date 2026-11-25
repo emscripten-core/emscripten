@@ -12406,6 +12406,10 @@ int main(void) {
     self.do_other_test('test_pthread_asyncify.c')
 
   @requires_pthreads
+  def test_pthread_create_nomem(self):
+    self.do_other_test('test_pthread_create_nomem.c', cflags=['-sABORTING_MALLOC=0'])
+
+  @requires_pthreads
   def test_pthread_reuse(self):
     self.do_other_test('test_pthread_reuse.c', cflags=['-sPTHREAD_POOL_SIZE=1'])
 
