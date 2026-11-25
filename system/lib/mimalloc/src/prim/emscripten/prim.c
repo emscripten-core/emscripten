@@ -58,11 +58,13 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config) {
   config->has_virtual_reserve = false;
 }
 
-extern void emmalloc_free(void*);
+// Use the builtin allocator (dlmalloc by default) rather than requiring
+// the program to link with -sMALLOC=emmalloc.
+#include <emscripten/heap.h>  // emscripten_builtin_memalign, emscripten_builtin_free
 
 int _mi_prim_free(void* addr, size_t size) {
   MI_UNUSED(size);
-  emmalloc_free(addr);
+  emscripten_builtin_free(addr);
   return 0;
 }
 
@@ -71,11 +73,19 @@ int _mi_prim_free(void* addr, size_t size) {
 // Allocation
 //---------------------------------------------
 
-extern void* emmalloc_memalign(size_t alignment, size_t size);
+// The builtin allocator aborts on OOM by default (`-sABORTING_MALLOC`), so we fail early
+// if the heap cannot grow enough (e.g. without `-sALLOW_MEMORY_GROWTH`) and let mimalloc fall back.
+// (This is conservative as the builtin allocator may still have enough free space internally.)
+static bool mi_prim_heap_has_room(size_t size, size_t alignment) {
+  const uintptr_t top = *emscripten_get_sbrk_ptr();
+  const size_t max = emscripten_get_heap_max();
+  const size_t needed = size + alignment + 64*MI_KiB;  // allow for alignment, overhead, and sbrk granularity
+  return (needed > size && top < max && needed <= max - top);
+}
 
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
 int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
-  MI_UNUSED(allow_large); MI_UNUSED(commit); MI_UNUSED(hint_addr);
+  MI_UNUSED(try_alignment); MI_UNUSED(allow_large); MI_UNUSED(commit); MI_UNUSED(hint_addr);
   *is_large = false;
   // todo: Track the highest address ever seen; first uses of it are zeroes.
   //       That assumes no one else uses sbrk but us (they could go up,
@@ -86,8 +96,16 @@ int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool comm
   if (try_alignment < MIN_EMMALLOC_ALIGN) {
     try_alignment = MIN_EMMALLOC_ALIGN;
   }
-  *addr = emmalloc_memalign(try_alignment, size);
-  return (*addr != NULL ? 0 : ENOMEM);
+  if (!mi_prim_heap_has_room(size, try_alignment)) {
+    *addr = NULL;
+    return ENOMEM;
+  }
+  void* p = emscripten_builtin_memalign(try_alignment, size);
+  *addr = p;
+  if (p == 0) {
+    return ENOMEM;
+  }
+  return 0;
 }
 
 
