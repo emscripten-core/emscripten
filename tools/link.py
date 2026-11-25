@@ -403,6 +403,11 @@ def get_binaryen_passes():
     extras = settings.BINARYEN_EXTRA_PASSES.split(',')
     passes += [('--' + p) if p[0] != '-' else p for p in extras if p]
 
+  # Strip toolchain-specific annotations (such as binaryen.inline) after all
+  # optimization passes have finished using them.
+  if passes:
+    passes += ['--strip-toolchain-annotations']
+
   # If we are going to run metadce then that means we will be running binaryen
   # tools after the main invocation, whose flags are determined here
   # (specifically we will run metadce and possibly also wasm-opt for import/
@@ -1961,7 +1966,10 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
   if shared.SKIP_SUBPROCS:
     return
 
-  metadata = emscripten.emscript(in_wasm, wasm_target, final_js, js_syms, base_metadata=base_metadata)
+  emit_toolchain_annotations = bool(get_binaryen_passes())
+  metadata = emscripten.emscript(in_wasm, wasm_target, final_js, js_syms,
+                                 base_metadata=base_metadata,
+                                 emit_toolchain_annotations=emit_toolchain_annotations)
   save_intermediate('original')
   return metadata
 
