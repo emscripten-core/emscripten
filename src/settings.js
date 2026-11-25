@@ -381,7 +381,6 @@ var NODERAWSOCKETS = false;
 // socket is a WebTransport session that opens one bidirectional stream. Only 
 // outgoing TCP connections are supported: no datagram sockets, and no
 // ``listen()``/``accept()``.
-// [link]
 var WEBTRANSPORT_SOCKETS = false;
 
 // The URL to connect to when :ref:`WEBTRANSPORT_SOCKETS` is enabled: either
@@ -390,7 +389,6 @@ var WEBTRANSPORT_SOCKETS = false;
 // ``Module['webtransport']['url']``, which may also be a function that maps
 // the address and port to a URL. ``Module['webtransport']['options']`` is
 // passed to the ``WebTransport`` constructor (e.g. ``serverCertificateHashes``).
-// [link]
 var WEBTRANSPORT_URL = 'https://';
 
 // The most data, in bytes, that may wait to be sent per socket when
@@ -398,7 +396,6 @@ var WEBTRANSPORT_URL = 'https://';
 // stream whose write hasn't completed yet. Once this is reached, ``send()``
 // fails with ``EAGAIN`` and ``poll()`` stops reporting ``POLLOUT``, until
 // writes complete. Must be greater than 0.
-// [link]
 var WEBTRANSPORT_SEND_BUFFER_SIZE = 1048576;
 
 // The most received data, in bytes, that may wait to be read with ``recv()``
@@ -406,7 +403,6 @@ var WEBTRANSPORT_SEND_BUFFER_SIZE = 1048576;
 // reached, the stream isn't read until the application has read some of it,
 // so that WebTransport's flow control slows the peer down. Must be greater
 // than 0.
-// [link]
 var WEBTRANSPORT_RECV_BUFFER_SIZE = 1048576;
 
 // A string containing a comma separated list of WebSocket subprotocols
