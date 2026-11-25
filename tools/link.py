@@ -873,10 +873,9 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
     options.post_js.append(utils.path_from_root('src/emrun_postjs.js'))
     if settings.MINIMAL_RUNTIME:
       exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
-    # emrun mode waits on program exit
-    if user_settings.get('EXIT_RUNTIME') == '0':
-      exit_with_error('--emrun is not compatible with EXIT_RUNTIME=0')
-    settings.EXIT_RUNTIME = 1
+    # emrun mode waits on program exit, unless the user explicitly disabled
+    # EXIT_RUNTIME. In that case the page does not report an exit code to emrun.
+    default_setting('EXIT_RUNTIME', 1)
     # emrun_postjs.js needs this library function.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnExit']
 

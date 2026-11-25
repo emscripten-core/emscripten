@@ -35,6 +35,11 @@ See docs/process.md for more on how version tagging works.
   are now moved correctly into `-sLEGACY_GL_EMULATION` mode. In GLES and WebGL,
   use the correct API functions `glClearDepthf()` and `glDepthRangef()` instead.
   (#28379)
+- The `--emrun` linker flag can again be used together with `-sEXIT_RUNTIME=0`,
+  which was made an error in 3.1.74. `--emrun` still enables `EXIT_RUNTIME` by
+  default, but if it is explicitly disabled, the runtime is now kept alive
+  after `main()` returns. `emrun` then captures `stdout` and `stderr` as
+  before, but the page does not report an exit code to it. (#28407)
 
 7.0.1 - 11/21/26
 ----------------
