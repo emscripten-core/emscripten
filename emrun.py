@@ -847,6 +847,8 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       ctype = 'application/wasm'
     if guess_file_type.lower().endswith('.js'):
       ctype = 'application/javascript'
+    elif guess_file_type.lower().endswith('.mjs'):
+      ctype = 'text/javascript'
     self.send_header('Content-type', ctype)
     fs = os.fstat(f.fileno())
     self.send_header("Content-Length", str(fs.st_size))
