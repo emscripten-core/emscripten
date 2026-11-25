@@ -430,6 +430,14 @@ def configure_test_browser():
       EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
       if EMTEST_HEADLESS == 1:
         EMTEST_BROWSER += f" {config.headless_flags}"
+      elif LINUX and is_chrome():
+        # On Linux, use X11 (XWayland) instead of Wayland for non-headless
+        # runs. On Wayland, the compositor marks windows that are covered by
+        # another window as occluded, and Chrome then stops producing frames
+        # (and requestAnimationFrame() callbacks) for them. When many browser
+        # test windows run in parallel, all but the topmost one would be
+        # occluded, which makes timing-sensitive tests flaky.
+        EMTEST_BROWSER += ' --ozone-platform=x11'
       if EMTEST_COS_EXTENSION_PATH and is_chrome():
         EMTEST_BROWSER += f' --load-extension="{EMTEST_COS_EXTENSION_PATH}"'
 
