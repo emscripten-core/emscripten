@@ -108,6 +108,16 @@ void simulate_events() {
   emscripten_set_main_loop(one, 0, 0);
 }
 
+static int frame_count;
+
+void wait_five_frames(void) {
+  // Yield to the event loop for a few frames to let the browser relayout
+  if (++frame_count >= 5) {
+    emscripten_cancel_main_loop();
+    simulate_events();
+  }
+}
+
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
@@ -115,10 +125,7 @@ int main() {
   SDL_Rect rect = { 0, 0, 600, 450 };
   SDL_FillRect(screen, &rect, 0x2244ffff);
 
-  // Safari bug: If simulateMouseMove() is called synchronously in the same function that resizes the canvas element
-  // (as SDL_SetVideoMode() does above), then the simulated mouse events are dispatched to the wrong x/y locations.
-  // We must yield back to the event loop once first to let the browser relayout, and only then we can dispath mouse
-  // events with correct coordinates.
-  // TODO: Figure out a minimal repro of this, and report it to WebKit bug tracker.
-  emscripten_set_timeout(simulate_events, 0, 0);
+  // Give a couple of frames for the DOM layout to settle before simulating mouse events.
+  // (there's a loading.. SVG spinner animation in default shell that disappears in a few frames)
+  emscripten_set_main_loop(wait_five_frames, 0, 0);
 }
