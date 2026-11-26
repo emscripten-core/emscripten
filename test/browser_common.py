@@ -326,6 +326,10 @@ class ChromeConfig:
     """Chrome has no special configuration step."""
 
   @staticmethod
+  def window_rect_flags(x, y, width, height):
+    return f'--window-position={x},{y} --window-size={width},{height}'
+
+  @staticmethod
   def open_url_args(url):
     return [url]
 
@@ -675,6 +679,13 @@ def init_worker(counter, lock):
     counter.value += 1
 
 
+def get_cascaded_window_rect(index):
+  left, top, right, bottom = (0, 40, 1920, 1000)
+  width, height = (800, 600)
+  step = 20
+  return (left + index * step, top + index * step, width, height)
+
+
 def move_browser_window(pid, x, y):
   """Utility function to move the top-level window.
 
@@ -811,6 +822,10 @@ class BrowserCore(RunnerCore):
         browser_data_dir = browser_data_dir.replace('\\', '\\\\')
       config.configure(browser_data_dir)
       browser_args += f' {config.data_dir_flag}"{browser_data_dir}"'
+
+    # In parallel runs, spawn browsers in cascaded window order so each is visible.
+    if EMTEST_BROWSER_AUTO_CONFIG and parallel_harness and not EMTEST_HEADLESS and hasattr(config, 'window_rect_flags'):
+      browser_args += ' ' + config.window_rect_flags(*get_cascaded_window_rect(worker_id))
 
     browser_args = shlex.split(browser_args)
     if hasattr(config, 'launch_prefix'):
