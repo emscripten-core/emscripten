@@ -384,7 +384,7 @@ var SyscallsLibrary = {
   },
   __syscall_shutdown: (fd, how, u1, u2, u3, u4) => {
     var sock = getSocketFromFD(fd);
-#if NODERAWSOCKETS
+#if NODERAWSOCKETS || WEBTRANSPORT_SOCKETS
     return sock.sock_ops.shutdown(sock, how);
 #else
     return -ENOSYS; // unsupported feature
@@ -442,8 +442,8 @@ var SyscallsLibrary = {
   },
   __syscall_getsockopt: (fd, level, optname, optval, optlen, unused) => {
     var sock = getSocketFromFD(fd);
-#if NODERAWSOCKETS
-    // The node:net backend handles all socket options.
+#if NODERAWSOCKETS || WEBTRANSPORT_SOCKETS
+    // The node:net and WebTransport backends handle socket options themselves.
     return sock.sock_ops.getsockopt(sock, level, optname, optval, optlen);
 #else
     // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
@@ -463,7 +463,7 @@ var SyscallsLibrary = {
   // provide it without a separate libstubs variation. Without that backend it
   // just reports the option as unknown.
   __syscall_setsockopt: (fd, level, optname, optval, optlen, unused) => {
-#if NODERAWSOCKETS
+#if NODERAWSOCKETS || WEBTRANSPORT_SOCKETS
     var sock = getSocketFromFD(fd);
     return sock.sock_ops.setsockopt(sock, level, optname, optval, optlen);
 #else

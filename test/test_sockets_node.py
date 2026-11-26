@@ -6,6 +6,8 @@
 import socket
 import socketserver
 import threading
+import time
+from contextlib import contextmanager
 from functools import wraps
 
 if __name__ == '__main__':
@@ -49,6 +51,25 @@ def requires_jspi_node(func):
     self.set_setting('JSPI')
     return func(self, *args, **kwargs)
   return decorated
+
+
+@contextmanager
+def tcp_server(handler_class):
+  """Run a loopback TCP server on an ephemeral port, yielding the port."""
+  server = socketserver.TCPServer(('127.0.0.1', 0), handler_class)
+  thread = threading.Thread(target=server.serve_forever, daemon=True)
+  thread.start()
+  try:
+    yield server.server_address[1]
+  finally:
+    server.shutdown()
+    server.server_close()
+    thread.join()
+
+
+# -sWEBTRANSPORT_SOCKETS under node, which has no WebTransport: the shim makes
+# each session a TCP connection straight to the server under test.
+WEBTRANSPORT_SHIM = ['-sWEBTRANSPORT_SOCKETS', '--pre-js', test_file('sockets/webtransport_node_shim.js')]
 
 
 class sockets_node(RunnerCore):
@@ -371,6 +392,100 @@ class sockets_node(RunnerCore):
       out = self.run_js('client.js')
       self.assertContained('do_msg_read: read 14 bytes', out)
       self.assertContained('connect: ws://localhost:25170/testA/testB, text,base64,binary', out)
+
+  @also_with_proxy_to_pthread
+  def test_webtransport_sockets_echo(self):
+    # A non-blocking connect, send and recv over a WebTransport stream.
+    with tcp_server(EchoHandler) as port:
+      self.do_runf('sockets/test_tcp_echo.c', 'done\n', cflags=WEBTRANSPORT_SHIM, args=[str(port)])
+
+  def test_webtransport_sockets_client_semantics(self):
+    # EISCONN on a second connect, shutdown(SHUT_WR) leaving reads working,
+    # EPIPE on a write after that, and POLLHUP after a full shutdown(SHUT_RDWR).
+    with tcp_server(EchoHandler) as port:
+      self.do_runf('sockets/test_tcp_client_semantics.c', 'done\n', cflags=WEBTRANSPORT_SHIM, args=[str(port)])
+
+  def test_webtransport_sockets_refused(self):
+    # A session that can't be established reports ECONNREFUSED.
+    self.do_runf('sockets/test_tcp_refused.c', 'done\n', cflags=WEBTRANSPORT_SHIM)
+
+  def test_webtransport_sockets_backpressure(self):
+    # The server only starts reading after a while. The client must see EAGAIN,
+    # be woken by select() once its writes complete, and get all data across.
+    # Small buffers, so that the limit is reached all the time.
+    total = 32 * 1024 * 1024
+    received = []
+
+    class SlowReader(socketserver.BaseRequestHandler):
+      def handle(self):
+        time.sleep(1)
+        data = bytearray()
+        while len(data) < total:
+          part = self.request.recv(1024 * 1024)
+          if not part:
+            break
+          data += part
+        received.append(bytes(data))
+
+    with tcp_server(SlowReader) as port:
+      self.do_runf('sockets/test_tcp_backpressure_resume.c', 'done\n',
+                   cflags=[*WEBTRANSPORT_SHIM, '-sWEBTRANSPORT_SEND_BUFFER_SIZE=65536', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],
+                   args=[str(port), str(total)])
+    expected = (bytes(range(251)) * (total // 251 + 1))[:total]
+    self.assertEqual(received, [expected])
+
+  def test_webtransport_sockets_recv_flow_control(self):
+    # The server sends more than all buffers on the way can hold, while the
+    # client doesn't read for a while. If received data were read off the stream
+    # regardless, the server could send everything meanwhile; with flow control
+    # it gets stuck until the client reads.
+    total = 64 * 1024 * 1024
+    data = (bytes(range(251)) * (total // 251 + 1))[:total]
+    sent_before_reading = []
+
+    class Sender(socketserver.BaseRequestHandler):
+      def handle(self):
+        sent = 0
+
+        def send_all():
+          nonlocal sent
+          for offset in range(0, total, 65536):
+            self.request.sendall(data[offset:offset + 65536])
+            sent = offset + 65536
+
+        sender = threading.Thread(target=send_all)
+        sender.start()
+        self.request.recv(1) # the client starts reading
+        sent_before_reading.append(sent)
+        sender.join()
+        self.request.shutdown(socket.SHUT_WR)
+        self.request.recv(1) # wait for the client to close
+
+    with tcp_server(Sender) as port:
+      self.do_runf('sockets/test_tcp_recv_flow_control.c', 'done\n',
+                   cflags=[*WEBTRANSPORT_SHIM, '-sWEBTRANSPORT_RECV_BUFFER_SIZE=65536', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],
+                   args=[str(port), str(total)])
+    self.assertLess(sent_before_reading[0], total // 2)
+
+  def test_webtransport_sockets_close_flush(self):
+    # The server finishes its side first, and only reads after a while. The
+    # client's close() must still deliver all the data sent before it, rather
+    # than closing the session because the peer is done.
+    total = 8 * 1024 * 1024
+    received = []
+
+    class LateReader(socketserver.BaseRequestHandler):
+      def handle(self):
+        self.request.shutdown(socket.SHUT_WR)
+        time.sleep(1)
+        size = 0
+        while part := self.request.recv(1024 * 1024):
+          size += len(part)
+        received.append(size)
+
+    with tcp_server(LateReader) as port:
+      self.do_runf('sockets/test_tcp_close_flush.c', 'done\n', cflags=WEBTRANSPORT_SHIM, args=[str(port), str(total)])
+    self.assertEqual(received, [total])
 
 
 class sockets_node64(sockets_node):

@@ -61,6 +61,13 @@ See docs/process.md for more on how version tagging works.
 - Building with `-sJSPI` now bumps the default minimum supported browser
   versions to the first ones that support JSPI: Chrome 137, Firefox 153,
   Safari 27 and Node.js 24. (#28334)
+- New `-sWEBTRANSPORT_SOCKETS` setting, which emulates POSIX TCP sockets over
+  WebTransport bidirectional streams instead of WebSockets, with flow control
+  in both directions. The URL is set with `-sWEBTRANSPORT_URL` or
+  `Module['webtransport']`, and the per-socket buffer limits with
+  `-sWEBTRANSPORT_SEND_BUFFER_SIZE` and `-sWEBTRANSPORT_RECV_BUFFER_SIZE`
+  (1 MiB by default). Only outgoing TCP connections over non-blocking sockets
+  are supported.
 
 7.0.0 - 11/06/26
 ----------------

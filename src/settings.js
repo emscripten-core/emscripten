@@ -377,6 +377,34 @@ var PROXY_POSIX_SOCKETS = false;
 // plain -pthread build (without PROXY_TO_PTHREAD) is not supported.
 var NODERAWSOCKETS = false;
 
+// If enabled, POSIX TCP sockets are emulated over WebTransport. Each connected 
+// socket is a WebTransport session that opens one bidirectional stream. Only 
+// outgoing TCP connections are supported: no datagram sockets, and no
+// ``listen()``/``accept()``.
+var WEBTRANSPORT_SOCKETS = false;
+
+// The URL to connect to when :ref:`WEBTRANSPORT_SOCKETS` is enabled: either
+// the prefix 'https://', which is completed with the address and port passed
+// to ``connect()``, or a complete URL. It can be overridden at runtime with
+// ``Module['webtransport']['url']``, which may also be a function that maps
+// the address and port to a URL. ``Module['webtransport']['options']`` is
+// passed to the ``WebTransport`` constructor (e.g. ``serverCertificateHashes``).
+var WEBTRANSPORT_URL = 'https://';
+
+// The most data, in bytes, that may wait to be sent per socket when
+// :ref:`WEBTRANSPORT_SOCKETS` is enabled: data passed to the WebTransport
+// stream whose write hasn't completed yet. Once this is reached, ``send()``
+// fails with ``EAGAIN`` and ``poll()`` stops reporting ``POLLOUT``, until
+// writes complete. Must be greater than 0.
+var WEBTRANSPORT_SEND_BUFFER_SIZE = 1048576;
+
+// The most received data, in bytes, that may wait to be read with ``recv()``
+// per socket when :ref:`WEBTRANSPORT_SOCKETS` is enabled. Once this is
+// reached, the stream isn't read until the application has read some of it,
+// so that WebTransport's flow control slows the peer down. Must be greater
+// than 0.
+var WEBTRANSPORT_RECV_BUFFER_SIZE = 1048576;
+
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
 // You can set 'null', if you don't want to specify it.

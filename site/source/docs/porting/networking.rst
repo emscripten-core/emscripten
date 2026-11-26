@@ -122,3 +122,25 @@ WebTransport and QUIC
 
 WebTransport may be used to send UDP like datagrams over QUIC.
 Currently Emscripten does not provide a C/C++ API for interacting with WebTransport.
+
+POSIX TCP Sockets over WebTransport
+-----------------------------------
+
+The linker flag ``-sWEBTRANSPORT_SOCKETS`` emulates POSIX TCP sockets over
+WebTransport. Each connected socket is a WebTransport session that opens one 
+bidirectional stream: a reliable, ordered byte stream, like TCP.
+
+Set the URL to connect to with ``-sWEBTRANSPORT_URL``, or at runtime with
+``Module['webtransport']['url']``, which may also be a function of the address
+and port. By default, the URL is ``https://<address>:<port>/``, using the
+address and port passed to ``connect()``. ``Module['webtransport']['options']``
+is passed to the ``WebTransport`` constructor.
+
+Sockets must be non-blocking (``SOCK_NONBLOCK``, or ``O_NONBLOCK`` set with
+``fcntl()``), blocking sockets are not supported.
+
+Each socket buffers up to 1 MiB of data in each direction, and applies 
+backpressure if the buffer is full. Change the sizes with
+``-sWEBTRANSPORT_SEND_BUFFER_SIZE`` and ``-sWEBTRANSPORT_RECV_BUFFER_SIZE``.
+
+There is no datagram sockets yet.

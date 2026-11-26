@@ -1188,6 +1188,11 @@ def phase_linker_setup(linker_args):  # ruff: ignore[complex-structure, too-many
       default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
     limit_incoming_module_api()
 
+  if settings.WEBTRANSPORT_SOCKETS:
+    settings.ALL_INCOMING_MODULE_JS_API.append('webtransport')
+    if 'INCOMING_MODULE_JS_API' not in user_settings:
+      settings.INCOMING_MODULE_JS_API.append('webtransport')
+
   for prop in settings.INCOMING_MODULE_JS_API:
     if prop not in settings.ALL_INCOMING_MODULE_JS_API:
       diagnostics.warning('unused-command-line-argument', f'invalid entry in INCOMING_MODULE_JS_API: {prop}')
