@@ -4,6 +4,7 @@
 #include <emscripten/threading.h>
 #include <assert.h>
 #include <errno.h>
+#include <math.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -37,6 +38,7 @@ int lastTlsVariableValueInAudioThread = 1;
 
 bool worklet_started = false;
 pid_t main_tid = 0;
+double main_now = 0;
 
 // This function will be called for every fixed-size buffer of audio samples to be processed.
 bool ProcessAudio(int numInputs,
@@ -57,11 +59,27 @@ bool ProcessAudio(int numInputs,
     emscripten_outf("worklet thread pthread_self: %p\n", pthread_self());
     assert(pthread_self());
 #endif
-    // CLOCK_MONOTONIC is not available inside an AudioWorklet (where
-    // performance.now() is not supported).
+    double now = emscripten_get_now();
+    assert(now > 0 && emscripten_get_now() >= now);
+#ifdef __EMSCRIPTEN_PTHREADS__
+    // Worklet clock must share the main thread's timeOrigin.
+    // Since it might take time for process callback to start in a real 
+    // browser (until user click), allow a very large diff (1h).
+    assert(fabs(now - main_now) < 3600000.0);
+#endif
+    // CLOCK_MONOTONIC is available inside an AudioWorklet only when
+    // performance.now() is supported (via WorkletPerformance).
     struct timespec ts;
-    assert(clock_getres(CLOCK_MONOTONIC, &ts) == -1);
-    assert(errno == ENOSYS);
+    if (clock_getres(CLOCK_MONOTONIC, &ts) == 0) {
+      assert(ts.tv_sec == 0 && ts.tv_nsec == 1000);
+      assert(clock_gettime(CLOCK_MONOTONIC, &ts) == 0);
+      assert(ts.tv_sec > 0 || ts.tv_nsec > 0);
+#ifdef __EMSCRIPTEN_PTHREADS__
+      assert(fabs(ts.tv_sec * 1000.0 - main_now) < 3600000.0);
+#endif
+    } else {
+      assert(errno == ENOSYS);
+    }
   }
 
 #ifdef TEST_AND_EXIT
@@ -174,6 +192,7 @@ int main() {
   assert(emscripten_is_main_browser_thread());
   assert(!emscripten_current_thread_is_audio_worklet());
   main_tid = gettid();
+  main_now = emscripten_get_now();
   emscripten_outf("main thread tid: %d\n", main_tid);
   emscripten_outf("wasmAudioWorkletStack: %p\n", wasmAudioWorkletStack);
   assert(main_tid);

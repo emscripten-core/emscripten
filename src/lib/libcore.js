@@ -1443,14 +1443,19 @@ addToLibrary({
 #else
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
   emscripten_get_now: `;
-    // AudioWorkletGlobalScope does not have performance.now()
-    // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
-    // with
-    // Audio Worklets enabled, do a dynamic check for its presence.
+    // AudioWorkletGlobalScope historically did not have performance.now()
+    // (https://github.com/WebAudio/web-audio-api/issues/2527), and
+    // WorkletPerformance only exposes performance.now() without
+    // performance.timeOrigin (https://w3c.github.io/hr-time/#sec-workletperformance).
+    // If building with Audio Worklets enabled, do a dynamic check for its
+    // presence, and fall back to the timeOrigin passed from the main thread
+    // via wwParams when performance.timeOrigin is unavailable.
     if (globalThis.performance?.now) {
 #if PTHREADS
       const {timeOrigin} = performance;
-      _emscripten_get_now = () => timeOrigin + performance.now();
+      _emscripten_get_now = timeOrigin !== undefined
+        ? () => timeOrigin + performance.now()
+        : () => wwParams.timeOrigin + performance.now();
 #else
       _emscripten_get_now = () => performance.now();
 #endif

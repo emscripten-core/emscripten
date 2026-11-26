@@ -257,6 +257,7 @@ var LibraryWebAudio = {
         stackSize,          // sz = stack size
 #if PTHREADS
         pthreadPtr,
+        timeOrigin: performance.timeOrigin,
 #endif
       });
       audioWorklet.port.onmessage = _emAudioDispatchProcessorCallback;
