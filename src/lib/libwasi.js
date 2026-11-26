@@ -576,8 +576,8 @@ var WasiLibrary = {
     }
 #endif
 
-#if SHARED_MEMORY
-    // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
+#if SHARED_MEMORY || (ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS)
+    // like with most Web APIs, we can't use Web Crypto API directly on shared or resizable memory,
     // so we need to create an intermediate buffer and copy it to the destination
     return (view) => (view.set(crypto.getRandomValues(new Uint8Array(view.byteLength))), 0);
 #else

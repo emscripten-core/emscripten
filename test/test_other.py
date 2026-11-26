@@ -16218,6 +16218,26 @@ addToLibrary({
     ''')
     self.do_runf('main.c', 'done\n')
 
+  # Verify that getentropy works when the heap is backed by a resizable
+  # ArrayBuffer (ALLOW_MEMORY_GROWTH + GROWABLE_ARRAYBUFFERS).
+  # crypto.getRandomValues() rejects views of resizable ArrayBuffers, so we
+  # must fill a temporary buffer and copy it into the heap instead.
+  @requires_node_26
+  def test_getentropy_resizable_buffer(self):
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <unistd.h>
+
+      int main() {
+        char buf[100];
+        assert(getentropy(buf, sizeof(buf)) == 0);
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', 'done\n', cflags=['-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS=2'])
+
   def test_em_js_bool_macro_expansion(self):
     # Normally macros like `true` and `false` are not expanded inside
     # of `EM_JS` or `EM_ASM` blocks.  However, in the case that an
