@@ -5541,6 +5541,7 @@ Module["preRun"] = () => {
     'asyncify': (['-sASYNCIFY'],),
     'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=2'],),
     'pthreads_and_closure': (['-pthread', '--closure', '1', '-Oz'],),
+    'pthreads_worklet_performance': (['-pthread', '--closure', '1', '-Oz', '--extern-pre-js=worklet_perf.js'],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
     'minimal_runtime_pthreads_and_closure': (['-sMINIMAL_RUNTIME', '-pthread', '--closure', '1', '-Oz'],),
     'pthreads_es6': (['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sEXPORT_ES6'],),
@@ -5552,6 +5553,12 @@ Module["preRun"] = () => {
   def test_audio_worklet(self, args):
     if '-sEXPORT_ES6' in args and es6_module_workers_disabled():
       self.skipTest('This test requires a browser with ES6 Module Workers support')
+    if '--extern-pre-js=worklet_perf.js' in args:
+      # Simulate W3C WorkletPerformance: performance.now() without timeOrigin.
+      create_file('worklet_perf.js', '''
+        if (globalThis.AudioWorkletGlobalScope && !globalThis.performance?.now)
+          globalThis.performance = { now: () => 1 };
+      ''')
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
   # Tests that AudioWorklet.port (spec-defined shared MessagePort) can be used
