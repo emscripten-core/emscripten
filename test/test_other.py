@@ -10631,6 +10631,49 @@ console.log(JSON.stringify([0x14, 0x18, 0x1c, 0x20].map((pc) => sm.lookup(pc))))
     self.assertIn(b'somewhere.com/hosted.wasm', read_binary('a.out.wasm'))
 
   @crossplatform
+  @parameterized({
+    '': ([], '0', '1'),
+    'lto': (['--lto'], '0', '1'),
+    'lto_no_batch': (['--lto'], '0', '0'),
+    'lto_ninja': (['--lto'], '1', '1'),
+  })
+  def test_system_lib_reproducibility(self, flags, use_ninja, batch):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    if use_ninja == '1' and not shutil.which('ninja'):
+      self.skipTest('ninja is not installed')
+
+    # libc covers duplicate object basenames, libnoexit contains LTO bitcode,
+    # and crtbegin-mt retains header paths in its DWARF line table.
+    targets = ['crtbegin-mt', 'libc', 'libnoexit']
+    outputs = []
+    for dirname in ['short-cache', 'much/longer/secondary/cache']:
+      cache_dir = os.path.abspath(dirname)
+      with env_modify({'EM_CACHE': cache_dir,
+                       'EMCC_USE_NINJA': use_ninja,
+                       'EMCC_BATCH_BUILD': batch}):
+        self.run_process([EMBUILDER, *flags, 'build', *targets])
+        lib_dir = Path(cache_dir, 'sysroot', 'lib', 'wasm32-emscripten')
+        if flags:
+          lib_dir /= 'lto'
+        outputs.append({name: read_binary(lib_dir / name)
+                        for name in ['crtbegin-mt.o', 'libc.a', 'libnoexit.a']})
+
+        if use_ninja == '1':
+          # A subninja must also work when run from the top-level build directory.
+          ninja_file = min(Path(cache_dir, 'build').rglob('build.ninja'),
+                           key=lambda path: len(path.parts))
+          self.run_process(['ninja', '-C', str(ninja_file.parent), '-t', 'clean'])
+          self.run_process(['ninja', '-C', str(ninja_file.parent)])
+          result = self.run_process(['ninja', '-C', str(ninja_file.parent), '-n'], stdout=PIPE)
+          self.assertIn('no work to do', result.stdout)
+          for name, contents in outputs[-1].items():
+            self.assertEqual(contents, read_binary(lib_dir / name), name)
+
+    for name, contents in outputs[0].items():
+      self.assertEqual(contents, outputs[1][name], name)
+
+  @crossplatform
   def test_dwarf_system_lib(self):
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
