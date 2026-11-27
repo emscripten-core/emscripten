@@ -5568,6 +5568,11 @@ Module["preRun"] = () => {
   def test_audio_worklet_worker(self):
     self.btest_exit('webaudio/audioworklet_worker.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
+  # Tests that an audioworklet starts up in a -sTEXTDECODER=2 build when using
+  # UTF16ToString().
+  def test_audio_worklet_textdecoder(self):
+    self.btest_exit('webaudio/audioworklet_textdecoder.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sTEXTDECODER=2', '-Wno-js-compiler'])
+
   # Tests that posting functions between the main thread and the audioworklet thread works
   @parameterized({
     '': ([],),
