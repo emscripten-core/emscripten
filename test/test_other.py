@@ -3771,6 +3771,7 @@ More info: https://emscripten.org
     'jspi': (True, []),
     'jspi_O2': (True, ['-O2']),
     'jspi_closure': (True, ['-O2', '--closure=1']),
+    'jspi_overflow': (True, ['-DOVERFLOW', '-sSTACK_SIZE=16KB']),
   })
   def test_can_suspend(self, jspi, args):
     if jspi:
@@ -3778,7 +3779,10 @@ More info: https://emscripten.org
       self.set_setting('JSPI_EXPORTS', 'promising_inner')
     else:
       self.set_setting('ASYNCIFY')
-    self.do_runf('other/test_can_suspend.c', 'done\n', cflags=args)
+    if '-DOVERFLOW' in args:
+      self.do_runf('other/test_can_suspend.c', 'JSPI stack overflow', cflags=args, assert_returncode=NON_ZERO)
+    else:
+      self.do_runf('other/test_can_suspend.c', 'done\n', cflags=args)
 
   @requires_jspi
   def test_jspi_add_function(self):
