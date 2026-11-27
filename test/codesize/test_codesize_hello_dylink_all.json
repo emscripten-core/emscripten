@@ -1,7 +1,7 @@
 {
-  "a.out.js": 268464,
+  "a.out.js": 268513,
   "a.out.nodebug.wasm": 535582,
-  "total": 804046,
+  "total": 804095,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -458,6 +458,7 @@
     "emscripten_async_wget2_data",
     "emscripten_async_wget_data",
     "emscripten_call_worker",
+    "emscripten_can_suspend",
     "emscripten_cancel_animation_frame",
     "emscripten_cancel_main_loop",
     "emscripten_clear_immediate",

@@ -58,6 +58,7 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
             dbg('asyncify: suspendOnReturnedPromise for', x, original);
 #endif
+            original = Asyncify.trackResume(original);
             imports[x] = original = new WebAssembly.Suspending(original);
           }
 #endif
@@ -166,6 +167,8 @@ addToLibrary({
           if (isAsyncifyExport) {
             Asyncify.asyncExports.add(original);
             original = Asyncify.makeAsyncFunction(original);
+          } else {
+            original = Asyncify.trackEntry(original, false);
           }
           ret[x] = original;
 #else
@@ -469,10 +472,47 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify: makeAsyncFunction for', original);
 #endif
-      return WebAssembly.promising(original);
+      return Asyncify.trackEntry(WebAssembly.promising(original.orig || original), true);
+    },
+    // Module['canSuspend'] is whether a suspending import called now would
+    // suspend. Only the value seen by running wasm matters: every JS->wasm
+    // entry sets it for its duration, and every resume sets it before the
+    // activation continues.
+    trackEntry(func, canSuspend) {
+      var wrapper = (...args) => {
+        var prev = Module['canSuspend'];
+        Module['canSuspend'] = canSuspend;
+        try {
+          return func(...args);
+        } finally {
+          Module['canSuspend'] = prev;
+        }
+      };
+      // Allows dynamic linking and the table map to see the wasm function.
+      wrapper.orig = func;
+      return wrapper;
+    },
+    // JSPI resumes a suspended activation from a microtask without going
+    // through any entry wrapper, so set the flag in a reaction on the promise
+    // that JSPI waits on.
+    trackResume(func) {
+      return (...args) => {
+        var ret = func(...args);
+        if (ret instanceof Promise) {
+          ret = ret.finally(() => Module['canSuspend'] = true);
+        }
+        return ret;
+      };
     },
 #endif
   },
+
+#if ASYNCIFY == 1
+  // Any export can be unwound, but only one async operation at a time.
+  emscripten_can_suspend: () => Asyncify.state === Asyncify.State.Normal && !Asyncify.currData,
+#else
+  emscripten_can_suspend: () => !!Module['canSuspend'],
+#endif
 
   emscripten_sleep__async: 'auto',
   emscripten_sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -605,6 +645,7 @@ addToLibrary({
     }
   },
 #else // ASYNCIFY
+  emscripten_can_suspend: () => false,
   emscripten_sleep: () => {
     abort('Please compile your program with async support in order to use asynchronous operations like emscripten_sleep');
   },
