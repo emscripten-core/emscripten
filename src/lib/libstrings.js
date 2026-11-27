@@ -343,9 +343,10 @@ addToLibrary({
     {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
   },
 
-#if TEXTDECODER == 2
+#if TEXTDECODER == 2 && !AUDIO_WORKLET
   $UTF16Decoder: "new TextDecoder('utf-16le');",
 #else
+  // AudioWorklet does not have TextDecoder.
   $UTF16Decoder: "globalThis.TextDecoder ? new TextDecoder('utf-16le') : undefined;",
 #endif
 
