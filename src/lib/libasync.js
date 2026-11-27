@@ -34,6 +34,12 @@ addToLibrary({
                     '$setStackLimits',
 #endif
   ],
+  // Lets code that enters this module's wasm or suspends it without going
+  // through its exports, imports or table, such as another JSPI runtime,
+  // take part in the same tracking.
+  $Asyncify__postset: `
+    Module['jspiWrapEntry'] = (func, isAsync) => isAsync ? Asyncify.makeAsyncFunction(func) : Asyncify.trackEntry(func, false);
+    Module['jspiWrapImport'] = (func) => new WebAssembly.Suspending(Asyncify.trackResume(func));`,
 #endif
 
   $Asyncify: {
@@ -481,7 +487,7 @@ addToLibrary({
 #endif
       return Asyncify.trackEntry(WebAssembly.promising(original.orig || original), true);
     },
-    // Module['canSuspend'] is whether a suspending import called now would
+    // canSuspend is whether a suspending import called now would
     // suspend. Only the value seen by running wasm matters: every JS->wasm
     // entry sets it for its duration, and every resume sets it before the
     // activation continues.
@@ -496,6 +502,7 @@ addToLibrary({
     // the activation, so only one resume is armed at a time, from that
     // reaction until the activation next suspends or completes, and others
     // queue behind it.
+    canSuspend: false,
     depth: 0,
     act: null,
     inPlace: null,
@@ -570,7 +577,7 @@ addToLibrary({
             Asyncify.setStack(act);
           }
           Asyncify.act = act;
-          Module['canSuspend'] = true;
+          Asyncify.canSuspend = true;
           resolve();
         };
         if (Asyncify.armed) Asyncify.waiting.push(arm);
@@ -579,11 +586,11 @@ addToLibrary({
     },
     trackEntry(func, isAsync) {
       var wrapper = (...args) => {
-        var prev = Module['canSuspend'];
+        var prev = Asyncify.canSuspend;
         var prevAct = Asyncify.act;
         var act = isAsync && Asyncify.newActivation();
         if (act) Asyncify.act = act;
-        Module['canSuspend'] = isAsync;
+        Asyncify.canSuspend = isAsync;
         Asyncify.depth++;
         try {
           var ret = func(...args);
@@ -595,7 +602,7 @@ addToLibrary({
           return ret;
         } finally {
           Asyncify.depth--;
-          Module['canSuspend'] = prev;
+          Asyncify.canSuspend = prev;
           if (act) {
             Asyncify.act = prevAct;
             // In place, the stack pointer is left below the suspended frames.
@@ -614,7 +621,7 @@ addToLibrary({
       return (...args) => {
         var ret = func(...args);
         var act = Asyncify.act;
-        if (ret instanceof Promise && Module['canSuspend'] && act) {
+        if (ret instanceof Promise && Asyncify.canSuspend && act) {
           act.sp = stackSave();
           if (!act.inPlace) Asyncify.checkStack(act, act.sp);
           act.suspended = true;
@@ -632,7 +639,7 @@ addToLibrary({
   // Any export can be unwound, but only one async operation at a time.
   emscripten_can_suspend: () => Asyncify.state === Asyncify.State.Normal && !Asyncify.currData,
 #else
-  emscripten_can_suspend: () => !!Module['canSuspend'],
+  emscripten_can_suspend: () => Asyncify.canSuspend,
 #endif
 
   emscripten_sleep__async: 'auto',

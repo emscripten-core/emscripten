@@ -1373,9 +1373,13 @@ Functions
   ``JSPI_EXPORTS`` function with no JavaScript frame in between. Calling a
   suspending import otherwise throws a ``SuspendError``. Every JS-to-wasm entry
   tracks this state through a small JS wrapper around each export and table
-  entry called from JS, which keeps it in ``Module.canSuspend``. Code that calls
-  ``wasmTable.get()`` directly bypasses tracking, so use ``getWasmTableEntry()``
-  instead, or set ``Module.canSuspend`` for the duration of the call.
+  entry called from JS. The same wrappers give each concurrently suspended
+  activation its own C stack, so code that enters the wasm another way, such as
+  calling ``wasmTable.get()`` directly, must go through them:
+  ``Module.jspiWrapEntry(func, isAsync)`` wraps a wasm function called from JS,
+  as a ``JSPI_EXPORTS`` function when ``isAsync`` is true, and
+  ``Module.jspiWrapImport(func)`` wraps a JS function returning a promise as a
+  suspending import.
 
   With ``-sASYNCIFY=1`` any export can be unwound, so this is the case unless
   another asynchronous operation is already in flight. JavaScript frames on the

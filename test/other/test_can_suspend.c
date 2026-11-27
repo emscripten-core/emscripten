@@ -71,6 +71,11 @@ EM_JS(void, clobber_later, (int delay), {
   setTimeout(() => _clobber(), delay);
 });
 
+// Raw wasm entered from JS takes part through the entry wrapper.
+EM_JS(void, call_raw_inner, (void* fn, int ms), {
+  Module['jspiWrapEntry'](wasmTable.get(fn), true)(ms);
+});
+
 // Returns while the inner activation is still suspended.
 __attribute__((noinline)) void start_inner(int ms) {
   volatile char pad[64];
@@ -112,6 +117,8 @@ int main() {
   if (JSPI) {
     // The inner activation suspends, returning control here.
     start_inner(10);
+    clobber();
+    call_raw_inner(promising_inner, 20);
     clobber();
     assert(emscripten_can_suspend());
     // These complete out of order with this one and each other, using more
