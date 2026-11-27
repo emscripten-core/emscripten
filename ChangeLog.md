@@ -35,6 +35,9 @@ See docs/process.md for more on how version tagging works.
   are now moved correctly into `-sLEGACY_GL_EMULATION` mode. In GLES and WebGL,
   use the correct API functions `glClearDepthf()` and `glDepthRangef()` instead.
   (#28379)
+- Fixed `getentropy`/`random_get` with `GROWABLE_ARRAYBUFFERS` set. The random
+  bytes are now copied through a temporary buffer when the heap buffer is
+  resizable, just like in the shared memory case.
 
 7.0.1 - 11/21/26
 ----------------
