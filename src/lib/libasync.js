@@ -474,18 +474,18 @@ addToLibrary({
 #endif
       return Asyncify.trackEntry(WebAssembly.promising(original.orig || original), true);
     },
-    // Whether a suspending import called now would suspend. Only the value
-    // seen by running wasm matters: every JS->wasm entry sets it for its
-    // duration, and every resume sets it before the activation continues.
-    canSuspend: false,
+    // Module['canSuspend'] is whether a suspending import called now would
+    // suspend. Only the value seen by running wasm matters: every JS->wasm
+    // entry sets it for its duration, and every resume sets it before the
+    // activation continues.
     trackEntry(func, canSuspend) {
       var wrapper = (...args) => {
-        var prev = Asyncify.canSuspend;
-        Asyncify.canSuspend = canSuspend;
+        var prev = Module['canSuspend'];
+        Module['canSuspend'] = canSuspend;
         try {
           return func(...args);
         } finally {
-          Asyncify.canSuspend = prev;
+          Module['canSuspend'] = prev;
         }
       };
       // Allows dynamic linking and the table map to see the wasm function.
@@ -496,11 +496,10 @@ addToLibrary({
     // through any entry wrapper, so set the flag in a reaction on the promise
     // that JSPI waits on.
     trackResume(func) {
-      var resume = () => Asyncify.canSuspend = true;
       return (...args) => {
         var ret = func(...args);
         if (ret instanceof Promise) {
-          ret = ret.then((v) => (resume(), v), (e) => { resume(); throw e; });
+          ret = ret.finally(() => Module['canSuspend'] = true);
         }
         return ret;
       };
@@ -512,7 +511,7 @@ addToLibrary({
   // Any export can be unwound, but only one async operation at a time.
   emscripten_can_suspend: () => Asyncify.state === Asyncify.State.Normal && !Asyncify.currData,
 #else
-  emscripten_can_suspend: () => Asyncify.canSuspend,
+  emscripten_can_suspend: () => !!Module['canSuspend'],
 #endif
 
   emscripten_sleep__async: 'auto',
