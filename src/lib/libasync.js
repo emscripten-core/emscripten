@@ -28,7 +28,7 @@ addToLibrary({
   // Needed by allocateData and handleSleep respectively
   $Asyncify__deps: ['malloc', 'free'],
 #else
-  $Asyncify__deps: ['malloc', 'emscripten_stack_get_base', 'emscripten_stack_get_end',
+  $Asyncify__deps: ['malloc', 'free', 'emscripten_stack_get_base', 'emscripten_stack_get_end',
                     'emscripten_stack_set_limits',
 #if STACK_OVERFLOW_CHECK >= 2
                     '$setStackLimits',
@@ -515,17 +515,20 @@ addToLibrary({
       if (!Asyncify.act && !Asyncify.depth && !Asyncify.inPlace) {
         return Asyncify.inPlace = {inPlace: true};
       }
-      var end = Asyncify.freeStacks.pop();
-      if (!end) {
+      var stack = Asyncify.freeStacks.pop();
+      if (!stack) {
         // Below each stack lies a guard region of the same size, so an
         // overflow of up to that size corrupts nothing else, and is caught
         // when the activation suspends or exits. The stack pointer must stay
         // 16-byte aligned.
-        end = alignMemory(_malloc(2 * {{{ STACK_SIZE }}} + 15), 16) + {{{ STACK_SIZE }}};
+        var mem = _malloc(2 * {{{ STACK_SIZE }}} + 15);
+        if (!mem) abort('out of memory allocating a JSPI stack');
+        var end = alignMemory(mem, 16) + {{{ STACK_SIZE }}};
         {{{ makeSetValue('end', 0, '0x02135467', 'u32') }}};
         {{{ makeSetValue('end', 4, '0x89BACDFE', 'u32') }}};
+        stack = {mem, end};
       }
-      var act = {end, base: end + {{{ STACK_SIZE }}}, prev: Asyncify.getStack()};
+      var act = {stack, end: stack.end, base: stack.end + {{{ STACK_SIZE }}}, prev: Asyncify.getStack()};
       act.sp = act.base;
       Asyncify.setStack(act);
       return act;
@@ -542,7 +545,10 @@ addToLibrary({
         Asyncify.inPlace = null;
       } else {
         Asyncify.checkStack(act, act.end);
-        Asyncify.freeStacks.push(act.end);
+        // Keep a few stacks for reuse, enough for calls in sequence and small
+        // amounts of concurrency.
+        if (Asyncify.freeStacks.length < 4) Asyncify.freeStacks.push(act.stack);
+        else _free(act.stack.mem);
       }
     },
     // The armed activation has suspended again or completed.

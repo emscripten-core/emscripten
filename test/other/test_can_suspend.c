@@ -114,9 +114,11 @@ int main() {
     start_inner(10);
     clobber();
     assert(emscripten_can_suspend());
-    // These complete out of order with this one and each other.
-    call_promising_inner(30, 0);
-    call_promising_inner(40, 5);
+    // These complete out of order with this one and each other, using more
+    // stacks than are kept for reuse.
+    for (int i = 0; i < 6; i++) {
+      call_promising_inner(30 + i % 2 * 10, i);
+    }
     clobber_later(35);
   }
 
