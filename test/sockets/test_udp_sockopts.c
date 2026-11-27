@@ -162,8 +162,9 @@ void check_membership(void) {
   struct sockaddr_in6 sa6 = {.sin6_family = AF_INET6};
   assert(bind(fd, (struct sockaddr*)&sa6, sizeof(sa6)) == 0);
   int err = set6(fd, IPV6_JOIN_GROUP, "ff02::1:3");
-  // ENODEV: no IPv6 multicast route on this host (e.g. a container).
-  if (err != ENODEV) {
+  // No IPv6 multicast route on this host (e.g. a container, or a host with no
+  // IPv6 connectivity): ENODEV on Linux, EADDRNOTAVAIL on macOS.
+  if (err != ENODEV && err != EADDRNOTAVAIL) {
     assert(err == 0);
     assert(set6(fd, IPV6_JOIN_GROUP, "ff02::1:3") == EADDRINUSE);
     assert(set6(fd, IPV6_LEAVE_GROUP, "ff02::1:3") == 0);
