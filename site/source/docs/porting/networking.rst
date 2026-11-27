@@ -50,7 +50,19 @@ This is the default build mode for Emscripten. Use the linker flag
 ``-sWEBSOCKET_URL`` or ``Module['websocket']['url']`` to specify the WebSocket URL
 to connect to, and the linker flag ``-sWEBSOCKET_SUBPROTOCOL`` or
 ``Module['websocket']['subprotocol']`` to control the connection type
-(``'binary'`` or ``'text'``).
+(``'binary'`` or ``'text'``). ``Module['websocket']['url']`` may also be
+a function ``(addr, port) => url`` called per connection.
+
+The WebSocket implementation used for these sockets can be customized at
+runtime via ``Module['websocket']['constructor']``. Set it to a custom
+``WebSocket``-like class (constructed as ``new constructor(url, protocols)``).
+The returned object must implement the standard ``WebSocket`` interface
+(``send``, ``close``, ``binaryType``, ``readyState``, ``onopen``,
+``onmessage``, ``onclose``, ``onerror``). For example:
+
+.. code-block:: javascript
+
+  Module['websocket']['constructor'] = CustomWebSocket;
 
 POSIX Sockets on Node.js
 ========================
