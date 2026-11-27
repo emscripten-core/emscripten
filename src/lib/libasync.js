@@ -27,6 +27,13 @@ addToLibrary({
 #if ASYNCIFY == 1
   // Needed by allocateData and handleSleep respectively
   $Asyncify__deps: ['malloc', 'free'],
+#else
+  $Asyncify__deps: ['malloc', 'emscripten_stack_get_base', 'emscripten_stack_get_end',
+                    'emscripten_stack_set_limits',
+#if STACK_OVERFLOW_CHECK >= 2
+                    '$setStackLimits',
+#endif
+  ],
 #endif
 
   $Asyncify: {
@@ -478,14 +485,103 @@ addToLibrary({
     // suspend. Only the value seen by running wasm matters: every JS->wasm
     // entry sets it for its duration, and every resume sets it before the
     // activation continues.
-    trackEntry(func, canSuspend) {
+    //
+    // A suspended activation's frames stay on the C stack, so anything that
+    // later frees them out of order corrupts it. An activation entered with
+    // no wasm on the JS stack runs in place on the main stack, as everything
+    // after it there nests within it, unless another one already does. Every
+    // other activation runs on a stack of its own. act is the innermost
+    // activation, null outside of one. Entries switch synchronously and
+    // restore on exit. A resume switches in a reaction before JSPI continues
+    // the activation, so only one resume is armed at a time, from that
+    // reaction until the activation next suspends or completes, and others
+    // queue behind it.
+    depth: 0,
+    act: null,
+    inPlace: null,
+    mainStack: null,
+    freeStacks: [],
+    armed: null,
+    waiting: [],
+    getStack: () => ({base: _emscripten_stack_get_base(), end: _emscripten_stack_get_end(), sp: stackSave()}),
+    setStack(stack) {
+      _emscripten_stack_set_limits(stack.base, stack.end);
+#if STACK_OVERFLOW_CHECK >= 2
+      setStackLimits();
+#endif
+      stackRestore(stack.sp);
+    },
+    newActivation() {
+      if (!Asyncify.act && !Asyncify.depth && !Asyncify.inPlace) {
+        return Asyncify.inPlace = {inPlace: true};
+      }
+      var end = Asyncify.freeStacks.pop();
+      var fresh = !end;
+      // The stack pointer must stay 16-byte aligned.
+      end ||= alignMemory(_malloc({{{ STACK_SIZE }}} + 15), 16);
+      var act = {end, base: end + {{{ STACK_SIZE }}}, prev: Asyncify.getStack()};
+      act.sp = act.base;
+      Asyncify.setStack(act);
+#if STACK_OVERFLOW_CHECK
+      if (fresh) writeStackCookie();
+#endif
+      return act;
+    },
+    release(act) {
+      if (Asyncify.armed === act) Asyncify.disarm();
+      if (act.inPlace) Asyncify.inPlace = null;
+      else Asyncify.freeStacks.push(act.end);
+    },
+    // The armed activation has suspended again or completed.
+    disarm() {
+      var act = Asyncify.armed;
+      if (Asyncify.act === act) {
+        if (!act.inPlace) Asyncify.setStack(Asyncify.mainStack);
+        Asyncify.act = null;
+      }
+      Asyncify.armed = null;
+      Asyncify.waiting.shift()?.();
+    },
+    resume(act) {
+      return new Promise((resolve) => {
+        var arm = () => {
+          Asyncify.armed = act;
+          if (!act.inPlace) {
+            Asyncify.mainStack = Asyncify.getStack();
+            Asyncify.setStack(act);
+          }
+          Asyncify.act = act;
+          Module['canSuspend'] = true;
+          resolve();
+        };
+        if (Asyncify.armed) Asyncify.waiting.push(arm);
+        else arm();
+      });
+    },
+    trackEntry(func, isAsync) {
       var wrapper = (...args) => {
         var prev = Module['canSuspend'];
-        Module['canSuspend'] = canSuspend;
+        var prevAct = Asyncify.act;
+        var act = isAsync && Asyncify.newActivation();
+        if (act) Asyncify.act = act;
+        Module['canSuspend'] = isAsync;
+        Asyncify.depth++;
         try {
-          return func(...args);
+          var ret = func(...args);
+          if (act?.suspended) {
+            ret = ret.finally(() => Asyncify.release(act));
+          } else if (act) {
+            Asyncify.release(act);
+          }
+          return ret;
         } finally {
+          Asyncify.depth--;
           Module['canSuspend'] = prev;
+          if (act) {
+            Asyncify.act = prevAct;
+            // In place, the stack pointer is left below the suspended frames.
+            if (act.prev) Asyncify.setStack(act.prev);
+          }
         }
       };
       // Allows dynamic linking and the table map to see the wasm function.
@@ -493,13 +589,18 @@ addToLibrary({
       return wrapper;
     },
     // JSPI resumes a suspended activation from a microtask without going
-    // through any entry wrapper, so set the flag in a reaction on the promise
+    // through any entry wrapper, so switch to it in a reaction on the promise
     // that JSPI waits on.
     trackResume(func) {
       return (...args) => {
         var ret = func(...args);
-        if (ret instanceof Promise) {
-          ret = ret.finally(() => Module['canSuspend'] = true);
+        var act = Asyncify.act;
+        if (ret instanceof Promise && Module['canSuspend'] && act) {
+          act.sp = stackSave();
+          act.suspended = true;
+          if (Asyncify.armed === act) Asyncify.disarm();
+          ret = ret.then((v) => Asyncify.resume(act).then(() => v),
+                         (e) => Asyncify.resume(act).then(() => { throw e; }));
         }
         return ret;
       };
