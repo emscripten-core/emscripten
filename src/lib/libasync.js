@@ -516,21 +516,34 @@ addToLibrary({
         return Asyncify.inPlace = {inPlace: true};
       }
       var end = Asyncify.freeStacks.pop();
-      var fresh = !end;
-      // The stack pointer must stay 16-byte aligned.
-      end ||= alignMemory(_malloc({{{ STACK_SIZE }}} + 15), 16);
+      if (!end) {
+        // Below each stack lies a guard region of the same size, so an
+        // overflow of up to that size corrupts nothing else, and is caught
+        // when the activation suspends or exits. The stack pointer must stay
+        // 16-byte aligned.
+        end = alignMemory(_malloc(2 * {{{ STACK_SIZE }}} + 15), 16) + {{{ STACK_SIZE }}};
+        {{{ makeSetValue('end', 0, '0x02135467', 'u32') }}};
+        {{{ makeSetValue('end', 4, '0x89BACDFE', 'u32') }}};
+      }
       var act = {end, base: end + {{{ STACK_SIZE }}}, prev: Asyncify.getStack()};
       act.sp = act.base;
       Asyncify.setStack(act);
-#if STACK_OVERFLOW_CHECK
-      if (fresh) writeStackCookie();
-#endif
       return act;
+    },
+    checkStack(act, sp) {
+      if (sp < act.end || {{{ makeGetValue('act.end', 0, 'u32') }}} != 0x02135467 ||
+          {{{ makeGetValue('act.end', 4, 'u32') }}} != 0x89BACDFE) {
+        abort('JSPI stack overflow; increase -sSTACK_SIZE');
+      }
     },
     release(act) {
       if (Asyncify.armed === act) Asyncify.disarm();
-      if (act.inPlace) Asyncify.inPlace = null;
-      else Asyncify.freeStacks.push(act.end);
+      if (act.inPlace) {
+        Asyncify.inPlace = null;
+      } else {
+        Asyncify.checkStack(act, act.end);
+        Asyncify.freeStacks.push(act.end);
+      }
     },
     // The armed activation has suspended again or completed.
     disarm() {
@@ -597,6 +610,7 @@ addToLibrary({
         var act = Asyncify.act;
         if (ret instanceof Promise && Module['canSuspend'] && act) {
           act.sp = stackSave();
+          if (!act.inPlace) Asyncify.checkStack(act, act.sp);
           act.suspended = true;
           if (Asyncify.armed === act) Asyncify.disarm();
           ret = ret.then((v) => Asyncify.resume(act).then(() => v),

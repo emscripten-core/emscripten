@@ -31,7 +31,12 @@ EMSCRIPTEN_KEEPALIVE void plain_throws(void) {
 
 // Checks that its stack frame survives other activations running meanwhile.
 EMSCRIPTEN_KEEPALIVE void promising_inner(int ms) {
+#ifdef OVERFLOW
+  // Overflows its stack into the guard region below it.
+  volatile char buf[24 * 1024];
+#else
   volatile char buf[256];
+#endif
   for (int i = 0; i < sizeof(buf); i++) buf[i] = ms;
   assert(emscripten_can_suspend());
   sleep_ms(ms);
@@ -89,6 +94,10 @@ void after_complete(void* arg) {
 }
 
 int main() {
+#ifdef OVERFLOW
+  start_inner(0);
+  return 0;
+#endif
   assert(emscripten_can_suspend());
 
   assert(call_plain() == !JSPI);
