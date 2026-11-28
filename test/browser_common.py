@@ -760,6 +760,11 @@ class BrowserCore(RunnerCore):
   unresponsive_tests = 0
   num_tests_ran = 0
 
+  # The browsers and the harness server are shared between all the browser
+  # test classes that run tests in this process. Keep a refcount of
+  # test classes, and initialize the harness server only on the first one.
+  num_classes_using_browser = 0
+
   def __init__(self, *args, **kwargs):
     self.capture_stdio = EMTEST_CAPTURE_STDIO
     super().__init__(*args, **kwargs)
@@ -821,7 +826,7 @@ class BrowserCore(RunnerCore):
     if (WINDOWS and is_firefox()) or is_safari():
       cls.launch_browser_harness_with_proc_snapshot_workaround(parallel_harness, config, browser_args, url)
     else:
-      cls.browser_procs = [subprocess.Popen(browser_args + config.open_url_args(url))]
+      BrowserCore.browser_procs = [subprocess.Popen(browser_args + config.open_url_args(url))]
 
   @classmethod
   def launch_browser_harness_with_proc_snapshot_workaround(cls, parallel_harness, config, browser_args, url):
@@ -840,7 +845,7 @@ class BrowserCore(RunnerCore):
         procs_before = list_processes_by_name(config.executable_name)
 
       # Browser launch
-      cls.browser_procs = [subprocess.Popen(browser_args + config.open_url_args(url))]
+      BrowserCore.browser_procs = [subprocess.Popen(browser_args + config.open_url_args(url))]
 
       # Give the browser time to spawn its subprocesses. Use an increasing
       # timeout as a crude way to account for system load.
@@ -851,7 +856,7 @@ class BrowserCore(RunnerCore):
         # Take a snapshot again to find which processes exist after launching
         # the browser. Then the newly launched browser processes are determined
         # by the delta before->after.
-        cls.browser_procs += list(set(procs_after).difference(set(procs_before)))
+        BrowserCore.browser_procs += list(set(procs_after).difference(set(procs_before)))
         if len(cls.browser_procs) == 0:
           exit_with_error('Could not detect the launched browser subprocesses. The test harness will not be able to close the browser after testing is done, so aborting the test run here.')
 
@@ -875,18 +880,39 @@ class BrowserCore(RunnerCore):
       errlog(f'[Skipping browser launch (EMTEST_BROWSER={EMTEST_BROWSER})]')
       return
 
-    cls.harness_in_queue = queue.Queue()
-    cls.harness_out_queue = queue.Queue()
-    cls.harness_server = HttpServerThread(make_test_server(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
-    cls.harness_server.start()
+    # When tests of several test classes are run in parallel, each worker process
+    # sets up all of those classes, and tears them down only at the end of the
+    # test run. Launch a single browser for all of them, rather than one for each
+    # of the classes.
+    if BrowserCore.num_classes_using_browser > 0:
+      BrowserCore.num_classes_using_browser += 1
+      return
+
+    BrowserCore.harness_in_queue = queue.Queue()
+    BrowserCore.harness_out_queue = queue.Queue()
+    BrowserCore.harness_server = HttpServerThread(make_test_server(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
+    BrowserCore.harness_server.start()
 
     errlog(f'[Browser harness server on thread {cls.harness_server.name}]')
-    cls.browser_open(cls.HARNESS_URL)
+    try:
+      cls.browser_open(cls.HARNESS_URL)
+    except Exception:
+      # tearDownClass() does not get called for a class that fails to set up,
+      # so stop the harness server here. That lets the next test class start
+      # from a clean state, and the test run exit when it is done.
+      cls.harness_server.stop()
+      cls.harness_server.join()
+      raise
+    BrowserCore.num_classes_using_browser = 1
 
   @classmethod
   def tearDownClass(cls):
     super().tearDownClass()
     if not has_browser() or EMTEST_BROWSER == 'node':
+      return
+    # Keep the browser running for as long as there is a test class using it.
+    BrowserCore.num_classes_using_browser -= 1
+    if BrowserCore.num_classes_using_browser > 0:
       return
     cls.harness_server.stop()
     cls.harness_server.join()
