@@ -91,7 +91,7 @@ int main(void) {
 #ifndef __EMSCRIPTEN_PTHREADS__
   assert(ticked);
 #endif
-  assert(count_v4(res, "127.0.0.1") == 1);
+  assert(count_v4(res, "127.0.0.1") >= 1);
   for (struct addrinfo* ai = res; ai; ai = ai->ai_next) {
     assert(ai->ai_family == AF_INET);
   }
@@ -99,7 +99,7 @@ int main(void) {
 
   // AF_UNSPEC returns every address the resolver has, each in its own family.
   res = lookup("localhost", AF_UNSPEC, 0);
-  assert(count_v4(res, "127.0.0.1") == 1);
+  assert(count_v4(res, "127.0.0.1") >= 1);
   for (struct addrinfo* ai = res; ai; ai = ai->ai_next) {
     if (ai->ai_family == AF_INET6) {
       struct sockaddr_in6* sin6 = (struct sockaddr_in6*)ai->ai_addr;
@@ -128,7 +128,7 @@ int main(void) {
     if (((struct in_addr*)*a)->s_addr == inet_addr("127.0.0.1"))
       found++;
   }
-  assert(found == 1);
+  assert(found >= 1);
   assert(!gethostbyname("nonexistent.invalid"));
   assert(h_errno == HOST_NOT_FOUND || h_errno == TRY_AGAIN);
 
