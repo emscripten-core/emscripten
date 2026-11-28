@@ -6,6 +6,7 @@
 
 addToLibrary({
   $OPFS__deps: ['wasmfs_create_opfs_backend'],
+  $OPFS__export: true,
   $OPFS: {
     createBackend(opts) {
       return _wasmfs_create_opfs_backend();

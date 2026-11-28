@@ -10,6 +10,7 @@ addToLibrary({
     $IDBFS_DB_STORE_NAME: 'FILE_DATA',
   }),
   $IDBFS__postset: () => addAtExit('IDBFS.quit();'),
+  $IDBFS__export: true,
   $IDBFS: {
     dbs: new Map(),
     indexedDB: () => {
