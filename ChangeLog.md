@@ -61,6 +61,11 @@ See docs/process.md for more on how version tagging works.
 - Building with `-sJSPI` now bumps the default minimum supported browser
   versions to the first ones that support JSPI: Chrome 137, Firefox 153,
   Safari 27 and Node.js 24. (#28334)
+- In pthreads builds with `MAIN_MODULE`, workers no longer create a JS function
+  object for every entry of the main module's table: the main thread passes
+  them the table slots of the main module's exported functions. `addFunction`
+  in a worker now gives a main-module function that is not exported a new
+  table slot instead of returning its existing address. (#28105)
 
 7.0.0 - 11/06/26
 ----------------

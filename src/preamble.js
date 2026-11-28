@@ -796,6 +796,9 @@ function getWasmImports() {
     assignWasmExports(wasmExports);
 
 #if MAIN_MODULE
+#if PTHREADS
+    initFunctionsInTableMap(origExports);
+#endif
     updateGOT(origExports);
 #endif
 
