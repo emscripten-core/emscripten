@@ -588,7 +588,7 @@ def is_internal_global(name):
 def is_internal_symbol(name):
   if is_internal_global(name):
     return True
-  return name in {'__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'} or name.startswith(('dynCall_', 'orig$'))
+  return name in {'__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'} or name.startswith(('dynCall_', 'orig$', 'fpcast$'))
 
 
 def asmjs_mangle(name):

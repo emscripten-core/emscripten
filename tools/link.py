@@ -313,6 +313,8 @@ def get_binaryen_passes():
     # the rewritten table entries with matching types. It must also run
     # before asyncify so the byn$fpcast-emu thunks get instrumented.
     passes += ['--fpcast-emu']
+    if settings.MAIN_MODULE or settings.SIDE_MODULE:
+      passes += ['--pass-arg=fpcast-emu-export-thunks']
   if optimizing:
     # wasm-emscripten-finalize will strip the features section for us
     # automatically, but if we did not modify the wasm then we didn't run it,

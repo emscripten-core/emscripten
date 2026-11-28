@@ -109,11 +109,25 @@ var LibraryDylink = {
   $resolveGlobalSymbol__internal: true,
   $resolveGlobalSymbol: (symName, direct = false) => {
     var sym;
+#if EMULATE_FUNCTION_POINTER_CASTS || !WASM_BIGINT
+    if (direct) {
+#if EMULATE_FUNCTION_POINTER_CASTS
+      // When populating table slots (GOT.func), prefer the fpcast$ thunk
+      // export which has the fixed (i64 x 16) -> i64 indirect call ABI.
+      if ('fpcast$' + symName in wasmImports) {
+        symName = 'fpcast$' + symName;
+      }
 #if !WASM_BIGINT
-    // First look for the orig$ symbol which is the symbol without i64
-    // legalization performed.
-    if (direct && ('orig$' + symName in wasmImports)) {
-      symName = 'orig$' + symName;
+      else
+#endif
+#endif
+#if !WASM_BIGINT
+      // Look for the orig$ symbol which is the symbol without i64
+      // legalization performed.
+      if ('orig$' + symName in wasmImports) {
+        symName = 'orig$' + symName;
+      }
+#endif
     }
 #endif
     if (isSymbolDefined(symName)) {
@@ -219,20 +233,29 @@ var LibraryDylink = {
     dbg(`updateGOT: adding ${Object.keys(exports).length} symbols`);
 #endif
     for (var symName in exports) {
+      var shouldReplace = replace;
+      var value = exports[symName];
+#if !WASM_BIGINT
+      if (symName.startsWith('orig$')) {
+        symName = symName.slice(5); // 'orig$'.length
+        shouldReplace = true;
+      }
+#endif
+#if EMULATE_FUNCTION_POINTER_CASTS
+      if (symName.startsWith('fpcast$')) {
+        symName = symName.slice(7); // 'fpcast$'.length
+      } else if (('fpcast$' + symName) in exports) {
+        // Prefer the fpcast$ thunk for function exports; skip raw/orig$ entries
+        // so we don't allocate extra table slots for unwrapped exports.
+        continue;
+      }
+#endif
       if (isInternalSym(symName)) {
         continue;
       }
 
-      var value = exports[symName];
-#if !WASM_BIGINT
-      if (symName.startsWith('orig$')) {
-        symName = symName.split('$')[1];
-        replace = true;
-      }
-#endif
-
       var existingEntry = GOT[symName] && GOT[symName].value != UNDEFINED_ADDR;
-      if (replace || !existingEntry) {
+      if (shouldReplace || !existingEntry) {
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName]?.value}`);
 #endif
@@ -1330,6 +1353,15 @@ var LibraryDylink = {
       return 0;
     }
     var exportName = symbol;
+#if EMULATE_FUNCTION_POINTER_CASTS
+    var fpcastSym = 'fpcast$' + symbol;
+    if (lib.exports[fpcastSym]) {
+      exportName = fpcastSym;
+    }
+#if !WASM_BIGINT
+    else
+#endif
+#endif
 #if !WASM_BIGINT
     var origSym = 'orig$' + symbol;
     if (lib.exports[origSym]) {
